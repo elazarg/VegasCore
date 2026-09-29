@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceAbsentOpening
 import Vegas.Game.SourceServiceUnsentBinding
 import Vegas.Game.SourceServiceTimingPosterior
+import Vegas.Game.SourceServiceFiniteness
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
@@ -68,7 +69,7 @@ theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached ⊢
+        PMF.bind_bind, Function.comp_def] at reached ⊢
       obtain ⟨sample, sampleSupport, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, supported, reached⟩ :=
@@ -397,6 +398,14 @@ theorem RevealSource.opportunity_law {setup : Setup (Player := Player) (L := L)}
   intro disclose _
   cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, opening]
 
+/-- The tower rule for a finitely supported outer law with finitely supported
+branches, where every payoff is integrable. -/
+private theorem expect_bind_of_support_finite {α β : Type*} {p : PMF α} {q : α → PMF β}
+    (f : β → ℝ) (outer : p.support.Finite) (branches : ∀ a ∈ p.support, (q a).support.Finite) :
+    expect (p.bind q) f = expect p fun a => expect (q a) f :=
+  expect_bind_tower p q f (payoffIntegrable_of_finite_support _ _
+    (bind_support_finite outer branches))
+
 namespace SourceServiceSpec
 
 variable (service : SourceServiceSpec Player L)
@@ -653,6 +662,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
           change (independentProduct _).map ((fun action => advance (OwnAction.disclosure action)) ∘
               fun joint : Player → Option (OwnAction Player L) => joint siteOwner) = _
           rw [← PMF.map_comp, independentProduct_map_eval]
+          exact (pmf_bind_pure_eq_map _ _).symm
         have injective : Function.Injective advance := by
           intro first second same
           have successor := commutes.2.2 same
@@ -710,7 +720,8 @@ theorem RevealSource.completion_expect {setup : Setup (Player := Player) (L := L
         (1 - site.disclosureProbability) * utility (site.completion ready false) := by
   have total := pmf_sum_toReal_eq_one (revealKernel site.residual (site.source.view site.owner))
   simp only [Fintype.sum_bool] at total
-  rw [FinDist.expect_bind, expect_eq_sum, Fintype.sum_bool]
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_bind_of_finite_support _ _ _ (Set.toFinite _)
+      fun _ _ => payoffIntegrable_pure _ _), expect_eq_sum, Fintype.sum_bool]
   simp only [expect_pure, RevealSource.disclosureProbability]
   rw [show ((revealKernel site.residual (site.source.view site.owner)) false).toReal =
     1 - ((revealKernel site.residual (site.source.view site.owner)) true).toReal by linarith]
@@ -862,7 +873,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
           phase.event candidate raw := by
         rcases transport with rfl | ⟨id, rfl⟩ <;> simp [windowOpening]
       rw [fires, opportunity, PMF.bind_bool_mix, mix_apply_toReal,
-        FinDist.prob_pure_of_ne different]
+        PMF.pure_apply_of_ne _ _ different, ENNReal.toReal_zero]
       simp only [↓reduceIte, mul_zero, zero_add]
       rfl
     · have waiting : ¬ rosterOffset service.setup service.rosters actor phase.event + slot.val =
@@ -992,7 +1003,19 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
       mixtureImpl.posterior (execution.recall actor ++ [entry]) := by
     rw [afterDef, entryRecall]
   unfold phaseConfigLaw phaseLaw DecisionPhase.tail
-  rw [ending, mixed, ← mixture, PMF.map_bind, FinDist.expect_bind]
+  rw [ending, mixed, ← mixture, PMF.map_bind]
+  have slotIntegrable (slot : Fin ((service.rosters phase.event).count actor)) :
+      PayoffIntegrable (((runtime service.setup).runInteractionPlan service.leaks
+        (Function.update (fun _ => app.replayPolicy) actor (family slot)) service.network
+        (phase.visits.map ServiceInstruction.player ++ .includeLatest phase.event actor :: rest)
+        after).map (fun final => final.application.config)) utility := by
+    rw [slotLaw slot]
+    split
+    · exact payoffIntegrable_bind_of_finite_support _ _ _ (Set.toFinite _)
+        fun _ _ => payoffIntegrable_pure _ _
+    · exact payoffIntegrable_pure _ _
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_bind_of_finite_support _ _ _ (Set.toFinite _)
+    fun slot _ => slotIntegrable slot)]
   change expect (mixtureImpl.posterior (after.recall actor)) _ = _
   rw [posteriorEq]
   calc
@@ -1015,8 +1038,9 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
         q * (utility (site.completion ready true) - utility (site.completion ready false)) *
           ((mixtureImpl.posterior (execution.recall actor ++ [entry])).toOuterMeasure
               {slot | phase.earlier + 1 ≤ slot.val}).toReal := by
-      rw [FinDist.expect_add, expect_constant, FinDist.expect_smul,
-        expect_indicator]
+      rw [expect_add_of_finite, expect_constant, expect_const_mul, ← expect_indicator]
+      exact congrArg (fun value => _ + _ * value)
+        (expect_congr_on_support fun _ _ => by split_ifs <;> rfl)
     _ = _ := by
       rw [← remainingMass]
       ring
@@ -1222,7 +1246,9 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
         (1 - PMF.deferredRemaining ((disclosures true).toReal) timing (phase.earlier + 1)) *
           expect (approx.boundaryContinuation (phase.event.val + 1) (completion false))
             utility := by
-    rw [approx.response_continuation_law trace phase response allowed, FinDist.expect_bind]
+    rw [approx.response_continuation_law trace phase response allowed,
+      expect_bind_of_support_finite _ (approx.phaseConfigLaw_support_finite phase response)
+        fun config _ => approx.boundaryContinuation_support_finite _ config]
     exact approx.available_transport_expect trace phase site rfl owned unsent ready candidate
       raw opening small old response allowed transport
       (fun config => expect (approx.boundaryContinuation (phase.event.val + 1) config) utility)
@@ -1251,7 +1277,15 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
       intro response supported
       exact transported response (present slot slotSupport response
         (replayFamily response supported)) (app.replayPolicy_cases _ _ response supported) utility
-    rw [policyEq, FinDist.expect_bind, FinDist.expect_bind]
+    have familyFinite (slot : Fin ((service.rosters phase.event).count owner)) :
+        (family slot (execution.recall owner) (execution.observe app owner)).support.Finite :=
+      sourceServiceTimedFamily_finiteSupport service.setup service.leaks service.rosters
+        (finiteBindingTypes (service := service)) approx.profile owner phase.event slot
+        (execution.recall owner) (execution.observe app owner)
+    rw [policyEq, expect_bind_of_support_finite _
+        (bind_support_finite (Set.toFinite _) fun slot _ => familyFinite slot)
+        fun response _ => approx.responseReadout_support_finite phase response,
+      expect_bind_of_support_finite _ (Set.toFinite _) fun slot _ => familyFinite slot]
     calc
       _ = expect (mixtureImpl.posterior (execution.recall owner)) (fun slot =>
           later + if slot = current then (disclosures true).toReal *
@@ -1261,7 +1295,13 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
         by_cases same : slot = current
         · subst same
           simp only [↓reduceIte]
-          rw [fires, opportunity, FinDist.expect_bind, expect_eq_sum, Fintype.sum_bool]
+          rw [fires, opportunity, expect_bind_tower _ _ _
+              (payoffIntegrable_bind_of_finite_support _ _ _ (Set.toFinite _) fun _ _ =>
+                payoffIntegrable_of_finite_support _ _ (by
+                  split
+                  · simp
+                  · exact app.replayPolicy_finiteSupport _ _)),
+            expect_eq_sum, Fintype.sum_bool]
           simp only [↓reduceIte, Bool.false_eq_true, expect_pure]
           have openedHere := opened (present slot slotSupport _ (by
             rw [fires, opportunity, PMF.support_bind]
@@ -1281,7 +1321,7 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
             exact supported)
       _ = later + ((mixtureImpl.posterior (execution.recall owner)) current).toReal *
           ((disclosures true).toReal * (whenTrue - later)) := by
-        rw [FinDist.expect_add, expect_constant, expect_eq_sum]
+        rw [expect_add_of_finite, expect_constant, expect_eq_sum]
         simp only [mul_ite, mul_zero, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
       _ = _ := by
         have oldCurrent : ((mixtureImpl.posterior (execution.recall owner)) current).toReal =
@@ -1336,8 +1376,6 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
     (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
-    [∀ who (site : service.sourceModel.InformationSite who),
-      Fintype (service.sourceModel.InformationHistory who site.1)]
     (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
@@ -1516,17 +1554,26 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     linarith
   have replacementNonnegative : 0 ≤ replacement := by
     rw [← expect_constant law 0]
-    apply FinDist.expect_mono
-    intro choice _
+    refine expect_mono (fun choice _ => ?_) (payoffIntegrable_constant _ _)
+      (payoffIntegrable_of_finite _ _)
     split
     · exact zero_le_one
     · exact laterBounds.1
   have replacementBounded : replacement ≤ 1 := by
-    apply FinDist.expect_le_of_forall
-    intro choice _
+    rw [← expect_constant law 1]
+    refine expect_mono (fun choice _ => ?_) (payoffIntegrable_of_finite _ _)
+      (payoffIntegrable_constant _ _)
     split
     · exact le_rfl
     · exact laterBounds.2
+  have profileFinite (profile : BehavioralProfile service.setup.program) :=
+    (finiteBindingTypes (service := service)).profileFiniteSupport _ profile
+  have continuationFinite (profile : BehavioralProfile service.setup.program)
+      (state : service.setup.ProtocolState) :
+      ((service.setup.continuationLaw profile state).map some).support.Finite := by
+    rw [PMF.support_map]
+    exact (service.setup.continuationLaw_support_finite profile (profileFinite profile)
+      state).image _
   -- History by history: the source and native values.
   have perHistory (history : service.model.InformationHistory who site.1)
       (member : history ∈ (approx.assessment.belief who site).support) :
@@ -1561,7 +1608,9 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     have responses := laws.responses
     rw [timingEq, probabilityEq, earlierEq, ← valueEq true, ← valueEq false] at prescribedLaw
     refine ⟨?_, ?_, ?_⟩
-    · rw [decodedEq, laws.boundary, FinDist.expect_bind, expect_eq_sum, Fintype.sum_bool,
+    · rw [decodedEq, laws.boundary, expect_bind_of_support_finite _ (Set.toFinite _)
+          fun _ _ => approx.boundaryContinuation_support_finite _ _, expect_eq_sum,
+        Fintype.sum_bool,
         ← valueEq true, ← valueEq false, probabilityEq,
         show (laws.disclosures false).toReal = 1 - q by rw [disclosuresEq]; linarith]
     · have localLaw := approx.local_law_readout history.1 current phase history.2
@@ -1570,8 +1619,10 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
       rw [localLaw, prescribed_response_law approx trace site.1
         (observed.trans (by rw [recallEq, viewEq]))]
       exact prescribedLaw
-    · rw [approx.local_law_readout history.1 current phase history.2 law, FinDist.expect_bind,
-        expect_map]
+    · rw [approx.local_law_readout history.1 current phase history.2 law,
+        expect_bind_of_support_finite _ (by rw [PMF.support_map]; exact (Set.toFinite _).image _)
+          fun response _ => approx.responseReadout_support_finite phase response, expect_map,
+        Function.comp_def]
       calc
         _ = expect law (fun choice => value false history +
             (value true history - value false history) *
@@ -1597,7 +1648,7 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
             simp only [different, ↓reduceIte]
             ring
         _ = _ := by
-          rw [FinDist.expect_add, expect_constant, FinDist.expect_smul]
+          rw [expect_add_of_finite, expect_constant, expect_const_mul]
           ring
   -- The source gains of disclosing and of withholding.
   have sourceGain (disclose : Bool) :
@@ -1607,20 +1658,37 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
       timingFull source full sourceBayes approx built who site past view observed owned granted
       (alternative disclose) (admittedAlternative disclose)
+    have prescribedIntegrable := payoffIntegrable_of_finite_support _ utility
+      (bind_support_finite (p := approx.assessment.belief who site) (Set.toFinite _)
+        fun history _ => continuationFinite approx.profile (decodedState service event history.1))
+    have alternativeIntegrable := payoffIntegrable_of_finite_support _ utility
+      (bind_support_finite (p := approx.assessment.belief who site) (Set.toFinite _)
+        fun history _ => continuationFinite (Function.update approx.profile who
+          (alternative disclose)) (decodedState service event history.1))
     have gain := expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedLaw alternativeLaw
-      utility
-    rw [FinDist.expect_bind, FinDist.expect_bind] at gain
+      utility prescribedIntegrable alternativeIntegrable
+    have componentIntegrable := payoffIntegrable_sub
+      (payoffIntegrable_bind_conditionalExpectation mixture _ utility
+        (alternativeLaw ▸ alternativeIntegrable))
+      (payoffIntegrable_bind_conditionalExpectation mixture _ utility
+        (prescribedLaw ▸ prescribedIntegrable))
+    rw [expect_bind_of_support_finite _ (Set.toFinite _) fun history _ =>
+        continuationFinite _ (decodedState service event history.1),
+      expect_bind_of_support_finite _ (Set.toFinite _) fun history _ =>
+        continuationFinite _ (decodedState service event history.1)] at gain
     have prescribedValue : expect (approx.assessment.belief who site) (fun history =>
         expect ((service.setup.continuationLaw approx.profile
           (decodedState service event history.1)).map some) utility) =
         q * expect (approx.assessment.belief who site) (value true) +
           (1 - q) * expect (approx.assessment.belief who site) (value false) := by
       rw [expect_congr_on_support (fun history member => (perHistory history member).1),
-        FinDist.expect_add, FinDist.expect_smul, FinDist.expect_smul]
+        expect_add_of_finite, expect_const_mul, expect_const_mul]
     rw [prescribedValue] at gain
     change expect (approx.assessment.belief who site) (value disclose) - _ = _ at gain
     rw [gain]
-    exact FinDist.expect_le_of_forall mixture _ error fun deviation _ => sourceGains deviation
+    rw [← expect_constant mixture error]
+    exact expect_mono (fun deviation _ => sourceGains deviation) componentIntegrable
+      (payoffIntegrable_constant _ _)
   have regret := PMF.deferredRemaining_regret_le q nonnegative small
     (timing event who owned) earlier lower positive (remainingMass earlier inside)
     replacement replacementNonnegative replacementBounded
@@ -1630,19 +1698,21 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
   have prescribedValue : expect comparison.prescribed utility =
       prescribedProbability * expect (approx.assessment.belief who site) (value true) +
         (1 - prescribedProbability) * expect (approx.assessment.belief who site) (value false) := by
-    simp only [comparison, InformationModel.assessmentComparison,
-      InformationModel.BehavioralAssessment.continuationContext, Profile.update_eq_self,
-      PMF.map_bind, FinDist.expect_bind]
-    rw [expect_congr_on_support (fun history member => (perHistory history member).2.1),
-      FinDist.expect_add, FinDist.expect_smul, FinDist.expect_smul]
+    simp only [comparison, InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+      Profile.update_eq_self, PMF.map_bind]
+    rw [expect_bind_of_support_finite _ (Set.toFinite _)
+        fun history _ => by rw [PMF.support_map]; exact (Set.toFinite _).image _,
+      expect_congr_on_support (fun history member => (perHistory history member).2.1),
+      expect_add_of_finite, expect_const_mul, expect_const_mul]
   have alternativeValue : expect comparison.alternative utility =
       replacement * expect (approx.assessment.belief who site) (value true) +
         (1 - replacement) * expect (approx.assessment.belief who site) (value false) := by
-    simp only [comparison, InformationModel.assessmentComparison,
-      InformationModel.BehavioralAssessment.continuationContext, PMF.map_bind,
-      FinDist.expect_bind]
-    rw [expect_congr_on_support (fun history member => (perHistory history member).2.2),
-      FinDist.expect_add, FinDist.expect_smul, FinDist.expect_smul]
+    simp only [comparison, InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+      PMF.map_bind]
+    rw [expect_bind_of_support_finite _ (Set.toFinite _)
+        fun history _ => by rw [PMF.support_map]; exact (Set.toFinite _).image _,
+      expect_congr_on_support (fun history member => (perHistory history member).2.2),
+      expect_add_of_finite, expect_const_mul, expect_const_mul]
   rw [alternativeValue, prescribedValue]
   exact regret
 

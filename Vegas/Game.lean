@@ -37,6 +37,7 @@ import Vegas.Game.SourceServiceTimedLaw
 import Vegas.Game.SourceServiceTimedContinuation
 import Vegas.Game.SourceServiceTimedReachability
 import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure

@@ -241,3 +241,4 @@ import Vegas.Pending.ReactiveServiceFootprint
 import Vegas.Pending.ReactiveAssociationPersistence
 
 /-! Graph execution and strategic refinement over public pending messages. -/
+import Vegas.Pending.ReactiveServiceFiniteness

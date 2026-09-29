@@ -55,6 +55,15 @@ structure SourceServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   capacity : (graph setup).order.eventCount ≤ bounds.candidateCount
   /-- Every event actor has an activation at its own event. -/
   opportunities : ActorOpportunities setup rosters
+  /-- The prior over initial states is finitely supported. -/
+  initialFinite : setup.FiniteInitialLaw
+  /-- The leak rule branches finitely. -/
+  leaksFinite : leaks.FiniteSupport
+  /-- The network policy branches finitely. -/
+  networkFinite : network.FiniteSupport
+
+attribute [instance] SourceServiceSpec.initialFinite SourceServiceSpec.leaksFinite
+  SourceServiceSpec.networkFinite
 
 /-- The position of an actual activation of `who`: its event, its slot in that
 event's roster, and the service grant in force. -/
