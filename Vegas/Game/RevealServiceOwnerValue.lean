@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 open Classical in
 theorem owner_history_local_readout
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher who : Player)
     (reveals : setup.program.RevealOnly)
@@ -82,13 +82,14 @@ theorem owner_history_local_readout
   have read : prefixReadout setup leaks event.val history.state = some source := by
     simpa only [nativeState, prefixReadout, ownerOpportunity] using decoded
   rw [read]
-  simpa only [Setup.protocolStep, PMF.bind_map, Setup.continuationLaw,
+  simpa only [Setup.protocolStep, PMF.bind_map, Function.comp_def, Setup.continuationLaw,
     PMF.map_bind] using value
 
 open Classical in
 theorem owner_context_local_value
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (watcher who : Player)
     (reveals : setup.program.RevealOnly)
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
@@ -124,8 +125,8 @@ theorem owner_context_local_value
   let model := information setup leaks extended watcher
   let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, expect_map]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
+    expect_map]
   apply expect_congr_on_support
   intro history _supported
   have reached : history.1 ∈ (model.runBehavioral reference
@@ -139,6 +140,20 @@ theorem owner_context_local_value
   have value := congrArg (fun distribution => expect distribution
     (fun result => result.elim 0 utility)) equality
   rw [strategy]
-  simpa only [expect_map, FinDist.expect_bind, Option.elim_some, clock history] using value
+  simp only [expect_map, Function.comp_def, clock history] at value
+  have supportFinite : (law.bind fun choice => PMF.map some
+      ((setup.protocolStep (prefixReadout setup leaks event.val history.1.state)
+        (joint (sourceChoice setup leaks (choice.1.getD ⟨none⟩)))).bind
+          (setup.continuationLaw profile))).support.Finite :=
+    bind_support_finite (Set.toFinite _) fun choice _ => by
+    rw [PMF.support_map]
+    exact (bind_support_finite (setup.protocolStep_support_finite _ _) fun state _ =>
+      setup.continuationLaw_support_finite profile
+        (FiniteBindingTypes.profileFiniteSupport _
+          (RevealOnly.finiteBindingTypes setup.program reveals) profile) state).image
+      (some : State L setup.program.terminalCtx → _)
+  rw [Function.comp_apply, value,
+    expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _ supportFinite)]
+  simp only [expect_map, Function.comp_def, Option.elim_some]
 
 end Vegas

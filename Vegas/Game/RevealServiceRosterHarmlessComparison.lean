@@ -66,7 +66,7 @@ variable (setup : Setup (Player := Player) (L := L))
 
 open Classical in
 include reveals openable mixed timingFull in
-theorem roster_harmless_history_laws
+theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
     (who : Player)
     (history : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).protocol
@@ -228,7 +228,7 @@ include reveals openable mixed timingFull in
 /-- Any posterior over a replay-only information site gives identical
 prescribed and locally deviating terminal laws. No additional Bayesian premise
 is needed: the equality holds at every history in the information fiber. -/
-theorem roster_harmless_comparison_law
+theorem roster_harmless_comparison_law [setup.FiniteInitialLaw]
     (assessment : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length
@@ -258,8 +258,8 @@ theorem roster_harmless_comparison_law
   intro model comparison
   let app := application setup leaks
   let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
-  simp only [comparison, InformationModel.assessmentComparison,
-    InformationModel.BehavioralAssessment.continuationContext, PMF.map_bind]
+  simp only [comparison, InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+    PMF.map_bind]
   apply bind_congr_on_support _
   intro history _
   have active := InformationModel.InformationSite.active model site history
@@ -296,7 +296,7 @@ open Classical in
 include reveals openable mixed timingFull in
 /-- Thus a harmless local alternative has exactly zero gain for every
 utility of the retained terminal source state, including persistent types. -/
-theorem roster_harmless_comparison_gain
+theorem roster_harmless_comparison_gain [setup.FiniteInitialLaw]
     (assessment : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length

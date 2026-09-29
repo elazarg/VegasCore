@@ -39,7 +39,7 @@ open Classical in
 /-- Committing any additional effective response at a retained site records an
 attributable violation after the actual first behavioral step. Later profile
 choices play no role in the certificate. -/
-theorem roster_extra_choice_traffic
+theorem roster_extra_choice_traffic [setup.FiniteInitialLaw]
     (profile : Profile (Native).behavioralSignature)
     (who : Player) (site : ((rosterMenu setup leaks bounds rosters).information (initialLaw setup)
       (rosterPlan setup rosters).length

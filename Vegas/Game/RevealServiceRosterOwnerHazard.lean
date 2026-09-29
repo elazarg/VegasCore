@@ -94,14 +94,14 @@ private theorem unopened_mixture_probability
       (activated.observe app owner) packet
   have replayZero : ((app.replayPolicy (activated.recall owner)
       (activated.observe app owner)) packet).toReal = 0 := by
-    apply FinDist.prob_eq_zero_iff.mpr
+    apply pmf_toReal_eq_zero_iff.mpr
     intro member
     rcases app.replayPolicy_cases _ _ _ member with
       impossible | ⟨id, impossible⟩
     all_goals
       dsimp only [packet, EventGraphRuntime.windowOpening] at impossible
       cases impossible
-  simpa only [FinDist.prob_pure_self, replayZero, mul_one, mul_zero, add_zero,
+  simpa only [PMF.pure_apply_self, ENNReal.toReal_one, replayZero, mul_one, mul_zero, add_zero,
     atSlot, Nat.add_sub_cancel_left] using probability
 
 open Classical in
@@ -109,7 +109,7 @@ open Classical in
 deferred hazard of the original source disclosure probability. The only site
 classification premise is its available fresh response, an observable fact. -/
 theorem roster_owner_opening_probability
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -233,7 +233,7 @@ theorem roster_owner_opening_probability
   rw [PMF.map_id] at restored
   have probability := congrArg
     (fun law => (law ((runtime setup).windowOpening leaks event candidate raw)).toReal) restored
-  rw [FinDist.prob_map_eq_probOf_preimage_singleton] at probability
+  rw [← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply] at probability
   rw [observed]
   exact probability.trans actual
 

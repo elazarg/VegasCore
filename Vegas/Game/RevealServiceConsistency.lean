@@ -31,14 +31,11 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
   (admission : CommitmentInterface setup.program)
-  [Finite (setup.executionProtocol admission).History]
-  [∀ who (site : (setup.informationModel admission).InformationSite who),
-    Fintype ((setup.informationModel admission).InformationHistory who site.1)]
 
 include reveals observer openable in
 /-- Sequential consistency and every retained state posterior are transported
 jointly, without choosing a separate limiting sequence for each alias site. -/
-theorem exists_compiled_consistent
+theorem exists_compiled_consistent [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (source : (setup.informationModel admission).BehavioralAssessment)
     (consistent : source.IsSequentiallyConsistent (setup.decision_antichain admission)) :
     let extended := bounds.withInitialValues (initialLaw setup)
@@ -93,7 +90,7 @@ theorem exists_compiled_consistent
       (fun n => (positive n).le) small vanishes who site
   obtain ⟨target, profile, index, increasing, targetConverges, targetConsistent⟩ :=
     InformationModel.BehavioralAssessment.exists_consistent_completion_subsequence antichain
-      compiled sequence (fun n => (original n).bayes_isFullyMixed (mixed n) antichain)
+      compiled sequence (fun n => mixed n)
       (fun n => InformationModel.bayesAssessment_isBayesConsistent _ (original n).strategy
           (mixed n) antichain) strategies
   refine ⟨target, profile, targetConsistent, ?_⟩
@@ -108,16 +105,16 @@ theorem exists_compiled_consistent
     have belief : (InformationModel.bayesAssessment _ (sourceSequence n).strategy (approximates n).1
         (setup.decision_antichain admission)).belief who sourceSite =
           (sourceSequence n).belief who sourceSite := by
-      apply pmf_ext_toReal
-      intro current
+      ext current
       rw [InformationModel.bayesAssessment,
         (setup.informationModel admission).bayesBelief_apply]
       exact ((approximates n).2 who sourceSite
-        ((approximates n).1.informationMass_pos who sourceSite) current).symm
+        ((setup.informationModel admission).informationMass_pos_of_fullSupport
+          (sourceSequence n).strategy (approximates n).1 who sourceSite) current).symm
     rw [belief] at result
     exact result
   have sourceLimit := ((converges.belief who sourceSite).map
-    (fun current => current.1.state)).subsequence increasing
+    (fun current => current.1.state)).subseq increasing
   have nativeLimit := (targetConverges.belief who site).map
     (fun current => prefixReadout setup leaks event.val current.1.state)
   have sameSequence : (fun n => ((sequence (index n)).belief who site).map

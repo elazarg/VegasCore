@@ -18,7 +18,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem roster_policy_converges
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -84,8 +84,6 @@ theorem roster_policy_converges
         (sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source) who
           (granted.observe app who)) := by
       simp only [law]
-      let _ : Finite ((setup.informationModel admission).Choice who site.1) :=
-        (setup.revealReference_fullyMixed reveals admission who site).finite
       exact (converges who site).map (fun choice => OwnAction.disclosure choice.1)
     obtain ⟨last, final, timingLimit⟩ := timingConverges event who ownedEvent
     rw [activated]
@@ -128,7 +126,7 @@ theorem roster_policy_converges
 /-- A single source perturbation and timing sequence converges to the single
 finite compiled profile at every native information site. -/
 theorem rosterPerturbedProfile_converges
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -194,31 +192,29 @@ theorem rosterPerturbedProfile_converges
         _ _ (rosterLimitPolicy_admissible setup leaks bounds rosters network reveals openable
           (setup.decodeBehavioralProfile admission source) who control traced acting)
       intro choice
-      have approxProb (n : Nat) :
-          ((rosterPerturbedProfile setup leaks bounds rosters network admission
-            (sequence n) (timing n) who
-            (some (control.execution.recall who, control.execution.observe app who)))
-                choice).toReal =
-          (((rosterPolicy setup leaks rosters (timing n)
-            (setup.decodeBehavioralProfile admission (sequence n).strategy) who
-            (control.execution.recall who) (control.execution.observe app who)).map some)
-                choice.1).toReal := by
-        rw [← approxLaw n, FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
-        rfl
-      have limitProb :
-          ((rosterCompiledProfile setup leaks bounds rosters network
-            (setup.decodeBehavioralProfile admission source) who
-            (some (control.execution.recall who, control.execution.observe app who)))
-                choice).toReal =
-          (((rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source)
-            who (control.execution.recall who) (control.execution.observe app who)).map some)
-                choice.1).toReal := by
-        rw [← limitLaw, FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
-        rfl
-      simp_rw [approxProb, limitProb]
       obtain ⟨action, _, chosen⟩ := choice.2
-      rw [chosen]
-      simp only [FinDist.prob_map_of_injective _ (Option.some_injective _)]
-      exact physical action
+      have approxProb (n : Nat) :
+          rosterPerturbedProfile setup leaks bounds rosters network admission
+            (sequence n) (timing n) who
+            (some (control.execution.recall who, control.execution.observe app who)) choice =
+          rosterPolicy setup leaks rosters (timing n)
+            (setup.decodeBehavioralProfile admission (sequence n).strategy) who
+            (control.execution.recall who) (control.execution.observe app who) action := by
+        refine (pmf_map_apply_of_injective _ Subtype.val_injective choice).symm.trans ?_
+        refine (congrArg (fun law => law (Subtype.val choice)) (approxLaw n)).trans ?_
+        rw [chosen]
+        exact pmf_map_apply_of_injective _ (Option.some_injective _) _
+      have limitProb :
+          rosterCompiledProfile setup leaks bounds rosters network
+            (setup.decodeBehavioralProfile admission source) who
+            (some (control.execution.recall who, control.execution.observe app who)) choice =
+          rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source)
+            who (control.execution.recall who) (control.execution.observe app who) action := by
+        refine (pmf_map_apply_of_injective _ Subtype.val_injective choice).symm.trans ?_
+        refine (congrArg (fun law => law (Subtype.val choice)) limitLaw).trans ?_
+        rw [chosen]
+        exact pmf_map_apply_of_injective _ (Option.some_injective _) _
+      rw [limitProb]
+      exact (physical action).congr fun n => (approxProb n).symm
 
 end Vegas
