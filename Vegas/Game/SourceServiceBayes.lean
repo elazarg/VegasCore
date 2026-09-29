@@ -137,7 +137,7 @@ theorem sourceService_owner_bayes_posterior
     exact ⟨reference, referenceSupport, observeEmbed reference⟩
   have transported := PMF.map_conditional_readout executions embed
     ((application setup leaks).observe owner) (some (input reference)) present
-  have fiber := fiberConditional_eq_of_support_fiber executions
+  have fiber := PMF.fiberConditional_eq_of_support_fiber executions
     ((application setup leaks).observe owner ∘ embed) input (some (input reference))
     (input reference) (by
       intro value _

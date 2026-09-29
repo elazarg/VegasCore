@@ -168,7 +168,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
       history serial freshSlot candidate remaining (event.val + 1) owned granted unsent counted
     simpa only [ReactiveApplication.invoke, PMF.bind_map, PMF.bind_bind,
       Function.update_self, tags, kernel, scheduled, branch, responses, continued, posterior,
-      phase, players] using law
+      phase, players, Function.comp_def] using law
   have chosen := roster_fullyMixed_response_support setup leaks rosters network menu players
     covered assessment strategy mixed owner remainingFuel execution trace response allowed
   have tagPresent : some response ∈ (tags.map (fun tag => some tag.2.2)).support := by
@@ -247,7 +247,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
           ((runtime setup).runInteractionPlan leaks (scheduled tag.1 tag.2.1) network
             ((remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
               List.replicate (event.val + 1) .tick ++ [.expire event]))).support := by
-        simp only [ReactiveApplication.invoke, PMF.bind_map, PMF.support_bind]
+        simp only [ReactiveApplication.invoke, PMF.bind_map, PMF.support_bind, Function.comp_def]
         refine Set.mem_iUnion₂.mpr ⟨tag.2.2, by
           simpa only [scheduled, Function.update_self] using responseSupport, ?_⟩
         simpa only [kernel, phase, List.append_assoc, List.cons_append, List.nil_append]

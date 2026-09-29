@@ -67,7 +67,13 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
       baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state))
           (some pair.1) who ≤
         baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state))
-          (some pair.2.1) who + gap) :
+          (some pair.2.1) who + gap)
+    (originalIntegrable : PayoffIntegrable coupled fun pair =>
+      baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state))
+        (some pair.1) who)
+    (repairedIntegrable : PayoffIntegrable coupled fun pair =>
+      baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state))
+        (some pair.2.1) who) :
     let settle := TerminalAudit.settlement
       (baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state)))
       ((runtime setup).serviceAuditObservation leaks) (sourceServiceAudit setup leaks sample)
@@ -122,12 +128,15 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
       calc
         _ = expect coupled (fun _ => (0 : ℝ)) := expect_congr_on_support clean
         _ = 0 := expect_constant _ _
-    rw [zero, sub_zero, expect_map]
+    rw [zero, sub_zero, expect_map, Function.comp_def]
     calc
       _ = expect coupled (fun pair => (if pair ∈ departed then 1 else 0) * min rate 1) := by
-        rw [expect_mul_const, expect_indicator]
+        rw [expect_mul_const, ← expect_indicator]
+        exact congrArg (· * min rate 1)
+          (expect_congr_on_support fun _ _ => by split_ifs <;> rfl)
       _ ≤ _ := by
-        apply FinDist.expect_mono
+        refine expect_mono ?_ (payoffIntegrable_of_bounded _ _ (C := |min rate 1|) fun pair => by
+          split <;> simp) (TerminalAudit.payoffIntegrable_charge _ _ _ _)
         intro pair supported
         by_cases bad : pair ∈ departed
         · simpa only [bad, ite_true, one_mul] using collected pair supported bad
@@ -135,7 +144,7 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
           exact ENNReal.toReal_nonneg
   apply TerminalAudit.settlement_le_of_departure_coupling coupled
     (fun pair => some pair.1) (fun pair => some pair.2.1) _ observe audit deposit who departed
-      gap (min rate 1) _ _ incremental nonnegative sufficient
+      gap (min rate 1) originalIntegrable repairedIntegrable _ _ incremental nonnegative sufficient
   · intro pair supported notDeparted
     have framed := Classical.not_not.mp notDeparted
     exact le_of_eq (congrFun (bindingFrame_baseUtility setup leaks parameter utility who
@@ -148,13 +157,14 @@ equilibrium or deviating policy is chosen. Both sides must be actual histories;
 no arbitrary payoff-gap premise remains. The coupling is still an operational
 obligation, and the positive rate is still a collection-service assumption. -/
 theorem sourceService_repair_range_settlement_le {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport]
     (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
     (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
-    (network : (runtime setup).NetworkPolicy leaks)
+    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
@@ -192,12 +202,39 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
       expect ((coupled.map (fun pair => some pair.2.1)).bind settle)
         (fun payoffs => payoffs who) := by
   intro base deposit settle
+  classical
   have ratePositive : 0 < min (probability who) 1 := lt_min positive zero_lt_one
-  apply sourceService_repair_settlement_le setup leaks bounds values capacity rosters
+  let payoff := fun history : ((bounds.menu (runtime setup) leaks).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History =>
+    base history.state who
+  have : Nonempty ((bounds.menu (runtime setup) leaks).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History :=
+    ⟨((bounds.menu (runtime setup) leaks).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).initHistory⟩
+  let lower := GameTheory.FinitePayoffBounds.lower payoff
+  let upper := GameTheory.FinitePayoffBounds.upper payoff
+  have inRange (history) : |payoff history| ≤ |lower| + |upper| := by
+    have below := GameTheory.FinitePayoffBounds.lower_le payoff history
+    have above := GameTheory.FinitePayoffBounds.le_upper payoff history
+    rw [abs_le]
+    constructor
+    · linarith [neg_abs_le lower, abs_nonneg upper]
+    · linarith [le_abs_self upper, abs_nonneg lower]
+  have originalIntegrable : PayoffIntegrable coupled fun pair => base (some pair.1) who :=
+    payoffIntegrable_of_bounded_on_support _ _ fun pair supported => by
+      obtain ⟨trace⟩ := realized pair supported
+      exact inRange ⟨some pair.1, trace⟩
+  have repairedIntegrable : PayoffIntegrable coupled fun pair => base (some pair.2.1) who :=
+    payoffIntegrable_of_bounded_on_support _ _ fun pair supported => by
+      obtain ⟨trace⟩ := permitted pair supported
+      exact inRange ((sourceServiceMenu_in_effective setup leaks bounds rosters).history
+        (initialLaw setup) (rosterPlan setup rosters).length
+          (rosterScheduler setup leaks rosters network) ⟨some pair.2.1, trace⟩)
+  refine sourceService_repair_settlement_le setup leaks bounds values capacity rosters
     opportunities network parameter utility sample authentic who (probability who)
     (min (probability who) 1 * deposit who) deposit coverage
     (rosterAuditDeposit_nonnegative setup leaks bounds rosters network base _ who ratePositive)
-    (le_refl _) coupled permitted onlyBindings related
+    (le_refl _) coupled permitted onlyBindings related ?_ originalIntegrable repairedIntegrable
   intro pair supported
   obtain ⟨originalTrace⟩ := realized pair supported
   obtain ⟨repairedTrace⟩ := permitted pair supported

@@ -23,15 +23,13 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem roster_owner_site
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
     (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (admission : CommitmentInterface setup.program)
-    [∀ who (site : (setup.informationModel admission).InformationSite who),
-      Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent

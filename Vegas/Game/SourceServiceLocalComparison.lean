@@ -266,7 +266,7 @@ def ofSource (service : SourceServiceSpec Player L)
         (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
         service.scheduler)
     strategy := rfl
-    mixed := native.bayes_isFullyMixed nativeMixed _ }
+    mixed := nativeMixed }
 
 theorem ofSource_strategy (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
@@ -288,8 +288,7 @@ theorem ofSource_bayes (service : SourceServiceSpec Player L)
       (ofSource service timing timingFull source full).assessment
       (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
         service.scheduler) :=
-  InformationModel.bayesAssessment_isBayesConsistent _
-      InformationModel.BehavioralAssessment.strategy _
+  InformationModel.bayesAssessment_isBayesConsistent _ _
       (sourceServiceTimedProfile_fullyMixed service.setup service.leaks service.bounds
       service.values service.initialValues service.capacity service.rosters
       service.opportunities.binding service.network timing timingFull source full) _
@@ -436,7 +435,7 @@ theorem comparison_eq_of_phase_invariant (who : Player)
     comparison.alternative = comparison.prescribed := by
   intro comparison
   simp only [comparison, InformationModel.assessmentComparison,
-    InformationModel.BehavioralAssessment.continuationContext, PMF.map_bind]
+    InformationModel.assessmentLaw, PMF.map_bind]
   apply bind_congr_on_support _
   intro history _
   have active := InformationModel.InformationSite.active service.model site history
