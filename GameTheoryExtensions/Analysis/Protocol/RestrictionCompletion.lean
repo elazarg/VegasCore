@@ -135,12 +135,12 @@ theorem exists_consistent_extension
         (epsilon n) (positive n).le (small n).le who site
   have sourceAlong : BehavioralAssessmentConvergesPointwise
       (fun n => sourceSequence (index n)) source :=
-    ⟨fun who site => (sourceConverges.strategy who site).subsequence increasing,
-      fun who site => (sourceConverges.belief who site).subsequence increasing⟩
+    ⟨fun who site => (sourceConverges.strategy who site).subseq increasing,
+      fun who site => (sourceConverges.belief who site).subseq increasing⟩
   have extendsTarget : restriction.ExtendsProfile source.strategy target.strategy :=
     restriction.extendsProfile_of_perturbs_converges reference.strategy
       (fun n => sourceSequence (index n)) source (fun n => sequence (index n)) target
-      (sourceApproximates (index 0)).1 sourceAlong converges
+      sourceAlong converges
       (fun n => epsilon (index n)) (fun n => (positive (index n)).le)
       (fun n => (small (index n)).le) (vanishes.comp increasing.tendsto_atTop)
       (fun n => perturbs (index n))

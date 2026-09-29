@@ -106,6 +106,7 @@ theorem BehavioralAssessment.IsFullyMixed.finite_history
   exact Set.mem_iUnion.mpr ⟨⟨history.trace.length, by have := lengths history; omega⟩,
     mixed.history_supported history.trace⟩
 
+variable (M) in
 /-- The canonical Bayes assessment of a fully mixed strategy is fully mixed. -/
 theorem bayesAssessment_isFullyMixed (strategy : (who : ι) → M.BehavioralPolicy who)
     (mixed : ∀ who (site : M.InformationSite who) (choice : M.Choice who site.1),

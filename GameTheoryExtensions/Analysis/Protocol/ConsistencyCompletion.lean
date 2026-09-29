@@ -24,7 +24,7 @@ open GameTheory.Math.Probability Filter
 
 variable {ι : Type} {E : ExecutionProtocol ι} {M : InformationModel E}
   [Fintype ι] [∀ who, Finite (M.InformationSite who)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
+  [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)]
 
 /-- A single subsequence completes the given strategy limit, simultaneously at
 every site. The original sequence need not itself have convergent beliefs. -/
@@ -47,7 +47,7 @@ theorem BehavioralAssessment.exists_consistent_completion_subsequence
     ⟨profile, fun who site => beliefs ⟨who, site⟩⟩
   have limit : BehavioralAssessmentConvergesPointwise
       (fun n => sequence (index n)) assessment :=
-    ⟨fun who site => (strategies who site).subsequence increasing,
+    ⟨fun who site => (strategies who site).subseq increasing,
       fun who site => converges ⟨who, site⟩⟩
   exact ⟨assessment, rfl, index, increasing, limit,
     ⟨fun n => sequence (index n), fun n => ⟨mixed (index n), bayes (index n)⟩, limit⟩⟩
@@ -58,6 +58,7 @@ fixed profile, this permits optimal continuation policies to be selected along
 the sequence before taking the limit. Optimality itself remains a separate
 obligation. -/
 theorem BehavioralAssessment.exists_sequentiallyConsistent_subsequence
+    [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
     (antichain : M.DecisionInformationAntichain)
     (sequence : ℕ → M.BehavioralAssessment)
     (mixed : ∀ n, (sequence n).IsFullyMixed)
@@ -67,16 +68,12 @@ theorem BehavioralAssessment.exists_sequentiallyConsistent_subsequence
       BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) assessment ∧
       assessment.IsSequentiallyConsistent antichain := by
   classical
-  let _ (entry : Σ who, M.InformationSite who) :
-      Finite (M.Choice entry.1 entry.2.1) := (mixed 0 entry.1 entry.2).finite
   obtain ⟨laws, first, firstIncreasing, firstConverges⟩ :=
     exists_subseq_pmfConvergesPointwise_pi
       (fun n (entry : Σ who, M.InformationSite who) =>
         (sequence n).strategy entry.1 entry.2.1)
   let profile : ∀ who, M.BehavioralPolicy who := fun who info =>
-    if decision : ∃ history : M.InformationHistory who info,
-        ¬ E.terminal history.1.state ∧ ∃ action : E.Action who, some action ∈ M.menu who info
-    then laws ⟨who, ⟨info, decision⟩⟩
+    if decision : M.IsDecisionInfo who info then laws ⟨who, ⟨info, decision⟩⟩
     else (sequence 0).strategy who info
   have strategies (who : ι) (site : M.InformationSite who) :
       PMFConvergesPointwise (fun n => (sequence (first n)).strategy who site.1)
@@ -116,7 +113,7 @@ theorem BehavioralAssessment.exists_consistent_completion_preserving
       mixed bayes strategies
   refine ⟨assessment, strategy, consistent, fun who site => ?_⟩
   exact ((converges.belief who site).map (project who site)).unique
-    ((projected who site).subsequence increasing)
+    ((projected who site).subseq increasing)
 
 /-- In a finite protocol admitting a fully mixed reference profile, every
 profile has some sequentially consistent beliefs. This is consistency
@@ -136,7 +133,9 @@ theorem BehavioralAssessment.exists_consistent_completion
   have vanishes : Tendsto weight atTop (nhds 0) :=
     tendsto_one_div_add_atTop_nhds_zero_nat
   let sequence (n : ℕ) :=
-    InformationModel.bayesAssessment _ (reference.perturb profile (weight n) (positive n).le (atMostOne n)).strategy (reference.perturb_fullyMixed mixed profile (weight n) (positive n).le
+    InformationModel.bayesAssessment _ (reference.perturb profile (weight n) (positive n).le
+        (atMostOne n)).strategy (reference.perturb_fullyMixed mixed profile (weight n) (positive
+            n).le
         (atMostOne n) (positive n)) antichain
   obtain ⟨assessment, strategy, index, _increasing, _limit, consistent⟩ :=
     BehavioralAssessment.exists_consistent_completion_subsequence antichain profile sequence

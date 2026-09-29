@@ -161,7 +161,6 @@ theorem extendsProfile_of_perturbs_converges
     (reference : ∀ who, N.BehavioralPolicy who)
     (sourceSequence : ℕ → M.BehavioralAssessment) (source : M.BehavioralAssessment)
     (targetSequence : ℕ → N.BehavioralAssessment) (target : N.BehavioralAssessment)
-    (sourceMixed : (sourceSequence 0).IsFullyMixed)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sourceSequence source)
     (targetConverges : BehavioralAssessmentConvergesPointwise targetSequence target)
     (epsilon : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ epsilon n) (small : ∀ n, epsilon n ≤ 1)
@@ -170,14 +169,13 @@ theorem extendsProfile_of_perturbs_converges
       (targetSequence n).strategy (epsilon n) (nonnegative n) (small n)) :
     restriction.ExtendsProfile source.strategy target.strategy := by
   intro who site
-  let _ : Finite (M.Choice who site.1) := (sourceMixed who site).finite
   have sourceLaws := (sourceConverges.strategy who site).map (restriction.choice who site.1)
   have targetLaws := targetConverges.strategy who (restriction.site who site)
   apply pmf_ext_toReal
   intro action
   have convergence := (vanishes.mul_const
     (((reference who (restriction.information who site.1)) action).toReal)).add
-      (((tendsto_const_nhds (x := (1 : ℝ))).sub vanishes).mul (sourceLaws action))
+      (((tendsto_const_nhds (x := (1 : ℝ))).sub vanishes).mul (sourceLaws.toReal action))
   simp only [zero_mul, sub_zero, one_mul, zero_add] at convergence
   have same (n : ℕ) :
       (((targetSequence n).strategy who (restriction.information who site.1)) action).toReal =
@@ -186,7 +184,7 @@ theorem extendsProfile_of_perturbs_converges
           ((((sourceSequence n).strategy who site.1).map
             (restriction.choice who site.1)) action).toReal := by
     rw [perturbs n who site, mix_apply_toReal]
-  exact tendsto_nhds_unique (targetLaws action)
+  exact tendsto_nhds_unique (targetLaws.toReal action)
     (convergence.congr' (Eventually.of_forall fun n => (same n).symm))
 
 end GameTheory.Protocol.InformationModel.ActionRestriction
