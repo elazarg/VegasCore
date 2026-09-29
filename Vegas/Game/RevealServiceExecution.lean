@@ -66,8 +66,8 @@ theorem run_source_suffix_option_law
   | ret payoffs =>
       intro _reveals profile source refs embedding refsBefore offset _aligned execution checkpoint
       simp only [eventCount, List.finRange_zero, List.flatMap_nil, runInteractionPlan,
-        FinDist.map_pure, terminalRefsWith, runFrom, runWith]
-      exact congrArg FinDist.pure (decodeState?_eq_some refs source.state
+        PMF.pure_map, terminalRefsWith, runFrom, runWith]
+      exact congrArg PMF.pure (decodeState?_eq_some refs source.state
         execution.application.config.store checkpoint.agrees)
   | sample name fresh law next ih =>
       intro impossible
@@ -142,9 +142,9 @@ theorem run_source_suffix_option_law
         change block setup watcher event ++ remaining = _
         rw [block_of_owner setup watcher owner event actor]
         simp only [suffix, List.append_assoc, List.cons_append, List.nil_append]
-      rw [planEq, runInteractionPlan_append, opportunityLaw, FinDist.bind_map, FinDist.map_bind]
-      rw [runFrom_reveal, ← choiceLaw, FinDist.bind_map, FinDist.map_bind]
-      apply FinDist.bind_congr
+      rw [planEq, runInteractionPlan_append, opportunityLaw, PMF.bind_map, PMF.map_bind]
+      rw [runFrom_reveal, ← choiceLaw, PMF.bind_map, PMF.map_bind]
+      apply bind_congr_on_support _
       intro response supported
       have member := ordinary owner different _ _ response supported
       have decoded (disclose : Bool) : decodeEventAction setup.program event
@@ -157,7 +157,7 @@ theorem run_source_suffix_option_law
         activeCheckpoint.reveal_response (bounds.withInitialValues (initialLaw setup)) players
           watcher watcherPolicy published selected event eventRank actor outputEq codeEq node
           (fun ref => refsBefore ref index) decoded granted response member
-      rw [runInteractionPlan_append, afterLaw, FinDist.pure_bind]
+      rw [runInteractionPlan_append, afterLaw, PMF.pure_bind]
       have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
           (afterReveal profile) tailRefs
           (revealSuccessor published selected source

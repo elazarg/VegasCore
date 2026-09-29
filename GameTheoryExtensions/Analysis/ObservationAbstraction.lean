@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.ObservationErasure
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exact abstraction of terminal decision experiments
 
@@ -32,21 +34,21 @@ open Math.Probability
 
 variable {State Signal Action Fact : Type*}
 
-theorem isBayesOptimal_iff_value (prior : FinDist State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (policy : Signal → FinDist Action) :
+theorem isBayesOptimal_iff_value (prior : PMF State) (observe : State → Signal)
+    (utility : State → Action → ℝ) (policy : Signal → PMF Action) :
     IsBayesOptimal prior observe utility policy ↔
       ∀ alternative, value prior observe utility alternative ≤
         value prior observe utility policy := by
   classical
   refine ⟨fun optimal => optimal.value_le, ?_⟩
   intro maximal signal alternative
-  let replaced : Signal → FinDist Action :=
+  let replaced : Signal → PMF Action :=
     fun current => if current = signal then alternative else policy current
   have replacement : value prior observe utility replaced =
       value prior observe utility policy - localValue prior observe utility signal (policy signal) +
         localValue prior observe utility signal alternative := by
     simp only [value_eq_expect, localValue, ← FinDist.expect_sub, ← FinDist.expect_add]
-    apply FinDist.expect_congr
+    apply expect_congr_on_support
     intro state _
     by_cases same : observe state = signal
     · simp [replaced, same]
@@ -56,62 +58,62 @@ theorem isBayesOptimal_iff_value (prior : FinDist State) (observe : State → Si
   linarith
 
 /-- The outcome retained by the abstraction: a specified fact and the public action. -/
-def resultLaw (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
-    (policy : Signal → FinDist Action) : FinDist (Fact × Action) :=
+def resultLaw (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
+    (policy : Signal → PMF Action) : PMF (Fact × Action) :=
   (outcomeLaw prior observe policy).map fun result => (fact result.1, result.2)
 
-theorem resultLaw_eq_bind (prior : FinDist State) (observe : State → Signal)
-    (fact : State → Fact) (policy : Signal → FinDist Action) :
+theorem resultLaw_eq_bind (prior : PMF State) (observe : State → Signal)
+    (fact : State → Fact) (policy : Signal → PMF Action) :
     resultLaw prior observe fact policy =
       prior.bind fun state => (policy (observe state)).map fun action => (fact state, action) := by
-  simp only [resultLaw, outcomeLaw, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
+  simp only [resultLaw, outcomeLaw, PMF.map_bind, PMF.map_comp, Function.comp_def]
 
-theorem resultLaw_fst (prior : FinDist State) (observe : State → Signal)
-    (fact : State → Fact) (policy : Signal → FinDist Action) :
+theorem resultLaw_fst (prior : PMF State) (observe : State → Signal)
+    (fact : State → Fact) (policy : Signal → PMF Action) :
     (resultLaw prior observe fact policy).map Prod.fst = prior.map fact := by
   rw [resultLaw_eq_bind]
-  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def, FinDist.map_const]
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, FinDist.map_const]
   rfl
 
-theorem value_eq_resultLaw (prior : FinDist State) (observe : State → Signal)
-    (fact : State → Fact) (utility : Fact → Action → ℝ) (policy : Signal → FinDist Action) :
+theorem value_eq_resultLaw (prior : PMF State) (observe : State → Signal)
+    (fact : State → Fact) (utility : Fact → Action → ℝ) (policy : Signal → PMF Action) :
     value prior observe (fun state => utility (fact state)) policy =
-      (resultLaw prior observe fact policy).expect (fun result => utility result.1 result.2) := by
-  rw [value, resultLaw, FinDist.expect_map]
+      expect (resultLaw prior observe fact policy) (fun result => utility result.1 result.2) := by
+  rw [value, resultLaw, expect_map]
 
 variable {Summary : Type*}
 
-theorem resultLaw_of_decoder (prior : FinDist State) (observe : State → Signal)
+theorem resultLaw_of_decoder (prior : PMF State) (observe : State → Signal)
     (summary : State → Summary) (fact : State → Fact) (decode : Summary → Fact)
     (decodes : ∀ state ∈ prior.support, decode (summary state) = fact state)
-    (policy : Signal → FinDist Action) :
+    (policy : Signal → PMF Action) :
     resultLaw prior observe fact policy =
       (resultLaw prior observe summary policy).map fun result => (decode result.1, result.2) := by
-  simp only [resultLaw_eq_bind, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
-  apply FinDist.bind_congr
+  simp only [resultLaw_eq_bind, PMF.map_bind, PMF.map_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro state supported
   rw [decodes state supported]
 
 /-- Average a fully informed response over the hidden states compatible with
 the retained observation. The default at a zero-mass observation is immaterial. -/
-def averagePolicy (prior : FinDist State) (observe : State → Signal)
-    (policy : State → FinDist Action) : Signal → FinDist Action := fun signal =>
-  (((resultLaw prior id observe policy).condOnFibre Prod.fst signal).map Prod.snd)
+def averagePolicy (prior : PMF State) (observe : State → Signal)
+    (policy : State → PMF Action) : Signal → PMF Action := fun signal =>
+  ((fiberConditional (resultLaw prior id observe policy) Prod.fst signal).map Prod.snd)
 
-theorem averagePolicy_observation_law (prior : FinDist State) (observe : State → Signal)
-    (policy : State → FinDist Action) :
+theorem averagePolicy_observation_law (prior : PMF State) (observe : State → Signal)
+    (policy : State → PMF Action) :
     resultLaw prior observe observe (averagePolicy prior observe policy) =
       resultLaw prior id observe policy := by
-  have disintegration := FinDist.eq_bind_fst_conditional_snd (resultLaw prior id observe policy)
-  rw [resultLaw_fst, FinDist.bind_map] at disintegration
+  have disintegration := eq_bind_fst_conditional_snd (resultLaw prior id observe policy)
+  rw [resultLaw_fst, PMF.bind_map] at disintegration
   rw [resultLaw_eq_bind]
   exact disintegration.symm
 
 /-- No independence premise on the concrete policy is required. Correlations
 with forgotten state are averaged while retaining the entire fact/action law. -/
-theorem averagePolicy_result_law (prior : FinDist State) (observe : State → Signal)
+theorem averagePolicy_result_law (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (determines : Determines prior observe fact)
-    (policy : State → FinDist Action) :
+    (policy : State → PMF Action) :
     resultLaw prior observe fact (averagePolicy prior observe policy) =
       resultLaw prior id fact policy := by
   obtain ⟨decode, decodes⟩ := (determines_iff_decoder prior observe fact).mp determines
@@ -119,9 +121,9 @@ theorem averagePolicy_result_law (prior : FinDist State) (observe : State → Si
     resultLaw_of_decoder prior id observe fact decode decodes,
     averagePolicy_observation_law]
 
-theorem averagePolicy_value (prior : FinDist State) (observe : State → Signal)
+theorem averagePolicy_value (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (determines : Determines prior observe fact)
-    (utility : Fact → Action → ℝ) (policy : State → FinDist Action) :
+    (utility : Fact → Action → ℝ) (policy : State → PMF Action) :
     value prior observe (fun state => utility (fact state))
         (averagePolicy prior observe policy) =
       value prior id (fun state => utility (fact state)) policy := by
@@ -130,9 +132,9 @@ theorem averagePolicy_value (prior : FinDist State) (observe : State → Signal)
 
 /-- Every abstract optimum lifts to a fully informed optimum with the same
 retained law, for every utility of the retained fact and public action. -/
-theorem bayesOptimal_lift (prior : FinDist State) (observe : State → Signal)
+theorem bayesOptimal_lift (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (determines : Determines prior observe fact)
-    (utility : Fact → Action → ℝ) (policy : Signal → FinDist Action)
+    (utility : Fact → Action → ℝ) (policy : Signal → PMF Action)
     (optimal : IsBayesOptimal prior observe (fun state => utility (fact state)) policy) :
     IsBayesOptimal prior id (fun state => utility (fact state))
       (fun state => policy (observe state)) := by
@@ -144,9 +146,9 @@ theorem bayesOptimal_lift (prior : FinDist State) (observe : State → Signal)
 
 /-- Every fully informed optimum has an abstract optimum with the same
 retained law. The abstract response may randomize even when the concrete one does not. -/
-theorem bayesOptimal_average (prior : FinDist State) (observe : State → Signal)
+theorem bayesOptimal_average (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (determines : Determines prior observe fact)
-    (utility : Fact → Action → ℝ) (policy : State → FinDist Action)
+    (utility : Fact → Action → ℝ) (policy : State → PMF Action)
     (optimal : IsBayesOptimal prior id (fun state => utility (fact state)) policy) :
     IsBayesOptimal prior observe (fun state => utility (fact state))
       (averagePolicy prior observe policy) := by
@@ -157,13 +159,13 @@ theorem bayesOptimal_average (prior : FinDist State) (observe : State → Signal
 
 /-- The complete sets of optimal retained outcome laws coincide. This is
 utility-uniform, and the policy maps themselves do not depend on the utility. -/
-theorem optimal_result_law_iff (prior : FinDist State) (observe : State → Signal)
+theorem optimal_result_law_iff (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (determines : Determines prior observe fact)
-    (utility : Fact → Action → ℝ) (law : FinDist (Fact × Action)) :
-    (∃ policy : Signal → FinDist Action,
+    (utility : Fact → Action → ℝ) (law : PMF (Fact × Action)) :
+    (∃ policy : Signal → PMF Action,
       IsBayesOptimal prior observe (fun state => utility (fact state)) policy ∧
         resultLaw prior observe fact policy = law) ↔
-    (∃ policy : State → FinDist Action,
+    (∃ policy : State → PMF Action,
       IsBayesOptimal prior id (fun state => utility (fact state)) policy ∧
         resultLaw prior id fact policy = law) := by
   constructor
@@ -181,10 +183,10 @@ abstract optimum for every utility on fact/report pairs is equivalent to the
 observation determining the fact on the prior support. Sufficiency for other
 action carriers is `bayesOptimal_lift` and `optimal_result_law_iff`. -/
 theorem preserves_all_optima_iff_determines [Finite Fact] [Nonempty Fact]
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact) :
-    (∀ utility : Fact → Fact → ℝ, ∀ source : Signal → FinDist Fact,
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact) :
+    (∀ utility : Fact → Fact → ℝ, ∀ source : Signal → PMF Fact,
       IsBayesOptimal prior observe (fun state => utility (fact state)) source →
-        ∃ target : State → FinDist Fact,
+        ∃ target : State → PMF Fact,
           IsBayesOptimal prior id (fun state => utility (fact state)) target ∧
             resultLaw prior id fact target = resultLaw prior observe fact source) ↔
       Determines prior observe fact := by

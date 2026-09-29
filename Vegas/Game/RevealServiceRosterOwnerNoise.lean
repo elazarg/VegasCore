@@ -72,8 +72,8 @@ theorem roster_owner_window_coupling
     actor leftCandidate leftRaw rightOpening rfl network visits]
   rw [openingWindowMixture_law _ _ _ _ _ _ _ _ _ _ _ leftOffset,
     openingWindowMixture_law _ _ _ _ _ _ _ _ _ _ _ rightOffset, choices]
-  simp only [FinDist.map_bind]
-  apply FinDist.bind_congr
+  simp only [PMF.map_bind]
+  apply bind_congr_on_support _
   intro selected _
   exact (runtime setup).openingWindow_coupling leaks owner event leftCandidate leftRaw
     (rosterOffset setup rosters owner event) selected network visits owner left right leftRecall
@@ -120,8 +120,8 @@ theorem roster_owner_activation_coupling
     event owner actor leftGrant rightGrant leftCandidate rightCandidate leftRaw rightRaw
     leftOpening rightOpening owned leftValid rightValid leftOffset rightOffset leftRecall
     rightRecall network visits observed readouts
-  simp only [FinDist.map_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ coupled
+  simp only [PMF.map_bind]
+  apply bind_eq_of_map_eq _ _ _ _ coupled
   intro leftFinal leftSupport rightFinal rightSupport same
   have leftApplication := rosterPolicy_run_application setup leaks rosters timing profile network
     visits left leftFinal leftSupport
@@ -145,7 +145,7 @@ theorem roster_owner_information_kernel
     (profile : BehavioralProfile setup.program)
     (event : (graph setup).EventId) (owner : Player)
     (actor : (graph setup).actor? event = some owner)
-    (prior : FinDist (application setup leaks).Execution)
+    (prior : PMF (application setup leaks).Execution)
     (checkpoint : ∀ execution ∈ prior.support, ∃ initial state,
       PublicPrefixCheckpoint setup leaks initial setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
@@ -161,14 +161,14 @@ theorem roster_owner_information_kernel
       (execution.recall owner).length ≤ rosterOffset setup rosters owner event)
     (recalls : ∀ execution ∈ prior.support, execution.InputRecall (application setup leaks))
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
-    (noise : setup.ProtocolView owner → FinDist ((application setup leaks).MessageReadout ×
+    (noise : setup.ProtocolView owner → PMF ((application setup leaks).MessageReadout ×
       List (application setup leaks).PlayerEntry))
     (factor : prior.map (fun execution =>
         (sourcePrefix? setup event.val execution.application.config,
           ((application setup leaks).messageView execution, execution.recall owner))) =
       (prior.map fun execution => sourcePrefix? setup event.val execution.application.config).bind
         fun state => (noise (setup.protocolObserve owner state)).map fun extra => (state, extra)) :
-    ∃ channel : setup.ProtocolView owner → FinDist
+    ∃ channel : setup.ProtocolView owner → PMF
         (List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView),
       (prior.bind fun execution =>
         (((runtime setup).runInteractionPlan leaks (rosterPolicy setup leaks rosters timing profile)
@@ -180,10 +180,10 @@ theorem roster_owner_information_kernel
         fun state => (channel (setup.protocolObserve owner state)).map fun input =>
           (state, input) :=
     by
-  obtain ⟨channel, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior
+  obtain ⟨channel, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior
     (fun execution => sourcePrefix? setup event.val execution.application.config)
     (fun execution => ((application setup leaks).messageView execution, execution.recall owner))
-    (setup.protocolObserve owner) noise factor (fun _ => FinDist.pure ())
+    (setup.protocolObserve owner) noise factor (fun _ => PMF.pure ())
     (fun state _ => state) (setup.protocolObserve owner)
     (fun execution _ =>
       (((runtime setup).runInteractionPlan leaks (rosterPolicy setup leaks rosters timing profile)
@@ -217,7 +217,7 @@ theorem roster_owner_information_kernel
         (offset right rightSupport) (recalls left leftSupport) (recalls right rightSupport)
         network visits observed readouts)
   refine ⟨channel, ?_⟩
-  simpa only [FinDist.pure_bind, FinDist.map_pure, FinDist.bind_pure,
-    FinDist.map_comp, Function.comp_def] using law
+  simpa only [PMF.pure_bind, PMF.pure_map, PMF.bind_pure,
+    PMF.map_comp, Function.comp_def] using law
 
 end Vegas

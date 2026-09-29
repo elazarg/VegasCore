@@ -37,7 +37,7 @@ theorem roster_owner_history_local_value
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (who : Player) (event : (graph setup).EventId)
     (ownedEvent : (graph setup).actor? event = some who)
     (past : List (application setup leaks).PlayerEntry)
@@ -60,21 +60,21 @@ theorem roster_owner_history_local_value
       (remaining : Nat) (execution : (application setup leaks).Execution),
       history.state = some ⟨remaining, some who, execution⟩ →
       model.infoOf who history.trace = some (past, view) →
-      ∀ law : FinDist (model.Choice who (some (past, view))),
+      ∀ law : PMF (model.Choice who (some (past, view))),
       let values := fun disclose =>
-        ((setup.protocolStep (sourcePrefix? setup event.val execution.application.config)
+        expect ((setup.protocolStep (sourcePrefix? setup event.val execution.application.config)
           (joint disclose)).bind (setup.continuationLaw
-            (setup.decodeBehavioralProfile admission source.strategy))).expect utility
-      let residual := FinDist.deferredRemaining
-        ((sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source.strategy)
-          who view).prob true) (timing event who ownedEvent)
+            (setup.decodeBehavioralProfile admission source.strategy))) utility
+      let residual := PMF.deferredRemaining
+        (((sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source.strategy)
+          who view) true).toReal) (timing event who ownedEvent)
         (past.length - rosterOffset setup rosters who event + 1)
-      (model.runBehavioralFrom
+      expect (model.runBehavioralFrom
         (Profile.update (sig := model.behavioralSignature) baseline who
           ((baseline who).withLaw (some (past, view)) law))
-        (2 * (rosterPlan setup rosters).length + 1) history).expect
+        (2 * (rosterPlan setup rosters).length + 1) history)
           (fun final => (sourceReadout setup leaks final.state).elim 0 utility) =
-        law.expect (fun choice =>
+        expect law (fun choice =>
           if choice.1.getD ⟨none⟩ = (runtime setup).windowOpening leaks event candidate raw
           then values true else residual * values true + (1 - residual) * values false) := by
   intro menu model baseline history remaining execution current observed law values residual
@@ -121,8 +121,8 @@ theorem roster_owner_history_local_value
   have rawEq : otherRaw = raw := congrArg Prod.snd sameOpening
   subst otherCandidate
   subst otherRaw
-  have choiceFull : (sourceChoiceLaw setup leaks decoded who
-      (boundary.observe app who)).FullSupport := by
+  have choiceFull : FullSupport (sourceChoiceLaw setup leaks decoded who
+      (boundary.observe app who)) := by
     rw [choiceLaw]
     exact setup.reveal_choice_fullSupport reveals admission source mixed who sourceSite
   have rosterSplit : rosters event = (rosters event).take slot ++
@@ -161,14 +161,14 @@ theorem roster_owner_history_local_value
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state boundary related
   change sourcePrefix? setup event.val boundary.application.config = some state at decoder
   have valueEq (disclose : Bool) : values disclose =
-      ((ProtocolState.step setup.program state (joint disclose)).bind
-        (ProtocolState.continuationLaw setup.program decoded)).expect utility := by
+      expect ((ProtocolState.step setup.program state (joint disclose)).bind
+        (ProtocolState.continuationLaw setup.program decoded)) utility := by
     dsimp only [values]
     rw [unchanged, decoder]
-    simp only [Setup.protocolStep, FinDist.bind_map, Setup.continuationLaw]
+    simp only [Setup.protocolStep, PMF.bind_map, Setup.continuationLaw]
     rfl
-  have residualEq : residual = FinDist.deferredRemaining
-      ((sourceChoiceLaw setup leaks decoded who (boundary.observe app who)).prob true)
+  have residualEq : residual = PMF.deferredRemaining
+      (((sourceChoiceLaw setup leaks decoded who (boundary.observe app who)) true).toReal)
       (timing event who ownedEvent) (((rosters event).take slot).count who + 1) := by
     dsimp only [residual]
     rw [pastCount, ← viewEq,
@@ -189,16 +189,16 @@ theorem roster_owner_history_local_value
         List.length_take]
       have inside : slot < (rosters event).length := (List.getElem?_eq_some_iff.mp selected).1
       omega) observed law
-  have expectation := congrArg (fun distribution => distribution.expect
+  have expectation := congrArg (fun distribution => expect distribution
     (fun final => (sourceReadout setup leaks final).elim 0 utility)) physical
-  simp only [FinDist.expect_map, FinDist.expect_bind] at expectation
-  change (model.runBehavioralFrom
+  simp only [expect_map, FinDist.expect_bind] at expectation
+  change expect (model.runBehavioralFrom
     (Profile.update (sig := model.behavioralSignature) baseline who
       ((baseline who).withLaw (some (past, view)) law))
-    (2 * (rosterPlan setup rosters).length + 1) history).expect
+    (2 * (rosterPlan setup rosters).length + 1) history)
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility) = _ at expectation
   rw [expectation]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro choice _supported
   obtain ⟨action, member, choiceEq⟩ := choice.2
   have decodedChoice : choice.1.getD ⟨none⟩ = action := by rw [choiceEq]; rfl

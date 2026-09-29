@@ -61,7 +61,7 @@ theorem compilePlayerPolicy_resolve_stage_one
     (stage : stagingCount history event = 1)
     (remembered : view.application.remembered event = some action) :
     runtime.compilePlayerPolicy who policy history view =
-      FinDist.pure (.privateCommand (.remember event action)) := by
+      PMF.pure (.privateCommand (.remember event action)) := by
   unfold compilePlayerPolicy
   rw [grant]
   simp [notSubmitted, viewOwner, ready, actor, viewNode, stage, remembered]
@@ -87,7 +87,7 @@ theorem compilePlayerPolicy_resolve_stage_two
     (stage : 2 ≤ stagingCount history event)
     (remembered : view.application.remembered event = some action) :
     runtime.compilePlayerPolicy who policy history view =
-      FinDist.pure (runtime.resolutionSubmission who event payload binding checks
+      PMF.pure (runtime.resolutionSubmission who event payload binding checks
         outputEq action view) := by
   obtain ⟨extra, countEq⟩ := Nat.exists_eq_add_of_le stage
   have countEq' : stagingCount history event = extra + 2 := by omega
@@ -101,7 +101,7 @@ def resolutionBlockContinuation (runtime : EventGraphRuntime graph) (who : Playe
     (checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (execution : runtime.application.PolicyExecution)
-    (action : graph.Action event) : FinDist runtime.application.PolicyExecution :=
+    (action : graph.Action event) : PMF runtime.application.PolicyExecution :=
   (runtime.application.playerStep who execution
       (.privateCommand (.remember event action))).bind fun first =>
     (runtime.application.playerStep who first
@@ -147,11 +147,11 @@ theorem runServicePlan_compiled_resolve_block
     event owner payload binding checks outputEq codeEq viewNode (by
       change execution.native.application.serviceGrant = some event
       exact grant) notSubmitted rfl initialReady actor stage]
-  rw [FinDist.bind_map, FinDist.bind_bind]
-  apply FinDist.bind_congr
+  rw [PMF.bind_map, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro action _
   rw [runtime.application.playerStep_private_eq execution who (.remember event action),
-    FinDist.pure_bind]
+    PMF.pure_bind]
   let first := runtime.application.afterPrivate execution who (.remember event action)
   have firstReady : first.native.application.publicView.EventReady event := by
     apply (State.publicView_eventReady first.native.application event).2
@@ -175,12 +175,12 @@ theorem runServicePlan_compiled_resolve_block
       simp only [MessageApplication.State.observe]
       change (State.playerView first.native.application who).remembered event = some action
       simp [State.playerView, actor, firstRemembered])
-  rw [firstPolicy, FinDist.pure_bind]
+  rw [firstPolicy, PMF.pure_bind]
   unfold resolutionBlockContinuation
   rw [runtime.application.playerStep_private_eq execution who (.remember event action),
-    FinDist.pure_bind]
+    PMF.pure_bind]
   rw [runtime.application.playerStep_private_eq first who (.remember event action),
-    FinDist.pure_bind]
+    PMF.pure_bind]
   let second := runtime.application.afterPrivate first who (.remember event action)
   have secondReady : second.native.application.publicView.EventReady event := by
     apply (State.publicView_eventReady second.native.application event).2

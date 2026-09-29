@@ -36,7 +36,7 @@ theorem application_service_law (runtime : EventGraphRuntime graph)
         ReactiveApplication.Execution.application) := by
   let app := runtime.reactiveApplication leaks
   induction plan generalizing first second with
-  | nil => simp only [runInteractionPlan, FinDist.map_pure, same]
+  | nil => simp only [runInteractionPlan, PMF.pure_map, same]
   | cons instruction rest ih =>
       have head := passive instruction (List.mem_cons_self ..)
       have tail := fun member present => passive member (List.mem_cons_of_mem _ present)
@@ -47,36 +47,36 @@ theorem application_service_law (runtime : EventGraphRuntime graph)
           ((second.environmentStep app (.application command)).bind fun next =>
             (runtime.runInteractionPlan leaks players network rest next).map
               ReactiveApplication.Execution.application) := by
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.bind_map]
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.bind_map]
         rw [same]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro state _
         exact ih tail _ _ rfl
-      have idle : (runtime.reactiveApplication leaks).resume players none = FinDist.pure := rfl
+      have idle : (runtime.reactiveApplication leaks).resume players none = PMF.pure := rfl
       cases instruction with
       | player who => exact False.elim (head.2.1 who rfl)
       | wire => exact False.elim (head.1 rfl)
       | includeLatest event who => exact False.elim (head.2.2 event who rfl)
       | grant event =>
-          simpa only [runInteractionPlan, FinDist.map_bind, interactionStep,
-            interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
+            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
             ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-            idle, FinDist.bind_pure] using step (.grant event)
+            idle, PMF.bind_pure] using step (.grant event)
       | sample event =>
-          simpa only [runInteractionPlan, FinDist.map_bind, interactionStep,
-            interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
+            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
             ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-            idle, FinDist.bind_pure] using step (.executeSample event)
+            idle, PMF.bind_pure] using step (.executeSample event)
       | tick =>
-          simpa only [runInteractionPlan, FinDist.map_bind, interactionStep,
-            interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
+            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
             ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-            idle, FinDist.bind_pure] using step .advanceClock
+            idle, PMF.bind_pure] using step .advanceClock
       | expire event =>
-          simpa only [runInteractionPlan, FinDist.map_bind, interactionStep,
-            interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
+            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
             ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-            idle, FinDist.bind_pure] using step (.expire event)
+            idle, PMF.bind_pure] using step (.expire event)
 
 /-- Replay-only player rounds before application commands have no effect on
 the terminal application law, including public sample results. -/
@@ -100,17 +100,17 @@ theorem replay_application_service_law (runtime : EventGraphRuntime graph)
         ReactiveApplication.Execution.application) =
       ((runtime.runInteractionPlan leaks players network plan initial).map
         ReactiveApplication.Execution.application) := by
-  rw [runInteractionPlan_append, FinDist.map_bind]
+  rw [runInteractionPlan_append, PMF.map_bind]
   calc
     _ = (runtime.runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) initial).bind (fun _ =>
           (runtime.runInteractionPlan leaks players network plan initial).map
             ReactiveApplication.Execution.application) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro current reached
       have same := (runtime.replay_window_preserves leaks players network owner initial responses
         (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visits current reached).1
       exact runtime.application_service_law leaks players network plan passive _ _ same
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 end Vegas.EventGraphRuntime

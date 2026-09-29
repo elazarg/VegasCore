@@ -20,7 +20,7 @@ open Vegas Vegas.EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability
 
 def nativeLeaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph) :=
-  fun _ _ => FinDist.pure ∅
+  fun _ _ => PMF.pure ∅
 
 abbrev nativeApp := nativeRuntime.reactiveApplication nativeLeaks
 

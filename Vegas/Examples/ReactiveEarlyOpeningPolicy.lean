@@ -12,17 +12,17 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction
 open Vegas Vegas.EventGraphRuntime
 
 def zeroPolicy : graph.BehavioralPolicy () := fun event =>
-  Fin.cases (fun _ _ => FinDist.pure (.success 0)) (fun _ _ _ => FinDist.pure true) event
+  Fin.cases (fun _ _ => PMF.pure (.success 0)) (fun _ _ _ => PMF.pure true) event
 
 def compiled : app.Policy := runtime.compileReactivePolicy leaks () zeroPolicy
 
 theorem zeroPolicy_resolve (actor : graph.actor? 1 = some ())
     (observation : graph.PlayerObservation ()) : zeroPolicy 1 actor observation =
-      FinDist.pure true := rfl
+      PMF.pure true := rfl
 
 theorem prescribed_initial :
     runtime.prescribedReactivePolicy leaks () zeroPolicy [] ((activated initial).observe app ()) =
-      FinDist.pure (runtime.reactiveDecision leaks () 0 (.success 0)
+      PMF.pure (runtime.reactiveDecision leaks () 0 (.success 0)
         ((activated initial).observe app ()).application) := by
   have grant : ((activated initial).observe app ()).application.publicView.serviceGrant =
       some 0 := rfl
@@ -32,8 +32,8 @@ theorem prescribed_initial :
   rw [prescribedReactivePolicy_apply]
   simp only [prescribedReactiveResponse, grant, reactiveAlreadySubmitted, List.any_nil,
     Bool.false_eq_true, ite_false, dite_true, ite_eq_left ready, dite_eq_left actor,
-    EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero, FinDist.map_pure,
-    FinDist.bind_const]
+    EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero, PMF.pure_map,
+    PMF.bind_const]
 
 theorem first_inconsistent :
     ¬ (runtime.prescribedReactivePolicy leaks () zeroPolicy).Consistent
@@ -45,7 +45,7 @@ theorem first_inconsistent :
   change first ∈ (runtime.prescribedReactivePolicy leaks () zeroPolicy []
     ((activated initial).observe app ())).support at selected
   rw [prescribed_initial] at selected
-  have same := FinDist.mem_support_pure.mp selected
+  have same := (PMF.mem_support_pure_iff _ _).mp selected
   have sent := congrArg ReactiveApplication.Action.transmission same
   have slot : reactiveFreshSlot ((activated initial).observe app ()).application = some 0 := by
     unfold reactiveFreshSlot
@@ -92,7 +92,7 @@ theorem recovery_slot :
 
 theorem compiled_first :
     compiled ((activated contested).recall ()) ((activated contested).observe app ()) =
-      FinDist.pure bindingAction := by
+      PMF.pure bindingAction := by
   have inconsistent : ¬ (runtime.prescribedReactivePolicy leaks () zeroPolicy).Consistent
       ((activated contested).recall ()) := contested_inconsistent
   rw [compiled, compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
@@ -105,8 +105,8 @@ theorem compiled_first :
   rw [recoverReactivePolicy_apply]
   simp only [recoverReactiveResponse, grant, dite_true, ite_eq_left ready,
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero,
-    reactiveRecoveryLaw_pure (graph := graph), FinDist.map_pure, FinDist.bind_const]
-  change FinDist.pure (ReactiveApplication.Action.mk (app := app)
+    reactiveRecoveryLaw_pure (graph := graph), PMF.pure_map, PMF.bind_const]
+  change PMF.pure (ReactiveApplication.Action.mk (app := app)
     ((reactiveFreshSlot ((activated contested).observe app ()).application).map _)) = _
   rw [recovery_slot]
   rfl
@@ -120,7 +120,7 @@ theorem granted_inconsistent (repair fresh : Bool) :
 
 theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair = true) :
     compiled ((activated (granted repair fresh)).recall ())
-      ((activated (granted repair fresh)).observe app ()) = FinDist.pure (finalOpening fresh) := by
+      ((activated (granted repair fresh)).observe app ()) = PMF.pure (finalOpening fresh) := by
   rw [compiled, compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     (granted_inconsistent repair fresh)]
   have grant :
@@ -137,7 +137,7 @@ theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair
   rw [recoverReactivePolicy_apply]
   simp only [recoverReactiveResponse, grant, dite_true, ite_eq_left ready,
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy_resolve,
-    reactiveRecoveryLaw_pure (graph := graph), FinDist.map_pure, FinDist.bind_const]
+    reactiveRecoveryLaw_pure (graph := graph), PMF.pure_map, PMF.bind_const]
   congr 1
   have state : (granted repair fresh).application =
       { boundState repair fresh with serviceGrant := some 1 } :=
@@ -164,19 +164,19 @@ theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair
         normal
 
 def earlyPolicy : app.Policy := fun history view =>
-  if view.application.publicView.serviceGrant = some 0 then FinDist.pure earlyOpening
+  if view.application.publicView.serviceGrant = some 0 then PMF.pure earlyOpening
   else compiled history view
 
 theorem earlyPolicy_first :
     earlyPolicy ((activated contested).recall ()) ((activated contested).observe app ()) =
-      FinDist.pure earlyOpening := by
+      PMF.pure earlyOpening := by
   have grant : ((activated contested).observe app ()).application.publicView.serviceGrant =
       some 0 := rfl
   simp only [earlyPolicy, grant, ↓reduceIte]
 
 theorem earlyPolicy_later :
     earlyPolicy ((activated (granted false false)).recall ())
-      ((activated (granted false false)).observe app ()) = FinDist.pure (finalOpening false) := by
+      ((activated (granted false false)).observe app ()) = PMF.pure (finalOpening false) := by
   have different :
       ((activated (granted false false)).observe app ()).application.publicView.serviceGrant ≠
         some 0 := by decide

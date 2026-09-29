@@ -26,17 +26,17 @@ private theorem dispatch_recall_count (players : Player → (serviceApp observat
     (next.recall who).length = (execution.recall who).length +
       if command.actor? (serviceApp observation) = some who then 1 else 0 := by
   obtain ⟨observed, observedMem, resumed⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have same := (serviceApp observation).environmentStep_recall execution observed command
     observedMem
   cases actor : command.actor? (serviceApp observation) with
   | none =>
-      simp only [actor, ReactiveApplication.resume, FinDist.mem_support_pure] at resumed
+      simp only [actor, ReactiveApplication.resume, PMF.mem_support_pure_iff _ _] at resumed
       subst next
       simp only [same, reduceCtorEq, ↓reduceIte, Nat.add_zero]
   | some owner =>
       rw [actor] at resumed
-      obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+      obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
       by_cases identical : who = owner
       · subst who
         have count := congrArg List.length ((serviceApp observation).respond_actions observed
@@ -57,7 +57,7 @@ theorem native_step_recall_count (players : Player → (serviceApp observation).
     (next.recall who).length = (execution.recall who).length +
       if nativeInstructionPlayer instruction = some who then 1 else 0 := by
   obtain ⟨command, commandMem, dispatched⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have count := dispatch_recall_count players execution next command who dispatched
   rw [native_instruction_actor instruction _ _ command commandMem] at count
   exact count
@@ -72,10 +72,10 @@ theorem native_plan_recall_count (players : Player → (serviceApp observation).
     (next.recall who).length = (execution.recall who).length + nativeResponseCount who plan := by
   induction plan generalizing execution with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simp [nativeResponseCount]
   | cons instruction rest ih =>
-      obtain ⟨middle, first, later⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨middle, first, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       rw [ih middle later, native_step_recall_count players instruction execution middle who first]
       simp only [nativeResponseCount, List.map_cons, List.sum_cons, Nat.add_assoc]
 

@@ -52,7 +52,7 @@ omit [DecidableEq Principal] in
         Option.map_none, execution]
       rfl
 
-theorem state_transition (initial : FinDist app.State) (horizon : Nat)
+theorem state_transition (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before : app.ProtocolState)
     (choices : Principal → Option app.Action) (valid : app.inputRecall before) :
     (app.transition initial horizon scheduler before choices).map normal.state =
@@ -60,35 +60,35 @@ theorem state_transition (initial : FinDist app.State) (horizon : Nat)
         (normal.joint before choices) := by
   cases before with
   | none =>
-      simp only [transition, state, Option.map_none, FinDist.map_comp]
+      simp only [transition, state, Option.map_none, PMF.map_comp]
       rfl
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          simp only [transition, state, joint, Option.map_some, FinDist.map_pure]
+          simp only [transition, state, joint, Option.map_some, PMF.pure_map]
           have response := normal.execution_respond execution who
             ((choices who).getD ⟨none⟩) valid
           cases chosen : choices who with
           | none =>
               simpa only [chosen, Option.getD_none, Option.map_none, action] using
-                congrArg (fun next => FinDist.pure (some (Control.mk remaining none next)))
+                congrArg (fun next => PMF.pure (some (Control.mk remaining none next)))
                   response
           | some response =>
               simpa only [chosen, Option.getD_some, Option.map_some] using
-                congrArg (fun next => FinDist.pure (some (Control.mk remaining none next)))
+                congrArg (fun next => PMF.pure (some (Control.mk remaining none next)))
                   (normal.execution_respond execution who response valid)
       | none =>
           cases remaining with
-          | zero => simp only [transition, state, Option.map_some, FinDist.map_pure]
+          | zero => simp only [transition, state, Option.map_some, PMF.pure_map]
           | succ remaining =>
-              simp only [transition, state, Option.map_some, FinDist.map_bind]
+              simp only [transition, state, Option.map_some, PMF.map_bind]
               change _ = (scheduler execution.environmentRecall
                 (execution.observeEnvironment app)).bind _
               congr 1
               funext command
-              rw [FinDist.map_comp, ← normal.execution_environmentStep]
-              rw [FinDist.map_comp]
+              rw [PMF.map_comp, ← normal.execution_environmentStep]
+              rw [PMF.map_comp]
               rfl
 
 variable (raw : app.ResponseMenu)
@@ -96,7 +96,7 @@ variable (raw : app.ResponseMenu)
     raw.actions who (normal.recall who past) view = raw.actions who past view)
 
 include stable in
-theorem legal_joint (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem legal_joint (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (before : app.ProtocolState) (choices : Principal → Option app.Action)
     (legal : (raw.protocol initial horizon scheduler).Legal before choices) :
     ((normal.menu raw).protocol initial horizon scheduler).Legal
@@ -131,7 +131,7 @@ theorem legal_joint (initial : FinDist app.State) (horizon : Nat) (scheduler : a
             rw [normal.menu_mem]
             exact ⟨response, (stable who _ _).symm ▸ member, normal.action_recall ..⟩
 
-def trace (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def trace (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ∀ {before}, (raw.protocol initial horizon scheduler).Trace before →
       ((normal.menu raw).protocol initial horizon scheduler).Trace (normal.state before)
   | _, .start => .start
@@ -146,17 +146,17 @@ def trace (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Schedul
           have mapped : normal.state before ∈
               ((app.transition initial horizon scheduler source choices).map
                 normal.state).support := by
-            rw [FinDist.support_map]
+            rw [PMF.support_map]
             exact ⟨before, realized, rfl⟩
           rw [normal.state_transition initial horizon scheduler _ choices valid] at mapped
           exact mapped)
 
-def history (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+def history (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (original : (raw.protocol initial horizon scheduler).History) :
     ((normal.menu raw).protocol initial horizon scheduler).History :=
   ⟨normal.state original.state, normal.trace raw stable initial horizon scheduler original.trace⟩
 
-@[simp] theorem trace_length (initial : FinDist app.State) (horizon : Nat)
+@[simp] theorem trace_length (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) {before}
     (original : (raw.protocol initial horizon scheduler).Trace before) :
     (normal.trace raw stable initial horizon scheduler original).length = original.length := by
@@ -164,7 +164,7 @@ def history (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Sched
   | start => rfl
   | extend prior choices legal realized ih => exact congrArg Nat.succ ih
 
-theorem history_info (initial : FinDist app.State) (horizon : Nat)
+theorem history_info (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal)
     (original : (raw.protocol initial horizon scheduler).History) :
     ((normal.menu raw).information initial horizon scheduler).infoOf who
@@ -175,7 +175,7 @@ theorem history_info (initial : FinDist app.State) (horizon : Nat)
   rw [ResponseMenu.info, ResponseMenu.info]
   exact normal.state_observe original.state who
 
-def informationHistory (initial : FinDist app.State) (horizon : Nat)
+def informationHistory (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal) (observed : app.Info)
     (original : (raw.information initial horizon scheduler).InformationHistory who observed) :
     ((normal.menu raw).information initial horizon scheduler).InformationHistory who
@@ -186,7 +186,7 @@ def informationHistory (initial : FinDist app.State) (horizon : Nat)
 
 /-- Normalize the chosen response and the player's recalled response names.
 The unique inactive choice stays inactive. -/
-def choice (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+def choice (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) (observed : app.Info)
     (original : (raw.information initial horizon scheduler).Choice who observed) :
     ((normal.menu raw).information initial horizon scheduler).Choice who
@@ -204,7 +204,7 @@ def choice (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Schedu
           normal.action_recall who data.1 data.2 response⟩
       · simp only [chosen, Option.map_some]
 
-def site (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+def site (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) (original : (raw.information initial horizon scheduler).InformationSite who) :
     ((normal.menu raw).information initial horizon scheduler).InformationSite who := by
   refine ⟨normal.info who original.1, ?_⟩
@@ -234,7 +234,7 @@ variable (closed : ∀ who past view response, response ∈ raw.actions who past
 
 /-- The canonical raw representative has exactly the same response syntax as
 the normal choice. Its availability follows from closure of the raw menu. -/
-def canonicalChoice (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+def canonicalChoice (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) (observed : app.Info)
     (canonical : ((normal.menu raw).information initial horizon scheduler).Choice who
       (normal.info who observed)) :
@@ -248,7 +248,7 @@ def canonicalChoice (initial : FinDist app.State) (horizon : Nat) (scheduler : a
         (normal.recall who data.1) data.2 (closed who _ _) response).mp member).1
       exact ⟨response, (stable who data.1 data.2) ▸ rawMember, chosen⟩
 
-@[simp] theorem choice_canonicalChoice (initial : FinDist app.State) (horizon : Nat)
+@[simp] theorem choice_canonicalChoice (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal) (observed : app.Info)
     (canonical : ((normal.menu raw).information initial horizon scheduler).Choice who
       (normal.info who observed)) :

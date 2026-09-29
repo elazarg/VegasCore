@@ -40,37 +40,37 @@ private theorem player_positions (count : Nat) (who : Player) (bounded : count <
 
 theorem roundsFrom_prefix {Claim : Type} (players : Player → (application Claim).Policy)
     (before after : List Instruction) (split : calendar = before ++ after) :
-    (application Claim).roundsFrom (FinDist.pure initial) (scheduler Claim) players before.length =
+    (application Claim).roundsFrom (PMF.pure initial) (scheduler Claim) players before.length =
       runInstructions players before (root Claim) := by
-  rw [ReactiveApplication.roundsFrom, FinDist.pure_bind]
+  rw [ReactiveApplication.roundsFrom, PMF.pure_bind]
   exact segment_rounds players [] before after split (root Claim) rfl
 
 theorem activation_visit {Claim : Type} (execution next : (application Claim).Execution)
     (who : Player) (reached : next ∈
       (execution.environmentStep (application Claim) (.activate who)).support) :
     next.application.visit = execution.application.visit := by
-  rw [effect_law, FinDist.mem_support_pure] at reached
+  rw [effect_law, PMF.mem_support_pure_iff _ _] at reached
   subst next
   rfl
 
 private theorem early_rounds_visit (Claim : Type) [Fintype Claim] (count : Nat)
     (early : count = 0 ∨ count = 1) (execution : (application Claim).Execution)
-    (reached : execution ∈ ((application Claim).roundsFrom (FinDist.pure initial)
+    (reached : execution ∈ ((application Claim).roundsFrom (PMF.pure initial)
       (scheduler Claim) (menu Claim).uniformResponses count).support) :
     execution.application.visit = none := by
   rcases early with rfl | rfl
-  · simp only [ReactiveApplication.roundsFrom, FinDist.pure_bind,
-      ReactiveApplication.runRounds, FinDist.mem_support_pure] at reached
+  · simp only [ReactiveApplication.roundsFrom, PMF.pure_bind,
+      ReactiveApplication.runRounds, PMF.mem_support_pure_iff _ _] at reached
     subst execution
     rfl
-  · change execution ∈ ((application Claim).roundsFrom (FinDist.pure initial)
+  · change execution ∈ ((application Claim).roundsFrom (PMF.pure initial)
       (scheduler Claim) (menu Claim).uniformResponses
         ([.player alice] : List Instruction).length).support at reached
     rw [roundsFrom_prefix (menu Claim).uniformResponses [.player alice] calendar.tail rfl]
       at reached
     simp only [runInstructions_player, runInstructions_nil] at reached
-    rw [← FinDist.map_eq_bind] at reached
-    obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ reached
+    rw [← ← PMF.bind_pure_comp, Function.comp_def] at reached
+    obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ reached
     exact firstResponse_visit response
 
 theorem response_prefix_visit {Claim : Type} (players : Player → (application Claim).Policy)
@@ -78,8 +78,8 @@ theorem response_prefix_visit {Claim : Type} (players : Player → (application 
     (reached : execution ∈ (runInstructions players (beforeResponse event) (root Claim)).support) :
     execution.application.visit = some event := by
   rw [beforeResponse, runInstructions_append] at reached
-  obtain ⟨prior, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  rw [runInstructions_application, runInstructions_nil, FinDist.mem_support_pure] at moved
+  obtain ⟨prior, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  rw [runInstructions_application, runInstructions_nil, PMF.mem_support_pure_iff _ _] at moved
   subst execution
   rfl
 
@@ -90,10 +90,10 @@ theorem decision_cursor (Claim : Type) [Fintype Claim] (event : Event)
     who = eventOwner event ∧
       control.execution.environmentRecall.length = (beforeResponse event).length + 1 := by
   obtain ⟨accounted, supported⟩ := (menu Claim).roundSupported_uniform
-    (FinDist.pure initial) horizon (scheduler Claim) trace
+    (PMF.pure initial) horizon (scheduler Claim) trace
   rw [active] at supported
   obtain ⟨count, prior, command, position, priorMem, commandMem, actor, observed⟩ := supported
-  have cursor := (application Claim).roundsFrom_recall (FinDist.pure initial) (scheduler Claim)
+  have cursor := (application Claim).roundsFrom_recall (PMF.pure initial) (scheduler Claim)
     (menu Claim).uniformResponses count prior priorMem
   have bounded : count < calendar.length := by
     change _ + _ = calendar.length at accounted
@@ -102,11 +102,11 @@ theorem decision_cursor (Claim : Type) [Fintype Claim] (event : Event)
     simp only [scheduler, cursor] at commandMem
     cases found : calendar[count]? with
     | none =>
-        simp only [found, FinDist.mem_support_pure] at commandMem
+        simp only [found, PMF.mem_support_pure_iff _ _] at commandMem
         subst command
         cases actor
     | some next =>
-        simp only [found, Option.elim_some, FinDist.mem_support_pure] at commandMem
+        simp only [found, Option.elim_some, PMF.mem_support_pure_iff _ _] at commandMem
         subst command
         simp only [Option.bind_some]
         exact (instruction_actor next _).symm.trans actor
@@ -137,7 +137,7 @@ theorem decision_predecessor (Claim : Type) [Fintype Claim] (event : Event)
       control.execution = effect prior (.activate (eventOwner event)) := by
   have position := (decision_cursor Claim event control trace (eventOwner event) active granted).2
   obtain ⟨_, supported⟩ := (menu Claim).roundSupported_uniform
-    (FinDist.pure initial) horizon (scheduler Claim) trace
+    (PMF.pure initial) horizon (scheduler Claim) trace
   rw [active] at supported
   obtain ⟨count, prior, command, countEq, priorMem, commandMem, actor, observed⟩ := supported
   have same : count = (beforeResponse event).length := by omega
@@ -146,12 +146,12 @@ theorem decision_predecessor (Claim : Type) [Fintype Claim] (event : Event)
   · rw [roundsFrom_prefix (menu Claim).uniformResponses (beforeResponse event)
       (.player (eventOwner event) :: afterResponse event) (response_split event)] at priorMem
     exact priorMem
-  · have cursor := (application Claim).roundsFrom_recall (FinDist.pure initial) (scheduler Claim)
+  · have cursor := (application Claim).roundsFrom_recall (PMF.pure initial) (scheduler Claim)
       (menu Claim).uniformResponses _ prior priorMem
     simp only [scheduler, cursor, beforeResponse_selected,
-      FinDist.mem_support_pure] at commandMem
+      PMF.mem_support_pure_iff _ _] at commandMem
     subst command
-    exact FinDist.mem_support_pure.mp (effect_law prior _ ▸ observed)
+    exact (PMF.mem_support_pure_iff _ _).mp (effect_law prior _ ▸ observed)
 
 theorem carol_decision_representation (Claim : Type) [Fintype Claim]
     (control : (application Claim).Control) (trace : (arena Claim).Trace (some control))
@@ -162,9 +162,9 @@ theorem carol_decision_representation (Claim : Type) [Fintype Claim]
   have supported : control.execution ∈
       ((runInstructions (menu Claim).uniformResponses (beforeResponse 1) (root Claim)).map
         (fun execution => effect execution (.activate carol))).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨prior, reached, same.symm⟩
-  rw [carol_prefix_law, FinDist.support_map] at supported
+  rw [carol_prefix_law, PMF.support_map] at supported
   obtain ⟨sample, reached, same⟩ := supported
   exact ⟨sample, reached, same.symm⟩
 
@@ -177,9 +177,9 @@ theorem bob_decision_representation (Claim : Type) [Fintype Claim]
   have supported : control.execution ∈
       ((runInstructions (menu Claim).uniformResponses (beforeResponse 2) (root Claim)).map
         (fun execution => effect execution (.activate bob))).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨prior, reached, same.symm⟩
-  rw [bob_prefix_law, FinDist.support_map] at supported
+  rw [bob_prefix_law, PMF.support_map] at supported
   obtain ⟨sample, reached, same⟩ := supported
   exact ⟨sample, reached, same.symm⟩
 
@@ -227,8 +227,8 @@ theorem carol_decision_depth (Claim : Type) [Fintype Claim]
     trace.length = 13 := by
   have located := (decision_cursor Claim 1 control trace carol active granted).2
   obtain ⟨sample, _, same⟩ := carol_decision_representation Claim control trace active granted
-  have counted := (application Claim).trace_length_of_control (FinDist.pure initial) horizon
-    (scheduler Claim) control ((menu Claim).toRawTrace (FinDist.pure initial)
+  have counted := (application Claim).trace_length_of_control (PMF.pure initial) horizon
+    (scheduler Claim) control ((menu Claim).toRawTrace (PMF.pure initial)
       horizon (scheduler Claim) trace)
   rw [ReactiveApplication.ResponseMenu.toRawTrace_length] at counted
   change trace.length = 1 + control.execution.environmentRecall.length +
@@ -242,8 +242,8 @@ theorem bob_decision_depth (Claim : Type) [Fintype Claim]
     trace.length = 20 := by
   have located := (decision_cursor Claim 2 control trace bob active granted).2
   obtain ⟨sample, _, same⟩ := bob_decision_representation Claim control trace active granted
-  have counted := (application Claim).trace_length_of_control (FinDist.pure initial) horizon
-    (scheduler Claim) control ((menu Claim).toRawTrace (FinDist.pure initial)
+  have counted := (application Claim).trace_length_of_control (PMF.pure initial) horizon
+    (scheduler Claim) control ((menu Claim).toRawTrace (PMF.pure initial)
       horizon (scheduler Claim) trace)
   rw [ReactiveApplication.ResponseMenu.toRawTrace_length] at counted
   change trace.length = 1 + control.execution.environmentRecall.length +
@@ -257,7 +257,7 @@ theorem carol_information_depth (Claim : Type) [Fintype Claim]
     (history : (model Claim).InformationHistory carol (some (past, view))) :
     history.1.trace.length = 13 := by
   rcases history with ⟨⟨state, trace⟩, observed⟩
-  change ((menu Claim).signals (FinDist.pure initial) horizon (scheduler Claim)).infoOf
+  change ((menu Claim).signals (PMF.pure initial) horizon (scheduler Claim)).infoOf
     carol trace = some (past, view) at observed
   rw [ReactiveApplication.ResponseMenu.info] at observed
   cases state with
@@ -280,7 +280,7 @@ theorem bob_information_depth (Claim : Type) [Fintype Claim]
     (history : (model Claim).InformationHistory bob (some (past, view))) :
     history.1.trace.length = 20 := by
   rcases history with ⟨⟨state, trace⟩, observed⟩
-  change ((menu Claim).signals (FinDist.pure initial) horizon (scheduler Claim)).infoOf
+  change ((menu Claim).signals (PMF.pure initial) horizon (scheduler Claim)).infoOf
     bob trace = some (past, view) at observed
   rw [ReactiveApplication.ResponseMenu.info] at observed
   cases state with

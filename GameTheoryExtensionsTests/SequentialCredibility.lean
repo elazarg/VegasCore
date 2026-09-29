@@ -27,8 +27,8 @@ def payoff (history : arena.History) (who : Bool) : ℝ :=
   if who then reward history.state else 0
 
 theorem initial_reward_zero (replacement : (model false).BehavioralPolicy true) :
-    ((model false).runSingleMoverBehavioralFrom single
-      (Profile.update (prescribed false) true replacement) 3 arena.initHistory).expect
+    expect ((model false).runSingleMoverBehavioralFrom single
+      (Profile.update (prescribed false) true replacement) 3 arena.initHistory)
       (fun history => reward history.state) = 0 := by
   rw [value_initial]
   simp [choiceLaw, Profile.update, prescribed, choose, reward, FinDist.expect_bind]
@@ -40,16 +40,16 @@ theorem prescribed_spe :
   rcases source_proper_initial_or_terminal history proper with rfl | stopped
   · cases who
     · simp [payoff]
-    · change ((model false).runSingleMoverBehavioralFrom single
-        (Profile.update (prescribed false) true alternative) 3 arena.initHistory).expect
+    · change expect ((model false).runSingleMoverBehavioralFrom single
+        (Profile.update (prescribed false) true alternative) 3 arena.initHistory)
         (fun history => reward history.state) ≤
-        ((model false).runSingleMoverBehavioralFrom single (prescribed false)
-        3 arena.initHistory).expect (fun history => reward history.state)
+        expect ((model false).runSingleMoverBehavioralFrom single (prescribed false)
+        3 arena.initHistory) (fun history => reward history.state)
       have baseline := initial_reward_zero (prescribed false true)
       rw [Profile.update_eq_self] at baseline
       rw [initial_reward_zero, baseline]
   · simp only [InformationModel.runSingleMoverBehavioralFrom,
-      runRandomizedFor_of_terminal _ _ stopped, FinDist.expect_pure]
+      runRandomizedFor_of_terminal _ _ stopped, expect_pure]
     exact le_rfl
 
 def bobSite : (model false).InformationSite true :=
@@ -73,14 +73,14 @@ theorem bob_value (assessment : (model false).BehavioralAssessment) (value : Boo
       (choose false true value) = if value then 1 else 0 := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief true bobSite).expect (fun _ => if value then 1 else 0) := by
-      apply FinDist.expect_congr
+    _ = expect (assessment.belief true bobSite) (fun _ => if value then 1 else 0) := by
+      apply expect_congr_on_support
       intro history _
       obtain ⟨bit, same⟩ := history_at_bob history
       rw [same, ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
         (model false) single, value_bob]
       cases value <;> simp [resultLaw, choiceLaw, Profile.update, choose, reward]
-    _ = _ := FinDist.expect_const _ _
+    _ = _ := expect_constant _ _
 
 /-- Even an arbitrarily chosen off-path belief cannot rationalize the threat. -/
 theorem no_sequentially_rational_assessment

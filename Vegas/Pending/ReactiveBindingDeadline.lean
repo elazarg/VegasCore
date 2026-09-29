@@ -39,7 +39,7 @@ theorem binding_deadline_omission
     (activated : execution.application.activatedAt event = some entered)
     (due : runtime.deadline event ≤ execution.application.clock + ticks - entered) :
     ∃ next, runtime.runInteractionPlan leaks players scheduler
-        (List.replicate ticks .tick ++ [.expire event]) execution = FinDist.pure next ∧
+        (List.replicate ticks .tick ++ [.expire event]) execution = PMF.pure next ∧
       next.application.publicView.missedBinding event = true := by
   let app := runtime.reactiveApplication leaks
   obtain ⟨ticked, tickLaw, application, _, _, _⟩ :=
@@ -57,7 +57,7 @@ theorem binding_deadline_omission
   let after := ticked.application.complete event tickReady
     (cast (congrArg EventField.Action outputEq.symm) failed)
     (cast (congrArg EventField.Value outputEq.symm) failed)
-  have expiry : app.environment ticked.application (.expire event) = FinDist.pure after :=
+  have expiry : app.environment ticked.application (.expire event) = PMF.pure after :=
     runtime.environmentStep_expire_bind_eq ticked.application event tickReady entered tickActivated
       tickDue who payload outputEq codeEq node
   let next : app.Execution := { ticked with
@@ -65,20 +65,20 @@ theorem binding_deadline_omission
     environmentRecall := ticked.environmentRecall ++
       [⟨ticked.observeEnvironment app, .application (.expire event)⟩] }
   have step : runtime.interactionStep leaks players scheduler (.expire event) ticked =
-      FinDist.pure next := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+      PMF.pure next := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-    change (ticked.environmentStep app (.application (.expire event))).bind FinDist.pure = _
-    rw [FinDist.bind_pure]
+    change (ticked.environmentStep app (.application (.expire event))).bind PMF.pure = _
+    rw [PMF.bind_pure]
     change ((app.environment ticked.application (.expire event)).map
       (fun state => { ticked with application := state })).map (fun result : app.Execution =>
         { result with environmentRecall := ticked.environmentRecall ++
           [(⟨ticked.observeEnvironment app, .application (.expire event)⟩ :
             app.EnvironmentEntry)] }) = _
-    rw [expiry, FinDist.map_pure, FinDist.map_pure]
+    rw [expiry, PMF.pure_map, PMF.pure_map]
   refine ⟨next, ?_, ?_⟩
-  · rw [runtime.runInteractionPlan_append, tickLaw, FinDist.pure_bind,
-      runInteractionPlan, step, FinDist.pure_bind]
+  · rw [runtime.runInteractionPlan_append, tickLaw, PMF.pure_bind,
+      runInteractionPlan, step, PMF.pure_bind]
     rfl
   · apply ticked.application.missedBinding_complete event tickReady _ _ who payload outputEq
     rw [application]
@@ -105,21 +105,21 @@ theorem protected_binding_omission
     (due : runtime.deadline event ≤ execution.application.clock + ticks - entered) :
     ∃ next, runtime.runInteractionPlan leaks players scheduler
         (.includeLatest event who :: List.replicate ticks .tick ++ [.expire event]) execution =
-          FinDist.pure next ∧
+          PMF.pure next ∧
       next.application.publicView.missedBinding event = true := by
   let app := runtime.reactiveApplication leaks
   let waited : app.Execution := { execution with environmentRecall := execution.environmentRecall ++
     [⟨execution.observeEnvironment app, .wait⟩] }
   have waitLaw : runtime.interactionStep leaks players scheduler
-      (.includeLatest event who) execution = FinDist.pure waited := by
+      (.includeLatest event who) execution = PMF.pure waited := by
     rw [runtime.interaction_includeLatest_of_pending_published leaks players scheduler execution
       who event published]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   obtain ⟨next, suffix, omitted⟩ := runtime.binding_deadline_omission leaks players scheduler waited
     who event payload outputEq codeEq node ready absent entered ticks activated due
   refine ⟨next, ?_, omitted⟩
-  rw [List.cons_append, runInteractionPlan, waitLaw, FinDist.pure_bind]
+  rw [List.cons_append, runInteractionPlan, waitLaw, PMF.pure_bind]
   exact suffix
 
 /-- Collection evidence from the protected block survives arbitrary later

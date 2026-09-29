@@ -136,21 +136,21 @@ private theorem prescribed_response_available (runtime : EventGraphRuntime graph
     response.1 ∈ (bounds.rawMenu runtime leaks).actions who past view := by
   unfold prescribedReactiveResponse at supported
   split at supported
-  · cases FinDist.mem_support_pure.mp supported
+  · cases (PMF.mem_support_pure_iff _ _).mp supported
     exact bounds.silent_available runtime leaks who past view
   · split at supported
-    · cases FinDist.mem_support_pure.mp supported
+    · cases (PMF.mem_support_pure_iff _ _).mp supported
       exact bounds.silent_available runtime leaks who past view
     · split at supported
       · split at supported
         · split at supported
-          · obtain ⟨choice, _, rfl⟩ := FinDist.support_map .. ▸ supported
+          · obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
             exact decisions _ choice
-          · cases FinDist.mem_support_pure.mp supported
+          · cases (PMF.mem_support_pure_iff _ _).mp supported
             exact bounds.silent_available runtime leaks who past view
-        · cases FinDist.mem_support_pure.mp supported
+        · cases (PMF.mem_support_pure_iff _ _).mp supported
           exact bounds.silent_available runtime leaks who past view
-      · cases FinDist.mem_support_pure.mp supported
+      · cases (PMF.mem_support_pure_iff _ _).mp supported
         exact bounds.silent_available runtime leaks who past view
 
 private theorem recovery_response_available (runtime : EventGraphRuntime graph)
@@ -167,18 +167,18 @@ private theorem recovery_response_available (runtime : EventGraphRuntime graph)
     response.1 ∈ (bounds.rawMenu runtime leaks).actions who past view := by
   unfold recoverReactiveResponse at supported
   split at supported
-  · cases FinDist.mem_support_pure.mp supported
+  · cases (PMF.mem_support_pure_iff _ _).mp supported
     exact bounds.silent_available runtime leaks who past view
   · split at supported
     · split at supported
       · split at supported
-        · obtain ⟨choice, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        · obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
           exact decisions _ choice
-        · cases FinDist.mem_support_pure.mp supported
+        · cases (PMF.mem_support_pure_iff _ _).mp supported
           exact bounds.silent_available runtime leaks who past view
-      · cases FinDist.mem_support_pure.mp supported
+      · cases (PMF.mem_support_pure_iff _ _).mp supported
         exact bounds.silent_available runtime leaks who past view
-    · cases FinDist.mem_support_pure.mp supported
+    · cases (PMF.mem_support_pure_iff _ _).mp supported
       exact bounds.silent_available runtime leaks who past view
 
 theorem compiled_response_available (runtime : EventGraphRuntime graph)
@@ -199,13 +199,13 @@ theorem compiled_response_available (runtime : EventGraphRuntime graph)
   unfold compileReactivePolicy ReactiveApplication.Policy.recover at supported
   split at supported
   · rw [prescribedReactivePolicy_apply] at supported
-    obtain ⟨intentions, _, chosen⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-    obtain ⟨response, selected, rfl⟩ := FinDist.support_map .. ▸ chosen
+    obtain ⟨intentions, _, chosen⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+    obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ chosen
     exact prescribed_response_available bounds runtime leaks who policy past intentions view
       decisions response selected
   · rw [recoverReactivePolicy_apply] at supported
-    obtain ⟨intentions, _, chosen⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-    obtain ⟨response, selected, rfl⟩ := FinDist.support_map .. ▸ chosen
+    obtain ⟨intentions, _, chosen⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+    obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ chosen
     exact recovery_response_available bounds runtime leaks who policy past intentions view
       decisions response selected
 
@@ -213,7 +213,7 @@ theorem compiled_response_available (runtime : EventGraphRuntime graph)
 was reached. The source policy and all earlier deviators are unrestricted. -/
 theorem compiled_response_available_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
     (control : (runtime.reactiveApplication leaks).Control)
@@ -241,7 +241,7 @@ theorem compiled_response_available_history (runtime : EventGraphRuntime graph)
 
 theorem compiledPolicy_admissible (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
     (who : Player) (policy : graph.BehavioralPolicy who) :
@@ -255,7 +255,7 @@ theorem compiledPolicy_admissible (runtime : EventGraphRuntime graph)
 capacity certificates establish its exactness on legal histories below. -/
 def compileFinitePolicy (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (who : Player) (policy : graph.BehavioralPolicy who) :
     ((bounds.rawMenu runtime leaks).information (inputs.map State.initial)
@@ -268,7 +268,7 @@ from every legal finite-instance prefix, including genuinely off-path prefixes.
 This is a representation theorem, not source-game correctness or optimality. -/
 theorem compileFinitePolicy_run (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (values : bounds.CoversOutputValues) (capacity : horizon ≤ bounds.candidateCount)
     (profile : graph.BehavioralProfile) (fuel : Nat)

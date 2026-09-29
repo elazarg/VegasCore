@@ -68,7 +68,7 @@ theorem OpeningWindowFrame.expiry (runtime : EventGraphRuntime graph)
     final.network.nextSerial = fun who => initial.network.nextSerial who +
       if who = owner ∧ selected.isSome then 1 else 0 := by
   simp only [List.cons_append, runInteractionPlan] at reached
-  obtain ⟨middle, prior, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨application, clean⟩ := frame.settle runtime leaks owner event candidate ⟨payload, value⟩
     offset selected initial current serials players network middle prior
   obtain ⟨ledger, receipts, counters⟩ := frame.settle_records runtime leaks owner event candidate
@@ -83,7 +83,7 @@ theorem OpeningWindowFrame.expiry (runtime : EventGraphRuntime graph)
         players network middle owner event payload binding checks outputEq codeEq node stillReady
           entered ticks (application ▸ activated) (application ▸ due)
       rw [law] at reached
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       refine ⟨?_, ?_, ?_, ?_, ?_⟩
       · simpa only [application] using state
       · simpa only [messages] using clean
@@ -100,7 +100,7 @@ theorem OpeningWindowFrame.expiry (runtime : EventGraphRuntime graph)
       obtain ⟨next, law, state, messages, receiptEq, _⟩ := runtime.settled_reveal_expiry leaks
         players network middle event settled ticks
       rw [law] at reached
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       refine ⟨?_, ?_, ?_, ?_, ?_⟩
       · simpa only [application, State.complete] using state
       · simpa only [messages] using clean
@@ -159,7 +159,7 @@ theorem openingWindow_expiry (runtime : EventGraphRuntime graph)
   let players := runtime.openingWindowPlayers leaks owner event candidate ⟨payload, value⟩
     (initial.recall owner).length selected
   rw [List.append_assoc, List.append_assoc, runtime.runInteractionPlan_append] at reached
-  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have start := OpeningWindowFrame.initial runtime leaks owner event candidate ⟨payload, value⟩
     selected initial serials published
   have frame := start.run runtime leaks owner event candidate ⟨payload, value⟩

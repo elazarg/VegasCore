@@ -53,26 +53,26 @@ theorem sourceService_sample_window_conformance
   let app := application setup leaks
   induction visits using List.reverseRecOn generalizing current with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨(runtime setup).service_published_conformance leaks execution published, traffic⟩
   | append_singleton visits actor ih =>
       rw [List.map_append, (runtime setup).runInteractionPlan_append] at reached
       obtain ⟨before, reachedBefore, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have prior := ih before reachedBefore
       have same := (sourceService_sample_window setup leaks bounds rosters players lawful network
         event chance execution before granted published visits reachedBefore).1
-      simp only [List.map_cons, List.map_nil, runInteractionPlan, FinDist.bind_pure,
-        interactionStep, interactionInstruction, FinDist.pure_bind] at reached
+      simp only [List.map_cons, List.map_nil, runInteractionPlan, PMF.bind_pure,
+        interactionStep, interactionInstruction, PMF.pure_bind] at reached
       change current ∈ ((before.environmentStep app (.activate actor)).bind
         (app.invoke players actor)).support at reached
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at reached
-      obtain ⟨sample, selected, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ reached
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at reached
+      obtain ⟨sample, selected, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ reached
       let activated := before.sampledActivation app actor sample
       have activation : activated ∈ (before.environmentStep app (.activate actor)).support := by
         rw [ReactiveApplication.Execution.activation_samples]
-        exact FinDist.support_map .. ▸ ⟨sample, selected, rfl⟩
+        exact PMF.support_map .. ▸ ⟨sample, selected, rfl⟩
       have sampled := (runtime setup).service_sampled_conformance leaks before actor sample prior.1
       have member := sourceServiceMenu_in_compiled setup leaks bounds rosters actor
         (activated.recall actor) (activated.observe app actor) (lawful actor _ _ response chosen)
@@ -114,12 +114,12 @@ theorem ServiceBoundary.binding_block_conformance
   obtain ⟨granted, grantBoundary, grant, _, _, grantLaw⟩ := boundary.grant players network event
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
     (.grant event) (by simp) (by simp) execution granted
-    (by rw [grantLaw]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   rw [rosterBlock_of_owner setup rosters event owner owned,
     (runtime setup).runInteractionPlan_append] at reached
-  simp only [runInteractionPlan, grantLaw, FinDist.pure_bind, List.append_assoc] at reached
+  simp only [runInteractionPlan, grantLaw, PMF.pure_bind, List.append_assoc] at reached
   rw [(runtime setup).runInteractionPlan_append] at reached
-  obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have visitedTraffic := (grantBoundary.binding_prefix_conformance bounds players lawful network
     event atRank owner payload outputEq codeEq node owned grant
       (by rw [grantTraffic]; exact traffic) (rosters event) visited window).2
@@ -155,12 +155,12 @@ theorem ServiceBoundary.sample_block_conformance
   obtain ⟨granted, grantBoundary, grant, _, _, grantLaw⟩ := boundary.grant players network event
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
     (.grant event) (by simp) (by simp) execution granted
-    (by rw [grantLaw]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   simp only [rosterBlock, chance, List.append_assoc] at reached
   rw [(runtime setup).runInteractionPlan_append] at reached
-  simp only [runInteractionPlan, grantLaw, FinDist.pure_bind] at reached
+  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at reached
   rw [(runtime setup).runInteractionPlan_append] at reached
-  obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have visitedTraffic := (sourceService_sample_window_conformance bounds players lawful network
     event chance grant grantBoundary.published (by rw [grantTraffic]; exact traffic)
       (rosters event) visited window).2
@@ -238,15 +238,15 @@ theorem initialized_sourceService_prefix_conformance
   induction count generalizing final with
   | zero =>
       simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-        ← FinDist.map_eq_bind] at reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+        ← ← PMF.bind_pure_comp, Function.comp_def] at reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       simp [ReactiveApplication.executionTraffic, ReactiveApplication.Execution.initial,
         ReactiveApplication.trafficViews]
   | succ count ih =>
       let event : (graph setup).EventId := ⟨count, by exact Nat.lt_of_succ_le within⟩
       rw [rosterPlanPrefix_succ setup rosters event] at reached
-      simp only [(runtime setup).runInteractionPlan_append, ← FinDist.bind_bind] at reached
-      obtain ⟨before, prior, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      simp only [(runtime setup).runInteractionPlan_append, ← PMF.bind_bind] at reached
+      obtain ⟨before, prior, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have traffic := ih (by omega) before prior
       obtain ⟨_, _, _, _, _, Δ, names, remaining, remainingProfile, current, currentRefs,
           embedding, refsBefore, _, _, _, _, _, _, _, _, boundary⟩ :=

@@ -2,7 +2,7 @@
 
 import Vegas.Game.RevealServicePolicy
 import GameTheoryExtensions.Math.Probability.ActionSplitting
-import GameTheoryExtensions.Math.Probability.Compactness
+import GameTheoryExtensions.Math.Probability.Convergence
 
 /-! # Common perturbations of the actual response compiler
 
@@ -52,7 +52,7 @@ private theorem ordinaryPolicy_unavailable (profile : BehavioralProfile setup.pr
     (unavailable : ∀ opening, opening? setup leaks who past view = some opening →
       opening ∉ (bounds.menu (runtime setup) leaks).actions who past view) :
     ordinaryPolicy setup leaks bounds profile weight nonnegative atMostOne who past view =
-      FinDist.pure ⟨none⟩ := by
+      PMF.pure ⟨none⟩ := by
   unfold ordinaryPolicy
   split
   · rfl
@@ -65,13 +65,13 @@ theorem ordinaryPolicy_support (profile : BehavioralProfile setup.program)
     (view : (application setup leaks).PlayerView) (opening : (application setup leaks).Action)
     (selected : opening? setup leaks who past view = some opening)
     (covered : opening ∈ (bounds.menu (runtime setup) leaks).actions who past view)
-    (mixed : (sourceChoiceLaw setup leaks profile who view).FullSupport)
+    (mixed : FullSupport (sourceChoiceLaw setup leaks profile who view))
     (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds who past view) :
     response ∈ (ordinaryPolicy setup leaks bounds profile weight nonnegative atMostOne
       who past view).support := by
   rw [ordinaryPolicy_at_opening setup leaks bounds profile weight nonnegative atMostOne
-    who past view opening selected covered, FinDist.support_map]
+    who past view opening selected covered, PMF.support_map]
   exact ⟨⟨response, member⟩, splitChoiceLaw_fullSupport setup leaks bounds who past view
     opening selected covered _ mixed weight nonnegative atMostOne positive ⟨response, member⟩,
     rfl⟩
@@ -81,15 +81,15 @@ theorem splitChoiceLaw_zero
     (view : (application setup leaks).PlayerView) (opening : (application setup leaks).Action)
     (selected : opening? setup leaks who past view = some opening)
     (covered : opening ∈ (bounds.menu (runtime setup) leaks).actions who past view)
-    (law : FinDist Bool) :
+    (law : PMF Bool) :
     splitChoiceLaw setup leaks bounds who past view opening selected covered law
         0 le_rfl (by norm_num) =
       law.map
         (canonicalOrdinaryChoice setup leaks bounds who past view opening selected covered) := by
-  rw [splitChoiceLaw, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [splitChoiceLaw, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro disclose _supported
-  exact FinDist.mix_zero _ _
+  exact mix_zero _ _
 
 theorem ordinaryPolicy_converges
     (sequence : Nat → BehavioralProfile setup.program) (profile : BehavioralProfile setup.program)
@@ -97,10 +97,10 @@ theorem ordinaryPolicy_converges
     (vanishes : Tendsto weight atTop (nhds 0))
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
-    (choices : FinDistConvergesPointwise
+    (choices : PMFConvergesPointwise
       (fun n => sourceChoiceLaw setup leaks (sequence n) who view)
       (sourceChoiceLaw setup leaks profile who view)) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => ordinaryPolicy setup leaks bounds (sequence n) (weight n)
         (nonnegative n) (atMostOne n) who past view)
       (ordinaryPolicy setup leaks bounds profile 0 le_rfl (by norm_num) who past view) := by
@@ -113,10 +113,10 @@ theorem ordinaryPolicy_converges
         rw [selected] at found
         cases found
       simp only [ordinaryPolicy_unavailable setup leaks bounds _ _ _ _ who past view unavailable]
-      exact finDistConvergesPointwise_const _
+      exact pmfConvergesPointwise_const _
   | some opening =>
       by_cases covered : opening ∈ (bounds.menu (runtime setup) leaks).actions who past view
-      · have convergence := FinDist.split_converges
+      · have convergence := PMF.split_converges
           (fun response : {response // response ∈ ordinaryActions setup leaks bounds who past view}
             => sourceChoice setup leaks response.1)
           (canonicalOrdinaryChoice setup leaks bounds who past view opening selected covered)
@@ -132,7 +132,7 @@ theorem ordinaryPolicy_converges
           cases Option.some.inj (found.symm.trans selected)
           exact covered
         simp only [ordinaryPolicy_unavailable setup leaks bounds _ _ _ _ who past view unavailable]
-        exact finDistConvergesPointwise_const _
+        exact pmfConvergesPointwise_const _
 
 /-- The finite behavioral policy retains precisely the physical response law;
 subtype witnesses introduce no further randomization. -/
@@ -146,9 +146,9 @@ theorem compiledProfile_map_val (watcher : Player) (profile : BehavioralProfile 
         some := by
   simp only [compiledProfile, ReactiveApplication.ResponseMenu.restrictPolicy,
     dite_eq_left (policy_covered setup leaks bounds watcher profile weight nonnegative
-      atMostOne who past view), FinDist.map_bindOnSupport, FinDist.map_pure]
-  rw [FinDist.map_eq_bind]
-  apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+      atMostOne who past view), map_bindOnSupport, PMF.pure_map]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bindOnSupport_eq_bind_of_eq_on_support _
   intro response supported
   rfl
 
@@ -159,22 +159,22 @@ theorem compiledProfile_converges_at
     (vanishes : Tendsto weight atTop (nhds 0))
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
-    (choices : who ≠ watcher → FinDistConvergesPointwise
+    (choices : who ≠ watcher → PMFConvergesPointwise
       (fun n => sourceChoiceLaw setup leaks (sequence n) who view)
       (sourceChoiceLaw setup leaks profile who view)) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => compiledProfile setup leaks bounds watcher (sequence n) (weight n)
         (nonnegative n) (atMostOne n) who (some (past, view)))
       (compiledProfile setup leaks bounds watcher profile 0 le_rfl (by norm_num)
         who (some (past, view))) := by
   classical
-  have physical : FinDistConvergesPointwise
+  have physical : PMFConvergesPointwise
       (fun n => policy setup leaks bounds watcher (sequence n) (weight n)
         (nonnegative n) (atMostOne n) who past view)
       (policy setup leaks bounds watcher profile 0 le_rfl (by norm_num) who past view) := by
     by_cases watches : who = watcher
     · simpa only [policy, watches, ↓reduceIte] using
-        finDistConvergesPointwise_const
+        pmfConvergesPointwise_const
           ((application setup leaks).reportFirstUnpublished past view)
     · simpa only [policy, ite_eq_right watches] using
         ordinaryPolicy_converges setup leaks bounds sequence profile weight nonnegative
@@ -182,10 +182,10 @@ theorem compiledProfile_converges_at
   intro choice
   have probabilities (current : BehavioralProfile setup.program) (w : ℝ)
       (nonneg : 0 ≤ w) (small : w ≤ 1) :
-      (compiledProfile setup leaks bounds watcher current w nonneg small who
-        (some (past, view))).prob choice =
-        ((policy setup leaks bounds watcher current w nonneg small who past view).map
-          some).prob choice.1 := by
+      ((compiledProfile setup leaks bounds watcher current w nonneg small who
+        (some (past, view))) choice).toReal =
+        (((policy setup leaks bounds watcher current w nonneg small who past view).map
+          some) choice.1).toReal := by
     rw [← compiledProfile_map_val setup leaks bounds watcher current w nonneg small who past view,
       FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
   simp_rw [probabilities]

@@ -18,7 +18,7 @@ namespace GameTheoryExtensionsTests.DecisionRecall
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 open GameTheory.DecisionExperiment.Protocol
 
-def prior : FinDist Unit := FinDist.pure ()
+def prior : PMF Unit := PMF.pure ()
 
 abbrev arena := GameTheory.DecisionExperiment.Protocol.arena (Action := Bool) prior
 
@@ -33,7 +33,7 @@ theorem decisionRecall : model.DecisionRecall := by
 
 theorem not_perfectRecall : ¬ model.PerfectRecall := by
   intro strongRecall
-  let last := terminalHistory prior () (FinDist.mem_support_pure.mpr rfl) true
+  let last := terminalHistory prior () ((PMF.mem_support_pure_iff _ _).mpr rfl) true
   have impossible := strongRecall () arena.initHistory.trace last.trace rfl
   change ([] : List (Option Unit × Bool)) = [(some (), true)] at impossible
   cases impossible
@@ -50,7 +50,7 @@ theorem clock (who : Unit) (site : model.InformationSite who) :
 inactive observations, for arbitrary utilities of the completed history. -/
 theorem exists_sequential_equilibrium (payoff : Unit → arena.History → ℝ) :
     ∃ assessment : model.BehavioralAssessment,
-      assessment.IsSequentialEquilibriumFor decisionRecall.antichain
+      assessment.IsSequentialEquilibriumFor decisionRecall.decisionInformationAntichain
         (fun who site => assessment.continuationContext site (payoff who) 1) := by
   simpa only [Nat.reduceSub] using model.exists_sequential_equilibrium
     (reference prior id) (reference_mixed prior id) decisionRecall 2 payoff

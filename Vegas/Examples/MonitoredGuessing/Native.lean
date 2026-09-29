@@ -3,7 +3,9 @@
 import Vegas.Examples.MonitoredGuessing.Game
 import Vegas.Pending.ReactiveFiniteResponses
 import Vegas.Pending.ReactiveServiceSelection
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 import Interaction.ReactiveReceipts
 
 /-! # A monitored native service for the initialized guessing game
@@ -34,9 +36,9 @@ def pendingIds (pending : List (Message Player (WitnessedPacket nativeGraph))) :
 def nativeLeaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph) :=
   fun who pending =>
     if who = watcher then
-      FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-        (FinDist.pure (pendingIds pending)) (FinDist.pure ∅)
-    else FinDist.pure (if who = bob then pendingIds pending else ∅)
+      mix (1 / 2) (by norm_num) (by norm_num)
+        (PMF.pure (pendingIds pending)) (PMF.pure ∅)
+    else PMF.pure (if who = bob then pendingIds pending else ∅)
 
 abbrev nativeApp := nativeRuntime.reactiveApplication nativeLeaks
 
@@ -46,8 +48,8 @@ def nativeInputs (bit : Bool) : nativeGraph.Inputs :=
 def nativeInitial (bit : Bool) : EventGraphRuntime.State nativeGraph := State.initial
     (nativeInputs bit)
 
-def nativeInitialLaw : FinDist (EventGraphRuntime.State nativeGraph) :=
-  (FinDist.uniformOfFintype (α := Bool)).map nativeInitial
+def nativeInitialLaw : PMF (EventGraphRuntime.State nativeGraph) :=
+  (PMF.uniformOfFintype (α := Bool)).map nativeInitial
 
 /-- The complete bounded raw menu includes arbitrary event addresses, wrong
 values and types, independently attached evidence, and replay. -/
@@ -75,7 +77,7 @@ def nativePlan : List (ServiceInstruction nativeGraph) :=
 /-- The scheduler checks a public rebroadcast. It never sees which packets
 Watcher privately sampled, and a fresh Watcher-authored packet is not a report. -/
 def nativeNetwork : nativeRuntime.NetworkPolicy nativeLeaks := fun _ view =>
-  FinDist.pure <| match view.network.inputs.getLast? with
+  PMF.pure <| match view.network.inputs.getLast? with
   | none => .wait
   | some input =>
       if input.broadcaster = watcher ∧ input.envelope.sender = alice then
@@ -84,7 +86,7 @@ def nativeNetwork : nativeRuntime.NetworkPolicy nativeLeaks := fun _ view =>
 
 def nativeScheduler : nativeApp.Scheduler := fun history view =>
   match nativePlan[history.length]? with
-  | none => FinDist.pure .wait
+  | none => PMF.pure .wait
   | some instruction => nativeRuntime.interactionInstruction nativeLeaks
       nativeNetwork history view instruction
 

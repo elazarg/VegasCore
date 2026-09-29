@@ -298,14 +298,14 @@ theorem environment_grant (selected : Handle nativeGraph)
     (event : nativeGraph.EventId) :
     environmentStep nativeRuntime (state selected before) (.grant event) =
       (environmentStep nativeRuntime before (.grant event)).map (state selected) := by
-  simp only [environmentStep, FinDist.map_pure]
+  simp only [environmentStep, PMF.pure_map]
   rfl
 
 theorem environment_tick (selected : Handle nativeGraph)
     (before : EventGraphRuntime.State nativeGraph) :
     environmentStep nativeRuntime (state selected before) .advanceClock =
       (environmentStep nativeRuntime before .advanceClock).map (state selected) := by
-  simp only [environmentStep, FinDist.map_pure]
+  simp only [environmentStep, PMF.pure_map]
   rfl
 
 /-- Binding expiry commutes with the hidden-value flip even on failed or
@@ -325,14 +325,14 @@ theorem environment_expire_binding (selected : Handle nativeGraph)
     | none =>
         rw [environmentStep_expire_of_not_activated nativeRuntime before event ready activated,
           environmentStep_expire_of_not_activated nativeRuntime (state selected before)
-            event ready activated, FinDist.map_pure]
+            event ready activated, PMF.pure_map]
     | some entered =>
         by_cases due : nativeRuntime.deadline event ≤ before.clock - entered
         · rw [environmentStep_expire_bind_eq nativeRuntime before event ready entered activated
             due who .bool outputEq codeEq view,
             environmentStep_expire_bind_eq nativeRuntime (state selected before) event
-              ready entered activated due who .bool outputEq codeEq view, FinDist.map_pure]
-          apply congrArg FinDist.pure
+              ready entered activated due who .bool outputEq codeEq view, PMF.pure_map]
+          apply congrArg PMF.pure
           have completed := state_complete selected before event ready
             (cast (congrArg EventGraph.EventField.Action outputEq.symm)
               (PublicationResult.failure : PublicationResult Bool))
@@ -348,10 +348,10 @@ theorem environment_expire_binding (selected : Handle nativeGraph)
         · rw [environmentStep_expire_of_not_due nativeRuntime before event ready entered
             activated due,
             environmentStep_expire_of_not_due nativeRuntime (state selected before) event
-              ready entered activated due, FinDist.map_pure]
+              ready entered activated due, PMF.pure_map]
   · rw [environmentStep_expire_of_not_ready nativeRuntime before event ready,
       environmentStep_expire_of_not_ready nativeRuntime (state selected before) event ready,
-      FinDist.map_pure]
+      PMF.pure_map]
 
 
 theorem publicView (selected : Handle nativeGraph) (before : EventGraphRuntime.State nativeGraph) :

@@ -19,8 +19,8 @@ open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 theorem reference_early_alice (bit : Bool) :
     restrictedMenu.uniformResponses alice ((aliceActivated bit).recall alice)
-      ((aliceActivated bit).observe nativeApp alice) = FinDist.pure nativeSilent := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+      ((aliceActivated bit).observe nativeApp alice) = PMF.pure nativeSilent := by
+  apply pmf_eq_pure_of_support_subset_singleton
   intro response member
   have available := (restrictedMenu.uniformResponses_support alice _ _ response).mp member
   have permitted : restrictedMenu.actions alice ((aliceActivated bit).recall alice)
@@ -35,8 +35,8 @@ theorem reference_early_alice (bit : Bool) :
 theorem reference_quiet_watcher (bit : Bool) :
     restrictedMenu.uniformResponses watcher ((watcherActivated bit nativeSilent ∅).recall watcher)
       ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher) =
-        FinDist.pure nativeSilent := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+        PMF.pure nativeSilent := by
+  apply pmf_eq_pure_of_support_subset_singleton
   intro response member
   have available := (restrictedMenu.uniformResponses_support watcher _ _ response).mp member
   have permitted : restrictedMenu.actions watcher
@@ -51,53 +51,53 @@ theorem reference_quiet_watcher (bit : Bool) :
 theorem reference_quiet_prefix (bit : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks restrictedMenu.uniformResponses nativeNetwork
       [.player alice, .player watcher, .wire, .grant bobPublication] (nativeStart bit) =
-        FinDist.pure (quietGranted bit) := by
+        PMF.pure (quietGranted bit) := by
   have wire : nativeRuntime.interactionInstruction nativeLeaks nativeNetwork
       (watcherRespond bit nativeSilent ∅ nativeSilent).environmentRecall
       ((watcherRespond bit nativeSilent ∅ nativeSilent).observeEnvironment nativeApp) .wire =
-      FinDist.pure .wait := by
-    simp only [interactionInstruction, nativeNetwork, FinDist.map_pure]
+      PMF.pure .wait := by
+    simp only [interactionInstruction, nativeNetwork, PMF.pure_map]
     rfl
   have aliceStep : nativeRuntime.interactionStep nativeLeaks restrictedMenu.uniformResponses
       nativeNetwork (.player alice) (nativeStart bit) =
-        FinDist.pure (ambientRespond bit nativeSilent) := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+        PMF.pure (ambientRespond bit nativeSilent) := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, initial_activation]
     change (restrictedMenu.uniformResponses alice ((aliceActivated bit).recall alice)
       ((aliceActivated bit).observe nativeApp alice)).map _ = _
-    rw [reference_early_alice, FinDist.map_pure]
+    rw [reference_early_alice, PMF.pure_map]
     rfl
   have watcherStep : nativeRuntime.interactionStep nativeLeaks restrictedMenu.uniformResponses
       nativeNetwork (.player watcher) (ambientRespond bit nativeSilent) =
-        FinDist.pure (watcherRespond bit nativeSilent ∅ nativeSilent) := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+        PMF.pure (watcherRespond bit nativeSilent ∅ nativeSilent) := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, quiet_watcher_activation]
     change (restrictedMenu.uniformResponses watcher
       ((watcherActivated bit nativeSilent ∅).recall watcher)
       ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher)).map _ = _
-    rw [reference_quiet_watcher, FinDist.map_pure]
+    rw [reference_quiet_watcher, PMF.pure_map]
     rfl
-  rw [runInteractionPlan, aliceStep, FinDist.pure_bind,
-    runInteractionPlan, watcherStep, FinDist.pure_bind]
+  rw [runInteractionPlan, aliceStep, PMF.pure_bind,
+    runInteractionPlan, watcherStep, PMF.pure_bind]
   rw [runInteractionPlan]
   change ((nativeRuntime.interactionInstruction nativeLeaks nativeNetwork _ _ .wire).bind _).bind
     _ = _
   rw [wire]
-  simp only [FinDist.pure_bind, ReactiveApplication.dispatch, quiet_wire]
+  simp only [PMF.pure_bind, ReactiveApplication.dispatch, quiet_wire]
   rw [show (ReactiveApplication.Command.wait : nativeApp.Command).actor? nativeApp = none
-    from rfl, ReactiveApplication.resume, FinDist.pure_bind]
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+    from rfl, ReactiveApplication.resume, PMF.pure_bind]
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, quiet_grant]
   rw [show (ReactiveApplication.Command.application (.grant bobPublication) :
     nativeApp.Command).actor? nativeApp = none from rfl,
-    ReactiveApplication.resume, FinDist.pure_bind]
+    ReactiveApplication.resume, PMF.pure_bind]
 
 theorem reference_rounds_four :
     nativeApp.roundsFrom nativeInitialLaw nativeScheduler restrictedMenu.uniformResponses 4 =
-      (FinDist.uniformOfFintype (α := Bool)).map (quietGranted) := by
-  rw [ReactiveApplication.roundsFrom, nativeInitialLaw, FinDist.bind_map]
-  rw [FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+      (PMF.uniformOfFintype (α := Bool)).map (quietGranted) := by
+  rw [ReactiveApplication.roundsFrom, nativeInitialLaw, PMF.bind_map]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro bit _
   have rounds := native_segment_rounds restrictedMenu.uniformResponses []
     [.player alice, .player watcher, .wire, .grant bobPublication] (nativePlan.drop 4)
@@ -122,11 +122,11 @@ theorem bob_control (control : nativeApp.Control)
       (native_unique_bob_activation prior.environmentRecall
         (prior.observeEnvironment nativeApp) command selected acting)
   subst count
-  rw [reference_rounds_four, FinDist.support_map] at priorMem
+  rw [reference_rounds_four, PMF.support_map] at priorMem
   obtain ⟨bit, _, rfl⟩ := priorMem
-  have commandEq : command = .activate bob := FinDist.mem_support_pure.mp selected
+  have commandEq : command = .activate bob := (PMF.mem_support_pure_iff _ _).mp selected
   subst command
-  rw [quiet_bob_activation, FinDist.mem_support_pure] at moved
+  rw [quiet_bob_activation, PMF.mem_support_pure_iff _ _] at moved
   change execution = quietBob bit at moved
   subst execution
   have remainingEq : remaining = 9 := by

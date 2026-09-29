@@ -37,7 +37,7 @@ theorem roster_scheduled_actor (setup : Setup (Player := Player) (L := L))
   rw [List.getElem?_map]
   cases selected : (rosterPlan setup rosters)[past.length]? with
   | none =>
-      rw [selected, FinDist.mem_support_pure] at supported
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       rfl
   | some instruction =>
@@ -82,7 +82,7 @@ theorem roster_roundsFrom (setup : Setup (Player := Player) (L := L))
           ((rosterPlan setup rosters).take count)
           (ReactiveApplication.Execution.initial (application setup leaks) state) := by
   unfold ReactiveApplication.roundsFrom
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro state _
   have length : ((rosterPlan setup rosters).take count).length = count :=
     List.length_take_of_le within
@@ -130,7 +130,7 @@ theorem roster_decision_supported (setup : Setup (Player := Player) (L := L))
   rw [priorCount] at source
   cases selected : (rosterPlan setup rosters)[count]? with
   | none =>
-      rw [selected, FinDist.mem_support_pure] at source
+      rw [selected, PMF.mem_support_pure_iff _ _] at source
       subst command
       cases actorEq
   | some instruction =>
@@ -145,8 +145,8 @@ theorem roster_decision_supported (setup : Setup (Player := Player) (L := L))
       have instructionEq : instruction = .player who := by
         cases instruction <;> simp_all [instructionActor]
       subst instruction
-      change command ∈ (FinDist.pure (.activate who)).support at source
-      cases FinDist.mem_support_pure.mp source
+      change command ∈ (PMF.pure (.activate who)).support at source
+      cases (PMF.mem_support_pure_iff _ _).mp source
       refine ⟨count, prior, within, position, priorCount, selected, ?_, observed⟩
       rw [roster_roundsFrom setup leaks rosters network responses.uniformResponses count
         within.le] at priorSupport

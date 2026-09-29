@@ -34,12 +34,12 @@ private theorem mixed_run_support {E : ExecutionProtocol Player} {M : Informatio
       by_cases terminal : E.terminal start.state
       · simpa only [M.runBehavioralFrom_of_terminal _ _ terminal] using supported
       · rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal,
-          FinDist.support_bind] at supported ⊢
+          PMF.support_bind] at supported ⊢
         obtain ⟨joint, _, reached⟩ := Set.mem_iUnion₂.mp supported
         refine Set.mem_iUnion₂.mpr ⟨joint, ?_, ?_⟩
         · exact M.mem_support_behavioralJoint assessment.strategy start.trace terminal
             joint.val joint.property (fun who => mixed.support_at_history start terminal who _)
-        · rw [FinDist.support_bindOnSupport] at reached ⊢
+        · rw [PMF.support_bindOnSupport] at reached ⊢
           obtain ⟨state, realized, later⟩ := Set.mem_iUnion₂.mp reached
           exact Set.mem_iUnion₂.mpr ⟨state, realized, ih _ later⟩
 
@@ -94,9 +94,9 @@ theorem roster_fullyMixed_prefix_support [Finite Player]
           (rosterScheduler setup leaks rosters network) who (menu.uniformResponses who))
         (planPrefix.length + (planPrefix.filterMap instructionActor).length + 1)).map
         History.state).support := by
-    rw [reference, FinDist.support_map]
+    rw [reference, PMF.support_map]
     exact ⟨execution, supported, rfl⟩
-  obtain ⟨history, reached, stateEq⟩ := FinDist.support_map .. ▸ present
+  obtain ⟨history, reached, stateEq⟩ := PMF.support_map .. ▸ present
   have transferred := mixed_run_support assessment mixed _ _ _ history reached
   have actual := roster_restrict_prefix_state setup leaks rosters network menu players
     covered planPrefix.length within
@@ -108,8 +108,8 @@ theorem roster_fullyMixed_prefix_support [Finite Player]
         (fun who => menu.restrictPolicy (initialLaw setup) (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network) who (players who))
         (planPrefix.length + (planPrefix.filterMap instructionActor).length + 1)).map
-        History.state).support := FinDist.support_map .. ▸ ⟨history, transferred, rfl⟩
-  rw [actual, FinDist.support_map] at endpoint
+        History.state).support := PMF.support_map .. ▸ ⟨history, transferred, rfl⟩
+  rw [actual, PMF.support_map] at endpoint
   obtain ⟨finished, reached, same⟩ := endpoint
   have sameExecution : finished = execution := by
     exact congrArg (fun state => state.map (fun control => control.execution))
@@ -167,9 +167,9 @@ theorem roster_fullyMixed_response_support
     cases absent
   have chosen := mixed.support_at_history ⟨_, trace⟩ running who choice
   have mapped : some response ∈ ((assessment.strategy who (model.infoOf who trace)).map
-      Subtype.val).support := FinDist.support_map .. ▸ ⟨choice, chosen, rfl⟩
+      Subtype.val).support := PMF.support_map .. ▸ ⟨choice, chosen, rfl⟩
   rw [strategy, observed, menu.restrictPolicy_map_val _ _ _ who _ _ _
-    (covered who _ trace rfl), FinDist.support_map] at mapped
+    (covered who _ trace rfl), PMF.support_map] at mapped
   obtain ⟨actual, present, same⟩ := mapped
   exact Option.some.inj same ▸ present
 
@@ -222,28 +222,28 @@ theorem roster_fullyMixed_response_prefix_support [Finite Player]
           (players actor))
         (before.length + (((rosterPlan setup rosters).take before.length).filterMap
           instructionActor).length + 2)).map History.state).support :=
-    FinDist.support_map .. ▸ ⟨⟨_, trace⟩, support, rfl⟩
-  rw [law, FinDist.support_map] at mapped
+    PMF.support_map .. ▸ ⟨⟨_, trace⟩, support, rfl⟩
+  rw [law, PMF.support_map] at mapped
   obtain ⟨activated, activatedSupport, same⟩ := mapped
   have executionEq : activated = execution := Option.some.inj
     (congrArg (fun state => state.map (fun control => control.execution)) same)
   subst activated
-  rw [prefixEq, FinDist.support_bind] at activatedSupport
+  rw [prefixEq, PMF.support_bind] at activatedSupport
   obtain ⟨prior, priorSupport, activatedSupport⟩ := Set.mem_iUnion₂.mp activatedSupport
   obtain ⟨initial, initialSupport, beforeSupport⟩ := Set.mem_iUnion₂.mp
-    (FinDist.support_bind .. ▸ priorSupport)
+    (PMF.support_bind .. ▸ priorSupport)
   have chosen := roster_fullyMixed_response_support setup leaks rosters network menu players
     covered assessment strategy mixed who remaining execution trace response allowed
-  rw [split, FinDist.support_bind]
+  rw [split, PMF.support_bind]
   refine Set.mem_iUnion₂.mpr ⟨initial, initialSupport, ?_⟩
-  rw [runInteractionPlan_append, FinDist.support_bind]
+  rw [runInteractionPlan_append, PMF.support_bind]
   refine Set.mem_iUnion₂.mpr ⟨prior, beforeSupport, ?_⟩
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-    FinDist.bind_bind, FinDist.support_bind]
+    PMF.bind_bind, PMF.support_bind]
   refine Set.mem_iUnion₂.mpr ⟨execution, activatedSupport, ?_⟩
   refine Set.mem_iUnion₂.mpr ⟨execution.respond app who response, ?_, reached⟩
-  exact FinDist.support_map .. ▸ ⟨response, chosen, rfl⟩
+  exact PMF.support_map .. ▸ ⟨response, chosen, rfl⟩
 
 end
 

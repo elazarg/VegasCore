@@ -104,15 +104,15 @@ theorem sourceService_recorded_plan_application_law
       sourceServiceTimedPolicy_recorded_transport setup leaks rosters timing profile event owner
         owned execution granted recorded current same recalled actor action supported)
     event message authored addressed packets pending unpublished visits
-  have applicationLaw := congrArg (FinDist.map Prod.fst) settled
-  simp only [FinDist.map_comp, Function.comp_def, FinDist.map_pure] at applicationLaw
+  have applicationLaw := congrArg (PMF.map Prod.fst) settled
+  simp only [PMF.map_comp, Function.comp_def, PMF.pure_map] at applicationLaw
   have passive : ∀ instruction ∈ ending, instruction ≠ .wire ∧
       (∀ actor, instruction ≠ .player actor) ∧
       ∀ selected actor, instruction ≠ .includeLatest selected actor := by
     intro instruction member
     simp only [ending, List.mem_append, List.mem_replicate, List.mem_singleton] at member
     rcases member with ⟨_, rfl⟩ | rfl <;> simp
-  rw [runInteractionPlan_append, FinDist.map_bind]
+  rw [runInteractionPlan_append, PMF.map_bind]
   calc
     _ = ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution).bind
@@ -120,16 +120,16 @@ theorem sourceService_recorded_plan_application_law
             { execution with
               application := (app.handle execution.application message).getD
                 execution.application }).map ReactiveApplication.Execution.application) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro final reached
       have present : final.application ∈ (((runtime setup).runInteractionPlan leaks players
           network (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution).map ReactiveApplication.Execution.application).support :=
-        FinDist.support_map .. ▸ ⟨final, reached, rfl⟩
-      rw [applicationLaw, FinDist.mem_support_pure] at present
+        PMF.support_map .. ▸ ⟨final, reached, rfl⟩
+      rw [applicationLaw, PMF.mem_support_pure_iff _ _] at present
       exact (runtime setup).application_service_law leaks players network ending passive _ _
         present
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 /-- Any transport response after a known current submission leaves the exact
 application settlement law unchanged, including all later clock commands. -/
@@ -284,8 +284,8 @@ theorem recorded_phase_invariant {who : Player} {remaining : Nat}
       phase.visits (phase.event.val + 1)
   have applications := (law first firstAllowed).trans (law second secondAllowed).symm
   simp only [phaseConfigLaw, phaseLaw, DecisionPhase.tail, ending]
-  simpa only [List.append_assoc, FinDist.map_comp, Function.comp_def] using
-    congrArg (FinDist.map EventGraphRuntime.State.config) applications
+  simpa only [List.append_assoc, PMF.map_comp, Function.comp_def] using
+    congrArg (PMF.map EventGraphRuntime.State.config) applications
 
 open Classical in
 /-- At an owner's information site after its binding is recorded, every local
@@ -298,7 +298,7 @@ theorem recorded_comparison_eq (who : Player) (site : service.model.InformationS
     (outputEq : (graph service.setup).outputLayout event = .binding who payload)
     (granted : view.application.publicView.serviceGrant = some event)
     (recorded : (runtime service.setup).eventRecorded service.leaks past event = true)
-    (law : FinDist (service.model.Choice who site.1)) :
+    (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparison service.readout service.fuel
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by

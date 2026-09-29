@@ -55,9 +55,9 @@ theorem uncertified_ledger (control : app.Control) (trace : arena.Trace (some co
     ∀ sent ∈ control.execution.network.ledger, ∀ fact,
       sent.payload.evidence = some fact → fact.handle ≠ selected := by
   intro sent published fact certified sameHandle
-  have raw := menu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon scheduler trace
+  have raw := menu.toRawTrace (PMF.pure nativeInitial) nativeHorizon scheduler trace
   have sound := (nativeRuntime.packetEvidence leaks).history_sound
-    (FinDist.pure nativeInitial) nativeHorizon scheduler raw
+    (PMF.pure nativeInitial) nativeHorizon scheduler raw
   have factValid : fact.Holds control.execution.application :=
     sound.ledger sent published fact (by
       change fact ∈ sent.payload.evidence.toList
@@ -93,8 +93,8 @@ theorem no_certificate_observed (control : app.Control) (trace : arena.Trace (so
       sent.payload.evidence = some fact → fact.handle ≠ selected) (who : Player) :
     ∀ sent ∈ control.execution.network.leaked who ++ control.execution.network.ledger,
       ∀ fact, sent.payload.evidence = some fact → fact.handle ≠ selected := by
-  have raw := menu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon scheduler trace
-  have empty := app.history_leaked_empty (by intros; rfl) (FinDist.pure nativeInitial)
+  have raw := menu.toRawTrace (PMF.pure nativeInitial) nativeHorizon scheduler trace
+  have empty := app.history_leaked_empty (by intros; rfl) (PMF.pure nativeInitial)
     nativeHorizon scheduler raw who
   simpa only [empty, List.nil_append] using unpublished
 
@@ -107,8 +107,8 @@ theorem no_foreign_certificate_known (control : app.Control)
       sent.payload.evidence = some fact → fact.handle ≠ selected := by
   intro sent known fact certified sameHandle
   obtain ⟨publication, published, carried⟩ := nativeRuntime.foreign_certificate_published leaks
-    (by intros; rfl) (FinDist.pure nativeInitial) nativeHorizon scheduler control
-    (menu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon scheduler trace)
+    (by intros; rfl) (PMF.pure nativeInitial) nativeHorizon scheduler control
+    (menu.toRawTrace (PMF.pure nativeInitial) nativeHorizon scheduler trace)
     who sent known fact certified (by rwa [sameHandle])
   exact unpublished publication published fact carried sameHandle
 
@@ -129,16 +129,16 @@ theorem environmentResult_ledger_subset (execution : app.Execution) (command : a
   have reached : environmentResult execution command ∈
       (execution.environmentStep app command).support := by
     rw [environmentResult_law]
-    exact FinDist.mem_support_pure.mpr rfl
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
   cases command with
   | activate who => rw [environmentResult_activate]; exact List.Subset.refl _
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.mem_support_pure] at reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at reached
       rw [reached]
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.mem_support_pure] at reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at reached
       rw [reached]
       cases found : execution.network.lookup id <;>
         simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
@@ -146,8 +146,8 @@ theorem environmentResult_ledger_subset (execution : app.Execution) (command : a
       · exact List.Subset.refl _
       · exact List.subset_append_left _ _
   | application command =>
-      obtain ⟨updated, supported, same⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, updatedEq⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, same⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, updatedEq⟩ := PMF.support_map .. ▸ supported
       rw [← same, ← updatedEq]
 
 theorem bob_ledger_subset (responses : BobResponses) :
@@ -170,7 +170,7 @@ theorem environmentResult_inputRecall (execution : app.Execution) (command : app
     (environmentResult execution command).InputRecall app := by
   apply app.environment_inputRecall execution _ command valid
   rw [environmentResult_law]
-  exact FinDist.mem_support_pure.mpr rfl
+  exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem bobPrelude_inputRecall (first : app.Action) : (bobPreludeInput first).InputRecall app :=
   app.respond_inputRecall _ alice first (app.initial_inputRecall nativeInitial)

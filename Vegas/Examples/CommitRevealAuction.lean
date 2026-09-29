@@ -43,23 +43,23 @@ def program : SourceProgram Player simpleExpr [] ∅ :=
 def setup : Setup (Player := Player) (L := simpleExpr) where
   context := []
   namesNodup := by decide
-  initialLaw := FinDist.pure (Env.empty (CellVal simpleExpr))
+  initialLaw := PMF.pure (Env.empty (CellVal simpleExpr))
   obligations := ∅
   program := program
   accounts := rfl
 
 /-- Alice binds the supplied report and always discloses it. -/
 def alicePolicy (report : Int) : BehavioralPolicy Player.alice program :=
-  (fun _ _ => FinDist.pure (.success report),
+  (fun _ _ => PMF.pure (.success report),
     ((fun h => nomatch h),
-      (fun _ _ => FinDist.pure true, ((fun h => nomatch h), PUnit.unit))))
+      (fun _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
 
 /-- Bob binds 4 and discloses precisely when Alice's public report is 5. -/
 def bobPolicy : BehavioralPolicy Player.bob program :=
   ((fun h => nomatch h),
-    (fun _ _ => FinDist.pure (.success 4),
+    (fun _ _ => PMF.pure (.success 4),
       ((fun h => nomatch h),
-        (fun _ view => FinDist.pure (match view.1.cells.get .here with
+        (fun _ view => PMF.pure (match view.1.cells.get .here with
           | .failure => false
           | .success bid => decide (bid = (5 : Int))),
           PUnit.unit))))
@@ -94,19 +94,19 @@ def utility (values : Player → ℝ) (forfeiture : ℝ)
       | .success a => if a < b then values .bob - a else 0
 
 theorem play_truthful :
-    setup.valueBindingGame.play (profile 5) = FinDist.pure (result (.success 5) (.success 4)) := by
+    setup.valueBindingGame.play (profile 5) = PMF.pure (result (.success 5) (.success 4)) := by
   simp only [Setup.valueBindingGame, Setup.publicRun, Setup.run, setup, valueBindingProfile,
     profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
     program, runWith, commitKernel, revealKernel, afterCommit, afterReveal,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 theorem play_misreport :
-    setup.valueBindingGame.play (profile 6) = FinDist.pure (result (.success 6) .failure) := by
+    setup.valueBindingGame.play (profile 6) = PMF.pure (result (.success 6) .failure) := by
   simp only [Setup.valueBindingGame, Setup.publicRun, Setup.run, setup, valueBindingProfile,
     profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
     program, runWith, commitKernel, revealKernel, afterCommit, afterReveal,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 theorem update_profile (before after : Int) :

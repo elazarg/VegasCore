@@ -12,11 +12,11 @@ namespace Vegas.Examples.ReactiveEarlyOpening
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction
 open Vegas Vegas.EventGraphRuntime
 
-def half {α : Type*} (first second : FinDist α) : FinDist α :=
-  FinDist.mix (1 / 2) (by norm_num) (by norm_num) first second
+def half {α : Type*} (first second : PMF α) : PMF α :=
+  mix (1 / 2) (by norm_num) (by norm_num) first second
 
-def third {α : Type*} (first rest : FinDist α) : FinDist α :=
-  FinDist.mix (1 / 3) (by norm_num) (by norm_num) first rest
+def third {α : Type*} (first rest : PMF α) : PMF α :=
+  mix (1 / 3) (by norm_num) (by norm_num) first rest
 
 def bindingAction : app.Action :=
   ⟨some (.submit ⟨⟨.commitment 0 ((), .prepared 1), some ⟨.int, 0⟩⟩, .none⟩)⟩
@@ -59,8 +59,8 @@ def finished (repair fresh : Bool) (serial : Nat) : app.Execution :=
       [⟨before.observeEnvironment app, .include ((), serial)⟩] }
 
 theorem selection_pair (a b : MessageId Unit) (different : a ≠ b) :
-    MessageNetwork.chooseUniform {a, b} = half (FinDist.pure (some a))
-      (FinDist.pure (some b)) := by
+    MessageNetwork.chooseUniform {a, b} = half (PMF.pure (some a))
+      (PMF.pure (some b)) := by
   rw [MessageNetwork.chooseUniform_insert {b} (Finset.singleton_nonempty b) a (by
     simpa using different), MessageNetwork.chooseUniform_singleton]
   simp only [Finset.card_singleton, Nat.cast_one]
@@ -68,18 +68,18 @@ theorem selection_pair (a b : MessageId Unit) (different : a ≠ b) :
 
 theorem binding_selection (repair : Bool) :
     select 0 ((afterResponse repair).observeEnvironment app) =
-      if repair then half (FinDist.pure (.include ((), 0)))
-        (FinDist.pure (.include ((), 2)))
-      else FinDist.pure (.include ((), 0)) := by
+      if repair then half (PMF.pure (.include ((), 0)))
+        (PMF.pure (.include ((), 2)))
+      else PMF.pure (.include ((), 0)) := by
   cases repair with
   | false =>
       change ((MessageNetwork.chooseUniform {((), 0)}).map _).map _ = _
-      rw [MessageNetwork.chooseUniform_singleton, FinDist.map_pure, FinDist.map_pure]
+      rw [MessageNetwork.chooseUniform_singleton, PMF.pure_map, PMF.pure_map]
       rfl
   | true =>
       change ((MessageNetwork.chooseUniform {((), 0), ((), 2)}).map _).map _ = _
       rw [selection_pair _ _ (by decide)]
-      simp only [half, FinDist.map_mix, FinDist.map_pure]
+      simp only [half, mix_map, PMF.pure_map]
       rfl
 
 def candidate (fresh : Bool) : Handle graph := ((), .prepared (if fresh then 1 else 0))

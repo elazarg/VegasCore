@@ -34,7 +34,7 @@ def coalesceNativePolicy (runtime : EventGraphRuntime graph) (who : Player)
   fun input => runtime.compileResponse who policy (budget input) input
 
 variable (runtime : EventGraphRuntime graph)
-  (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+  (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
   (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
   (budget : Player → NativeInput graph → Nat)
   (adequate : runtime.ResponseBudgetAdequate inputs roster reactionRounds wire order budget)
@@ -53,7 +53,7 @@ private theorem responseBoundaries_step
   cases stateEq : history.state with
   | none =>
       rw [stateEq] at reached
-      obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact fun _ => rfl
   | some control =>
       rcases control with ⟨epochs, plan, execution⟩
@@ -61,9 +61,9 @@ private theorem responseBoundaries_step
       cases plan with
       | nil =>
           cases epochs with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ epochs =>
-              obtain ⟨chosen, _, rfl⟩ := FinDist.support_map .. ▸ reached
+              obtain ⟨chosen, _, rfl⟩ := PMF.support_map .. ▸ reached
               exact valid
       | cons instruction rest =>
           cases instruction with
@@ -87,7 +87,7 @@ private theorem responseBoundaries_step
               change budget who (runtime.nativeInput who execution) =
                 responseLength who (.player who :: rest) at count
               simp only [responseTransition, selected, Option.getD_some,
-                FinDist.mem_support_pure] at reached
+                PMF.mem_support_pure_iff _ _] at reached
               subst after
               intro observer
               by_cases same : observer = who
@@ -102,8 +102,8 @@ private theorem responseBoundaries_step
                   execution.principalHistory observer from recall]
                 exact valid observer
           | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-              obtain ⟨next, _, rfl⟩ := FinDist.support_map .. ▸ supported
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ reached
+              obtain ⟨next, _, rfl⟩ := PMF.support_map .. ▸ supported
               exact valid
 
 /-- Every legal response history has completed recall batches for every

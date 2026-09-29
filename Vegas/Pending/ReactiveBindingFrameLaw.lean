@@ -50,7 +50,7 @@ theorem binding_response_coupling
         ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = (app.invoke players owner original).bind
         (runtime.interactionStep leaks players scheduler (.includeLatest event owner)) ∧
       coupling.map Prod.snd =
@@ -80,22 +80,22 @@ theorem binding_response_coupling
       runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         (execution.respond app owner
           ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) =
-        FinDist.pure (finish (execution.respond app owner
+        PMF.pure (finish (execution.respond app owner
           ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩)) := by
     rw [runtime.rawBinding_reserved_selection leaks execution owner event serial opening
       before players scheduler, nonce]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   have originalStep (response : app.Action) (member : response ∈ law.support) :
       runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         (original.respond app owner response) =
-        FinDist.pure (finish (original.respond app owner response)) := by
+        PMF.pure (finish (original.respond app owner response)) := by
     obtain ⟨opening, rfl⟩ := canonical response member
     exact selected original opening serials rfl
   have repairedStep (response : app.Action) (member : response ∈ law.support) :
       runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         (repaired.respond app owner (responsePair response).1) =
-        FinDist.pure (finish (repaired.respond app owner (responsePair response).1)) := by
+        PMF.pure (finish (repaired.respond app owner (responsePair response).1)) := by
     obtain ⟨opening, rfl⟩ := canonical response member
     have originalFresh : (memory.shadow.inputView runtime leaks
         (repaired.observe app owner)).application.candidates (.prepared serial) = .fresh := by
@@ -126,14 +126,14 @@ theorem binding_response_coupling
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
     simp only [responsePair, law, app, frame.observed]
   refine ⟨coupling, ?_, ?_, ?_⟩
-  · simp only [coupling, FinDist.map_comp, ReactiveApplication.invoke, FinDist.bind_map]
+  · simp only [coupling, PMF.map_comp, ReactiveApplication.invoke, PMF.bind_map]
     change law.map (fun response => finish (original.respond app owner response)) = _
-    rw [FinDist.map_eq_bind]
-    apply FinDist.bind_congr
+    rw [← PMF.bind_pure_comp, Function.comp_def]
+    apply bind_congr_on_support _
     intro response member
     exact (originalStep response member).symm
-  · simp only [coupling, FinDist.map_comp, ReactiveApplication.Implementation.resume,
-      ↓reduceIte, FinDist.bind_map]
+  · simp only [coupling, PMF.map_comp, ReactiveApplication.Implementation.resume,
+      ↓reduceIte, PMF.bind_map]
     change law.map (fun response =>
       (finish (repaired.respond app owner (responsePair response).1),
         (responsePair response).2)) =
@@ -141,13 +141,13 @@ theorem binding_response_coupling
         (fun response => (runtime.interactionStep leaks players scheduler
           (.includeLatest event owner) (repaired.respond app owner response.1)).map
             fun execution => (execution, response.2))
-    rw [responseLaw, FinDist.bind_map]
-    rw [FinDist.map_eq_bind]
-    apply FinDist.bind_congr
+    rw [responseLaw, PMF.bind_map]
+    rw [← PMF.bind_pure_comp, Function.comp_def]
+    apply bind_congr_on_support _
     intro response member
-    rw [repairedStep response member, FinDist.map_pure]
+    rw [repairedStep response member, PMF.pure_map]
   · intro next member
-    obtain ⟨response, supported, rfl⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member
     obtain ⟨opening, rfl⟩ := canonical response supported
     exact frame.binding event payload outputEq codeEq node serial opening fresh ready timely
       vacant unused serials

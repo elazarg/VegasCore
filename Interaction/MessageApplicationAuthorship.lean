@@ -81,13 +81,13 @@ theorem playerStep_authorship
   have nativeMem : next.native ∈
       ((app.playerStep who execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
   rw [app.playerStep_native] at nativeMem
   rcases authorship with ⟨counters, messages⟩
   cases command with
   | privateCommand privateCommand =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at nativeMem
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at nativeMem
       unfold Authorship
       rw [nativeMem]
       refine ⟨?_, messages.mono ?_⟩
@@ -102,7 +102,7 @@ theorem playerStep_authorship
           simpa [historySelf] using safe
         · simpa [historyOther message.id.1 hsender] using safe
   | submit payload =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at nativeMem
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at nativeMem
       unfold Authorship
       rw [nativeMem]
       refine ⟨?_, ?_⟩
@@ -129,7 +129,7 @@ theorem playerStep_authorship
         apply old.submit who payload
         simp [historySelf, counters who]
   | replay id =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at nativeMem
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at nativeMem
       unfold Authorship
       rw [nativeMem]
       refine ⟨?_, (messages.replay who id).mono ?_⟩
@@ -144,7 +144,7 @@ theorem playerStep_authorship
           simpa [historySelf] using safe
         · simpa [historyOther message.id.1 hsender] using safe
   | wait =>
-      simp only [PlayerCommand.toAction, FinDist.mem_support_pure] at nativeMem
+      simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at nativeMem
       unfold Authorship
       rw [nativeMem]
       refine ⟨?_, messages.mono ?_⟩
@@ -166,28 +166,28 @@ theorem environmentStep_nextSerial
   have nativeMem : next.native ∈
       ((app.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
   rw [app.environmentStep_native] at nativeMem
   intro who
   cases command with
   | deliver observer id =>
       simp only [EnvironmentPolicyCommand.toAction, step,
-        FinDist.mem_support_pure] at nativeMem
+        PMF.mem_support_pure_iff _ _] at nativeMem
       rw [nativeMem]
       simp
   | «include» id =>
       simp only [EnvironmentPolicyCommand.toAction, step,
-        FinDist.mem_support_pure] at nativeMem
+        PMF.mem_support_pure_iff _ _] at nativeMem
       rw [nativeMem, includePending_pool]
       exact MessagePool.include_preserves_nextSerial _ _ _
   | application applicationCommand =>
-      simp only [EnvironmentPolicyCommand.toAction, step, FinDist.support_map,
+      simp only [EnvironmentPolicyCommand.toAction, step, PMF.support_map,
         Set.mem_image] at nativeMem
       obtain ⟨applicationNext, _, nativeEq⟩ := nativeMem
       rw [← nativeEq]
   | wait =>
-      simp only [EnvironmentPolicyCommand.toAction, FinDist.mem_support_pure] at nativeMem
+      simp only [EnvironmentPolicyCommand.toAction, PMF.mem_support_pure_iff _ _] at nativeMem
       rw [nativeMem]
 
 theorem environmentStep_authorship

@@ -65,21 +65,21 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
         event ∧
         runtime.reactiveAlreadySubmitted leaks history event = false := by
   rw [prescribedReactivePolicy_apply] at supported
-  obtain ⟨intentions, _, produced⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨⟨response, intention⟩, issued, rfl⟩ := FinDist.support_map .. ▸ produced
+  obtain ⟨intentions, _, produced⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨⟨response, intention⟩, issued, rfl⟩ := PMF.support_map .. ▸ produced
   unfold prescribedReactiveResponse at issued
   split at issued
-  · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
+  · cases (PMF.mem_support_pure_iff _ _).mp issued; exact Or.inl rfl
   · rename_i event grant
     split at issued
-    · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
+    · cases (PMF.mem_support_pure_iff _ _).mp issued; exact Or.inl rfl
     · rename_i unsent
       have absent : runtime.reactiveAlreadySubmitted leaks history event = false :=
         Bool.eq_false_iff.mpr unsent
       split at issued
       · split at issued
         · split at issued
-          · obtain ⟨choice, _, image⟩ := FinDist.support_map .. ▸ issued
+          · obtain ⟨choice, _, image⟩ := PMF.support_map .. ▸ issued
             have responseEq := congrArg Prod.fst image
             dsimp only at responseEq
             subst response
@@ -88,9 +88,9 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
               silent | ⟨material, sent, addressed⟩
             · exact Or.inl silent
             · exact Or.inr ⟨event, material, sent, addressed, absent⟩
-          · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
-        · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
-      · cases FinDist.mem_support_pure.mp issued; exact Or.inl rfl
+          · cases (PMF.mem_support_pure_iff _ _).mp issued; exact Or.inl rfl
+        · cases (PMF.mem_support_pure_iff _ _).mp issued; exact Or.inl rfl
+      · cases (PMF.mem_support_pure_iff _ _).mp issued; exact Or.inl rfl
 
 def reactiveSubmittedEvents (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -148,27 +148,27 @@ omit [DecidableEq Player] in
 /-- Every recovery choice is supported by the current source decision law,
 including choices taken from private memory. -/
 theorem reactiveRecoveryLaw_support (intentions : List (Option graph.Completion))
-    (event : graph.EventId) (law : FinDist (graph.Action event)) (action : graph.Action event)
+    (event : graph.EventId) (law : PMF (graph.Action event)) (action : graph.Action event)
     (supported : action ∈ (reactiveRecoveryLaw intentions event law).support) :
     action ∈ law.support := by
   classical
   dsimp only [reactiveRecoveryLaw] at supported
   split at supported
   · rename_i remembered selected found
-    cases FinDist.mem_support_pure.mp supported
+    cases (PMF.mem_support_pure_iff _ _).mp supported
     exact of_decide_eq_true (List.find?_eq_some_iff_append.mp found).1
   · exact supported
 
 omit [DecidableEq Player] in
 theorem reactiveRecoveryLaw_pure (intentions : List (Option graph.Completion))
     (event : graph.EventId) (action : graph.Action event) :
-    reactiveRecoveryLaw intentions event (FinDist.pure action) =
-      FinDist.pure action := by
+    reactiveRecoveryLaw intentions event (PMF.pure action) =
+      PMF.pure action := by
   classical
   dsimp only [reactiveRecoveryLaw]
   split
   · rename_i remembered selected found
-    have same : selected = action := FinDist.mem_support_pure.mp
+    have same : selected = action := (PMF.mem_support_pure_iff _ _).mp
       (of_decide_eq_true (List.find?_eq_some_iff_append.mp found).1)
     rw [same]
   · rfl
@@ -177,10 +177,10 @@ omit [DecidableEq Player] in
 /-- Once a recovery response records a supported choice, another activation
 reuses that choice as long as it is still supported. -/
 theorem reactiveRecoveryLaw_remembered (intentions : List (Option graph.Completion))
-    (event : graph.EventId) (law : FinDist (graph.Action event)) (action : graph.Action event)
+    (event : graph.EventId) (law : PMF (graph.Action event)) (action : graph.Action event)
     (supported : action ∈ law.support) :
     reactiveRecoveryLaw (intentions ++ [some ⟨event, action⟩]) event law =
-      FinDist.pure action := by
+      PMF.pure action := by
   classical
   simp [reactiveRecoveryLaw, supported]
 
@@ -189,16 +189,16 @@ omit [DecidableEq Player] in
 The fixed downstream kernel premise still has to be proved for a service;
 this result alone does not assert native SPE. -/
 theorem reactiveRecoveryLaw_optimal_response (intentions : List (Option graph.Completion))
-    (event : graph.EventId) (law retained : FinDist (graph.Action event))
-    {Outcome : Type} (continuation : graph.Action event → FinDist Outcome)
+    (event : graph.EventId) (law retained : PMF (graph.Action event))
+    {Outcome : Type} (continuation : graph.Action event → PMF Outcome)
     (utility : Outcome → ℝ) (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (optimal : ∀ action, (continuation action).expect utility ≤
-      (law.bind continuation).expect utility)
-    (alternative : FinDist (Option (graph.Action event))) :
-    ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained alternative).bind
-      continuation).expect utility ≤
-    ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained
-      ((reactiveRecoveryLaw intentions event law).map some)).bind continuation).expect
+    (optimal : ∀ action, expect (continuation action) utility ≤
+      expect (law.bind continuation) utility)
+    (alternative : PMF (Option (graph.Action event))) :
+    expect ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained alternative).bind
+      continuation) utility ≤
+    expect ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained
+      ((reactiveRecoveryLaw intentions event law).map some)).bind continuation)
         utility :=
   GameTheory.PendingChoice.optimal_response_of_support weight nonnegative atMostOne retained law
     _ continuation utility optimal
@@ -211,7 +211,7 @@ theorem compileReactivePolicy_canonical_run (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (fuel : Nat) :
     let app := runtime.reactiveApplication leaks
     (((app.information initial horizon scheduler).runSingleMoverBehavioralFrom

@@ -71,14 +71,14 @@ theorem resolution_submission_inclusion (players : Player → nativeApp.Policy)
     (nativeRuntime.interactionStep nativeLeaks players nativeNetwork (.includeLatest event who)
       (execution.respond nativeApp who ⟨some (.submit submission)⟩)).map
         (fun result => (result.application, result.receipts)) =
-      FinDist.pure
+      PMF.pure
         (next, execution.receipts ++ [((who, execution.network.nextSerial who), true)]) :=
     by
   have selected := nativeRuntime.reactiveLatest_after_submit nativeLeaks who event execution
     serials submission addressed
-  simp only [interactionStep, interactionInstruction, selected, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, selected, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    FinDist.map_pure, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
+    PMF.pure_map, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
   have lookup : (execution.respond nativeApp who ⟨some (.submit submission)⟩).network.lookup
       (who, execution.network.nextSerial who) =
       some ⟨(who, execution.network.nextSerial who),
@@ -86,7 +86,7 @@ theorem resolution_submission_inclusion (players : Player → nativeApp.Policy)
           who (execution.network.known who)⟩ := serials.lookup_submit who _
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [lookup]
-  change FinDist.pure
+  change PMF.pure
     (((handle nativeRuntime
       (execution.respond nativeApp who ⟨some (.submit submission)⟩).application
       ⟨(who, execution.network.nextSerial who), submission.call.packet⟩).getD
@@ -108,7 +108,7 @@ theorem resolution_opening_inclusion (players : Player → nativeApp.Policy)
     (nativeRuntime.interactionStep nativeLeaks players nativeNetwork (.includeLatest event who)
       (execution.respond nativeApp who (nativeOpeningAction event candidate bit))).map
         (fun result => (result.application, result.receipts)) =
-      FinDist.pure
+      PMF.pure
         (next, execution.receipts ++ [((who, execution.network.nextSerial who), true)]) :=
   resolution_submission_inclusion players execution who event _ next serials rfl rfl accepted
 
@@ -121,7 +121,7 @@ theorem resolution_withhold_inclusion (players : Player → nativeApp.Policy)
       (.includeLatest bobPublication bob)
       (execution.respond nativeApp bob (nativeGuessAction false))).map
         (fun result => (result.application, result.receipts)) =
-      FinDist.pure
+      PMF.pure
         (next, execution.receipts ++ [((bob, execution.network.nextSerial bob), true)]) :=
   resolution_submission_inclusion players execution bob bobPublication _ next serials rfl rfl
     accepted

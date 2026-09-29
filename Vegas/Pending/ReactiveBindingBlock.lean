@@ -43,9 +43,9 @@ theorem reactiveBinding_reserved_selection (runtime : EventGraphRuntime graph)
       _ rfl
   change runtime.interactionStep leaks players network (.includeLatest event owner) submitted = _
   unfold interactionStep
-  rw [interactionInstruction, selected, FinDist.pure_bind]
+  rw [interactionInstruction, selected, PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-  exact FinDist.bind_pure _
+  exact PMF.bind_pure _
 
 /-- A single compiled binding response followed by actual reserved inclusion
 has exactly the graph commit kernel and a successful receipt. All freshness,
@@ -72,7 +72,7 @@ theorem reactiveBinding_reserved_config (runtime : EventGraphRuntime graph)
       (runtime.reactiveBinding leaks owner event payload result serial)
     (runtime.interactionStep leaks players network (.includeLatest event owner) submitted).map
       (fun next => (next.application.config, next.receipts)) =
-      FinDist.pure (execution.application.config.complete event ready
+      PMF.pure (execution.application.config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) result)
         (cast (congrArg EventField.Value outputEq.symm) result),
         execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
@@ -107,9 +107,9 @@ theorem reactiveBinding_reserved_config (runtime : EventGraphRuntime graph)
         ⟨.commitment event (owner, .prepared serial), none⟩⟩ := by
     cases result <;> exact serials.lookup_submit owner
       ⟨.commitment event (owner, .prepared serial), none⟩
-  let scheduler : app.Scheduler := fun _ _ => FinDist.pure .wait
+  let scheduler : app.Scheduler := fun _ _ => PMF.pure .wait
   have reached : submitted ∈ (app.runRounds scheduler players 0 submitted).support := by
-    simp only [ReactiveApplication.runRounds, FinDist.mem_support_pure]
+    simp only [ReactiveApplication.runRounds, PMF.mem_support_pure_iff _ _]
   obtain ⟨completed, receipt⟩ := runtime.reactiveBinding_continuation_include leaks owner event
     payload outputEq codeEq node result serial (execution.network.nextSerial owner) execution
     submitted fresh scheduler players 0 reached pending submittedReady submittedTimely
@@ -120,8 +120,8 @@ theorem reactiveBinding_reserved_config (runtime : EventGraphRuntime graph)
   dsimp only
   rw [runtime.reactiveBinding_reserved_selection leaks execution owner event payload result serial
     serials players network]
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
-  exact congrArg FinDist.pure (Prod.ext completed receipt)
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+  exact congrArg PMF.pure (Prod.ext completed receipt)
 
 /-- At initialization, a first binding node needs only its positive declared
 deadline. Candidate freshness, handle availability and transport freshness all
@@ -144,7 +144,7 @@ theorem reactiveBinding_initialized_config (runtime : EventGraphRuntime graph)
         (execution.respond app owner
           (runtime.reactiveBinding leaks owner event payload result serial))).map
           (fun next => (next.application.config, next.receipts)) =
-        FinDist.pure (execution.application.config.complete event ready
+        PMF.pure (execution.application.config.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) result)
           (cast (congrArg EventField.Value outputEq.symm) result), [((owner, 0), true)]) := by
   let app := runtime.reactiveApplication leaks

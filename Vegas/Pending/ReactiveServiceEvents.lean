@@ -94,16 +94,16 @@ theorem compiled_window_other_events (bounds : MessageBounds graph)
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | cons actor rest ih =>
-      obtain ⟨middle, moved, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at moved
+      obtain ⟨middle, moved, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at moved
       change middle ∈ ((initial.environmentStep app (.activate actor)).bind
         (app.invoke players actor)).support at moved
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at moved
-      obtain ⟨sample, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ moved
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at moved
+      obtain ⟨sample, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ moved
       let activated := initial.sampledActivation app actor sample
       have publicEq := (runtime.reactive_respond_application leaks activated actor response).2
       have grant : (activated.respond app actor response).application.serviceGrant =

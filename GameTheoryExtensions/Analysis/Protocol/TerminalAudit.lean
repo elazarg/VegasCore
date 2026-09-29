@@ -27,48 +27,48 @@ variable {Player Outcome Observation : Type}
 /-- Probability that this player's charge is actually collected. An alarm
 that cannot be collected must instead return `false` in this verdict. -/
 def charge (observe : Outcome → Observation)
-    (audit : Observation → FinDist (Player → Bool)) (outcome : Outcome) (who : Player) : ℝ :=
-  ((audit (observe outcome)).map (fun verdict => verdict who)).prob true
+    (audit : Observation → PMF (Player → Bool)) (outcome : Outcome) (who : Player) : ℝ :=
+  (((audit (observe outcome)).map (fun verdict => verdict who)) true).toReal
 
 /-- The terminal service's joint realized payoff vector. -/
 def settlement (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
-    (audit : Observation → FinDist (Player → Bool)) (deposit : Player → ℝ)
-    (outcome : Outcome) : FinDist (Player → ℝ) :=
+    (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
+    (outcome : Outcome) : PMF (Player → ℝ) :=
   (audit (observe outcome)).map (fun verdict who =>
     base outcome who - if verdict who then deposit who else 0)
 
 /-- Expected terminal utility; all audit randomness occurs after strategic play. -/
 def utility (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
-    (audit : Observation → FinDist (Player → Bool)) (deposit : Player → ℝ)
+    (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (outcome : Outcome) (who : Player) : ℝ :=
   base outcome who - charge observe audit outcome who * deposit who
 
 theorem settlement_expect (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
-    (audit : Observation → FinDist (Player → Bool)) (deposit : Player → ℝ)
+    (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (outcome : Outcome) (who : Player) :
-    (settlement base observe audit deposit outcome).expect (fun payoffs => payoffs who) =
+    expect (settlement base observe audit deposit outcome) (fun payoffs => payoffs who) =
       utility base observe audit deposit outcome who := by
-  have reduced := expect_monitoredUtility (FinDist.pure outcome) (fun result => base result who)
+  have reduced := expect_monitoredUtility (PMF.pure outcome) (fun result => base result who)
     observe (fun observed => (audit observed).map (fun verdict => verdict who)) (deposit who)
-  simpa only [FinDist.expect_pure, FinDist.map_pure, FinDist.pure_bind, monitoredUtility,
-    FinDist.map_comp, Function.comp_def, FinDist.expect_map, id_eq, settlement, utility, charge]
+  simpa only [expect_pure, PMF.pure_map, PMF.pure_bind, monitoredUtility,
+    PMF.map_comp, Function.comp_def, expect_map, id_eq, settlement, utility, charge]
     using reduced
 
 /-- Expected collection is the actual audit's marginal collection probability.
 No independence between the transcript, audit verdicts, or players is assumed. -/
-theorem collection_probability (law : FinDist Outcome) (observe : Outcome → Observation)
-    (audit : Observation → FinDist (Player → Bool)) (who : Player) :
-    (((law.map observe).bind audit).map (fun verdict => verdict who)).prob true =
-      law.expect (fun outcome => charge observe audit outcome who) := by
-  rw [FinDist.map_bind, FinDist.prob_bind, FinDist.expect_map]
+theorem collection_probability (law : PMF Outcome) (observe : Outcome → Observation)
+    (audit : Observation → PMF (Player → Bool)) (who : Player) :
+    ((((law.map observe).bind audit).map (fun verdict => verdict who)) true).toReal =
+      expect law (fun outcome => charge observe audit outcome who) := by
+  rw [PMF.map_bind, toReal_bind_apply, expect_map]
   rfl
 
 /-- Zero collection probability for every player means the joint settlement
 law is exactly the original payoff vector, not merely equal in expectation. -/
 theorem settlement_clean (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
-    (audit : Observation → FinDist (Player → Bool)) (deposit : Player → ℝ)
+    (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (outcome : Outcome) (clean : ∀ who, charge observe audit outcome who = 0) :
-    settlement base observe audit deposit outcome = FinDist.pure (base outcome) := by
+    settlement base observe audit deposit outcome = PMF.pure (base outcome) := by
   have quiet (verdict : Player → Bool) (supported : verdict ∈ (audit (observe outcome)).support)
       (who : Player) : verdict who = false := by
     cases selected : verdict who with
@@ -76,19 +76,19 @@ theorem settlement_clean (base : Outcome → Player → ℝ) (observe : Outcome 
     | true =>
         have possible : true ∈
             ((audit (observe outcome)).map (fun result => result who)).support := by
-          rw [FinDist.support_map]
+          rw [PMF.support_map]
           exact ⟨verdict, supported, selected⟩
-        have positive := FinDist.prob_pos_iff.mpr possible
+        have positive := pmf_toReal_pos_iff.mpr possible
         change 0 < charge observe audit outcome who at positive
         rw [clean who] at positive
         exact (lt_irrefl 0 positive).elim
   calc
     _ = (audit (observe outcome)).map (fun _ => base outcome) := by
-      apply FinDist.map_congr_of_eq_on_support
+      apply map_congr_on_support _
       intro verdict supported
       funext who
       simp only [quiet verdict supported who, Bool.false_eq_true, ite_false, sub_zero]
-    _ = _ := by simp only [FinDist.map_eq_bind, FinDist.bind_const]
+    _ = _ := by simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_const]
 
 end GameTheory.Enforcement.TerminalAudit
 
@@ -119,7 +119,7 @@ theorem sequential_equilibrium_extends_of_terminal_audit
     (depth : ∀ who, N.InformationSite who → Nat)
     (clock : ∀ who site, InformationSite.CommonDepth N site (depth who site))
     (sourcePayoff : E.History → Player → ℝ) (base : T.History → Player → ℝ)
-    (observe : T.History → Observation) (audit : Observation → FinDist (Player → Bool))
+    (observe : T.History → Observation) (audit : Observation → PMF (Player → Bool))
     (matching : ∀ history who, base (restriction.history history) who = sourcePayoff history who)
     (sound : ∀ history who, charge observe audit (restriction.history history) who = 0)
     (lower upper detection deposit : Player → ℝ)
@@ -132,18 +132,18 @@ theorem sequential_equilibrium_extends_of_terminal_audit
       (action : N.Choice who (restriction.site who site).1),
       action ∉ Set.range (restriction.choice who site.1) →
       ∀ history : M.InformationHistory who site.1,
-        detection who ≤ ((((N.runBehavioralFrom
+        detection who ≤ (((((N.runBehavioralFrom
           (Profile.update (sig := N.behavioralSignature) profile who
             ((profile who).commit (restriction.site who site).1 action))
           (horizon - depth who (restriction.site who site))
           (restriction.history history.1)).map observe).bind audit).map
-            (fun verdict => verdict who)).prob true)
+            (fun verdict => verdict who)) true).toReal)
     (source : M.BehavioralAssessment)
     (sourceEquilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.continuationContext site (fun history => sourcePayoff history who)
         (horizon - depth who (restriction.site who site)))) :
     ∃ target : N.BehavioralAssessment,
-      target.IsSequentialEquilibriumFor decisionRecall.antichain
+      target.IsSequentialEquilibriumFor decisionRecall.decisionInformationAntichain
         (fun who site => target.continuationContext site
           (fun history => utility base observe audit deposit history who)
           (horizon - depth who site)) ∧
@@ -165,11 +165,11 @@ theorem sequential_equilibrium_extends_of_terminal_audit
       (action : N.Choice who (restriction.site who site).1),
       action ∉ Set.range (restriction.choice who site.1) →
       ∀ history : M.InformationHistory who site.1,
-        detection who ≤ (N.runBehavioralFrom
+        detection who ≤ expect (N.runBehavioralFrom
           (Profile.update (sig := N.behavioralSignature) profile who
             ((profile who).commit (restriction.site who site).1 action))
           (horizon - depth who (restriction.site who site))
-          (restriction.history history.1)).expect
+          (restriction.history history.1))
             (fun final => charge observe audit final who) := by
     intro profile who site action extra history
     rw [← collection_probability]
@@ -180,20 +180,20 @@ theorem sequential_equilibrium_extends_of_terminal_audit
       matching sound lower upper detection deposit deposit_nonnegative source_lower target_upper
       sufficient collects source sourceEquilibrium
   refine ⟨target, equilibrium, agrees, beliefs, laws, ?_, ?_, terminal⟩
-  · rw [← laws, FinDist.bind_map]
+  · rw [← laws, PMF.bind_map]
     calc
       _ = (M.runBehavioral source.strategy horizon).bind (fun history =>
-          FinDist.pure (restriction.history history, sourcePayoff history)) :=
+          PMF.pure (restriction.history history, sourcePayoff history)) :=
         FinDist.map_eq_bind _ _
       _ = _ := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro history _
-        rw [settlement_clean base observe audit deposit _ (sound history), FinDist.map_pure]
+        rw [settlement_clean base observe audit deposit _ (sound history), PMF.pure_map]
         congr 1
         exact congrArg (fun payoffs => (restriction.history history, payoffs))
           (funext (matching history)).symm
   · intro history supported who
-    rw [← laws, FinDist.support_map] at supported
+    rw [← laws, PMF.support_map] at supported
     obtain ⟨original, _, rfl⟩ := supported
     exact sound original who
 

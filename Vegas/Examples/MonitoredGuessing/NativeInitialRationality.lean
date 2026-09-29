@@ -27,43 +27,43 @@ theorem quiet_silent_to_bob (players : Player → nativeApp.Policy)
     List (ServiceInstruction nativeGraph)) = [.player watcher, .wire] ++
       [.grant bobPublication, .player bob] from rfl,
     runInteractionPlan_append, monitoring_plan players reports, silent_monitoring_law,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   have quiet : monitoredPrefix bit nativeSilent ∅ = quietAfterWire bit := rfl
   rw [quiet]
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, quiet_grant,
-    quiet_bob_activation, ReactiveApplication.resume, FinDist.pure_bind,
-    ReactiveApplication.invoke, FinDist.bind_pure]
+    quiet_bob_activation, ReactiveApplication.resume, PMF.pure_bind,
+    ReactiveApplication.invoke, PMF.bind_pure]
   rfl
 
 theorem initial_silent_value (deposit : ℝ) (players : Player → nativeApp.Policy)
-    (reports : players watcher = nativeWatcherPolicy) (guesses : FinDist Bool) (bit : Bool)
+    (reports : players watcher = nativeWatcherPolicy) (guesses : PMF Bool) (bit : Bool)
     (guessing : players bob [] ((quietBob bit).observe nativeApp bob) =
       guesses.map nativeGuessAction) :
     initialResponseValue deposit players bit nativeSilent =
-      guesses.expect (fun guess =>
-        (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
-          (quietGuessRespond bit guess)).expect (nativeExecutionUtility deposit alice)) := by
+      expect guesses (fun guess =>
+        expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
+          (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice)) := by
   unfold initialResponseValue
   rw [show nativePlan.tail = [.player watcher, .wire, .grant bobPublication, .player bob] ++
     nativePlan.drop 5 from rfl, runInteractionPlan_append, quiet_silent_to_bob players reports,
-    guessing, FinDist.expect_bind, FinDist.expect_map, FinDist.expect_map]
+    guessing, FinDist.expect_bind, expect_map, expect_map]
   rfl
 
 theorem initial_silent_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
     (players : Player → nativeApp.Policy) (reports : players watcher = nativeWatcherPolicy)
-    (guesses : FinDist Bool) (bit : Bool)
+    (guesses : PMF Bool) (bit : Bool)
     (guessing : players bob [] ((quietBob bit).observe nativeApp bob) =
       guesses.map nativeGuessAction) :
-    initialResponseValue deposit players bit nativeSilent ≤ guesses.prob bit := by
+    initialResponseValue deposit players bit nativeSilent ≤ (guesses bit).toReal := by
   rw [initial_silent_value deposit players reports guesses bit guessing]
   have bound : ∀ guess : Bool,
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
-        (quietGuessRespond bit guess)).expect (nativeExecutionUtility deposit alice) ≤
+      expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
+        (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice) ≤
           if bit = guess then 1 else 0 := by
     intro guess
     rw [show nativePlan.drop 5 = .includeLatest bobPublication bob :: nativePlan.drop 6 from rfl,
-      runInteractionPlan, quiet_guess_included, FinDist.pure_bind]
+      runInteractionPlan, quiet_guess_included, PMF.pure_bind]
     have result := resolution_plan_alice_upper deposit nonnegative players (nativePlan.drop 6)
       (quietGuessIncluded bit guess) bit (guessResult guess) (quiet_guess_fixed bit guess)
         (quiet_guess_results bit guess).1
@@ -72,35 +72,35 @@ theorem initial_silent_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
     cases bit <;> cases guess <;> norm_num [correctness, guessResult, rejectedAlice, alice, bob,
       PublicationResult.isSuccess]
   apply (FinDist.expect_mono (fun guess _ => bound guess)).trans_eq
-  simpa only [mul_one] using FinDist.expect_ite_eq guesses bit 1
+  simpa only [mul_one] using expect_ite_eq guesses bit 1
 
 theorem initial_silent_value_eq (deposit : ℝ) (players : Player → nativeApp.Policy)
     (opens : players alice = nativeAlicePolicy) (reports : players watcher = nativeWatcherPolicy)
-    (guesses : FinDist Bool) (bit : Bool)
+    (guesses : PMF Bool) (bit : Bool)
     (guessing : players bob [] ((quietBob bit).observe nativeApp bob) =
       guesses.map nativeGuessAction) :
-    initialResponseValue deposit players bit nativeSilent = guesses.prob bit := by
+    initialResponseValue deposit players bit nativeSilent = (guesses bit).toReal := by
   rw [initial_silent_value deposit players reports guesses bit guessing]
   have exactValue : ∀ guess : Bool,
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
-        (quietGuessRespond bit guess)).expect (nativeExecutionUtility deposit alice) =
+      expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
+        (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice) =
           if bit = guess then 1 else 0 := by
     intro guess
     have summarized := quiet_guess_suffix_summary players opens bit guess
-    have value := congrArg (fun law => law.expect (fun result : Results × Bool =>
+    have value := congrArg (fun law => expect law (fun result : Results × Bool =>
       utility result.1 alice - if result.2 then deposit else 0)) summarized
-    rw [FinDist.expect_map, FinDist.expect_pure] at value
+    rw [expect_map, expect_pure] at value
     convert value using 1
-    · apply FinDist.expect_congr
+    · apply expect_congr_on_support
       intro execution _
       simp only [nativeExecutionUtility, true_and]
     · cases bit <;> cases guess <;> norm_num [utility, correctness, openingPenalty,
         guessResult, alice, PublicationResult.isSuccess]
   simp_rw [exactValue]
-  simpa only [mul_one] using FinDist.expect_ite_eq guesses bit 1
+  simpa only [mul_one] using expect_ite_eq guesses bit 1
 
 theorem initial_alice_site_dominates (deposit : ℝ) (sufficient : 2 ≤ deposit)
-    (assessment : nativeModel.BehavioralAssessment) (guesses : FinDist Bool)
+    (assessment : nativeModel.BehavioralAssessment) (guesses : PMF Bool)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (atQuiet : assessment.strategy bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1)
@@ -139,11 +139,11 @@ theorem initial_alice_site_dominates (deposit : ℝ) (sufficient : 2 ≤ deposit
     rw [Profile.update_of_ne _ _ (by decide : bob ≠ alice)]
     exact guessing
   rw [initial_alice_context_value, initial_alice_context_value, Profile.update_eq_self]
-  change (changed alice [] ((aliceActivated bit).observe nativeApp alice)).expect _ ≤
-    (players alice [] ((aliceActivated bit).observe nativeApp alice)).expect _
+  change expect (changed alice [] ((aliceActivated bit).observe nativeApp alice)) _ ≤
+    expect (players alice [] ((aliceActivated bit).observe nativeApp alice)) _
   rw [opens]
-  change _ ≤ (FinDist.pure nativeSilent).expect (initialResponseValue deposit players bit)
-  rw [FinDist.expect_pure,
+  change _ ≤ expect (PMF.pure nativeSilent) (initialResponseValue deposit players bit)
+  rw [expect_pure,
     initial_silent_value_eq deposit players opens reports guesses bit guessing]
   apply FinDist.expect_le_of_forall
   intro action supported
@@ -155,6 +155,6 @@ theorem initial_alice_site_dominates (deposit : ℝ) (sufficient : 2 ≤ deposit
   · exact initial_silent_value_le deposit (by linarith) changed changedReports guesses bit
       changedGuessing
   · exact (initial_submission_value_nonpositive deposit sufficient changed changedReports bit
-      submission).trans (guesses.prob_nonneg bit)
+      submission).trans (ENNReal.toReal_nonneg)
 
 end Vegas.Examples.MonitoredGuessing

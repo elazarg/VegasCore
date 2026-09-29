@@ -58,7 +58,7 @@ theorem protected_binding_response_cases (bounds : MessageBounds graph)
       record.input.envelope.payload ≠ ⟨.commitment event (who, .prepared serial), none⟩) ∨
     (∃ next, runtime.runInteractionPlan leaks players scheduler
         (.includeLatest event who :: List.replicate ticks .tick ++ [.expire event])
-          (execution.respond app who response) = FinDist.pure next ∧
+          (execution.respond app who response) = PMF.pure next ∧
       next.application.publicView.missedBinding event = true) := by
   let app := runtime.reactiveApplication leaks
   let serial := execution.application.publicView.bindingCount who

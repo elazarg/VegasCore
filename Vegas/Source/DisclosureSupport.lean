@@ -81,7 +81,7 @@ theorem BehavioralPolicy.supportsChoices_of_protocolAction {who : Player} :
       intro own view choice admitted
       have supported := full (Sum.inl view) (some (.commit owner name payload choice))
         ⟨congrArg some own, choice, admitted, rfl⟩
-      simp only [protocolAction, Sum.elim_inl, dite_eq_left own, FinDist.support_map]
+      simp only [protocolAction, Sum.elim_inl, dite_eq_left own, PMF.support_map]
         at supported
       obtain ⟨other, member, same⟩ := supported
       have equal := congrArg (OwnAction.binding owner name payload) same
@@ -94,7 +94,7 @@ theorem BehavioralPolicy.supportsChoices_of_protocolAction {who : Player} :
       intro own view choice
       have supported := full (Sum.inl view) (some (.reveal owner name choice))
         ⟨congrArg some own, choice, rfl⟩
-      simp only [protocolAction, Sum.elim_inl, dite_eq_left own, FinDist.support_map]
+      simp only [protocolAction, Sum.elim_inl, dite_eq_left own, PMF.support_map]
         at supported
       obtain ⟨other, member, same⟩ := supported
       have equal : other = choice := congrArg OwnAction.disclosure same
@@ -103,14 +103,14 @@ theorem BehavioralPolicy.supportsChoices_of_protocolAction {who : Player} :
 theorem BehavioralPolicy.fromProtocol_supports {who : Player}
     {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
-    (policy : (view : ProtocolView who program) → FinDist
+    (policy : (view : ProtocolView who program) → PMF
       {action : Option (OwnAction Player L) //
         ProtocolView.menu who program admission view action})
-    (full : ∀ view, (policy view).FullSupport) :
+    (full : ∀ view, FullSupport (policy view)) :
     (fromProtocol program admission policy).SupportsChoices program admission := by
   apply supportsChoices_of_protocolAction program admission
   intro view action legal
-  rw [protocolAction_fromProtocol, FinDist.support_map]
+  rw [protocolAction_fromProtocol, PMF.support_map]
   exact ⟨⟨action, legal⟩, full view ⟨action, legal⟩, rfl⟩
 
 /-- Any supported private-memory value supplies each effective action.
@@ -119,7 +119,7 @@ theorem BehavioralPolicy.normalizeDisclosureFrom_supports {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
     (registry : Registry Γ) → (revelations : Revelations Γ) →
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L))) →
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) →
     (policy : BehavioralPolicy who program) → policy.SupportsChoices program admission →
     (policy.normalizeDisclosureFrom program registry revelations remember).SupportsEffectiveChoices
       program admission registry revelations
@@ -135,11 +135,11 @@ theorem BehavioralPolicy.normalizeDisclosureFrom_supports {who : Player} :
       obtain ⟨past, remembered⟩ := (remember view).support_nonempty
       change choice ∈ ((bindingMemoryLaw name _ remember (policy.1 rfl) view).map
         Prod.fst).support
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       refine ⟨(choice, past ++ [.commit owner name _ choice]), ?_, rfl⟩
-      rw [bindingMemoryLaw, FinDist.support_bind]
+      rw [bindingMemoryLaw, PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨past, remembered, ?_⟩
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨choice, full.1 rfl (view.1, past) choice admitted, rfl⟩
   | _, _, .reveal published owner name _ selected _ next,
       admission, registry, revelations, remember, policy, full => by
@@ -149,11 +149,11 @@ theorem BehavioralPolicy.normalizeDisclosureFrom_supports {who : Player} :
       obtain ⟨past, remembered⟩ := (remember view).support_nonempty
       change choice ∈ ((disclosureMemoryLaw published selected registry revelations
         remember (policy.1 rfl) view).map Prod.fst).support
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       refine ⟨(choice, past ++ [.reveal owner name choice]), ?_, rfl⟩
-      rw [disclosureMemoryLaw, FinDist.support_bind]
+      rw [disclosureMemoryLaw, PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨past, remembered, ?_⟩
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨choice, full.1 rfl (view.1, past) choice, by simp only [effective]⟩
 
 /-- Simultaneous normalization preserves all effective constructor choices,
@@ -166,6 +166,6 @@ theorem normalizeDisclosureProfile_supports {Γ : SourceCtx Player L} {O : Finse
     (normalizeDisclosureProfile program registry revelations profile who).SupportsEffectiveChoices
       program admission registry revelations :=
   (profile who).normalizeDisclosureFrom_supports program admission registry revelations
-    (fun view => FinDist.pure view.2) (full who)
+    (fun view => PMF.pure view.2) (full who)
 
 end Vegas.SourceProgram

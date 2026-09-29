@@ -62,7 +62,7 @@ variable (setup : Setup (Player := Player) (L := L))
   (source : (setup.informationModel admission).BehavioralAssessment)
   (mixed : source.IsFullyMixed)
   (timing : TimingLaw setup rosters)
-  (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+  (timingFull : ∀ event who owned, FullSupport (timing event who owned))
 
 open Classical in
 include reveals openable mixed timingFull in
@@ -81,7 +81,7 @@ theorem roster_harmless_history_laws
       (bounds.withInitialValues (initialLaw setup)) rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).infoOf who history.trace = info)
-    (first second : FinDist (((rosterMenu setup leaks
+    (first second : PMF (((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Choice
           who info)) :
@@ -119,8 +119,8 @@ theorem roster_harmless_history_laws
   obtain ⟨site, _, choiceLaw, candidate, raw, opening, owned, valid, _⟩ :=
     roster_owner_choice_data setup leaks bounds reveals admission source.strategy owner event
       ownedEvent initial initialSupport state boundary related sourceSupport grant
-  have choiceFull : (sourceChoiceLaw setup leaks profile owner
-      (boundary.observe app owner)).FullSupport := by
+  have choiceFull : FullSupport (sourceChoiceLaw setup leaks profile owner
+      (boundary.observe app owner)) := by
     rw [choiceLaw]
     exact setup.reveal_choice_fullSupport reveals admission source mixed owner site
   have harmless : who ≠ owner ∨ ∃ entry ∈
@@ -195,12 +195,12 @@ theorem roster_harmless_history_laws
       (silence_roster setup leaks extended rosters who _ _) harmless choiceFull
       (timingFull event owner ownedEvent) (fun disclose _ => some (.reveal owner 0 disclose))
       (fun _ => rfl)
-  have localLaw (law : FinDist (model.Choice who (model.infoOf who history.trace))) :=
+  have localLaw (law : PMF (model.Choice who (model.infoOf who history.trace))) :=
     roster_local_law_complete_state setup leaks rosters network menu players
       (rosterPolicy_admissible setup leaks bounds rosters network reveals openable admission
         source mixed timing timingFull) history who remaining execution current before rest
       splitPlan beforePosition rfl law
-  have constant (law : FinDist (model.Choice who (model.infoOf who history.trace))) :
+  have constant (law : PMF (model.Choice who (model.infoOf who history.trace))) :
       (model.runBehavioralFrom (Profile.update baseline who
         ((baseline who).withLaw (model.infoOf who history.trace) law))
         (2 * (rosterPlan setup rosters).length + 1) history).map
@@ -210,17 +210,17 @@ theorem roster_harmless_history_laws
             (fun final => sourceReadout setup leaks (app.finished final)) := by
     have mapped := congrArg (fun distribution => distribution.map (sourceReadout setup leaks))
       (localLaw law)
-    simp only [FinDist.map_comp, Function.comp_def, FinDist.map_bind, FinDist.bind_map]
+    simp only [PMF.map_comp, Function.comp_def, PMF.map_bind, PMF.bind_map]
       at mapped
     refine mapped.trans ?_
     calc
       _ = law.bind (fun _ => ((runtime setup).runInteractionPlan leaks players network rest
           (execution.respond app who ⟨none⟩)).map
             (fun final => sourceReadout setup leaks (app.finished final))) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro choice _
         exact same _ (choiceAllowed choice)
-      _ = _ := FinDist.bind_const _ _
+      _ = _ := PMF.bind_const _ _
   exact (constant first).trans (constant second).symm
 
 open Classical in
@@ -243,7 +243,7 @@ theorem roster_harmless_comparison_law
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (observed : site.1 = some (past, view))
     (absent : rosterFresh? setup leaks rosters who past view = none)
-    (law : FinDist (((rosterMenu setup leaks
+    (law : PMF (((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network)).Choice who site.1)) :
@@ -259,8 +259,8 @@ theorem roster_harmless_comparison_law
   let app := application setup leaks
   let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
   simp only [comparison, InformationModel.assessmentComparison,
-    InformationModel.BehavioralAssessment.continuationContext, FinDist.map_bind]
-  apply FinDist.bind_congr
+    InformationModel.BehavioralAssessment.continuationContext, PMF.map_bind]
+  apply bind_congr_on_support _
   intro history _
   have active := InformationModel.InformationSite.active model site history
   obtain ⟨control, current⟩ : ∃ control, history.1.state = some control := by
@@ -311,7 +311,7 @@ theorem roster_harmless_comparison_gain
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (observed : site.1 = some (past, view))
     (absent : rosterFresh? setup leaks rosters who past view = none)
-    (law : FinDist (((rosterMenu setup leaks
+    (law : PMF (((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network)).Choice who site.1))
@@ -323,7 +323,7 @@ theorem roster_harmless_comparison_gain
       (fun final => sourceReadout setup leaks final.state)
       (2 * (rosterPlan setup rosters).length + 1) assessment who
         (site, (assessment.strategy who).withLaw site.1 law)
-    comparison.alternative.expect utility - comparison.prescribed.expect utility = 0 := by
+    expect comparison.alternative utility - expect comparison.prescribed utility = 0 := by
   intro model comparison
   have same := roster_harmless_comparison_law setup leaks bounds rosters network reveals openable
     admission source mixed timing timingFull assessment strategy who site past view observed

@@ -109,8 +109,8 @@ theorem replay_roster (setup : Setup (Player := Player) (L := L))
   classical
   refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _
     (FinDist.mem_supportFinset.mpr member), ?_⟩
-  obtain ⟨selected, supported, rfl⟩ := FinDist.support_map .. ▸ member
-  have eligible := (FinDist.mem_support_uniformSet_iff _ _ _).mp supported
+  obtain ⟨selected, supported, rfl⟩ := PMF.support_map .. ▸ member
+  have eligible := (PMF.mem_support_uniformOfFinset_iff _ _ _).mp supported
   cases selected with
   | none =>
       rw [bounds.menu_mem]
@@ -188,11 +188,11 @@ theorem rosterLimitPolicy_cases (setup : Setup (Player := Player) (L := L))
         · exact Or.inl supported
         · rename_i notStopped
           obtain ⟨disclose, _, supported⟩ :=
-            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
           cases disclose with
           | false => exact Or.inl supported
           | true =>
-              cases FinDist.mem_support_pure.mp supported
+              cases (PMF.mem_support_pure_iff _ _).mp supported
               apply Or.inr
               unfold rosterFresh?
               rw [granted]
@@ -244,18 +244,18 @@ theorem roster_run_application (setup : Setup (Player := Player) (L := L))
   let app := application setup leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | cons who rest ih =>
       simp only [List.map_cons, EventGraphRuntime.runInteractionPlan,
         EventGraphRuntime.interactionStep, EventGraphRuntime.interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact (ih _ reached).trans
         (roster_response_application setup leaks bounds rosters who
           (initial.sampledActivation app who sample) action (covered who _ _ action supported))

@@ -4,7 +4,9 @@ import Vegas.Compile.EventGraphPolicyLaw
 import Vegas.Compile.EventGraphReadout
 import Vegas.Compile.EventGraphStep
 import Vegas.EventGraph.CanonicalStep
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exact source-order law for event-graph compilation
 
@@ -92,7 +94,7 @@ theorem runWith_option_law
   | ret payoffs =>
       intro profile refs revelations registry embedding refsBefore offset aligned
         config ordered state refsAgree history historyAgree
-      simp only [eventCount, Vegas.EventGraph.runPlan, FinDist.map_pure,
+      simp only [eventCount, Vegas.EventGraph.runPlan, PMF.pure_map,
         terminalRefsWith, runWith]
       rw [decodeState?_eq_some refs state config.store refsAgree]
   | sample name fresh law next ih =>
@@ -128,8 +130,8 @@ theorem runWith_option_law
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least ownerless, suppliedAction]
       rw [sample_step config event ready outputEq refs law codeEq state refsAgree]
-      simp only [FinDist.bind_map, FinDist.map_bind, runWith]
-      apply FinDist.bind_congr
+      simp only [PMF.bind_map, PMF.map_bind, runWith]
+      apply bind_congr_on_support _
       intro value valueMem
       let action := cast (congrArg Vegas.EventGraph.EventField.Action outputEq.symm)
         PUnit.unit
@@ -150,7 +152,7 @@ theorem runWith_option_law
           simpa [event, headIndex, action, outputEq, decodeEventAction] using embedded
         have supported : nextConfig ∈ (config.step event ready action).support := by
           rw [sample_step config event ready outputEq refs law codeEq state refsAgree,
-            FinDist.support_map]
+            PMF.support_map]
           exact ⟨value, valueMem, rfl⟩
         exact (decodeHistory_step_of_none whole config nextConfig event ready
           action chance supported).trans historyAgree
@@ -215,20 +217,20 @@ theorem runWith_option_law
             (commitKernel profile (sourceObserve owner state, history owner)).map
               (fun binding => cast
                 (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) binding) :=
-        FinDist.eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
+        eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
           policyLaw
       rw [show eventCount (.commit name owner fresh guard next) =
           eventCount next + 1 by simp [eventCount]]
       rw [Vegas.EventGraph.runPlan_canonical_actor
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
-      simp only [FinDist.bind_map, FinDist.map_bind, runWith]
-      apply FinDist.bind_congr
+      simp only [PMF.bind_map, PMF.map_bind, runWith]
+      apply bind_congr_on_support _
       intro binding bindingMem
       let action := cast
         (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) binding
       rw [commit_step config event ready outputEq codeEq binding]
-      simp only [FinDist.pure_bind]
+      simp only [PMF.pure_bind]
       let stored := cast
         (congrArg Vegas.EventGraph.EventField.Value outputEq.symm) binding
       let nextConfig := config.complete event ready action stored
@@ -324,7 +326,7 @@ theorem runWith_option_law
             (revealKernel profile (sourceObserve owner state, history owner)).map
               (fun disclose => cast
                 (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) disclose) :=
-        FinDist.eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
+        eq_map_cast_of_cast_eq (congrArg Vegas.EventGraph.EventField.Action outputEq) _ _
           policyLaw
       rw [show eventCount
           (.reveal published owner name fresh selected unresolved next) =
@@ -332,8 +334,8 @@ theorem runWith_option_law
       rw [Vegas.EventGraph.runPlan_canonical_actor
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
-      simp only [FinDist.bind_map, FinDist.map_bind, runWith]
-      apply FinDist.bind_congr
+      simp only [PMF.bind_map, PMF.map_bind, runWith]
+      apply bind_congr_on_support _
       intro (disclose : Bool) discloseMem
       let proposal : PublicationResult _ :=
         if disclose then state.get selected else .failure
@@ -347,7 +349,7 @@ theorem runWith_option_law
         (congrArg Vegas.EventGraph.EventField.Action outputEq.symm) disclose
       rw [reveal_step config event ready outputEq refs revelations registry selected codeEq
         state refsAgree disclose]
-      simp only [FinDist.pure_bind]
+      simp only [PMF.pure_bind]
       let stored := cast
         (congrArg Vegas.EventGraph.EventField.Value outputEq.symm) accepted
       let nextConfig := config.complete event ready action stored

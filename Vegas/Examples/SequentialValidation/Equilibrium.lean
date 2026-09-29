@@ -14,8 +14,8 @@ theorem source_failed_pair (profile : Profile sourceModel.behavioralSignature)
     (matchBit : Bool) (site : sourceModel.InformationSite true)
     (failed : sourceSecretResult site.1 = .failure)
     (history : sourceModel.InformationHistory true site.1) :
-    (sourceModel.runBehavioralFrom profile 5 history.1).expect (sourcePayoff matchBit true) +
-      (sourceModel.runBehavioralFrom profile 5 (sourceFlip site failed history).1).expect
+    expect (sourceModel.runBehavioralFrom profile 5 history.1) (sourcePayoff matchBit true) +
+      expect (sourceModel.runBehavioralFrom profile 5 (sourceFlip site failed history).1)
         (sourcePayoff matchBit true) = 1 := by
   obtain ⟨bit, dummy, first, second, same⟩ := source_bob_history site history
   have flag : ((first && dummy.isSuccess) || !second) = true := by
@@ -27,10 +27,10 @@ theorem source_failed_pair (profile : Profile sourceModel.behavioralSignature)
   have infoEq : (sourceBobSite (!bit) dummy first second).1 =
       (sourceBobSite bit dummy first second).1 :=
     secret_bob_info (!bit) bit dummy first second flag
-  change _ + (sourceModel.runBehavioralFrom profile 5 (flipSourceHistory history.1)).expect _ = _
+  change _ + expect (sourceModel.runBehavioralFrom profile 5 (flipSourceHistory history.1)) _ = _
   rw [same, flipSourceHistory_path]
-  change _ + (sourceModel.runBehavioralFrom profile 5
-    (SourcePath.secretPublished (!bit) dummy first second).history).expect _ = _
+  change _ + expect (sourceModel.runBehavioralFrom profile 5
+    (SourcePath.secretPublished (!bit) dummy first second).history) _ = _
   rw [source_bob_value, source_bob_value, infoEq]
   simp only [flag, ↓reduceIte]
   exact source_guess_pair _ matchBit bit
@@ -39,7 +39,7 @@ theorem source_success_value (profile : Profile sourceModel.behavioralSignature)
     (matchBit : Bool) (site : sourceModel.InformationSite true)
     (succeeded : sourceSecretResult site.1 ≠ .failure)
     (history : sourceModel.InformationHistory true site.1) :
-    (sourceModel.runBehavioralFrom profile 5 history.1).expect (sourcePayoff matchBit true) = 0 :=
+    expect (sourceModel.runBehavioralFrom profile 5 history.1) (sourcePayoff matchBit true) = 0 :=
   by
     obtain ⟨bit, dummy, first, second, same⟩ := source_bob_history site history
     have flag : ((first && dummy.isSuccess) || !second) = false := by
@@ -50,7 +50,7 @@ theorem source_success_value (profile : Profile sourceModel.behavioralSignature)
       · simp only [flag, ↓reduceIte] at result
         exact (succeeded result.symm).elim
     rw [same, source_bob_value]
-    simp only [flag, Bool.false_eq_true, ↓reduceIte, FinDist.expect_const]
+    simp only [flag, Bool.false_eq_true, ↓reduceIte, expect_constant]
 
 theorem source_guessing_value (matchBit : Bool) (site : sourceModel.InformationSite true)
     (alternative : sourceModel.BehavioralPolicy true) :
@@ -61,32 +61,32 @@ theorem source_guessing_value (matchBit : Bool) (site : sourceModel.InformationS
   let profile := Profile.update (sig := sourceModel.behavioralSignature)
     sourceAssessment.strategy true alternative
   let value := fun (history : sourceModel.InformationHistory true site.1) =>
-    (sourceModel.runBehavioralFrom profile 5 history.1).expect (sourcePayoff matchBit true)
-  change (sourceAssessment.belief true site).expect value = _
+    expect (sourceModel.runBehavioralFrom profile 5 history.1) (sourcePayoff matchBit true)
+  change expect (sourceAssessment.belief true site) value = _
   by_cases failed : sourceSecretResult site.1 = .failure
   · rw [ite_eq_left failed]
-    have symmetric : (sourceAssessment.belief true site).expect
+    have symmetric : expect (sourceAssessment.belief true site)
         (fun history => value (sourceFlip site failed history)) =
-        (sourceAssessment.belief true site).expect value := by
-      rw [← FinDist.expect_map, source_belief_flip]
-    have sum : (sourceAssessment.belief true site).expect value +
-        (sourceAssessment.belief true site).expect
+        expect (sourceAssessment.belief true site) value := by
+      rw [← expect_map, source_belief_flip]
+    have sum : expect (sourceAssessment.belief true site) value +
+        expect (sourceAssessment.belief true site)
           (fun history => value (sourceFlip site failed history)) = 1 := by
       rw [← FinDist.expect_add]
       calc
-        _ = (sourceAssessment.belief true site).expect (fun _ => (1 : ℝ)) := by
-          apply FinDist.expect_congr
+        _ = expect (sourceAssessment.belief true site) (fun _ => (1 : ℝ)) := by
+          apply expect_congr_on_support
           intro history _
           exact source_failed_pair profile matchBit site failed history
-        _ = _ := FinDist.expect_const _ _
+        _ = _ := expect_constant _ _
     linarith
   · rw [ite_eq_right failed]
     calc
-      _ = (sourceAssessment.belief true site).expect (fun _ => (0 : ℝ)) := by
-        apply FinDist.expect_congr
+      _ = expect (sourceAssessment.belief true site) (fun _ => (0 : ℝ)) := by
+        apply expect_congr_on_support
         intro history _
         exact source_success_value profile matchBit site failed history
-      _ = _ := FinDist.expect_const _ _
+      _ = _ := expect_constant _ _
 
 theorem source_alice_zero (matchBit : Bool) (history : sourceArena.History) :
     sourcePayoff matchBit false history = 0 := by

@@ -18,7 +18,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def Admissible (who : Principal) (policy : app.Policy) : Prop :=
   ∀ control, (menu.protocol initial horizon scheduler).Trace (some control) →
@@ -29,13 +29,13 @@ def Admissible (who : Principal) (policy : app.Policy) : Prop :=
 open Classical in
 def restrictPolicy (who : Principal) (policy : app.Policy) :
     (menu.information initial horizon scheduler).BehavioralPolicy who
-  | none => FinDist.pure ⟨none, rfl⟩
+  | none => PMF.pure ⟨none, rfl⟩
   | some (past, view) =>
       if covered : ∀ action ∈ (policy past view).support,
           action ∈ menu.actions who past view then
         (policy past view).bindOnSupport fun action supported =>
-          FinDist.pure ⟨some action, action, covered action supported, rfl⟩
-      else FinDist.pure ⟨some (menu.nonempty who past view).choose,
+          PMF.pure ⟨some action, action, covered action supported, rfl⟩
+      else PMF.pure ⟨some (menu.nonempty who past view).choose,
         _, (menu.nonempty who past view).choose_spec, rfl⟩
 
 theorem embed_restrictPolicy (who : Principal) (policy : app.Policy)
@@ -44,10 +44,10 @@ theorem embed_restrictPolicy (who : Principal) (policy : app.Policy)
     menu.embedPolicy initial horizon scheduler who
         (menu.restrictPolicy initial horizon scheduler who policy) (some (past, view)) =
       app.encodePolicy policy (some (past, view)) := by
-  simp only [embedPolicy, restrictPolicy, dite_eq_left covered, FinDist.map_bindOnSupport,
-    FinDist.map_pure, encodePolicy]
-  rw [FinDist.map_eq_bind]
-  apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+  simp only [embedPolicy, restrictPolicy, dite_eq_left covered, map_bindOnSupport,
+    PMF.pure_map, encodePolicy]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bindOnSupport_eq_bind_of_eq_on_support _
   intro action supported
   rfl
 
@@ -58,9 +58,9 @@ theorem restrictPolicy_map_val (who : Principal) (policy : app.Policy)
     (covered : ∀ action ∈ (policy past view).support, action ∈ menu.actions who past view) :
     ((menu.restrictPolicy initial horizon scheduler who policy)
       (some (past, view))).map Subtype.val = (policy past view).map some := by
-  simp only [restrictPolicy, dite_eq_left covered, FinDist.map_bindOnSupport, FinDist.map_pure]
-  rw [FinDist.map_eq_bind]
-  apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+  simp only [restrictPolicy, dite_eq_left covered, map_bindOnSupport, PMF.pure_map]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bindOnSupport_eq_bind_of_eq_on_support _
   intro action supported
   rfl
 
@@ -71,7 +71,7 @@ theorem decode_embedPolicy_covered (who : Principal)
       (app.decodePolicy (menu.embedPolicy initial horizon scheduler who policy)
         past view).support) :
     response ∈ menu.actions who past view := by
-  rw [decodePolicy, embedPolicy, FinDist.map_comp, FinDist.support_map] at supported
+  rw [decodePolicy, embedPolicy, PMF.map_comp, PMF.support_map] at supported
   obtain ⟨chosen, _supported, same⟩ := supported
   change chosen.1.getD ⟨none⟩ = response at same
   obtain ⟨action, member, value⟩ := chosen.2
@@ -164,12 +164,12 @@ theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
       suffices choice.1 ∈ ((menu.restrictPolicy initial horizon scheduler who (profile who)
           (some (control.execution.recall who,
             control.execution.observe app who))).map Subtype.val).support by
-        obtain ⟨other, supported, same⟩ := FinDist.support_map .. ▸ this
+        obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
         exact (Subtype.ext same) ▸ supported
       have member := choice.2
       obtain ⟨action, allowed, chosen⟩ := member
       rw [menu.restrictPolicy_map_val initial horizon scheduler who (profile who)
-        _ _ (covered who control traced acting), chosen, FinDist.support_map]
+        _ _ (covered who control traced acting), chosen, PMF.support_map]
       exact ⟨action, positive who control traced acting action allowed, rfl⟩
 
 variable [Fintype Principal]
@@ -203,20 +203,20 @@ theorem run_restrict (profile : Principal → app.Policy)
       (fun who => app.encodePolicy (profile who)) fuel
       (menu.toRawHistory initial horizon scheduler history) := by
   induction fuel generalizing history with
-  | zero => exact FinDist.map_pure _ _
+  | zero => exact PMF.pure_map _ _
   | succ fuel ih =>
       by_cases stopped : app.terminal history.state
       · rw [InformationModel.runBehavioralFrom_of_terminal _ _ _ stopped,
-          InformationModel.runBehavioralFrom_of_terminal _ _ _ stopped, FinDist.map_pure]
+          InformationModel.runBehavioralFrom_of_terminal _ _ _ stopped, PMF.pure_map]
       · rw [InformationModel.runBehavioralFrom_succ_of_not_terminal _ _ _ stopped,
           InformationModel.runBehavioralFrom_succ_of_not_terminal _ _ _ stopped]
         simp only [toRawHistory]
         rw [menu.behavioralJoint_restrict initial horizon scheduler profile covered history stopped,
-          FinDist.map_bind, FinDist.bind_map]
-        apply FinDist.bind_congr
+          PMF.map_bind, PMF.bind_map]
+        apply bind_congr_on_support _
         intro joint _
-        rw [FinDist.map_bindOnSupport]
-        apply FinDist.bindOnSupport_congr
+        rw [map_bindOnSupport]
+        apply bindOnSupport_congr _
         intro target realized
         exact ih (history.extend joint.2 realized)
 

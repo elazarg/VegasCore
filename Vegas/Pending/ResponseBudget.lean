@@ -124,7 +124,7 @@ private def responsePlanThree (runtime : EventGraphRuntime graph) :
   | some control => ThreeCallPlan control.plan
 
 private theorem responsePlanThree_step (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (rounds : Nat) (wire : runtime.application.WirePolicy)
+    (inputs : PMF graph.Inputs) (rounds : Nat) (wire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy) (before after : NativeProtocolState runtime)
     (joint : Player → Option (List (PlayerAction graph))) (valid : responsePlanThree runtime before)
     (reached : after ∈
@@ -132,31 +132,31 @@ private theorem responsePlanThree_step (runtime : EventGraphRuntime graph)
     responsePlanThree runtime after := by
   cases before with
   | none =>
-      obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact .nil
   | some control =>
       rcases control with ⟨epochs, plan, execution⟩
       cases plan with
       | nil =>
           cases epochs with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ epochs =>
-              obtain ⟨chosen, _, rfl⟩ := FinDist.support_map .. ▸ reached
+              obtain ⟨chosen, _, rfl⟩ := PMF.support_map .. ▸ reached
               exact epochPlan_three chosen rounds
       | cons instruction rest =>
           have consumed := ThreeCallPlan.consume valid
           cases instruction with
           | player who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               change ThreeCallPlan ((ServiceInstruction.player who :: rest).drop _)
               rw [consumed.1]
               exact consumed.2
           | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
-              obtain ⟨next, _, rfl⟩ := FinDist.support_map .. ▸ reached
+              obtain ⟨next, _, rfl⟩ := PMF.support_map .. ▸ reached
               exact consumed
 
 private theorem response_history_plan_three (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (rounds : Nat) (wire : runtime.application.WirePolicy)
+    (inputs : PMF graph.Inputs) (rounds : Nat) (wire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy) :
     ∀ {state} (_trace : (runtime.responseProtocol inputs [] rounds wire order).Trace state),
       responsePlanThree runtime state
@@ -168,7 +168,7 @@ private theorem response_history_plan_three (runtime : EventGraphRuntime graph)
 /-- No arity observation is added: every response in this service class has
 the same public constant capacity, independently of all private and wire state. -/
 theorem responseBudget_empty_roster (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (rounds : Nat) (wire : runtime.application.WirePolicy)
+    (inputs : PMF graph.Inputs) (rounds : Nat) (wire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy) :
     runtime.ResponseBudgetAdequate inputs [] rounds wire order (fun _ _ => 3) := by
   intro history who input observed

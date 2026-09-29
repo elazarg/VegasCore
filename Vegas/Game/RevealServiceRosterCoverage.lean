@@ -60,7 +60,7 @@ theorem roster_owner_coverage
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support)
     (sample : Finset (MessageId Player))
-    (choices : FinDist (Option (Fin ((rosters event).count owner)))) (full : choices.FullSupport)
+    (choices : PMF (Option (Fin ((rosters event).count owner)))) (full : FullSupport choices)
     (available : rosterFresh? setup leaks rosters owner (current.recall owner)
         ((current.sampledActivation (application setup leaks) owner sample).observe
           (application setup leaks) owner) =
@@ -72,7 +72,7 @@ theorem roster_owner_coverage
     (action : (application setup leaks).Action)
     (supported : action ∈ (((application setup leaks).policyMixture choices (fun selected =>
       (application setup leaks).scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         (application setup leaks).replayPolicy)).policy (current.recall owner)
       ((current.sampledActivation (application setup leaks) owner sample).observe
         (application setup leaks) owner)).support) :
@@ -90,21 +90,21 @@ theorem roster_owner_coverage
         inside.le current reached
   rw [app.policyMixture_policy] at supported
   obtain ⟨mode, modeSupported, selectedSupport⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   change action ∈ (app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-    (fun _ _ => FinDist.pure packet) app.replayPolicy (current.recall owner) view).support
+    (fun _ _ => PMF.pure packet) app.replayPolicy (current.recall owner) view).support
       at selectedSupport
   unfold ReactiveApplication.scheduledPolicy at selectedSupport
   split at selectedSupport
   · rename_i now
-    have actionEq : action = packet := FinDist.mem_support_pure.mp selectedSupport
+    have actionEq : action = packet := (PMF.mem_support_pure_iff _ _).mp selectedSupport
     subst action
     have empty : selected = none := by
       cases selected with
       | none => rfl
       | some slot =>
           rw [posterior choices full] at modeSupported
-          cases FinDist.mem_support_pure.mp modeSupported
+          cases (PMF.mem_support_pure_iff _ _).mp modeSupported
           have same := Option.some.inj now
           change rosterOffset setup rosters owner event + slot.val =
             (current.recall owner).length at same

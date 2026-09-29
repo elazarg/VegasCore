@@ -76,18 +76,18 @@ theorem playerStep_canonicalResources (runtime : EventGraphRuntime graph)
   have native : next.native ∈
       ((runtime.application.playerStep who state command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
   rw [runtime.application.playerStep_native] at native
   cases command with
   | privateCommand command =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact privateStep_canonicalResources state.native.application owner who command resources
   | submit packet | replay id | wait =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact resources
 
@@ -101,18 +101,18 @@ theorem environmentPolicyStep_canonicalResources (runtime : EventGraphRuntime gr
   have native : next.native ∈
       ((runtime.application.environmentPolicyStep state command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   cases command with
   | deliver observer id | wait =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact resources
   | «include» id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
       cases found : state.native.pool.lookup id with
       | none =>
@@ -130,7 +130,7 @@ theorem environmentPolicyStep_canonicalResources (runtime : EventGraphRuntime gr
                 message resources (safe.1 message (List.mem_of_find?_eq_some found)) accepted
   | application command =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.support_map, Set.mem_image] at native
+        PMF.support_map, Set.mem_image] at native
       obtain ⟨application, member, same⟩ := native
       rw [← same]
       exact environmentStep_canonicalResources runtime state.native.application application
@@ -146,12 +146,12 @@ theorem serviceStep_canonicalResources (runtime : EventGraphRuntime graph)
     after.native.application.CanonicalResources owner := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.playerStep_canonicalResources before after owner who command resources step
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.environmentPolicyStep_canonicalResources before after owner command

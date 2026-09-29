@@ -39,23 +39,23 @@ private def nativeNoEarlyCompletion : (serviceApp observation).ProtocolState →
 
 private theorem noEarly_transition (before after : (serviceApp observation).ProtocolState)
     (joint : Player → Option (serviceApp observation).Action)
-    (trace : ((serviceApp observation).protocol (FinDist.pure nativeInitial)
+    (trace : ((serviceApp observation).protocol (PMF.pure nativeInitial)
       nativeHorizon (serviceScheduler observation)).Trace before)
     (valid : nativeNoEarlyCompletion before)
-    (reached : after ∈ ((serviceApp observation).transition (FinDist.pure nativeInitial)
+    (reached : after ∈ ((serviceApp observation).transition (PMF.pure nativeInitial)
       nativeHorizon (serviceScheduler observation) before joint).support) : nativeNoEarlyCompletion
         after := by
   cases before with
   | none =>
-      obtain ⟨state, stateMem, rfl⟩ := FinDist.support_map .. ▸ reached
-      cases FinDist.mem_support_pure.mp stateMem
+      obtain ⟨state, stateMem, rfl⟩ := PMF.support_map .. ▸ reached
+      cases (PMF.mem_support_pure_iff _ _).mp stateMem
       intro event _
       exact Finset.notMem_empty event
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           intro event untouched
           have prior : nativeUntouched event execution.environmentRecall.length := by
             simpa only [(serviceApp observation).respond_environmentRecall] using untouched
@@ -63,31 +63,31 @@ private theorem noEarly_transition (before after : (serviceApp observation).Prot
           exact valid event prior
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, selected, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               intro event untouched
               have cursor : next.environmentRecall.length =
                   execution.environmentRecall.length + 1 := by
-                obtain ⟨updated, _, rfl⟩ := FinDist.support_map .. ▸ moved
+                obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ moved
                 simp only [List.length_append, List.length_singleton]
               rw [cursor] at untouched
               have unfinished := valid event
                 (untouched_prior event execution.environmentRecall.length untouched)
               cases instruction : nativePlan[execution.environmentRecall.length]? with
               | none =>
-                  simp only [serviceScheduler, instruction, FinDist.mem_support_pure] at selected
+                  simp only [serviceScheduler, instruction, PMF.mem_support_pure_iff _ _] at selected
                   subst command
                   simp only [ReactiveApplication.Execution.environmentStep,
-                    FinDist.map_pure, FinDist.mem_support_pure] at moved
+                    PMF.pure_map, PMF.mem_support_pure_iff _ _] at moved
                   subst next
                   exact unfinished
               | some step =>
                   have audit := (serviceApp observation).submissionAudit_history
                     ReactivePlayerView.publicView
-                    (fun _ _ => rfl) (FinDist.pure nativeInitial) nativeHorizon
+                    (fun _ _ => rfl) (PMF.pure nativeInitial) nativeHorizon
                       (serviceScheduler observation) trace
                   apply nativeRuntime.reactive_instruction_unfinished observation (serviceNetwork
                     observation)
@@ -96,7 +96,7 @@ private theorem noEarly_transition (before after : (serviceApp observation).Prot
                   simpa only [serviceScheduler, instruction] using selected
 
 private theorem native_no_early_history :
-    ∀ {state} (_trace : ((serviceApp observation).protocol (FinDist.pure nativeInitial)
+    ∀ {state} (_trace : ((serviceApp observation).protocol (PMF.pure nativeInitial)
       nativeHorizon (serviceScheduler observation)).Trace state), nativeNoEarlyCompletion state
   | _, .start => trivial
   | _, .extend prior joint _ reached =>
@@ -116,7 +116,7 @@ theorem native_decision_unfinished (event : nativeGraph.EventId) (control : (ser
     (granted : control.execution.application.serviceGrant = some event) :
     event ∉ control.execution.application.config.cut.completed := by
   have cursor := (native_decision_cursor event control trace who active granted).2
-  have raw := (serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+  have raw := (serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation) trace
   apply native_no_early_history raw event
   rw [cursor]

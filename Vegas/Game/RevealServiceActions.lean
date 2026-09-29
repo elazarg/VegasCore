@@ -142,26 +142,26 @@ theorem sourceChoice_canonical (disclose : Bool) :
   · rfl
   · exact sourceChoice_opening setup leaks who past view opening selected
 
-def splitChoiceLaw (law : FinDist Bool) (weight : ℝ)
+def splitChoiceLaw (law : PMF Bool) (weight : ℝ)
     (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
-    FinDist {response // response ∈ ordinaryActions setup leaks bounds who past view} :=
-  law.bind (FinDist.splitKernel (fun response => sourceChoice setup leaks response.1)
+    PMF {response // response ∈ ordinaryActions setup leaks bounds who past view} :=
+  law.bind (PMF.splitKernel (fun response => sourceChoice setup leaks response.1)
     (canonicalOrdinaryChoice setup leaks bounds who past view opening selected covered)
     (sourceChoice_canonical setup leaks bounds who past view opening selected covered)
     weight nonnegative atMostOne)
 
-theorem splitChoiceLaw_project (law : FinDist Bool) (weight : ℝ)
+theorem splitChoiceLaw_project (law : PMF Bool) (weight : ℝ)
     (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
     (splitChoiceLaw setup leaks bounds who past view opening selected covered
       law weight nonnegative atMostOne).map (fun response => sourceChoice setup leaks response.1) =
         law :=
-  FinDist.split_project _ _ _ law weight nonnegative atMostOne
+  PMF.split_project _ _ _ law weight nonnegative atMostOne
 
-theorem splitChoiceLaw_fullSupport (law : FinDist Bool) (mixed : law.FullSupport)
+theorem splitChoiceLaw_fullSupport (law : PMF Bool) (mixed : FullSupport law)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
     (positive : 0 < weight) :
-    (splitChoiceLaw setup leaks bounds who past view opening selected covered
-      law weight nonnegative atMostOne).FullSupport :=
-  FinDist.split_fullSupport _ _ _ law mixed weight nonnegative atMostOne positive
+    FullSupport (splitChoiceLaw setup leaks bounds who past view opening selected covered
+      law weight nonnegative atMostOne) :=
+  PMF.split_fullSupport _ _ _ law mixed weight nonnegative atMostOne positive
 
 end Vegas

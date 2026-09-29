@@ -56,7 +56,7 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
   have initialized : EventGraphRuntime.State.initial (graph := graph setup)
       (setup.eventInputs initial) ∈
       (initialLaw setup).support := by
-    rw [initialLaw, FinDist.support_map]
+    rw [initialLaw, PMF.support_map]
     exact ⟨initial, supported, rfl⟩
   rw [same]
   exact bounds.initialized_opening_available (initialLaw setup)
@@ -89,7 +89,7 @@ theorem opening_data_covered (bounds : MessageBounds (graph setup))
   apply bounds.initial_value_covered (initialLaw setup)
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
       _ owner input raw fixed
-  rw [initialLaw, FinDist.support_map]
+  rw [initialLaw, PMF.support_map]
   exact ⟨initial, supported, rfl⟩
 
 end Vegas

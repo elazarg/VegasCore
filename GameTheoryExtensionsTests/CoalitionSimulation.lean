@@ -31,8 +31,8 @@ namespace GameTheory.GameForm.CoalitionWitness
 open GameTheory.Math.Probability
 
 /-- The fair draw both games share. -/
-def fairCoin : FinDist Bool :=
-  FinDist.mix (1 / 2) (by norm_num) (by norm_num) (FinDist.pure false) (FinDist.pure true)
+def fairCoin : PMF Bool :=
+  mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure false) (PMF.pure true)
 
 /-- The base game: player `1` guesses the coin without observing anything. -/
 abbrev baseGame : GameForm (Fin 2) where
@@ -56,20 +56,20 @@ def compileConstant : (who : Fin 2) → baseGame.sig.Strategy who → channelGam
 
 /-- A guess that does not depend on the coin is right half the time. -/
 theorem expect_constantGuess (guess : Bool) (who : Fin 2) :
-    (fairCoin.map fun coin => ((coin, guess) : Bool × Bool)).expect
+    expect (fairCoin.map fun coin => ((coin, guess) : Bool × Bool))
         (fun outcome => matchUtility outcome who) = 1 / 2 := by
   cases guess <;>
-    norm_num [fairCoin, matchUtility, FinDist.expect_map, FinDist.expect_mix]
+    norm_num [fairCoin, matchUtility, expect_map, FinDist.expect_mix]
 
 /-- A guess that copies the coin is always right. -/
 theorem expect_copyCoin (who : Fin 2) :
-    (fairCoin.map fun coin => ((coin, coin) : Bool × Bool)).expect
+    expect (fairCoin.map fun coin => ((coin, coin) : Bool × Bool))
         (fun outcome => matchUtility outcome who) = 1 := by
-  norm_num [fairCoin, matchUtility, FinDist.expect_map, FinDist.expect_mix]
+  norm_num [fairCoin, matchUtility, expect_map, FinDist.expect_mix]
 
 /-- Every base profile is worth one half to both players. -/
 theorem base_expect (profile : Profile baseGame.sig) (who : Fin 2) :
-    (baseGame.play profile).expect (fun outcome => matchUtility outcome who) = 1 / 2 :=
+    expect (baseGame.play profile) (fun outcome => matchUtility outcome who) = 1 / 2 :=
   expect_constantGuess (profile 1) who
 
 /-- Against compiled opponents a single deviation still produces a guess that
@@ -104,7 +104,7 @@ def copyProfile : Profile channelGame.sig := fun _ => id
 
 /-- The coalition that sends the coin and copies it is always right. -/
 theorem copyProfile_expect (who : Fin 2) :
-    (channelGame.play copyProfile).expect (fun outcome => matchUtility outcome who) = 1 :=
+    expect (channelGame.play copyProfile) (fun outcome => matchUtility outcome who) = 1 :=
   expect_copyCoin who
 
 /-- Overriding both coordinates is that coalition, whatever was there. -/
@@ -144,8 +144,8 @@ theorem compiled_not_isStrongNash (profile : Profile baseGame.sig) :
     h Finset.univ Finset.univ_nonempty (fun i => copyProfile i.1)
   rw [euPreference_apply, expectedUtility, expectedUtility, override_copyProfile,
     copyProfile_expect] at hprefer
-  have hhonest : (channelGame.play
-      (fun player => compileConstant player (profile player))).expect
+  have hhonest : expect (channelGame.play
+      (fun player => compileConstant player (profile player)))
         (fun outcome => matchUtility outcome member) = 1 / 2 := by
     obtain ⟨guess, hplay⟩ := update_compileConstant_play profile member
       (compileConstant member (profile member))

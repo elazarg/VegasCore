@@ -112,18 +112,18 @@ theorem watched_decode_reports (watcher : Player)
         (application setup leaks).reportFirstUnpublished := by
   funext past view
   have deterministic : ∃ response,
-      (application setup leaks).reportFirstUnpublished past view = FinDist.pure response := by
+      (application setup leaks).reportFirstUnpublished past view = PMF.pure response := by
     unfold ReactiveApplication.reportFirstUnpublished
     split <;> exact ⟨_, rfl⟩
   obtain ⟨reported, law⟩ := deterministic
   rw [law]
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro response supported
   have allowed := (watchedMenu setup leaks bounds watcher).decode_embedPolicy_covered
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     watcher (profile watcher) past view response supported
   simpa only [watchedMenu, ↓reduceIte, law, FinDist.mem_supportFinset,
-    FinDist.mem_support_pure, Set.mem_singleton_iff] using allowed
+    PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using allowed
 
 /-- Every equilibrium with prescribed reporting extends to the full bounded
 raw game of this service. Observations and net utilities ignore only the proved
@@ -195,7 +195,7 @@ theorem watched_raw_equilibrium_extends (watcher : Player)
       unchangedOrIndifferent source remaining
   have full := (normalized.sequentialEquilibrium_remaining_iff
     (effectiveInformation setup leaks bounds watcher)
-    (effective.decisionRecall initial count service).antichain (2 * count + 1)
+    (effective.decisionRecall initial count service).decisionInformationAntichain (2 * count + 1)
     (effective.bounded initial count service) depth clock
     (fun who history => utility history.state who)).mp normalizedSE
   obtain ⟨raw, _strategy, rawSE, _beliefs, projected⟩ :=
@@ -203,9 +203,9 @@ theorem watched_raw_equilibrium_extends (watcher : Player)
       normalized (fun who state => utility state who) full
   refine ⟨raw, ?_, ?_⟩
   · simpa only [utilityInvariant] using rawSE
-  · have law := congrArg (FinDist.map (fun state => (observe state, utility state))) projected
-    simp only [FinDist.map_comp, Function.comp_def, observationInvariant, utilityInvariant] at law
-    rw [law, ← historyLaw, FinDist.map_comp]
+  · have law := congrArg (PMF.map (fun state => (observe state, utility state))) projected
+    simp only [PMF.map_comp, Function.comp_def, observationInvariant, utilityInvariant] at law
+    rw [law, ← historyLaw, PMF.map_comp]
     rfl
 
 end Vegas

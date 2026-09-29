@@ -40,20 +40,20 @@ theorem respond_total_recall (execution : app.Execution) (who : Principal)
   simp_rw [each]
   simp only [Finset.sum_add_distrib, Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte]
 
-theorem interactionDepth_transition (initial : FinDist app.State) (horizon : Nat)
+theorem interactionDepth_transition (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)
     (joint : Principal → Option app.Action) (running : ¬ app.terminal before)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     app.interactionDepth after = app.interactionDepth before + 1 := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       simp [interactionDepth, Execution.initial]
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simp only [interactionDepth, app.respond_environmentRecall, app.respond_total_recall]
           omega
       | none =>
@@ -61,17 +61,17 @@ theorem interactionDepth_transition (initial : FinDist app.State) (horizon : Nat
           | zero => exact (running ⟨rfl, rfl⟩).elim
           | succ remaining =>
               obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               have recalls := app.environmentStep_recall execution next command moved
               have schedulerRecall : next.environmentRecall.length =
                   execution.environmentRecall.length + 1 := by
-                obtain ⟨updated, _, rfl⟩ := FinDist.support_map .. ▸ moved
+                obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ moved
                 simp only [List.length_append, List.length_singleton]
               simp only [interactionDepth, recalls, schedulerRecall]
               omega
 
-theorem trace_interactionDepth (initial : FinDist app.State) (horizon : Nat)
+theorem trace_interactionDepth (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) :
     ∀ {state} (trace : (app.protocol initial horizon scheduler).Trace state),
       trace.length = app.interactionDepth state
@@ -80,7 +80,7 @@ theorem trace_interactionDepth (initial : FinDist app.State) (horizon : Nat)
       rw [Trace.length, app.interactionDepth_transition initial horizon scheduler _ _ joint
         legal.1 reached, trace_interactionDepth initial horizon scheduler prior]
 
-theorem trace_length_of_control (initial : FinDist app.State) (horizon : Nat)
+theorem trace_length_of_control (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control)) :
     trace.length = 1 + control.execution.environmentRecall.length +

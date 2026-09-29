@@ -62,23 +62,23 @@ theorem playerStep_pending_lookup
     next.native.pool.lookup id = some message := by
   cases command with
   | privateCommand registration =>
-      simp only [playerStep, PlayerCommand.toAction, advance, step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hlookup
   | submit payload =>
-      simp only [playerStep, PlayerCommand.toAction, advance, step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact execution.native.pool.lookup_submit_of_some id message hlookup who payload
   | replay replayed =>
-      simp only [playerStep, PlayerCommand.toAction, advance, step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact execution.native.pool.lookup_replay_of_some id message hlookup who replayed
   | wait =>
-      simp only [playerStep, PlayerCommand.toAction, advance, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hlookup
 
@@ -90,24 +90,24 @@ theorem playerStep_inbox
     next.native.pool.inbox observer = execution.native.pool.inbox observer := by
   cases command with
   | privateCommand registration =>
-      simp only [playerStep, PlayerCommand.toAction, advance, step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       rfl
   | submit payload =>
-      simp only [playerStep, PlayerCommand.toAction, advance, step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       rfl
   | replay replayed =>
-      simp only [playerStep, PlayerCommand.toAction, advance, step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       unfold MessagePool.replay
       split <;> rfl
   | wait =>
-      simp only [playerStep, PlayerCommand.toAction, advance, FinDist.pure_bind,
-        FinDist.mem_support_pure] at hnext
+      simp only [playerStep, PlayerCommand.toAction, advance, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at hnext
       subst next
       rfl
 
@@ -124,7 +124,7 @@ theorem runPolicies_playerOnly_pending_lookup
     next.native.pool.lookup id = some message := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hlookup
   | cons invocation rest ih =>
@@ -133,7 +133,7 @@ theorem runPolicies_playerOnly_pending_lookup
       cases invocation with
       | environment => exact False.elim (henvironment List.mem_cons_self)
       | player who =>
-          simp only [runPolicies, invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+          simp only [runPolicies, invoke, PMF.support_bind, Set.mem_iUnion] at hnext
           obtain ⟨middle, ⟨command, _, hstep⟩, hnext⟩ := hnext
           exact ih hrest middle (app.playerStep_pending_lookup who execution middle command
             id message hlookup hstep) hnext
@@ -149,7 +149,7 @@ theorem runPolicies_playerOnly_inbox
     next.native.pool.inbox observer = execution.native.pool.inbox observer := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       rfl
   | cons invocation rest ih =>
@@ -158,7 +158,7 @@ theorem runPolicies_playerOnly_inbox
       cases invocation with
       | environment => exact False.elim (henvironment List.mem_cons_self)
       | player who =>
-          simp only [runPolicies, invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+          simp only [runPolicies, invoke, PMF.support_bind, Set.mem_iUnion] at hnext
           obtain ⟨middle, ⟨command, _, hstep⟩, hnext⟩ := hnext
           exact (ih hrest middle hnext).trans
             (app.playerStep_inbox who observer execution middle command hstep)

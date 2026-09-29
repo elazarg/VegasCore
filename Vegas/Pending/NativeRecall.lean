@@ -80,16 +80,16 @@ theorem nativeInstructionStep_counters (runtime : EventGraphRuntime graph)
       (counters who)
   cases instruction with
   | player who =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact runtime.takeAction_counters who execution _ counters
   | wire =>
-      obtain ⟨after, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨after, supported, rfl⟩ := PMF.support_map .. ▸ reached
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at supported
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, supported⟩ := supported
       exact environment _ after supported
   | grant event | includeLatest event owner | sample event | tick | expire event =>
-      obtain ⟨after, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨after, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact environment _ after supported
 
 def nativeCounters (runtime : EventGraphRuntime graph) : NativeProtocolState runtime → Prop
@@ -97,7 +97,7 @@ def nativeCounters (runtime : EventGraphRuntime graph) : NativeProtocolState run
   | some control => control.execution.Counters runtime
 
 theorem nativeTransition_counters (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (before after : NativeProtocolState runtime) (joint : Player → Option (PlayerAction graph))
     (counters : runtime.nativeCounters before)
@@ -106,26 +106,26 @@ theorem nativeTransition_counters (runtime : EventGraphRuntime graph)
     runtime.nativeCounters after := by
   cases before with
   | none =>
-      obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact runtime.native_initial_counters _
   | some control =>
       rcases control with ⟨epochs, plan, execution⟩
       cases plan with
       | nil =>
           cases epochs with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact counters
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact counters
           | succ epochs =>
-              obtain ⟨chosen, _, rfl⟩ := FinDist.support_map .. ▸ reached
+              obtain ⟨chosen, _, rfl⟩ := PMF.support_map .. ▸ reached
               exact counters
       | cons instruction rest =>
-          obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ reached
           exact runtime.nativeInstructionStep_counters wire instruction execution next joint
             counters supported
 
 /-- The counter invariant holds at every legal history, including off-path
 histories under arbitrary player actions and service choices. -/
 theorem native_history_counters (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ∀ {state}
       (_trace : (runtime.nativeProtocol inputs roster reactionRounds wire order).Trace state),

@@ -32,7 +32,7 @@ structure ServiceInvariant (scheduler : app.Scheduler)
 variable {menu} {scheduler : app.Scheduler} {predicate : app.Execution → Prop}
 
 theorem ServiceInvariant.transition (invariant : menu.ServiceInvariant scheduler predicate)
-    (initial : FinDist app.State) (horizon : Nat)
+    (initial : PMF app.State) (horizon : Nat)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state))
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (valid : serviceInvariant predicate before)
@@ -41,7 +41,7 @@ theorem ServiceInvariant.transition (invariant : menu.ServiceInvariant scheduler
     serviceInvariant predicate after := by
   cases before with
   | none =>
-      obtain ⟨state, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact setup state supported
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
@@ -52,20 +52,20 @@ theorem ServiceInvariant.transition (invariant : menu.ServiceInvariant scheduler
           | none => simp [selected, protocol, ReactiveApplication.actor] at localLegal
           | some action =>
               rw [selected] at localLegal
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               simpa only [serviceInvariant, selected, Option.getD_some] using
                 invariant.respond execution who action valid localLegal.2
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, selected, moved⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               exact invariant.environment execution next command valid selected supported
 
 theorem ServiceInvariant.history (invariant : menu.ServiceInvariant scheduler predicate)
-    (initial : FinDist app.State) (horizon : Nat)
+    (initial : PMF app.State) (horizon : Nat)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state)) :
     ∀ {state} (_trace : (menu.protocol initial horizon scheduler).Trace state),
       serviceInvariant predicate state

@@ -3,7 +3,9 @@
 import Vegas.Game.ServiceInformation
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Compile.EventGraphPolicyLaw
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Source decisions in the existing sequential native service
 
@@ -38,15 +40,15 @@ def sourceServicePolicy (profile : BehavioralProfile setup.program) (who : Playe
     (application setup leaks).Policy := fun past view =>
   if identity : view.application.who = who then
     match view.application.publicView.serviceGrant with
-    | none => FinDist.pure ⟨none⟩
+    | none => PMF.pure ⟨none⟩
     | some event =>
         if owned : (graph setup).actor? event = some who then
           ((compileEventProfile setup.program profile) who event owned
             (setup.eventGraph.fromModeObservation .sequential who
               (identity ▸ view.application.observation))).map
             ((runtime setup).serviceDecision leaks who past view event)
-        else FinDist.pure ⟨none⟩
-  else FinDist.pure ⟨none⟩
+        else PMF.pure ⟨none⟩
+  else PMF.pure ⟨none⟩
 
 theorem sourceServicePolicy_at_event (profile : BehavioralProfile setup.program)
     (who : Player) (execution : (application setup leaks).Execution)
@@ -131,9 +133,9 @@ theorem sourceServicePolicy_commit {Γ : SourceCtx Player L} {openNames : Finset
       (source.history owner) at law
   rw [compilePolicyTable_commit_of_decode refs embedding.ref (profile owner) rfl _ _
     (sourceObserve owner source.state) decoded] at law
-  have actionLaw := FinDist.eq_map_cast_of_cast_eq
+  have actionLaw := eq_map_cast_of_cast_eq
     (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
-  rw [actionLaw, FinDist.map_comp]
+  rw [actionLaw, PMF.map_comp]
   rfl
 
 /-- Outstanding deferred obligations do not change how the source disclosure
@@ -199,9 +201,9 @@ theorem sourceServicePolicy_reveal {Γ : SourceCtx Player L} {openNames : Finset
       (source.history owner) at law
   rw [compilePolicyTable_reveal_of_decode refs embedding.ref (profile owner) rfl _ _
     (sourceObserve owner source.state) decoded] at law
-  have actionLaw := FinDist.eq_map_cast_of_cast_eq
+  have actionLaw := eq_map_cast_of_cast_eq
     (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
-  rw [actionLaw, FinDist.map_comp]
+  rw [actionLaw, PMF.map_comp]
   rfl
 
 end Vegas

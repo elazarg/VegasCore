@@ -30,7 +30,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 open Classical in
 private theorem local_law_at {app : ReactiveApplication Player}
-    (menu : app.ResponseMenu) (initial : FinDist app.State) (horizon : Nat)
+    (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler)
     (profile : Profile (menu.information initial horizon scheduler).behavioralSignature)
     (history : (menu.protocol initial horizon scheduler).History)
@@ -38,7 +38,7 @@ private theorem local_law_at {app : ReactiveApplication Player}
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (info : app.Info)
     (observed : (menu.information initial horizon scheduler).infoOf who history.trace = info)
-    (law : FinDist ((menu.information initial horizon scheduler).Choice who info)) :
+    (law : PMF ((menu.information initial horizon scheduler).Choice who info)) :
     ((menu.information initial horizon scheduler).runBehavioralFrom
       (Profile.update profile who ((profile who).withLaw info law))
       (2 * horizon + 1 - history.trace.length) history).map History.state =
@@ -72,7 +72,7 @@ theorem replay_extra_continuation_law
       (((menu_in_replay setup leaks bounds watcher).actionRestriction
         (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)).choice who
         site.1))
-    (law : FinDist ((information setup leaks bounds watcher).Choice who site.1))
+    (law : PMF ((information setup leaks bounds watcher).Choice who site.1))
     (history : (information setup leaks bounds watcher).InformationHistory who site.1) :
     (((replayMenu setup leaks bounds watcher).information
       (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)).runBehavioralFrom
@@ -129,17 +129,17 @@ theorem replay_extra_continuation_law
   have quiet := watcher_history_silent setup leaks bounds watcher reveals observer openable
     history.1 ⟨remaining, some watcher, execution⟩ current rfl
   change app.reportFirstUnpublished (execution.recall watcher)
-    (execution.observe app watcher) = FinDist.pure ⟨none⟩ at quiet
-  have lawSilent : law.map (fun choice => choice.1.getD ⟨none⟩) = FinDist.pure ⟨none⟩ := by
-    apply FinDist.eq_pure_of_support_subset_singleton
+    (execution.observe app watcher) = PMF.pure ⟨none⟩ at quiet
+  have lawSilent : law.map (fun choice => choice.1.getD ⟨none⟩) = PMF.pure ⟨none⟩ := by
+    apply pmf_eq_pure_of_support_subset_singleton
     intro physical member
-    obtain ⟨choice, _supported, equal⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨choice, _supported, equal⟩ := PMF.support_map .. ▸ member
     obtain ⟨chosen, legal, selectedChoice⟩ := choice.2
     have silence : chosen = ⟨none⟩ := by
       simp only [menu, reduceIte] at legal
       change chosen ∈ (app.reportFirstUnpublished (execution.recall watcher)
         (execution.observe app watcher)).supportFinset at legal
-      simpa only [quiet, FinDist.mem_supportFinset, FinDist.mem_support_pure] using legal
+      simpa only [quiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _] using legal
     simpa only [selectedChoice, silence, Option.getD_some, Set.mem_singleton_iff]
       using equal.symm
   let native := restriction.history history.1
@@ -148,11 +148,11 @@ theorem replay_extra_continuation_law
       some (execution.recall watcher, execution.observe app watcher) :=
     (included.observed initial count service watcher history.1).trans history.2
   have targetLaw := local_law_at targetMenu initial count service target native watcher
-    remaining execution nativeState _ nativeInfo (FinDist.pure action)
+    remaining execution nativeState _ nativeInfo (PMF.pure action)
   have sourceLaw := local_law_at sourceMenu initial count service source history.1 watcher
     remaining execution current _ history.2 law
-  rw [FinDist.map_pure, FinDist.pure_bind, selected, Option.getD_some] at targetLaw
-  rw [lawSilent, FinDist.pure_bind] at sourceLaw
+  rw [PMF.pure_map, PMF.pure_bind, selected, Option.getD_some] at targetLaw
+  rw [lawSilent, PMF.pure_bind] at sourceLaw
   have lengthEq : native.trace.length = history.1.trace.length := restriction.length history.1
   rw [lengthEq] at targetLaw
   have supportSilent : (⟨none⟩ : app.Action) ∈
@@ -161,7 +161,7 @@ theorem replay_extra_continuation_law
     rw [show sourceMenu.decodeProfile initial count service source watcher =
         app.reportFirstUnpublished from menu_decode_reports setup leaks bounds watcher source,
       quiet]
-    exact FinDist.mem_support_pure.mpr rfl
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
   obtain ⟨next, _supported, nextState⟩ := sourceMenu.response_history_exists initial count service
     source history.1 watcher remaining execution current ⟨none⟩ supportSilent
   have clean := watcher_history_clean setup leaks bounds watcher reveals observer openable
@@ -179,7 +179,7 @@ theorem replay_extra_continuation_law
   have sourceMapped := congrArg (fun distribution => distribution.map
     (fun state : app.ProtocolState => state.map (fun control => control.execution.application)))
     sourceLaw
-  rw [FinDist.map_comp] at targetMapped sourceMapped
+  rw [PMF.map_comp] at targetMapped sourceMapped
   exact targetMapped.trans (finished.symm.trans sourceMapped.symm)
 
 end Vegas

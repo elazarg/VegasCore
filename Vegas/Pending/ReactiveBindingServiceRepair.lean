@@ -35,7 +35,7 @@ private theorem completed_clock_tail_input
     (runtime.runInteractionPlan leaks players scheduler
       (List.replicate ticks .tick ++ [.expire event]) execution).map
         (fun next => (next.recall who, next.observe (runtime.reactiveApplication leaks) who)) =
-      FinDist.pure (execution.recall who,
+      PMF.pure (execution.recall who,
         clockInput runtime leaks ticks
           (execution.observe (runtime.reactiveApplication leaks) who)) := by
   let app := runtime.reactiveApplication leaks
@@ -46,21 +46,21 @@ private theorem completed_clock_tail_input
     intro ready
     exact ready.1 completed
   have expiry : app.environment ticked.application (.expire event) =
-      FinDist.pure ticked.application :=
+      PMF.pure ticked.application :=
     runtime.environmentStep_expire_of_not_ready ticked.application event notReady
-  rw [runtime.runInteractionPlan_append, tickLaw, FinDist.pure_bind]
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  rw [runtime.runInteractionPlan_append, tickLaw, PMF.pure_bind]
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-  change (((ticked.environmentStep app (.application (.expire event))).bind FinDist.pure).bind
-    FinDist.pure).map _ = _
-  rw [FinDist.bind_pure, FinDist.bind_pure]
+  change (((ticked.environmentStep app (.application (.expire event))).bind PMF.pure).bind
+    PMF.pure).map _ = _
+  rw [PMF.bind_pure, PMF.bind_pure]
   change (((app.environment ticked.application (.expire event)).map
     (fun state => { ticked with application := state })).map (fun next : app.Execution =>
       { next with environmentRecall := ticked.environmentRecall ++
         [(⟨ticked.observeEnvironment app, .application (.expire event)⟩ :
           app.EnvironmentEntry)] })).map _ = _
-  rw [expiry, FinDist.map_pure, FinDist.map_pure, FinDist.map_pure]
-  apply congrArg FinDist.pure
+  rw [expiry, PMF.pure_map, PMF.pure_map, PMF.pure_map]
+  apply congrArg PMF.pure
   change (ticked.recall who, ticked.observe app who) = _
   rw [recall]
   apply congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
@@ -99,13 +99,13 @@ theorem BindingMemory.completed_clock_tail
       (runtime.reactiveApplication leaks).PlayerView =>
     (memory.restoreRecall runtime leaks pair.1, memory.shadow.inputView runtime leaks pair.2)
   have mapped := congrArg (fun law => law.map restore) rightLaw
-  simp only [FinDist.map_comp, FinDist.map_pure] at mapped
+  simp only [PMF.map_comp, PMF.pure_map] at mapped
   rw [leftLaw, show (runtime.runInteractionPlan leaks players scheduler
       (List.replicate ticks .tick ++ [.expire event]) right).map
         (fun next => (memory.restoreRecall runtime leaks (next.recall who),
           memory.shadow.inputView runtime leaks
             (next.observe (runtime.reactiveApplication leaks) who))) = _ from mapped]
-  apply congrArg FinDist.pure
+  apply congrArg PMF.pure
   apply Prod.ext past.symm
   exact (congrArg (clockInput runtime leaks ticks) observed).symm
 
@@ -169,12 +169,12 @@ theorem BindingMemory.repairResponse_protected_input
   let afterIncluded : app.Execution := { after.includePending app id with
     environmentRecall := after.environmentRecall ++ [⟨after.observeEnvironment app, .include id⟩] }
   have leftSelect : runtime.interactionStep leaks players scheduler (.includeLatest event who)
-      before = FinDist.pure beforeIncluded := by
+      before = PMF.pure beforeIncluded := by
     have chosen := runtime.reactiveLatest_after_submit leaks who event left serials material rfl
     unfold interactionStep
-    rw [interactionInstruction, chosen, FinDist.pure_bind]
+    rw [interactionInstruction, chosen, PMF.pure_bind]
     simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-      ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind]
+      ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
     rfl
   have ownFresh : (memory.shadow.inputView runtime leaks view).application.candidates
       (.prepared serial) = .fresh := by
@@ -185,13 +185,13 @@ theorem BindingMemory.repairResponse_protected_input
     memory.repairResponse_unusable runtime leaks who view event payload outputEq codeEq node
       serial opening ownFresh actualFresh unusable
   have rightSelect : runtime.interactionStep leaks players scheduler (.includeLatest event who)
-      after = FinDist.pure afterIncluded := by
+      after = PMF.pure afterIncluded := by
     dsimp only [after, afterIncluded]
     rw [repairedAction, runtime.reactiveBinding_reserved_selection leaks right who event payload
       (.success (L.someValue payload)) serial (network ▸ serials) players scheduler,
       show right.network.nextSerial who = left.network.nextSerial who from
         congrArg (fun net => net.nextSerial who) network.symm]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   have restored := memory.repairResponse_include_input runtime leaks who left right lengths past
     observed network event payload outputEq codeEq node serial opening originalFresh actualFresh
@@ -206,8 +206,8 @@ theorem BindingMemory.repairResponse_protected_input
   have configSupported : (beforeIncluded.application.config, beforeIncluded.receipts) ∈
       ((runtime.interactionStep leaks players scheduler (.includeLatest event who) before).map
         fun next => (next.application.config, next.receipts)).support := by
-    rw [leftSelect, FinDist.map_pure, FinDist.mem_support_pure]
-  rw [configLaw, FinDist.mem_support_pure] at configSupported
+    rw [leftSelect, PMF.pure_map, PMF.mem_support_pure_iff _ _]
+  rw [configLaw, PMF.mem_support_pure_iff _ _] at configSupported
   have sameConfig := congrArg Prod.fst configSupported
   dsimp only [Prod.fst] at sameConfig
   have leftDone : event ∈ beforeIncluded.application.config.cut.completed := by
@@ -222,8 +222,8 @@ theorem BindingMemory.repairResponse_protected_input
     rw [sameCut]
     exact leftDone
   dsimp only
-  rw [List.cons_append, runInteractionPlan, leftSelect, FinDist.pure_bind,
-    runInteractionPlan, rightSelect, FinDist.pure_bind]
+  rw [List.cons_append, runInteractionPlan, leftSelect, PMF.pure_bind,
+    runInteractionPlan, rightSelect, PMF.pure_bind]
   exact remembered.completed_clock_tail runtime leaks who players scheduler beforeIncluded
     afterIncluded restored.1 restored.2.1 event leftDone rightDone ticks
 

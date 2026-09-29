@@ -135,7 +135,7 @@ theorem submissionObservation_environment (execution next : app.Execution)
     (id : MessageId Principal) (issued : id.2 < execution.network.nextSerial id.1) :
     app.submissionObservation? next.environmentRecall id =
       app.submissionObservation? execution.environmentRecall id := by
-  obtain ⟨updated, _, rfl⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ reached
   rw [app.submissionObservation_append,
     app.activationObservation_issued execution command id issued]
   rfl
@@ -161,22 +161,22 @@ theorem submissionAudit_environment (project : app.LocalObservation → app.Publ
                 | apply serials.leaked; assumption | apply serials.inputs; assumption
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact prior
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact prior.learn who selected
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       change (execution.includePending app id).network.Satisfies _
       rw [app.includePending_network]
       exact prior.includePending id
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact prior
 
 theorem activationAudit_environment (execution next : app.Execution) (command : app.Command)
@@ -185,8 +185,8 @@ theorem activationAudit_environment (execution next : app.Execution) (command : 
   intro who active
   cases command <;> try cases active
   case activate actor =>
-    obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-    obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+    obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
     rw [submissionObservation_append]
     simp [EnvironmentEntry.activationObservation?, Execution.observeEnvironment,
       MessageNetwork.publicView, MessageNetwork.learn]
@@ -198,7 +198,7 @@ def submissionAudit (project : app.LocalObservation → app.PublicObservation) :
 
 theorem submissionAudit_transition (project : app.LocalObservation → app.PublicObservation)
     (agrees : ∀ state who, project (app.observePlayer state who) = app.observePublic state)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (trace : (app.protocol initial horizon scheduler).Trace before)
     (valid : app.submissionAudit project before)
@@ -206,23 +206,23 @@ theorem submissionAudit_transition (project : app.LocalObservation → app.Publi
     app.submissionAudit project after := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact ⟨MessageNetwork.Satisfies.empty, by intro who impossible; cases impossible⟩
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact ⟨app.submissionAudit_respond project agrees execution who _ valid.1
             (app.submissionOrigin_next_none_history initial horizon scheduler _ trace who)
             (valid.2 who rfl), by intro observer impossible; cases impossible⟩
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               exact ⟨app.submissionAudit_environment project execution next command moved valid.1
                 (app.serialsBeforeNext_history scheduler initial horizon trace),
                 app.activationAudit_environment execution next command moved remaining⟩
@@ -231,7 +231,7 @@ theorem submissionAudit_transition (project : app.LocalObservation → app.Publi
 player responses and arbitrary supported scheduler decisions. -/
 theorem submissionAudit_history (project : app.LocalObservation → app.PublicObservation)
     (agrees : ∀ state who, project (app.observePlayer state who) = app.observePublic state)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
       app.submissionAudit project state
   | _, .start => trivial

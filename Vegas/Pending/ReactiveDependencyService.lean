@@ -34,7 +34,7 @@ def dependencyMonitor (runtime : EventGraphRuntime graph)
 
 theorem dependencyMonitor_authorized (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     runtime.DependencyAuthorized leaks initial horizon
       (runtime.dependencyMonitor leaks scheduler) :=
@@ -54,7 +54,7 @@ def dependencyUniformScheduler (runtime : EventGraphRuntime graph)
 
 theorem dependencyUniformScheduler_authorized (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (calendar : Nat → (runtime.reactiveApplication leaks).UniformInstruction) :
     runtime.DependencyAuthorized leaks initial horizon
       (runtime.dependencyUniformScheduler leaks calendar) :=
@@ -72,7 +72,7 @@ theorem dependencyUniformScheduler_atMostOnce (runtime : EventGraphRuntime graph
 every actual pending envelope, at arbitrary initialized legal prefixes. -/
 theorem dependencyPermission_iff (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace

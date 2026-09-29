@@ -53,8 +53,8 @@ Terminal and ill-addressed inputs are totalized here; the protocol's legal
 joint-action type prevents their use as transitions. -/
 def step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → ProtocolState program →
-    (Player → Option (OwnAction Player L)) → FinDist (ProtocolState program)
-  | _, _, .ret _ => fun config _ => FinDist.pure config
+    (Player → Option (OwnAction Player L)) → PMF (ProtocolState program)
+  | _, _, .ret _ => fun config _ => PMF.pure config
   | _, _, .sample name _ law next => fun state joint =>
       Sum.elim
         (fun config => (L.evalDist law (sourcePublicEnv config.state)).map fun value =>
@@ -62,13 +62,13 @@ def step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
         (fun rest => (step next rest joint).map Sum.inr) state
   | _, _, .commit (payload := payload) name owner _ guard next => fun state joint =>
       Sum.elim
-        (fun config => FinDist.pure (Sum.inr (entry next
+        (fun config => PMF.pure (Sum.inr (entry next
           (commitSuccessor name guard config
             (OwnAction.binding owner name payload (joint owner))))))
         (fun rest => (step next rest joint).map Sum.inr) state
   | _, _, .reveal published owner _ _ source _ next => fun state joint =>
       Sum.elim
-        (fun config => FinDist.pure (Sum.inr (entry next
+        (fun config => PMF.pure (Sum.inr (entry next
           (revealSuccessor published source config (OwnAction.disclosure (joint owner))))))
         (fun rest => (step next rest joint).map Sum.inr) state
 

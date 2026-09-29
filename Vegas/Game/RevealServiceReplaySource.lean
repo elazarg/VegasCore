@@ -89,9 +89,9 @@ theorem before_activation_published
   let next : app.Execution := { learned with environmentRecall := execution.environmentRecall ++
     [⟨execution.observeEnvironment app, .activate who⟩] }
   have nextSupport : next ∈ (execution.environmentStep app (.activate who)).support := by
-    rw [ReactiveApplication.Execution.environmentStep, FinDist.support_map]
+    rw [ReactiveApplication.Execution.environmentStep, PMF.support_map]
     refine ⟨learned, ?_, rfl⟩
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨selected, selectedSupport, rfl⟩
   have legal : (protocol setup leaks bounds watcher).Legal history.state (fun _ => none) := by
     rw [state]
@@ -106,10 +106,10 @@ theorem before_activation_published
         ⟨fun _ => none, legal⟩).support := by
     change _ ∈ (app.transition (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) history.state (fun _ => none)).support
-    rw [state, ReactiveApplication.transition, FinDist.support_bind]
+    rw [state, ReactiveApplication.transition, PMF.support_bind]
     apply Set.mem_iUnion₂.mpr
     refine ⟨.activate who, scheduled, ?_⟩
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, nextSupport, rfl⟩
   let after := history.extend legal transition
   have clean := active_history_clean setup leaks bounds watcher reveals observer openable
@@ -167,7 +167,7 @@ theorem replay_scheduler_eq
       cases instruction with
       | player who | grant event | sample event | tick | expire event => rfl
       | includeLatest event owner =>
-          exact congrArg FinDist.pure (same.reserved_selection event owner)
+          exact congrArg PMF.pure (same.reserved_selection event owner)
       | wire =>
           dsimp only
           rw [(runtime setup).reportNetwork_instruction,
@@ -181,7 +181,7 @@ theorem scheduler_inclusion_fresh
     id ∉ view.network.ledger.map Message.id := by
   unfold scheduler at selected
   split at selected
-  · cases FinDist.mem_support_pure.mp selected
+  · cases (PMF.mem_support_pure_iff _ _).mp selected
   · exact (runtime setup).interactionInstruction_fresh leaks
       ((runtime setup).reportNetwork leaks watcher) past view _ id selected
 

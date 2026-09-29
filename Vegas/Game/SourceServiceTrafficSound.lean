@@ -46,18 +46,18 @@ theorem initialized_sourceService_partial_conformance
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
   obtain ⟨initial, supported, reachedPrefix⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨final, continued⟩ := ((runtime setup).runInteractionPlan leaks players network
     ((rosterPlan setup rosters).drop count) execution).support_nonempty
   have complete : final ∈ ((runtime setup).runInteractionPlan leaks players network
       (rosterPlan setup rosters)
       (ReactiveApplication.Execution.initial (application setup leaks) initial)).support := by
     rw [← List.take_append_drop count (rosterPlan setup rosters),
-      (runtime setup).runInteractionPlan_append, FinDist.support_bind]
+      (runtime setup).runInteractionPlan_append, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨execution, reachedPrefix, continued⟩
   have traffic := initialized_sourceService_conformance bounds values capacity opportunities
     players lawful network final (by
-      rw [FinDist.support_bind]
+      rw [PMF.support_bind]
       exact Set.mem_iUnion₂.mpr ⟨initial, supported, complete⟩)
   have included := (runtime setup).executionTraffic_runInteractionPlan leaks players network
     ((rosterPlan setup rosters).drop count) execution final continued
@@ -116,19 +116,19 @@ theorem sourceService_history_traffic_audit_clear
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed,
       observed ∈ (sample actual).support → observed ⊆ actual)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).History)
     (who : Player) :
-    (((application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
+    ((((application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
       (fun evidence => evidence.2.2.sender)
       (fun evidence => (runtime setup).permittedServiceEnvelope
         evidence.1 evidence.2.1 evidence.2.2)
       sample ((application setup leaks).stateTraffic history.state)).map
-        (fun verdict => verdict who)).prob true = 0 := by
+        (fun verdict => verdict who)) true).toReal = 0 := by
   apply (application setup leaks).sampledTrafficAudit_sound
   · exact authentic _
   · intro record member _

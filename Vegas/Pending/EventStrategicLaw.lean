@@ -21,11 +21,11 @@ mixture of graph-policy replacements against the unchanged opponents. -/
 theorem exists_deviation_mixture_store_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (focal : Player) (replacement : runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
-    ∃ mixture : FinDist (graph.BehavioralPolicy focal),
+    ∃ mixture : PMF (graph.BehavioralPolicy focal),
       ((runtime.servicedEventGame inputs roster reactionRounds wire order).play
         (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
           (runtime.compileProfile profile) focal replacement)).map
@@ -52,13 +52,13 @@ theorem exists_deviation_mixture_store_law
       (sig := MessageApplication.policySignature Player runtime.application)
       (runtime.compileProfile profile) focal response.playerPure
     have fixedFocal : players focal = fun history view =>
-        FinDist.pure (response.player history view) := by
+        PMF.pure (response.player history view) := by
       simp only [players, Profile.update_same]
       rfl
     have fixedWire : response.wirePure = fun history view =>
-        FinDist.pure (response.wire history view) := rfl
+        PMF.pure (response.wire history view) := rfl
     have fixedOrder : response.orderPure = fun history view =>
-        FinDist.pure (response.order history view) := rfl
+        PMF.pure (response.order history view) := rfl
     have opponentCompiled : ∀ owner, owner ≠ focal →
         players owner = runtime.compilePlayerPolicy owner (profile owner) := by
       intro owner different

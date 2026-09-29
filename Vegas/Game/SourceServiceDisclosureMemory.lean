@@ -41,8 +41,8 @@ theorem guarded_disclosure_response_memory
     (node : nodeView (graph setup) event = .resolve owner payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       outputEq codeEq)
-    (remember : DecisionView owner Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView owner Γ → FinDist Bool) :
+    (remember : DecisionView owner Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView owner Γ → PMF Bool) :
     let response := fun disclose => (runtime setup).serviceDecision leaks owner
       (execution.recall owner) (execution.observe (application setup leaks) owner) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
@@ -53,13 +53,13 @@ theorem guarded_disclosure_response_memory
         (execution.respond (application setup leaks) owner (response intended),
           revealSuccessor published binding original intended)) =
       (memory.map Prod.fst).bind fun effective =>
-        ((memory.condOnFibre Prod.fst effective).map Prod.snd).map fun past =>
+        ((fiberConditional memory Prod.fst effective).map Prod.snd).map fun past =>
           (execution.respond (application setup leaks) owner (response effective),
             (revealSuccessor published binding source effective).withOwnHistory owner past) := by
   intro response memory
   have law := disclosureMemoryLaw_disintegrate published binding source.registry
     source.revelations remember choose (source.view owner) (fun effective past =>
-      FinDist.pure
+      PMF.pure
         (execution.respond (application setup leaks) owner (response effective),
           (revealSuccessor published binding source effective).withOwnHistory owner past))
   have emitted (intended : Bool) : response
@@ -68,8 +68,8 @@ theorem guarded_disclosure_response_memory
       execution agree event outputEq codeEq node intended).symm
   simp only [Config.view, effectiveDisclosureView_observe, emitted,
     revealSuccessor_effective_withOwnHistory] at law
-  simpa only [Config.restoreMemory, FinDist.bind_map, Config.withOwnHistory_view,
-    Config.view, FinDist.map_eq_bind, FinDist.bind_bind, FinDist.pure_bind,
+  simpa only [Config.restoreMemory, PMF.bind_map, Config.withOwnHistory_view,
+    Config.view, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
     Config.withOwnHistory, Function.update_self, revealSuccessor, Function.update_idem,
     memory] using law
 

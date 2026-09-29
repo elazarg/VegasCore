@@ -30,7 +30,7 @@ eventual source result. The fallback raw value is never transmitted. -/
 def openingOutcomeTranscript (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (fallback : Raw L)
-    (offset : Nat) {slots : Nat} (timing : FinDist (Fin slots))
+    (offset : Nat) {slots : Nat} (timing : PMF (Fin slots))
     (network : runtime.NetworkPolicy leaks) (roster : List Player) (focal : Player)
     (start : (runtime.reactiveApplication leaks).Execution) (outcome : Option (Raw L)) :=
   let app := runtime.reactiveApplication leaks
@@ -52,9 +52,9 @@ about that posterior. The conclusion retains the entire hidden start. -/
 theorem openingOutcome_posterior (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (fallback : Raw L)
-    (offset : Nat) {slots : Nat} (timing : FinDist (Fin slots))
+    (offset : Nat) {slots : Nat} (timing : PMF (Fin slots))
     (network : runtime.NetworkPolicy leaks) (roster : List Player) (focal : Player)
-    (prior : FinDist ((runtime.reactiveApplication leaks).Execution × Option (Raw L)))
+    (prior : PMF ((runtime.reactiveApplication leaks).Execution × Option (Raw L)))
     (recalls : ∀ pair ∈ prior.support,
       pair.1.InputRecall (runtime.reactiveApplication leaks))
     (messages : ∀ left ∈ prior.support, ∀ right ∈ prior.support,
@@ -79,10 +79,10 @@ theorem openingOutcome_posterior (runtime : EventGraphRuntime graph)
     let channel := fun pair => runtime.openingOutcomeTranscript leaks owner event candidate
       fallback offset timing network roster focal pair.1 pair.2
     let joint := prior.bind fun pair => (channel pair).map fun transcript => (pair, transcript)
-    (joint.condOnFibre (fun output => (output.1.2, output.2)) (observed, extra)).map Prod.fst =
-      prior.condOnFibre Prod.snd observed := by
+    (fiberConditional joint (fun output => (output.1.2, output.2)) (observed, extra)).map Prod.fst =
+      fiberConditional prior Prod.snd observed := by
   dsimp only
-  apply FinDist.conditional_kernel_of_fiber prior Prod.snd _ _ observed extra present
+  apply PMF.conditional_kernel_of_fiber prior Prod.snd _ _ observed extra present
   intro left leftSupported right rightSupported same
   obtain ⟨left, outcome⟩ := left
   obtain ⟨right, rightOutcome⟩ := right
@@ -97,7 +97,7 @@ theorem openingOutcome_posterior (runtime : EventGraphRuntime graph)
         (privateView _ leftSupported _ rightSupported) owned (by simp)
   | some raw =>
       change timing.bind _ = timing.bind _
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro slot _
       exact runtime.openingWindow_coupling leaks owner event candidate raw offset (some slot)
         network roster focal left right (recalls _ leftSupported) (recalls _ rightSupported)
@@ -115,9 +115,9 @@ theorem openingWindow_owner_posterior {Observation : Type}
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots)))
+    (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots)))
     (network : runtime.NetworkPolicy leaks) (roster : List Player)
-    (prior : FinDist (runtime.reactiveApplication leaks).Execution)
+    (prior : PMF (runtime.reactiveApplication leaks).Execution)
     (reference : (runtime.reactiveApplication leaks).Execution)
     (before : (reference.recall owner).length ≤ offset)
     (referenceRecall : reference.InputRecall (runtime.reactiveApplication leaks))
@@ -148,7 +148,7 @@ theorem openingWindow_owner_posterior {Observation : Type}
       ((runtime.runInteractionPlan leaks players network
         (roster.map ServiceInstruction.player) start).map readout).map
           (fun output => (output, start))
-    (joint.condOnFibre Prod.fst observed).map Prod.snd = prior := by
+    (fiberConditional joint Prod.fst observed).map Prod.snd = prior := by
   dsimp only
   let app := runtime.reactiveApplication leaks
   let players := runtime.openingWindowMixturePlayers leaks owner event candidate raw offset choices
@@ -165,31 +165,31 @@ theorem openingWindow_owner_posterior {Observation : Type}
     rw [runtime.openingWindowMixture_law leaks owner event candidate raw offset choices
       network _ start atStart,
       runtime.openingWindowMixture_law leaks owner event candidate raw offset choices
-        network _ reference before, FinDist.map_bind, FinDist.map_bind]
-    apply FinDist.bind_congr
+        network _ reference before, PMF.map_bind, PMF.map_bind]
+    apply bind_congr_on_support _
     intro selected _
     have coupled := runtime.openingWindow_coupling leaks owner event candidate raw offset selected
       network roster owner start reference (recalls start supported) referenceRecall
       (messages start supported) (recall start supported) (publicView start supported)
       (privateView start supported) owned (fun _ => ⟨meaning start supported, referenceMeaning⟩)
-    have projected := congrArg (FinDist.map observe) coupled
-    simpa only [FinDist.map_comp, Function.comp_def] using projected
+    have projected := congrArg (PMF.map observe) coupled
+    simpa only [PMF.map_comp, Function.comp_def] using projected
   have independent : (prior.bind fun start =>
       (kernel start).map fun output => (output, start)) =
-        FinDist.product (kernel reference) prior := by
+        bindPairLaw (kernel reference) (fun _ => prior) := by
     calc
       _ = prior.bind (fun start =>
           (kernel reference).map fun output => (output, start)) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro start supported
         rw [same start supported]
       _ = _ := by
-        simp only [FinDist.product, FinDist.map_eq_bind]
-        rw [FinDist.bind_comm]
-  change (((prior.bind fun start =>
-    (kernel start).map fun output => (output, start)).condOnFibre Prod.fst observed).map
+        simp only [FinDist.product, ← PMF.bind_pure_comp, Function.comp_def]
+        rw [PMF.bind_comm]
+  change ((fiberConditional (prior.bind fun start =>
+    (kernel start).map fun output => (output, start)) Prod.fst observed).map
       Prod.snd) = prior
   rw [independent]
-  exact FinDist.conditional_snd_product (kernel reference) prior observed
+  exact conditional_snd_bindPairLaw_const (kernel reference) prior observed
 
 end Vegas.EventGraphRuntime

@@ -82,27 +82,27 @@ theorem rejected_map_has_collision (quotient : QuotientMap)
   push Not at rejected
   exact rejected
 
-noncomputable def prior : FinDist Observation := FinDist.uniformOfFintype
+noncomputable def prior : PMF Observation := PMF.uniformOfFintype
 
 /-- The executable criterion is exactly the checked information condition. -/
 theorem retainsFact_iff_perfect_report (quotient : QuotientMap) :
     retainsFact quotient ↔
       ∃ policy, value prior quotient (reportUtility fact) policy = 1 := by
   rw [exists_perfect_report_iff,
-    determines_iff_of_fullSupport prior FinDist.mem_support_uniformOfFintype]
+    determines_iff_of_fullSupport prior PMF.mem_support_uniformOfFintype]
   rfl
 
 /-- The exhaustive counts also classify preservation of every optimum for
 every utility on the retained fact and report, allowing arbitrary translations. -/
 theorem retainsFact_iff_preserves_all_optima (quotient : QuotientMap) :
     retainsFact quotient ↔
-      (∀ utility : Bool → Bool → ℝ, ∀ source : Observation → FinDist Bool,
+      (∀ utility : Bool → Bool → ℝ, ∀ source : Observation → PMF Bool,
         IsBayesOptimal prior quotient (fun state => utility (fact state)) source →
-          ∃ target : Observation → FinDist Bool,
+          ∃ target : Observation → PMF Bool,
             IsBayesOptimal prior id (fun state => utility (fact state)) target ∧
               resultLaw prior id fact target = resultLaw prior quotient fact source) := by
   rw [preserves_all_optima_iff_determines,
-    determines_iff_of_fullSupport prior FinDist.mem_support_uniformOfFintype]
+    determines_iff_of_fullSupport prior PMF.mem_support_uniformOfFintype]
   rfl
 
 open GameTheory.DecisionExperiment.Protocol in
@@ -121,7 +121,7 @@ theorem retainsFact_iff_preserves_all_sequentialEquilibria (quotient : QuotientM
                 (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
             observedLaw prior id fact target = observedLaw prior quotient fact source) := by
   rw [preserves_all_sequentialEquilibria_iff_determines,
-    determines_iff_of_fullSupport prior FinDist.mem_support_uniformOfFintype]
+    determines_iff_of_fullSupport prior PMF.mem_support_uniformOfFintype]
   rfl
 
 /-- Every rejected map has an optimal coarse policy whose outcome law differs
@@ -129,16 +129,16 @@ from every informed optimum. This covers all randomized policies, not just the
 finite maps enumerated above. It is a terminal-decision optimality theorem. -/
 theorem rejected_map_no_optimal_outcome_match (quotient : QuotientMap)
     (rejected : ¬ retainsFact quotient) :
-    ∃ source : Observation → FinDist Bool,
+    ∃ source : Observation → PMF Bool,
       IsBayesOptimal prior quotient (reportUtility fact) source ∧
-      ∀ target : Observation → FinDist Bool,
+      ∀ target : Observation → PMF Bool,
         IsBayesOptimal prior id (reportUtility fact) target →
           (outcomeLaw prior id target).map (fun result => (fact result.1, result.2)) ≠
             (outcomeLaw prior quotient source).map (fun result => (fact result.1, result.2)) := by
   obtain ⟨first, second, same, different⟩ := rejected_map_has_collision quotient rejected
   exact exists_optimal_no_report_law_match prior quotient id fact
     (fun _ _ _ _ same => congrArg fact same)
-    (FinDist.mem_support_uniformOfFintype first)
-    (FinDist.mem_support_uniformOfFintype second) same different
+    (PMF.mem_support_uniformOfFintype first)
+    (PMF.mem_support_uniformOfFintype second) same different
 
 end GameTheoryExtensionsTests.ObservationQuotients

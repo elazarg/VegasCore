@@ -10,7 +10,7 @@ namespace GameTheoryExtensionsTests.SelectiveStopping
 
 open GameTheory.Math.Probability
 
-def law : FinDist (Fin 3) := FinDist.uniformFin 3
+def law : PMF (Fin 3) := FinDist.uniformFin 3
 
 def stopped (state : Fin 3) : Bool := decide (state = 0 ∨ state = 1)
 
@@ -40,10 +40,10 @@ the source value after charging the positive margin. -/
 theorem stopped_fiber_comparison (observed : Fin 3)
     (hobserved : ∃ state ∈ law.support,
       stopped state = true ∧ information state = observed) :
-    law.expect (fun state =>
+    expect law (fun state =>
         if stopped state && decide (information state = observed)
         then targetValue state + margin else 0) ≤
-      law.expect (fun state =>
+      expect law (fun state =>
         if stopped state && decide (information state = observed)
         then sourceValue state else 0) := by
   obtain ⟨state, _, hstopped, hinfo⟩ := hobserved
@@ -78,7 +78,7 @@ theorem pointwise_comparison_fails :
       targetValue state + margin ≤ sourceValue state := by
   intro h
   have hsupport : (0 : Fin 3) ∈ law.support := by
-    rw [← FinDist.prob_pos_iff]
+    rw [← pmf_toReal_pos_iff]
     norm_num [law]
   have hbound := h 0 hsupport (by decide)
   norm_num [targetValue, sourceValue, margin] at hbound
@@ -86,11 +86,11 @@ theorem pointwise_comparison_fails :
 /-- A genuinely random stopping event with positive margin satisfies the
 unconditional bound even though pointwise stopped-state comparison fails. -/
 theorem randomized_positive_margin_bound :
-    0 < margin ∧ 0 < (law.map stopped).prob true ∧
-      law.expect targetValue + margin * (law.map stopped).prob true ≤
-        law.expect sourceValue := by
+    0 < margin ∧ 0 < ((law.map stopped) true).toReal ∧
+      expect law targetValue + margin * ((law.map stopped) true).toReal ≤
+        expect law sourceValue := by
   refine ⟨by norm_num [margin], ?_, ?_⟩
-  · rw [FinDist.prob_map, law, FinDist.expect_uniformFin]
+  · rw [toReal_map_apply, law, FinDist.expect_uniformFin]
     norm_num [stopped, Fin.sum_univ_succ]
     exact ⟨0, by simp⟩
   · apply FinDist.stopping_information_fiber_bound law stopped information
@@ -110,12 +110,12 @@ on an event of probability one half raises expectation from one to three halves.
 This is a finite-law regression, not a native-runtime optimality claim. -/
 theorem event_gap_sharp :
     let pair := FinDist.uniformFin 2
-    (pair.map gapEvent).prob true = 1 / 2 ∧
-      pair.expect gapSource = 1 ∧ pair.expect gapTarget = 3 / 2 ∧
-      pair.expect gapTarget ≤ pair.expect gapSource + 1 * (pair.map gapEvent).prob true := by
+    ((pair.map gapEvent) true).toReal = 1 / 2 ∧
+      expect pair gapSource = 1 ∧ expect pair gapTarget = 3 / 2 ∧
+      expect pair gapTarget ≤ expect pair gapSource + 1 * ((pair.map gapEvent) true).toReal := by
   dsimp only
   refine ⟨?_, ?_, ?_, ?_⟩
-  · rw [FinDist.prob_map, FinDist.expect_uniformFin]
+  · rw [toReal_map_apply, FinDist.expect_uniformFin]
     norm_num [gapEvent, Fin.sum_univ_succ]
   · rw [FinDist.expect_uniformFin]
     norm_num [gapSource, Fin.sum_univ_succ]

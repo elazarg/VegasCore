@@ -18,7 +18,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
-  (menu : app.ResponseMenu) (initial : FinDist app.State) (horizon : Nat)
+  (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Nat)
   (scheduler : app.Scheduler)
 
 theorem IncludedIn.decoded_admissible {smaller larger : app.ResponseMenu}
@@ -72,18 +72,18 @@ theorem trace_implementation_resume
       (some ⟨remaining, none, next.1⟩)) := by
   cases actor with
   | none =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact ⟨trace⟩
   | some who =>
       by_cases same : who = owner
       · subst who
-        simp only [Implementation.resume, ↓reduceIte, FinDist.support_map] at supported
+        simp only [Implementation.resume, ↓reduceIte, PMF.support_map] at supported
         obtain ⟨response, chosen, rfl⟩ := supported
         exact menu.trace_respond initial horizon scheduler remaining execution owner response.1
           trace (covered memory _ _ response chosen)
-      · simp only [Implementation.resume, same, ↓reduceIte, FinDist.support_map] at supported
+      · simp only [Implementation.resume, same, ↓reduceIte, PMF.support_map] at supported
         obtain ⟨middle, moved, rfl⟩ := supported
-        obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ moved
+        obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ moved
         exact menu.trace_respond initial horizon scheduler remaining execution who response
           trace (opponents who same ⟨remaining, some who, execution⟩ trace rfl response chosen)
 
@@ -98,9 +98,9 @@ theorem trace_implementation_round
     Nonempty ((menu.protocol initial horizon scheduler).Trace
       (some ⟨remaining, none, next.1⟩)) := by
   obtain ⟨command, selected, dispatched⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨middle, moved, resumed⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ dispatched)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   obtain ⟨pending⟩ := menu.trace_environment initial horizon scheduler remaining execution middle
     command trace selected moved
   exact menu.trace_implementation_resume initial horizon scheduler implementation owner players
@@ -119,12 +119,12 @@ theorem trace_implementation_run
   induction count generalizing execution memory with
   | zero =>
       rw [Implementation.run_zero] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact ⟨trace⟩
   | succ count ih =>
       rw [Implementation.run_succ] at supported
       obtain ⟨middle, moved, finished⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨middleTrace⟩ := menu.trace_implementation_round initial horizon scheduler
         implementation owner players opponents covered (remaining + count) execution memory
         trace middle moved
@@ -145,7 +145,7 @@ theorem trace_implementation_runJoint
     opponents covered remaining count execution memory trace next.1
   change next.1 ∈ ((implementation.runJoint owner players scheduler count execution memory).map
     Prod.fst).support
-  rw [FinDist.support_map]
+  rw [PMF.support_map]
   exact ⟨next, supported, rfl⟩
 
 end Interaction.ReactiveApplication.ResponseMenu

@@ -30,32 +30,32 @@ def payout : Action × Action → Fin 2 → ℝ := MatrixGame.utility matrix
 
 theorem zeroSum : IsZeroSum payout := MatrixGame.utility_isZeroSum matrix
 
-def signs : FinDist Action :=
-  FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-    (FinDist.pure (some false)) (FinDist.pure (some true))
+def signs : PMF Action :=
+  mix (1 / 2) (by norm_num) (by norm_num)
+    (PMF.pure (some false)) (PMF.pure (some true))
 
 def zeroProfile : Profile form.sig.mixed :=
-  MatrixGame.mixedProfile (FinDist.pure none) (FinDist.pure none)
+  MatrixGame.mixedProfile (PMF.pure none) (PMF.pure none)
 
 def signProfile : Profile form.sig.mixed := MatrixGame.mixedProfile signs signs
 
-theorem mixed_play (row col : FinDist Action) :
-    form.mixed.play (MatrixGame.mixedProfile row col) = FinDist.product row col := by
+theorem mixed_play (row col : PMF Action) :
+    form.mixed.play (MatrixGame.mixedProfile row col) = bindPairLaw row (fun _ => col) := by
   rw [GameForm.mixed_play, ← FinDist.piFin_eq_pi]
   simp [FinDist.piFin, MatrixGame.mixedProfile, MatrixGame.form, FinDist.product,
-    Fin.consEquiv, FinDist.map_eq_bind]
+    Fin.consEquiv, ← PMF.bind_pure_comp, Function.comp_def]
 
-theorem expectedPayoff (row col : FinDist Action) :
-    MatrixGame.expectedPayoff matrix row col = row.expect amount * col.expect amount := by
-  change (form.mixed.play (MatrixGame.mixedProfile row col)).expect
+theorem expectedPayoff (row col : PMF Action) :
+    MatrixGame.expectedPayoff matrix row col = expect row amount * expect col amount := by
+  change expect (form.mixed.play (MatrixGame.mixedProfile row col))
     (fun result => matrix result.1 result.2) = _
   rw [mixed_play, FinDist.expect_product]
   simp only [matrix, FinDist.expect_smul, FinDist.expect_mul_const]
 
-@[simp] theorem signs_mean : signs.expect amount = 0 := by
+@[simp] theorem signs_mean : expect signs amount = 0 := by
   norm_num [signs, FinDist.expect_mix, amount]
 
-theorem centered_nash (law : FinDist Action) (mean : law.expect amount = 0) :
+theorem centered_nash (law : PMF Action) (mean : expect law amount = 0) :
     IsNash form.mixed (euPreference payout) (MatrixGame.mixedProfile law law) := by
   apply IsSaddlePoint.isNash _ zeroSum
   apply (MatrixGame.isSaddlePoint_iff_guarantees_caps matrix law law).mpr
@@ -66,37 +66,37 @@ theorem centered_nash (law : FinDist Action) (mean : law.expect amount = 0) :
     simp [expectedPayoff, mean]
 
 theorem zero_nash : IsNash form.mixed (euPreference payout) zeroProfile :=
-  centered_nash (FinDist.pure none) (by simp [amount])
+  centered_nash (PMF.pure none) (by simp [amount])
 
 theorem signs_nash : IsNash form.mixed (euPreference payout) signProfile :=
   centered_nash signs signs_mean
 
-def payoutLaw (profile : Profile form.sig.mixed) : FinDist (Fin 2 → ℝ) :=
+def payoutLaw (profile : Profile form.sig.mixed) : PMF (Fin 2 → ℝ) :=
   (form.mixed.play profile).map payout
 
-theorem zero_payoutLaw : payoutLaw zeroProfile = FinDist.pure (fun _ => 0) := by
+theorem zero_payoutLaw : payoutLaw zeroProfile = PMF.pure (fun _ => 0) := by
   rw [payoutLaw, zeroProfile, mixed_play]
-  simp only [FinDist.product, FinDist.pure_bind, FinDist.map_pure]
-  apply congrArg FinDist.pure
+  simp only [FinDist.product, PMF.pure_bind, PMF.pure_map]
+  apply congrArg PMF.pure
   funext who
   fin_cases who <;> simp [payout, matrix, amount]
 
-theorem sign_amount_square : signs.expect (fun action => amount action ^ 2) = 1 := by
+theorem sign_amount_square : expect signs (fun action => amount action ^ 2) = 1 := by
   norm_num [signs, FinDist.expect_mix, amount]
 
 /-- A payout statistic distinguishes the complete laws, even though every
 player's expected payout is the same. -/
 theorem signs_squared_payout :
-    (payoutLaw signProfile).expect (fun result => result 0 ^ 2) = 1 := by
-  rw [payoutLaw, signProfile, mixed_play, FinDist.expect_map, FinDist.expect_product]
-  change signs.expect (fun row => signs.expect
+    expect (payoutLaw signProfile) (fun result => result 0 ^ 2) = 1 := by
+  rw [payoutLaw, signProfile, mixed_play, expect_map, FinDist.expect_product]
+  change expect signs (fun row => expect signs
     (fun col => (amount row * amount col) ^ 2)) = _
   simp only [mul_pow, FinDist.expect_smul, sign_amount_square, mul_one]
 
 theorem payoutLaws_different : payoutLaw zeroProfile ≠ payoutLaw signProfile := by
   intro same
-  have observed := congrArg (fun law => law.expect (fun result => result 0 ^ 2)) same
-  rw [zero_payoutLaw, FinDist.expect_pure, signs_squared_payout] at observed
+  have observed := congrArg (fun law => expect law (fun result => result 0 ^ 2)) same
+  rw [zero_payoutLaw, expect_pure, signs_squared_payout] at observed
   norm_num at observed
 
 theorem equilibrium_values_equal (who : Fin 2) :

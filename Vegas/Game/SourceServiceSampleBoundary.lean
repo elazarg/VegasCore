@@ -49,7 +49,7 @@ theorem sourceService_sample_window
   let app := application setup leaks
   cases visits with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨rfl, rfl, rfl, rfl, published⟩
   | cons first rest =>
       have transport : ∀ (current : app.Execution) who response,
@@ -110,9 +110,9 @@ theorem ServiceBoundary.sample_block
   have phase := reached
   simp only [rosterBlock, chance, List.append_assoc] at phase
   rw [(runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, FinDist.pure_bind] at phase
+  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at phase
   rw [(runtime setup).runInteractionPlan_append] at phase
-  obtain ⟨visited, window, phase⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ phase)
+  obtain ⟨visited, window, phase⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   obtain ⟨sameApp, sameLedger, _, sameCounters, published⟩ := sourceService_sample_window
     setup leaks bounds rosters players lawful network event chance granted visited grant
       grantBoundary.published (rosters event) window
@@ -123,11 +123,11 @@ theorem ServiceBoundary.sample_block
     rw [sameApp]
     exact grantBoundary.ready event atRank
   simp only [List.cons_append, List.nil_append, runInteractionPlan] at phase
-  obtain ⟨sampled, step, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ phase)
+  obtain ⟨sampled, step, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   rw [(runtime setup).interactionStep_sample,
     source_sample_environment (runtime setup) visited.application event ready outputEq refs
-      distribution codeEq node source.state windowCheckpoint.agrees, FinDist.map_comp] at step
-  obtain ⟨value, supported, sampledEq⟩ := FinDist.support_map .. ▸ step
+      distribution codeEq node source.state windowCheckpoint.agrees, PMF.map_comp] at step
+  obtain ⟨value, supported, sampledEq⟩ := PMF.support_map .. ▸ step
   let completed := visited.application.complete event ready
     (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
     (cast (congrArg EventGraph.EventField.Value outputEq.symm) value)
@@ -147,7 +147,7 @@ theorem ServiceBoundary.sample_block
     (runtime setup).settled_reveal_expiry leaks players network sampled event
       (by rw [sampledApp]; exact settled) (event.val + 1)
   rw [exactTail] at tail
-  have finalEq := FinDist.mem_support_pure.mp tail
+  have finalEq := (PMF.mem_support_pure_iff _ _).mp tail
   subst final
   have finalCheckpoint : SourceCheckpoint setup (sampleSuccessor name source value)
       (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) after.application.config := by

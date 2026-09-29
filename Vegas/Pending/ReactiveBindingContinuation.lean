@@ -30,7 +30,7 @@ def retainedImplementation (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy) :
     (runtime.reactiveApplication leaks).Implementation (BindingMemory runtime leaks) where
-  initial := FinDist.pure (atRecall runtime leaks reference)
+  initial := PMF.pure (atRecall runtime leaks reference)
   respond memory input :=
     ((implementation runtime leaks who reference policy).respond memory input).map fun result =>
       (if result.1 ∈ menu.actions who input.1 input.2 then result.1
@@ -52,10 +52,10 @@ theorem retainedImplementation_respond_eq (who : Player)
   unfold retainedImplementation
   calc
     _ = ((implementation runtime leaks who reference policy).respond memory input).map id := by
-      apply FinDist.map_congr_of_eq_on_support
+      apply map_congr_on_support _
       intro result supported
       simp only [covered result supported, ↓reduceIte, id_eq]
-    _ = _ := FinDist.map_id _
+    _ = _ := PMF.map_id _
 
 theorem retainedImplementation_response_available (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -68,7 +68,7 @@ theorem retainedImplementation_response_available (who : Player)
       ((retainedImplementation runtime leaks menu who reference policy).respond memory
         input).support) :
     result.1 ∈ menu.actions who input.1 input.2 := by
-  obtain ⟨original, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨original, _, rfl⟩ := PMF.support_map .. ▸ supported
   dsimp only
   split
   · assumption
@@ -84,14 +84,14 @@ theorem retainedImplementation_policy_available (who : Player)
       ((retainedImplementation runtime leaks menu who reference policy).policy
         past view).support) :
     response ∈ menu.actions who past view := by
-  rw [ReactiveApplication.Implementation.policy_eq, FinDist.support_map] at supported
+  rw [ReactiveApplication.Implementation.policy_eq, PMF.support_map] at supported
   obtain ⟨result, member, rfl⟩ := supported
-  obtain ⟨memory, _, member⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ member)
+  obtain ⟨memory, _, member⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
   exact retainedImplementation_response_available runtime leaks menu who reference policy
     memory (past, view) result member
 
 theorem retainedImplementation_admissible
-    (initial : FinDist (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy) :
@@ -102,7 +102,7 @@ theorem retainedImplementation_admissible
     _ _ response supported
 
 def retainedPolicy [Fintype Player]
-    (initial : FinDist (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy) :
@@ -112,7 +112,7 @@ def retainedPolicy [Fintype Player]
     (retainedImplementation runtime leaks menu who reference policy).policy
 
 theorem retainedPolicy_decode [Fintype Player]
-    (initial : FinDist (runtime.reactiveApplication leaks).State)
+    (initial : PMF (runtime.reactiveApplication leaks).State)
     (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler) (who : Player)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (policy : (runtime.reactiveApplication leaks).Policy) :
@@ -133,8 +133,8 @@ private theorem retainedImplementation_response_prefix (who : Player)
       ((retainedImplementation runtime leaks menu who reference policy).respond
         (atRecall runtime leaks reference) (past, view)).support) :
     response.2 = atRecall runtime leaks reference := by
-  obtain ⟨original, member, rfl⟩ := FinDist.support_map .. ▸ supported
-  simp only [implementation, short, ↓reduceIte, FinDist.support_map] at member
+  obtain ⟨original, member, rfl⟩ := PMF.support_map .. ▸ supported
+  simp only [implementation, short, ↓reduceIte, PMF.support_map] at member
   obtain ⟨action, _, rfl⟩ := member
   rfl
 
@@ -143,7 +143,7 @@ theorem retainedImplementation_posterior_prefix (who : Player)
     (policy : (runtime.reactiveApplication leaks).Policy)
     (short : past.length ≤ reference.length) :
     (retainedImplementation runtime leaks menu who reference policy).posterior past =
-      FinDist.pure (atRecall runtime leaks reference) := by
+      PMF.pure (atRecall runtime leaks reference) := by
   induction past using List.reverseRecOn with
   | nil => rfl
   | append_singleton past entry ih =>
@@ -153,16 +153,16 @@ theorem retainedImplementation_posterior_prefix (who : Player)
       have shorter : past.length < reference.length := by
         simp only [List.length_append, List.length_singleton] at short
         omega
-      rw [ReactiveApplication.Implementation.posterior_snoc, ih earlier, FinDist.pure_bind]
-      apply FinDist.eq_pure_of_support_subset_singleton
+      rw [ReactiveApplication.Implementation.posterior_snoc, ih earlier, PMF.pure_bind]
+      apply pmf_eq_pure_of_support_subset_singleton
       intro memory member
-      obtain ⟨response, supported, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member
       have original : response ∈
           ((retainedImplementation runtime leaks menu who reference policy).respond
             (atRecall runtime leaks reference) (past, entry.beforeView)).support := by
-        unfold FinDist.condOnFibre at supported
+        unfold fiberConditional at supported
         split at supported
-        · exact (FinDist.support_condOn _ _ _ supported).2
+        · exact ((PMF.mem_support_filter_iff _).mp supported).2
         · exact supported
       exact retainedImplementation_response_prefix runtime leaks menu who reference past
         policy entry.beforeView shorter response original
@@ -186,7 +186,7 @@ theorem retainedImplementation_continuation (who : Player)
   let strategy := retainedImplementation runtime leaks menu who reference policy
   have realized := strategy.realize_continuation who players scheduler count (some who) execution
   rw [recalled, retainedImplementation_posterior_prefix runtime leaks menu who reference
-    reference policy (Nat.le_refl _), FinDist.pure_bind] at realized
+    reference policy (Nat.le_refl _), PMF.pure_bind] at realized
   exact realized
 
 /-- An unobservable unusable commitment under the canonical fresh handle is

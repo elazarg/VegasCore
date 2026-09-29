@@ -38,7 +38,7 @@ private def runtime : EventGraphRuntime graph where
   deadline event := nomatch event
 
 private def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket graph) :=
-  fun _ _ => FinDist.pure {(false, 0)}
+  fun _ _ => PMF.pure {(false, 0)}
 
 private abbrev app := runtime.reactiveApplication leaks
 
@@ -58,9 +58,9 @@ private def leaked (bit : Bool) : app.Execution :=
 
 theorem activation_is_passive (bit : Bool) :
     ((submitted bit).environmentStep app (.activate true)).map
-      (fun next => next.observe app true) = FinDist.pure ((leaked bit).observe app true) := by
+      (fun next => next.observe app true) = PMF.pure ((leaked bit).observe app true) := by
   simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication, leaks,
-    FinDist.map_pure]
+    PMF.pure_map]
   rfl
 
 /-- The same visible raw claim carries a proof only when the claimed value is fixed. -/

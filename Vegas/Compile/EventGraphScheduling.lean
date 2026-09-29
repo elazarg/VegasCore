@@ -36,7 +36,7 @@ theorem scheduled_terminalState_law
       (terminalState program) =
     SourceProgram.run program profile state := by
   rw [← canonical_terminalState_law program profile state]
-  apply FinDist.map_injective (f := some) (Option.some_injective _)
+  apply pmf_map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode]
   have storeLaw := (toEventGraph_barrierOrdered program).runPolicies_store_eq_canonical
     (compileEventProfile program profile) scheduler (encodeInputs state)
@@ -56,7 +56,7 @@ theorem scheduled_setup_law
           (terminalState setup.program)) =
       setup.run profile := by
   unfold Setup.run
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro initial _
   exact scheduled_terminalState_law setup.program scheduler profile initial
 

@@ -22,7 +22,7 @@ def toProtocolBehavioralPolicy (setup : Setup (Player := Player) (L := L))
     (policy : BehavioralPolicy who setup.program)
     (permitted : policy.Admitted setup.program admission) :
     (setup.informationModel admission).BehavioralPolicy who
-  | none => FinDist.pure ⟨none, rfl⟩
+  | none => PMF.pure ⟨none, rfl⟩
   | some view => policy.toProtocol setup.program admission permitted view
 
 theorem toProtocolBehavioralPolicy_map_val (setup : Setup (Player := Player) (L := L))
@@ -30,9 +30,9 @@ theorem toProtocolBehavioralPolicy_map_val (setup : Setup (Player := Player) (L 
     (policy : BehavioralPolicy who setup.program)
     (permitted : policy.Admitted setup.program admission) (view : setup.ProtocolView who) :
     (setup.toProtocolBehavioralPolicy admission who policy permitted view).map Subtype.val =
-      view.elim (FinDist.pure none) (policy.protocolAction setup.program) := by
+      view.elim (PMF.pure none) (policy.protocolAction setup.program) := by
   cases view with
-  | none => exact FinDist.map_pure _ _
+  | none => exact PMF.pure_map _ _
   | some view =>
       exact BehavioralPolicy.toProtocol_map_val setup.program admission policy permitted _
 
@@ -51,16 +51,16 @@ def behavioralPolicyEquiv (setup : Setup (Player := Player) (L := L))
     Subtype.ext (BehavioralPolicy.from_toProtocol setup.program admission policy.1 policy.2)
   right_inv policy := by
     funext view
-    apply FinDist.map_injective Subtype.val_injective
+    apply pmf_map_injective Subtype.val_injective
     cases view with
     | none =>
         dsimp only [toProtocolBehavioralPolicy]
-        rw [FinDist.map_pure]
+        rw [PMF.pure_map]
         symm
         calc
           _ = (policy none).map (fun _ => none) :=
-            FinDist.map_congr_of_eq_on_support (fun choice _ => choice.2)
-          _ = _ := by simp [FinDist.map_eq_bind]
+            map_congr_on_support _ (fun choice _ => choice.2)
+          _ = _ := by simp [← PMF.bind_pure_comp, Function.comp_def]
     | some view =>
         dsimp only [toProtocolBehavioralPolicy]
         rw [BehavioralPolicy.toProtocol_map_val, BehavioralPolicy.protocolAction_fromProtocol]
@@ -69,18 +69,18 @@ def behavioralPolicyEquiv (setup : Setup (Player := Player) (L := L))
 theorem continuationLaw_behavioral_step (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (state : setup.ProtocolState)
     (running : ¬ state.elim False (SourceProgram.ProtocolState.terminal setup.program))
-    (joint : FinDist (Player → Option (OwnAction Player L)))
+    (joint : PMF (Player → Option (OwnAction Player L)))
     (marginal : ∀ who, joint.map (fun actions => actions who) =
-      (setup.protocolObserve who state).elim (FinDist.pure none)
+      (setup.protocolObserve who state).elim (PMF.pure none)
         ((profile who).protocolAction setup.program)) :
     (joint.bind (setup.protocolStep state)).bind (setup.continuationLaw profile) =
       setup.continuationLaw profile state := by
   cases state with
   | none =>
-      simp [protocolStep, continuationLaw, FinDist.bind_const, FinDist.bind_map,
+      simp [protocolStep, continuationLaw, PMF.bind_const, PMF.bind_map,
         run, initialConfig, SourceProgram.run, SourceProgram.runFrom]
   | some state =>
-      simpa only [protocolStep, continuationLaw, FinDist.bind_bind, FinDist.bind_map] using
+      simpa only [protocolStep, continuationLaw, PMF.bind_bind, PMF.bind_map] using
         SourceProgram.ProtocolState.continuationLaw_behavioral_step setup.program profile state
           running joint marginal
 
@@ -116,7 +116,7 @@ theorem protocol_runBehavioralFrom_eq (setup : Setup (Player := Player) (L := L)
         (law.map Subtype.val).map (fun actions => actions who) =
           (setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who)
             (setup.protocolObserve who before.state)).map Subtype.val := by
-      rw [FinDist.map_comp]
+      rw [PMF.map_comp]
       change law.map (fun actions => actions.1 who) = _
       rw [InformationModel.singleMoverJoint_marginal]
       change (setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who)
@@ -128,7 +128,7 @@ theorem protocol_runBehavioralFrom_eq (setup : Setup (Player := Player) (L := L)
           admission who (profile who) (permitted who) _)))
     change law.bind (fun joint => (setup.protocolStep before.state joint.1).bind
       (fun state => (setup.continuationLaw profile state).map some)) = _
-    simpa only [FinDist.map_bind, FinDist.bind_bind, FinDist.bind_map] using stepLaw
+    simpa only [PMF.map_bind, PMF.bind_bind, PMF.bind_map] using stepLaw
 
 theorem protocol_runBehavioral_eq (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program) (profile : BehavioralProfile setup.program)

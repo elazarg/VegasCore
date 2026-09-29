@@ -22,30 +22,30 @@ variable {Player : Type} {E T : ExecutionProtocol Player}
 /-- One actual execution step with the given local choices. Terminal histories
 are absorbed exactly as in the ordinary protocol evaluator. -/
 def localStep (history : E.History)
-    (choices : ∀ who, M.Choice who (M.infoOf who history.trace)) : FinDist E.History := by
+    (choices : ∀ who, M.Choice who (M.infoOf who history.trace)) : PMF E.History := by
   classical
-  exact if stopped : E.terminal history.state then FinDist.pure history else
+  exact if stopped : E.terminal history.state then PMF.pure history else
     (E.step history.state ⟨fun who => (choices who).1,
       E.legal_of_legalOption stopped (fun who =>
         (M.menu_adequate who history.trace (choices who).1).mp (choices who).2)⟩).bindOnSupport
-      (fun _ realized => FinDist.pure (history.extend _ realized))
+      (fun _ realized => PMF.pure (history.extend _ realized))
 
 theorem runBehavioralFrom_succ_localStep [Fintype Player]
     (profile : ∀ who, M.BehavioralPolicy who) (fuel : Nat) (history : E.History) :
     M.runBehavioralFrom profile (fuel + 1) history =
-      ((FinDist.pi fun who => profile who (M.infoOf who history.trace)).bind
+      ((independentProduct fun who => profile who (M.infoOf who history.trace)).bind
         (M.localStep history)).bind (M.runBehavioralFrom profile fuel) := by
   classical
   by_cases stopped : E.terminal history.state
-  · have one : M.localStep history = fun _ => FinDist.pure history := by
+  · have one : M.localStep history = fun _ => PMF.pure history := by
       funext choices
       simp only [localStep, dite_eq_left stopped]
-    rw [one, FinDist.bind_const, FinDist.pure_bind,
+    rw [one, PMF.bind_const, PMF.pure_bind,
       M.runBehavioralFrom_of_terminal profile _ stopped,
       M.runBehavioralFrom_of_terminal profile _ stopped]
   · rw [M.runBehavioralFrom_succ_of_not_terminal profile fuel stopped]
-    simp only [behavioralJoint, FinDist.bind_map, localStep, dite_eq_right stopped,
-      FinDist.bind_bind, FinDist.bind_bindOnSupport, FinDist.pure_bind]
+    simp only [behavioralJoint, PMF.bind_map, localStep, dite_eq_right stopped,
+      PMF.bind_bind, bindOnSupport_bind, PMF.pure_bind]
 
 /-- A genuine local action restriction. Compliant information is preserved
 injectively; target information fibers may additionally contain new histories.
@@ -78,10 +78,10 @@ private theorem transport_injective {α β : Type v} (same : α = β) :
   exact fun _ _ equal => equal
 
 private theorem map_transport {Index : Type*} {Value : Index → Type*}
-    (laws : ∀ index, FinDist (Value index)) {first second : Index} (same : first = second) :
+    (laws : ∀ index, PMF (Value index)) {first second : Index} (same : first = second) :
     (laws first).map (fun value => Eq.mp (congrArg Value same) value) = laws second := by
   subst second
-  exact FinDist.map_id _
+  exact PMF.map_id _
 
 /-- Embed a local source choice at a concrete history, transporting its target
 information index along the observation square. -/
@@ -149,14 +149,14 @@ theorem extends_at_history (source : ∀ who, M.BehavioralPolicy who)
           (fun action => Eq.mp
             (congrArg (N.Choice who) (restriction.observed who original).symm) action) :=
         (map_transport (target who) (restriction.observed who original).symm).symm
-      _ = _ := by rw [indexed, FinDist.map_comp]; rfl
+      _ = _ := by rw [indexed, PMF.map_comp]; rfl
   · have inactive : ¬ T.active (restriction.history original).state who :=
       fun enabled => active ((restriction.active original who).mp enabled)
     let _ := N.subsingleton_choice_of_not_active (restriction.history original).trace inactive
     obtain ⟨witness, _⟩ :=
       (target who (N.infoOf who (restriction.history original).trace)).support_nonempty
-    exact (FinDist.eq_pure_of_subsingleton _ witness).trans
-      (FinDist.eq_pure_of_subsingleton _ witness).symm
+    exact (eq_pure_of_subsingleton _ witness).trans
+      (eq_pure_of_subsingleton _ witness).symm
 
 end ActionRestriction
 

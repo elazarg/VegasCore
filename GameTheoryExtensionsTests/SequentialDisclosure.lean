@@ -61,12 +61,12 @@ theorem antichain : (model true).DecisionInformationAntichain := by
 theorem continuation_value (assessment : (model true).BehavioralAssessment)
     (bit : Bool) (u : arena.History → ℝ) (alternative : (model true).BehavioralPolicy true) :
     (assessment.continuationContext (bobSite bit) u 3).value alternative =
-      ((model true).runSingleMoverBehavioralFrom single
+      expect ((model true).runSingleMoverBehavioralFrom single
         (Profile.update (sig := (model true).behavioralSignature)
-          assessment.strategy true alternative) 3 (bobHistory bit)).expect u := by
+          assessment.strategy true alternative) 3 (bobHistory bit)) u := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.eq_pure_of_subsingleton (assessment.belief true (bobSite bit))
-      ⟨bobHistory bit, rfl⟩, FinDist.pure_bind,
+    eq_pure_of_subsingleton (assessment.belief true (bobSite bit))
+      ⟨bobHistory bit, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) single]
 
 /-- Disclosure leaves a singleton history at Bob's decision, so the actual
@@ -82,7 +82,7 @@ def disclosedDecision : (model true).BinaryDecision (fun goal who history =>
       ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) single]
     unfold payoff
     rw [value_bob profile false (utility goal · true)]
-    simp only [resultLaw, FinDist.expect_map, utility, ↓reduceIte]
+    simp only [resultLaw, expect_map, utility, ↓reduceIte]
   force profile goal := by
     cases goal <;> simp [choiceLaw, Profile.update, choose]
 
@@ -90,11 +90,11 @@ theorem rationality_forces_payoff_one (assessment : (model true).BehavioralAsses
     (matchBit : Bool)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => payoff matchBit history who) 3) :
-    1 ≤ ((model true).runSingleMoverBehavioralFrom single assessment.strategy 3
-      (bobHistory false)).expect (payoff matchBit · true) := by
+    1 ≤ expect ((model true).runSingleMoverBehavioralFrom single assessment.strategy 3
+      (bobHistory false)) (payoff matchBit · true) := by
   unfold payoff
   rw [value_bob assessment.strategy false (utility matchBit · true)]
-  simpa only [disclosedDecision, resultLaw, FinDist.expect_map, utility, ↓reduceIte] using
+  simpa only [disclosedDecision, resultLaw, expect_map, utility, ↓reduceIte] using
     disclosedDecision.rational_value assessment matchBit rational
 
 /-- Beliefs may depend on the utility. Even this freedom cannot rationalize

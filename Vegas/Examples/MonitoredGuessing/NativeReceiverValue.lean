@@ -33,7 +33,7 @@ theorem quiet_raw_guess_completed (bit : Bool) (response : nativeApp.Action)
     nativeNetwork _ start prior fixed.1 priorMem
   have expiry := nativeRuntime.interactionStep_facts nativeLeaks (nativeInputs bit) players
     nativeNetwork (.expire bobPublication) prior expired progress.invariant expiredMem
-  cases FinDist.mem_support_pure.mp finalMem
+  cases (PMF.mem_support_pure_iff _ _).mp finalMem
   rcases progress.ready_or_completed bobPublication ready with completed | stillReady
   · exact expiry.completed completed
   · apply nativeRuntime.interactionStep_expire_complete nativeLeaks players nativeNetwork
@@ -61,7 +61,7 @@ theorem resolution_plan_bob_upper (deposit : ℝ) (players : Player → nativeAp
     (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit execution.application)
     (stored : bobPublicationRef.get? execution.application.config.store = some guess) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
       (nativeExecutionUtility deposit bob) ≤ correctness (.success bit) guess := by
   apply FinDist.expect_le_of_forall
   intro final supported
@@ -84,14 +84,14 @@ theorem resolution_plan_bob_upper (deposit : ℝ) (players : Player → nativeAp
 
 theorem quiet_response_bob_value_le (deposit : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       (nativePlan.drop 5)
-      ((quietBob bit).respond nativeApp bob response)).expect
+      ((quietBob bit).respond nativeApp bob response))
         (nativeExecutionUtility deposit bob) ≤
       correctness (.success bit) (quietGuess response players) := by
-  change (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+  change expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
     (quietGuessPlan ++ [.grant alicePublication, .player alice] ++ resolutionTail)
-      ((quietBob bit).respond nativeApp bob response)).expect _ ≤ _
+      ((quietBob bit).respond nativeApp bob response)) _ ≤ _
   rw [List.append_assoc, runInteractionPlan_append, FinDist.expect_bind]
   apply FinDist.expect_le_of_forall
   intro next supported

@@ -41,12 +41,12 @@ theorem watcher_equilibrium_extends
     (utility : nativeApp.ProtocolState → Player → ℝ)
     (indifferent : ∀ state, utility state watcher = 0)
     (source : watchedModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor watched_decisionRecall.antichain
+    (equilibrium : source.IsSequentialEquilibriumFor watched_decisionRecall.decisionInformationAntichain
       (fun who site => source.continuationContext site
         (fun history => utility history.state who)
         (2 * nativeHorizon + 1 - watchedDepth who site))) :
     ∃ target : effectiveModel.BehavioralAssessment,
-      target.IsSequentialEquilibriumFor effective_decisionRecall.antichain
+      target.IsSequentialEquilibriumFor effective_decisionRecall.decisionInformationAntichain
         (fun who site => target.continuationContext site
           (fun history => utility history.state who)
           (2 * nativeHorizon + 1 - effectiveDepth who site)) ∧
@@ -64,7 +64,7 @@ theorem watcher_equilibrium_extends
         (2 * nativeHorizon + 1)).support, effectiveArena.terminal history.state := by
   classical
   apply watcherRestriction.sequential_equilibrium_extends_of_indifference
-    watched_decisionRecall.antichain
+    watched_decisionRecall.decisionInformationAntichain
     (effectiveMenu.uniformAssessment nativeInitialLaw nativeHorizon nativeScheduler)
     (effectiveMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
     effective_decisionRecall (2 * nativeHorizon + 1)

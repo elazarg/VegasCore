@@ -46,7 +46,7 @@ theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
     next.config.store field = some value := by
   cases command with
   | grant event | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact stored
   | executeSample event =>
@@ -81,7 +81,7 @@ theorem environmentStep_history_prefix (runtime : EventGraphRuntime graph)
     exact ⟨_, rfl⟩
   cases command with
   | grant event | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨[], by simp⟩
   | executeSample event =>
@@ -247,23 +247,23 @@ theorem runServiceControlSteps_native_support (runtime : EventGraphRuntime graph
         (runtime.application.run suffix before.execution.native).support := by
   induction fuel generalizing before with
   | zero =>
-      simp only [runServiceControlSteps, FinDist.mem_support_pure] at member
+      simp only [runServiceControlSteps, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact ⟨[], by simp⟩
   | succ fuel ih =>
       simp only [runServiceControlSteps] at member
       split at member
-      · simp only [FinDist.mem_support_pure] at member
+      · simp only [PMF.mem_support_pure_iff _ _] at member
         subst after
         exact ⟨[], by simp⟩
-      · simp only [FinDist.support_bind, Set.mem_iUnion] at member
+      · simp only [PMF.support_bind, Set.mem_iUnion] at member
         obtain ⟨middle, firstMem, restMem⟩ := member
         obtain ⟨first, firstTrace, firstRun⟩ := runtime.serviceControlStep_native_support
           roster reactionRounds players wire order before middle firstMem
         obtain ⟨second, secondTrace, secondRun⟩ := ih middle restMem
         refine ⟨first ++ second, ?_, ?_⟩
         · rw [secondTrace, firstTrace, List.append_assoc]
-        · rw [runtime.application.run_append, FinDist.support_bind]
+        · rw [runtime.application.run_append, PMF.support_bind]
           simp only [Set.mem_iUnion]
           exact ⟨middle.execution.native, firstRun, secondRun⟩
 

@@ -75,7 +75,7 @@ theorem environmentStep_config_of_ready_public_unfinished
     exact Finset.mem_insert_self _ _
   cases command with
   | grant query | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       rfl
   | executeSample query =>
@@ -130,17 +130,17 @@ theorem applicationStep_ready_public_frame (runtime : EventGraphRuntime graph)
         next.application.remembered event = some action := by
   cases command with
   | privateCommand who command =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨(privateStep_facts state.application who command).1,
         privateStep_accepted state.application who command,
         privateStep_remembered_of_some state.application who command event⟩
   | submit who packet | replay who id | deliver who id =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨rfl, rfl, fun _ cached => cached⟩
   | «include» id =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       cases found : state.pool.lookup id with
       | none =>
@@ -157,7 +157,7 @@ theorem applicationStep_ready_public_frame (runtime : EventGraphRuntime graph)
               exact (unfinished (runtime.handle_completes_ready_public ordered state.application
                 application event isPublic ready message handled)).elim
   | environment command =>
-      simp only [MessageApplication.step, FinDist.support_map, Set.mem_image] at member
+      simp only [MessageApplication.step, PMF.support_map, Set.mem_image] at member
       obtain ⟨application, supported, rfl⟩ := member
       refine ⟨environmentStep_config_of_ready_public_unfinished runtime ordered state.application
         application event isPublic ready unfinished command supported,
@@ -181,11 +181,11 @@ theorem applicationRun_ready_public_frame (runtime : EventGraphRuntime graph)
         next.application.remembered event = some action := by
   induction commands generalizing state with
   | nil =>
-      simp only [MessageApplication.run_nil, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.run_nil, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨rfl, rfl, fun _ cached => cached⟩
   | cons command rest ih =>
-      simp only [MessageApplication.run_cons, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [MessageApplication.run_cons, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, step, tail⟩ := member
       have intermediateUnfinished : event ∉ middle.application.config.cut.completed := by
         intro completed

@@ -24,7 +24,7 @@ def sourcePayoff (matchBit : Bool) (who : Bool) (history : sourceArena.History) 
   sourceUtility matchBit history.state who
 
 def sourceGuessLaw (profile : Profile sourceModel.behavioralSignature)
-    (info : sourceModel.InfoState true) : FinDist Bool :=
+    (info : sourceModel.InfoState true) : PMF Bool :=
   (sourceChoice profile true info).map OwnAction.disclosure
 
 theorem source_bob_run (profile : Profile sourceModel.behavioralSignature)
@@ -36,9 +36,9 @@ theorem source_bob_run (profile : Profile sourceModel.behavioralSignature)
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     sourceModel sourceSingle, source_run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    SourcePath.history_state, SourcePath.state, sourceKernel, FinDist.pure_bind,
-    FinDist.bind_map, FinDist.bind_bind, sourceGuessLaw, FinDist.map_comp]
-  rw [← FinDist.map_eq_bind]
+    SourcePath.history_state, SourcePath.state, sourceKernel, PMF.pure_bind,
+    PMF.bind_map, PMF.bind_bind, sourceGuessLaw, PMF.map_comp]
+  rw [← ← PMF.bind_pure_comp, Function.comp_def]
   simp only [sourceBobSite, InformationModel.informationSite, source_info]
   rfl
 
@@ -56,27 +56,27 @@ theorem source_payoff_done (matchBit bit : Bool) (dummy : PublicationResult Bool
 
 theorem source_bob_value (profile : Profile sourceModel.behavioralSignature)
     (matchBit bit : Bool) (dummy : PublicationResult Bool) (first second : Bool) :
-    (sourceModel.runBehavioralFrom profile 5
-      (SourcePath.secretPublished bit dummy first second).history).expect
+    expect (sourceModel.runBehavioralFrom profile 5
+      (SourcePath.secretPublished bit dummy first second).history)
         (sourcePayoff matchBit true) =
-      (sourceGuessLaw profile (sourceBobSite bit dummy first second).1).expect fun guess =>
+      expect (sourceGuessLaw profile (sourceBobSite bit dummy first second).1) fun guess =>
         if (first && dummy.isSuccess) || !second then
           if (guess == bit) = matchBit then 1 else 0 else 0 := by
-  have same := congrArg (fun law => law.expect (sourceUtility matchBit · true))
+  have same := congrArg (fun law => expect law (sourceUtility matchBit · true))
     (source_bob_run profile bit dummy first second)
-  change (sourceModel.runBehavioralFrom profile 5 _).expect
+  change expect (sourceModel.runBehavioralFrom profile 5 _)
     (fun history => sourceUtility matchBit history.state true) = _
-  simpa only [FinDist.expect_map, source_payoff_done] using same
+  simpa only [expect_map, source_payoff_done] using same
 
-theorem source_guess_pair (law : FinDist Bool) (matchBit bit : Bool) :
-    law.expect (fun guess => if (guess == bit) = matchBit then (1 : ℝ) else 0) +
-      law.expect (fun guess => if (guess == !bit) = matchBit then (1 : ℝ) else 0) = 1 := by
+theorem source_guess_pair (law : PMF Bool) (matchBit bit : Bool) :
+    expect law (fun guess => if (guess == bit) = matchBit then (1 : ℝ) else 0) +
+      expect law (fun guess => if (guess == !bit) = matchBit then (1 : ℝ) else 0) = 1 := by
   rw [← FinDist.expect_add]
   calc
-    _ = law.expect (fun _ => (1 : ℝ)) := by
-      apply FinDist.expect_congr
+    _ = expect law (fun _ => (1 : ℝ)) := by
+      apply expect_congr_on_support
       intro guess _
       cases matchBit <;> cases bit <;> cases guess <;> norm_num
-    _ = _ := FinDist.expect_const _ _
+    _ = _ := expect_constant _ _
 
 end Vegas.Examples.SequentialValidation

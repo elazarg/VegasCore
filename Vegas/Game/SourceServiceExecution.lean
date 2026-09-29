@@ -166,10 +166,10 @@ theorem sourceServiceLastPolicy_sample_roster
           law codeEq node players network ticks
   | cons focal rest =>
       rw [← rosterEq]
-      rw [(runtime setup).runInteractionPlan_append, FinDist.map_bind]
+      rw [(runtime setup).runInteractionPlan_append, PMF.map_bind]
       trans ((runtime setup).runInteractionPlan leaks players network
         ((rosters event).map ServiceInstruction.player) execution).bind (fun _ => expected)
-      · apply FinDist.bind_congr
+      · apply bind_congr_on_support _
         intro current reached
         have transport (point : app.Execution) who response
             (same : point.application = execution.application)
@@ -194,7 +194,7 @@ theorem sourceServiceLastPolicy_sample_roster
         have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
         simpa only [same, receipts] using source_sample_settlement setup leaks source refs current
           currentAgree event currentReady outputEq law codeEq node players network ticks
-      · exact FinDist.bind_const _ expected
+      · exact PMF.bind_const _ expected
 
 /-- The actual guarded roster reconstructs its effective source protocol state.
 The original failed intention is deliberately retained in the source lottery
@@ -265,13 +265,13 @@ theorem sourceServiceLastPolicy_reveal_roster_readout
       refs source.registry source.revelations embedding.ref 1 result.1.store
         (decodeHistory setup.program
           (result.1.history.map (setup.eventGraph.fromModeCompletion .sequential)))
-  have projected := congrArg (FinDist.map readout) law
-  rw [FinDist.map_comp, FinDist.map_comp] at projected
+  have projected := congrArg (PMF.map readout) law
+  rw [PMF.map_comp, PMF.map_comp] at projected
   refine projected.trans ?_
-  rw [FinDist.map_eq_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro disclose _
-  apply congrArg FinDist.pure
+  apply congrArg PMF.pure
   have eventRank : event.val = offset := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using aligned.graphSuffix.rankEq index
   have decoded : decodeEventAction setup.program event
@@ -314,9 +314,9 @@ theorem effective_reveal_state_law [Fintype Player]
         (.reveal published owner name fresh binding unresolved next) profile
           (ProtocolState.entry _ source)).map some := by
   change _ = (ProtocolState.behavioralStateStep _ profile (.inl source)).map some
-  rw [ProtocolState.behavioralStateStep_reveal_entry, FinDist.map_comp,
-    FinDist.map_eq_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [ProtocolState.behavioralStateStep_reveal_entry, PMF.map_comp,
+    ← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro disclose supported
   have fixed := effective.1 rfl (source.view owner) disclose supported
   change effectiveDisclosureView published binding source.registry source.revelations

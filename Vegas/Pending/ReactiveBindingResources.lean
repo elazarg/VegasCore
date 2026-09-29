@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player]
 
 theorem reactiveBinding_resources_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
@@ -62,7 +62,7 @@ theorem reactiveBinding_resources_history (runtime : EventGraphRuntime graph)
 whenever that capacity covers the interaction horizon. -/
 theorem preparedPrefix_binding_resources (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon capacity : Nat)
+    (inputs : PMF graph.Inputs) (horizon capacity : Nat)
     (enough : horizon ≤ capacity)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)

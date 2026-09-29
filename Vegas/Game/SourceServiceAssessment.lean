@@ -36,7 +36,7 @@ theorem sourceService_owner_assessment_comparisons
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (source : (setup.informationModel
       (CommitmentInterface.values setup.program)).BehavioralAssessment)
@@ -88,12 +88,12 @@ theorem sourceService_owner_assessment_comparisons
     let prefixLaw := (setup.initialLaw.map setup.initialConfig).bind fun config =>
       (fun distribution => distribution.bind
         (ProtocolState.behavioralStateStep setup.program normalized))^[event.val]
-          (FinDist.pure (ProtocolState.entry setup.program config))
+          (PMF.pure (ProtocolState.entry setup.program config))
     (∃ view ∈ (prefixLaw.map (ProtocolState.observe owner setup.program)).support,
       SourceProgram.ProtocolView.actor owner setup.program view = some owner ∧
       decodedBelief =
-        (prefixLaw.condOnFibre (ProtocolState.observe owner setup.program) view).map some) ∧
-    ∃ mixture : FinDist ((setup.informationModel
+        (fiberConditional prefixLaw (ProtocolState.observe owner setup.program) view).map some) ∧
+    ∃ mixture : PMF ((setup.informationModel
         (CommitmentInterface.values setup.program)).AssessmentDeviation owner),
       ((decodedBelief.bind (setup.continuationLaw normalized)).map some) =
         mixture.bind (fun deviation => ((setup.informationModel
@@ -145,40 +145,40 @@ theorem sourceService_owner_assessment_comparisons
   have prefixEq : (((setup.informationModel admission).runBehavioral encoded
       (event.val + 1)).map History.state) = prefixLaw.map some := by
     rw [setup.encoded_prefix_state]
-    simp only [prefixLaw, FinDist.bind_map, FinDist.map_bind]
+    simp only [prefixLaw, PMF.bind_map, PMF.map_bind]
   obtain ⟨channel, factor⟩ := sourceService_owner_information_law setup leaks bounds values
     initialValues capacity rosters opportunities timing full network original permitted
       event owner owned visits
-  have marginal := congrArg (FinDist.map Prod.fst) factor
-  simp only [FinDist.map_comp, FinDist.map_bind, Function.comp_def,
-    FinDist.map_const, FinDist.bind_pure] at marginal
+  have marginal := congrArg (PMF.map Prod.fst) factor
+  simp only [PMF.map_comp, PMF.map_bind, Function.comp_def,
+    FinDist.map_const, PMF.bind_pure] at marginal
   have executionMarginal : executions.map (fun execution =>
       sourceServicePrefix? setup event.val execution.application.config) =
         (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
           History.state) := by
-    simpa only [executions, FinDist.map_bind] using marginal
+    simpa only [executions, PMF.map_bind] using marginal
   have sourceSupport : some state ∈ (prefixLaw.map some).support := by
-    rw [← prefixEq, ← executionMarginal, FinDist.support_map]
+    rw [← prefixEq, ← executionMarginal, PMF.support_map]
     exact ⟨control.execution, referenceSupport, decoded⟩
-  obtain ⟨actual, actualSupport, same⟩ := FinDist.support_map .. ▸ sourceSupport
+  obtain ⟨actual, actualSupport, same⟩ := PMF.support_map .. ▸ sourceSupport
   have stateSupport : state ∈ prefixLaw.support := (Option.some.inj same) ▸ actualSupport
   let view := ProtocolState.observe owner setup.program state
   have viewSupport : view ∈ (prefixLaw.map (ProtocolState.observe owner setup.program)).support :=
-    FinDist.support_map .. ▸ ⟨state, stateSupport, rfl⟩
+    PMF.support_map .. ▸ ⟨state, stateSupport, rfl⟩
   have imagePresent : some view ∈
       (prefixLaw.map (setup.protocolObserve owner ∘ some)).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨state, stateSupport, rfl⟩
-  have transported := FinDist.map_conditional_readout prefixLaw some
+  have transported := PMF.map_conditional_readout prefixLaw some
     (setup.protocolObserve owner) (some view) imagePresent
-  have fiber : prefixLaw.condOnFibre (setup.protocolObserve owner ∘ some) (some view) =
-      prefixLaw.condOnFibre (ProtocolState.observe owner setup.program) view := by
-    apply FinDist.condOnFibre_eq_of_support_fiber
+  have fiber : fiberConditional prefixLaw (setup.protocolObserve owner ∘ some) (some view) =
+      fiberConditional prefixLaw (ProtocolState.observe owner setup.program) view := by
+    apply fiberConditional_eq_of_support_fiber
     intro value _
     simp only [Function.comp_apply, Setup.protocolObserve, Option.map_some, Option.some.injEq]
   rw [fiber] at transported
   have belief : decodedBelief =
-      (prefixLaw.condOnFibre (ProtocolState.observe owner setup.program) view).map some := by
+      (fiberConditional prefixLaw (ProtocolState.observe owner setup.program) view).map some := by
     change decodedBelief = _ at projected
     rw [prefixEq, decoded] at projected
     exact projected.trans transported.symm
@@ -186,9 +186,9 @@ theorem sourceService_owner_assessment_comparisons
     setup.normalized_disclosure_assessment_comparison admission source sourceMixed sourceBayes
       event.val owner alternative admitted view viewSupport active
   refine ⟨⟨view, viewSupport, active, belief⟩, mixture, ?_, ?_⟩
-  · rw [belief, FinDist.bind_map]
+  · rw [belief, PMF.bind_map]
     exact prescribed
-  · rw [belief, FinDist.bind_map]
+  · rw [belief, PMF.bind_map]
     exact deviating
 
 end Vegas

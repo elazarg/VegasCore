@@ -3,7 +3,9 @@
 import Vegas.Examples.DisclosureMonitoring
 import Vegas.Pending.ReactiveConformance
 import Interaction.MessageMonitoring
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Detecting the native candidate leak through an ordinary sampled view
 
@@ -63,22 +65,22 @@ theorem empty_sample_no_report (bit : Bool) : sampledReports bit ∅ = [] := by
   rfl
 
 def partialSample (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (atMostOne : probability ≤ 1) : FinDist (Finset (MessageId Player)) :=
-  FinDist.mix probability nonnegative atMostOne
-    (FinDist.pure {(alice, 0)}) (FinDist.pure ∅)
+    (atMostOne : probability ≤ 1) : PMF (Finset (MessageId Player)) :=
+  mix probability nonnegative atMostOne
+    (PMF.pure {(alice, 0)}) (PMF.pure ∅)
 
 theorem report_sample_law (bit : Bool) (probability : ℝ) (nonnegative : 0 ≤ probability)
     (atMostOne : probability ≤ 1) :
     (partialSample probability nonnegative atMostOne).map (sampledReports bit) =
-      FinDist.mix probability nonnegative atMostOne
-        (FinDist.pure [certifiedEnvelope bit]) (FinDist.pure []) := by
-  simp [partialSample, FinDist.map_mix, sample_finds_report, empty_sample_no_report]
+      mix probability nonnegative atMostOne
+        (PMF.pure [certifiedEnvelope bit]) (PMF.pure []) := by
+  simp [partialSample, mix_map, sample_finds_report, empty_sample_no_report]
 
 theorem exact_detection_probability (bit : Bool) (probability : ℝ)
     (nonnegative : 0 ≤ probability) (atMostOne : probability ≤ 1) :
-    (((partialSample probability nonnegative atMostOne).map (sampledReports bit)).map
-      (fun reports => !reports.isEmpty)).prob true = probability := by
+    ((((partialSample probability nonnegative atMostOne).map (sampledReports bit)).map
+      (fun reports => !reports.isEmpty)) true).toReal = probability := by
   rw [report_sample_law]
-  simp [FinDist.map_mix, FinDist.prob_mix, FinDist.prob_pure_eq_ite]
+  simp [mix_map, mix_apply_toReal, toReal_pure_apply]
 
 end Vegas.Examples.PassiveDisclosureMonitoring

@@ -155,7 +155,7 @@ theorem reactiveDecision_binding_continuation_step (runtime : EventGraphRuntime 
     (timely : next.application.WithinDeadline runtime event)
     (vacant : next.application.accepted (.inr event) = none)
     (unused : next.application.HandleUnused (owner, .prepared serial)) :
-    FinDist.pure ((next.includePending (runtime.reactiveApplication leaks)
+    PMF.pure ((next.includePending (runtime.reactiveApplication leaks)
       (owner, execution.network.nextSerial owner)).application.config) =
         next.application.config.step event ready action ∧
     (next.includePending (runtime.reactiveApplication leaks)
@@ -174,7 +174,7 @@ theorem reactiveDecision_binding_continuation_step (runtime : EventGraphRuntime 
   symm
   have law := next.application.config.step_eq_map_of_code event ready outputEq _ codeEq
     (cast (congrArg EventField.Action outputEq) action)
-    (FinDist.pure (cast (congrArg EventField.Action outputEq) action)) rfl
-  simpa only [FinDist.map_pure, cast_cast, cast_eq] using law
+    (PMF.pure (cast (congrArg EventField.Action outputEq) action)) rfl
+  simpa only [PMF.pure_map, cast_cast, cast_eq] using law
 
 end Vegas.EventGraphRuntime

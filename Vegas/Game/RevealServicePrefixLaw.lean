@@ -3,7 +3,9 @@
 import Vegas.Game.RevealServicePrefixSupport
 import Vegas.Game.RevealServiceClock
 import Vegas.Game.SourceStateKernel
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Source-state laws at every revelation prefix
 
@@ -25,17 +27,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 private theorem iterate_kernel_map {A B : Type}
-    (left : A → FinDist A) (right : B → FinDist B) (readout : A → B)
+    (left : A → PMF A) (right : B → PMF B) (readout : A → B)
     (commutes : ∀ state, right (readout state) = (left state).map readout)
-    (law : FinDist A) (count : Nat) :
+    (law : PMF A) (count : Nat) :
     (fun distribution => distribution.bind right)^[count] (law.map readout) =
       ((fun distribution => distribution.bind left)^[count] law).map readout := by
   induction count with
   | zero => rfl
   | succ count ih =>
       rw [Function.iterate_succ_apply', Function.iterate_succ_apply', ih,
-        FinDist.bind_map, FinDist.map_bind]
-      exact FinDist.bind_congr fun state _ => commutes state
+        PMF.bind_map, PMF.map_bind]
+      exact bind_congr_on_support _ fun state _ => commutes state
 
 /-- Every source-compatible alias policy has the exact source protocol-state law
 at each prefix, including private setup cells and source action history. -/
@@ -76,7 +78,7 @@ theorem run_source_prefix_option_law
             (final.application.config.history.map
               (setup.eventGraph.fromModeCompletion .sequential)))) =
         ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count]
-          (FinDist.pure (ProtocolState.entry program source))).map some := by
+          (PMF.pure (ProtocolState.entry program source))).map some := by
   intro Γ openNames program
   induction program with
   | ret payoffs =>
@@ -85,8 +87,8 @@ theorem run_source_prefix_option_law
       have zero : count = 0 := by simpa [eventCount] using countBound
       subst count
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-        FinDist.map_pure, Function.iterate_zero_apply]
-      apply congrArg FinDist.pure
+        PMF.pure_map, Function.iterate_zero_apply]
+      apply congrArg PMF.pure
       rw [checkpoint.history]
       exact decodePrefix?_zero_of_agrees _ refs embedding.ref source checkpoint.emptyRegistry _
         checkpoint.agrees
@@ -102,8 +104,8 @@ theorem run_source_prefix_option_law
       cases count with
       | zero =>
           simp only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-            FinDist.map_pure, Function.iterate_zero_apply]
-          apply congrArg FinDist.pure
+            PMF.pure_map, Function.iterate_zero_apply]
+          apply congrArg PMF.pure
           rw [checkpoint.history]
           exact decodePrefix?_zero_of_agrees _ refs embedding.ref source checkpoint.emptyRegistry _
             checkpoint.agrees
@@ -176,10 +178,10 @@ theorem run_source_prefix_option_law
             change block setup watcher event ++ remaining = _
             rw [block_of_owner setup watcher owner event actor]
             simp only [suffix, List.append_assoc, List.cons_append, List.nil_append]
-          rw [planEq, runInteractionPlan_append, opportunityLaw, FinDist.bind_map, FinDist.map_bind]
+          rw [planEq, runInteractionPlan_append, opportunityLaw, PMF.bind_map, PMF.map_bind]
           rw [ProtocolState.behavioralStatePrefix_reveal, ← choiceLaw,
-            FinDist.bind_map, FinDist.map_bind]
-          apply FinDist.bind_congr
+            PMF.bind_map, PMF.map_bind]
+          apply bind_congr_on_support _
           intro response supported
           have member := ordinary owner different _ _ response supported
           have decoded (disclose : Bool) : decodeEventAction setup.program event
@@ -192,7 +194,7 @@ theorem run_source_prefix_option_law
             activeCheckpoint.reveal_response (bounds.withInitialValues (initialLaw setup)) players
               watcher watcherPolicy published selected event eventRank actor outputEq codeEq node
               (fun ref => refsBefore ref index) decoded granted response member
-          rw [runInteractionPlan_append, afterLaw, FinDist.pure_bind]
+          rw [runInteractionPlan_append, afterLaw, PMF.pure_bind]
           have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs
               (revealSuccessor published selected source
@@ -206,12 +208,12 @@ theorem run_source_prefix_option_law
             tailRefs tailEmbedding tailBefore (offset + 1) nextAligned count nextBound after
             afterCheckpoint
           simp only [decodePrefix?_reveal]
-          have lifted := congrArg (fun law : FinDist (Option (ProtocolState next)) =>
+          have lifted := congrArg (fun law : PMF (Option (ProtocolState next)) =>
             law.map (Option.map (Sum.inr (α := Config Player L Γ)))) tailLaw
-          simp only [FinDist.map_comp, Function.comp_def, Option.map_some] at lifted
+          simp only [PMF.map_comp, Function.comp_def, Option.map_some] at lifted
           convert lifted using 1
           · rfl
-          · simp only [FinDist.map_comp, Function.comp_def]
+          · simp only [PMF.map_comp, Function.comp_def]
 
 /-- Initialized prefix correspondence with the actual source behavioral
 history runner. The source takes one additional step to draw its private setup;
@@ -247,31 +249,31 @@ theorem initialized_prefix_source_law
         (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who))
         (count + 1)).map GameTheory.Protocol.ExecutionProtocol.History.state := by
   rw [GameTheory.Protocol.InformationModel.runBehavioral, setup.runBehavioralFrom_state,
-    Function.iterate_succ_apply, FinDist.pure_bind]
-  change _ = (fun law : FinDist setup.ProtocolState => law.bind (setup.behavioralStateStep admission
+    Function.iterate_succ_apply, PMF.pure_bind]
+  change _ = (fun law : PMF setup.ProtocolState => law.bind (setup.behavioralStateStep admission
     (fun who => setup.toProtocolBehavioralPolicy admission who (profile who)
       (permitted who))))^[count]
     (setup.behavioralStateStep admission
       (fun who => setup.toProtocolBehavioralPolicy admission who (profile who)
         (permitted who)) none)
   rw [setup.behavioralStateStep_none]
-  have split := FinDist.iterate_bind
+  have split := iterate_bind
     (setup.behavioralStateStep admission
       (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who)))
     count setup.initialLaw
-    (fun initial => FinDist.pure
+    (fun initial => PMF.pure
       (some (ProtocolState.entry setup.program (setup.initialConfig initial))))
-  rw [← FinDist.map_eq_bind] at split
-  rw [split, initialLaw, FinDist.bind_map, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [← ← PMF.bind_pure_comp, Function.comp_def] at split
+  rw [split, initialLaw, PMF.bind_map, PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial supported
   have wrapped := iterate_kernel_map
     (ProtocolState.behavioralStateStep setup.program profile)
     (setup.behavioralStateStep admission
       (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who)))
     some (setup.behavioralStateStep_encoded_some admission profile permitted)
-    (FinDist.pure (ProtocolState.entry setup.program (setup.initialConfig initial))) count
-  rw [FinDist.map_pure] at wrapped
+    (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial))) count
+  rw [PMF.pure_map] at wrapped
   rw [wrapped]
   exact run_source_prefix_option_law setup leaks bounds watcher observer profile players
     watcherPolicy ordinary projects initial supported setup.program reveals profile

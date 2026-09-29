@@ -47,7 +47,7 @@ open Classical in
 incompatible with its private memory. It has no effect on the simulated run. -/
 def aliasImplementation (who : Principal) (reference : List app.PlayerEntry)
     (policy : app.Policy) : app.Implementation (List app.Action) where
-  initial := FinDist.pure (reference.map PlayerEntry.action)
+  initial := PMF.pure (reference.map PlayerEntry.action)
   respond names input :=
     let restored := restoreActions input.1 names
     let past := if names.length = input.1.length ∧ normal.recall who restored = input.1
@@ -71,7 +71,7 @@ theorem aliasImplementation_posterior_prefix (who : Principal)
     (reference past : List app.PlayerEntry) (policy : app.Policy)
     (short : past.length ≤ reference.length) :
     (normal.aliasImplementation who reference policy).posterior past =
-      FinDist.pure (reference.map PlayerEntry.action) := by
+      PMF.pure (reference.map PlayerEntry.action) := by
   classical
   induction past using List.reverseRecOn with
   | nil => rfl
@@ -82,24 +82,24 @@ theorem aliasImplementation_posterior_prefix (who : Principal)
       have shorter : past.length < (reference.map PlayerEntry.action).length := by
         simp only [List.length_append, List.length_singleton, List.length_map] at *
         omega
-      rw [Implementation.posterior_snoc, ih earlier, FinDist.pure_bind]
-      apply FinDist.eq_pure_of_support_subset_singleton
+      rw [Implementation.posterior_snoc, ih earlier, PMF.pure_bind]
+      apply pmf_eq_pure_of_support_subset_singleton
       intro names member
-      obtain ⟨response, supported, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member
       have original : response ∈ ((normal.aliasImplementation who reference policy).respond
           (reference.map PlayerEntry.action) (past, entry.beforeView)).support := by
-        unfold FinDist.condOnFibre at supported
+        unfold fiberConditional at supported
         split at supported
-        · exact (FinDist.support_condOn _ _ _ supported).2
+        · exact ((PMF.mem_support_filter_iff _).mp supported).2
         · exact supported
-      simp only [aliasImplementation, shorter, ↓reduceIte, FinDist.support_map] at original
+      simp only [aliasImplementation, shorter, ↓reduceIte, PMF.support_map] at original
       obtain ⟨chosen, _, rfl⟩ := original
       rfl
 
 theorem aliasImplementation_posterior_reference (who : Principal)
     (reference : List app.PlayerEntry) (policy : app.Policy) :
     (normal.aliasImplementation who reference policy).posterior (normal.recall who reference) =
-      FinDist.pure (reference.map PlayerEntry.action) :=
+      PMF.pure (reference.map PlayerEntry.action) :=
   normal.aliasImplementation_posterior_prefix who reference _ policy
     (normal.normalized_length who reference).le
 
@@ -129,7 +129,7 @@ theorem aliasImplementation_resume (who : Principal) (reference : List app.Playe
           actor execution).map (fun next =>
             (normal.execution next, (next.recall who).map PlayerEntry.action)) := by
   cases actor with
-  | none => simp only [Implementation.resume, ReactiveApplication.resume, FinDist.map_pure]
+  | none => simp only [Implementation.resume, ReactiveApplication.resume, PMF.pure_map]
   | some owner =>
       by_cases same : owner = who
       · subst owner
@@ -137,17 +137,17 @@ theorem aliasImplementation_resume (who : Principal) (reference : List app.Playe
           ReactiveApplication.resume, invoke, Function.update_self]
         change ((normal.aliasImplementation who reference policy).respond _
           (normal.recall who (execution.recall who), execution.observe app who)).map _ = _
-        rw [normal.aliasImplementation_respond, FinDist.map_comp, FinDist.map_comp]
-        apply FinDist.map_congr_of_eq_on_support
+        rw [normal.aliasImplementation_respond, PMF.map_comp, PMF.map_comp]
+        apply map_congr_on_support _
         intro response _
         simp only [Function.comp_apply]
         rw [← normal.execution_respond execution who response valid,
           respond_action_names]
       · simp only [Implementation.resume, same, ↓reduceIte, execution_observe,
-          ReactiveApplication.resume, invoke, Function.update_of_ne same, FinDist.map_comp]
+          ReactiveApplication.resume, invoke, Function.update_of_ne same, PMF.map_comp]
         change (players owner (normal.recall owner (execution.recall owner))
           (execution.observe app owner)).map _ = _
-        apply FinDist.map_congr_of_eq_on_support
+        apply map_congr_on_support _
         intro response supported
         have unchanged : normal.action owner (execution.recall owner)
             (execution.observe app owner) response = response := by
@@ -170,12 +170,12 @@ theorem aliasImplementation_round (who : Principal) (reference : List app.Player
         (fun other past view => players other (normal.recall other past) view) who policy)
           execution).map (fun next =>
             (normal.execution next, (next.recall who).map PlayerEntry.action)) := by
-  simp only [Implementation.round, ReactiveApplication.round, dispatch, FinDist.map_bind]
+  simp only [Implementation.round, ReactiveApplication.round, dispatch, PMF.map_bind]
   change (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind _ = _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro command _
-  rw [← normal.execution_environmentStep, FinDist.bind_map]
-  apply FinDist.bind_congr
+  rw [← normal.execution_environmentStep, PMF.bind_map]
+  apply bind_congr_on_support _
   intro next reached
   rw [← app.environmentStep_recall execution next command reached]
   exact normal.aliasImplementation_resume who reference policy players fixed _ next
@@ -185,17 +185,17 @@ private theorem round_inputRecall (players : Principal → app.Policy) (schedule
     (execution next : app.Execution) (valid : execution.InputRecall app)
     (reached : next ∈ (app.round scheduler players execution).support) :
     next.InputRecall app := by
-  obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  obtain ⟨middle, stepped, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+  obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨middle, stepped, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
   have middleValid := app.environment_inputRecall execution middle command valid stepped
   cases actor : command.actor? app with
   | none =>
       simp only [ReactiveApplication.resume, actor] at resumed
-      cases FinDist.mem_support_pure.mp resumed
+      cases (PMF.mem_support_pure_iff _ _).mp resumed
       exact middleValid
   | some owner =>
       simp only [ReactiveApplication.resume, actor, invoke] at resumed
-      obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+      obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
       exact app.respond_inputRecall middle owner response middleValid
 
 /-- Exact simulation of an arbitrary raw deviation by private implementation
@@ -212,11 +212,11 @@ theorem aliasImplementation_run (who : Principal) (reference : List app.PlayerEn
         (fun other past view => players other (normal.recall other past) view) who policy)
           count execution).map normal.execution := by
   induction count generalizing execution with
-  | zero => simp only [Implementation.run_zero, runRounds, FinDist.map_pure]
+  | zero => simp only [Implementation.run_zero, runRounds, PMF.pure_map]
   | succ count ih =>
       rw [Implementation.run_succ, normal.aliasImplementation_round who reference policy players
-        fixed scheduler execution valid, FinDist.bind_map, runRounds, FinDist.map_bind]
-      apply FinDist.bind_congr
+        fixed scheduler execution valid, PMF.bind_map, runRounds, PMF.map_bind]
+      apply bind_congr_on_support _
       intro next reached
       exact ih next (round_inputRecall _ scheduler execution next valid reached)
 
@@ -238,7 +238,7 @@ theorem aliasImplementation_behavioral_run (who : Principal) (policy : app.Polic
   rw [← Implementation.realize]
   change ((normal.aliasImplementation who (execution.recall who) policy).posterior
     (normal.recall who (execution.recall who))).bind _ = _
-  rw [normal.aliasImplementation_posterior_reference, FinDist.pure_bind]
+  rw [normal.aliasImplementation_posterior_reference, PMF.pure_bind]
   exact normal.aliasImplementation_run who _ policy players fixed scheduler count execution valid
 
 /-- The same deviation simulation starts at a decision information set, after
@@ -262,18 +262,18 @@ theorem aliasImplementation_behavioral_continuation (who : Principal) (policy : 
   rw [← Implementation.realize_continuation]
   change ((normal.aliasImplementation who (execution.recall who) policy).posterior
     (normal.recall who (execution.recall who))).bind _ = _
-  rw [normal.aliasImplementation_posterior_reference, FinDist.pure_bind,
+  rw [normal.aliasImplementation_posterior_reference, PMF.pure_bind,
     normal.aliasImplementation_resume who _ policy players fixed actor execution valid,
-    FinDist.bind_map, FinDist.map_bind]
-  apply FinDist.bind_congr
+    PMF.bind_map, PMF.map_bind]
+  apply bind_congr_on_support _
   intro next reached
   apply normal.aliasImplementation_run who _ policy players fixed scheduler count next
   cases actor with
   | none =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | some owner =>
-      obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact app.respond_inputRecall execution owner response valid
 
 end Interaction.ReactiveApplication.SubmissionNormalization

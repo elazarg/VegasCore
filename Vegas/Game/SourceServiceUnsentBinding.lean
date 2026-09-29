@@ -6,7 +6,9 @@ import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Pending.ReactiveResolutionWindowState
 import Vegas.Game.SourceLocalPolicy
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # The owner's unsent binding
 
@@ -107,13 +109,13 @@ theorem BindingSource.opportunity_law {setup : Setup (Player := Player) (L := L)
           (runtime setup).reactiveBinding leaks owner (embedding.event ⟨0, by simp [eventCount]⟩)
             payload choice serial := by
     apply policyLaw.trans
-    apply FinDist.map_congr_of_eq_on_support
+    apply map_congr_on_support _
     intro choice _
     exact serviceDecision_binding_fresh (runtime setup) leaks execution owner _ payload
       outputEq codeEq node serial freshSlot candidate choice
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte]
-  rw [responses, FinDist.bind_map, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [responses, PMF.bind_map, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro choice _
   cases choice <;> rfl
 
@@ -141,7 +143,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
     approx.phaseConfigLaw phase response =
       (commitKernel site.residual (site.source.view site.owner)).bind fun choice =>
-        FinDist.pure (execution.application.config.complete phase.event ready
+        PMF.pure (execution.application.config.complete phase.event ready
           (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
           (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice)) := by
   obtain ⟨Γ, names, name, owner, payload, fresh, guard, next, residual, refs, source, embedding,
@@ -154,7 +156,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
       refsBefore, aligned, agree, history, head⟩
   change approx.phaseConfigLaw phase response =
     (commitKernel site.residual (site.source.view site.owner)).bind fun choice =>
-      FinDist.pure (execution.application.config.complete phase.event ready
+      PMF.pure (execution.application.config.complete phase.event ready
         (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
         (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice))
   let app := application service.setup service.leaks
@@ -218,7 +220,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
   have present := roster_fullyMixed_response_support service.setup service.leaks
     service.rosters service.network service.menu approx.players approx.covered approx.assessment
     approx.strategy approx.mixed owner remaining execution trace response allowed
-  rw [policyEq, ReactiveApplication.Implementation.policy_eq, FinDist.support_map] at present
+  rw [policyEq, ReactiveApplication.Implementation.policy_eq, PMF.support_map] at present
   obtain ⟨witness, witnessSupport, witnessAction⟩ := present
   have meets : ∃ pair ∈ Prod.fst ⁻¹' {response}, pair ∈ ((mixtureImpl.posterior
       (execution.recall owner)).bind fun memory => mixtureImpl.respond memory
@@ -248,7 +250,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
       sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
         approx.timing approx.profile phase.event owner owned service.network phase.visits
         after afterGrant]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
       (by simp [rest]) (by intro actor; simp [rest]) current
@@ -261,13 +263,13 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
       (member : slot ∈ (mixtureImpl.posterior (after.recall owner)).support) :
       (after.recall owner).length ≤ offset + slot.val ∧
         offset + slot.val < (after.recall owner).length + phase.visits.count owner := by
-    rw [afterDef, ReactiveApplication.Implementation.posterior_respond, FinDist.support_map]
+    rw [afterDef, ReactiveApplication.Implementation.posterior_respond, PMF.support_map]
       at member
     obtain ⟨pair, conditioned, rfl⟩ := member
-    obtain ⟨matched, supported⟩ := FinDist.mem_support_condOnFibre meets conditioned
+    obtain ⟨matched, supported⟩ := mem_support_fiberConditional meets conditioned
     obtain ⟨memory, memorySupport, drawn⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-    obtain ⟨action, actionSupport, rfl⟩ := FinDist.support_map .. ▸ drawn
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+    obtain ⟨action, actionSupport, rfl⟩ := PMF.support_map .. ▸ drawn
     change action = response at matched
     subst matched
     have notBefore := posteriorFuture memory memorySupport
@@ -282,7 +284,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
           Option.map_some, scheduled, ↓reduceIte]
       change action ∈ (family memory (execution.recall owner)
         (execution.observe app owner)).support at actionSupport
-      rw [fires, opening, FinDist.support_map] at actionSupport
+      rw [fires, opening, PMF.support_map] at actionSupport
       obtain ⟨choice, _, submitted⟩ := actionSupport
       rcases transport with silent | ⟨id, replayed⟩
       · rw [silent] at submitted
@@ -297,14 +299,14 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
       offset + ((service.rosters phase.event).take phase.slot).count owner at counted
     constructor <;> omega
   unfold phaseConfigLaw phaseLaw DecisionPhase.tail
-  rw [ending, mixed, ← mixture, FinDist.map_bind]
+  rw [ending, mixed, ← mixture, PMF.map_bind]
   calc
     _ = (mixtureImpl.posterior (after.recall owner)).bind fun _ =>
         (commitKernel site.residual (site.source.view owner)).bind fun choice =>
-          FinDist.pure (execution.application.config.complete phase.event ready
+          PMF.pure (execution.application.config.complete phase.event ready
             (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
             (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice)) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro slot member
       obtain ⟨notPassed, within⟩ := later slot member
       exact binding_slot_config_law service.setup service.leaks service.bounds service.rosters
@@ -316,7 +318,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
         (by rw [sameApp]; exact fresh) (by rw [sameApp]; exact vacant)
         (by rw [sameApp]; exact unused) afterSerials afterPublished phase.visits slot
         notPassed within (phase.event.val + 1)
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 end TimedApproximant
 
@@ -348,7 +350,7 @@ the complete typed source terminal law after the submission is the source
 continuation after that binding. -/
 theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (wholeProfile : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (wholeProfile who).Admitted service.setup.program
       (CommitmentInterface.values service.setup.program))
@@ -444,7 +446,7 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
         siteOwner).application.publicView =
         some (embedding.event ⟨0, by simp [eventCount]⟩) := granted
   simp only [sourceServiceTimedPolicy, grant, owned, ↓reduceDIte,
-    ReactiveApplication.policyMixture_policy, FinDist.support_bind] at present
+    ReactiveApplication.policyMixture_policy, PMF.support_bind] at present
   obtain ⟨slot, slotSupport, drawn⟩ := Set.mem_iUnion₂.mp present
   have submitted (other : (application service.setup service.leaks).Action)
       (replayed : other ∈ (app.replayPolicy (execution.recall siteOwner)
@@ -460,29 +462,29 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
     exact (submitted response drawn rfl).elim
   simp only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy, Option.map_some,
     now, ↓reduceIte] at drawn
-  rw [opening, FinDist.support_map] at drawn
+  rw [opening, PMF.support_map] at drawn
   obtain ⟨value, valueSupport, valueEq⟩ := drawn
   have sameValue := reactiveBinding_injective service.leaks siteOwner _ payload valueEq
   subst sameValue
-  refine (FinDist.bind_congr (g := fun _ => _) ?_).trans (FinDist.bind_const _ _)
+  refine (bind_congr_on_support _ (g := fun _ => _) ?_).trans (PMF.bind_const _ _)
   intro tag member
-  obtain ⟨matched, supported⟩ := FinDist.mem_support_condOnFibre ⟨(value, slot, response), rfl, by
-    rw [FinDist.support_bind]
+  obtain ⟨matched, supported⟩ := mem_support_fiberConditional ⟨(value, slot, response), rfl, by
+    rw [PMF.support_bind]
     refine Set.mem_iUnion₂.mpr ⟨value, valueSupport, ?_⟩
-    rw [FinDist.support_bind]
+    rw [PMF.support_bind]
     refine Set.mem_iUnion₂.mpr ⟨slot, slotSupport, ?_⟩
     simp only [ReactiveApplication.scheduledPolicy, Option.map_some, now, ↓reduceIte,
-      FinDist.map_pure, FinDist.mem_support_pure]
+      PMF.pure_map, PMF.mem_support_pure_iff _ _]
     rfl⟩ member
-  obtain ⟨tagValue, _, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨tagSlot, _, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rest)
-  obtain ⟨action, actionSupport, rfl⟩ := FinDist.support_map .. ▸ rest
+  obtain ⟨tagValue, _, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨tagSlot, _, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rest)
+  obtain ⟨action, actionSupport, rfl⟩ := PMF.support_map .. ▸ rest
   have actionEq : action = response := Option.some.inj matched
   by_cases fires : rosterOffset service.setup service.rosters siteOwner
       (embedding.event ⟨0, by simp [eventCount]⟩) + tagSlot.val =
         (execution.recall siteOwner).length
   · simp only [ReactiveApplication.scheduledPolicy, Option.map_some, fires, ↓reduceIte,
-      FinDist.mem_support_pure] at actionSupport
+      PMF.mem_support_pure_iff _ _] at actionSupport
     rw [actionSupport] at actionEq
     have tagValueEq := reactiveBinding_injective service.leaks siteOwner _ payload actionEq
     subst tagValueEq
@@ -528,7 +530,7 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
           service.setup.protocolStep
             (sourceServicePrefix? service.setup phase.event.val execution.application.config)
             joint =
-          FinDist.pure (sourceServicePrefix? service.setup (phase.event.val + 1)
+          PMF.pure (sourceServicePrefix? service.setup (phase.event.val + 1)
             (execution.application.config.complete phase.event ready
               (cast (congrArg EventGraph.EventField.Action site.outputEq.symm)
                 (OwnAction.binding site.owner site.name site.payload (joint site.owner)))
@@ -627,8 +629,8 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
         rw [← sourceStep_continuation, commutes.1]
         change (((ProtocolState.behavioralStateStep _ remainingProfile (.inl source)).map
           lift).bind _) = _
-        rw [ProtocolState.behavioralStateStep_commit_entry, FinDist.bind_map, FinDist.bind_map]
-        apply FinDist.bind_congr
+        rw [ProtocolState.behavioralStateStep_commit_entry, PMF.bind_map, PMF.bind_map]
+        apply bind_congr_on_support _
         intro choice _
         rw [later choice]
         rfl
@@ -636,10 +638,10 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
         rw [now, later]
         change ((ProtocolState.step _ (lift (ProtocolState.entry _ source)) joint).map some) = _
         rw [commutes.2.1]
-        change ((FinDist.pure (Sum.inr (ProtocolState.entry next (commitSuccessor name guard
+        change ((PMF.pure (Sum.inr (ProtocolState.entry next (commitSuccessor name guard
           source (OwnAction.binding siteOwner name sitePayload (joint siteOwner)))))).map
             lift).map some = _
-        simp only [FinDist.map_pure]
+        simp only [PMF.pure_map]
         rfl
       · intro state decoded running
         rw [now] at decoded
@@ -661,22 +663,22 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
           simp only [running, ↓reduceIte]
           have stepped (joint : Player → Option (OwnAction Player L)) :
               ProtocolState.step service.setup.program (lift (ProtocolState.entry _ source))
-                joint = FinDist.pure (advance
+                joint = PMF.pure (advance
                   (OwnAction.binding siteOwner name sitePayload (joint siteOwner))) := by
             rw [commutes.2.1]
-            change (FinDist.pure (Sum.inr (ProtocolState.entry next (commitSuccessor name guard
+            change (PMF.pure (Sum.inr (ProtocolState.entry next (commitSuccessor name guard
               source (OwnAction.binding siteOwner name sitePayload (joint siteOwner)))))).map
                 lift = _
-            simp only [FinDist.map_pure]
+            simp only [PMF.pure_map]
             rfl
           rw [show ProtocolState.step service.setup.program (lift (ProtocolState.entry _ source)) =
-            fun joint : Player → Option (OwnAction Player L) => FinDist.pure (advance
+            fun joint : Player → Option (OwnAction Player L) => PMF.pure (advance
               (OwnAction.binding siteOwner name sitePayload (joint siteOwner))) from
-                funext stepped, ← FinDist.map_eq_bind]
-          change (FinDist.pi _).map ((fun action =>
+                funext stepped, ← ← PMF.bind_pure_comp, Function.comp_def]
+          change (independentProduct _).map ((fun action =>
             advance (OwnAction.binding siteOwner name sitePayload action)) ∘
               fun joint : Player → Option (OwnAction Player L) => joint siteOwner) = _
-          rw [← FinDist.map_comp, FinDist.map_apply_pi]
+          rw [← PMF.map_comp, FinDist.map_apply_pi]
         have injective : Function.Injective advance := by
           intro first second same
           have successor := commutes.2.2 same
@@ -686,13 +688,13 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
             congrArg (fun config : Config Player L
               ((name, .commitment siteOwner sitePayload) :: Γ) =>
                 config.state.get HasVar.here) configs
-        apply FinDist.map_injective injective
-        rw [FinDist.map_comp]
+        apply pmf_map_injective injective
+        rw [PMF.map_comp]
         change ((profile siteOwner).protocolAction service.setup.program
           (ProtocolState.observe siteOwner service.setup.program
             (lift (ProtocolState.entry _ source)))).map
               (fun action => advance (OwnAction.binding siteOwner name sitePayload action)) = _
-        rw [← viaWhole, viaResidual, FinDist.map_comp]
+        rw [← viaWhole, viaResidual, PMF.map_comp]
         rfl
 
 end SourceServiceSpec
@@ -709,7 +711,7 @@ def bindingContinuation {execution : (application service.setup service.leaks).E
     (ready : execution.application.config.cut.Ready event) {who : Player} {payload : L.Ty}
     (outputEq : (graph service.setup).outputLayout event = .binding who payload)
     (value : PublicationResult (L.Val payload)) :
-    FinDist (Option (State L service.setup.program.terminalCtx)) :=
+    PMF (Option (State L service.setup.program.terminalCtx)) :=
   approx.boundaryContinuation (event.val + 1)
     (execution.application.config.complete event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) value)
@@ -729,7 +731,7 @@ structure UnsentBindingLaws {who : Player}
     (outputEq : (graph service.setup).outputLayout event = .binding who payload)
     (ready : execution.application.config.cut.Ready event) where
   name : VarId
-  values : FinDist (PublicationResult (L.Val payload))
+  values : PMF (PublicationResult (L.Val payload))
   decoded : ∀ value, decodeEventAction service.setup.program event
     (cast (congrArg EventGraph.EventField.Action outputEq.symm) value) =
       some (.commit who name payload value)
@@ -739,7 +741,7 @@ structure UnsentBindingLaws {who : Player}
   step : ∀ joint : Player → Option (OwnAction Player L),
     service.setup.protocolStep (sourceServicePrefix? service.setup event.val
       execution.application.config) joint =
-    FinDist.pure (sourceServicePrefix? service.setup (event.val + 1)
+    PMF.pure (sourceServicePrefix? service.setup (event.val + 1)
       (execution.application.config.complete event ready
         (cast (congrArg EventGraph.EventField.Action outputEq.symm)
           (OwnAction.binding who name payload (joint who)))
@@ -841,8 +843,8 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
         values.bind (approx.bindingContinuation ready outputEq) := by
     rw [approx.response_continuation_law trace phase response allowed,
       approx.unsent_binding_transport_config_law trace phase site rfl unsent ready response
-        allowed transport, FinDist.bind_bind]
-    simp only [FinDist.pure_bind]
+        allowed transport, PMF.bind_bind]
+    simp only [PMF.pure_bind]
     rfl
   have grant : PublicView.serviceGrant
       (execution.observe (application service.setup service.leaks)
@@ -889,10 +891,10 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
         service.leaks siteOwner phase.event sitePayload value
           (execution.application.publicView.bindingCount siteOwner)) ∨
       (response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) := by
-    rw [policyEq, FinDist.support_bind] at supported
+    rw [policyEq, PMF.support_bind] at supported
     obtain ⟨slot, _, drawn⟩ := Set.mem_iUnion₂.mp supported
     rcases slotLaw slot with ⟨_, fires⟩ | waits
-    · rw [fires, FinDist.support_map] at drawn
+    · rw [fires, PMF.support_map] at drawn
       obtain ⟨value, valueSupport, same⟩ := drawn
       exact Or.inl ⟨value, valueSupport, same.symm⟩
     · rw [waits] at drawn
@@ -904,12 +906,12 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
         (execution.observe (application service.setup service.leaks) siteOwner) :=
     approx.covered siteOwner ⟨remaining, some siteOwner, execution⟩ trace rfl response supported
   refine ⟨⟨name, values, decodedAction, ?_, anyStep, marginal, ?_, ?_⟩⟩
-  · rw [sourceStep, FinDist.map_bind]
+  · rw [sourceStep, PMF.map_bind]
     rfl
-  · rw [policyEq, FinDist.bind_bind]
-    refine (FinDist.bind_congr (g := fun _ => values.bind (fun value =>
+  · rw [policyEq, PMF.bind_bind]
+    refine (bind_congr_on_support _ (g := fun _ => values.bind (fun value =>
       approx.bindingContinuation ready outputEq value)) ?_).trans
-      (FinDist.bind_const _ _)
+      (PMF.bind_const _ _)
     intro slot slotSupport
     have present (response : (application service.setup service.leaks).Action)
         (drawn : response ∈ (sourceServiceTimedFamily service.setup service.leaks
@@ -917,17 +919,17 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
             (execution.observe (application service.setup service.leaks) siteOwner)).support) :
         response ∈ (approx.players siteOwner (execution.recall siteOwner)
           (execution.observe (application service.setup service.leaks) siteOwner)).support := by
-      rw [policyEq, FinDist.support_bind]
+      rw [policyEq, PMF.support_bind]
       exact Set.mem_iUnion₂.mpr ⟨slot, slotSupport, drawn⟩
     rcases slotLaw slot with ⟨_, fires⟩ | waits
-    · rw [fires, FinDist.bind_map]
-      apply FinDist.bind_congr
+    · rw [fires, PMF.bind_map]
+      apply bind_congr_on_support _
       intro value valueSupport
       exact submitted value (allowedOf _ (present _ (by
-        rw [fires, FinDist.support_map]
+        rw [fires, PMF.support_map]
         exact ⟨value, valueSupport, rfl⟩)))
     · rw [waits]
-      refine (FinDist.bind_congr ?_).trans (FinDist.bind_const _ _)
+      refine (bind_congr_on_support _ ?_).trans (PMF.bind_const _ _)
       intro response supported
       exact transported response (allowedOf response (present response (by
         rw [waits]
@@ -1009,8 +1011,8 @@ theorem prescribed_response_law {service : SourceServiceSpec Player L}
         service.scheduler who (approx.players who) (some (execution.recall who,
           execution.observe (application service.setup service.leaks) who)) := by
     rw [approx.strategy]
-  rw [split, ← FinDist.map_comp, strategyAt, mapped, FinDist.map_comp]
-  exact FinDist.map_id _
+  rw [split, ← PMF.map_comp, strategyAt, mapped, PMF.map_comp]
+  exact PMF.map_id _
 
 open Classical in
 /-- At an owner's visit to its own unsent binding, every local lottery of the
@@ -1021,11 +1023,11 @@ commitment of that value, and a transport response by the prescribed source
 action law, which it leaves unchanged. -/
 theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
     [∀ who (site : service.sourceModel.InformationSite who),
       Fintype (service.sourceModel.InformationHistory who site.1)]
-    (full : ∀ who info, (source.strategy who info).FullSupport)
+    (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
@@ -1039,8 +1041,8 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     (outputEq : (graph service.setup).outputLayout event = .binding who payload)
     (granted : view.application.publicView.serviceGrant = some event)
     (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
-    (law : FinDist (service.model.Choice who site.1)) :
-    ∃ mixture : FinDist (service.sourceModel.AssessmentDeviation who),
+    (law : PMF (service.model.Choice who site.1)) :
+    ∃ mixture : PMF (service.sourceModel.AssessmentDeviation who),
       (service.model.assessmentComparison service.readout service.fuel approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).prescribed =
         mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
@@ -1097,10 +1099,10 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
       Option (PublicationResult (L.Val payload)) := fun response =>
     if found : ∃ value serial, response = (runtime service.setup).reactiveBinding service.leaks
       who event payload value serial then some found.choose else none
-  let sourceLaw : FinDist ((service.setup.informationModel admission).Choice who
+  let sourceLaw : PMF ((service.setup.informationModel admission).Choice who
       (some sourceView)) :=
     law.bind fun choice => match submittedValue (choice.1.getD ⟨none⟩) with
-      | some value => FinDist.pure (realize value)
+      | some value => PMF.pure (realize value)
       | none => baseline
   obtain ⟨alternative, admittedAlternative, alternativeLaw⟩ :=
     service.setup.exists_admitted_local_law admission approx.profile approx.admitted who
@@ -1159,9 +1161,9 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     have localLaw := approx.local_law_readout history.1 current phase history.2 law
     rw [localLaw, decodedEq, ← sourceState, alternativeLaw sourceHistory running active info,
       sourceState]
-    simp only [anyStep, ↓reduceIte, FinDist.pure_bind, FinDist.map_bind, FinDist.bind_map,
-      sourceLaw, FinDist.bind_bind]
-    apply FinDist.bind_congr
+    simp only [anyStep, ↓reduceIte, PMF.pure_bind, PMF.map_bind, PMF.bind_map,
+      sourceLaw, PMF.bind_bind]
+    apply bind_congr_on_support _
     intro choice _
     have allowed := service.choice_allowed history.1 current history.2 choice
     rcases responses _ allowed with ⟨value, valueSupport, ⟨serial, submitted⟩, readout⟩ |
@@ -1175,14 +1177,14 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
           (chosen.symm.trans submitted))
       have realizable : ∃ realized ∈ baseline.support,
           OwnAction.binding who otherName payload realized.1 = value := by
-        rw [← baselineValues, FinDist.support_map, FinDist.support_map] at valueSupport
+        rw [← baselineValues, PMF.support_map, PMF.support_map] at valueSupport
         obtain ⟨action, ⟨realized, realizedSupport, rfl⟩, same⟩ := valueSupport
         exact ⟨realized, realizedSupport, same⟩
       have realized : OwnAction.binding who otherName payload (realize value).1 = value := by
         simp only [realize, realizable, ↓reduceDIte]
         exact realizable.choose_spec.2
       rw [decodedValue, readout]
-      simp only [FinDist.pure_bind, realized]
+      simp only [PMF.pure_bind, realized]
       rfl
     · have decodedValue : submittedValue (choice.1.getD ⟨none⟩) = none := by
         simp only [submittedValue]
@@ -1195,7 +1197,7 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
           · rw [replayed] at submitted
             cases submitted
         · rfl
-      rw [decodedValue, readout, ← baselineValues, FinDist.bind_map, FinDist.bind_map]
+      rw [decodedValue, readout, ← baselineValues, PMF.bind_map, PMF.bind_map]
       rfl
 
 end TimedApproximant

@@ -23,12 +23,12 @@ theorem update_binds_other (who other : Player) (different : other ≠ who)
     (alternative : model.BehavioralPolicy who) (past : List app.PlayerEntry)
     (view : app.PlayerView)
     (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent other)) :
-    menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler
+    menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
       (Profile.update (sig := model.behavioralSignature) profile who alternative) other past view =
-        FinDist.pure (correctiveBinding other (nativeBindingEvent other)
+        PMF.pure (correctiveBinding other (nativeBindingEvent other)
           (prescribedBit other view) view) := by
   rw [menu.decodeProfile_update, Function.update_of_ne different, decode_profile]
-  exact congrArg FinDist.pure (response_binds other view granted)
+  exact congrArg PMF.pure (response_binds other view granted)
 
 theorem alice_carol_payoff_bound (alternative : model.BehavioralPolicy alice)
     (control : app.Control) (trace : arena.Trace (some control))
@@ -43,16 +43,16 @@ theorem alice_carol_payoff_bound (alternative : model.BehavioralPolicy alice)
   let bit := publicGuess (control.execution.observe app carol)
   have chooses := update_binds_other alice carol (by decide) alternative
     (control.execution.recall carol) (control.execution.observe app carol) granted
-  change menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players carol
+  change menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players carol
     (control.execution.recall carol) (control.execution.observe app carol) =
-      FinDist.pure (correctiveBinding carol carolBinding bit
+      PMF.pure (correctiveBinding carol carolBinding bit
         (control.execution.observe app carol)) at chooses
   obtain ⟨result, stateEq, carolBound⟩ := binding_success players carol control trace active granted
     bit chooses _ (full_enough control trace) final supported
   have split := supported
   change final ∈ (model.runBehavioralFrom players (7 + 172) ⟨some control, trace⟩).support at split
   rw [model.runBehavioralFrom_add] at split
-  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ split)
+  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ split)
   have exactLater := afterCarol_history players control trace active granted _ chooses later
     laterMem
   obtain ⟨bobControl, bobEq, bobActive, bobGrant⟩ := future_decision players carolBinding bobBinding
@@ -108,7 +108,7 @@ theorem alice_binding_payoff_bound (alternative : model.BehavioralPolicy alice)
   change final ∈ (model.runBehavioralFrom players (6 + 173) ⟨some control, trace⟩).support
     at supported
   rw [model.runBehavioralFrom_add] at supported
-  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨atCarol, carolEq, carolActive, carolGrant⟩ := future_decision players aliceBinding
     carolBinding (by decide) control trace active granted later laterMem
   change atCarol.actor = some carol at carolActive
@@ -136,7 +136,7 @@ theorem alice_prelude_payoff_bound (alternative : model.BehavioralPolicy alice)
   change final ∈ (model.runBehavioralFrom players (5 + 174) ⟨some control, trace⟩).support
     at supported
   rw [model.runBehavioralFrom_add] at supported
-  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨atBinding, bindingEq, ownerActive, ownerGrant⟩ := prelude_reaches_binding players alice
     control trace active ambient later laterMem
   rcases later with ⟨state, laterTrace⟩
@@ -173,10 +173,10 @@ theorem alice_early_rational (assessment : model.BehavioralAssessment)
       control.execution.application.serviceGrant = some aliceBinding := by
     rw [← observed] at early
     exact early
-  have prescribed : (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
-      ⟨some control, trace⟩).expect (fun final => nativeUtility alice final.state) = 0 := by
-    refine (FinDist.expect_congr (v := fun _ => (0 : ℝ)) ?_).trans
-      (FinDist.expect_const _ 0)
+  have prescribed : expect (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
+      ⟨some control, trace⟩) (fun final => nativeUtility alice final.state) = 0 := by
+    refine (expect_congr_on_support (v := fun _ => (0 : ℝ)) ?_).trans
+      (expect_constant _ 0)
     intro final finalMem
     rcases current with ambient | granted
     · obtain ⟨result, finalEq, outcomes⟩ := prescribed_prelude_results alice control trace active

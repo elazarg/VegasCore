@@ -31,15 +31,15 @@ theorem native_instruction_actor (instruction : ServiceInstruction nativeGraph)
     command.actor? (serviceApp observation) = nativeInstructionPlayer instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | wire =>
-      simp only [interactionInstruction, serviceNetwork, FinDist.map_pure,
-        FinDist.mem_support_pure] at supported
+      simp only [interactionInstruction, serviceNetwork, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at supported
       subst command
       rfl
   | includeLatest event owner =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       unfold reactiveLatest
       split <;> rfl
 
@@ -76,30 +76,30 @@ theorem native_activation_grant (execution next : (serviceApp observation).Execu
     (reached : next ∈ (execution.environmentStep (serviceApp observation) (.activate
       who)).support) :
     next.application.serviceGrant = execution.application.serviceGrant := by
-  obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-  obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+  obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
   rfl
 
 private theorem prelude_grant (count : Nat) (early : count = 0 ∨ count = 1)
     (execution : (serviceApp observation).Execution)
-    (reached : execution ∈ ((serviceApp observation).roundsFrom (FinDist.pure nativeInitial)
+    (reached : execution ∈ ((serviceApp observation).roundsFrom (PMF.pure nativeInitial)
       (serviceScheduler observation) (serviceMenu observation).uniformResponses count).support) :
     execution.application.serviceGrant = none := by
   rcases early with rfl | rfl
-  · simp only [ReactiveApplication.roundsFrom, FinDist.pure_bind,
-      ReactiveApplication.runRounds, FinDist.mem_support_pure] at reached
+  · simp only [ReactiveApplication.roundsFrom, PMF.pure_bind,
+      ReactiveApplication.runRounds, PMF.mem_support_pure_iff _ _] at reached
     subst execution
     rfl
-  · change execution ∈ ((serviceApp observation).roundsFrom (FinDist.pure nativeInitial)
+  · change execution ∈ ((serviceApp observation).roundsFrom (PMF.pure nativeInitial)
       (serviceScheduler observation) (serviceMenu observation).uniformResponses
       ([.player alice] : List (ServiceInstruction nativeGraph)).length).support at reached
     rw [native_roundsFrom_prefix (serviceMenu observation).uniformResponses [.player alice]
       nativePlan.tail (by rfl)] at reached
     simp only [runInteractionPlan, interactionStep, interactionInstruction,
-      FinDist.pure_bind, FinDist.bind_pure] at reached
+      PMF.pure_bind, PMF.bind_pure] at reached
     obtain ⟨observed, observedMem, invoked⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-    obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ invoked
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+    obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ invoked
     rw [native_response_grant]
     exact native_activation_grant nativeRoot observed alice observedMem
 
@@ -110,19 +110,19 @@ theorem native_response_prefix_grant (players : Player → (serviceApp observati
       (nativeBeforeResponse event) nativeRoot).support) :
     execution.application.serviceGrant = some event := by
   rw [nativeBeforeResponse, runInteractionPlan_append] at reached
-  obtain ⟨prior, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨prior, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have law : nativeRuntime.runInteractionPlan observation players (serviceNetwork observation)
       [.grant event] prior = prior.environmentStep (serviceApp observation) (.application
         (.grant event)) := by
     simp only [runInteractionPlan, interactionStep, interactionInstruction,
-      FinDist.pure_bind, FinDist.bind_pure, ReactiveApplication.dispatch]
+      PMF.pure_bind, PMF.bind_pure, ReactiveApplication.dispatch]
     change (prior.environmentStep (serviceApp observation) (.application (.grant event))).bind
-      (fun next => FinDist.pure next) = _
-    exact FinDist.bind_pure _
+      (fun next => PMF.pure next) = _
+    exact PMF.bind_pure _
   rw [law] at moved
   simp only [ReactiveApplication.Execution.environmentStep, serviceApp,
     reactiveApplication,
-    environmentStep, FinDist.map_pure, FinDist.mem_support_pure] at moved
+    environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] at moved
   subst execution
   rfl
 
@@ -136,10 +136,10 @@ theorem native_decision_cursor (event : nativeGraph.EventId) (control : (service
     who = nativeOwner event ∧ control.execution.environmentRecall.length =
       (nativeBeforeResponse event).length + 1 := by
   obtain ⟨accounted, supported⟩ := (serviceMenu observation).roundSupported_uniform
-    (FinDist.pure nativeInitial) nativeHorizon (serviceScheduler observation) trace
+    (PMF.pure nativeInitial) nativeHorizon (serviceScheduler observation) trace
   rw [active] at supported
   obtain ⟨count, prior, command, position, priorMem, commandMem, actor, observed⟩ := supported
-  have cursor := (serviceApp observation).roundsFrom_recall (FinDist.pure nativeInitial)
+  have cursor := (serviceApp observation).roundsFrom_recall (PMF.pure nativeInitial)
     (serviceScheduler observation)
     (serviceMenu observation).uniformResponses count prior priorMem
   have bounded : count < nativePlan.length := by
@@ -149,7 +149,7 @@ theorem native_decision_cursor (event : nativeGraph.EventId) (control : (service
     simp only [serviceScheduler, cursor] at commandMem
     cases found : nativePlan[count]? with
     | none =>
-        simp only [found, FinDist.mem_support_pure] at commandMem
+        simp only [found, PMF.mem_support_pure_iff _ _] at commandMem
         subst command
         cases actor
     | some instruction =>

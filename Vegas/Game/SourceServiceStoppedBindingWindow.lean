@@ -90,7 +90,7 @@ theorem binding_window_stopped_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (app.invoke players owner original).bind
         ((runtime setup).runInteractionPlan leaks players network
           (visits.map ServiceInstruction.player ++ (.includeLatest event owner ::
@@ -112,7 +112,7 @@ theorem binding_window_stopped_coupling
   classical
   intro app players strategy
   suffices result :
-      ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         coupling.map Prod.fst = (app.invoke players owner original).bind
           ((runtime setup).runInteractionPlan leaks players network
             (visits.map ServiceInstruction.player ++ (.includeLatest event owner ::
@@ -148,9 +148,9 @@ theorem binding_window_stopped_coupling
     have reached : next.2 ∈ ((strategy.resume owner players (some owner) repaired memory).bind
         (fun pair => strategy.runJoint owner players scheduler
           (visits.length + 1 + (runtime setup).deadline event + 1) pair.1 pair.2)).support := by
-      rw [← second, FinDist.support_map]
+      rw [← second, PMF.support_map]
       exact ⟨next, supported, rfl⟩
-    obtain ⟨middle, resumed, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    obtain ⟨middle, resumed, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
     obtain ⟨middleTrace⟩ := menu.trace_implementation_resume (initialLaw setup)
       (rosterPlan setup rosters).length scheduler strategy owner players opponents own remaining
         (some owner) repaired memory trace middle resumed
@@ -273,10 +273,10 @@ theorem binding_window_stopped_coupling
             (repaired.recall owner, repaired.observe app owner)).map _ = _
         rw [BindingMemory.implementation_respond (runtime setup) leaks owner reference
           (players owner) memory (repaired.recall owner) (repaired.observe app owner) started,
-          frame.past, frame.observed, FinDist.map_comp]
+          frame.past, frame.observed, PMF.map_comp]
         simp only [law, adjusted, proposed, frame.observed, app, menu, Function.comp_def]
       have existsBranch (response : app.Action) (member : response ∈ law.support) :
-          ∃ coupling : FinDist (app.Execution × app.Execution ×
+          ∃ coupling : PMF (app.Execution × app.Execution ×
             BindingMemory (runtime setup) leaks),
             coupling.map Prod.fst = leftRun response ∧ coupling.map Prod.snd = rightRun response ∧
             ∀ next ∈ coupling.support, good next := by
@@ -323,7 +323,7 @@ theorem binding_window_stopped_coupling
               List.length_replicate, List.length_nil]
             omega
           have existsTail next (chosen : next ∈ step.support) :
-              ∃ coupling : FinDist (app.Execution × app.Execution ×
+              ∃ coupling : PMF (app.Execution × app.Execution ×
                 BindingMemory (runtime setup) leaks),
                 coupling.map Prod.fst = (app.invoke players owner next.1).bind
                   ((runtime setup).runInteractionPlan leaks players network restPlan) ∧
@@ -341,7 +341,7 @@ theorem binding_window_stopped_coupling
             have cursor : next.1.environmentRecall.length =
                 original.environmentRecall.length + foreign.length + 1 := by
               rw [ReactiveApplication.Execution.activation_samples,
-                FinDist.support_map] at activated
+                PMF.support_map] at activated
               obtain ⟨selected, _, same⟩ := activated
               rw [← same]
               change (predecessor.environmentRecall ++ [_]).length = _
@@ -382,45 +382,45 @@ theorem binding_window_stopped_coupling
             exact right
           let branch := fun next chosen => (existsTail next chosen).choose
           refine ⟨step.bindOnSupport branch, ?_, ?_, ?_⟩
-          · rw [FinDist.map_bindOnSupport]
+          · rw [map_bindOnSupport]
             calc
               _ = step.bind (fun next => (app.invoke players owner next.1).bind
                   ((runtime setup).runInteractionPlan leaks players network restPlan)) := by
-                apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+                apply bindOnSupport_eq_bind_of_eq_on_support _
                 intro next chosen
                 exact (existsTail next chosen).choose_spec.1
               _ = (step.map Prod.fst).bind (fun execution =>
                   (app.invoke players owner execution).bind
                   ((runtime setup).runInteractionPlan leaks players network restPlan)) := by
-                rw [FinDist.bind_map]
+                rw [PMF.bind_map]
               _ = leftRun response := by
                 rw [first]
                 simp only [leftRun, plan, restPlan, visitsEq, List.map_append, List.map_cons,
                   runInteractionPlan_append, runInteractionPlan, interactionStep,
-                  interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+                  interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
                   ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-                  FinDist.bind_bind]
-                apply FinDist.bind_congr
+                  PMF.bind_bind]
+                apply bind_congr_on_support _
                 intro execution _
-                apply FinDist.bind_congr
+                apply bind_congr_on_support _
                 intro observed _
-                apply FinDist.bind_congr
+                apply bind_congr_on_support _
                 intro responded _
                 exact (runtime setup).runInteractionPlan_append leaks players network
                   (rest.map ServiceInstruction.player) tail responded
-          · rw [FinDist.map_bindOnSupport]
+          · rw [map_bindOnSupport]
             calc
               _ = step.bind (fun next =>
                   (strategy.resume owner players (some owner) next.2.1 next.2.2).bind
                     (fun resumed => strategy.runJoint owner players scheduler restPlan.length
                       resumed.1 resumed.2)) := by
-                apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+                apply bindOnSupport_eq_bind_of_eq_on_support _
                 intro next chosen
                 exact (existsTail next chosen).choose_spec.2.1
               _ = (step.map Prod.snd).bind (fun next =>
                   (strategy.resume owner players (some owner) next.1 next.2).bind
                     (fun resumed => strategy.runJoint owner players scheduler restPlan.length
-                      resumed.1 resumed.2)) := by rw [FinDist.bind_map]
+                      resumed.1 resumed.2)) := by rw [PMF.bind_map]
               _ = rightRun response := by
                 rw [second]
                 have originalPair : proposed response = (response, memory.record (runtime setup)
@@ -443,10 +443,10 @@ theorem binding_window_stopped_coupling
                     List.length_append, List.length_map, List.length_cons]
                   omega
                 simpa only [rightRun, adjustedEq, originalPair, totalLength,
-                  FinDist.bind_bind, FinDist.bind_map, List.length_map] using pairedLaw.symm
+                  PMF.bind_bind, PMF.bind_map, List.length_map] using pairedLaw.symm
           · intro final supported
             obtain ⟨next, chosen, reached⟩ :=
-              Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+              Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
             exact (existsTail next chosen).choose_spec.2.2 final reached
         · obtain ⟨opening, bounded, countedSerial, rfl⟩ := canonical
           let action : app.Action := ⟨some (.submit ⟨⟨.commitment event
@@ -490,40 +490,40 @@ theorem binding_window_stopped_coupling
             · exact Or.inl bad
             · exact Or.inr (Or.inr framed)
         · obtain ⟨record, emitted, author, forbidden⟩ := departure
-          refine ⟨FinDist.product (leftRun response) (rightRun response),
-            FinDist.map_fst_product .., FinDist.map_snd_product .., ?_⟩
+          refine ⟨bindPairLaw (leftRun response) (fun _ => (rightRun response)),
+            bindPairLaw_map_fst .., FinDist.map_snd_product .., ?_⟩
           intro next supported
           have reached : next.1 ∈ (leftRun response).support := by
-            rw [← FinDist.map_fst_product (leftRun response) (rightRun response),
-              FinDist.support_map]
+            rw [← bindPairLaw_map_fst (leftRun response) (rightRun response),
+              PMF.support_map]
             exact ⟨next, supported, rfl⟩
           left
           refine ⟨record, ?_, author, forbidden⟩
           apply (runtime setup).trafficRecord_after_activation_plan leaks players network plan
             prior original next.1 owner response remaining sampled record _ reached
           rw [ReactiveApplication.Execution.activation_samples] at sampled
-          obtain ⟨selected, _, same⟩ := FinDist.support_map .. ▸ sampled
+          obtain ⟨selected, _, same⟩ := PMF.support_map .. ▸ sampled
           rw [← same] at emitted ⊢
           exact emitted ▸ List.mem_singleton_self _
       let branch := fun response member => (existsBranch response member).choose
       refine ⟨law.bindOnSupport branch, ?_, ?_, ?_⟩
-      · rw [FinDist.map_bindOnSupport]
+      · rw [map_bindOnSupport]
         change _ = (law.map (original.respond app owner)).bind _
-        rw [FinDist.bind_map]
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        rw [PMF.bind_map]
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro response member
         exact (existsBranch response member).choose_spec.1
-      · rw [FinDist.map_bindOnSupport]
-        simp only [ReactiveApplication.Implementation.resume, ↓reduceIte, FinDist.bind_map]
+      · rw [map_bindOnSupport]
+        simp only [ReactiveApplication.Implementation.resume, ↓reduceIte, PMF.bind_map]
         change _ = (strategy.respond memory (repaired.recall owner,
           repaired.observe app owner)).bind _
-        rw [responseLaw, FinDist.bind_map, ← length]
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        rw [responseLaw, PMF.bind_map, ← length]
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro response member
         exact (existsBranch response member).choose_spec.2.1
       · intro next supported
         obtain ⟨response, member, reached⟩ :=
-          Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+          Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
         exact (existsBranch response member).choose_spec.2.2 next reached
 
 end Vegas

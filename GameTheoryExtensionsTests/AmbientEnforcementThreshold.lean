@@ -28,7 +28,7 @@ theorem rational_disclosed_reward_lower (deposit : ℝ)
     (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => payoff deposit history.state who) 3) (bit : Bool) :
-    1 ≤ (resultLaw assessment.strategy bit true).expect (payoff deposit · true) := by
+    1 ≤ expect (resultLaw assessment.strategy bit true) (payoff deposit · true) := by
   have best := rational true (bobDisclosedSite bit) (choose true true bit) (Set.mem_univ _)
   rw [disclosed_context assessment bit (payoff deposit · true) (choose true true bit),
     disclosed_context assessment bit (payoff deposit · true) (assessment.strategy true),
@@ -36,27 +36,27 @@ theorem rational_disclosed_reward_lower (deposit : ℝ)
   rw [value_bob (ambient := true) _ _ _ (payoff deposit · true),
     value_bob (ambient := true) _ _ _ (payoff deposit · true)] at best
   simp only [Bool.true_and] at best
-  have correct : (resultLaw
+  have correct : expect (resultLaw
       (Profile.update (sig := (model true).behavioralSignature) assessment.strategy true
-        (choose true true bit)) bit true).expect (payoff deposit · true) = 1 := by
+        (choose true true bit)) bit true) (payoff deposit · true) = 1 := by
     simp [resultLaw, choiceLaw, Profile.update, choose, decisionInfo, payoff]
   rwa [correct] at best
 
 theorem disclosed_payoff_difference (deposit : ℝ)
     (profile : Profile (model true).behavioralSignature) (bit : Bool) :
-    (resultLaw profile bit true).expect (payoff deposit · false) =
-      (resultLaw profile bit true).expect (payoff deposit · true) - deposit := by
-  simp only [resultLaw, FinDist.expect_map, payoff, Bool.not_false, Bool.not_true,
+    expect (resultLaw profile bit true) (payoff deposit · false) =
+      expect (resultLaw profile bit true) (payoff deposit · true) - deposit := by
+  simp only [resultLaw, expect_map, payoff, Bool.not_false, Bool.not_true,
     Bool.true_and, Bool.false_and, ite_true, Bool.false_eq_true, ite_false, sub_zero]
-  rw [FinDist.expect_sub, FinDist.expect_const]
+  rw [FinDist.expect_sub, expect_constant]
 
 theorem rational_alice_reward_lower (deposit : ℝ)
     (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => payoff deposit history.state who) 3) (bit : Bool) :
     1 - deposit ≤
-      ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
-        (aliceHistory true bit)).expect (fun history => payoff deposit history.state false) := by
+      expect ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
+        (aliceHistory true bit)) (fun history => payoff deposit history.state false) := by
   have best := rational false (aliceSite bit) (choose true false true) (Set.mem_univ _)
   rw [alice_context assessment bit (payoff deposit · false) (choose true false true),
     alice_context assessment bit (payoff deposit · false) (assessment.strategy false),
@@ -64,9 +64,9 @@ theorem rational_alice_reward_lower (deposit : ℝ)
     value_alice (ambient := true) _ bit (payoff deposit · false)] at best
   have discloses : choiceLaw
       (Profile.update (sig := (model true).behavioralSignature) assessment.strategy false
-        (choose true false true)) false (some (some bit)) = FinDist.pure true := by
+        (choose true false true)) false (some (some bit)) = PMF.pure true := by
     simp [choiceLaw, Profile.update, choose, decisionInfo]
-  rw [discloses, FinDist.expect_pure] at best
+  rw [discloses, expect_pure] at best
   have unchanged : resultLaw
       (Profile.update (sig := (model true).behavioralSignature) assessment.strategy false
         (choose true false true)) bit true = resultLaw assessment.strategy bit true := by
@@ -89,8 +89,8 @@ theorem rational_correctness_lower {deposit : ℝ} (nonnegative : 0 ≤ deposit)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => payoff deposit history.state who) 3) (bit : Bool) :
     1 - deposit ≤
-      ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
-        (aliceHistory true bit)).expect (fun history => payoff deposit history.state true) := by
+      expect ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
+        (aliceHistory true bit)) (fun history => payoff deposit history.state true) := by
   exact (rational_alice_reward_lower deposit assessment rational bit).trans
     (FinDist.expect_mono fun history _ => alice_payoff_le_correctness nonnegative history.state)
 
@@ -102,38 +102,38 @@ def retainedBitScore (bit : Bool) : Option (Bool × Bool) → ℝ
 correctness, multiplied by its initial probability one half. -/
 theorem initialized_bit_score (deposit : ℝ)
     (profile : Profile (model true).behavioralSignature) (bit : Bool) :
-    ((((model true).runSingleMoverBehavioralFrom (single true) profile 3
-      (arena true).initHistory).map History.state).map retained).expect (retainedBitScore bit) =
-      (1 / 2) * ((model true).runSingleMoverBehavioralFrom (single true) profile 3
-        (aliceHistory true bit)).expect (fun history => payoff deposit history.state true) := by
-  rw [run_initial, FinDist.expect_map, FinDist.expect_bind,
+    expect ((((model true).runSingleMoverBehavioralFrom (single true) profile 3
+      (arena true).initHistory).map History.state).map retained) (retainedBitScore bit) =
+      (1 / 2) * expect ((model true).runSingleMoverBehavioralFrom (single true) profile 3
+        (aliceHistory true bit)) (fun history => payoff deposit history.state true) := by
+  rw [run_initial, expect_map, FinDist.expect_bind,
     value_alice (ambient := true) _ bit (payoff deposit · true)]
-  simp only [FinDist.expect_bind, resultLaw, FinDist.expect_map]
-  rw [FinDist.expect_eq_sum, Fintype.sum_bool]
+  simp only [FinDist.expect_bind, resultLaw, expect_map]
+  rw [expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
     simp [FinDist.prob_uniformOfFintype, Fintype.card_bool, retainedBitScore, retained, payoff]
 
-theorem source_bit_score (guesses : FinDist Bool) (bit : Bool) :
-    ((FinDist.product (FinDist.uniformOfFintype (α := Bool)) guesses).map some).expect
+theorem source_bit_score (guesses : PMF Bool) (bit : Bool) :
+    expect ((bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some)
         (retainedBitScore bit) =
-      (1 / 2) * guesses.expect (fun guess => if guess = bit then (1 : ℝ) else 0) := by
-  rw [FinDist.expect_map, FinDist.expect_product, FinDist.expect_eq_sum, Fintype.sum_bool]
+      (1 / 2) * expect guesses (fun guess => if guess = bit then (1 : ℝ) else 0) := by
+  rw [expect_map, FinDist.expect_product, expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
     simp [FinDist.prob_uniformOfFintype, Fintype.card_bool, retainedBitScore]
 
 /-- Necessary collateral for matching any source guessing law, even when the
 target strategies and beliefs are chosen freely and disclosure is not retained. -/
 theorem retained_law_requires_deterrence {deposit : ℝ} (nonnegative : 0 ≤ deposit)
-    (guesses : FinDist Bool) (assessment : (model true).BehavioralAssessment)
+    (guesses : PMF Bool) (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => payoff deposit history.state who) 3)
     (matching :
       (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
         (arena true).initHistory).map History.state).map retained =
-      (FinDist.product (FinDist.uniformOfFintype (α := Bool)) guesses).map some) :
-    ∀ bit, 1 - deposit ≤ guesses.expect (fun guess => if guess = bit then (1 : ℝ) else 0) := by
+      (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some) :
+    ∀ bit, 1 - deposit ≤ expect guesses (fun guess => if guess = bit then (1 : ℝ) else 0) := by
   intro bit
-  have same := congrArg (fun law => law.expect (retainedBitScore bit)) matching
+  have same := congrArg (fun law => expect law (retainedBitScore bit)) matching
   rw [initialized_bit_score deposit, source_bit_score] at same
   have lower := rational_correctness_lower nonnegative assessment rational bit
   linarith
@@ -142,13 +142,13 @@ theorem retained_law_requires_deterrence {deposit : ℝ} (nonnegative : 0 ≤ de
 The necessity permits arbitrary target strategies and beliefs; sufficiency
 uses the fixed playerwise compiler's silent extension. -/
 theorem retained_law_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ deposit)
-    (guesses : FinDist Bool) :
+    (guesses : PMF Bool) :
     (∃ assessment : (model true).BehavioralAssessment,
       isEquilibrium deposit assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (FinDist.product (FinDist.uniformOfFintype (α := Bool)) guesses).map some) ↔
-      ∀ bit, 1 - deposit ≤ guesses.expect (correct bit) := by
+        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some) ↔
+      ∀ bit, 1 - deposit ≤ expect guesses (correct bit) := by
   constructor
   · rintro ⟨assessment, equilibrium, matching⟩
     exact retained_law_requires_deterrence nonnegative guesses assessment equilibrium.1 matching
@@ -158,15 +158,14 @@ theorem retained_law_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ depo
     change (((model true).runSingleMoverBehavioralFrom (single true) (silentProfile guesses) 3
       (arena true).initHistory).map History.state).map retained = _
     rw [target_initialized_law]
-    simp [FinDist.product, FinDist.map_eq_bind]
+    simp [FinDist.product, ← PMF.bind_pure_comp, Function.comp_def]
 
 theorem fair_law_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ deposit) :
     (∃ assessment : (model true).BehavioralAssessment,
       isEquilibrium deposit assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (FinDist.product (FinDist.uniformOfFintype (α := Bool))
-          (FinDist.uniformOfFintype (α := Bool))).map some) ↔
+        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => (PMF.uniformOfFintype (α := Bool)))).map some) ↔
       1 / 2 ≤ deposit := by
   rw [retained_law_implementable_iff nonnegative]
   constructor
@@ -181,16 +180,16 @@ theorem fair_law_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ deposit)
 /-- A single deposit implements every source equilibrium law exactly when it
 is at least one. Every source guess law is an SE by `source_sequential_equilibrium`. -/
 theorem all_source_laws_implementable_iff {deposit : ℝ} (nonnegative : 0 ≤ deposit) :
-    (∀ guesses : FinDist Bool, ∃ assessment : (model true).BehavioralAssessment,
+    (∀ guesses : PMF Bool, ∃ assessment : (model true).BehavioralAssessment,
       isEquilibrium deposit assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (FinDist.product (FinDist.uniformOfFintype (α := Bool)) guesses).map some) ↔
+        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => guesses)).map some) ↔
       1 ≤ deposit := by
   constructor
   · intro implements
-    have deterrence := (retained_law_implementable_iff nonnegative (FinDist.pure false)).mp
-      (implements (FinDist.pure false))
+    have deterrence := (retained_law_implementable_iff nonnegative (PMF.pure false)).mp
+      (implements (PMF.pure false))
     have bound := deterrence true
     norm_num [correct] at bound
     linarith
@@ -207,8 +206,7 @@ theorem no_unpenalized_fair_law :
       isEquilibrium 0 assessment ∧
         (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
           (arena true).initHistory).map History.state).map retained =
-        (FinDist.product (FinDist.uniformOfFintype (α := Bool))
-          (FinDist.uniformOfFintype (α := Bool))).map some := by
+        (bindPairLaw (PMF.uniformOfFintype (α := Bool)) (fun _ => (PMF.uniformOfFintype (α := Bool)))).map some := by
   rw [fair_law_implementable_iff (by norm_num)]
   norm_num
 

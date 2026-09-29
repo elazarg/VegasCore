@@ -23,29 +23,29 @@ def granted (execution : app.Execution) (event : nativeGraph.EventId) : app.Exec
 
 theorem grant_step (execution : app.Execution) (event : nativeGraph.EventId) :
     nativeRuntime.interactionStep leaks policy network (.grant event) execution =
-      FinDist.pure (granted execution event) := by
+      PMF.pure (granted execution event) := by
   simp [interactionStep, interactionInstruction, ReactiveApplication.dispatch,
     ReactiveApplication.Execution.environmentStep, app, serviceApp, reactiveApplication,
     environmentStep,
-    ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.map_pure, granted]
+    ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_map, granted]
 
 theorem player_step (execution : app.Execution) (who : Player) (action : app.Action)
     (selected : response who ((activate execution who).observe app who) = action) :
     nativeRuntime.interactionStep leaks policy network (.player who) execution =
-      FinDist.pure ((activate execution who).respond app who action) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-    ReactiveApplication.dispatch, activation_law, FinDist.pure_bind,
+      PMF.pure ((activate execution who).respond app who action) := by
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+    ReactiveApplication.dispatch, activation_law, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
-    policy, selected, FinDist.map_pure]
+    policy, selected, PMF.pure_map]
 
 def quietPrelude : app.Execution :=
   (activate ((activate initial alice).respond app alice ⟨none⟩) bob).respond app bob ⟨none⟩
 
 theorem prelude_law :
     nativeRuntime.runInteractionPlan leaks policy network [.player alice, .player bob] initial =
-      FinDist.pure quietPrelude := by
-  rw [runInteractionPlan, player_step initial alice ⟨none⟩ rfl, FinDist.pure_bind,
-    runInteractionPlan, player_step _ bob ⟨none⟩ rfl, FinDist.pure_bind]
+      PMF.pure quietPrelude := by
+  rw [runInteractionPlan, player_step initial alice ⟨none⟩ rfl, PMF.pure_bind,
+    runInteractionPlan, player_step _ bob ⟨none⟩ rfl, PMF.pure_bind]
   rfl
 
 def aliceReady : app.Execution := activate (granted quietPrelude aliceBinding) alice
@@ -70,24 +70,24 @@ private theorem alice_selected : nativeRuntime.reactiveLatest leaks aliceBinding
 
 private theorem alice_inclusion :
     nativeRuntime.interactionStep leaks policy network (.includeLatest aliceBinding alice)
-      aliceSent = FinDist.pure aliceIncluded := by
-  simp only [interactionStep, interactionInstruction, alice_selected, FinDist.pure_bind,
+      aliceSent = PMF.pure aliceIncluded := by
+  simp only [interactionStep, interactionInstruction, alice_selected, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-    ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind]
+    ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
   rfl
 
 theorem initial_five_rounds :
     nativeRuntime.runInteractionPlan leaks policy network (nativePlan.take 5) initial =
-      FinDist.pure aliceIncluded := by
+      PMF.pure aliceIncluded := by
   change nativeRuntime.runInteractionPlan leaks policy network
     ([.player alice, .player bob] ++ [.grant aliceBinding, .player alice,
       .includeLatest aliceBinding alice]) initial = _
-  rw [runInteractionPlan_append, prelude_law, FinDist.pure_bind,
-    runInteractionPlan, grant_step, FinDist.pure_bind,
-    runInteractionPlan, player_step _ alice _ alice_choice, FinDist.pure_bind]
+  rw [runInteractionPlan_append, prelude_law, PMF.pure_bind,
+    runInteractionPlan, grant_step, PMF.pure_bind,
+    runInteractionPlan, player_step _ alice _ alice_choice, PMF.pure_bind]
   change nativeRuntime.runInteractionPlan leaks policy network
     [.includeLatest aliceBinding alice] aliceSent = _
-  rw [runInteractionPlan, alice_inclusion, FinDist.pure_bind]
+  rw [runInteractionPlan, alice_inclusion, PMF.pure_bind]
   rfl
 
 theorem initial_alice_binding :
@@ -102,9 +102,9 @@ theorem initial_alice_binding :
   obtain ⟨next, stored, law⟩ := realized
   change (nativeRuntime.interactionStep leaks policy network
     (.includeLatest aliceBinding alice) aliceSent).map _ = _ at law
-  rw [alice_inclusion, FinDist.map_pure] at law
+  rw [alice_inclusion, PMF.pure_map] at law
   have same : aliceIncluded.application = next :=
-    FinDist.mem_support_pure.mp (law ▸ FinDist.mem_support_pure.mpr rfl)
+    (PMF.mem_support_pure_iff _ _).mp (law ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   rw [same]
   exact stored
 

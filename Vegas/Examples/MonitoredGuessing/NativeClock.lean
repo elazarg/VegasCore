@@ -31,7 +31,7 @@ private theorem scheduled_activation_count (history : List nativeApp.Environment
   unfold nativeScheduler at supported
   cases selected : nativePlan[history.length]? with
   | none =>
-      rw [selected, FinDist.mem_support_pure] at supported
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       have bound : 14 ≤ history.length := by
         simpa only [← native_horizon] using List.getElem?_eq_none_iff.mp selected
@@ -69,7 +69,7 @@ private theorem trace_counted_depth :
         nativeScheduler source joint).support := realized
       cases source with
       | none =>
-          obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
           have counted : before.length = 0 := inherited
           simpa only [CountedDepth, Trace.length, ReactiveApplication.Execution.initial,
             List.length_nil, Option.toList_none, Nat.add_zero, scheduledActivations,
@@ -78,7 +78,7 @@ private theorem trace_counted_depth :
           rcases control with ⟨remaining, actor, execution⟩
           cases actor with
           | some who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               simpa only [CountedDepth, Trace.length, nativeApp.respond_environmentRecall,
                 Option.toList_some, Option.toList_none, List.length_singleton,
                 List.length_nil, Nat.add_zero] using inherited
@@ -87,11 +87,11 @@ private theorem trace_counted_depth :
               | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
               | succ remaining =>
                   obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   have schedulerRecall : next.environmentRecall = execution.environmentRecall ++
                       [⟨execution.observeEnvironment nativeApp, command⟩] := by
-                    obtain ⟨updated, _, equal⟩ := FinDist.support_map .. ▸ supported
+                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
                     cases equal
                     rfl
                   have activations := scheduled_activation_count execution.environmentRecall
@@ -146,7 +146,7 @@ theorem native_watcher_activation_position (history : List nativeApp.Environment
   unfold nativeScheduler at supported
   cases selected : nativePlan[history.length]? with
   | none =>
-      rw [selected, FinDist.mem_support_pure] at supported
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases active
   | some instruction =>

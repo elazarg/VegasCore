@@ -60,7 +60,7 @@ theorem run_roster_source_prefix_support
           source.view who) ∧
         state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep program
           (fun who => RevealOnly.uniformPolicy who program reveals)))^[count]
-            (FinDist.pure (ProtocolState.entry program source))).support ∧
+            (PMF.pure (ProtocolState.entry program source))).support ∧
         finished.network.Satisfies (fun message =>
           message.id ∈ finished.network.ledger.map Message.id) := by
   intro Γ openNames program
@@ -71,10 +71,10 @@ theorem run_roster_source_prefix_support
       have zero : count = 0 := by simpa [eventCount] using countBound
       subst count
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact ⟨ProtocolState.entry _ source, ⟨source, rfl, rfl, checkpoint⟩,
         (fun who => ProtocolView.entryView_observe_entry who _ source),
-        FinDist.mem_support_pure.mpr rfl, clean⟩
+        (PMF.mem_support_pure_iff _ _).mpr rfl, clean⟩
   | sample name fresh law next ih =>
       intro impossible
       exact impossible.elim
@@ -87,10 +87,10 @@ theorem run_roster_source_prefix_support
       cases count with
       | zero =>
           simp only [List.take_zero, List.flatMap_nil, runInteractionPlan] at supported
-          cases FinDist.mem_support_pure.mp supported
+          cases (PMF.mem_support_pure_iff _ _).mp supported
           exact ⟨ProtocolState.entry _ source, ⟨source, rfl, rfl, checkpoint⟩,
             (fun who => ProtocolView.entryView_observe_entry who _ source),
-            FinDist.mem_support_pure.mpr rfl, clean⟩
+            (PMF.mem_support_pure_iff _ _).mpr rfl, clean⟩
       | succ count =>
           let index : Fin (eventCount
             (.reveal published owner name fresh selected unresolved next)) :=
@@ -138,10 +138,10 @@ theorem run_roster_source_prefix_support
             rfl
           rw [planEq, runInteractionPlan_append] at supported
           obtain ⟨after, blockReached, continued⟩ :=
-            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
           have originalReached := blockReached
           rw [rosterBlock_of_owner setup rosters event owner actor,
-            runInteractionPlan_append, grantLaw, FinDist.pure_bind] at blockReached
+            runInteractionPlan_append, grantLaw, PMF.pure_bind] at blockReached
           have ownerOffset : (opportunity.recall owner).length =
               rosterOffset setup rosters owner event := by
             rw [grantRecall, counts owner]
@@ -191,11 +191,11 @@ theorem run_roster_source_prefix_support
             change (ProtocolView.entryView who next
               (ProtocolState.observe who next state)).back (decide (owner = who)) = _
             rw [priorView who, back_reveal_view]
-          · rw [ProtocolState.behavioralStatePrefix_reveal, FinDist.support_bind]
+          · rw [ProtocolState.behavioralStatePrefix_reveal, PMF.support_bind]
             apply Set.mem_iUnion₂.mpr
             refine ⟨disclose, ?_, ?_⟩
-            · exact FinDist.mem_support_uniformOfFintype _
-            · rw [FinDist.support_map]
+            · exact PMF.mem_support_uniformOfFintype _
+            · rw [PMF.support_map]
               exact ⟨state, sourceReach, rfl⟩
 
 /-- Initialized support, including source-impossible native histories only
@@ -226,11 +226,11 @@ theorem initialized_roster_prefix_support
         (ProtocolState.observe who setup.program state) = (setup.initialConfig initial).view who) ∧
       state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
         (fun who => RevealOnly.uniformPolicy who setup.program reveals)))^[count]
-          (FinDist.pure (ProtocolState.entry setup.program
+          (PMF.pure (ProtocolState.entry setup.program
             (setup.initialConfig initial)))).support ∧
       finished.network.Satisfies (fun message =>
         message.id ∈ finished.network.ledger.map Message.id) := by
-  rw [initialLaw, FinDist.bind_map, FinDist.support_bind] at supported
+  rw [initialLaw, PMF.bind_map, PMF.support_bind] at supported
   obtain ⟨initial, initialSupport, reached⟩ := Set.mem_iUnion₂.mp supported
   let profile : BehavioralProfile setup.program :=
     fun who => RevealOnly.uniformPolicy who setup.program reveals

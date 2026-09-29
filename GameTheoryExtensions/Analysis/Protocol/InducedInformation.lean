@@ -32,37 +32,37 @@ variable {State Signal Action Outcome : Type*}
 less informed score is bounded by a policy using only the specified signal.
 The informed benchmark may already subtract errors or publication costs. -/
 theorem induced_advantage
-    (prior : FinDist State) (observe : State → Signal)
-    (score : State → Action → ℝ) (reference policy : Signal → FinDist Action)
+    (prior : PMF State) (observe : State → Signal)
+    (score : State → Action → ℝ) (reference policy : Signal → PMF Action)
     (optimal : IsBayesOptimal prior observe score reference)
-    (outcomes : State → FinDist Outcome) (payoff : Outcome → ℝ)
+    (outcomes : State → PMF Outcome) (payoff : Outcome → ℝ)
     (uninformedScore : State → Outcome → ℝ) (benchmark : ℝ)
     (payoffBound : ∀ state ∈ prior.support, ∀ outcome ∈ (outcomes state).support,
       benchmark - uninformedScore state outcome ≤ payoff outcome)
     (observationBound : ∀ state ∈ prior.support,
-      (outcomes state).expect (uninformedScore state) ≤
-        (policy (observe state)).expect (score state)) :
+      expect (outcomes state) (uninformedScore state) ≤
+        expect (policy (observe state)) (score state)) :
     benchmark - value prior observe score reference ≤
-      (prior.bind outcomes).expect payoff := by
-  have lessInformed : prior.expect (fun state =>
-      (outcomes state).expect (uninformedScore state)) ≤
+      expect (prior.bind outcomes) payoff := by
+  have lessInformed : expect prior (fun state =>
+      expect (outcomes state) (uninformedScore state)) ≤
       value prior observe score reference := by
     calc
-      _ ≤ prior.expect (fun state =>
-          (policy (observe state)).expect (score state)) :=
+      _ ≤ expect prior (fun state =>
+          expect (policy (observe state)) (score state)) :=
         FinDist.expect_mono observationBound
       _ = value prior observe score policy :=
         (value_eq_expect prior observe score policy).symm
       _ ≤ _ := optimal.value_le policy
-  have advantage : prior.expect (fun state =>
-      benchmark - (outcomes state).expect (uninformedScore state)) ≤
-      (prior.bind outcomes).expect payoff := by
+  have advantage : expect prior (fun state =>
+      benchmark - expect (outcomes state) (uninformedScore state)) ≤
+      expect (prior.bind outcomes) payoff := by
     rw [FinDist.expect_bind]
     apply FinDist.expect_mono
     intro state supported
-    rw [← FinDist.expect_const (outcomes state) benchmark, ← FinDist.expect_sub]
+    rw [← expect_constant (outcomes state) benchmark, ← FinDist.expect_sub]
     exact FinDist.expect_mono (payoffBound state supported)
-  rw [FinDist.expect_sub, FinDist.expect_const] at advantage
+  rw [FinDist.expect_sub, expect_constant] at advantage
   linarith
 
 variable {Fact : Type*} [DecidableEq Fact]
@@ -73,19 +73,19 @@ the score premises. The margin depends only on the observation experiment,
 not on the opponents' strategies. -/
 theorem exists_positive_induced_advantage_of_collision
     [Finite Fact] [Nonempty Fact]
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
     {first second : State} (firstPresent : first ∈ prior.support)
     (secondPresent : second ∈ prior.support) (same : observe first = observe second)
     (different : fact first ≠ fact second) :
     ∃ margin : ℝ, 0 < margin ∧
-      ∀ (policy : Signal → FinDist Fact) (outcomes : State → FinDist Outcome)
+      ∀ (policy : Signal → PMF Fact) (outcomes : State → PMF Outcome)
         (payoff : Outcome → ℝ) (uninformedScore : State → Outcome → ℝ),
         (∀ state ∈ prior.support, ∀ outcome ∈ (outcomes state).support,
           1 - uninformedScore state outcome ≤ payoff outcome) →
         (∀ state ∈ prior.support,
-          (outcomes state).expect (uninformedScore state) ≤
-            (policy (observe state)).expect (reportUtility fact state)) →
-        margin ≤ (prior.bind outcomes).expect payoff := by
+          expect (outcomes state) (uninformedScore state) ≤
+            expect (policy (observe state)) (reportUtility fact state)) →
+        margin ≤ expect (prior.bind outcomes) payoff := by
   obtain ⟨reference, optimal⟩ :=
     exists_bayesOptimal prior observe (reportUtility fact)
   refine ⟨1 - value prior observe (reportUtility fact) reference, ?_, ?_⟩
@@ -112,21 +112,21 @@ theorem continuation_value_eq_initial
     (site : M.InformationSite player) (payoff : E.History → ℝ) (fuel : Nat)
     (historyValue : ∀ (profile : Profile M.behavioralSignature)
       (history : M.InformationHistory player site.1),
-      (M.runBehavioralFrom profile fuel history.1).expect payoff =
-        (M.runBehavioral profile fuel).expect payoff)
+      expect (M.runBehavioralFrom profile fuel history.1) payoff =
+        expect (M.runBehavioral profile fuel) payoff)
     (alternative : M.BehavioralPolicy player) :
     (assessment.continuationContext site payoff fuel).value alternative =
-      (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy player alternative) fuel).expect payoff := by
+      expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+        assessment.strategy player alternative) fuel) payoff := by
   rw [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief player site).expect (fun _ =>
-        (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-          assessment.strategy player alternative) fuel).expect payoff) := by
-      apply FinDist.expect_congr
+    _ = expect (assessment.belief player site) (fun _ =>
+        expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+          assessment.strategy player alternative) fuel) payoff) := by
+      apply expect_congr_on_support
       intro history _
       exact historyValue _ history
-    _ = _ := FinDist.expect_const _ _
+    _ = _ := expect_constant _ _
 
 /-- A feasible induced deviation with a guaranteed initialized payoff bounds
 every sequentially rational assessment, provided the stated actual information
@@ -138,12 +138,12 @@ theorem initial_value_ge_of_induced_deviation
     (player : ι) (site : M.InformationSite player)
     (historyValue : ∀ (profile : Profile M.behavioralSignature)
       (history : M.InformationHistory player site.1),
-      (M.runBehavioralFrom profile fuel history.1).expect (payoff player) =
-        (M.runBehavioral profile fuel).expect (payoff player))
+      expect (M.runBehavioralFrom profile fuel history.1) (payoff player) =
+        expect (M.runBehavioral profile fuel) (payoff player))
     (alternative : M.BehavioralPolicy player) (bound : ℝ)
-    (guarantee : bound ≤ (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-      assessment.strategy player alternative) fuel).expect (payoff player)) :
-    bound ≤ (M.runBehavioral assessment.strategy fuel).expect (payoff player) := by
+    (guarantee : bound ≤ expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+      assessment.strategy player alternative) fuel) (payoff player)) :
+    bound ≤ expect (M.runBehavioral assessment.strategy fuel) (payoff player) := by
   have comparison := rational player site alternative (Set.mem_univ _)
   change (assessment.continuationContext site (payoff player) fuel).value alternative ≤
     (assessment.continuationContext site (payoff player) fuel).value
@@ -170,28 +170,28 @@ theorem initial_law_ne_of_induced_information
     (player : ι) (site : M.InformationSite player)
     (historyValue : ∀ (profile : Profile M.behavioralSignature)
       (history : M.InformationHistory player site.1),
-      (M.runBehavioralFrom profile fuel history.1).expect (payoff player) =
-        (M.runBehavioral profile fuel).expect (payoff player))
+      expect (M.runBehavioralFrom profile fuel history.1) (payoff player) =
+        expect (M.runBehavioral profile fuel) (payoff player))
     (alternative : M.BehavioralPolicy player)
     (result : E.History → Result) (resultPayoff : Result → ℝ)
     (initialValue : ∀ profile : Profile M.behavioralSignature,
-      ((M.runBehavioral profile fuel).map result).expect resultPayoff =
-        (M.runBehavioral profile fuel).expect (payoff player))
-    (prior : FinDist State) (observe : State → Signal) (score : State → Action → ℝ)
-    (reference policy : Signal → FinDist Action)
+      expect ((M.runBehavioral profile fuel).map result) resultPayoff =
+        expect (M.runBehavioral profile fuel) (payoff player))
+    (prior : PMF State) (observe : State → Signal) (score : State → Action → ℝ)
+    (reference policy : Signal → PMF Action)
     (optimal : DecisionExperiment.IsBayesOptimal prior observe score reference)
-    (outcomes : State → FinDist Result) (uninformedScore : State → Result → ℝ)
+    (outcomes : State → PMF Result) (uninformedScore : State → Result → ℝ)
     (benchmark : ℝ)
-    (deviationValue : (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-      assessment.strategy player alternative) fuel).expect (payoff player) =
-        (prior.bind outcomes).expect resultPayoff)
+    (deviationValue : expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+      assessment.strategy player alternative) fuel) (payoff player) =
+        expect (prior.bind outcomes) resultPayoff)
     (payoffBound : ∀ state ∈ prior.support, ∀ outcome ∈ (outcomes state).support,
       benchmark - uninformedScore state outcome ≤ resultPayoff outcome)
     (observationBound : ∀ state ∈ prior.support,
-      (outcomes state).expect (uninformedScore state) ≤
-        (policy (observe state)).expect (score state))
-    (sourceLaw : FinDist Result)
-    (sourceBound : sourceLaw.expect resultPayoff <
+      expect (outcomes state) (uninformedScore state) ≤
+        expect (policy (observe state)) (score state))
+    (sourceLaw : PMF Result)
+    (sourceBound : expect sourceLaw resultPayoff <
       benchmark - DecisionExperiment.value prior observe score reference) :
     (M.runBehavioral assessment.strategy fuel).map result ≠ sourceLaw := by
   have advantage := DecisionExperiment.induced_advantage prior observe score reference policy

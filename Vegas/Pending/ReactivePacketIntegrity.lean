@@ -126,7 +126,7 @@ theorem canonical_reactivePacketIntegrity (runtime : EventGraphRuntime graph)
     (policy : graph.BehavioralPolicy who)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (prescribed : players who = runtime.compileReactivePolicy leaks who policy)
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (fuel : Nat)
     (result : (runtime.reactiveApplication leaks).ProtocolState)
     (supported : result ∈ ((((runtime.reactiveApplication leaks).information

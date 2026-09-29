@@ -43,8 +43,8 @@ private def initialState (bit : Bool) : State simpleExpr InitialCtx :=
 def fairSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   context := InitialCtx
   namesNodup := by decide
-  initialLaw := FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-    (FinDist.pure (initialState false)) (FinDist.pure (initialState true))
+  initialLaw := mix (1 / 2) (by norm_num) (by norm_num)
+    (PMF.pure (initialState false)) (PMF.pure (initialState true))
   obligations := {secret}
   program := program
   accounts := rfl
@@ -63,18 +63,18 @@ theorem bob_initial_secret_hidden (bit : Bool) :
 /-- The setup prior really contains both private worlds with equal weight. -/
 theorem fairSetup_initialLaw :
     fairSetup.initialLaw =
-      FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-        (FinDist.pure (initialState false)) (FinDist.pure (initialState true)) := by
+      mix (1 / 2) (by norm_num) (by norm_num)
+        (PMF.pure (initialState false)) (PMF.pure (initialState true)) := by
   rfl
 
 def profile (chosen : Bool) : SourceProgram.BehavioralProfile program := fun
   | .alice =>
       ((fun h => nomatch h),
         ((fun h => nomatch h),
-          (fun _ _ => FinDist.pure true, PUnit.unit)))
+          (fun _ _ => PMF.pure true, PUnit.unit)))
   | .bob =>
-      (fun _ _ => FinDist.pure (.success chosen),
-        (fun _ _ => FinDist.pure true,
+      (fun _ _ => PMF.pure (.success chosen),
+        (fun _ _ => PMF.pure true,
           ((fun h => nomatch h), PUnit.unit)))
 
 end

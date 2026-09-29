@@ -42,12 +42,12 @@ theorem exists_consistent_extension
     (within : ∀ who site, depth who site ≤ horizon) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentiallyConsistent
-        decisionRecall.antichain ∧
+        decisionRecall.decisionInformationAntichain ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
       (∀ who site, target.belief who (restriction.site who site) =
         (source.belief who site).map (restriction.informationHistory who site)) ∧
       ∀ who (site : N.InformationSite who), ¬ restriction.Retained who site.1 →
-        ∀ law : FinDist (N.Choice who site.1),
+        ∀ law : PMF (N.Choice who site.1),
           (target.continuationContext site (fun history => payoff history who)
             (horizon - depth who site)).value ((target.strategy who).withLaw site.1 law) ≤
           (target.continuationContext site (fun history => payoff history who)
@@ -88,7 +88,7 @@ theorem exists_consistent_extension
   let fallback (who : Player) : N.Policy who := fun info =>
     ((reference.strategy who info).support_nonempty).choose
   let referenceLaws (agent : N.InformationAgent sites) := reference.strategy agent.1 agent.2.1
-  have referenceFull (agent : N.InformationAgent sites) : (referenceLaws agent).FullSupport := by
+  have referenceFull (agent : N.InformationAgent sites) : FullSupport (referenceLaws agent) := by
     obtain ⟨history, _, observed⟩ := Finset.mem_image.mp agent.2.2
     dsimp only [referenceLaws]
     rw [← observed]
@@ -105,7 +105,7 @@ theorem exists_consistent_extension
   let pinned (n : ℕ) (agent : N.InformationAgent sites) :=
     restriction.perturbProfile (sourceSequence n).strategy reference.strategy
       (epsilon n) (positive n).le (small n).le agent.1 agent.2.1
-  have pinnedFull (n : ℕ) (agent : N.InformationAgent sites) : (pinned n agent).FullSupport :=
+  have pinnedFull (n : ℕ) (agent : N.InformationAgent sites) : FullSupport (pinned n agent) :=
     restriction.perturbProfile_fullSupport (sourceSequence n).strategy reference.strategy
       (epsilon n) (positive n) (small n).le agent.1 agent.2.1 (referenceFull agent)
   let free : Finset (N.InformationAgent sites) :=
@@ -123,7 +123,7 @@ theorem exists_consistent_extension
     have notFree : agent ∉ free := by
       simp only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not]
       exact restriction.retained_site who site
-    let laws : (entry : N.InformationAgent sites) → FinDist (N.Choice entry.1 entry.2.1) :=
+    let laws : (entry : N.InformationAgent sites) → PMF (N.Choice entry.1 entry.2.1) :=
       pinnedTremble (F := N.informationAgentForm sites fallback horizon)
         free (pinned n) referenceLaws (residual n) (epsilon n) (positive n).le (small n).le
     calc
@@ -165,7 +165,7 @@ theorem exists_consistent_extension
           (mul_le_mul_of_nonneg_left (reachBound n ⟨who, site⟩) (factorPositive n).le)
       · exact relativeTremble_power_ratio_tendsto reach reachPositive steps
     have beliefs := restriction.retained_beliefs_converge sourceSequence sequence
-      sourceAntichain decisionRecall.antichain
+      sourceAntichain decisionRecall.decisionInformationAntichain
       (fun n => (sourceApproximates n).1) mixed (fun n => (sourceApproximates n).2) bayes
       who site elapsed (clock who (restriction.site who site)) factor factorPositive factorBound
       (fun n history => restriction.perturbed_run_domination (sourceSequence n).strategy

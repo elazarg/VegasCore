@@ -30,9 +30,9 @@ theorem reveal_boolean_value_range
         (who : Player) (site : (setup.informationModel admission).InformationSite who)
         (joint : Bool → Player → Option (OwnAction Player L))
         (_chosen : ∀ disclose, OwnAction.disclosure (joint disclose who) = disclose),
-        let value := fun disclose => (assessment.stateBelief who site).expect (fun state =>
-          ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
-            (setup.decodeBehavioralProfile admission assessment.strategy))).expect
+        let value := fun disclose => expect (assessment.stateBelief who site) (fun state =>
+          expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
+            (setup.decodeBehavioralProfile admission assessment.strategy)))
               (fun final => utility final who))
         |value true - value false| ≤ bound := by
   let _ := Fintype.ofFinite Player
@@ -53,18 +53,18 @@ theorem reveal_boolean_value_range
     have full := setup.reveal_choice_fullSupport reveals admission
       (setup.revealReference reveals admission) (setup.revealReference_fullyMixed reveals admission)
       who site
-    obtain ⟨choice, _, same⟩ := FinDist.support_map .. ▸ full disclose
+    obtain ⟨choice, _, same⟩ := PMF.support_map .. ▸ full disclose
     have equal := setup.reveal_local_value admission reveals assessment who site
-      (FinDist.pure choice) joint chosen (fun final => utility final who)
-    simp only [FinDist.map_pure, FinDist.expect_pure, same] at equal
+      (PMF.pure choice) joint chosen (fun final => utility final who)
+    simp only [PMF.pure_map, expect_pure, same] at equal
     change _ = value disclose at equal
     rw [← equal, InformationModel.BehavioralAssessment.continuationContext_value]
     constructor
-    · rw [← FinDist.expect_const _ (lower who)]
+    · rw [← expect_constant _ (lower who)]
       apply FinDist.expect_mono
       intro history _
       exact FinitePayoffBounds.lower_le (payoff who) history
-    · rw [← FinDist.expect_const _ (upper who)]
+    · rw [← expect_constant _ (upper who)]
       apply FinDist.expect_mono
       intro history _
       exact FinitePayoffBounds.le_upper (payoff who) history

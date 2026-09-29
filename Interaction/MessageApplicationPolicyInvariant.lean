@@ -44,20 +44,20 @@ theorem runPolicies_execution_invariant [DecidableEq Principal]
     invariant next := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hexecution
   | cons invocation rest ih =>
-      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [runPolicies, PMF.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
       apply ih middle ?_ hnext
       cases invocation with
       | player who =>
-          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hmiddle
           obtain ⟨command, hcommand, hstep⟩ := hmiddle
           exact hplayer execution who command middle hexecution hcommand hstep
       | environment =>
-          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hmiddle
           obtain ⟨command, hcommand, hstep⟩ := hmiddle
           exact henvironment execution command middle hexecution hcommand hstep
 
@@ -73,24 +73,24 @@ theorem playerStep_pool_satisfies [DecidableEq Principal]
   have hnative : next.native ∈
       ((app.playerStep who execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [app.playerStep_native] at hnative
   cases command with
   | privateCommand privateCommand =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact hsafe
   | submit payload =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact hsafe.submit who payload (hsubmit payload rfl)
   | replay id =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact hsafe.replay who id
   | wait =>
-      simp only [PlayerCommand.toAction, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact hsafe
 
@@ -103,26 +103,26 @@ theorem environmentPolicyStep_pool_satisfies [DecidableEq Principal]
   have hnative : next.native ∈
       ((app.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [app.environmentStep_native] at hnative
   cases command with
   | deliver observer id =>
-      simp only [EnvironmentPolicyCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [EnvironmentPolicyCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact hsafe.deliver observer id
   | «include» id =>
-      simp only [EnvironmentPolicyCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [EnvironmentPolicyCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative, includePending_pool]
       exact hsafe.includePending id
   | application applicationCommand =>
-      simp only [EnvironmentPolicyCommand.toAction, step, FinDist.support_map,
+      simp only [EnvironmentPolicyCommand.toAction, step, PMF.support_map,
         Set.mem_image] at hnative
       obtain ⟨applicationNext, _, hnative⟩ := hnative
       rw [← hnative]
       exact hsafe
   | wait =>
-      simp only [EnvironmentPolicyCommand.toAction, FinDist.mem_support_pure] at hnative
+      simp only [EnvironmentPolicyCommand.toAction, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact hsafe
 
@@ -138,13 +138,13 @@ theorem runPolicies_environment_pool_satisfies [DecidableEq Principal]
     next.native.pool.Satisfies safe := by
   induction count generalizing execution with
   | zero =>
-      simp only [List.replicate_zero, runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [List.replicate_zero, runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hsafe
   | succ count ih =>
-      simp only [List.replicate_succ, runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [List.replicate_succ, runPolicies, PMF.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, htail⟩ := hnext
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hmiddle
       obtain ⟨command, _, hstep⟩ := hmiddle
       exact ih middle (app.environmentPolicyStep_pool_satisfies safe execution middle
         command hsafe hstep) htail

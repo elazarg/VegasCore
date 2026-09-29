@@ -75,7 +75,7 @@ def silentBobExpired (bit : Bool) : nativeApp.Execution :=
 theorem silent_bob_inclusion (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       (.includeLatest bobPublication bob) (silentBobResponse bit) =
-        FinDist.pure (silentBobIncluded bit) := by
+        PMF.pure (silentBobIncluded bit) := by
   have pending : (silentBobResponse bit).network.pending = [] := by
     change (quietBob bit).network.pending = []
     rw [quiet_bob_network]
@@ -83,35 +83,35 @@ theorem silent_bob_inclusion (players : Player → nativeApp.Policy) (bit : Bool
   simp only [interactionStep, interactionInstruction, reactiveLatest,
     ReactiveApplication.Execution.observeEnvironment, MessageNetwork.publicView,
     pending, List.reverse_nil,
-    List.find?_nil, FinDist.pure_bind, ReactiveApplication.dispatch,
-    ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
+    List.find?_nil, PMF.pure_bind, ReactiveApplication.dispatch,
+    ReactiveApplication.Execution.environmentStep, PMF.pure_map,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume]
   rfl
 
 theorem silent_bob_tick (bit : Bool) :
     (silentBobIncluded bit).environmentStep nativeApp (.application .advanceClock) =
-      FinDist.pure (silentBobTicked bit) := by
+      PMF.pure (silentBobTicked bit) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, FinDist.map_pure]
+    environmentStep, PMF.pure_map]
   rfl
 
 theorem silent_bob_expiry (bit : Bool) :
     (silentBobTicked bit).environmentStep nativeApp (.application (.expire bobPublication)) =
-      FinDist.pure (silentBobExpired bit) := by
+      PMF.pure (silentBobExpired bit) := by
   have expiry := environmentStep_expire_resolve_eq nativeRuntime
     (silentBobTicked bit).application bobPublication (silent_bob_ready bit) 0 rfl
     (by change 1 ≤ 1; omega) bob .bool bobBindingRef [] rfl rfl bob_node
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    expiry, FinDist.map_pure]
+    expiry, PMF.pure_map]
   rfl
 
 theorem silent_bob_service (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       [.includeLatest bobPublication bob, .tick, .expire bobPublication]
-      (silentBobResponse bit) = FinDist.pure (silentBobExpired bit) := by
-  rw [runInteractionPlan, silent_bob_inclusion, FinDist.pure_bind]
+      (silentBobResponse bit) = PMF.pure (silentBobExpired bit) := by
+  rw [runInteractionPlan, silent_bob_inclusion, PMF.pure_bind]
   simp only [runInteractionPlan, interactionStep, interactionInstruction,
-    FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+    PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, silent_bob_tick, silent_bob_expiry]
 
 theorem silent_bob_publication (bit : Bool) :
@@ -138,15 +138,15 @@ theorem bob_service (players : Player → nativeApp.Policy) (bit guess : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       [.includeLatest bobPublication bob, .tick, .expire bobPublication]
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) =
-        FinDist.pure (afterBob bit guess) := by
+        PMF.pure (afterBob bit guess) := by
   cases guess with
   | false => exact silent_bob_service players bit
   | true =>
       change nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork _
         (quietGuessRespond bit true) = _
-      rw [runInteractionPlan, quiet_guess_included, FinDist.pure_bind]
+      rw [runInteractionPlan, quiet_guess_included, PMF.pure_bind]
       simp only [runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, quiet_guess_tick, quiet_guess_expiry]
       rfl
 
@@ -176,7 +176,7 @@ theorem after_bob_fixed (bit guess : Bool) :
       have ticked := (native_fixed_invariant bit).environment
         (silentBobIncluded bit).application .advanceClock
         (silentBobTicked bit).application (quiet_bob_fixed bit)
-        (FinDist.mem_support_pure.mpr rfl)
+        ((PMF.mem_support_pure_iff _ _).mpr rfl)
       apply (native_fixed_invariant bit).environment
         (silentBobTicked bit).application (.expire bobPublication) _ ticked
       have expiry := environmentStep_expire_resolve_eq nativeRuntime
@@ -184,7 +184,7 @@ theorem after_bob_fixed (bit guess : Bool) :
         (by change 1 ≤ 1; omega) bob .bool bobBindingRef [] rfl rfl bob_node
       change _ ∈ (environmentStep nativeRuntime _ _).support
       rw [expiry]
-      exact FinDist.mem_support_pure.mpr rfl
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem after_bob_clock (bit guess : Bool) : (afterBob bit guess).application.clock = 1 := by
   cases guess with
@@ -197,7 +197,7 @@ theorem before_alice_fixed (bit guess : Bool) :
     NativeFixed bit (beforeAlice bit guess).application :=
   (native_fixed_invariant bit).environment (afterBob bit guess).application
     (.grant alicePublication) _ (after_bob_fixed bit guess)
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem before_alice_timely (bit guess : Bool) :
     (beforeAlice bit guess).application.WithinDeadline nativeRuntime alicePublication := by
@@ -210,17 +210,17 @@ theorem before_alice_timely (bit guess : Bool) :
 
 theorem grant_alice (bit guess : Bool) :
     (afterBob bit guess).environmentStep nativeApp (.application (.grant alicePublication)) =
-      FinDist.pure (grantedAlice bit guess) := by
+      PMF.pure (grantedAlice bit guess) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, FinDist.map_pure]
+    environmentStep, PMF.pure_map]
   rfl
 
 theorem activate_alice (bit guess : Bool) :
     (grantedAlice bit guess).environmentStep nativeApp (.activate alice) =
-      FinDist.pure (beforeAlice bit guess) := by
+      PMF.pure (beforeAlice bit guess) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
     nativeLeaks, alice, watcher, bob, show (0 : Player) ≠ 2 by decide,
-    show (0 : Player) ≠ 1 by decide, ↓reduceIte, FinDist.map_pure, MessageNetwork.learn_empty]
+    show (0 : Player) ≠ 1 by decide, ↓reduceIte, PMF.pure_map, MessageNetwork.learn_empty]
   rfl
 
 theorem before_alice_opening (bit guess : Bool) :
@@ -293,22 +293,22 @@ theorem empty_reserved_inclusion (players : Player → nativeApp.Policy)
     (execution : nativeApp.Execution) (event : nativeGraph.EventId) (who : Player)
     (pending : execution.network.pending = []) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork (.includeLatest event who)
-      execution = FinDist.pure (waitExecution execution) := by
+      execution = PMF.pure (waitExecution execution) := by
   have selected : nativeRuntime.reactiveLatest nativeLeaks event who
       (execution.observeEnvironment nativeApp) = .wait := by
     simp only [reactiveLatest, ReactiveApplication.Execution.observeEnvironment,
       MessageNetwork.publicView, pending, List.reverse_nil, List.find?_nil]
   simp only [interactionStep, interactionInstruction, selected,
-    FinDist.pure_bind, ReactiveApplication.dispatch,
-    ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
+    PMF.pure_bind, ReactiveApplication.dispatch,
+    ReactiveApplication.Execution.environmentStep, PMF.pure_map,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume]
   rfl
 
 theorem tick_execution (execution : nativeApp.Execution) :
     execution.environmentStep nativeApp (.application .advanceClock) =
-      FinDist.pure (tickExecution execution) := by
+      PMF.pure (tickExecution execution) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, FinDist.map_pure]
+    environmentStep, PMF.pure_map]
   rfl
 
 def silentAliceDue (bit guess : Bool) : nativeApp.Execution :=
@@ -325,7 +325,7 @@ def silentAliceExpired (bit guess : Bool) : nativeApp.Execution :=
 
 theorem silent_alice_expiry (bit guess : Bool) :
     (silentAliceDue bit guess).environmentStep nativeApp (.application (.expire alicePublication)) =
-      FinDist.pure (silentAliceExpired bit guess) := by
+      PMF.pure (silentAliceExpired bit guess) := by
   obtain ⟨entered, activated⟩ := (before_alice_fixed bit guess).1.activatedAt_eq_some_of_ready_actor
     alicePublication (after_bob_ready bit guess) (by rw [native_actor]; rfl)
   have enteredLe := (before_alice_fixed bit guess).1.activated_le _ _ activated
@@ -335,22 +335,22 @@ theorem silent_alice_expiry (bit guess : Bool) :
       change 2 ≤ (beforeAlice bit guess).application.clock + 1 + 1 - entered
       omega) alice .bool aliceBindingRef [] rfl rfl alice_node
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    expiry, FinDist.map_pure]
+    expiry, PMF.pure_map]
   rfl
 
 theorem silent_alice_service (players : Player → nativeApp.Policy) (bit guess : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice nativeSilent) =
-        FinDist.pure (silentAliceExpired bit guess) := by
+        PMF.pure (silentAliceExpired bit guess) := by
   rw [resolutionTail, runInteractionPlan, empty_reserved_inclusion players
     ((beforeAlice bit guess).respond nativeApp alice nativeSilent) _ _
-    (before_alice_pending bit guess), FinDist.pure_bind]
+    (before_alice_pending bit guess), PMF.pure_bind]
   simp only [runInteractionPlan, interactionStep, interactionInstruction,
-    FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+    PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, tick_execution]
   change (((silentAliceDue bit guess).environmentStep nativeApp
-    (.application (.expire alicePublication))).bind FinDist.pure).bind FinDist.pure = _
-  rw [silent_alice_expiry, FinDist.pure_bind, FinDist.pure_bind]
+    (.application (.expire alicePublication))).bind PMF.pure).bind PMF.pure = _
+  rw [silent_alice_expiry, PMF.pure_bind, PMF.pure_bind]
 
 theorem silent_alice_result (bit guess : Bool) :
     nativeResults (silentAliceExpired bit guess).application.config =
@@ -366,13 +366,13 @@ theorem alice_service_summary (players : Player → nativeApp.Policy)
       ((beforeAlice bit guess).respond nativeApp alice
         (choiceAction alicePublication aliceHandle bit disclose))).map
           (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
-      FinDist.pure (Results.mk (if disclose then .success bit else .failure) (guessResult guess),
+      PMF.pure (Results.mk (if disclose then .success bit else .failure) (guessResult guess),
         false) := by
   cases disclose with
   | false =>
       simp only [choiceAction, Bool.false_eq_true, ↓reduceIte, silent_alice_service,
-        FinDist.map_pure, silent_alice_result]
-      change FinDist.pure (_, rejectedAlice (beforeAlice bit guess).receipts) = _
+        PMF.pure_map, silent_alice_result]
+      change PMF.pure (_, rejectedAlice (beforeAlice bit guess).receipts) = _
       rw [before_alice_no_charge]
   | true =>
       simpa only [choiceAction, ↓reduceIte, before_alice_no_charge] using
@@ -392,10 +392,10 @@ theorem bob_to_alice (players : Player → nativeApp.Policy) (bit guess : Bool) 
   change nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
     ([.includeLatest bobPublication bob, .tick, .expire bobPublication] ++
       [.grant alicePublication, .player alice]) _ = _
-  rw [runInteractionPlan_append, bob_service, FinDist.pure_bind]
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  rw [runInteractionPlan_append, bob_service, PMF.pure_bind]
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, grant_alice,
-    activate_alice, ReactiveApplication.resume, ReactiveApplication.invoke, FinDist.bind_pure]
+    activate_alice, ReactiveApplication.resume, ReactiveApplication.invoke, PMF.bind_pure]
 
 theorem source_results (bit guess disclose : Bool) :
     sourceResults (finalConfig bit guess disclose).state =
@@ -408,35 +408,35 @@ behavior elsewhere is arbitrary. -/
 theorem branch_summary (players : Player → nativeApp.Policy) (bit guess disclose : Bool)
     (aliceChoice : players alice ((beforeAlice bit guess).recall alice)
       ((beforeAlice bit guess).observe nativeApp alice) =
-        FinDist.pure (choiceAction alicePublication aliceHandle bit disclose)) :
+        PMF.pure (choiceAction alicePublication aliceHandle bit disclose)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
         .grant alicePublication, .player alice] ++ resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
         (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
-      FinDist.pure (sourceResults (finalConfig bit guess disclose).state, false) := by
-  rw [runInteractionPlan_append, bob_to_alice, aliceChoice, FinDist.map_pure,
-    FinDist.pure_bind, alice_service_summary, source_results]
+      PMF.pure (sourceResults (finalConfig bit guess disclose).state, false) := by
+  rw [runInteractionPlan_append, bob_to_alice, aliceChoice, PMF.pure_map,
+    PMF.pure_bind, alice_service_summary, source_results]
 
 theorem branch_initial_type_results (players : Player → nativeApp.Policy)
     (bit guess disclose : Bool)
     (aliceChoice : players alice ((beforeAlice bit guess).recall alice)
       ((beforeAlice bit guess).observe nativeApp alice) =
-        FinDist.pure (choiceAction alicePublication aliceHandle bit disclose)) :
+        PMF.pure (choiceAction alicePublication aliceHandle bit disclose)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
         .grant alicePublication, .player alice] ++ resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
         (fun final => (observedAliceBit (final.observe nativeApp alice),
           nativeResults final.application.config, rejectedAlice final.receipts)) =
-      FinDist.pure (bit, sourceResults (finalConfig bit guess disclose).state, false) := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+      PMF.pure (bit, sourceResults (finalConfig bit guess disclose).state, false) := by
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
   have summarized : (nativeResults final.application.config, rejectedAlice final.receipts) =
       (sourceResults (finalConfig bit guess disclose).state, false) := by
-    apply FinDist.mem_support_pure.mp
-    rw [← branch_summary players bit guess disclose aliceChoice, FinDist.support_map]
+    apply (PMF.mem_support_pure_iff _ _).mp
+    rw [← branch_summary players bit guess disclose aliceChoice, PMF.support_map]
     exact ⟨final, reached, rfl⟩
   have fixed := resolution_plan_invariant players _ (native_fixed_invariant bit) _
     ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) final

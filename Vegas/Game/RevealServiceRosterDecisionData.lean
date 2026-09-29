@@ -38,17 +38,17 @@ theorem PublicPrefixCheckpoint.grant
       granted.application.serviceGrant = some event ∧ granted.recall = execution.recall ∧
       granted.network = execution.network ∧
       (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        FinDist.pure granted := by
+        PMF.pure granted := by
   let app := application setup leaks
   let granted : app.Execution := { execution with
     application := { execution.application with serviceGrant := some event }
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
   have law : (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-      FinDist.pure granted := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+      PMF.pure granted := by
+    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, FinDist.map_pure,
+      reactiveApplication, environmentStep, PMF.pure_map,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume]
     rfl
   refine ⟨granted, ?_, rfl, rfl, rfl, law⟩
@@ -56,10 +56,10 @@ theorem PublicPrefixCheckpoint.grant
     offset count state related
   intro context source sourceRefs rank checkpoint
   obtain ⟨other, preserved, _, _, _, otherLaw⟩ := checkpoint.grant players network event
-  have same : granted ∈ (FinDist.pure other).support := by
+  have same : granted ∈ (PMF.pure other).support := by
     rw [← otherLaw, law]
-    exact FinDist.mem_support_pure.mpr rfl
-  cases FinDist.mem_support_pure.mp same
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  cases (PMF.mem_support_pure_iff _ _).mp same
   exact preserved
 
 /-- The active roster occurrence follows strictly fewer occurrences of the
@@ -104,7 +104,7 @@ theorem roster_decision_phase
         0 event.val state granted ∧
       state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
         (fun owner => RevealOnly.uniformPolicy owner setup.program reveals)))^[event.val]
-          (FinDist.pure (ProtocolState.entry setup.program
+          (PMF.pure (ProtocolState.entry setup.program
             (setup.initialConfig initial)))).support ∧
       granted.application.serviceGrant = some event ∧
       (∀ player, (granted.recall player).length = rosterOffset setup rosters player event) ∧
@@ -126,14 +126,14 @@ theorem roster_decision_phase
       who control trace active
   obtain ⟨granted, related, grant, recall, net, law⟩ :=
     checkpoint.grant menu.uniformResponses network event
-  rw [runInteractionPlan_append, law, FinDist.pure_bind] at phase
-  rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map] at activated
+  rw [runInteractionPlan_append, law, PMF.pure_bind] at phase
+  rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at activated
   obtain ⟨sample, _, same⟩ := activated
   have unchanged := roster_run_application setup leaks bounds rosters menu.uniformResponses
     (fun player past view response supported =>
       (menu.uniformResponses_support player past view response).mp supported)
     network ((rosters event).take slot) granted prior phase
-  rw [FinDist.support_bind] at boundarySupport
+  rw [PMF.support_bind] at boundarySupport
   obtain ⟨nativeInitial, _, reached⟩ := Set.mem_iUnion₂.mp boundarySupport
   have serials := (runtime setup).runInteractionPlan_serials leaks menu.uniformResponses network
     (rosterPlanPrefix setup rosters event.val)
@@ -165,7 +165,7 @@ theorem roster_source_site
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state execution)
     (supported : state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
       (fun owner => RevealOnly.uniformPolicy owner setup.program reveals)))^[event.val]
-        (FinDist.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support) :
+        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support) :
     ∃ site : (setup.informationModel admission).InformationSite who,
       site.1 = setup.protocolObserve who (some state) := by
   obtain ⟨history, _, stateEq⟩ := setup.exists_history_of_prefix_support admission

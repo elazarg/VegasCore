@@ -87,7 +87,7 @@ private theorem schedule_counts (schedule : List (Option Principal)) (position :
           intro who
           by_cases same : owner = who <;> simp [same]
 
-private theorem trace_scheduled (initial : FinDist app.State) (horizon : Nat)
+private theorem trace_scheduled (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (schedule : List (Option Principal))
     (scheduled : ∀ history view command, command ∈ (scheduler history view).support →
       command.actor? app = (schedule[history.length]?).join) :
@@ -100,7 +100,7 @@ private theorem trace_scheduled (initial : FinDist app.State) (horizon : Nat)
         realized
       cases source with
       | none =>
-          obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
           have counted : before.length = 0 := inherited
           simp only [ScheduledTrace, Trace.length, Execution.initial, List.length_nil,
             Option.toList_none, Nat.add_zero, List.take_zero, List.filterMap_nil, List.count_nil,
@@ -110,7 +110,7 @@ private theorem trace_scheduled (initial : FinDist app.State) (horizon : Nat)
           rcases control with ⟨remaining, actor, execution⟩
           cases actor with
           | some owner =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               rcases inherited with ⟨depth, counts, _⟩
               refine ⟨?_, ?_, by simp⟩
               · simpa only [Trace.length, app.respond_environmentRecall, Option.toList_some,
@@ -124,12 +124,12 @@ private theorem trace_scheduled (initial : FinDist app.State) (horizon : Nat)
               | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
               | succ remaining =>
                   obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   have recall := app.environmentStep_recall execution next command supported
                   have advanced : next.environmentRecall = execution.environmentRecall ++
                       [⟨execution.observeEnvironment app, command⟩] := by
-                    obtain ⟨updated, _, equal⟩ := FinDist.support_map .. ▸ supported
+                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
                     cases equal
                     rfl
                   have actorEq := scheduled execution.environmentRecall
@@ -160,7 +160,7 @@ private theorem trace_scheduled (initial : FinDist app.State) (horizon : Nat)
 
 /-- Equal own response counts at two decisions identify the same scheduler
 position and the same full protocol depth, for arbitrary native responses. -/
-theorem scheduled_decision_position (initial : FinDist app.State) (horizon : Nat)
+theorem scheduled_decision_position (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (schedule : List (Option Principal))
     (scheduled : ∀ history view command, command ∈ (scheduler history view).support →
       command.actor? app = (schedule[history.length]?).join)
@@ -195,7 +195,7 @@ theorem scheduled_decision_position (initial : FinDist app.State) (horizon : Nat
   omega
 
 /-- Exact schedule occurrence and response counts at every raw decision. -/
-theorem scheduled_decision_counts (initial : FinDist app.State) (horizon : Nat)
+theorem scheduled_decision_counts (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (schedule : List (Option Principal))
     (scheduled : ∀ history view command, command ∈ (scheduler history view).support →
       command.actor? app = (schedule[history.length]?).join)
@@ -220,7 +220,7 @@ theorem scheduled_decision_counts (initial : FinDist app.State) (horizon : Nat)
 
 /-- Every information site of any response restriction of the scheduled
 runtime has a common protocol depth. The actual input representation is unchanged. -/
-theorem scheduled_menu_common_depth (initial : FinDist app.State) (horizon : Nat)
+theorem scheduled_menu_common_depth (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (schedule : List (Option Principal))
     (scheduled : ∀ history view command, command ∈ (scheduler history view).support →
       command.actor? app = (schedule[history.length]?).join)

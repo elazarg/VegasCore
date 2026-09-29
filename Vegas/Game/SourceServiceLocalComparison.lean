@@ -205,7 +205,7 @@ timing law, its admissibility, and a fully mixed native assessment whose
 strategy is exactly that compilation. -/
 structure TimedApproximant (service : SourceServiceSpec Player L) where
   timing : TimingLaw service.setup service.rosters
-  timingFull : ∀ event who owned, (timing event who owned).FullSupport
+  timingFull : ∀ event who owned, FullSupport (timing event who owned)
   profile : BehavioralProfile service.setup.program
   admitted : ∀ who, (profile who).Admitted service.setup.program
     (CommitmentInterface.values service.setup.program)
@@ -234,9 +234,9 @@ equilibrium
 (`Vegas.sourceService_consistent_supported_sequence`). -/
 def ofSource (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : Profile service.sourceModel.behavioralSignature)
-    (full : ∀ who info, (source who info).FullSupport) : TimedApproximant service :=
+    (full : ∀ who info, FullSupport (source who info)) : TimedApproximant service :=
   let admission := CommitmentInterface.values service.setup.program
   let original := service.setup.decodeBehavioralProfile admission source
   let normalized := normalizeDisclosureProfile service.setup.program []
@@ -260,7 +260,7 @@ def ofSource (service : SourceServiceSpec Player L)
       (normalized_sourceService_admitted service.setup original permitted)
     effective := fun who => (original who).normalizeDisclosureFrom_effective
       service.setup.program [] (Revelations.initial service.setup.context)
-        (fun view => FinDist.pure view.2)
+        (fun view => PMF.pure view.2)
     supports := sourceService_normalized_support service.setup source full
     assessment := native.bayes nativeMixed
       (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
@@ -270,9 +270,9 @@ def ofSource (service : SourceServiceSpec Player L)
 
 theorem ofSource_strategy (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : Profile service.sourceModel.behavioralSignature)
-    (full : ∀ who info, (source who info).FullSupport) :
+    (full : ∀ who info, FullSupport (source who info)) :
     (ofSource service timing timingFull source full).assessment.strategy =
       sourceServiceTimedProfile service.setup service.leaks service.bounds service.rosters
         service.network timing (service.setup.decodeBehavioralProfile
@@ -281,9 +281,9 @@ theorem ofSource_strategy (service : SourceServiceSpec Player L)
 
 theorem ofSource_bayes (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : Profile service.sourceModel.behavioralSignature)
-    (full : ∀ who info, (source who info).FullSupport) :
+    (full : ∀ who info, FullSupport (source who info)) :
     InformationModel.BehavioralAssessment.IsBayesConsistent service.model
       (ofSource service timing timingFull source full).assessment
       (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
@@ -308,7 +308,7 @@ abbrev players : Player → (application service.setup service.leaks).Policy :=
 def phaseLaw {who : Player} {execution : (application service.setup service.leaks).Execution}
     (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
     (response : (application service.setup service.leaks).Action) :
-    FinDist (application service.setup service.leaks).Execution :=
+    PMF (application service.setup service.leaks).Execution :=
   (runtime service.setup).runInteractionPlan service.leaks approx.players service.network
     phase.tail (execution.respond (application service.setup service.leaks) who response)
 
@@ -318,7 +318,7 @@ def phaseConfigLaw {who : Player}
     {execution : (application service.setup service.leaks).Execution}
     (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
     (response : (application service.setup service.leaks).Action) :
-    FinDist (graph service.setup).Config :=
+    PMF (graph service.setup).Config :=
   (approx.phaseLaw phase response).map (fun final => final.application.config)
 
 /-- The complete typed source terminal law after one current response. -/
@@ -326,7 +326,7 @@ def responseReadout {who : Player}
     {execution : (application service.setup service.leaks).Execution}
     (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
     (response : (application service.setup service.leaks).Action) :
-    FinDist (Option (State L service.setup.program.terminalCtx)) :=
+    PMF (Option (State L service.setup.program.terminalCtx)) :=
   ((runtime service.setup).runInteractionPlan service.leaks approx.players service.network
     (phase.tail ++ phase.later)
     (execution.respond (application service.setup service.leaks) who response)).map
@@ -335,7 +335,7 @@ def responseReadout {who : Player}
 
 /-- The source continuation from the event boundary after a phase. -/
 def boundaryContinuation (count : Nat) (config : (graph service.setup).Config) :
-    FinDist (Option (State L service.setup.program.terminalCtx)) :=
+    PMF (Option (State L service.setup.program.terminalCtx)) :=
   (service.setup.continuationLaw approx.profile
     (sourceServicePrefix? service.setup count config)).map some
 
@@ -356,8 +356,8 @@ theorem response_continuation_law {who : Player} {remaining : Nat}
       (approx.phaseConfigLaw phase response).bind
         (approx.boundaryContinuation (phase.event.val + 1)) := by
   unfold responseReadout phaseConfigLaw phaseLaw
-  rw [runInteractionPlan_append, FinDist.map_bind, FinDist.bind_map]
-  apply FinDist.bind_congr
+  rw [runInteractionPlan_append, PMF.map_bind, PMF.bind_map]
+  apply bind_congr_on_support _
   intro final reached
   have supported := roster_fullyMixed_response_prefix_support service.setup service.leaks
     service.rosters service.network service.menu approx.players approx.covered approx.assessment
@@ -396,7 +396,7 @@ theorem local_law_readout {who : Player} {remaining : Nat}
     (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
     {info : service.model.InfoState who}
     (observed : service.model.infoOf who history.trace = info)
-    (law : FinDist (service.model.Choice who info)) :
+    (law : PMF (service.model.Choice who info)) :
     (service.model.runBehavioralFrom (Profile.update (sig := service.model.behavioralSignature)
       approx.assessment.strategy who ((approx.assessment.strategy who).withLaw info law))
         service.fuel history).map
@@ -407,8 +407,8 @@ theorem local_law_readout {who : Player} {remaining : Nat}
     current (phase.before ++ [.player who]) (phase.tail ++ phase.later) phase.plan_split
     (by simpa only [List.length_append, List.length_singleton] using phase.position_before)
     observed law
-  have mapped := congrArg (FinDist.map (sourceReadout service.setup service.leaks)) physical
-  simp only [FinDist.map_comp, Function.comp_def, FinDist.map_bind] at mapped
+  have mapped := congrArg (PMF.map (sourceReadout service.setup service.leaks)) physical
+  simp only [PMF.map_comp, Function.comp_def, PMF.map_bind] at mapped
   rw [approx.strategy]
   exact mapped
 
@@ -429,14 +429,14 @@ theorem comparison_eq_of_phase_invariant (who : Player)
         second ∈ service.menu.actions who (execution.recall who)
           (execution.observe (application service.setup service.leaks) who) →
         approx.phaseConfigLaw phase first = approx.phaseConfigLaw phase second)
-    (law : FinDist (service.model.Choice who site.1)) :
+    (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparison service.readout service.fuel
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by
   intro comparison
   simp only [comparison, InformationModel.assessmentComparison,
-    InformationModel.BehavioralAssessment.continuationContext, FinDist.map_bind]
-  apply FinDist.bind_congr
+    InformationModel.BehavioralAssessment.continuationContext, PMF.map_bind]
+  apply bind_congr_on_support _
   intro history _
   have active := InformationModel.InformationSite.active service.model site history
   obtain ⟨control, current⟩ : ∃ control, history.1.state = some control := by
@@ -453,22 +453,22 @@ theorem comparison_eq_of_phase_invariant (who : Player)
   obtain ⟨phase⟩ := service.exists_decisionPhase who remaining execution trace
   let reference := (approx.assessment.strategy who site.1).support_nonempty.choose
   have referenceAllowed := service.choice_allowed history.1 current history.2 reference
-  have constant (choiceLaw : FinDist (service.model.Choice who site.1)) :
+  have constant (choiceLaw : PMF (service.model.Choice who site.1)) :
       (service.model.runBehavioralFrom (Profile.update (sig := service.model.behavioralSignature)
         approx.assessment.strategy who ((approx.assessment.strategy who).withLaw site.1 choiceLaw))
           service.fuel history.1).map service.readout =
         approx.responseReadout phase (reference.1.getD ⟨none⟩) := by
-    rw [approx.local_law_readout history.1 current phase history.2 choiceLaw, FinDist.bind_map]
+    rw [approx.local_law_readout history.1 current phase history.2 choiceLaw, PMF.bind_map]
     calc
       _ = choiceLaw.bind (fun _ =>
           approx.responseReadout phase (reference.1.getD ⟨none⟩)) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro choice _
         have allowed := service.choice_allowed history.1 current history.2 choice
         exact approx.responseReadout_congr trace phase _ _ allowed referenceAllowed
           (invariant history.1 remaining execution current history.2 phase _ _ allowed
             referenceAllowed)
-      _ = _ := FinDist.bind_const _ _
+      _ = _ := PMF.bind_const _ _
   have prescribed := constant (approx.assessment.strategy who site.1)
   rw [InformationModel.BehavioralPolicy.withLaw_eq_self] at prescribed
   exact (constant law).trans prescribed.symm

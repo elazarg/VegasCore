@@ -33,11 +33,11 @@ private theorem watcher_context_value (assessment : nativeModel.BehavioralAssess
     cases history.state <;> simp only [nativeUtility, Option.elim,
       native_execution_utility_watcher]
   rw [zero, BehavioralAssessment.continuationContext_value]
-  exact FinDist.expect_const _ 0
+  exact expect_constant _ 0
 
 /-- A single fixed deposit works for every source mixture. Off-path receiver
 responses are completed in the original native information model. -/
-theorem exists_native_sequential_equilibrium (guesses : FinDist Bool)
+theorem exists_native_sequential_equilibrium (guesses : PMF Bool)
     (deposit : ℝ) (sufficient : 2 ≤ deposit) :
     ∃ assessment : nativeModel.BehavioralAssessment,
       assessment.strategy alice = nativeAliceBehavior ∧

@@ -37,22 +37,22 @@ theorem native_history_invariants (control : (serviceApp observation).Control)
     control.execution.application.BindingInvariant ∧
       nativeBounds.AcceptedHandles control.execution.application ∧
       control.execution.network.SerialsBeforeNext := by
-  let rawTrace := (serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+  let rawTrace := (serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation) trace
   have binding := (nativeRuntime.reactiveBindingInvariant observation).history
-    (FinDist.pure nativeInitial) nativeHorizon (serviceScheduler observation) (by
+    (PMF.pure nativeInitial) nativeHorizon (serviceScheduler observation) (by
       intro state member
-      cases FinDist.mem_support_pure.mp member
+      cases (PMF.mem_support_pure_iff _ _).mp member
       exact State.initial_bindingInvariant nativeInputs) rawTrace
   have bounded := nativeBounds.executionHandles_raw_history nativeRuntime observation
-    (FinDist.pure nativeInputs) nativeHorizon (serviceScheduler observation) (state := some control)
+    (PMF.pure nativeInputs) nativeHorizon (serviceScheduler observation) (state := some control)
     (by
-      have initialLaw : (FinDist.pure nativeInputs).map State.initial =
-          FinDist.pure nativeInitial := FinDist.map_pure _ _
+      have initialLaw : (PMF.pure nativeInputs).map State.initial =
+          PMF.pure nativeInitial := PMF.pure_map _ _
       exact initialLaw.symm ▸ trace)
   exact ⟨binding, bounded.1, (serviceApp observation).serialsBeforeNext_history (serviceScheduler
     observation)
-    (FinDist.pure nativeInitial) nativeHorizon rawTrace⟩
+    (PMF.pure nativeInitial) nativeHorizon rawTrace⟩
 
 /-- An actual result of the reserved inclusion persists through every remaining
 round. The response and publication result may be arbitrary. -/
@@ -64,14 +64,14 @@ theorem native_response_finish (players : Player → (serviceApp observation).Po
     (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
     (chooses : players who (control.execution.recall who)
-      (control.execution.observe (serviceApp observation) who) = FinDist.pure response)
+      (control.execution.observe (serviceApp observation) who) = PMF.pure response)
     (included : ∀ middle ∈ (nativeRuntime.interactionStep observation players (serviceNetwork
       observation)
       (.includeLatest (nativePublicationEvent who) who)
       (control.execution.respond (serviceApp observation) who response)).support,
       (nativePublicationRef who).get? middle.application.config.store = some publication)
     (result : (serviceApp observation).ProtocolState)
-    (supported : result ∈ ((serviceApp observation).finish (FinDist.pure nativeInitial)
+    (supported : result ∈ ((serviceApp observation).finish (PMF.pure nativeInitial)
       nativeHorizon
       (serviceScheduler observation) players (some control)).support) :
     ∃ final, result = some final ∧
@@ -98,10 +98,10 @@ theorem native_opening_finish (players : Player → (serviceApp observation).Pol
       some (.success bit))
     (opens : players who (control.execution.recall who)
       (control.execution.observe (serviceApp observation) who) =
-        FinDist.pure (nativeOpeningResponse who (control.execution.observe (serviceApp observation)
+        PMF.pure (nativeOpeningResponse who (control.execution.observe (serviceApp observation)
           who)))
     (result : (serviceApp observation).ProtocolState)
-    (supported : result ∈ ((serviceApp observation).finish (FinDist.pure nativeInitial)
+    (supported : result ∈ ((serviceApp observation).finish (PMF.pure nativeInitial)
       nativeHorizon
       (serviceScheduler observation) players (some control)).support) :
     ∃ final, result = some final ∧
@@ -121,8 +121,8 @@ theorem native_opening_finish (players : Player → (serviceApp observation).Pol
     _ result supported
   intro middle middleMem
   have same : middle.application = opened := by
-    apply FinDist.mem_support_pure.mp
-    rw [← inclusion, FinDist.support_map]
+    apply (PMF.mem_support_pure_iff _ _).mp
+    rw [← inclusion, PMF.support_map]
     exact ⟨middle, middleMem, rfl⟩
   simpa only [same] using published
 
@@ -171,12 +171,12 @@ def nativeOpeningChoice (who : Player) (past : List (serviceApp observation).Pla
 theorem native_profile_opens
     (profile : ∀ who, (serviceModel observation).BehavioralPolicy who) (who : Player)
     (past : List (serviceApp observation).PlayerEntry) (view : (serviceApp observation).PlayerView)
-    (opens : profile who (some (past, view)) = FinDist.pure (nativeOpeningChoice who past view)) :
-    (serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    (opens : profile who (some (past, view)) = PMF.pure (nativeOpeningChoice who past view)) :
+    (serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation) profile
-      who past view = FinDist.pure (nativeOpeningResponse who view) := by
+      who past view = PMF.pure (nativeOpeningResponse who view) := by
   simp only [ReactiveApplication.ResponseMenu.decodeProfile, ReactiveApplication.decodePolicy,
-    ReactiveApplication.ResponseMenu.embedPolicy, opens, FinDist.map_pure]
+    ReactiveApplication.ResponseMenu.embedPolicy, opens, PMF.pure_map]
   rfl
 
 /-- The legal opening deviation has a uniform payoff lower bound at every
@@ -191,34 +191,34 @@ theorem native_opening_behavioral_lower
     (stored : (nativeBindingRef who).get? control.execution.application.config.store =
       some (.success bit))
     (opens : profile who (some (control.execution.recall who,
-      control.execution.observe (serviceApp observation) who)) = FinDist.pure (nativeOpeningChoice
+      control.execution.observe (serviceApp observation) who)) = PMF.pure (nativeOpeningChoice
         who
         (control.execution.recall who) (control.execution.observe (serviceApp observation) who))) :
-    -1 ≤ ((serviceModel observation).runBehavioralFrom profile (2 * nativeHorizon + 1)
-      ⟨some control, trace⟩).expect (fun history => nativeUtility who history.state) := by
-  let players := (serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    -1 ≤ expect ((serviceModel observation).runBehavioralFrom profile (2 * nativeHorizon + 1)
+      ⟨some control, trace⟩) (fun history => nativeUtility who history.state) := by
+  let players := (serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation) profile
-  have law := (serviceMenu observation).run_eq_finish (FinDist.pure nativeInitial) nativeHorizon
+  have law := (serviceMenu observation).run_eq_finish (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation)
     profile (2 * nativeHorizon + 1) ⟨some control, trace⟩ (by
       change (serviceApp observation).rank nativeHorizon (some control) ≤ 2 * nativeHorizon + 1
-      have bound := (serviceApp observation).trace_bound (FinDist.pure nativeInitial) nativeHorizon
+      have bound := (serviceApp observation).trace_bound (PMF.pure nativeInitial) nativeHorizon
         (serviceScheduler observation)
-        ((serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+        ((serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon
           (serviceScheduler observation) trace)
       omega)
-  let finished := (serviceApp observation).finish (FinDist.pure nativeInitial) nativeHorizon
+  let finished := (serviceApp observation).finish (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation)
     players (some control)
-  have expectation : ((serviceModel observation).runBehavioralFrom profile
-      (2 * nativeHorizon + 1) ⟨some control, trace⟩).expect
-        (fun history => nativeUtility who history.state) = finished.expect (nativeUtility who) := by
-    exact (FinDist.expect_map _ _ _).symm.trans
-      (congrArg (fun distribution => distribution.expect (nativeUtility who)) law)
+  have expectation : expect ((serviceModel observation).runBehavioralFrom profile
+      (2 * nativeHorizon + 1) ⟨some control, trace⟩)
+        (fun history => nativeUtility who history.state) = expect finished (nativeUtility who) := by
+    exact (expect_map _ _ _).symm.trans
+      (congrArg (fun distribution => expect distribution (nativeUtility who)) law)
   rw [expectation]
   calc
-    -1 = finished.expect (fun _ => -1) := (FinDist.expect_const _ _).symm
-    _ ≤ finished.expect (nativeUtility who) := FinDist.expect_mono (by
+    -1 = expect finished (fun _ => -1) := (expect_constant _ _).symm
+    _ ≤ expect finished (nativeUtility who) := FinDist.expect_mono (by
       intro result supported
       obtain ⟨final, rfl, published⟩ := native_opening_finish players control trace who bit active
         granted unfinished stored (native_profile_opens profile who _ _ opens) result supported

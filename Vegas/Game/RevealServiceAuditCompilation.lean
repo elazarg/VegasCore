@@ -56,12 +56,12 @@ SE. Utilities may depend on persistent private initial data as well as results. 
 theorem audited_source_sequential_equilibrium_preserved
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (sample : List (application setup leaks).TrafficRecord →
-      FinDist (List (application setup leaks).TrafficRecord))
+      PMF (List (application setup leaks).TrafficRecord))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.input.broadcaster = who →
       permittedTraffic setup leaks watcher record = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
       (fun who site => source.continuationContext site

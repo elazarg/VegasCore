@@ -37,7 +37,7 @@ theorem sourceService_initial_prefix_factorization
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (focal : Player) :
-    ∃ noise : setup.ProtocolView focal → FinDist _,
+    ∃ noise : setup.ProtocolView focal → PMF _,
       ((initialLaw setup).map
         (ReactiveApplication.Execution.initial (application setup leaks))).map
           (fun execution =>
@@ -55,14 +55,14 @@ theorem sourceService_initial_prefix_factorization
       (setup.initialConfig initial, traffic initial)) =
       (setup.initialLaw.map setup.initialConfig).bind fun source =>
         (sourceNoise (source.view focal)).map fun extra => (source, extra) := by
-    have projected := congrArg (FinDist.map fun pair => (pair.1.1, pair.2)) initialFactor
-    simpa only [FinDist.map_comp, FinDist.map_bind, FinDist.bind_map, Function.comp_def,
+    have projected := congrArg (PMF.map fun pair => (pair.1.1, pair.2)) initialFactor
+    simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def,
       execution, traffic] using projected
   obtain ⟨noise, factor⟩ := ProtocolView.entry_noise_factor setup.program focal setup.initialLaw
     setup.initialConfig traffic sourceNoise sourceFactor
   refine ⟨noise, ?_⟩
   dsimp only at factor
-  rw [FinDist.map_comp] at factor
+  rw [PMF.map_comp] at factor
   have native : (((initialLaw setup).map
       (ReactiveApplication.Execution.initial (application setup leaks))).map fun state =>
         (sourceServicePrefix? setup 0 state.application.config,
@@ -70,8 +70,8 @@ theorem sourceService_initial_prefix_factorization
       setup.initialLaw.map (fun initial =>
         (some (ProtocolState.entry setup.program (setup.initialConfig initial)),
           traffic initial)) := by
-    simp only [initialLaw, FinDist.map_comp, Function.comp_def]
-    apply FinDist.map_congr_of_eq_on_support
+    simp only [initialLaw, PMF.map_comp, Function.comp_def]
+    apply map_congr_on_support _
     intro initial _
     exact Prod.ext (sourceServicePrefix?_initial setup initial) rfl
   rw [native]
@@ -98,7 +98,7 @@ theorem sourceService_reveal_prefix_factorization
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
       (.reveal published owner name fresh binding unresolved next))
     (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
-    (prior : FinDist Seed) (initial : Seed → State L setup.context)
+    (prior : PMF Seed) (initial : Seed → State L setup.context)
     (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
@@ -112,7 +112,7 @@ theorem sourceService_reveal_prefix_factorization
       (.reveal published owner name fresh binding unresolved next)
         (source seed).registry (source seed).revelations)
     (network : (runtime setup).NetworkPolicy leaks) (focal : Player)
-    (noise : DecisionView focal Γ → FinDist _)
+    (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
@@ -123,7 +123,7 @@ theorem sourceService_reveal_prefix_factorization
     (∀ seed ∈ prior.support, (execution seed).application.serviceGrant = some event) →
     ∃ nextNoise : Option
         (ProtocolView focal (.reveal published owner name fresh binding unresolved next)) →
-          FinDist _,
+          PMF _,
       let law := prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
           (sourceServiceTimedPolicy setup leaks rosters timing wholeProfile) network
@@ -192,8 +192,8 @@ theorem sourceService_reveal_prefix_factorization
       next profile (source seed) (effective seed supported) disclose selected)
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
-    simp only [joint, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-      FinDist.map_const, ← FinDist.map_eq_bind, FinDist.bind_map]
+    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
+      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -210,7 +210,7 @@ theorem sourceService_reveal_prefix_factorization
       recover ((embed config).map (ProtocolState.observe focal
         (.reveal published owner name fresh binding unresolved next))) = config.view focal := by
     exact ProtocolView.entryView_observe_entry focal next config
-  have lifted := FinDist.map_observation_factor joint (fun config => config.view focal)
+  have lifted := PMF.map_observation_factor joint (fun config => config.view focal)
     nextNoise jointFactor embed (Option.map (ProtocolState.observe focal
       (.reveal published owner name fresh binding unresolved next))) recover recovered
   refine ⟨fun view => nextNoise (recover view), ?_⟩
@@ -228,8 +228,8 @@ theorem sourceService_reveal_prefix_factorization
                 (setup.eventGraph.fromModeCompletion .sequential))),
             (runtime setup).bindingTraffic leaks focal final)) =
       joint.map (fun pair => (embed pair.1, pair.2)) := by
-    rw [FinDist.map_bind]
-    apply FinDist.bind_congr
+    rw [PMF.map_bind]
+    apply bind_congr_on_support _
     intro seed supported
     have ready := (boundary seed supported).ready event eventRank
     obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
@@ -250,14 +250,14 @@ theorem sourceService_reveal_prefix_factorization
         (by simp only [owned, Option.isSome_some])) activated due
       ((boundary seed supported).unsent owner event (Nat.le_of_eq eventRank.symm))
       ((boundary seed supported).response_offset event eventRank owner)
-    simpa only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+    simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def,
       choice, transcript, advance, embed] using exactLaw
   rw [lawEq]
   refine ⟨lifted, ?_⟩
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   change joint.map (embed ∘ Prod.fst) = _
-  rw [← FinDist.map_comp, marginal, FinDist.map_bind]
-  simp only [FinDist.map_comp, choice, advance, embed, Function.comp_def]
+  rw [← PMF.map_comp, marginal, PMF.map_bind]
+  simp only [PMF.map_comp, choice, advance, embed, Function.comp_def]
 
 /-- The binding constructor preserves the actual joint prefix factor. The
 new private value is drawn by the source kernel, while shared timing and all
@@ -279,7 +279,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
       (.commit name owner fresh guard next))
     (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
-    (prior : FinDist Seed) (initial : Seed → State L setup.context)
+    (prior : PMF Seed) (initial : Seed → State L setup.context)
     (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
@@ -288,7 +288,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
     (boundary : ∀ seed ∈ prior.support,
       ServiceBoundary setup leaks rosters (initial seed) (source seed) refs rank (execution seed))
     (network : (runtime setup).NetworkPolicy leaks) (focal : Player)
-    (noise : DecisionView focal Γ → FinDist _)
+    (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
@@ -297,7 +297,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     (∀ seed ∈ prior.support, (execution seed).application.serviceGrant = some event) →
-    ∃ nextNoise : Option (ProtocolView focal (.commit name owner fresh guard next)) → FinDist _,
+    ∃ nextNoise : Option (ProtocolView focal (.commit name owner fresh guard next)) → PMF _,
       let law := prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
           (sourceServiceTimedPolicy setup leaks rosters timing wholeProfile) network
@@ -333,8 +333,8 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
       (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map (fun seed => (source seed, source seed))).bind fun pair =>
         (noise (pair.1.view focal)).map fun traffic => (pair, traffic) := by
-    have mapped := congrArg (FinDist.map fun pair => ((pair.1, pair.1), pair.2)) factor
-    simpa only [FinDist.map_comp, FinDist.map_bind, FinDist.bind_map, Function.comp_def]
+    have mapped := congrArg (PMF.map fun pair => ((pair.1, pair.1), pair.2)) factor
+    simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def]
       using mapped
   obtain ⟨nextNoise, nextFactor⟩ := binding_successor_memory_factorization setup leaks network
     (rosters event) name guard focal event prior source source execution
@@ -347,14 +347,14 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
     (transcript seed result).map fun traffic => (advance (source seed) result, traffic)
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
-    simp only [joint, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-      FinDist.map_const, ← FinDist.map_eq_bind, FinDist.bind_map]
+    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
+      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
-    have projected := congrArg (FinDist.map fun pair => (pair.1.1, pair.2)) nextFactor
-    simpa only [joint, transcript, advance, FinDist.map_bind, FinDist.map_comp,
-      FinDist.bind_bind, FinDist.bind_map, Function.comp_def] using projected
+    have projected := congrArg (PMF.map fun pair => (pair.1.1, pair.2)) nextFactor
+    simpa only [joint, transcript, advance, PMF.map_bind, PMF.map_comp,
+      PMF.bind_bind, PMF.bind_map, Function.comp_def] using projected
   let embed : Config Player L ((name, .commitment owner payload) :: Γ) →
       Option (ProtocolState (.commit name owner fresh guard next)) :=
     fun config => some (Sum.inr (ProtocolState.entry next config))
@@ -366,7 +366,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
       recover ((embed config).map (ProtocolState.observe focal
         (.commit name owner fresh guard next))) = config.view focal := by
     exact ProtocolView.entryView_observe_entry focal next config
-  have lifted := FinDist.map_observation_factor joint (fun config => config.view focal)
+  have lifted := PMF.map_observation_factor joint (fun config => config.view focal)
     nextNoise jointFactor embed (Option.map (ProtocolState.observe focal
       (.commit name owner fresh guard next))) recover recovered
   refine ⟨fun view => nextNoise (recover view), ?_⟩
@@ -384,21 +384,21 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
                 (setup.eventGraph.fromModeCompletion .sequential))),
             (runtime setup).bindingTraffic leaks focal final)) =
       joint.map (fun pair => (embed pair.1, pair.2)) := by
-    rw [FinDist.map_bind]
-    apply FinDist.bind_congr
+    rw [PMF.map_bind]
+    apply bind_congr_on_support _
     intro seed supported
     have exactLaw := sourceServiceTimedPolicy_binding_joint_law setup leaks bounds rosters timing
       fresh guard next wholeProfile profile refs (source seed) embedding refsBefore rank
       (aligned seed) (initial seed) (execution seed) (boundary seed supported) network
       (event.val + 1) focal owned (granted seed supported)
-    simpa only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+    simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def,
       choice, transcript, advance, embed] using exactLaw
   rw [lawEq]
   refine ⟨lifted, ?_⟩
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   change joint.map (embed ∘ Prod.fst) = _
-  rw [← FinDist.map_comp, marginal, FinDist.map_bind]
-  simp only [FinDist.map_comp, choice, advance, embed, Function.comp_def]
+  rw [← PMF.map_comp, marginal, PMF.map_bind]
+  simp only [PMF.map_comp, choice, advance, embed, Function.comp_def]
 
 /-- Public chance retains the actual replay-window and maintenance traffic.
 Its conditional auxiliary law is derived from the sampled public value. -/
@@ -416,7 +416,7 @@ theorem sourceService_sample_prefix_factorization
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
       (.sample name fresh distribution next))
     (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
-    (prior : FinDist Seed) (initial : Seed → State L setup.context)
+    (prior : PMF Seed) (initial : Seed → State L setup.context)
     (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
@@ -425,7 +425,7 @@ theorem sourceService_sample_prefix_factorization
     (boundary : ∀ seed, ServiceBoundary setup leaks rosters (initial seed)
       (source seed) refs rank (execution seed))
     (network : (runtime setup).NetworkPolicy leaks) (focal : Player)
-    (noise : DecisionView focal Γ → FinDist _)
+    (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
@@ -434,7 +434,7 @@ theorem sourceService_sample_prefix_factorization
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     (∀ seed, (execution seed).application.serviceGrant = some event) →
-    ∃ nextNoise : Option (ProtocolView focal (.sample name fresh distribution next)) → FinDist _,
+    ∃ nextNoise : Option (ProtocolView focal (.sample name fresh distribution next)) → PMF _,
       let law := prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
           (sourceServiceTimedPolicy setup leaks rosters timing wholeProfile) network
@@ -470,8 +470,8 @@ theorem sourceService_sample_prefix_factorization
       (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map (fun seed => (source seed, source seed))).bind fun pair =>
         (noise (pair.1.view focal)).map fun traffic => (pair, traffic) := by
-    have mapped := congrArg (FinDist.map fun pair => ((pair.1, pair.1), pair.2)) factor
-    simpa only [FinDist.map_comp, FinDist.map_bind, FinDist.bind_map, Function.comp_def]
+    have mapped := congrArg (PMF.map fun pair => ((pair.1, pair.1), pair.2)) factor
+    simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def]
       using mapped
   obtain ⟨nextNoise, nextFactor⟩ := sample_successor_memory_factorization setup leaks name
     focal event outputEq prior source source execution
@@ -482,14 +482,14 @@ theorem sourceService_sample_prefix_factorization
     (transcript seed value).map fun traffic => (advance (source seed) value, traffic)
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
-    simp only [joint, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-      FinDist.map_const, ← FinDist.map_eq_bind, FinDist.bind_map]
+    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
+      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
-    have projected := congrArg (FinDist.map fun pair => (pair.1.1, pair.2)) nextFactor
-    simpa only [joint, transcript, advance, FinDist.map_bind, FinDist.map_comp,
-      FinDist.bind_bind, FinDist.bind_map, Function.comp_def] using projected
+    have projected := congrArg (PMF.map fun pair => (pair.1.1, pair.2)) nextFactor
+    simpa only [joint, transcript, advance, PMF.map_bind, PMF.map_comp,
+      PMF.bind_bind, PMF.bind_map, Function.comp_def] using projected
   let embed : Config Player L ((name, .publicData payload) :: Γ) →
       Option (ProtocolState (.sample name fresh distribution next)) :=
     fun config => some (Sum.inr (ProtocolState.entry next config))
@@ -502,7 +502,7 @@ theorem sourceService_sample_prefix_factorization
       recover ((embed config).map (ProtocolState.observe focal
         (.sample name fresh distribution next))) = config.view focal :=
     ProtocolView.entryView_observe_entry focal next config
-  have lifted := FinDist.map_observation_factor joint (fun config => config.view focal)
+  have lifted := PMF.map_observation_factor joint (fun config => config.view focal)
     nextNoise jointFactor embed (Option.map (ProtocolState.observe focal
       (.sample name fresh distribution next))) recover recovered
   refine ⟨fun view => nextNoise (recover view), ?_⟩
@@ -520,23 +520,23 @@ theorem sourceService_sample_prefix_factorization
                   (setup.eventGraph.fromModeCompletion .sequential))),
             (runtime setup).bindingTraffic leaks focal final)) =
       joint.map (fun pair => (embed pair.1, pair.2)) := by
-    rw [FinDist.map_bind]
-    apply FinDist.bind_congr
+    rw [PMF.map_bind]
+    apply bind_congr_on_support _
     intro seed _
     rw [sourceServiceTimedPolicy_sample_joint_law setup leaks rosters timing fresh distribution
       next wholeProfile profile refs (source seed) embedding refsBefore rank (aligned seed)
       (execution seed) (boundary seed).toSourceCheckpoint network (event.val + 1) focal
       (granted seed) ((boundary seed).ready event eventRank)]
-    rw [FinDist.bind_comm]
-    simp only [transcript, samplePhaseTranscript, FinDist.map_bind, FinDist.map_comp,
+    rw [PMF.bind_comm]
+    simp only [transcript, samplePhaseTranscript, PMF.map_bind, PMF.map_comp,
       Function.comp_def, choice, advance, embed]
     rfl
   rw [lawEq]
   refine ⟨lifted, ?_⟩
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   change joint.map (embed ∘ Prod.fst) = _
-  rw [← FinDist.map_comp, marginal, FinDist.map_bind]
-  simp only [FinDist.map_comp, choice, advance, embed, Function.comp_def]
+  rw [← PMF.map_comp, marginal, PMF.map_bind]
+  simp only [PMF.map_comp, choice, advance, embed, Function.comp_def]
 
 /-- A supported physical prefix supplies all operational induction facts for
 its exact typed source checkpoint. The retained trace and certificate origins
@@ -592,9 +592,9 @@ theorem sourceService_prefix_boundary_of_checkpoint [Fintype Player]
         (runtime setup).runInteractionPlan leaks players network prefixPlan
           (ReactiveApplication.Execution.initial (application setup leaks) initial)).map
         (fun final => some ⟨(rosterPlan setup rosters).length - prefixPlan.length, none, final⟩) :
-          FinDist (application setup leaks).ProtocolState).support :=
-    FinDist.support_map .. ▸ ⟨execution, supported, rfl⟩
-  rw [← law, FinDist.support_map] at member
+          PMF (application setup leaks).ProtocolState).support :=
+    PMF.support_map .. ▸ ⟨execution, supported, rfl⟩
+  rw [← law, PMF.support_map] at member
   obtain ⟨history, _reached, stateEq⟩ := member
   have trace : (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).Trace
@@ -625,7 +625,7 @@ private theorem reconstruct_phase
     (focal : Player) {Γ : SourceCtx Player L}
     (refs : ContextRefs (graph setup).layout Γ) (rank : Nat)
     (registry : Seed → Registry Γ) (revelations : Seed → Revelations Γ)
-    (joint : FinDist (Seed × (application setup leaks).Execution))
+    (joint : PMF (Seed × (application setup leaks).Execution))
     (encoded : Config Player L Γ → Encoded) (injective : Function.Injective encoded)
     (decode : Seed → (application setup leaks).Execution → Option Encoded)
     (decodeEq : ∀ seed execution, decode seed execution =
@@ -634,13 +634,13 @@ private theorem reconstruct_phase
           decodeHistory setup.program (execution.application.config.history.map
             (setup.eventGraph.fromModeCompletion .sequential))⟩)
     (ordered : ∀ point ∈ joint.support, point.2.application.config.cut.IsPrefix rank)
-    (marginal : FinDist (Config Player L Γ))
-    (noise : DecisionView focal Γ → FinDist _)
+    (marginal : PMF (Config Player L Γ))
+    (noise : DecisionView focal Γ → PMF _)
     (factor : joint.map (fun point => (decode point.1 point.2,
         (runtime setup).bindingTraffic leaks focal point.2)) =
       marginal.bind fun source => (noise (source.view focal)).map fun extra =>
         (some (encoded source), extra)) :
-    let nextPrior := joint.toSubtype (fun _ member => member)
+    let nextPrior := pmfToSubtype joint (fun _ member => member)
     ∃ source : {point // point ∈ joint.support} → Config Player L Γ,
       (∀ point, SourceCheckpoint setup (source point) refs rank point.val.2.application.config) ∧
       (∀ point, (source point).registry = registry point.val.1) ∧
@@ -659,10 +659,10 @@ private theorem reconstruct_phase
         (runtime setup).bindingTraffic leaks focal point.val.2) ∈
         (joint.map fun point => (decode point.1 point.2,
           (runtime setup).bindingTraffic leaks focal point.2)).support :=
-      FinDist.support_map .. ▸ ⟨point.val, point.property, rfl⟩
-    rw [factor, FinDist.support_bind] at member
+      PMF.support_map .. ▸ ⟨point.val, point.property, rfl⟩
+    rw [factor, PMF.support_bind] at member
     obtain ⟨source, _, member⟩ := Set.mem_iUnion₂.mp member
-    obtain ⟨extra, _, same⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨extra, _, same⟩ := PMF.support_map .. ▸ member
     have present := congrArg Prod.fst same
     rw [decodeEq] at present
     cases decoded : decodeState? refs point.val.2.application.config.store with
@@ -683,29 +683,29 @@ private theorem reconstruct_phase
     calc
       _ = nextPrior.map (fun point => (decode point.val.1 point.val.2,
           (runtime setup).bindingTraffic leaks focal point.val.2)) := by
-        apply FinDist.map_congr_of_eq_on_support
+        apply map_congr_on_support _
         intro point _
         exact Prod.ext (decoded point).symm rfl
-      _ = _ := FinDist.map_toSubtype joint (fun _ member => member)
+      _ = _ := map_pmfToSubtype joint (fun _ member => member)
         (fun point => (decode point.1 point.2,
           (runtime setup).bindingTraffic leaks focal point.2))
   have marginalEq : nextPrior.map source = marginal := by
-    apply FinDist.map_injective (f := fun source => some (encoded source))
+    apply pmf_map_injective (f := fun source => some (encoded source))
       (fun _ _ equal => injective (Option.some.inj equal))
-    have projected := congrArg (FinDist.map Prod.fst) (mapped.trans factor)
-    simpa only [FinDist.map_comp, FinDist.map_bind, Function.comp_def,
-      FinDist.map_const, ← FinDist.map_eq_bind] using projected
+    have projected := congrArg (PMF.map Prod.fst) (mapped.trans factor)
+    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
+      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def] using projected
   refine ⟨source, ?_, fun _ => rfl, fun _ => rfl, decoded, marginalEq, ?_⟩
   · intro point
     exact ⟨decodeState?_agrees refs point.val.2.application.config.store _
       (available point).choose_spec, rfl, ordered point.val point.property⟩
-  · apply FinDist.map_injective (f := fun pair : Config Player L Γ × _ =>
+  · apply pmf_map_injective (f := fun pair : Config Player L Γ × _ =>
         (some (encoded pair.1), pair.2)) (by
       intro left right same
       apply Prod.ext
       · exact injective (Option.some.inj (congrArg Prod.fst same))
       · exact (Prod.mk.inj same).2)
-    simpa only [FinDist.map_comp, FinDist.map_bind, Function.comp_def, marginalEq]
+    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def, marginalEq]
       using mapped.trans factor
 
 /-- Whole-prefix induction over the actual timed service. The source marginal
@@ -732,7 +732,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
       (refs : ContextRefs (graphLayout setup.program) Γ)
       (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
       (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
-      {Seed : Type} (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+      {Seed : Type} (prior : PMF Seed) (source : Seed → Config Player L Γ)
       (execution : Seed → (application setup leaks).Execution),
       (∀ seed, CompiledPolicySuffix setup.program wholeProfile program profile refs
         (source seed).revelations (source seed).registry embedding refsBefore offset) →
@@ -745,13 +745,13 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           (ReactiveApplication.Execution.initial (application setup leaks) initial)).support) →
       (∀ seed who, (profile who).EffectiveDisclosures program (source seed).registry
         (source seed).revelations) →
-      ∀ (noise : DecisionView focal Γ → FinDist _),
+      ∀ (noise : DecisionView focal Γ → PMF _),
       prior.map (fun seed => (source seed,
           (runtime setup).bindingTraffic leaks focal (execution seed))) =
         (prior.map source).bind (fun config =>
           (noise (config.view focal)).map fun extra => (config, extra)) →
       count ≤ eventCount program →
-      ∃ nextNoise : Option (ProtocolView focal program) → FinDist _,
+      ∃ nextNoise : Option (ProtocolView focal program) → PMF _,
         (prior.bind fun seed =>
           ((runtime setup).runInteractionPlan leaks
             (sourceServiceTimedPolicy setup leaks rosters timing wholeProfile) network
@@ -765,7 +765,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                     (runtime setup).bindingTraffic leaks focal final)) =
           (prior.bind fun seed =>
             ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count]
-              (FinDist.pure (ProtocolState.entry program (source seed)))).map some).bind
+              (PMF.pure (ProtocolState.entry program (source seed)))).map some).bind
                 fun state => (nextNoise (state.map (ProtocolState.observe focal program))).map
                   fun extra => (state, extra) := by
   intro count
@@ -778,9 +778,9 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
       refine ⟨nextNoise, ?_⟩
       dsimp only at nextFactor
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-        FinDist.map_pure, (checkpoint _).decode program embedding.ref,
-        Function.iterate_zero, id_eq, FinDist.map_pure, ← FinDist.map_eq_bind]
-      simpa only [FinDist.map_comp, Function.comp_def] using nextFactor
+        PMF.pure_map, (checkpoint _).decode program embedding.ref,
+        Function.iterate_zero, id_eq, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def]
+      simpa only [PMF.map_comp, Function.comp_def] using nextFactor
   | succ count ih =>
       intro Γ names program profile refs embedding refsBefore offset Seed prior source execution
         aligned checkpoint supported effective noise factor within
@@ -804,15 +804,15 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
       have opportunityFacts (seed : Seed) := ((boundary seed).grant players network
         event).choose_spec
       have grantLaw (seed : Seed) : (runtime setup).interactionStep leaks players network
-          (.grant event) (execution seed) = FinDist.pure (opportunity seed) :=
+          (.grant event) (execution seed) = PMF.pure (opportunity seed) :=
         (opportunityFacts seed).2.2.2.2
       have grantEnvironment (seed : Seed) : (execution seed).environmentStep app
-          (.application (.grant event)) = FinDist.pure (opportunity seed) := by
+          (.application (.grant event)) = PMF.pure (opportunity seed) := by
         have law := grantLaw seed
-        simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at law
+        simp only [interactionStep, interactionInstruction, PMF.pure_bind] at law
         change ((execution seed).environmentStep app (.application (.grant event))).bind
-          FinDist.pure = _ at law
-        simpa only [FinDist.bind_pure] using law
+          PMF.pure = _ at law
+        simpa only [PMF.bind_pure] using law
       have grantOrigins (seed : Seed) :
           (runtime setup).ResolutionEvidenceOrigins leaks (opportunity seed) :=
         (runtime setup).resolutionEvidenceOrigins_environment leaks (execution seed)
@@ -828,7 +828,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
         change (prior.bind fun seed =>
           ((execution seed).environmentStep app (.application (.grant event))).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks focal final)) = _ at grantFactor
-        simpa only [grantEnvironment, FinDist.map_pure, ← FinDist.map_eq_bind] using grantFactor
+        simpa only [grantEnvironment, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def] using grantFactor
       have nextPhysical (seed : Seed) (final : app.Execution)
           (moved : final ∈ ((runtime setup).runInteractionPlan leaks players network
             (rosterBlock setup rosters event) (execution seed)).support) :
@@ -837,20 +837,20 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               (rosterPlanPrefix setup rosters (offset + 1))
               (ReactiveApplication.Execution.initial app start)).support := by
         obtain ⟨start, startSupport, prefixSupport⟩ :=
-          Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported seed)
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported seed)
         rw [← eventRank, rosterPlanPrefix_succ]
-        rw [FinDist.support_bind]
+        rw [PMF.support_bind]
         apply Set.mem_iUnion₂.mpr
         refine ⟨start, startSupport, ?_⟩
         rw [runInteractionPlan_append]
-        rw [FinDist.support_bind]
+        rw [PMF.support_bind]
         apply Set.mem_iUnion₂.mpr
         exact ⟨execution seed, by simpa only [eventRank] using prefixSupport, moved⟩
       let advanced := prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks players network
           (rosterBlock setup rosters event) (execution seed)).map fun final => (seed, final)
       let NextSeed := {point : Seed × app.Execution // point ∈ advanced.support}
-      let nextPrior : FinDist NextSeed := advanced.toSubtype (fun _ member => member)
+      let nextPrior : PMF NextSeed := pmfToSubtype advanced (fun _ member => member)
       let nextExecution := fun point : NextSeed => point.val.2
       have nextSupport (point : NextSeed) : point.val.1 ∈ prior.support ∧
           point.val.2 ∈ ((runtime setup).runInteractionPlan leaks players network
@@ -861,9 +861,9 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           ((runtime setup).runInteractionPlan leaks players network
             (rosterBlock setup rosters event) (execution seed)).map fun final =>
               (seed, final)).support at member
-        rw [FinDist.support_bind] at member
+        rw [PMF.support_bind] at member
         obtain ⟨seed, selected, moved⟩ := Set.mem_iUnion₂.mp member
-        rw [FinDist.support_map] at moved
+        rw [PMF.support_map] at moved
         obtain ⟨final, moved, same⟩ := moved
         obtain ⟨rfl, rfl⟩ := Prod.mk.inj same
         exact ⟨selected, moved⟩
@@ -904,12 +904,12 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             (offset + 1) (nextExecution point).application.config)
           (nextEffective : ∀ point who, (tailProfile who).EffectiveDisclosures tail
             (nextSource point).registry (nextSource point).revelations)
-          (nextNoise : DecisionView focal Δ → FinDist _)
+          (nextNoise : DecisionView focal Δ → PMF _)
           (nextFactor : nextPrior.map (fun point => (nextSource point,
               (runtime setup).bindingTraffic leaks focal (nextExecution point))) =
             (nextPrior.map nextSource).bind fun config =>
               (nextNoise (config.view focal)).map fun extra => (config, extra))
-          (stepSource : Config Player L Γ → FinDist (Config Player L Δ))
+          (stepSource : Config Player L Γ → PMF (Config Player L Δ))
           (nextMarginal : nextPrior.map nextSource = (prior.map source).bind stepSource)
           (lift : ProtocolState tail → ProtocolState program)
           (recover : Option (ProtocolView focal program) → Option (ProtocolView focal tail))
@@ -929,17 +929,17 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                     (setup.eventGraph.fromModeCompletion .sequential)))).map lift)
           (kernel : ∀ config,
             ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count + 1]
-              (FinDist.pure (ProtocolState.entry program config))) =
+              (PMF.pure (ProtocolState.entry program config))) =
             ((stepSource config).bind fun next =>
               ((fun law => law.bind (ProtocolState.behavioralStateStep tail tailProfile))^[count]
-                (FinDist.pure (ProtocolState.entry tail next)))).map lift)
+                (PMF.pure (ProtocolState.entry tail next)))).map lift)
           (planEq : (((List.finRange (eventCount program)).take (count + 1)).flatMap
             fun index => rosterBlock setup rosters (embedding.event index)) =
             rosterBlock setup rosters event ++
               (((List.finRange (eventCount tail)).take count).flatMap fun index =>
                 rosterBlock setup rosters (tailEmbedding.event index)))
           (withinTail : count ≤ eventCount tail) :
-          ∃ nextNoise : Option (ProtocolView focal program) → FinDist _,
+          ∃ nextNoise : Option (ProtocolView focal program) → PMF _,
             (prior.bind fun seed =>
               ((runtime setup).runInteractionPlan leaks players network
                 (((List.finRange (eventCount program)).take (count + 1)).flatMap fun index =>
@@ -954,7 +954,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               (prior.bind fun seed =>
                 ((fun law => law.bind (ProtocolState.behavioralStateStep program
                   profile))^[count + 1]
-                  (FinDist.pure (ProtocolState.entry program (source seed)))).map some).bind
+                  (PMF.pure (ProtocolState.entry program (source seed)))).map some).bind
                     fun state => (nextNoise (state.map (ProtocolState.observe focal program))).map
                       fun extra => (state, extra) := by
         obtain ⟨tailNoise, tailLaw⟩ := ih tail tailProfile tailRefs tailEmbedding tailBefore
@@ -973,19 +973,19 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                 (runtime setup).bindingTraffic leaks focal final)
         let tailSource := nextPrior.bind fun point =>
           ((fun law => law.bind (ProtocolState.behavioralStateStep tail tailProfile))^[count]
-            (FinDist.pure (ProtocolState.entry tail (nextSource point)))).map some
+            (PMF.pure (ProtocolState.entry tail (nextSource point)))).map some
         have tailMarginal : tailJoint.map Prod.fst = tailSource := by
-          have projected := congrArg (FinDist.map Prod.fst) tailLaw
-          simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-            FinDist.map_const, FinDist.bind_pure] at projected
-          simpa only [tailJoint, tailSource, FinDist.map_bind, FinDist.map_comp,
+          have projected := congrArg (PMF.map Prod.fst) tailLaw
+          simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
+            FinDist.map_const, PMF.bind_pure] at projected
+          simpa only [tailJoint, tailSource, PMF.map_bind, PMF.map_comp,
             Function.comp_def] using projected
         have tailFactor : tailJoint = (tailJoint.map Prod.fst).bind fun state =>
             (tailNoise (state.map (ProtocolState.observe focal tail))).map fun extra =>
               (state, extra) := by
           rw [tailMarginal]
           exact tailLaw
-        have lifted := FinDist.map_observation_factor tailJoint
+        have lifted := PMF.map_observation_factor tailJoint
           (Option.map (ProtocolState.observe focal tail)) tailNoise tailFactor
           (Option.map lift) (Option.map (ProtocolState.observe focal program)) recover recovers
         refine ⟨fun view => tailNoise (recover view), ?_⟩
@@ -1013,41 +1013,41 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                   (runtime setup).bindingTraffic leaks focal final)
           calc
             _ = advanced.bind continuePoint := by
-              simp only [advanced, continuePoint, FinDist.bind_bind, FinDist.bind_map,
-                runInteractionPlan_append, FinDist.map_bind, remainingPlan]
+              simp only [advanced, continuePoint, PMF.bind_bind, PMF.bind_map,
+                runInteractionPlan_append, PMF.map_bind, remainingPlan]
             _ = nextPrior.bind (fun point => continuePoint point.val) := by
-              rw [← FinDist.bind_map Subtype.val nextPrior continuePoint,
-                FinDist.map_val_toSubtype]
+              rw [← PMF.bind_map Subtype.val nextPrior continuePoint,
+                map_val_pmfToSubtype]
             _ = _ := by
-              simp only [tailJoint, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
-              apply FinDist.bind_congr
+              simp only [tailJoint, PMF.map_bind, PMF.map_comp, Function.comp_def]
+              apply bind_congr_on_support _
               intro point _
-              apply FinDist.map_congr_of_eq_on_support
+              apply map_congr_on_support _
               intro final _
               exact Prod.ext (decodeLater point final) rfl
         have sourceEq : tailSource.map (Option.map lift) =
             prior.bind fun seed =>
               ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count + 1]
-                (FinDist.pure (ProtocolState.entry program (source seed)))).map some := by
-          simp only [tailSource, FinDist.map_bind, FinDist.map_comp, Option.map_some,
+                (PMF.pure (ProtocolState.entry program (source seed)))).map some := by
+          simp only [tailSource, PMF.map_bind, PMF.map_comp, Option.map_some,
             Function.comp_def]
           let continuation := fun config : Config Player L Δ =>
             ((fun law => law.bind (ProtocolState.behavioralStateStep tail tailProfile))^[count]
-              (FinDist.pure (ProtocolState.entry tail config))).map fun state => some (lift state)
+              (PMF.pure (ProtocolState.entry tail config))).map fun state => some (lift state)
           change nextPrior.bind (fun point => continuation (nextSource point)) = _
-          rw [← FinDist.bind_map nextSource nextPrior continuation, nextMarginal,
-            FinDist.bind_bind, FinDist.bind_map]
-          apply FinDist.bind_congr
+          rw [← PMF.bind_map nextSource nextPrior continuation, nextMarginal,
+            PMF.bind_bind, PMF.bind_map]
+          apply bind_congr_on_support _
           intro seed _
-          rw [kernel, FinDist.map_comp, FinDist.map_bind]
+          rw [kernel, PMF.map_comp, PMF.map_bind]
           rfl
         have marginalEq : (tailJoint.map (fun pair => (pair.1.map lift, pair.2))).map
             Prod.fst = prior.bind (fun seed =>
               ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count + 1]
-                (FinDist.pure (ProtocolState.entry program (source seed)))).map some) := by
-          rw [FinDist.map_comp]
+                (PMF.pure (ProtocolState.entry program (source seed)))).map some) := by
+          rw [PMF.map_comp]
           change tailJoint.map (Option.map lift ∘ Prod.fst) = _
-          rw [← FinDist.map_comp, tailMarginal]
+          rw [← PMF.map_comp, tailMarginal]
           exact sourceEq
         rw [nativeEq]
         simpa only [marginalEq] using lifted
@@ -1104,7 +1104,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                   extra) := by
             have fact := phaseFactor
             rw [phaseMarginal] at fact
-            simp only [advanced, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
+            simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def]
             change (prior.bind fun seed =>
               ((runtime setup).runInteractionPlan leaks players network
                 (rosterBlock setup rosters event) (execution seed)).map fun final =>
@@ -1118,15 +1118,15 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               simp only [rosterBlock, chance]
               change ((runtime setup).interactionStep leaks players network (.grant event)
                 (execution seed)).bind _ = _
-              rw [grantLaw, FinDist.pure_bind]
+              rw [grantLaw, PMF.pure_bind]
               change (runtime setup).runInteractionPlan leaks players network
                 (((rosters event).map ServiceInstruction.player ++ [.sample event]) ++
                   List.replicate (event.val + 1) .tick ++ [.expire event]) (opportunity seed) = _
               congr 1
               simp only [List.append_assoc, List.singleton_append]
             simp only [block]
-            simpa only [stepSource, configNoise, encoded, decode, FinDist.bind_bind,
-              FinDist.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
+            simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
+              PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
               observe_entry] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
@@ -1160,7 +1160,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             rfl
           · intro config
             rw [ProtocolState.behavioralStatePrefix_sample]
-            simp only [stepSource, FinDist.bind_map, FinDist.map_bind]
+            simp only [stepSource, PMF.bind_map, PMF.map_bind]
           · simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             rfl
@@ -1214,7 +1214,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                   extra) := by
             have fact := phaseFactor
             rw [phaseMarginal] at fact
-            simp only [advanced, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
+            simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def]
             change (prior.bind fun seed =>
               ((runtime setup).runInteractionPlan leaks players network
                 (rosterBlock setup rosters event) (execution seed)).map fun final =>
@@ -1228,12 +1228,12 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               rw [rosterBlock_of_owner setup rosters event owner owned]
               change ((runtime setup).interactionStep leaks players network (.grant event)
                 (execution seed)).bind _ = _
-              rw [grantLaw, FinDist.pure_bind]
+              rw [grantLaw, PMF.pure_bind]
               simp only [List.append_assoc, List.singleton_append]
               rfl
             simp only [block]
-            simpa only [stepSource, configNoise, encoded, decode, FinDist.bind_bind,
-              FinDist.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
+            simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
+              PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
               observe_entry] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
@@ -1267,7 +1267,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             rfl
           · intro config
             rw [ProtocolState.behavioralStatePrefix_commit]
-            simp only [stepSource, FinDist.bind_map, FinDist.map_bind]
+            simp only [stepSource, PMF.bind_map, PMF.map_bind]
           · simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             rfl
@@ -1325,7 +1325,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                   extra) := by
             have fact := phaseFactor
             rw [phaseMarginal] at fact
-            simp only [advanced, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
+            simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def]
             change (prior.bind fun seed =>
               ((runtime setup).runInteractionPlan leaks players network
                 (rosterBlock setup rosters event) (execution seed)).map fun final =>
@@ -1339,12 +1339,12 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               rw [rosterBlock_of_owner setup rosters event owner owned]
               change ((runtime setup).interactionStep leaks players network (.grant event)
                 (execution seed)).bind _ = _
-              rw [grantLaw, FinDist.pure_bind]
+              rw [grantLaw, PMF.pure_bind]
               simp only [List.append_assoc, List.singleton_append]
               rfl
             simp only [block]
-            simpa only [stepSource, configNoise, encoded, decode, FinDist.bind_bind,
-              FinDist.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
+            simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
+              PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
               observe_entry] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
@@ -1379,7 +1379,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             rfl
           · intro config
             rw [ProtocolState.behavioralStatePrefix_reveal]
-            simp only [stepSource, FinDist.bind_map, FinDist.map_bind]
+            simp only [stepSource, PMF.bind_map, PMF.map_bind]
           · simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             rfl
@@ -1409,7 +1409,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
     let admission := CommitmentInterface.values setup.program
     let encoded := fun who => setup.toProtocolBehavioralPolicy admission who
       (profile who) (permitted who)
-    ∃ noise : setup.ProtocolView focal → FinDist _,
+    ∃ noise : setup.ProtocolView focal → PMF _,
       (((initialLaw setup).bind fun state => (runtime setup).runInteractionPlan leaks
         (sourceServiceTimedPolicy setup leaks rosters timing profile) network
         (rosterPlanPrefix setup rosters count)
@@ -1421,7 +1421,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
             (noise (setup.protocolObserve focal state)).map fun extra => (state, extra) := by
   intro admission encoded
   let Seed := {initial // initial ∈ setup.initialLaw.support}
-  let prior : FinDist Seed := setup.initialLaw.toSubtype (fun _ member => member)
+  let prior : PMF Seed := pmfToSubtype setup.initialLaw (fun _ member => member)
   let source := fun seed : Seed => setup.initialConfig seed.val
   let execution := fun seed : Seed => ReactiveApplication.Execution.initial
     (application setup leaks) (EventGraphRuntime.State.initial (graph := graph setup)
@@ -1431,15 +1431,15 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
       (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (initialNoise (config.view focal)).map fun extra => (config, extra) := by
-    have projected := congrArg (FinDist.map fun pair => (pair.1.1, pair.2)) initialFactor
+    have projected := congrArg (PMF.map fun pair => (pair.1.1, pair.2)) initialFactor
     dsimp only [prior, source, execution]
-    rw [FinDist.map_toSubtype setup.initialLaw (fun _ member => member)
+    rw [map_pmfToSubtype setup.initialLaw (fun _ member => member)
       (fun initial => (setup.initialConfig initial,
         (runtime setup).bindingTraffic leaks focal
           (ReactiveApplication.Execution.initial (application setup leaks)
             (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))))),
-      FinDist.map_toSubtype setup.initialLaw (fun _ member => member) setup.initialConfig]
-    simpa only [FinDist.map_comp, FinDist.map_bind, FinDist.bind_map, Function.comp_def]
+      map_pmfToSubtype setup.initialLaw (fun _ member => member) setup.initialConfig]
+    simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def]
       using projected
   have initialized (seed : Seed) : execution seed ∈ ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks
@@ -1447,7 +1447,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
         (rosterPlanPrefix setup rosters 0)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
     simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-      ← FinDist.map_eq_bind, initialLaw, FinDist.map_comp, FinDist.support_map]
+      ← ← PMF.bind_pure_comp, Function.comp_def, initialLaw, PMF.map_comp, PMF.support_map]
     exact ⟨seed.val, seed.property, rfl⟩
   obtain ⟨noise, law⟩ := sourceServiceTimedPolicy_prefix_joint_factorization setup leaks
     bounds values capacity rosters opportunities timing network profile covered focal count
@@ -1467,20 +1467,20 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
         (runtime setup).bindingTraffic leaks focal final)
   let sourcePrefix := fun initial : State L setup.context =>
     ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[count]
-      (FinDist.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map some
+      (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map some
   have nativeLaw : prior.bind (fun seed => combined seed.val) = setup.initialLaw.bind combined := by
-    rw [← FinDist.bind_map Subtype.val prior combined]
-    exact congrArg (fun law => law.bind combined) (FinDist.map_val_toSubtype _ _)
+    rw [← PMF.bind_map Subtype.val prior combined]
+    exact congrArg (fun law => law.bind combined) (map_val_pmfToSubtype _ _)
   have sourceLaw : prior.bind (fun seed => sourcePrefix seed.val) =
       setup.initialLaw.bind sourcePrefix := by
-    rw [← FinDist.bind_map Subtype.val prior sourcePrefix]
-    exact congrArg (fun law => law.bind sourcePrefix) (FinDist.map_val_toSubtype _ _)
+    rw [← PMF.bind_map Subtype.val prior sourcePrefix]
+    exact congrArg (fun law => law.bind sourcePrefix) (map_val_pmfToSubtype _ _)
   change (prior.bind fun seed => combined seed.val) =
     (prior.bind fun seed => sourcePrefix seed.val).bind fun state =>
       (noise (setup.protocolObserve focal state)).map fun extra => (state, extra) at law
   rw [nativeLaw, sourceLaw] at law
   rw [setup.encoded_prefix_state]
-  rw [initialLaw, FinDist.bind_map, FinDist.map_bind]
+  rw [initialLaw, PMF.bind_map, PMF.map_bind]
   exact law
 
 /-- The compiler's original source policy is normalized only through the
@@ -1495,7 +1495,7 @@ theorem sourceServiceTimedProfile_prefix_factorization [Fintype Player]
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -1506,7 +1506,7 @@ theorem sourceServiceTimedProfile_prefix_factorization [Fintype Player]
     let admission := CommitmentInterface.values setup.program
     let encoded := fun who => setup.toProtocolBehavioralPolicy admission who
       (normalized who) (normalized_sourceService_admitted setup original permitted who)
-    ∃ noise : setup.ProtocolView focal → FinDist _,
+    ∃ noise : setup.ProtocolView focal → PMF _,
       (((initialLaw setup).bind fun state => (runtime setup).runInteractionPlan leaks
         (sourceServiceTimedPolicy setup leaks rosters timing normalized) network
         (rosterPlanPrefix setup rosters count)
@@ -1523,6 +1523,6 @@ theorem sourceServiceTimedProfile_prefix_factorization [Fintype Player]
     (sourceServiceTimedPolicy_admissible setup leaks bounds values initialValues capacity
       rosters opportunities network timing full normalized admitted)
     admitted (fun who => (original who).normalizeDisclosureFrom_effective setup.program []
-      (Revelations.initial setup.context) (fun view => FinDist.pure view.2)) focal count within
+      (Revelations.initial setup.context) (fun view => PMF.pure view.2)) focal count within
 
 end Vegas

@@ -251,7 +251,7 @@ private theorem bindingInvariant_of_nonbinding_step
     (state.config.step_store_of_some next.config event ready action member)
   intro owner payload ref value stored
   unfold EventGraph.Config.step at member
-  rw [FinDist.support_map, Set.mem_image] at member
+  rw [PMF.support_map, Set.mem_image] at member
   obtain ⟨output, _, configEq⟩ := member
   have fieldDifferent : ref.field ≠ .inr event := by
     intro same
@@ -489,7 +489,7 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
   classical
   cases command with
   | grant event | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact invariant.copy rfl rfl rfl
   | executeSample event =>
@@ -497,18 +497,18 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
       · cases view : nodeView graph event with
         | bind | resolve =>
             have stepEq : environmentStep runtime state (.executeSample event) =
-                FinDist.pure state := by
+                PMF.pure state := by
               apply environmentStep_executeSample_of_nonsample runtime state event ready
               intro samplePayload law sampleOutputEq sampleCodeEq sampleEq
               rw [view] at sampleEq
               cases sampleEq
             rw [stepEq] at member
-            simp only [FinDist.mem_support_pure] at member
+            simp only [PMF.mem_support_pure_iff _ _] at member
             subst next
             exact invariant
         | sample payload law outputEq codeEq =>
             rw [environmentStep_executeSample_eq runtime state event ready payload law
-              outputEq codeEq view, FinDist.support_map, Set.mem_image] at member
+              outputEq codeEq view, PMF.support_map, Set.mem_image] at member
             obtain ⟨config, configMem, rfl⟩ := member
             apply bindingInvariant_of_nonbinding_step
               (next := { state with
@@ -520,10 +520,10 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
             rw [outputEq] at bindingEq
             cases bindingEq
       · have stepEq : environmentStep runtime state (.executeSample event) =
-            FinDist.pure state := by
+            PMF.pure state := by
           exact environmentStep_executeSample_of_not_ready runtime state event ready
         rw [stepEq] at member
-        simp only [FinDist.mem_support_pure] at member
+        simp only [PMF.mem_support_pure_iff _ _] at member
         subst next
         exact invariant
   | expire event =>
@@ -532,7 +532,7 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
         | none =>
             rw [environmentStep_expire_of_not_activated runtime state event ready activated]
               at member
-            simp only [FinDist.mem_support_pure] at member
+            simp only [PMF.mem_support_pure_iff _ _] at member
             subst next
             exact invariant
         | some entered =>
@@ -541,13 +541,13 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
               | sample payload law outputEq codeEq =>
                   rw [environmentStep_expire_sample_eq runtime state event ready entered
                     activated due payload law outputEq codeEq view] at member
-                  simp only [FinDist.mem_support_pure] at member
+                  simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
                   exact invariant
               | bind owner payload outputEq codeEq =>
                   rw [environmentStep_expire_bind_eq runtime state event ready entered
                     activated due owner payload outputEq codeEq view] at member
-                  simp only [FinDist.mem_support_pure] at member
+                  simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
                   apply invariant.complete_of_no_success
                   intro newOwner newPayload newEq value
@@ -558,7 +558,7 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
               | resolve owner payload binding checks outputEq codeEq =>
                   rw [environmentStep_expire_resolve_eq runtime state event ready entered
                     activated due owner payload binding checks outputEq codeEq view] at member
-                  simp only [FinDist.mem_support_pure] at member
+                  simp only [PMF.mem_support_pure_iff _ _] at member
                   subst next
                   apply invariant.complete_nonbinding
                   intro bindingOwner bindingPayload bindingEq
@@ -566,11 +566,11 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
                   cases bindingEq
             · rw [environmentStep_expire_of_not_due runtime state event ready entered
                 activated due] at member
-              simp only [FinDist.mem_support_pure] at member
+              simp only [PMF.mem_support_pure_iff _ _] at member
               subst next
               exact invariant
       · rw [environmentStep_expire_of_not_ready runtime state event ready] at member
-        simp only [FinDist.mem_support_pure] at member
+        simp only [PMF.mem_support_pure_iff _ _] at member
         subst next
         exact invariant
 

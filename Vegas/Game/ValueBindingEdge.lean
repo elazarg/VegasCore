@@ -49,8 +49,8 @@ def valueBindingSimulationOn {Observation : Type}
         valueBinding_bindValues setup.program choice⟩, ?_⟩
     change (setup.publicRun
       (Function.update (valueBindingProfile profile) who replacement)).map observe = _
-    rw [hmixture, FinDist.map_bind, FinDist.bind_map]
-    refine FinDist.bind_congr fun choice _ => ?_
+    rw [hmixture, PMF.map_bind, PMF.bind_map]
+    refine bind_congr_on_support _ fun choice _ => ?_
     rw [valueBindingGame_play, valueBindingProfile_update]
     exact congrArg _
       (bindValues_publicRun_eq setup (valueBindingProfile profile) choice).symm

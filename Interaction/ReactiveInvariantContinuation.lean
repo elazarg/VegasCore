@@ -15,7 +15,7 @@ variable {Principal : Type} [DecidableEq Principal]
   {app : ReactiveApplication Principal} {predicate : app.State → Prop}
 
 theorem Invariant.controlStep_some (invariant : app.Invariant predicate)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (players : Principal → app.Policy) (before : app.Control) (after : app.ProtocolState)
     (valid : predicate before.execution.application)
     (supported : after ∈
@@ -25,32 +25,32 @@ theorem Invariant.controlStep_some (invariant : app.Invariant predicate)
   cases actor with
   | some who =>
       obtain ⟨response, _, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-      cases FinDist.mem_support_pure.mp reached
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨_, rfl, invariant.respond execution who _ valid⟩
   | none =>
       cases remaining with
-      | zero => cases FinDist.mem_support_pure.mp supported; exact ⟨_, rfl, valid⟩
+      | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; exact ⟨_, rfl, valid⟩
       | succ remaining =>
           obtain ⟨command, _, moved⟩ :=
-            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-          obtain ⟨next, reached, rfl⟩ := FinDist.support_map .. ▸ moved
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+          obtain ⟨next, reached, rfl⟩ := PMF.support_map .. ▸ moved
           exact ⟨_, rfl, invariant.environmentStep execution next command valid reached⟩
 
 theorem Invariant.iterate_controlStep (invariant : app.Invariant predicate)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (players : Principal → app.Policy) (fuel : Nat) (before : app.Control)
     (after : app.ProtocolState) (valid : predicate before.execution.application)
     (supported : after ∈ ((fun law => law.bind
       (app.controlStep initial horizon scheduler players))^[fuel]
-        (FinDist.pure (some before))).support) :
+        (PMF.pure (some before))).support) :
     ∃ result, after = some result ∧ predicate result.execution.application := by
   induction fuel generalizing after with
-  | zero => cases FinDist.mem_support_pure.mp supported; exact ⟨_, rfl, valid⟩
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; exact ⟨_, rfl, valid⟩
   | succ fuel ih =>
       rw [Function.iterate_succ_apply'] at supported
       obtain ⟨middle, middleMem, moved⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨control, rfl, middleValid⟩ := ih middle middleMem
       exact invariant.controlStep_some initial horizon scheduler players control after
         middleValid moved
@@ -58,7 +58,7 @@ theorem Invariant.iterate_controlStep (invariant : app.Invariant predicate)
 /-- Any amount of behavioral execution preserves a previously established
 application invariant. The starting history need not be on the profile's path. -/
 theorem Invariant.behavioral_continuation [Fintype Principal] (invariant : app.Invariant predicate)
-    (menu : app.ResponseMenu) (initial : FinDist app.State) (horizon : Nat)
+    (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler)
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (fuel : Nat) (before : app.Control)
@@ -71,8 +71,8 @@ theorem Invariant.behavioral_continuation [Fintype Principal] (invariant : app.I
   apply invariant.iterate_controlStep initial horizon scheduler
     (menu.decodeProfile initial horizon scheduler profile) fuel before after.state valid
   have law := menu.run_map_controlStep initial horizon scheduler profile fuel ⟨some before, trace⟩
-  apply (congrArg (fun law : FinDist app.ProtocolState => after.state ∈ law.support) law).mp
-  rw [FinDist.support_map]
+  apply (congrArg (fun law : PMF app.ProtocolState => after.state ∈ law.support) law).mp
+  rw [PMF.support_map]
   exact ⟨after, supported, rfl⟩
 
 end Interaction.ReactiveApplication

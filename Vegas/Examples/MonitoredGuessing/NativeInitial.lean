@@ -45,10 +45,10 @@ theorem initial_alice_trace (bit : Bool) :
   obtain ⟨initial⟩ := native_initial_trace bit
   exact nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 13
     (nativeStart bit) (aliceActivated bit) (.activate alice) initial (by
-      change _ ∈ (FinDist.pure (.activate alice : nativeApp.Command)).support
-      exact FinDist.mem_support_pure.mpr rfl) (by
+      change _ ∈ (PMF.pure (.activate alice : nativeApp.Command)).support
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl) (by
       rw [initial_activation]
-      exact FinDist.mem_support_pure.mpr rfl)
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def initialAliceSite (bit : Bool) : nativeModel.InformationSite alice := by
   let trace := (initial_alice_trace bit).some
@@ -84,20 +84,20 @@ theorem native_instruction_actor_eq (history : List nativeApp.EnvironmentEntry)
     command.actor? nativeApp = instructionPlayer instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | includeLatest event owner =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       unfold reactiveLatest
       split <;> rfl
   | wire =>
-      change command ∈ ((FinDist.pure (match view.network.inputs.getLast? with
+      change command ∈ ((PMF.pure (match view.network.inputs.getLast? with
         | none => NetworkChoice.wait
         | some input => if input.broadcaster = watcher ∧ input.envelope.sender = alice then
             NetworkChoice.include input.envelope.id else NetworkChoice.wait)).map
               (fun choice => nativeApp.atMostOnceCommand view
                 (choice.command nativeRuntime nativeLeaks))).support at supported
-      rw [FinDist.map_pure, FinDist.mem_support_pure] at supported
+      rw [PMF.pure_map, PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases last : view.network.inputs.getLast? with
       | none =>
@@ -122,7 +122,7 @@ theorem native_alice_activation_positions (history : List nativeApp.EnvironmentE
   unfold nativeScheduler at supported
   cases selected : nativePlan[history.length]? with
   | none =>
-      simp only [selected, FinDist.mem_support_pure] at supported
+      simp only [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases active
   | some instruction =>
@@ -163,24 +163,24 @@ theorem native_rounds_grant (players : Player → nativeApp.Policy)
     (execution : nativeApp.Execution)
     (supported : execution ∈ (nativeApp.roundsFrom nativeInitialLaw nativeScheduler
       players count).support) : execution.application.serviceGrant = some event := by
-  obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ stateMem
+  obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ stateMem
   have law := native_segment_rounds players [] (nativePlan.take count) (nativePlan.drop count)
     (by simp) (nativeStart bit) rfl
   rw [List.length_take_of_le bounded] at law
   change execution ∈ (nativeApp.runRounds nativeScheduler players count (nativeStart bit)).support
     at reached
   rw [law, last, runInteractionPlan_append] at reached
-  obtain ⟨previous, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨previous, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have grantLaw : nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       [.grant event] previous =
         previous.environmentStep nativeApp (.application (.grant event)) := by
     simp only [runInteractionPlan, interactionStep, interactionInstruction,
-      FinDist.pure_bind, FinDist.bind_pure, ReactiveApplication.dispatch]
-    exact FinDist.bind_pure _
+      PMF.pure_bind, PMF.bind_pure, ReactiveApplication.dispatch]
+    exact PMF.bind_pure _
   rw [grantLaw] at moved
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, FinDist.map_pure, FinDist.mem_support_pure] at moved
+    environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] at moved
   subst execution
   rfl
 
@@ -201,9 +201,9 @@ theorem native_alice_final_grant (control : nativeApp.Control)
     | activate who => cases Option.some.inj actor; rfl
     | «include» id | application command | wait => cases actor
   subst command
-  obtain ⟨next, member, same⟩ := FinDist.support_map .. ▸ observed
+  obtain ⟨next, member, same⟩ := PMF.support_map .. ▸ observed
   rw [← same]
-  obtain ⟨selected, _, sameNext⟩ := FinDist.support_map .. ▸ member
+  obtain ⟨selected, _, sameNext⟩ := PMF.support_map .. ▸ member
   rw [← sameNext]
   exact granted
 
@@ -219,19 +219,19 @@ theorem native_alice_initial_representation (control : nativeApp.Control)
   subst count
   have roots : nativeApp.roundsFrom nativeInitialLaw nativeScheduler
       nativeMenu.uniformResponses 0 =
-        (FinDist.uniformOfFintype (α := Bool)).map nativeStart := by
+        (PMF.uniformOfFintype (α := Bool)).map nativeStart := by
     simp only [ReactiveApplication.roundsFrom, ReactiveApplication.runRounds, nativeInitialLaw,
-      ← FinDist.map_eq_bind, FinDist.map_comp]
+      ← ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp]
     rfl
   rw [roots] at priorMem
-  obtain ⟨bit, _, same⟩ := FinDist.support_map .. ▸ priorMem
+  obtain ⟨bit, _, same⟩ := PMF.support_map .. ▸ priorMem
   subst prior
   have commandEq : command = .activate alice := by
     cases command with
     | activate who => cases Option.some.inj actor; rfl
     | «include» id | application command | wait => cases actor
   subst command
-  rw [initial_activation, FinDist.mem_support_pure] at observed
+  rw [initial_activation, PMF.mem_support_pure_iff _ _] at observed
   have remaining : control.remaining = 13 := by
     rw [native_horizon] at accounted
     omega
@@ -270,19 +270,19 @@ theorem initial_alice_finish (players : Player → nativeApp.Policy) (bit : Bool
 
 def initialResponseValue (deposit : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) : ℝ :=
-  (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan.tail
-    (ambientRespond bit response)).expect (nativeExecutionUtility deposit alice)
+  expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan.tail
+    (ambientRespond bit response)) (nativeExecutionUtility deposit alice)
 
 theorem initial_alice_finish_value (deposit : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) :
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-      (some (initialAliceControl bit))).expect (nativeUtility deposit alice) =
-      (players alice [] ((aliceActivated bit).observe nativeApp alice)).expect
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
+      (some (initialAliceControl bit))) (nativeUtility deposit alice) =
+      expect (players alice [] ((aliceActivated bit).observe nativeApp alice))
         (initialResponseValue deposit players bit) := by
   rw [initial_alice_finish, FinDist.expect_bind]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro response _
-  rw [FinDist.expect_map]
+  rw [expect_map]
   rfl
 
 theorem initial_alice_context_value (deposit : ℝ)
@@ -294,7 +294,7 @@ theorem initial_alice_context_value (deposit : ℝ)
       let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
         (Profile.update (sig := nativeModel.behavioralSignature)
           assessment.strategy alice alternative)
-      (players alice [] ((aliceActivated bit).observe nativeApp alice)).expect
+      expect (players alice [] ((aliceActivated bit).observe nativeApp alice))
         (initialResponseValue deposit players bit) := by
   rw [nativeMenu.context_value_of_known_state nativeInitialLaw nativeHorizon nativeScheduler
     assessment alice (initialAliceSite bit) (nativeUtility deposit alice) alternative

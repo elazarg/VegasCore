@@ -99,7 +99,7 @@ theorem exists_sequentialEquilibrium :
     ∃ assessment : model.BehavioralAssessment,
       assessment.strategy = profile ∧
       assessment.IsSequentialEquilibriumFor
-        (menu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon scheduler)
+        (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler)
         (fun who site => assessment.continuationContext site
           (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   obtain ⟨assessment, strategy, consistent, beliefs⟩ := exists_consistent_guess_assessment

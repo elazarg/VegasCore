@@ -30,22 +30,21 @@ from that evidence, rather than assumed to be the broadcaster of the raw input.
 The same sampled record determines all charges. -/
 def sampledTrafficAudit {Evidence : Type} (project : app.TrafficRecord → Evidence)
     (attribution : Evidence → Principal) (permitted : Evidence → Bool)
-    (sample : List Evidence → FinDist (List Evidence))
-    (actual : List app.TrafficRecord) : FinDist (Principal → Bool) :=
+    (sample : List Evidence → PMF (List Evidence))
+    (actual : List app.TrafficRecord) : PMF (Principal → Bool) :=
   (sample (actual.map project)).map fun observed who =>
     decide (∃ evidence ∈ observed, attribution evidence = who ∧ permitted evidence = false)
 
 open Classical in
 theorem sampledTrafficAudit_collection {Evidence : Type}
     (project : app.TrafficRecord → Evidence) (attribution : Evidence → Principal)
-    (permitted : Evidence → Bool) (sample : List Evidence → FinDist (List Evidence))
+    (permitted : Evidence → Bool) (sample : List Evidence → PMF (List Evidence))
     (actual : List app.TrafficRecord) (who : Principal) :
-    ((app.sampledTrafficAudit project attribution permitted sample actual).map
-        (fun verdict => verdict who)).prob true =
-      (sample (actual.map project)).probOf
-        {observed | ∃ evidence ∈ observed,
-          attribution evidence = who ∧ permitted evidence = false} := by
-  rw [sampledTrafficAudit, FinDist.map_comp, FinDist.prob_map_eq_probOf_preimage_singleton]
+    (((app.sampledTrafficAudit project attribution permitted sample actual).map
+        (fun verdict => verdict who)) true).toReal =
+      ((sample (actual.map project)).toOuterMeasure {observed | ∃ evidence ∈ observed,
+          attribution evidence = who ∧ permitted evidence = false}).toReal := by
+  rw [sampledTrafficAudit, PMF.map_comp, FinDist.prob_map_eq_probOf_preimage_singleton]
   apply FinDist.probOf_congr
   intro observed _
   simp only [Set.mem_preimage, Set.mem_singleton_iff, Function.comp_apply, decide_eq_true_eq,
@@ -55,21 +54,21 @@ theorem sampledTrafficAudit_collection {Evidence : Type}
 this does not require authentication of the original rebroadcaster field. -/
 theorem sampledTrafficAudit_sound {Evidence : Type}
     (project : app.TrafficRecord → Evidence) (attribution : Evidence → Principal)
-    (permitted : Evidence → Bool) (sample : List Evidence → FinDist (List Evidence))
+    (permitted : Evidence → Bool) (sample : List Evidence → PMF (List Evidence))
     (actual : List app.TrafficRecord) (who : Principal)
     (authentic : ∀ observed ∈ (sample (actual.map project)).support,
       observed ⊆ actual.map project)
     (conforms : ∀ record ∈ actual,
       attribution (project record) = who → permitted (project record) = true) :
-    ((app.sampledTrafficAudit project attribution permitted sample actual).map
-        (fun verdict => verdict who)).prob true = 0 := by
+    (((app.sampledTrafficAudit project attribution permitted sample actual).map
+        (fun verdict => verdict who)) true).toReal = 0 := by
   classical
   have silent : (app.sampledTrafficAudit project attribution permitted sample actual).map
-      (fun verdict => verdict who) = FinDist.pure false := by
-    rw [sampledTrafficAudit, FinDist.map_comp]
+      (fun verdict => verdict who) = PMF.pure false := by
+    rw [sampledTrafficAudit, PMF.map_comp]
     calc
       _ = (sample (actual.map project)).map (fun _ => false) := by
-        apply FinDist.map_congr_of_eq_on_support
+        apply map_congr_on_support _
         intro observed supported
         change decide _ = false
         apply decide_eq_false
@@ -78,21 +77,21 @@ theorem sampledTrafficAudit_sound {Evidence : Type}
         have allowed := conforms record present owner
         rw [allowed] at forbidden
         cases forbidden
-      _ = _ := by simp only [FinDist.map_eq_bind, FinDist.bind_const]
+      _ = _ := by simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_const]
   rw [silent]
   exact FinDist.prob_pure_of_ne Bool.noConfusion
 
 omit [DecidableEq Principal] in
 private theorem evidence_sampling_lower {Evidence : Type}
     (attribution : Evidence → Principal) (permitted : Evidence → Bool)
-    (who : Principal) (observations : FinDist (List Evidence))
+    (who : Principal) (observations : PMF (List Evidence))
     (record : Evidence) (owner : attribution record = who)
     (forbidden : permitted record = false) :
-    observations.probOf {observed | record ∈ observed} ≤
-      observations.probOf {observed | ∃ evidence ∈ observed,
-        attribution evidence = who ∧ permitted evidence = false} := by
+    (observations.toOuterMeasure {observed | record ∈ observed}).toReal ≤
+      (observations.toOuterMeasure {observed | ∃ evidence ∈ observed,
+        attribution evidence = who ∧ permitted evidence = false}).toReal := by
   classical
-  rw [← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf]
+  rw [← expect_indicator, ← expect_indicator]
   apply FinDist.expect_mono
   intro observed _
   by_cases included : record ∈ observed
@@ -107,29 +106,29 @@ private theorem evidence_sampling_lower {Evidence : Type}
 the attributed record is present in every possible final readout. -/
 theorem sampledTrafficAudit_collection_from_record {Evidence Outcome : Type}
     (project : app.TrafficRecord → Evidence) (attribution : Evidence → Principal)
-    (permitted : Evidence → Bool) (sample : List Evidence → FinDist (List Evidence))
-    (law : FinDist Outcome) (readout : Outcome → List app.TrafficRecord)
+    (permitted : Evidence → Bool) (sample : List Evidence → PMF (List Evidence))
+    (law : PMF Outcome) (readout : Outcome → List app.TrafficRecord)
     (who : Principal) (rate : ℝ)
     (coverage : ∀ actual record, record ∈ actual →
       attribution record = who → permitted record = false →
-      rate ≤ (sample actual).probOf {observed | record ∈ observed})
+      rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (record : app.TrafficRecord)
     (present : ∀ outcome ∈ law.support, record ∈ readout outcome)
     (owner : attribution (project record) = who)
     (forbidden : permitted (project record) = false) :
-    rate ≤ ((((law.map readout).bind
+    rate ≤ (((((law.map readout).bind
       (app.sampledTrafficAudit project attribution permitted sample)).map
-        (fun verdict => verdict who)).prob true) := by
+        (fun verdict => verdict who)) true).toReal) := by
   rw [TerminalAudit.collection_probability]
   calc
-    rate = law.expect (fun _ => rate) := (FinDist.expect_const _ _).symm
+    rate = expect law (fun _ => rate) := (expect_constant _ _).symm
     _ ≤ _ := by
       apply FinDist.expect_mono
       intro outcome supported
       have projected : project record ∈ (readout outcome).map project :=
         List.mem_map.mpr ⟨record, present outcome supported, rfl⟩
-      change _ ≤ ((app.sampledTrafficAudit project attribution permitted sample
-        (readout outcome)).map (fun verdict => verdict who)).prob true
+      change _ ≤ (((app.sampledTrafficAudit project attribution permitted sample
+        (readout outcome)).map (fun verdict => verdict who)) true).toReal
       rw [app.sampledTrafficAudit_collection]
       exact (coverage _ (project record) projected owner forbidden).trans
         (evidence_sampling_lower attribution permitted who _ (project record) owner forbidden)
@@ -137,7 +136,7 @@ theorem sampledTrafficAudit_collection_from_record {Evidence Outcome : Type}
 namespace ResponseMenu
 
 variable {app} (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 /-- The original raw-history readout, restricted to this response menu. -/
 def trafficAudit (history : (menu.protocol initial horizon scheduler).History) :
@@ -172,21 +171,21 @@ variable [Fintype Principal]
 later target strategy. The sample may depend on the complete final transcript. -/
 theorem trafficAudit_collection_from_record {Evidence : Type}
     (project : app.TrafficRecord → Evidence) (attribution : Evidence → Principal)
-    (permitted : Evidence → Bool) (sample : List Evidence → FinDist (List Evidence))
+    (permitted : Evidence → Bool) (sample : List Evidence → PMF (List Evidence))
     (who : Principal) (rate : ℝ)
     (coverage : ∀ actual record, record ∈ actual →
       attribution record = who → permitted record = false →
-      rate ≤ (sample actual).probOf {observed | record ∈ observed})
+      rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (profile : ∀ player, (menu.information initial horizon scheduler).BehavioralPolicy player)
     (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History)
     (record : app.TrafficRecord)
     (present : record ∈ menu.trafficAudit initial horizon scheduler history)
     (owner : attribution (project record) = who)
     (forbidden : permitted (project record) = false) :
-    rate ≤ (((((menu.information initial horizon scheduler).runBehavioralFrom profile fuel
+    rate ≤ ((((((menu.information initial horizon scheduler).runBehavioralFrom profile fuel
       history).map (menu.trafficAudit initial horizon scheduler)).bind
         (app.sampledTrafficAudit project attribution permitted sample)).map
-          (fun verdict => verdict who)).prob true := by
+          (fun verdict => verdict who)) true).toReal := by
   apply app.sampledTrafficAudit_collection_from_record project attribution permitted sample
     _ _ who rate coverage record _ owner forbidden
   intro final supported
@@ -199,26 +198,26 @@ theorem trafficAudit_collection_from_record {Evidence : Type}
 unrestricted. Persistent projected evidence retains the conditional charge bound. -/
 theorem trafficAudit_collection_after_step {Evidence : Type}
     (project : app.TrafficRecord → Evidence) (attribution : Evidence → Principal)
-    (permitted : Evidence → Bool) (sample : List Evidence → FinDist (List Evidence))
+    (permitted : Evidence → Bool) (sample : List Evidence → PMF (List Evidence))
     (who : Principal) (rate : ℝ)
     (coverage : ∀ actual record, record ∈ actual →
       attribution record = who → permitted record = false →
-      rate ≤ (sample actual).probOf {observed | record ∈ observed})
+      rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (profile : ∀ player, (menu.information initial horizon scheduler).BehavioralPolicy player)
     (fuel : Nat) (history : (menu.protocol initial horizon scheduler).History)
     (evidence : ∀ next ∈ ((menu.information initial horizon scheduler).runBehavioralFrom
       profile 1 history).support,
       ∃ record ∈ menu.trafficAudit initial horizon scheduler next,
         attribution (project record) = who ∧ permitted (project record) = false) :
-    rate ≤ (((((menu.information initial horizon scheduler).runBehavioralFrom profile
+    rate ≤ ((((((menu.information initial horizon scheduler).runBehavioralFrom profile
       (1 + fuel) history).map (menu.trafficAudit initial horizon scheduler)).bind
         (app.sampledTrafficAudit project attribution permitted sample)).map
-          (fun verdict => verdict who)).prob true := by
+          (fun verdict => verdict who)) true).toReal := by
   rw [(menu.information initial horizon scheduler).runBehavioralFrom_add,
     TerminalAudit.collection_probability, FinDist.expect_bind]
   calc
-    rate = ((menu.information initial horizon scheduler).runBehavioralFrom profile 1
-      history).expect (fun _ => rate) := (FinDist.expect_const _ _).symm
+    rate = expect ((menu.information initial horizon scheduler).runBehavioralFrom profile 1
+      history) (fun _ => rate) := (expect_constant _ _).symm
     _ ≤ _ := by
       apply FinDist.expect_mono
       intro next supported

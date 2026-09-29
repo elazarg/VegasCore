@@ -46,7 +46,7 @@ def BehavioralPolicy.forceDisclose {who : Player} :
   | _, _, .sample _ _ _ k, policy => forceDisclose k policy
   | _, _, .commit _ _ _ _ k, policy => (policy.1, forceDisclose k policy.2)
   | _, _, .reveal _ _ _ _ _ _ k, policy =>
-      (fun _ _ => FinDist.pure true, forceDisclose k policy.2)
+      (fun _ _ => PMF.pure true, forceDisclose k policy.2)
 
 theorem disclosing_forceDisclose {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
@@ -71,12 +71,12 @@ def DisclosesProfitably {who : Player} :
       DisclosesProfitably k utility (afterCommit profile) policy.2
   | _, _, .reveal published owner _ _ source _ k, utility, profile, policy =>
       (∀ (_ : owner = who) (config : Config Player L _),
-        (runFrom k (Function.update (afterReveal profile) who
+        expect (runFrom k (Function.update (afterReveal profile) who
             ((afterReveal profile who).forceDisclose k))
-          (revealSuccessor published source config false)).expect utility ≤
-        (runFrom k (Function.update (afterReveal profile) who
+          (revealSuccessor published source config false)) utility ≤
+        expect (runFrom k (Function.update (afterReveal profile) who
             ((afterReveal profile who).forceDisclose k))
-          (revealSuccessor published source config true)).expect utility) ∧
+          (revealSuccessor published source config true)) utility) ∧
         DisclosesProfitably k utility (afterReveal profile) policy.2
 
 /-! ## Removing the refusal -/
@@ -93,9 +93,9 @@ theorem forceDisclose_expect_le {who : Player} :
     (utility : State L (terminalCtx p) → ℝ) → (profile : BehavioralProfile p) →
     DisclosesProfitably p utility profile (profile who) →
     (config : Config Player L Γ) →
-    (runFrom p profile config).expect utility ≤
-      (runFrom p (Function.update profile who
-        ((profile who).forceDisclose p)) config).expect utility
+    expect (runFrom p profile config) utility ≤
+      expect (runFrom p (Function.update profile who
+        ((profile who).forceDisclose p)) config) utility
   | _, _, .ret _, _, _, _, _ => le_of_eq rfl
   | _, _, .sample _ _ _ k, utility, profile, premise, config => by
       rw [runFrom_sample, runFrom_sample, FinDist.expect_bind, FinDist.expect_bind]
@@ -124,11 +124,11 @@ theorem forceDisclose_expect_le {who : Player} :
         have hforced : revealKernel (Function.update profile owner
             ((profile owner).forceDisclose
               (.reveal published owner name fresh source unresolved k))) =
-              fun _ => FinDist.pure true := by
+              fun _ => PMF.pure true := by
           simp [revealKernel, BehavioralPolicy.forceDisclose]
         rw [hforced]
         refine le_trans (FinDist.expect_mono fun disclose _ => step disclose) ?_
-        simp only [FinDist.expect_pure]
+        simp only [expect_pure]
         have hshape : ∀ stops : Bool,
             (if stops then
               runFrom k (Function.update (afterReveal profile) owner
@@ -142,7 +142,7 @@ theorem forceDisclose_expect_le {who : Player} :
                 ((afterReveal profile owner).forceDisclose k))
                 (revealSuccessor published source config !stops) := by
           intro stops; cases stops <;> rfl
-        have general := FinDist.selective_stopping_le (FinDist.pure (α := Unit) ())
+        have general := FinDist.selective_stopping_le (PMF.pure (α := Unit) ())
           (fun _ => (revealKernel profile (Config.view owner config)).map not)
           (fun _ => runFrom k (Function.update (afterReveal profile) owner
             ((afterReveal profile owner).forceDisclose k))
@@ -151,7 +151,7 @@ theorem forceDisclose_expect_le {who : Player} :
             ((afterReveal profile owner).forceDisclose k))
             (revealSuccessor published source config true))
           utility (fun _ _ _ => premise.1 rfl config)
-        simp only [FinDist.pure_bind, FinDist.bind_map, hshape, Bool.not_not,
+        simp only [PMF.pure_bind, PMF.bind_map, hshape, Bool.not_not,
           FinDist.expect_bind] at general
         exact general
       · have hkernel : revealKernel (Function.update profile who
@@ -168,9 +168,9 @@ theorem forceDisclose_run_expect_le {who : Player} (setup : Setup (Player := Pla
     (utility : State L (terminalCtx setup.program) → ℝ)
     (profile : BehavioralProfile setup.program)
     (premise : DisclosesProfitably setup.program utility profile (profile who)) :
-    (setup.run profile).expect utility ≤
-      (setup.run (Function.update profile who
-        ((profile who).forceDisclose setup.program))).expect utility := by
+    expect (setup.run profile) utility ≤
+      expect (setup.run (Function.update profile who
+        ((profile who).forceDisclose setup.program))) utility := by
   simp only [Setup.run, FinDist.expect_bind]
   exact FinDist.expect_mono fun initial _ =>
     forceDisclose_expect_le setup.program utility profile premise
@@ -186,8 +186,8 @@ theorem exists_disclosing_expect_le {who : Player} (setup : Setup (Player := Pla
     (premise : DisclosesProfitably setup.program utility profile (profile who)) :
     ∃ alternative : BehavioralPolicy who setup.program,
       Disclosing setup.program alternative ∧
-        (setup.run profile).expect utility ≤
-          (setup.run (Function.update profile who alternative)).expect utility :=
+        expect (setup.run profile) utility ≤
+          expect (setup.run (Function.update profile who alternative)) utility :=
   ⟨(profile who).forceDisclose setup.program,
     disclosing_forceDisclose setup.program (profile who),
     forceDisclose_run_expect_le setup utility profile premise⟩

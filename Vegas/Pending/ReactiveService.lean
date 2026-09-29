@@ -40,7 +40,7 @@ def NetworkChoice.command (runtime : EventGraphRuntime graph)
 abbrev NetworkPolicy (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :=
   List (runtime.reactiveApplication leaks).EnvironmentEntry →
-    (runtime.reactiveApplication leaks).EnvironmentView → FinDist (NetworkChoice Player)
+    (runtime.reactiveApplication leaks).EnvironmentView → PMF (NetworkChoice Player)
 
 def interactionVisit (networkTurns : Nat) (event : graph.EventId) :
     List (ServiceInstruction graph) :=
@@ -72,15 +72,15 @@ def interactionInstruction (runtime : EventGraphRuntime graph)
     (network : runtime.NetworkPolicy leaks)
     (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
     (view : (runtime.reactiveApplication leaks).EnvironmentView) :
-    ServiceInstruction graph → FinDist (runtime.reactiveApplication leaks).Command
-  | .player who => FinDist.pure (.activate who)
+    ServiceInstruction graph → PMF (runtime.reactiveApplication leaks).Command
+  | .player who => PMF.pure (.activate who)
   | .wire => (network history view).map (fun choice =>
       (runtime.reactiveApplication leaks).atMostOnceCommand view (choice.command runtime leaks))
-  | .grant event => FinDist.pure (.application (.grant event))
-  | .includeLatest event owner => FinDist.pure (runtime.reactiveLatest leaks event owner view)
-  | .sample event => FinDist.pure (.application (.executeSample event))
-  | .tick => FinDist.pure (.application .advanceClock)
-  | .expire event => FinDist.pure (.application (.expire event))
+  | .grant event => PMF.pure (.application (.grant event))
+  | .includeLatest event owner => PMF.pure (runtime.reactiveLatest leaks event owner view)
+  | .sample event => PMF.pure (.application (.executeSample event))
+  | .tick => PMF.pure (.application .advanceClock)
+  | .expire event => PMF.pure (.application (.expire event))
 
 /-- A fixed service order is a concrete scheduler instance. Its position is
 recovered from its own command recall, which advances once per scheduler choice,
@@ -93,7 +93,7 @@ def interactionScheduler (runtime : EventGraphRuntime graph)
   fun history view =>
     let epoch := interactionEpoch chosen networkTurns
     match epoch[history.length % epoch.length]? with
-    | none => FinDist.pure .wait
+    | none => PMF.pure .wait
     | some instruction => runtime.interactionInstruction leaks network history view instruction
 
 def interactionHorizon (runtime : EventGraphRuntime graph)

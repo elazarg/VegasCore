@@ -36,7 +36,7 @@ theorem valueBindingParameterPendingGame_coarseCorrelated_value
     (source : Profile (setup.valueBindingParameterGame parameter).sig)
     (sourceNash : IsNash (setup.valueBindingParameterGame parameter)
       (euPreference utility) source)
-    (target : FinDist (Profile
+    (target : PMF (Profile
       (setup.eventPendingGame mode runtime roster reactionRounds wire order).sig))
     (targetCorrelated : IsCoarseCorrelatedEq
       (setup.eventPendingGame mode runtime roster reactionRounds wire order)
@@ -44,11 +44,11 @@ theorem valueBindingParameterPendingGame_coarseCorrelated_value
         (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
           0 (fun result => utility result who)) target)
     (who : Fin 2) :
-    ((setup.eventPendingGame mode runtime roster reactionRounds wire order).outcomeLaw
-      target).expect (fun outcome =>
+    expect ((setup.eventPendingGame mode runtime roster reactionRounds wire order).outcomeLaw
+      target) (fun outcome =>
         (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
           0 (fun result => utility result who)) =
-      ((setup.valueBindingParameterGame parameter).play source).expect
+      expect ((setup.valueBindingParameterGame parameter).play source)
         (fun result => utility result who) := by
   let nativeUtility := fun outcome player =>
     (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
@@ -65,7 +65,7 @@ theorem valueBindingParameterPendingGame_coarseCorrelated_value
   have same := targetCorrelated.expectedUtility_eq_of_zeroSum nativeNash nativeZeroSum who
   have honest := (setup.valueBindingParameterPendingSimulation parameter mode runtime
     feasible roster reactionRounds wire order).honest_law source
-  have value := congrArg (fun law => law.expect
+  have value := congrArg (fun law => expect law
     (fun outcome => outcome.elim 0 (fun result => utility result who))) honest
   have compileEq (player : Fin 2) :
       (setup.valueBindingParameterPendingSimulation parameter mode runtime feasible roster
@@ -73,6 +73,6 @@ theorem valueBindingParameterPendingGame_coarseCorrelated_value
         setup.compileValueBindingPendingProfile mode runtime player (source player) := rfl
   simp_rw [compileEq] at value
   exact same.trans (by
-    simpa only [expectedUtility, FinDist.expect_map, Option.elim_some] using value)
+    simpa only [expectedUtility, expect_map, Option.elim_some] using value)
 
 end Vegas.SourceProgram.Setup

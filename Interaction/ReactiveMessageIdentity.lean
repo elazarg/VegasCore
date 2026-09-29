@@ -33,27 +33,27 @@ theorem messageIdentityInvariant (scheduler : app.Scheduler) :
       valid.1 selected reached, ?_⟩
     cases command with
     | wait =>
-        simp only [Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         exact valid.2
     | activate who =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨sample, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact valid.2.learn who sample
     | «include» id =>
-        simp only [Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         change (execution.includePending app id).network.UniqueIds
         rw [app.includePending_network]
         exact valid.2.includePending id
     | application command =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact valid.2
 
 /-- Arbitrary submissions, replays, passive samples and scheduler choices all
 preserve the full message under its identifier. -/
-theorem uniqueIds_history (scheduler : app.Scheduler) (initial : FinDist app.State)
+theorem uniqueIds_history (scheduler : app.Scheduler) (initial : PMF app.State)
     (horizon : Nat) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control)) :
     control.execution.network.UniqueIds :=

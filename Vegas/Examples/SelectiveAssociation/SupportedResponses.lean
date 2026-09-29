@@ -20,13 +20,13 @@ theorem native_response_supported_choice
     (profile : ∀ who, nativeModel.BehavioralPolicy who) (who : Player)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (response : nativeApp.Action)
-    (supported : response ∈ (nativeMenu.decodeProfile (FinDist.pure nativeInitial)
+    (supported : response ∈ (nativeMenu.decodeProfile (PMF.pure nativeInitial)
       nativeHorizon nativeScheduler profile who past view).support) :
     ∃ choice : nativeModel.Choice who (some (past, view)),
       choice ∈ (profile who (some (past, view))).support ∧ choice.1 = some response := by
   rw [ReactiveApplication.ResponseMenu.decodeProfile, ReactiveApplication.decodePolicy,
-    ReactiveApplication.ResponseMenu.embedPolicy, FinDist.map_comp,
-    FinDist.support_map] at supported
+    ReactiveApplication.ResponseMenu.embedPolicy, PMF.map_comp,
+    PMF.support_map] at supported
   obtain ⟨choice, chosen, decoded⟩ := supported
   obtain ⟨action, _, selected⟩ := choice.2
   change choice.1.getD ⟨none⟩ = response at decoded
@@ -44,7 +44,7 @@ private theorem native_reserved_unique (event : nativeGraph.EventId) (who : Play
   rw [nativeRuntime.interaction_includeLatest_environment] at firstMem secondMem
   obtain ⟨result, law⟩ := nativeRuntime.reactiveLatest_step_pure nativeLeaks who event execution
   rw [law] at firstMem secondMem
-  exact (FinDist.mem_support_pure.mp firstMem).trans (FinDist.mem_support_pure.mp secondMem).symm
+  exact ((PMF.mem_support_pure_iff _ _).mp firstMem).trans ((PMF.mem_support_pure_iff _ _).mp secondMem).symm
 
 private theorem success_of_getD (value : Option (PublicationResult Bool)) (bit : Bool)
     (correct : value.getD .failure = .success bit) : value = some (.success bit) := by
@@ -66,7 +66,7 @@ theorem native_supported_guess_inclusion
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks
       (control.execution.observe nativeApp bob) (aliceBindingEvidence bit))
     (response : nativeApp.Action)
-    (chosen : response ∈ (nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    (chosen : response ∈ (nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler assessment.strategy bob (control.execution.recall bob)
         (control.execution.observe nativeApp bob)).support)
     (players : Player → nativeApp.Policy) (next : nativeApp.Execution)
@@ -78,7 +78,7 @@ theorem native_supported_guess_inclusion
   obtain ⟨choice, choiceMem, selected⟩ := native_response_supported_choice assessment.strategy bob
     past view response chosen
   have information : nativeModel.infoOf bob trace = some (past, view) := by
-    change (nativeMenu.signals (FinDist.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
+    change (nativeMenu.signals (PMF.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
       bob trace = some (past, view)
     rw [nativeMenu.info]
     simp only [ReactiveApplication.observe, active, ↓reduceIte]
@@ -125,7 +125,7 @@ theorem native_supported_opening_inclusion
     (bit : Bool) (stored : (nativeBindingRef who).get?
       control.execution.application.config.store = some (.success bit))
     (response : nativeApp.Action)
-    (chosen : response ∈ (nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    (chosen : response ∈ (nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler assessment.strategy who (control.execution.recall who)
         (control.execution.observe nativeApp who)).support)
     (players : Player → nativeApp.Policy) (next : nativeApp.Execution)
@@ -138,7 +138,7 @@ theorem native_supported_opening_inclusion
   obtain ⟨choice, choiceMem, selected⟩ := native_response_supported_choice assessment.strategy who
     past view response chosen
   have information : nativeModel.infoOf who trace = some (past, view) := by
-    change (nativeMenu.signals (FinDist.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
+    change (nativeMenu.signals (PMF.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
       who trace = some (past, view)
     rw [nativeMenu.info]
     simp only [ReactiveApplication.observe, active, ↓reduceIte]

@@ -15,7 +15,7 @@ namespace GameTheoryExtensionsTests.ObservationPayoff
 
 open GameTheory.DecisionExperiment GameTheory.Math.Probability
 
-def prior : FinDist Bool := FinDist.uniformOfFintype
+def prior : PMF Bool := PMF.uniformOfFintype
 
 def reward (state action : Bool) : ℝ :=
   if action then (if state then 2 else 1) else 0
@@ -32,9 +32,9 @@ theorem common_action : HasCommonMaximizer prior (fun _ => ()) reward := by
 /-- Every abstract optimum is implementable for this payoff despite erasing a
 supported, payoff-relevant bit. No payoff-specific strategy search is needed. -/
 theorem preserves_reward :
-    ∀ source : Unit → FinDist Bool,
+    ∀ source : Unit → PMF Bool,
       IsBayesOptimal prior (fun _ => ()) reward source →
-      ∃ target : Bool → FinDist Bool,
+      ∃ target : Bool → PMF Bool,
         IsBayesOptimal prior id reward target ∧
         resultLaw prior id id target = resultLaw prior (fun _ => ()) id source :=
   (preserves_fixed_payoff_iff_commonMaximizer prior (fun _ => ()) id reward).mpr common_action
@@ -45,30 +45,30 @@ theorem reporting_has_no_common_action :
   obtain ⟨action, optimal⟩ := common ()
   cases action with
   | false =>
-    have impossible := optimal true (FinDist.mem_support_uniformOfFintype true) rfl true
+    have impossible := optimal true (PMF.mem_support_uniformOfFintype true) rfl true
     norm_num [reportUtility] at impossible
   | true =>
-    have impossible := optimal false (FinDist.mem_support_uniformOfFintype false) rfl false
+    have impossible := optimal false (PMF.mem_support_uniformOfFintype false) rfl false
     norm_num [reportUtility] at impossible
 
 /-- Constant payoffs preserve source equilibria, but do not imply equality of
 the two sets of equilibrium outcome laws: the informed player can correlate
 its action with the bit. -/
 theorem constant_payoff_extra_informed_law :
-    IsBayesOptimal prior id (fun _ _ : Bool => (0 : ℝ)) FinDist.pure ∧
-      ∀ source : Unit → FinDist Bool,
-        resultLaw prior id id FinDist.pure ≠ resultLaw prior (fun _ => ()) id source := by
+    IsBayesOptimal prior id (fun _ _ : Bool => (0 : ℝ)) PMF.pure ∧
+      ∀ source : Unit → PMF Bool,
+        resultLaw prior id id PMF.pure ≠ resultLaw prior (fun _ => ()) id source := by
   refine ⟨?_, ?_⟩
   · intro signal alternative
-    simp [localValue, FinDist.expect_const]
+    simp [localValue, expect_constant]
   · intro source
     apply no_optimal_report_law_match prior (fun _ => ()) id id
       (fun _ _ _ _ same => same)
-      (FinDist.mem_support_uniformOfFintype false)
-      (FinDist.mem_support_uniformOfFintype true) rfl Bool.false_ne_true source FinDist.pure
+      (PMF.mem_support_uniformOfFintype false)
+      (PMF.mem_support_uniformOfFintype true) rfl Bool.false_ne_true source PMF.pure
     rw [fullInformation_optimal_iff]
     intro state _ action
-    simp only [FinDist.expect_pure, reportUtility, id_eq, ↓reduceIte]
+    simp only [expect_pure, reportUtility, id_eq, ↓reduceIte]
     split <;> norm_num
 
 open Protocol in

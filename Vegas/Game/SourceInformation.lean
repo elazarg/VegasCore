@@ -84,7 +84,7 @@ def uniformPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .sample .., impossible => impossible.elim
   | _, _, .commit .., impossible => impossible.elim
   | _, _, .reveal _ _ _ _ _ _ next, reveals =>
-      (fun _ _ => FinDist.uniformOfFintype (α := Bool), uniformPolicy who next reveals)
+      (fun _ _ => PMF.uniformOfFintype (α := Bool), uniformPolicy who next reveals)
 
 theorem uniformPolicy_admitted (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -103,7 +103,7 @@ theorem uniformPolicy_support (who : Player) :
     (admission : CommitmentInterface program) → (view : ProtocolView who program) →
     (choice : Option (OwnAction Player L)) → ProtocolView.menu who program admission view choice →
       choice ∈ ((uniformPolicy who program reveals).protocolAction program view).support
-  | _, _, .ret _, _, _, _, none, _ => FinDist.mem_support_pure.mpr rfl
+  | _, _, .ret _, _, _, _, none, _ => (PMF.mem_support_pure_iff _ _).mpr rfl
   | _, _, .ret _, _, _, _, some _, legal => by
       have impossible : (none : Option Player) = some who := legal.1
       cases impossible
@@ -121,12 +121,12 @@ theorem uniformPolicy_support (who : Player) :
             | some action =>
                 obtain ⟨_actor, disclose, rfl⟩ := legal
                 simp only [uniformPolicy, BehavioralPolicy.protocolAction, Sum.elim_inl,
-                  dite_eq_left own, FinDist.support_map, Set.mem_image]
-                exact ⟨disclose, FinDist.mem_support_uniformOfFintype _, rfl⟩
+                  dite_eq_left own, PMF.support_map, Set.mem_image]
+                exact ⟨disclose, PMF.mem_support_uniformOfFintype _, rfl⟩
           · cases choice with
             | none =>
                 simp only [uniformPolicy, BehavioralPolicy.protocolAction, Sum.elim_inl,
-                  dite_eq_right own, FinDist.mem_support_pure]
+                  dite_eq_right own, PMF.mem_support_pure_iff _ _]
             | some action => exact (own (Option.some.inj legal.1)).elim
 
 end RevealOnly
@@ -146,7 +146,7 @@ theorem revealReference_fullyMixed (setup : Setup (Player := Player) (L := L))
   intro who site choice
   suffices choice.1 ∈ (((setup.revealReference reveals admission).strategy who site.1).map
       Subtype.val).support by
-    obtain ⟨other, supported, same⟩ := FinDist.support_map .. ▸ this
+    obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
     exact (Subtype.ext same) ▸ supported
   change choice.1 ∈ ((setup.toProtocolBehavioralPolicy admission who _ _ site.1).map
     Subtype.val).support
@@ -154,8 +154,8 @@ theorem revealReference_fullyMixed (setup : Setup (Player := Player) (L := L))
   rcases site with ⟨info, occurs⟩
   cases info with
   | none =>
-      change choice.1 ∈ (FinDist.pure none).support
-      exact FinDist.mem_support_pure.mpr choice.2
+      change choice.1 ∈ (PMF.pure none).support
+      exact (PMF.mem_support_pure_iff _ _).mpr choice.2
   | some view =>
       exact RevealOnly.uniformPolicy_support who setup.program reveals admission view choice.1
         choice.2

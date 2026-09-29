@@ -26,9 +26,9 @@ retains every history that the assessment gives positive probability. -/
 theorem quiet_native_state_belief (assessment : nativeModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent nativeAntichain)
     (prefixLaw : (nativeModel.runBehavioral assessment.strategy 8).map History.state =
-      (FinDist.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state)) :
+      (PMF.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state)) :
     (assessment.belief bob quietBobSite).map (fun history => history.1.state) =
-      (FinDist.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state) := by
+      (PMF.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state) := by
   classical
   have depth := native_bob_information_depth quietBobSite
   let law := nativeModel.runBehavioral assessment.strategy 8
@@ -37,18 +37,18 @@ theorem quiet_native_state_belief (assessment : nativeModel.BehavioralAssessment
   have seen (history : nativeArena.History) (supported : history ∈ law.support) :
       history ∈ information := by
     have stateSupported : history.state ∈ (law.map History.state).support := by
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨history, supported, rfl⟩
-    rw [prefixLaw, FinDist.support_map] at stateSupported
+    rw [prefixLaw, PMF.support_map] at stateSupported
     obtain ⟨bit, _, same⟩ := stateSupported
     change nativeModel.infoOf bob history.trace = quietBobSite.1
     exact (nativeMenu.info nativeInitialLaw nativeHorizon nativeScheduler bob history.trace).trans
       ((congrArg (nativeApp.observe bob) same).symm.trans (quiet_bob_info bit))
   have conditioned := assessment.belief_map_eq_run_of_full_reach nativeModel bob quietBobSite 8
     nativeAntichain consistent depth seen
-  have projected := congrArg (fun histories : FinDist nativeArena.History =>
+  have projected := congrArg (fun histories : PMF nativeArena.History =>
     histories.map History.state) conditioned
-  simpa only [FinDist.map_comp, Function.comp_def] using projected.trans prefixLaw
+  simpa only [PMF.map_comp, Function.comp_def] using projected.trans prefixLaw
 
 /-- Every consistent native assessment retaining the prescribed sender and
 watcher has the genuine fair-state posterior at Bob's quiet decision. Bob's
@@ -58,7 +58,7 @@ theorem quiet_native_state_belief_of_prescribed (assessment : nativeModel.Behavi
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior) :
     (assessment.belief bob quietBobSite).map (fun history => history.1.state) =
-      (FinDist.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state) := by
+      (PMF.uniformOfFintype (α := Bool)).map (fun bit => (quietBobHistory bit).state) := by
   apply quiet_native_state_belief assessment consistent
   exact quiet_bob_history_law assessment.strategy alicePolicy watcherPolicy
 
@@ -70,12 +70,12 @@ theorem quiet_native_context (assessment : nativeModel.BehavioralAssessment)
     (assessment.continuationContext quietBobSite
       (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
         alternative =
-      (FinDist.uniformOfFintype (α := Bool)).expect (fun bit =>
-        (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
+      expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+        expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
           (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy bob
-              alternative)) (quietBobHistory bit).state).expect (nativeUtility deposit bob)) := by
+              alternative)) (quietBobHistory bit).state) (nativeUtility deposit bob)) := by
   rw [native_context_value, quiet_native_state_belief_of_prescribed assessment consistent
-    alicePolicy watcherPolicy, FinDist.expect_map]
+    alicePolicy watcherPolicy, expect_map]
 
 end Vegas.Examples.MonitoredGuessing

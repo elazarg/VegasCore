@@ -23,7 +23,7 @@ def nativeRuntime : EventGraphRuntime nativeGraph where
   deadline event := 2 ^ event.val
 
 def nativeLeaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph) :=
-  fun who _ => FinDist.pure (if who = bob then {(alice, 0)} else ∅)
+  fun who _ => PMF.pure (if who = bob then {(alice, 0)} else ∅)
 
 abbrev serviceApp (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
     nativeGraph)) := nativeRuntime.reactiveApplication observation
@@ -83,12 +83,12 @@ def nativePlan : List (ServiceInstruction nativeGraph) :=
 
 def serviceNetwork (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
     nativeGraph)) : nativeRuntime.NetworkPolicy observation :=
-  fun _ _ => FinDist.pure .wait
+  fun _ _ => PMF.pure .wait
 
 def serviceScheduler (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
     nativeGraph)) : (serviceApp observation).Scheduler := fun history view =>
   match nativePlan[history.length]? with
-  | none => FinDist.pure .wait
+  | none => PMF.pure .wait
   | some instruction => nativeRuntime.interactionInstruction observation
       (serviceNetwork observation) history view instruction
 
@@ -96,12 +96,12 @@ abbrev nativeHorizon : Nat := nativePlan.length
 
 abbrev serviceArena (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
     nativeGraph)) :=
-  (serviceMenu observation).protocol (FinDist.pure nativeInitial) nativeHorizon
+  (serviceMenu observation).protocol (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation)
 
 abbrev serviceModel (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
     nativeGraph)) :=
-  (serviceMenu observation).information (FinDist.pure nativeInitial) nativeHorizon
+  (serviceMenu observation).information (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation)
 
 abbrev nativeNetwork := serviceNetwork nativeLeaks

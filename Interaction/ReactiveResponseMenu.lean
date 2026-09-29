@@ -37,7 +37,7 @@ def available (state : app.ProtocolState) (who : Principal) : Set app.Action :=
       (control.execution.observe app who)
 
 /-- Only availability changes. Every realized transition is the original one. -/
-def protocol (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def protocol (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ExecutionProtocol Principal where
   State := app.ProtocolState
   Action _ := app.Action
@@ -62,7 +62,7 @@ def protocol (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Sche
               (control.execution.observe app who)).choose_spec
         · simp [active, actor]
 
-theorem legal_raw (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem legal_raw (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     {state : app.ProtocolState} {joint : Principal → Option app.Action}
     (legal : (menu.protocol initial horizon scheduler).Legal state joint) :
     (app.protocol initial horizon scheduler).Legal state joint := by
@@ -72,7 +72,7 @@ theorem legal_raw (initial : FinDist app.State) (horizon : Nat) (scheduler : app
   · exact localLegal
   · exact ⟨localLegal.1, Set.mem_univ _⟩
 
-def toRawTrace (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def toRawTrace (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ∀ {state}, (menu.protocol initial horizon scheduler).Trace state →
       (app.protocol initial horizon scheduler).Trace state
   | _, .start => .start
@@ -80,12 +80,12 @@ def toRawTrace (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Sc
       .extend (toRawTrace initial horizon scheduler prior) joint
         (menu.legal_raw initial horizon scheduler legal) realized
 
-def toRawHistory (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+def toRawHistory (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (history : (menu.protocol initial horizon scheduler).History) :
     (app.protocol initial horizon scheduler).History :=
   ⟨history.state, menu.toRawTrace initial horizon scheduler history.trace⟩
 
-theorem toRawTrace_injective (initial : FinDist app.State) (horizon : Nat)
+theorem toRawTrace_injective (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) {state} :
     Function.Injective (menu.toRawTrace initial horizon scheduler (state := state)) := by
   intro first second same
@@ -102,7 +102,7 @@ theorem toRawTrace_injective (initial : FinDist app.State) (horizon : Nat)
           cases jointEq
           rfl
 
-theorem toRawHistory_injective (initial : FinDist app.State) (horizon : Nat)
+theorem toRawHistory_injective (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) :
     Function.Injective (menu.toRawHistory initial horizon scheduler) := by
   rintro ⟨first, firstTrace⟩ ⟨second, secondTrace⟩ same
@@ -115,7 +115,7 @@ theorem toRawHistory_injective (initial : FinDist app.State) (horizon : Nat)
   rfl
 
 @[simp]
-theorem toRawTrace_length (initial : FinDist app.State) (horizon : Nat)
+theorem toRawTrace_length (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) {state}
     (trace : (menu.protocol initial horizon scheduler).Trace state) :
     (menu.toRawTrace initial horizon scheduler trace).length = trace.length := by
@@ -123,14 +123,14 @@ theorem toRawTrace_length (initial : FinDist app.State) (horizon : Nat)
   | start => rfl
   | extend prior joint legal realized ih => exact congrArg Nat.succ ih
 
-theorem bounded (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+theorem bounded (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     (menu.protocol initial horizon scheduler).BoundedHorizon (2 * horizon + 1) := by
   intro state trace enough
   apply app.bounded initial horizon scheduler state
     (menu.toRawTrace initial horizon scheduler trace)
   simpa only [toRawTrace_length] using enough
 
-def signals (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def signals (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     InfoSignals (menu.protocol initial horizon scheduler) where
   PublicSignal := Unit
   PrivateSignal _ := app.Info
@@ -142,13 +142,13 @@ def signals (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Sched
   initInfo _ view _ := view
   pushInfo _ _ _ view _ := view
 
-theorem info (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem info (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) : ∀ {state} (trace : (menu.protocol initial horizon scheduler).Trace state),
     (menu.signals initial horizon scheduler).infoOf who trace = app.observe who state
   | _, .start => rfl
   | _, .extend _ _ _ _ => rfl
 
-def information (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def information (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     InformationModel (menu.protocol initial horizon scheduler) where
   toInfoSignals := menu.signals initial horizon scheduler
   menu who info := match info with
@@ -165,7 +165,7 @@ def information (initial : FinDist app.State) (horizon : Nat) (scheduler : app.S
         all_goals simp [observe, active, LegalOption, protocol, actor, available]
 
 /-- The finite presentation leaves the player's complete observation unchanged. -/
-theorem info_toRawTrace (initial : FinDist app.State) (horizon : Nat)
+theorem info_toRawTrace (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal) {state}
     (trace : (menu.protocol initial horizon scheduler).Trace state) :
     (app.information initial horizon scheduler).infoOf who
@@ -175,7 +175,7 @@ theorem info_toRawTrace (initial : FinDist app.State) (horizon : Nat)
     (menu.signals initial horizon scheduler).infoOf who _
   rw [app.info, menu.info]
 
-variable (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+variable (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def rawChoice (who : Principal) (info : app.Info)
     (choice : (menu.information initial horizon scheduler).Choice who info) :

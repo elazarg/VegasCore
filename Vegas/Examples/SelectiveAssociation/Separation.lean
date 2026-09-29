@@ -32,16 +32,16 @@ def nativePublicResult (state : nativeApp.ProtocolState) : Results :=
     (fun control => nativeResults control.execution.application.config)
 
 theorem native_public_law_value (profile : Profile nativeModel.behavioralSignature) :
-    ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map
-      (fun history => nativePublicResult history.state)).expect
+    expect ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map
+      (fun history => nativePublicResult history.state))
         (fun result => utility result alice) =
-        (nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).expect
+        expect (nativeModel.runBehavioral profile (2 * nativeHorizon + 1))
           (fun history => nativeUtility alice history.state) := by
-  change ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map
+  change expect ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map
     (fun history => history.state.elim ⟨.failure, .failure, .failure⟩
-      (fun control => nativeResults control.execution.application.config))).expect
+      (fun control => nativeResults control.execution.application.config)))
         (fun result => utility result alice) = _
-  rw [native_initial_result_law, FinDist.expect_map, native_initial_value]
+  rw [native_initial_result_law, expect_map, native_initial_value]
 
 /-- The obstruction already applies to sequential rationality. Allowing a
 different consistent belief system or a different profile translation cannot
@@ -56,22 +56,22 @@ theorem native_rational_public_law_ne_source (Claim : Type) [Fintype Claim] (def
         (fun history => nativePublicResult history.state) ≠
       ((NamedSource.model Claim).runBehavioral source.strategy (2 * NamedSource.horizon + 1)).map
         (fun history => NamedSource.protocolResults history.state) := by
-  let players := nativeMenu.decodeProfile (FinDist.pure nativeInitial)
+  let players := nativeMenu.decodeProfile (PMF.pure nativeInitial)
     nativeHorizon nativeScheduler target.strategy
   refine nativeModel.initial_law_ne_of_induced_information target
     (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)
     rational alice nativeInitialSite native_initial_history_value nativeAliceBehavior
     (fun history => nativePublicResult history.state) (fun result => utility result alice)
-    native_public_law_value (FinDist.uniformOfFintype (α := Bool)) (fun _ => ())
+    native_public_law_value (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
     (fun bit guess => correctness (.success bit) guess)
-    (fun _ => FinDist.pure (.success false))
+    (fun _ => PMF.pure (.success false))
     (fun _ => nativeCarolGuessLaw (nativeAliceProfile players)) fair_guess_reference_optimal
     (nativeDeviationOutcomes players) (fun bit result => correctness (.success bit) result.carol)
     1 ?_ ?_ ?_ _ ?_
   · rw [native_initial_value, native_decode_alice_deviation]
-    have value := congrArg (fun law : FinDist Results =>
-      law.expect (fun result => utility result alice)) (native_deviation_outcome_law players)
-    rw [FinDist.expect_map] at value
+    have value := congrArg (fun law : PMF Results =>
+      expect law (fun result => utility result alice)) (native_deviation_outcome_law players)
+    rw [expect_map] at value
     exact value
   · intro bit _ result supported
     obtain ⟨aliceSuccess, bobSuccess⟩ := native_deviation_publications target rational
@@ -80,9 +80,9 @@ theorem native_rational_public_law_ne_source (Claim : Type) [Fintype Claim] (def
     simp
   · intro bit _
     exact native_deviation_carol_bound players bit
-  · rw [fair_guess_reference_value, FinDist.expect_map, sourceStrategy]
-    change ((NamedSource.model Claim).runBehavioral (NamedSource.profile Claim defaultClaim)
-      (2 * NamedSource.horizon + 1)).expect (NamedSource.payoff alice) < 1 - 1 / 2
+  · rw [fair_guess_reference_value, expect_map, sourceStrategy]
+    change expect ((NamedSource.model Claim).runBehavioral (NamedSource.profile Claim defaultClaim)
+      (2 * NamedSource.horizon + 1)) (NamedSource.payoff alice) < 1 - 1 / 2
     rw [NamedSource.prescribed_initial_alice_payoff Claim defaultClaim]
     norm_num
 
@@ -93,13 +93,13 @@ theorem exists_source_equilibrium_no_native_outcome_match (Claim : Type) [Fintyp
     (defaultClaim : Claim) :
     ∃ source : (NamedSource.model Claim).BehavioralAssessment,
       source.IsSequentialEquilibriumFor
-        ((NamedSource.menu Claim).decisionInformationAntichain (FinDist.pure NamedSource.initial)
+        ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
         (fun who site => source.continuationContext site (NamedSource.payoff who)
           (2 * NamedSource.horizon + 1)) ∧
       ∀ target : nativeModel.BehavioralAssessment,
         target.IsSequentialEquilibriumFor
-          (nativeMenu.decisionInformationAntichain (FinDist.pure nativeInitial)
+          (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial)
             nativeHorizon nativeScheduler)
           (fun who site => target.continuationContext site
             (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) →

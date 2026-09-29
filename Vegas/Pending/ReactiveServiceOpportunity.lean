@@ -41,16 +41,16 @@ theorem reactive_environment_activationOrigin (runtime : EventGraphRuntime graph
       command).support) : State.ActivationOrigin execution.application next.application := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at supported
-      cases FinDist.mem_support_pure.mp supported
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact State.activationOrigin_of_activatedEq rfl
   | activate who =>
-      obtain ⟨updated, selected, rfl⟩ := FinDist.support_map .. ▸ supported
-      obtain ⟨observed, _, rfl⟩ := FinDist.support_map .. ▸ selected
+      obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ supported
+      obtain ⟨observed, _, rfl⟩ := PMF.support_map .. ▸ selected
       exact State.activationOrigin_of_activatedEq rfl
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at supported
-      cases FinDist.mem_support_pure.mp supported
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
       cases found : execution.network.lookup id with
       | none => exact State.activationOrigin_of_activatedEq rfl
@@ -65,19 +65,19 @@ theorem reactive_environment_activationOrigin (runtime : EventGraphRuntime graph
               exact State.activationOrigin_of_refreshEq (handle_clock_activated runtime
                 execution.application state ⟨message.id, message.payload.call⟩ accepted).2
   | application command =>
-      obtain ⟨updated, selected, rfl⟩ := FinDist.support_map .. ▸ supported
-      obtain ⟨state, reached, rfl⟩ := FinDist.support_map .. ▸ selected
+      obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ supported
+      obtain ⟨state, reached, rfl⟩ := PMF.support_map .. ▸ selected
       cases command with
       | grant event =>
           change state ∈ (environmentStep runtime execution.application (.grant event)).support
             at reached
-          simp only [environmentStep, FinDist.mem_support_pure] at reached
+          simp only [environmentStep, PMF.mem_support_pure_iff _ _] at reached
           subst state
           exact State.activationOrigin_of_activatedEq rfl
       | advanceClock =>
           change state ∈ (environmentStep runtime execution.application .advanceClock).support
             at reached
-          simp only [environmentStep, FinDist.mem_support_pure] at reached
+          simp only [environmentStep, PMF.mem_support_pure_iff _ _] at reached
           subst state
           exact State.activationOrigin_of_activatedEq rfl
       | executeSample event =>
@@ -105,7 +105,7 @@ theorem reactive_dispatch_activationOrigin (runtime : EventGraphRuntime graph)
     (supported : next ∈ ((runtime.reactiveApplication leaks).dispatch players command
       execution).support) : State.ActivationOrigin execution.application next.application := by
   obtain ⟨middle, environment, response⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have first := runtime.reactive_environment_activationOrigin leaks execution middle command
     environment
   have progress := runtime.reactive_environment_progress leaks inputs execution middle command
@@ -114,11 +114,11 @@ theorem reactive_dispatch_activationOrigin (runtime : EventGraphRuntime graph)
     cases actor : command.actor? (runtime.reactiveApplication leaks) with
     | none =>
         rw [actor] at response
-        cases FinDist.mem_support_pure.mp response
+        cases (PMF.mem_support_pure_iff _ _).mp response
         exact State.activationOrigin_of_activatedEq rfl
     | some who =>
         rw [actor] at response
-        obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ response
+        obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ response
         exact runtime.reactive_respond_activationOrigin leaks middle who action
   exact first.trans second (by rw [progress.clock]; omega)
     (runtime.reactive_resume_progress leaks inputs players _ middle next
@@ -136,15 +136,15 @@ theorem runInteractionPlan_activationOrigin (runtime : EventGraphRuntime graph)
       execution).support) : State.ActivationOrigin execution.application next.application := by
   induction plan generalizing execution with
   | nil =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact State.activationOrigin_of_activatedEq rfl
   | cons instruction rest ih =>
-      obtain ⟨middle, moved, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      obtain ⟨middle, moved, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       have first := runtime.interactionStep_facts leaks inputs players network instruction
         execution middle invariant moved
       have restProgress := runtime.runInteractionPlan_facts leaks inputs players network rest
         middle next first.invariant reached
-      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
       exact (runtime.reactive_dispatch_activationOrigin leaks inputs players execution middle
         command invariant dispatched).trans (ih middle first.invariant reached)
           (by rw [first.clock]; omega) restProgress.completed

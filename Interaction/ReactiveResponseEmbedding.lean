@@ -19,7 +19,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def embedPolicy (who : Principal)
     (policy : (menu.information initial horizon scheduler).BehavioralPolicy who) :
@@ -40,7 +40,7 @@ theorem behavioralJoint_embed
           ⟨joint.1, menu.legal_raw initial horizon scheduler joint.2⟩ := by
   rcases history with ⟨state, trace⟩
   cases trace <;>
-    simp only [InformationModel.behavioralJoint, embedPolicy, FinDist.pi_map, FinDist.map_comp] <;>
+    simp only [InformationModel.behavioralJoint, embedPolicy, FinDist.pi_map, PMF.map_comp] <;>
     rfl
 
 /-- The map retains the complete history, rather than just public outcomes. -/
@@ -53,20 +53,20 @@ theorem run_embed
         (fun who => menu.embedPolicy initial horizon scheduler who (profile who)) fuel
         (menu.toRawHistory initial horizon scheduler history) := by
   induction fuel generalizing history with
-  | zero => exact FinDist.map_pure _ _
+  | zero => exact PMF.pure_map _ _
   | succ fuel ih =>
       by_cases stopped : app.terminal history.state
       · rw [InformationModel.runBehavioralFrom_of_terminal _ _ _ stopped,
-          InformationModel.runBehavioralFrom_of_terminal _ _ _ stopped, FinDist.map_pure]
+          InformationModel.runBehavioralFrom_of_terminal _ _ _ stopped, PMF.pure_map]
       · rw [InformationModel.runBehavioralFrom_succ_of_not_terminal _ _ _ stopped,
           InformationModel.runBehavioralFrom_succ_of_not_terminal _ _ _ stopped]
         simp only [toRawHistory]
         rw [menu.behavioralJoint_embed initial horizon scheduler profile history stopped]
-        rw [FinDist.map_bind, FinDist.bind_map]
-        apply FinDist.bind_congr
+        rw [PMF.map_bind, PMF.bind_map]
+        apply bind_congr_on_support _
         intro joint _
-        rw [FinDist.map_bindOnSupport]
-        apply FinDist.bindOnSupport_congr
+        rw [map_bindOnSupport]
+        apply bindOnSupport_congr _
         intro target realized
         exact ih (history.extend joint.2 realized)
 

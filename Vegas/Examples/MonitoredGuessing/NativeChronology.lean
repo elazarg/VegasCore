@@ -86,7 +86,7 @@ theorem native_before_completed (bit : Bool) (players : Player → nativeApp.Pol
       let current : nativeGraph.EventId := ⟨count, by omega⟩
       rw [nativeBefore_succ current, runInteractionPlan_append] at reached
       obtain ⟨prior, priorMem, visitMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have earlier := ih (by omega) prior priorMem
       have invariant := native_before_invariant bit players count prior priorMem
       have progress := nativeRuntime.runInteractionPlan_facts nativeLeaks (nativeInputs bit) players

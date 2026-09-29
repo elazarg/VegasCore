@@ -38,7 +38,7 @@ theorem publication_or_failure (players : Profile model.behavioralSignature) (wh
     (supported : final ∈ (model.runBehavioralFrom players fuel ⟨some control, trace⟩).support) :
     publication who final.state = value ∨ publication who final.state = .failure := by
   obtain ⟨result, stateEq, kept⟩ := (binding_invariant who value).behavioral_continuation menu
-    (FinDist.pure nativeInitial) nativeHorizon scheduler players fuel control trace final stored
+    (PMF.pure nativeInitial) nativeHorizon scheduler players fuel control trace final stored
       supported
   rcases final with ⟨state, finalTrace⟩
   change state = some result at stateEq
@@ -95,7 +95,7 @@ theorem earlier_publication_fixed (players : Profile model.behavioralSignature)
     ((nativePublicationRef last).get?_isSome control.execution.application.config.store field)
   obtain ⟨result, stateEq, kept⟩ :=
     (native_publication_invariant (observation := leaks) last value).behavioral_continuation menu
-      (FinDist.pure nativeInitial) nativeHorizon scheduler players fuel control trace final stored
+      (PMF.pure nativeInitial) nativeHorizon scheduler players fuel control trace final stored
         supported
   simp only [publication, stateEq, Option.elim_some, kept, stored]
 
@@ -103,7 +103,7 @@ theorem update_opens_other (who other : Player) (different : other ≠ who)
     (alternative : model.BehavioralPolicy who) :
     Opens (Profile.update (sig := model.behavioralSignature) profile who alternative) other := by
   intro past view granted
-  change app.decodePolicy (menu.embedPolicy (FinDist.pure nativeInitial) nativeHorizon scheduler
+  change app.decodePolicy (menu.embedPolicy (PMF.pure nativeInitial) nativeHorizon scheduler
     other ((Profile.update (sig := model.behavioralSignature) profile who alternative) other))
       past view = _
   rw [Profile.update_of_ne _ _ different]
@@ -186,10 +186,10 @@ theorem opening_payoff_optimal (who : Player) (alternative : model.BehavioralPol
     nativeUtility who deviated.state ≤ nativeUtility who prescribed.state := by
   obtain ⟨value, stored⟩ := binding_present_at_opening who who control trace active granted
   obtain ⟨prescribedControl, prescribedEq, _⟩ :=
-    (binding_invariant who value).behavioral_continuation menu (FinDist.pure nativeInitial)
+    (binding_invariant who value).behavioral_continuation menu (PMF.pure nativeInitial)
       nativeHorizon scheduler profile _ control trace prescribed stored prescribedMem
   obtain ⟨deviatedControl, deviatedEq, _⟩ :=
-    (binding_invariant who value).behavioral_continuation menu (FinDist.pure nativeInitial)
+    (binding_invariant who value).behavioral_continuation menu (PMF.pure nativeInitial)
       nativeHorizon scheduler (Profile.update (sig := model.behavioralSignature) profile who
         alternative) _ control trace deviated stored deviatedMem
   have prescribedOwn := prescribed_later_publication profile who who le_rfl control trace active
@@ -210,34 +210,34 @@ theorem opening_expectation_optimal (who : Player) (alternative : model.Behavior
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who)) :
-    (model.runBehavioralFrom (Profile.update (sig := model.behavioralSignature) profile who
-      alternative) (2 * nativeHorizon + 1) ⟨some control, trace⟩).expect
+    expect (model.runBehavioralFrom (Profile.update (sig := model.behavioralSignature) profile who
+      alternative) (2 * nativeHorizon + 1) ⟨some control, trace⟩)
         (fun history => nativeUtility who history.state) ≤
-    (model.runBehavioralFrom profile (2 * nativeHorizon + 1) ⟨some control, trace⟩).expect
+    expect (model.runBehavioralFrom profile (2 * nativeHorizon + 1) ⟨some control, trace⟩)
       (fun history => nativeUtility who history.state) := by
   let prescribed := model.runBehavioralFrom profile (2 * nativeHorizon + 1) ⟨some control, trace⟩
   let deviated := model.runBehavioralFrom (Profile.update (sig := model.behavioralSignature)
     profile who alternative) (2 * nativeHorizon + 1) ⟨some control, trace⟩
-  change deviated.expect _ ≤ prescribed.expect _
+  change expect deviated _ ≤ expect prescribed _
   calc
-    _ ≤ deviated.expect (fun _ => prescribed.expect (fun history =>
+    _ ≤ expect deviated (fun _ => expect prescribed (fun history =>
       nativeUtility who history.state)) := FinDist.expect_mono (by
         intro other otherMem
         calc
-          _ = prescribed.expect (fun _ => nativeUtility who other.state) :=
-            (FinDist.expect_const _ _).symm
+          _ = expect prescribed (fun _ => nativeUtility who other.state) :=
+            (expect_constant _ _).symm
           _ ≤ _ := FinDist.expect_mono (by
             intro final finalMem
             exact opening_payoff_optimal who alternative control trace active granted final other
               finalMem otherMem))
-    _ = _ := FinDist.expect_const _ _
+    _ = _ := expect_constant _ _
 
 theorem information_control (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
     (history : model.InformationHistory who (some (past, view))) :
     ∃ control, history.1.state = some control ∧ control.actor = some who ∧
       control.execution.recall who = past ∧ control.execution.observe app who = view := by
   rcases history with ⟨⟨state, trace⟩, information⟩
-  change (menu.signals (FinDist.pure nativeInitial) nativeHorizon scheduler).infoOf who trace =
+  change (menu.signals (PMF.pure nativeInitial) nativeHorizon scheduler).infoOf who trace =
     some (past, view) at information
   rw [menu.info] at information
   cases state with

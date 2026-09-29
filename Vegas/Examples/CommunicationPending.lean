@@ -18,7 +18,7 @@ open Vegas Vegas.EventGraphRuntime Interaction
 open SequentialValidation
 
 def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph) :=
-  fun _ _ => GameTheory.Math.Probability.FinDist.pure {(false, 0)}
+  fun _ _ => GameTheory.Math.Probability.PMF.pure {(false, 0)}
 
 private theorem initial_public_eq : (nativeStart true).publicView =
     (nativeStart false).publicView := by
@@ -61,10 +61,10 @@ theorem activation_view (bit : Bool) :
     ((submittedClaim bit).environmentStep (nativeRuntime.reactiveApplication leaks)
       (.activate true)).map
         (fun next => next.observe (nativeRuntime.reactiveApplication leaks) true) =
-      GameTheory.Math.Probability.FinDist.pure
+      GameTheory.Math.Probability.PMF.pure
         ((leakedClaim bit).observe (nativeRuntime.reactiveApplication leaks) true) := by
   simp only [ReactiveApplication.Execution.environmentStep, reactiveApplication, leaks,
-    GameTheory.Math.Probability.FinDist.map_pure]
+    GameTheory.Math.Probability.PMF.pure_map]
   rfl
 
 theorem same_view :

@@ -77,27 +77,27 @@ theorem reactive_environment_candidate_fixed (runtime : EventGraphRuntime graph)
       execution.application.candidates.lookup candidate := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       rfl
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact runtime.reactive_include_candidate_fixed leaks execution id candidate fixed
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       rw [(environmentStep_tables runtime execution.application state command changed).2]
 
 /-- The preservation law holds for each supported canonical transition from
 any continuation, including a player move or an adaptive scheduler choice. -/
 theorem reactive_transition_candidate_fixed (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (before : (runtime.reactiveApplication leaks).Control)
     (after : (runtime.reactiveApplication leaks).ProtocolState)
@@ -111,16 +111,16 @@ theorem reactive_transition_candidate_fixed (runtime : EventGraphRuntime graph)
   rcases before with ⟨remaining, current, execution⟩
   cases current with
   | some who =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨_, rfl, runtime.reactive_respond_candidate_fixed leaks execution who _
         candidate fixed⟩
   | none =>
       cases remaining with
-      | zero => cases FinDist.mem_support_pure.mp reached; exact ⟨_, rfl, rfl⟩
+      | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact ⟨_, rfl, rfl⟩
       | succ remaining =>
           obtain ⟨command, _, supported⟩ :=
-            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-          obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+          obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨_, rfl,
             runtime.reactive_environment_candidate_fixed leaks
               execution next command candidate fixed moved⟩

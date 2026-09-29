@@ -76,7 +76,7 @@ theorem guardedDisclosureWindow_config
     simp only [List.append_assoc, List.singleton_append] at reached
     rw [(runtime setup).runInteractionPlan_append] at reached
     obtain ⟨current, prior, continued⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
     have preserved := (runtime setup).replay_window_preserves leaks
       (fun _ => app.replayPolicy) network owner execution
       (fun state who response _ _ member => app.replayPolicy_cases _ _ response member)
@@ -92,10 +92,10 @@ theorem guardedDisclosureWindow_config
       environmentRecall := current.environmentRecall ++
         [⟨current.observeEnvironment app, .wait⟩] }
     have included : (runtime setup).interactionStep leaks (fun _ => app.replayPolicy) network
-        (.includeLatest event owner) current = FinDist.pure waited := by
+        (.includeLatest event owner) current = PMF.pure waited := by
       rw [(runtime setup).interaction_includeLatest_of_pending_published leaks
         (fun _ => app.replayPolicy) network current owner event pending]
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
       rfl
     obtain ⟨endpoint, law, state, _, _, _⟩ :=
       (runtime setup).canonical_silent_expiry leaks (fun _ => app.replayPolicy) network waited
@@ -106,8 +106,8 @@ theorem guardedDisclosureWindow_config
         (by change _ ≤ current.application.clock + ticks - entered; rw [same]; exact due)
     simp only [List.cons_append, runInteractionPlan] at continued
     dsimp only [app] at included law
-    rw [included, FinDist.pure_bind, law] at continued
-    cases FinDist.mem_support_pure.mp continued
+    rw [included, PMF.pure_bind, law] at continued
+    cases (PMF.mem_support_pure_iff _ _).mp continued
     rw [state]
     simp only [waited, same, disclosureResult_false, State.complete]
   · obtain ⟨candidate, associated, owned, fixed, opening⟩ := guarded_rosterOpening_success
@@ -284,8 +284,8 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
   rw [sourceServiceTimedPolicy_reveal_phase_law setup leaks rosters timing fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
     checkpoint.agrees checkpoint.history valid recalled origins effective network ticks owned
-    granted unsent counted, FinDist.map_bind]
-  apply FinDist.bind_congr
+    granted unsent counted, PMF.map_bind]
+  apply bind_congr_on_support _
   intro disclose supported
   let target : Option
       (ProtocolState (.reveal published owner name fresh binding unresolved next)) :=
@@ -299,11 +299,11 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
   trans ((timing event owner owned).bind fun slot =>
     ((runtime setup).runInteractionPlan leaks (players slot) network phase execution).map
       ((runtime setup).bindingTraffic leaks focal)).map (fun traffic => (target, traffic))
-  · rw [FinDist.map_bind, FinDist.map_bind]
-    apply FinDist.bind_congr
+  · rw [PMF.map_bind, PMF.map_bind]
+    apply bind_congr_on_support _
     intro slot _
-    rw [FinDist.map_comp]
-    apply FinDist.map_congr_of_eq_on_support
+    rw [PMF.map_comp]
+    apply map_congr_on_support _
     intro final reached
     have completed := checkpoint.guardedDisclosureWindow published binding event eventRank
       outputEq codeEq node (fun ref => refsBefore ref index) valid ready timely entered ticks
@@ -321,17 +321,17 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
       rw [decodeSourcePrefix?_reveal]
       exact congrArg (Option.map Sum.inr) recovered
     · rfl
-  · apply congrArg (FinDist.map (fun traffic => (target, traffic)))
+  · apply congrArg (PMF.map (fun traffic => (target, traffic)))
     cases disclose with
     | false =>
-        simp only [players, selected, Bool.false_eq_true, ↓reduceIte, FinDist.bind_const,
+        simp only [players, selected, Bool.false_eq_true, ↓reduceIte, PMF.bind_const,
           guardedDisclosureTranscript, phase, List.append_assoc, List.singleton_append]
         rfl
     | true =>
         cases openingEq : rosterOpening? setup leaks owner event
             (execution.observe (application setup leaks) owner) with
         | none =>
-            simp only [players, selected, app, ↓reduceIte, openingEq, FinDist.bind_const,
+            simp only [players, selected, app, ↓reduceIte, openingEq, PMF.bind_const,
               guardedDisclosureTranscript, phase, List.append_assoc, List.singleton_append]
             rfl
         | some packet =>
@@ -419,13 +419,13 @@ theorem sourceServiceTimedPolicy_sample_joint_law
     simpa [event, index, outputEq, decodeEventAction] using action
   rw [sourceServiceTimedPolicy_sample_phase_law setup leaks rosters timing wholeProfile
     source refs execution checkpoint.agrees event ready outputEq distribution codeEq node
-    chance granted network ticks, FinDist.map_bind]
-  apply FinDist.bind_congr
+    chance granted network ticks, PMF.map_bind]
+  apply bind_congr_on_support _
   intro current _
-  rw [FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind]
+  apply bind_congr_on_support _
   intro value _
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro final reached
   have settled : ¬(completed current value).application.config.cut.Ready event := by
     intro active
@@ -433,7 +433,7 @@ theorem sourceServiceTimedPolicy_sample_joint_law
   obtain ⟨after, exactLaw, afterState, _⟩ := (runtime setup).settled_reveal_expiry leaks replay
     network (completed current value) event settled ticks
   rw [exactLaw] at reached
-  have finalEq := FinDist.mem_support_pure.mp reached
+  have finalEq := (PMF.mem_support_pure_iff _ _).mp reached
   subst final
   have result := checkpoint.sample name event eventRank ready outputEq
     (fun ref => refsBefore ref index) decoded value
@@ -531,12 +531,12 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
   rw [sourceServiceTimedPolicy_binding_phase_law setup leaks rosters timing fresh guard next
     wholeProfile profile refs source embedding refsBefore rank aligned execution boundary.agrees
     boundary.history serial freshSlot candidate network ticks owned granted
-    (boundary.unsent owner event eventRank.ge) counted, FinDist.map_bind]
-  apply FinDist.bind_congr
+    (boundary.unsent owner event eventRank.ge) counted, PMF.map_bind]
+  apply bind_congr_on_support _
   intro choice _
   let family := fun selected : Option (Fin ((rosters event).count owner)) =>
     app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-      (fun _ _ => FinDist.pure ((runtime setup).reactiveBinding leaks owner event payload
+      (fun _ _ => PMF.pure ((runtime setup).reactiveBinding leaks owner event payload
         choice serial)) app.replayPolicy
   let target : Option (ProtocolState (.commit name owner fresh guard next)) :=
     some (Sum.inr (ProtocolState.entry next (commitSuccessor name guard source choice)))
@@ -548,7 +548,7 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
     ((timing event owner owned).map some) family owner (fun _ => app.replayPolicy)
     network phase execution
   dsimp only at mixture
-  rw [dormant, FinDist.bind_map] at mixture
+  rw [dormant, PMF.bind_map] at mixture
   have transcript : bindingPhaseTranscript setup leaks network (rosters event) owner focal event
       payload (rosterOffset setup rosters owner event) ticks ((timing event owner owned).map some)
       execution choice =
@@ -559,10 +559,10 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
     rw [mixture]
     simp only [bindingPhaseTranscript, phase, List.append_assoc, List.singleton_append]
     rfl
-  rw [transcript, FinDist.map_comp, FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [transcript, PMF.map_comp, PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro slot _
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro final reached
   have config := scheduledBindingPhase_config setup leaks bounds network owner event payload
     outputEq codeEq node owned execution granted ready timely serial candidate vacant unused

@@ -32,7 +32,7 @@ theorem resolution_plan_alice_upper (deposit : ℝ) (nonnegative : 0 ≤ deposit
     (execution : nativeApp.Execution) (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit execution.application)
     (stored : bobPublicationRef.get? execution.application.config.store = some guess) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
       (nativeExecutionUtility deposit alice) ≤ correctness (.success bit) guess -
         if rejectedAlice execution.receipts then deposit else 0 := by
   apply FinDist.expect_le_of_forall
@@ -58,24 +58,24 @@ theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤
     (timely : control.execution.application.WithinDeadline nativeRuntime alicePublication)
     (guess : PublicationResult Bool)
     (stored : bobPublicationRef.get? control.execution.application.config.store = some guess) :
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
         (Profile.update (sig := nativeModel.behavioralSignature) profile alice alternative))
-      (some control)).expect (nativeUtility deposit alice) ≤
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
+      (some control)) (nativeUtility deposit alice) ≤
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-      (some control)).expect (nativeUtility deposit alice) := by
+      (some control)) (nativeUtility deposit alice) := by
   obtain ⟨bit, fixed⟩ := native_history_fixed control trace
   have grant := native_alice_final_grant control trace active position
   have serials := nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw
     nativeHorizon (nativeMenu.toRawTrace nativeInitialLaw nativeHorizon nativeScheduler trace)
   have opens : (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
       alice (control.execution.recall alice) (control.execution.observe nativeApp alice) =
-      FinDist.pure (nativeOpeningAction alicePublication aliceHandle bit) := by
+      PMF.pure (nativeOpeningAction alicePublication aliceHandle bit) := by
     change (nativeApp.decodePolicy (nativeMenu.embedPolicy nativeInitialLaw nativeHorizon
       nativeScheduler alice (profile alice))) _ _ = _
     rw [prescribed, decode_native_alice]
-    change FinDist.pure (nativeAliceResponse (control.execution.observe nativeApp alice)) = _
+    change PMF.pure (nativeAliceResponse (control.execution.observe nativeApp alice)) = _
     rw [native_alice_response_eq bit control.execution fixed grant]
   have bounded := resolution_finish_alice_dominates deposit nonnegative
     (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)

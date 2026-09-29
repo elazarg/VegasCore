@@ -37,16 +37,16 @@ theorem binding_success (players : Profile model.behavioralSignature)
     (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
     (bit : Bool)
-    (chooses : menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players
+    (chooses : menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players
       who (control.execution.recall who) (control.execution.observe app who) =
-        FinDist.pure (correctiveBinding who (nativeBindingEvent who) bit
+        PMF.pure (correctiveBinding who (nativeBindingEvent who) bit
           (control.execution.observe app who)))
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom players fuel ⟨some control, trace⟩).support) :
     ∃ result, final.state = some result ∧ (nativeBindingRef who).get?
       result.execution.application.config.store = some (.success bit) := by
-  let decoded := menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players
+  let decoded := menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players
   obtain ⟨next, stored, law⟩ := correctiveBinding_realizes decoded control trace who active granted
     (native_decision_unfinished (observation := leaks) (nativeBindingEvent who) control trace who
       active
@@ -66,13 +66,13 @@ theorem binding_success (players : Profile model.behavioralSignature)
             (correctiveBinding who (nativeBindingEvent who) bit
               (control.execution.observe app who)))).map
                 (fun result => result.application)).support :=
-      FinDist.support_map .. ▸ ⟨middle, reached, rfl⟩
-    rw [law, FinDist.mem_support_pure] at projected
+      PMF.support_map .. ▸ ⟨middle, reached, rfl⟩
+    rw [law, PMF.mem_support_pure_iff _ _] at projected
     rw [projected]
     exact stored
-  · change final.state ∈ (app.finish (FinDist.pure nativeInitial) nativeHorizon scheduler
+  · change final.state ∈ (app.finish (PMF.pure nativeInitial) nativeHorizon scheduler
       decoded (some control)).support
-    rw [← finish_law players control trace fuel enough, FinDist.support_map]
+    rw [← finish_law players control trace fuel enough, PMF.support_map]
     exact ⟨final, supported, rfl⟩
 
 theorem profile_binding_success (who : Player) (control : app.Control)
@@ -86,6 +86,6 @@ theorem profile_binding_success (who : Player) (control : app.Control)
         some (.success (prescribedBit who (control.execution.observe app who))) := by
   apply binding_success profile who control trace active granted _ _ fuel enough final supported
   rw [decode_profile]
-  exact congrArg FinDist.pure (response_binds who _ granted)
+  exact congrArg PMF.pure (response_binds who _ granted)
 
 end Vegas.Examples.SelectiveAssociation.Restricted

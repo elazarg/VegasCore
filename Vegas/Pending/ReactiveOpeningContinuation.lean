@@ -44,12 +44,12 @@ the posterior inferred from actual private recall, rather than its initial law. 
 theorem openingWindowMixture_continuation (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots)))
+    (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots)))
     (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
     (current : (runtime.reactiveApplication leaks).Execution) :
     let app := runtime.reactiveApplication leaks
     let family := fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
+      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
     (runtime.runInteractionPlan leaks
       (runtime.openingWindowMixturePlayers leaks owner event candidate raw offset choices)
         network plan current) =
@@ -61,7 +61,7 @@ theorem openingWindowMixture_continuation (runtime : EventGraphRuntime graph)
   have actual := runtime.runInteractionPlan_policyMixture leaks choices family owner
     (fun _ => app.replayPolicy) network plan current
   refine actual.symm.trans ?_
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro selected _
   have players : Function.update (fun _ => app.replayPolicy) owner (family selected) =
       runtime.openingWindowPlayers leaks owner event candidate raw offset selected := by
@@ -79,7 +79,7 @@ result, from the actual current window state and all its pending replays. -/
 theorem openingWindowMixture_continuation_settlement (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots))) (visits : Nat)
+    (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots))) (visits : Nat)
     (initial current : (runtime.reactiveApplication leaks).Execution)
     (serials : initial.network.SerialsBeforeNext)
     (owned : candidate.1 = owner)
@@ -88,7 +88,7 @@ theorem openingWindowMixture_continuation_settlement (runtime : EventGraphRuntim
     (network : runtime.NetworkPolicy leaks) :
     let app := runtime.reactiveApplication leaks
     let family := fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
+      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ selected ∈ posterior.support,
       runtime.OpeningWindowFrame leaks owner event candidate raw offset selected visits
@@ -102,23 +102,23 @@ theorem openingWindowMixture_continuation_settlement (runtime : EventGraphRuntim
           (runtime.windowEnvelope leaks owner event candidate raw initial)).getD initial.application
         else initial.application) := by
   intro app family posterior frames
-  rw [runtime.openingWindowMixture_continuation, FinDist.map_bind]
-  conv_rhs => rw [FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [runtime.openingWindowMixture_continuation, PMF.map_bind]
+  conv_rhs => rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro selected possible
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
   rw [runtime.runInteractionPlan_append] at reached
   obtain ⟨before, beforeSupport, included⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have finished := (frames selected possible).run runtime leaks owner event candidate raw offset
     selected visits initial current network remaining before beforeSupport owned (fun _ => valid)
   rw [complete] at finished
   have inclusion : final ∈ (runtime.interactionStep leaks
       (runtime.openingWindowPlayers leaks owner event candidate raw offset selected)
         network (.includeLatest event owner) before).support := by
-    simpa only [runInteractionPlan, FinDist.bind_pure] using included
+    simpa only [runInteractionPlan, PMF.bind_pure] using included
   exact (finished.settle runtime leaks owner event candidate raw offset selected
     initial before serials _ network final inclusion).1
 

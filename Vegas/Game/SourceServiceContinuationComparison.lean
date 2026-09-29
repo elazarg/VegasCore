@@ -37,12 +37,12 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).BehavioralPolicy who)
@@ -77,16 +77,16 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     let payoff := TerminalAudit.utility base ((runtime setup).serviceAuditObservation leaks)
       (sourceServiceAudit setup leaks sample) deposit
     ∃ repair : (menu.information (initialLaw setup) count scheduler).BehavioralPolicy who,
-      ∀ belief : FinDist
+      ∀ belief : PMF
         ((menu.information (initialLaw setup) count scheduler).InformationHistory who site.1),
-      belief.expect (fun history =>
-        ((effective.information (initialLaw setup) count scheduler).runBehavioralFrom
+      expect belief (fun history =>
+        expect ((effective.information (initialLaw setup) count scheduler).runBehavioralFrom
           (Function.update target who alternative) (2 * count + 1 - depth)
-          (restriction.history history.1)).expect (fun final => payoff final.state who)) ≤
-      belief.expect (fun history =>
-        ((menu.information (initialLaw setup) count scheduler).runBehavioralFrom
+          (restriction.history history.1)) (fun final => payoff final.state who)) ≤
+      expect belief (fun history =>
+        expect ((menu.information (initialLaw setup) count scheduler).runBehavioralFrom
           (Function.update source who repair) (2 * count + 1 - depth)
-          history.1).expect (fun final => base final.state who)) := by
+          history.1) (fun final => base final.state who)) := by
   classical
   intro menu effective count scheduler restriction base deposit payoff
   let app := application setup leaks
@@ -145,9 +145,9 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
         (((effective.information (initialLaw setup) count scheduler).runBehavioralFrom
           (Function.update target who alternative) (2 * count + 1 - depth)
           (restriction.history history.1)).map History.state).support := by
-      rw [← left, FinDist.support_map]
+      rw [← left, PMF.support_map]
       exact ⟨pair, supported, rfl⟩
-    obtain ⟨final, _, same⟩ := FinDist.support_map .. ▸ reached
+    obtain ⟨final, _, same⟩ := PMF.support_map .. ▸ reached
     exact ⟨same ▸ final.trace⟩
   have compared := sourceService_repair_range_settlement_le setup leaks bounds values capacity
     rosters opportunities network parameter utility sample authentic who probability
@@ -156,9 +156,9 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     (fun pair member => (related pair member).2.1)
     (fun pair member => (related pair member).2.2)
   rw [left, right] at compared
-  simp only [FinDist.bind_map, FinDist.expect_bind, TerminalAudit.settlement_expect] at compared
+  simp only [PMF.bind_map, FinDist.expect_bind, TerminalAudit.settlement_expect] at compared
   apply compared.trans_eq
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro final _
   have clear := sourceService_history_audit_clear setup leaks bounds values capacity rosters
     opportunities network sample authentic final who

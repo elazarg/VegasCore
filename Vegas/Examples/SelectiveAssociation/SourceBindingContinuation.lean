@@ -94,8 +94,8 @@ theorem bob_binding_visit {Claim : Type} (players : Player → (application Clai
     ∃ b, final.application.core = CorePath.bob a c b := by
   rw [← List.append_nil (visit 2), runInstructions_visit] at supported
   obtain ⟨response, _, resultMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  cases FinDist.mem_support_pure.mp resultMem
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  cases (PMF.mem_support_pure_iff _ _).mp resultMem
   exact ⟨selectedBinding 2 response,
     bob_binding_response (visitInput 2 execution) response rfl a c core⟩
 
@@ -135,7 +135,7 @@ theorem carol_binding_response_results {Claim : Type}
     (remainingVisit 1 (execution.respond (application Claim) carol response))).support at supported
   rw [runInstructions_append] at supported
   obtain ⟨afterBob, bobMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨b, bobCore⟩ := bob_binding_visit players _ afterBob a (selectedBinding 1 response)
     (carol_binding_response execution response visited a core) bobMem
   obtain ⟨first, second, third, result, firstOpens, secondOpens, thirdOpens⟩ :=

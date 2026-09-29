@@ -38,8 +38,8 @@ def packetEvidence (Claim : Type) : (application Claim).PacketEvidence where
       cases Option.some.inj accepted
       exact valid
     environment state cmd next valid reached := by
-      change next ∈ (FinDist.pure (command state cmd)).support at reached
-      cases FinDist.mem_support_pure.mp reached
+      change next ∈ (PMF.pure (command state cmd)).support at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact command_evidence state cmd fact.toSource valid }
   issued state who known material received fact certified := by
     classical
@@ -101,7 +101,7 @@ theorem observed_fact_known (Claim : Type) [Fintype Claim]
       ReactiveApplication.stateInvariant
         (app := application Claim)
         (fun state => state.core.evidenceHolds sourceProgram fact.toSource) history.state) :=
-  (packetEvidence Claim).knows_observed_menu (menu Claim) (FinDist.pure initial) horizon
+  (packetEvidence Claim).knows_observed_menu (menu Claim) (PMF.pure initial) horizon
     (scheduler Claim) who past view fact observed
 
 theorem owns_alice (a : PublicationResult Bool) (visit : Option Event) (clock : Nat)

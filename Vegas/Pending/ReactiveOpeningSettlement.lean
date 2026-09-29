@@ -220,7 +220,7 @@ theorem OpeningWindowFrame.response (runtime : EventGraphRuntime graph)
       | some slot =>
           have atSlot : visits = slot.val := by simpa using chosen.symm
           subst visits
-          cases FinDist.mem_support_pure.mp supported
+          cases (PMF.mem_support_pure_iff _ _).mp supported
           simpa only [↓reduceIte] using
             frame.opening_response runtime leaks owner event candidate raw offset slot
               initial current owned (valid rfl)
@@ -261,17 +261,17 @@ theorem OpeningWindowFrame.run (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   induction roster generalizing current visits with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simpa only [List.count_nil, Nat.add_zero] using frame
   | cons who rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have activated := frame.activate runtime leaks owner event candidate raw offset selected
         visits initial current who sample
       have responded := activated.response runtime leaks owner event candidate raw offset selected
@@ -429,14 +429,14 @@ theorem OpeningWindowFrame.settle (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   have selection := frame.selection runtime leaks owner event candidate raw offset selected
     initial current serials
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind, selection] at reached
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind, selection] at reached
   cases selected with
   | none =>
       simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
         ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume] at reached
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨frame.application, frame.before_published runtime leaks owner event candidate raw
         offset none slots initial current rfl⟩
   | some slot =>
@@ -448,9 +448,9 @@ theorem OpeningWindowFrame.settle (runtime : EventGraphRuntime graph)
         (some slot) slots initial current serials opened
       simp only [Option.isSome_some, ↓reduceIte,
         ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume] at reached
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
         found, frame.application, Option.isSome_some, ↓reduceIte]
       refine ⟨True.intro, ?_⟩
@@ -478,7 +478,7 @@ theorem openingWindow_settlement (runtime : EventGraphRuntime graph)
       else initial.application) ∧
     final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) := by
   rw [runtime.runInteractionPlan_append] at reached
-  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have frame := OpeningWindowFrame.initial runtime leaks owner event candidate raw selected
     initial serials published
   have finished := frame.run runtime leaks owner event candidate raw (initial.recall owner).length
@@ -487,14 +487,14 @@ theorem openingWindow_settlement (runtime : EventGraphRuntime graph)
   have inclusion : final ∈ (runtime.interactionStep leaks
       (runtime.openingWindowPlayers leaks owner event candidate raw (initial.recall owner).length
         selected) network (.includeLatest event owner) current).support := by
-    simpa only [runInteractionPlan, FinDist.bind_pure] using reached
+    simpa only [runInteractionPlan, PMF.bind_pure] using reached
   exact finished.settle runtime leaks owner event candidate raw (initial.recall owner).length
     selected initial current serials _ network final inclusion
 
 theorem openingWindowMixture_settlement (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (roster : List Player) (choices : FinDist (Option (Fin (roster.count owner))))
+    (roster : List Player) (choices : PMF (Option (Fin (roster.count owner))))
     (initial : (runtime.reactiveApplication leaks).Execution)
     (serials : initial.network.SerialsBeforeNext)
     (published : initial.network.Satisfies fun message =>
@@ -512,13 +512,13 @@ theorem openingWindowMixture_settlement (runtime : EventGraphRuntime graph)
           (runtime.windowEnvelope leaks owner event candidate raw initial)).getD initial.application
         else initial.application) := by
   rw [runtime.openingWindowMixture_law leaks owner event candidate raw
-    (initial.recall owner).length choices network _ initial (Nat.le_refl _), FinDist.map_bind]
-  conv_rhs => rw [FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+    (initial.recall owner).length choices network _ initial (Nat.le_refl _), PMF.map_bind]
+  conv_rhs => rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro selected _
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
   exact (runtime.openingWindow_settlement leaks owner event candidate raw roster selected
     initial serials published owned (fun _ => valid) network final reached).1
 

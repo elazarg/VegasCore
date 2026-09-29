@@ -77,7 +77,7 @@ responses, scheduling, and passive observations. It asserts legality of game
 effects, not equality of strategy spaces or equilibrium outcomes. -/
 theorem reactive_history_graph_reachable (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
     (trace : ((runtime.reactiveApplication leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state) :
@@ -99,7 +99,7 @@ theorem reactive_history_graph_reachable (runtime : EventGraphRuntime graph)
         (runtime.reactiveStateInvariant leaks setup).environment state command next valid reached⟩ }
   have valid := preserved.history (inputs.map State.initial) horizon scheduler (by
     intro state supported
-    obtain ⟨setup, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨setup, chosen, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨setup, chosen, State.initial_invariant setup⟩) trace
   cases state with
   | none => trivial

@@ -40,7 +40,7 @@ theorem tableObservation_guessing (table : PayoffTable) (charge : ℝ) (bit gues
 runtime charge, for every receiver mixture and every charge value. Rationality
 of those choices is a separate property of the selected payoff table. -/
 theorem native_initialized_table_payoffs (table : PayoffTable) (charge : ℝ)
-    (profile : Profile nativeModel.behavioralSignature) (guesses : FinDist Bool)
+    (profile : Profile nativeModel.behavioralSignature) (guesses : PMF Bool)
     (alicePolicy : profile alice = nativeAliceBehavior)
     (watcherPolicy : profile watcher = nativeWatcherBehavior)
     (atQuiet : profile bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1) :
@@ -48,7 +48,7 @@ theorem native_initialized_table_payoffs (table : PayoffTable) (charge : ℝ)
       (fun history => ((nativeObservation history.state).1,
         (nativeObservation history.state).2.1,
         fun who => nativeTableUtility table charge who history.state)) =
-      (FinDist.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
         guesses.map (fun guess => (bit, ⟨.success bit, guessResult guess⟩,
           fun who => (table ⟨.success bit, guessResult guess⟩ who : ℝ)))) := by
   have law := native_initialized_observation profile guesses alicePolicy watcherPolicy atQuiet
@@ -58,17 +58,17 @@ theorem native_initialized_table_payoffs (table : PayoffTable) (charge : ℝ)
         fun who => nativeTableUtility table charge who history.state)) =
       (((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
         nativeObservation).map (tableObservation table charge) := by
-    simp only [FinDist.map_comp, Function.comp_def]
-    apply FinDist.map_congr_of_eq_on_support
+    simp only [PMF.map_comp, Function.comp_def]
+    apply map_congr_on_support _
     intro history supported
     have stateSupported : history.state ∈
         ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).support :=
-      FinDist.support_map .. ▸ ⟨history, supported, rfl⟩
+      PMF.support_map .. ▸ ⟨history, supported, rfl⟩
     obtain ⟨control, stateEq⟩ := native_initialized_some profile history.state stateSupported
     rw [stateEq]
     rfl
   rw [same, law]
-  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
     tableObservation_guessing]
 
 end Vegas.Examples.MonitoredGuessing

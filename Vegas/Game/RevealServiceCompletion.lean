@@ -52,7 +52,7 @@ theorem suffix_rounds (watcher : Player)
             ((runtime setup).reportNetwork leaks watcher) instruction execution := by
         simp only [ReactiveApplication.round, scheduler, position, selected, interactionStep]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next supported
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
@@ -81,7 +81,7 @@ theorem menu_execution_law [Fintype Player]
     (horizon setup watcher) (scheduler setup leaks watcher) profile
     (2 * horizon setup watcher + 1) _ (Nat.le_refl _)]
   change (initialLaw setup).bind _ = _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro state _
   congr 1
   exact suffix_rounds setup leaks watcher _ [] (plan setup watcher) rfl _ rfl
@@ -122,7 +122,7 @@ theorem block_completes (watcher : Player) (reveals : setup.program.RevealOnly)
   obtain ⟨prior, reached, expired, expiredAt, finished⟩ :=
     (runtime setup).runInteractionPlan_support_instruction leaks players network beforeExpiry []
       (.expire event) execution final supported
-  have same : final = expired := FinDist.mem_support_pure.mp finished
+  have same : final = expired := (PMF.mem_support_pure_iff _ _).mp finished
   subst final
   have progress := (runtime setup).runInteractionPlan_facts leaks inputs players network
     beforeExpiry execution prior invariant reached
@@ -156,7 +156,7 @@ theorem planPrefix_completed (watcher : Player) (reveals : setup.program.RevealO
       have inside : rank < (graph setup).order.eventCount := by omega
       let current : (graph setup).EventId := ⟨rank, inside⟩
       rw [show rank + 1 = current.val + 1 from rfl, planPrefix_succ,
-        (runtime setup).runInteractionPlan_append, FinDist.support_bind] at supported
+        (runtime setup).runInteractionPlan_append, PMF.support_bind] at supported
       obtain ⟨middle, reached, rest⟩ := Set.mem_iUnion₂.mp supported
       have previous := ih (by omega) middle reached
       have progress := (runtime setup).runInteractionPlan_facts leaks inputs players network
@@ -215,7 +215,7 @@ theorem planSuffix_terminal (watcher : Player) (reveals : setup.program.RevealOn
       have empty : (List.finRange (graph setup).order.eventCount).drop
           (graph setup).order.eventCount = [] := by simp
       rw [empty, List.flatMap_nil] at supported
-      have same : final = execution := FinDist.mem_support_pure.mp supported
+      have same : final = execution := (PMF.mem_support_pure_iff _ _).mp supported
       subst final
       apply Finset.eq_univ_of_forall
       intro event
@@ -228,7 +228,7 @@ theorem planSuffix_terminal (watcher : Player) (reveals : setup.program.RevealOn
         simp only [List.getElem_finRange, current]
         congr 1
       rw [split, List.flatMap_cons, (runtime setup).runInteractionPlan_append,
-        FinDist.support_bind] at supported
+        PMF.support_bind] at supported
       obtain ⟨middle, reached, rest⟩ := Set.mem_iUnion₂.mp supported
       have progress := (runtime setup).runInteractionPlan_facts leaks inputs players network
         (block setup watcher current) execution middle invariant reached
@@ -265,9 +265,9 @@ theorem terminal_history_settled
       have position : control.execution.environmentRecall.length = horizon setup watcher := by
         rw [finished, Nat.add_zero] at accounted
         exact accounted
-      rw [position, ReactiveApplication.roundsFrom, FinDist.support_bind] at reached
+      rw [position, ReactiveApplication.roundsFrom, PMF.support_bind] at reached
       obtain ⟨initial, initially, continued⟩ := Set.mem_iUnion₂.mp reached
-      rw [initialLaw, FinDist.support_map] at initially
+      rw [initialLaw, PMF.support_map] at initially
       obtain ⟨source, _drawn, rfl⟩ := initially
       have actual := suffix_rounds setup leaks watcher responses.uniformResponses []
         (plan setup watcher) rfl
@@ -301,13 +301,13 @@ theorem menu_settles [Fintype Player]
   have observed : history.state ∈ (((responses.information (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher)).runBehavioral profile
         (2 * horizon setup watcher + 1)).map History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨history, supported, rfl⟩
-  rw [menu_execution_law setup leaks responses watcher profile, FinDist.support_bind] at observed
+  rw [menu_execution_law setup leaks responses watcher profile, PMF.support_bind] at observed
   obtain ⟨initial, initially, continued⟩ := Set.mem_iUnion₂.mp observed
-  rw [initialLaw, FinDist.support_map] at initially
+  rw [initialLaw, PMF.support_map] at initially
   obtain ⟨source, _drawn, rfl⟩ := initially
-  rw [FinDist.support_map] at continued
+  rw [PMF.support_map] at continued
   obtain ⟨execution, reached, same⟩ := continued
   refine ⟨execution, same.symm, ?_⟩
   apply plan_terminal setup leaks watcher reveals _ ((runtime setup).reportNetwork leaks watcher)

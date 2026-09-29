@@ -95,7 +95,7 @@ theorem environmentStep_sample_complete (runtime : EventGraphRuntime graph)
       contradiction
   | sample payload law outputEq codeEq =>
       rw [environmentStep_executeSample_eq runtime state event ready
-        payload law outputEq codeEq view, FinDist.support_map] at supported
+        payload law outputEq codeEq view, PMF.support_map] at supported
       obtain ⟨config, step, same⟩ := supported
       have configEq := congrArg State.config same
       rw [← configEq, EventGraph.Config.step_cut _ _ _ _ _ step]
@@ -119,13 +119,13 @@ theorem environmentStep_expire_complete (runtime : EventGraphRuntime graph)
   | bind owner payload outputEq codeEq =>
       rw [environmentStep_expire_bind_eq runtime state event ready
         entered activated due owner payload outputEq codeEq view,
-        FinDist.mem_support_pure] at supported
+        PMF.mem_support_pure_iff _ _] at supported
       rw [supported]
       exact Finset.mem_insert_self _ _
   | resolve owner payload binding checks outputEq codeEq =>
       rw [environmentStep_expire_resolve_eq runtime state event ready
         entered activated due owner payload binding checks outputEq codeEq view,
-        FinDist.mem_support_pure] at supported
+        PMF.mem_support_pure_iff _ _] at supported
       rw [supported]
       exact Finset.mem_insert_self _ _
 

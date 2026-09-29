@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProtocolPolicy
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Information-local behavioral policies at a commitment interface
 
@@ -32,21 +34,21 @@ def BehavioralPolicy.Admitted {who : Player} : {Γ : SourceCtx Player L} → {O 
 def BehavioralPolicy.protocolAction {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → BehavioralPolicy who program →
-    ProtocolView who program → FinDist (Option (OwnAction Player L))
-  | _, _, .ret _ => fun _ _ => FinDist.pure none
+    ProtocolView who program → PMF (Option (OwnAction Player L))
+  | _, _, .ret _ => fun _ _ => PMF.pure none
   | _, _, .sample _ _ _ next => fun policy =>
-      Sum.elim (fun _ => FinDist.pure none) (protocolAction next policy)
+      Sum.elim (fun _ => PMF.pure none) (protocolAction next policy)
   | _, _, .commit (payload := payload) name owner _ _ next => fun policy =>
       Sum.elim
         (fun view => if own : owner = who then
           (policy.1 own view).map (fun choice => some (.commit owner name payload choice))
-          else FinDist.pure none)
+          else PMF.pure none)
         (protocolAction next policy.2)
   | _, _, .reveal _ owner name _ _ _ next => fun policy =>
       Sum.elim
         (fun view => if own : owner = who then
           (policy.1 own view).map (fun disclose => some (.reveal owner name disclose))
-          else FinDist.pure none)
+          else PMF.pure none)
         (protocolAction next policy.2)
 
 theorem BehavioralPolicy.protocolAction_mem_menu {who : Player} :
@@ -56,13 +58,13 @@ theorem BehavioralPolicy.protocolAction_mem_menu {who : Player} :
     ∀ view action, action ∈ (policy.protocolAction program view).support →
       ProtocolView.menu who program admission view action
   | _, _, .ret _, _, _, _, _, _, member => by
-      have same := FinDist.mem_support_pure.mp member
+      have same := (PMF.mem_support_pure_iff _ _).mp member
       subst_vars
       simp [ProtocolView.menu, ProtocolView.actor]
   | _, _, .sample _ _ _ next, admission, policy, permitted, view, action, member => by
       cases view with
       | inl current =>
-          have same := FinDist.mem_support_pure.mp member
+          have same := (PMF.mem_support_pure_iff _ _).mp member
           subst action
           simp [ProtocolView.menu, ProtocolView.actor]
       | inr later =>
@@ -71,12 +73,12 @@ theorem BehavioralPolicy.protocolAction_mem_menu {who : Player} :
       cases view with
       | inl current =>
           by_cases own : owner = who
-          · simp only [protocolAction, Sum.elim_inl, own, dite_true, FinDist.support_map] at member
+          · simp only [protocolAction, Sum.elim_inl, own, dite_true, PMF.support_map] at member
             obtain ⟨choice, supported, rfl⟩ := member
             exact ⟨by simp [ProtocolView.actor, own], choice,
               permitted.1 own current choice supported, by simp [own]⟩
           · simp only [protocolAction, Sum.elim_inl, own, dite_false,
-              FinDist.mem_support_pure] at member
+              PMF.mem_support_pure_iff _ _] at member
             subst action
             simp [ProtocolView.menu, ProtocolView.actor, own]
       | inr later =>
@@ -86,11 +88,11 @@ theorem BehavioralPolicy.protocolAction_mem_menu {who : Player} :
       cases view with
       | inl current =>
           by_cases own : owner = who
-          · simp only [protocolAction, Sum.elim_inl, own, dite_true, FinDist.support_map] at member
+          · simp only [protocolAction, Sum.elim_inl, own, dite_true, PMF.support_map] at member
             obtain ⟨disclose, _, rfl⟩ := member
             exact ⟨by simp [ProtocolView.actor, own], disclose, by simp [own]⟩
           · simp only [protocolAction, Sum.elim_inl, own, dite_false,
-              FinDist.mem_support_pure] at member
+              PMF.mem_support_pure_iff _ _] at member
             subst action
             simp [ProtocolView.menu, ProtocolView.actor, own]
       | inr later =>
@@ -100,9 +102,9 @@ def BehavioralPolicy.toProtocol {who : Player} {Γ : SourceCtx Player L} {O : Fi
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
     (policy : BehavioralPolicy who program) (permitted : policy.Admitted program admission)
     (view : ProtocolView who program) :
-    FinDist {action : Option (OwnAction Player L) //
+    PMF {action : Option (OwnAction Player L) //
       ProtocolView.menu who program admission view action} :=
-  (policy.protocolAction program view).toSubtype
+  pmfToSubtype (policy.protocolAction program view)
     (policy.protocolAction_mem_menu program admission permitted view)
 
 @[simp] theorem BehavioralPolicy.toProtocol_map_val {who : Player}
@@ -111,12 +113,12 @@ def BehavioralPolicy.toProtocol {who : Player} {Γ : SourceCtx Player L} {O : Fi
     (policy : BehavioralPolicy who program) (permitted : policy.Admitted program admission)
     (view : ProtocolView who program) :
     (policy.toProtocol program admission permitted view).map Subtype.val =
-      policy.protocolAction program view := FinDist.map_val_toSubtype _ _
+      policy.protocolAction program view := map_val_pmfToSubtype _ _
 
 def BehavioralPolicy.fromProtocol {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
-    ((view : ProtocolView who program) → FinDist
+    ((view : ProtocolView who program) → PMF
       {action : Option (OwnAction Player L) //
         ProtocolView.menu who program admission view action}) → BehavioralPolicy who program
   | _, _, .ret _, _, _ => PUnit.unit
@@ -133,7 +135,7 @@ def BehavioralPolicy.fromProtocol {who : Player} :
 theorem BehavioralPolicy.admitted_fromProtocol {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
-    (policy : (view : ProtocolView who program) → FinDist
+    (policy : (view : ProtocolView who program) → PMF
       {action : Option (OwnAction Player L) //
         ProtocolView.menu who program admission view action}) →
     (fromProtocol program admission policy).Admitted program admission
@@ -143,7 +145,7 @@ theorem BehavioralPolicy.admitted_fromProtocol {who : Player} :
   | _, _, .commit _ owner _ _ next, admission, policy => by
       constructor
       · intro own view choice member
-        obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ member
+        obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ member
         have legal := selected.2
         cases action : selected.1 with
         | none => simp [ProtocolView.menu, ProtocolView.actor, action, own] at legal
@@ -169,27 +171,27 @@ theorem BehavioralPolicy.from_toProtocol {who : Player} :
       apply Prod.ext
       · funext own view
         dsimp only [fromProtocol]
-        rw [toProtocol, FinDist.map_toSubtype]
+        rw [toProtocol, map_pmfToSubtype]
         simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
-          FinDist.map_comp, Function.comp_def, OwnAction.binding_commit]
-        exact FinDist.map_id _
+          PMF.map_comp, Function.comp_def, OwnAction.binding_commit]
+        exact PMF.map_id _
       · exact from_toProtocol next (fun site => admission (some site)) policy.2 permitted.2
   | _, _, .reveal _ _ _ _ _ _ next, admission, policy, permitted => by
       apply Prod.ext
       · funext own view
         dsimp only [fromProtocol]
-        rw [toProtocol, FinDist.map_toSubtype]
+        rw [toProtocol, map_pmfToSubtype]
         simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
-          FinDist.map_comp, Function.comp_def, OwnAction.disclosure]
-        exact FinDist.map_id _
+          PMF.map_comp, Function.comp_def, OwnAction.disclosure]
+        exact PMF.map_id _
       · exact from_toProtocol next admission policy.2 permitted
 
 private theorem protocolLaw_idle {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
     (view : ProtocolView who program) (inactive : ProtocolView.actor who program view ≠ some who)
-    (law : FinDist {action : Option (OwnAction Player L) //
+    (law : PMF {action : Option (OwnAction Player L) //
       ProtocolView.menu who program admission view action}) :
-    law.map Subtype.val = FinDist.pure none := by
+    law.map Subtype.val = PMF.pure none := by
   have onlyIdle (choice : {action : Option (OwnAction Player L) //
       ProtocolView.menu who program admission view action}) : choice.1 = none := by
     have legal := choice.2
@@ -200,13 +202,13 @@ private theorem protocolLaw_idle {who : Player} {Γ : SourceCtx Player L} {O : F
         exact (inactive legal.1).elim
   calc
     _ = law.map (fun _ => none) :=
-      FinDist.map_congr_of_eq_on_support (fun choice _ => onlyIdle choice)
-    _ = _ := by simp [FinDist.map_eq_bind]
+      map_congr_on_support _ (fun choice _ => onlyIdle choice)
+    _ = _ := by simp [← PMF.bind_pure_comp, Function.comp_def]
 
 theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
-    (policy : (view : ProtocolView who program) → FinDist
+    (policy : (view : ProtocolView who program) → PMF
       {action : Option (OwnAction Player L) //
         ProtocolView.menu who program admission view action}) →
     ∀ view, (fromProtocol program admission policy).protocolAction program view =
@@ -225,8 +227,8 @@ theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
       | inl current =>
           by_cases own : owner = who
           · simp only [fromProtocol, protocolAction, Sum.elim_inl, dite_eq_left own,
-              FinDist.map_comp]
-            apply FinDist.map_congr_of_eq_on_support
+              PMF.map_comp]
+            apply map_congr_on_support _
             intro choice _
             have legal := choice.2
             cases selected : choice.1 with
@@ -247,8 +249,8 @@ theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
       | inl current =>
           by_cases own : owner = who
           · simp only [fromProtocol, protocolAction, Sum.elim_inl, dite_eq_left own,
-              FinDist.map_comp]
-            apply FinDist.map_congr_of_eq_on_support
+              PMF.map_comp]
+            apply map_congr_on_support _
             intro choice _
             have legal := choice.2
             cases selected : choice.1 with
@@ -276,7 +278,7 @@ def behavioralPolicyEquiv {Γ : SourceCtx Player L} {O : Finset VarId}
     (BehavioralPolicy.from_toProtocol program admission policy.1 policy.2)
   right_inv policy := by
     funext view
-    apply FinDist.map_injective Subtype.val_injective
+    apply pmf_map_injective Subtype.val_injective
     rw [BehavioralPolicy.toProtocol_map_val, BehavioralPolicy.protocolAction_fromProtocol]
 
 end Vegas.SourceProgram

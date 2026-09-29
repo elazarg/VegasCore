@@ -27,7 +27,7 @@ variable {Principal : Type} [DecidableEq Principal]
     raw.actions who (normal.recall who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 theorem decode_canonicalPolicy (who : Principal)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
@@ -36,7 +36,7 @@ theorem decode_canonicalPolicy (who : Principal)
         (normal.canonicalPolicy raw stable closed initial horizon scheduler who source)) past view =
       app.decodePolicy ((normal.menu raw).embedPolicy initial horizon scheduler who source)
         (normal.recall who past) view := by
-  simp only [decodePolicy, ResponseMenu.embedPolicy, canonicalPolicy, FinDist.map_comp]
+  simp only [decodePolicy, ResponseMenu.embedPolicy, canonicalPolicy, PMF.map_comp]
   rfl
 
 theorem decode_canonicalProfile
@@ -89,8 +89,8 @@ theorem aliasDeviation_finish
     (normal.decodeProfile_normal raw initial horizon scheduler source)
     scheduler remaining actor execution valid
   change _ = ((app.resume _ actor (normal.execution execution)).bind _).map app.finished
-  rw [law, FinDist.map_comp]
-  simp only [finish, FinDist.map_comp]
+  rw [law, PMF.map_comp]
+  simp only [finish, PMF.map_comp]
   rfl
 
 variable [Fintype Principal]
@@ -165,22 +165,22 @@ theorem canonical_context_value
   simp only [GameTheory.Profile.update_eq_self, FinDist.expect_bind]
   rw [strategy]
   calc
-    _ = (target.belief who original).expect (fun history =>
-        (((normal.menu raw).information initial horizon scheduler).runBehavioralFrom
+    _ = expect (target.belief who original) (fun history =>
+        expect (((normal.menu raw).information initial horizon scheduler).runBehavioralFrom
           source.strategy (2 * horizon + 1)
-            (normal.history raw stable initial horizon scheduler history.1)).expect
+            (normal.history raw stable initial horizon scheduler history.1))
           (fun final => payoff final.state)) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro history _
       have law := normal.runBehavioral_projection raw stable initial horizon scheduler
         (fun player => normal.canonicalPolicy raw stable closed initial horizon scheduler
           player (source.strategy player)) source.strategy
         (fun player observed => normal.canonicalPolicy_project raw stable closed initial horizon
           scheduler player (source.strategy player) observed) (2 * horizon + 1) history.1
-      rw [← law, FinDist.expect_map]
+      rw [← law, expect_map]
       rfl
     _ = _ := by
-      rw [← beliefs, FinDist.expect_map]
+      rw [← beliefs, expect_map]
       rfl
 
 theorem aliasDeviation_context_value
@@ -206,22 +206,22 @@ theorem aliasDeviation_context_value
   simp only [FinDist.expect_bind]
   rw [strategy]
   calc
-    _ = (target.belief who original).expect (fun history =>
-        (((normal.menu raw).information initial horizon scheduler).runBehavioralFrom
+    _ = expect (target.belief who original) (fun history =>
+        expect (((normal.menu raw).information initial horizon scheduler).runBehavioralFrom
           (GameTheory.Profile.update
             (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
               source.strategy who
                 (normal.aliasDeviation raw initial horizon scheduler who past alternative))
-          (2 * horizon + 1) (normal.history raw stable initial horizon scheduler history.1)).expect
+          (2 * horizon + 1) (normal.history raw stable initial horizon scheduler history.1))
             (fun final => payoff final.state)) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro history _
       have law := normal.aliasDeviation_historyLaw raw stable closed initial horizon scheduler
         source.strategy who alternative history.1 past view (history.2.trans observed)
-      have value := congrArg (fun law => law.expect payoff) law
-      simpa only [FinDist.expect_map] using value
+      have value := congrArg (fun law => expect law payoff) law
+      simpa only [expect_map] using value
     _ = _ := by
-      rw [← beliefs, FinDist.expect_map]
+      rw [← beliefs, expect_map]
       rfl
 
 end Interaction.ReactiveApplication.SubmissionNormalization

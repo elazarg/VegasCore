@@ -25,7 +25,7 @@ private theorem environment_recall (execution next : nativeApp.Execution)
     (supported : next ∈ (execution.environmentStep nativeApp command).support) :
     next.environmentRecall = execution.environmentRecall ++
       [⟨execution.observeEnvironment nativeApp, command⟩] := by
-  obtain ⟨updated, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ supported
   rfl
 
 private theorem idle_step_probability
@@ -35,9 +35,8 @@ private theorem idle_step_probability
     (inactive : ¬ nativeArena.active state true) :
     nativeModel.playerStepProb profile true trace joint = 1 := by
   let := nativeModel.subsingleton_choice_of_not_active trace inactive
-  change (profile true (nativeModel.infoOf true trace)).prob
-    (nativeModel.choicesOfLegal trace joint true) = 1
-  rw [FinDist.eq_pure_of_subsingleton (profile true (nativeModel.infoOf true trace))
+  change ((profile true (nativeModel.infoOf true trace)) (nativeModel.choicesOfLegal trace joint true)).toReal = 1
+  rw [eq_pure_of_subsingleton (profile true (nativeModel.infoOf true trace))
     (nativeModel.choicesOfLegal trace joint true)]
   exact FinDist.prob_pure_self _
 
@@ -61,7 +60,7 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
             have position := (native_bob_remaining control prior same).1
             change _ ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
               (some control) joint).support at reached
-            simp only [ReactiveApplication.transition, same, FinDist.mem_support_pure] at reached
+            simp only [ReactiveApplication.transition, same, PMF.mem_support_pure_iff _ _] at reached
             subst_vars
             simp only [beforeBob, nativeApp.respond_environmentRecall, position,
               Nat.reduceLeDiff, reduceCtorEq, and_false, or_self] at early
@@ -74,18 +73,18 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
               (some ⟨remaining, actor, execution⟩) joint).support at reached
             cases actor with
             | some who =>
-                cases FinDist.mem_support_pure.mp reached
+                cases (PMF.mem_support_pure_iff _ _).mp reached
                 have previous : execution.environmentRecall.length ≤ 10 := by
                   simpa only [beforeBob, nativeApp.respond_environmentRecall,
                     reduceCtorEq, and_false, or_false] using early
                 exact Or.inl previous
             | none =>
                 cases remaining with
-                | zero => cases FinDist.mem_support_pure.mp reached; exact early
+                | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact early
                 | succ remaining =>
                     obtain ⟨command, _, moved⟩ :=
-                      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                    obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                    obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                     have length := environment_recall execution next command supported
                     change execution.environmentRecall.length ≤ 10 ∨ _
                     left
@@ -115,7 +114,7 @@ private theorem alice_position_history : ∀ {state} (_trace : nativeArena.Trace
       subst_vars
       cases before with
       | none =>
-          obtain ⟨state, _, equal⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨state, _, equal⟩ := PMF.support_map .. ▸ reached
           cases equal
           cases active
       | some previous =>
@@ -124,17 +123,17 @@ private theorem alice_position_history : ∀ {state} (_trace : nativeArena.Trace
             (some ⟨remaining, actor, execution⟩) joint).support at reached
           cases actor with
           | some who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               cases active
           | none =>
               cases remaining with
               | zero =>
-                  cases FinDist.mem_support_pure.mp reached
+                  cases (PMF.mem_support_pure_iff _ _).mp reached
                   cases active
               | succ remaining =>
                   obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, equal⟩ := FinDist.support_map .. ▸ moved
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, equal⟩ := PMF.support_map .. ▸ moved
                   cases equal
                   have length := environment_recall execution next command supported
                   have position := native_alice_activation_position execution.environmentRecall
@@ -188,16 +187,16 @@ private theorem afterBob_transition (before after : nativeApp.ProtocolState)
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact ⟨by simpa only [nativeApp.respond_environmentRecall] using valid.1,
             fun _ => rfl⟩
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, _, moved⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               have length := environment_recall execution next command supported
               change 11 ≤ next.environmentRecall.length ∧ _
               have lower := valid.1
@@ -227,7 +226,7 @@ theorem bob_last_decision : InformationModel.LastDecision (E := nativeArena) tru
       change target ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
         history.state joint).support at moved
       rw [state] at moved
-      simp only [ReactiveApplication.transition, actor, FinDist.mem_support_pure] at moved
+      simp only [ReactiveApplication.transition, actor, PMF.mem_support_pure_iff _ _] at moved
       have initial : afterBob (history.extend legal realized).state := by
         change afterBob target
         rw [moved]

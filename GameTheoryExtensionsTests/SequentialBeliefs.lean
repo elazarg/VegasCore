@@ -22,7 +22,7 @@ open GameTheory.Analysis.Protocol.Examples
 def limitProfile : Profile (model false).behavioralSignature := fun who => choose false who who
 
 def perturbedProfile (n : Nat) : Profile (model false).behavioralSignature := fun who info =>
-  FinDist.mix (trembleWeight n) (trembleWeight_nonneg n) (trembleWeight_le_one n)
+  mix (trembleWeight n) (trembleWeight_nonneg n) (trembleWeight_le_one n)
     (choose false who (!who) info) (choose false who who info)
 
 theorem perturbed_full (n : Nat) :
@@ -114,9 +114,9 @@ def assessment (profile : Profile (model false).behavioralSignature) :
   strategy := profile
   belief who site := by
     cases who
-    · exact FinDist.pure ⟨aliceHistory (site.1.getD false), by
+    · exact PMF.pure ⟨aliceHistory (site.1.getD false), by
         obtain ⟨bit, rfl⟩ := alice_site_eq site; rfl⟩
-    · exact (FinDist.uniformOfFintype (α := Bool)).map fun bit =>
+    · exact (PMF.uniformOfFintype (α := Bool)).map fun bit =>
         ⟨bobHistory bit, by rw [bob_site_eq site]; rfl⟩
 
 def historyOfState : State → arena.History
@@ -138,11 +138,11 @@ theorem state_injective : Function.Injective (History.state (E := arena)) :=
 theorem reach_alice (profile : Profile (model false).behavioralSignature) (bit : Bool) :
     (model false).historyReachProbability profile (aliceHistory bit) = 1 / 2 := by
   classical
-  change ((model false).runBehavioralFrom profile 1 arena.initHistory).prob (aliceHistory bit) = _
+  change (((model false).runBehavioralFrom profile 1 arena.initHistory) (aliceHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
     ← FinDist.prob_map_of_injective History.state state_injective, run_states]
-  simp only [Function.iterate_one, FinDist.pure_bind]
-  change ((FinDist.uniformOfFintype (α := Bool)).map State.alice).prob (.alice bit) = _
+  simp only [Function.iterate_one, PMF.pure_bind]
+  change (((PMF.uniformOfFintype (α := Bool)).map State.alice) (.alice bit)).toReal = _
   rw [FinDist.prob_map_of_injective State.alice (fun _ _ same => State.alice.inj same)]
   norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
 
@@ -150,19 +150,18 @@ theorem reach_bob (n : Nat) (bit : Bool) :
     (model false).historyReachProbability (perturbedProfile n) (bobHistory bit) =
       trembleWeight n / 2 := by
   classical
-  change ((model false).runBehavioralFrom (perturbedProfile n) 2 arena.initHistory).prob
-    (bobHistory bit) = _
+  change (((model false).runBehavioralFrom (perturbedProfile n) 2 arena.initHistory) (bobHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
     ← FinDist.prob_map_of_injective History.state state_injective, run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    FinDist.pure_bind, initHistory, kernel, FinDist.bind_map, FinDist.prob_bind]
-  change (FinDist.uniformOfFintype (α := Bool)).expect (fun hidden =>
-    ((choiceLaw (perturbedProfile n) false (some hidden)).map
-      (fun ask => if ask then State.bob hidden else .done hidden none)).prob (.bob bit)) = _
-  rw [FinDist.expect_eq_sum, Fintype.sum_bool]
+    PMF.pure_bind, initHistory, kernel, PMF.bind_map, toReal_bind_apply]
+  change expect (PMF.uniformOfFintype (α := Bool)) (fun hidden =>
+    (((choiceLaw (perturbedProfile n) false (some hidden)).map
+      (fun ask => if ask then State.bob hidden else .done hidden none)) (.bob bit)).toReal) = _
+  rw [expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
-    simp [choiceLaw, perturbedProfile, choose, FinDist.map_mix, FinDist.prob_mix,
-      FinDist.prob_uniformOfFintype, Fintype.card_bool, FinDist.prob_pure_eq_ite] <;> ring
+    simp [choiceLaw, perturbedProfile, choose, mix_map, mix_apply_toReal,
+      FinDist.prob_uniformOfFintype, Fintype.card_bool, toReal_pure_apply] <;> ring
 
 def bobInformationHistory (bit : Bool) : (model false).InformationHistory true bobSite.1 :=
   ⟨bobHistory bit, rfl⟩
@@ -188,10 +187,9 @@ theorem mass_bob (n : Nat) :
   ring
 
 theorem belief_bob_prob (profile : Profile (model false).behavioralSignature) (bit : Bool) :
-    ((assessment profile).belief true bobSite).prob (bobInformationHistory bit) = 1 / 2 := by
+    (((assessment profile).belief true bobSite) (bobInformationHistory bit)).toReal = 1 / 2 := by
   classical
-  change ((FinDist.uniformOfFintype (α := Bool)).map bobInformationHistory).prob
-    (bobInformationHistory bit) = _
+  change (((PMF.uniformOfFintype (α := Bool)).map bobInformationHistory) (bobInformationHistory bit)).toReal = _
   rw [FinDist.prob_map_of_injective _ bobInformationHistory_injective]
   norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
 
@@ -208,8 +206,8 @@ theorem perturbed_bayes (n : Nat) :
     have equal : (assessment (perturbedProfile n)).belief false (aliceSite bit) =
         (model false).bayesBelief (perturbedProfile n) false (aliceSite bit)
           (antichain false (aliceSite bit)) positive := by
-      exact (FinDist.eq_pure_of_subsingleton _ history).trans
-        (FinDist.eq_pure_of_subsingleton _ history).symm
+      exact (eq_pure_of_subsingleton _ history).trans
+        (eq_pure_of_subsingleton _ history).symm
     rw [equal]
     exact InformationModel.bayesBelief_prob _ _ _ _ _ _ _
   · have same := bob_site_eq site
@@ -217,8 +215,7 @@ theorem perturbed_bayes (n : Nat) :
     obtain ⟨bit, same⟩ := history_at_bob history
     have historyEq : history = bobInformationHistory bit := Subtype.ext same
     subst history
-    change ((assessment (perturbedProfile n)).belief true bobSite).prob
-      (bobInformationHistory bit) = (model false).historyReachProbability (perturbedProfile n)
+    change (((assessment (perturbedProfile n)).belief true bobSite) (bobInformationHistory bit)).toReal = (model false).historyReachProbability (perturbedProfile n)
         (bobHistory bit) / (model false).informationMass (perturbedProfile n) true bobSite
     rw [belief_bob_prob, reach_bob, mass_bob]
     field_simp [(trembleWeight_pos n).ne']
@@ -227,17 +224,17 @@ theorem assessment_converges : InformationModel.BehavioralAssessmentConvergesPoi
     (fun n => assessment (perturbedProfile n)) (assessment limitProfile) := by
   constructor
   · intro who site choice
-    change Tendsto (fun n => (perturbedProfile n who site.1).prob choice) atTop
-      (nhds ((limitProfile who site.1).prob choice))
-    simp only [perturbedProfile, FinDist.prob_mix]
+    change Tendsto (fun n => ((perturbedProfile n who site.1) choice).toReal) atTop
+      (nhds (((limitProfile who site.1) choice).toReal))
+    simp only [perturbedProfile, mix_apply_toReal]
     have left := trembleWeight_tendsto_zero.mul_const
-      ((choose false who (!who) site.1).prob choice)
+      (((choose false who (!who) site.1) choice).toReal)
     have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
     have right := (one.sub trembleWeight_tendsto_zero).mul_const
-      ((choose false who who site.1).prob choice)
+      (((choose false who who site.1) choice).toReal)
     simpa only [zero_mul, sub_zero, one_mul, zero_add, limitProfile] using left.add right
   · intro who site
-    exact finDistConvergesPointwise_const _
+    exact pmfConvergesPointwise_const _
 
 theorem consistent : (assessment limitProfile).IsSequentiallyConsistent antichain :=
   ⟨fun n => assessment (perturbedProfile n),
@@ -246,16 +243,15 @@ theorem consistent : (assessment limitProfile).IsSequentiallyConsistent antichai
 theorem reach_bob_limit (bit : Bool) :
     (model false).historyReachProbability limitProfile (bobHistory bit) = 0 := by
   classical
-  change ((model false).runBehavioralFrom limitProfile 2 arena.initHistory).prob
-    (bobHistory bit) = _
+  change (((model false).runBehavioralFrom limitProfile 2 arena.initHistory) (bobHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
     ← FinDist.prob_map_of_injective History.state state_injective, run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    FinDist.pure_bind, initHistory, kernel, FinDist.bind_map, FinDist.prob_bind]
-  change (FinDist.uniformOfFintype (α := Bool)).expect (fun hidden =>
-    ((choiceLaw limitProfile false (some hidden)).map
-      (fun ask => if ask then State.bob hidden else .done hidden none)).prob (.bob bit)) = _
-  simp [choiceLaw, limitProfile, choose, FinDist.prob_pure_eq_ite]
+    PMF.pure_bind, initHistory, kernel, PMF.bind_map, toReal_bind_apply]
+  change expect (PMF.uniformOfFintype (α := Bool)) (fun hidden =>
+    (((choiceLaw limitProfile false (some hidden)).map
+      (fun ask => if ask then State.bob hidden else .done hidden none)) (.bob bit)).toReal) = _
+  simp [choiceLaw, limitProfile, choose, toReal_pure_apply]
 
 theorem bob_off_path : (model false).informationMass limitProfile true bobSite = 0 := by
   unfold InformationModel.informationMass

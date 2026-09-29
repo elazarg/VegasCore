@@ -156,12 +156,12 @@ theorem prefix_response_option_law
             rw [block_of_owner setup watcher owner event actor]
             simp only [suffix, List.append_assoc, List.cons_append, List.nil_append,
               List.drop_succ_cons, List.drop_zero]
-          rw [planEq, runInteractionPlan_append, afterLaw, FinDist.pure_bind]
-          change _ = ((FinDist.pure (Sum.inr (α := Config Player L Γ)
+          rw [planEq, runInteractionPlan_append, afterLaw, PMF.pure_bind]
+          change _ = ((PMF.pure (Sum.inr (α := Config Player L Γ)
             (ProtocolState.entry next (revealSuccessor published selected source
               (OwnAction.disclosure (joint owner)))))).bind
               (ProtocolState.continuationLaw _ profile)).map some
-          rw [FinDist.pure_bind]
+          rw [PMF.pure_bind]
           change _ = (ProtocolState.continuationLaw next (afterReveal profile)
             (ProtocolState.entry next (revealSuccessor published selected source
               (OwnAction.disclosure (joint owner))))).map some
@@ -200,7 +200,7 @@ theorem prefix_response_option_law
                 count within state execution related who owned granted response member joint chosen
               simp only [eventCount, List.finRange_succ, List.drop_succ_cons, ← List.map_drop,
                 List.flatMap_map, terminalRefsWith, ProtocolState.step, Sum.elim_inr,
-                FinDist.bind_map, ProtocolState.continuationLaw]
+                PMF.bind_map, ProtocolState.continuationLaw]
               convert tailLaw using 1 <;> rfl
 
 end Vegas

@@ -16,7 +16,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 theorem run_map_controlStep
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
@@ -25,7 +25,7 @@ theorem run_map_controlStep
         History.state =
       (fun law => law.bind (app.controlStep initial horizon scheduler
         (menu.decodeProfile initial horizon scheduler profile)))^[fuel]
-          (FinDist.pure history.state) := by
+          (PMF.pure history.state) := by
   have encoded : (fun who => app.encodePolicy
       (menu.decodeProfile initial horizon scheduler profile who)) =
         fun who => menu.embedPolicy initial horizon scheduler who (profile who) := by
@@ -34,7 +34,7 @@ theorem run_map_controlStep
   calc
     _ = (((menu.information initial horizon scheduler).runBehavioralFrom profile fuel history).map
           (menu.toRawHistory initial horizon scheduler)).map History.state := by
-      rw [FinDist.map_comp]
+      rw [PMF.map_comp]
       rfl
     _ = ((app.information initial horizon scheduler).runBehavioralFrom
           (fun who => menu.embedPolicy initial horizon scheduler who (profile who)) fuel

@@ -67,55 +67,55 @@ theorem environment_provenance (execution next : app.Execution) (command : app.C
   rw [same]
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid.learn who selected
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       have kept := valid.includePending id
       cases found : execution.network.lookup id <;>
         simpa only [Execution.includePending, MessageNetwork.includePending, found] using kept
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
 
 def provenance : app.ProtocolState → Prop
   | none => True
   | some control => control.execution.Provenance app
 
-theorem transition_provenance (initial : FinDist app.State) (horizon : Nat)
+theorem transition_provenance (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)
     (joint : Principal → Option app.Action) (valid : app.provenance before)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     app.provenance after := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact MessageNetwork.Satisfies.empty
   | some control =>
       rcases control with ⟨remaining, current, execution⟩
       cases current with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact app.respond_provenance execution who _ valid
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               exact app.environment_provenance execution next command valid moved
 
 /-- Every legal initialized history authenticates every retained envelope
 against an actual submission in its author's recall. -/
-theorem history_provenance (initial : FinDist app.State) (horizon : Nat)
+theorem history_provenance (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) :
     ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state), app.provenance state
   | _, .start => trivial

@@ -30,11 +30,11 @@ theorem runServicePlan_invariant (runtime : EventGraphRuntime graph)
     invariant after := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact holds
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, firstMem, restMem⟩ := member
       exact ih middle (preserved instruction before middle holds firstMem) restMem
 
@@ -53,13 +53,13 @@ theorem runService_invariant (runtime : EventGraphRuntime graph)
     invariant after := by
   induction count generalizing before with
   | zero =>
-      simp only [runService, FinDist.mem_support_pure] at member
+      simp only [runService, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact holds
   | succ count ih =>
-      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runService, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, epochMem, restMem⟩ := member
-      simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at epochMem
+      simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at epochMem
       obtain ⟨chosen, _, planMem⟩ := epochMem
       exact ih middle (runtime.runServicePlan_invariant players wire invariant preserved
         (epochPlan chosen roster reactionRounds) before middle holds planMem) restMem
@@ -81,13 +81,13 @@ theorem serviceStep_native_step (runtime : EventGraphRuntime graph)
     have native : after.native ∈
         ((runtime.application.environmentPolicyStep before command).map
           MessageInterface.PolicyExecution.native).support := by
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨after, supported, rfl⟩
     rw [runtime.application.environmentStep_native] at native
     cases actionEq : command.toAction with
     | none =>
         left
-        simpa only [actionEq, FinDist.mem_support_pure] using native
+        simpa only [actionEq, PMF.mem_support_pure_iff _ _] using native
     | some action =>
         right
         exact ⟨action, by simpa only [actionEq] using native⟩
@@ -124,18 +124,18 @@ theorem runServicePlan_native_support (runtime : EventGraphRuntime graph)
       after.native ∈ (runtime.application.run suffix before.native).support := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact ⟨[], by simp⟩
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, firstMem, restMem⟩ := member
       obtain ⟨first, firstTrace, firstRun⟩ :=
         runtime.serviceStep_native_support players wire instruction before middle firstMem
       obtain ⟨second, secondTrace, secondRun⟩ := ih middle restMem
       refine ⟨first ++ second, ?_, ?_⟩
       · rw [secondTrace, firstTrace, List.append_assoc]
-      · rw [runtime.application.run_append, FinDist.support_bind]
+      · rw [runtime.application.run_append, PMF.support_bind]
         simp only [Set.mem_iUnion]
         exact ⟨middle.native, firstRun, secondRun⟩
 
@@ -150,7 +150,7 @@ theorem serviceEpoch_native_support (runtime : EventGraphRuntime graph)
       (runtime.serviceEpoch roster reactionRounds players wire order before).support) :
     ∃ suffix, after.nativeTrace = before.nativeTrace ++ suffix ∧
       after.native ∈ (runtime.application.run suffix before.native).support := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨chosen, _, supported⟩ := member
   exact runtime.runServicePlan_native_support players wire
     (epochPlan chosen roster reactionRounds) before after supported
@@ -168,18 +168,18 @@ theorem runService_native_support (runtime : EventGraphRuntime graph)
       after.native ∈ (runtime.application.run suffix before.native).support := by
   induction count generalizing before with
   | zero =>
-      simp only [runService, FinDist.mem_support_pure] at member
+      simp only [runService, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact ⟨[], by simp⟩
   | succ count ih =>
-      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runService, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, firstMem, restMem⟩ := member
       obtain ⟨first, firstTrace, firstRun⟩ := runtime.serviceEpoch_native_support
         roster reactionRounds players wire order before middle firstMem
       obtain ⟨second, secondTrace, secondRun⟩ := ih middle restMem
       refine ⟨first ++ second, ?_, ?_⟩
       · rw [secondTrace, firstTrace, List.append_assoc]
-      · rw [runtime.application.run_append, FinDist.support_bind]
+      · rw [runtime.application.run_append, PMF.support_bind]
         simp only [Set.mem_iUnion]
         exact ⟨middle.native, firstRun, secondRun⟩
 
@@ -221,23 +221,23 @@ theorem playerStep_progress (runtime : EventGraphRuntime graph)
     State.ServiceProgress inputs 0 execution.native.application next.native.application := by
   have native : next.native ∈ ((runtime.application.playerStep who execution command).map
       MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [MessageApplication.playerStep_native] at native
   cases command with
   | privateCommand command =>
       simp only [MessageApplication.PlayerCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact privateStep_progress inputs execution.native.application who command invariant
   | submit payload =>
       simp only [MessageApplication.PlayerCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact ⟨invariant.copy rfl rfl rfl, Finset.Subset.rfl, rfl, fun _ _ same _ => same⟩
   | replay id | wait =>
       simp only [MessageApplication.PlayerCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact .refl invariant
 
@@ -255,23 +255,23 @@ private theorem environmentPolicyStep_progress (runtime : EventGraphRuntime grap
       execution.native.application next.native.application := by
   have native : next.native ∈ ((runtime.application.environmentPolicyStep execution command).map
       MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [MessageApplication.environmentStep_native] at native
   cases command with
   | deliver observer id | wait =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact .refl invariant
   | «include» id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact include_progress runtime inputs execution.native id invariant
   | application command =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.support_map, Set.mem_image] at native
+        MessageApplication.step, PMF.support_map, Set.mem_image] at native
       obtain ⟨state, supported, native⟩ := native
       rw [← native]
       refine ⟨environmentStep_invariant runtime execution.native.application state command
@@ -296,13 +296,13 @@ theorem serviceStep_facts (runtime : EventGraphRuntime graph) (inputs : graph.In
       execution.native.application next.native.application := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, member⟩ := member
       exact playerStep_progress runtime inputs who execution next command invariant member
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨command, _, member⟩ := member
       have progress := environmentPolicyStep_progress runtime inputs execution next
         (command.toEnvironmentCommand runtime.application) invariant member
@@ -329,11 +329,11 @@ theorem runServicePlan_facts (runtime : EventGraphRuntime graph) (inputs : graph
       execution.native.application next.native.application := by
   induction plan generalizing execution with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact .refl invariant
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, step, tail⟩ := member
       have head := serviceStep_facts runtime inputs players wire instruction execution middle
         invariant step
@@ -349,7 +349,7 @@ theorem serviceEpoch_facts (runtime : EventGraphRuntime graph) (inputs : graph.I
     (member : next ∈ (runtime.serviceEpoch roster reactionRounds players wire order
       execution).support) :
     State.ServiceProgress inputs 1 execution.native.application next.native.application := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨chosen, _, member⟩ := member
   simpa only [epochPlan_ticks] using runServicePlan_facts runtime inputs players wire
     (epochPlan chosen roster reactionRounds) execution next invariant member
@@ -362,11 +362,11 @@ private theorem applicationStep_support (runtime : EventGraphRuntime graph)
       command).support := by
   have native : next.native ∈ ((runtime.application.environmentPolicyStep execution
       (.application command)).map MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [MessageApplication.environmentStep_native] at native
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.support_map, Set.mem_image] at native
+    PMF.support_map, Set.mem_image] at native
   obtain ⟨state, supported, same⟩ := native
   rw [← same]
   exact supported
@@ -412,18 +412,18 @@ theorem environmentPolicyStep_remembered
   have native : next.native ∈
       ((runtime.application.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   cases command with
   | deliver observer id | wait =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       simpa only using congrArg
         (fun state : runtime.application.State => state.application.remembered) native
   | «include» id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       cases lookup : execution.native.pool.lookup id with
       | none =>
           rw [runtime.application.includePending_missing execution.native id lookup] at native
@@ -446,7 +446,7 @@ theorem environmentPolicyStep_remembered
               exact runtime.handle_remembered execution.native.application state message accepted
   | application applicationCommand =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.support_map, Set.mem_image] at native
+        MessageApplication.step, PMF.support_map, Set.mem_image] at native
       obtain ⟨state, stateMem, same⟩ := native
       have nextEq : next.native.application = state := by
         exact congrArg (fun result : runtime.application.State => result.application) same.symm

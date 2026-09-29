@@ -26,7 +26,7 @@ def calendarPosition (horizon : Nat) (who : Principal) (position : Nat) :
       control.execution.environmentRecall.length + control.remaining = horizon ∧
       (control.actor = some who → control.execution.environmentRecall.length = position + 1)
 
-theorem calendarPosition_transition (initial : FinDist app.State) (horizon : Nat)
+theorem calendarPosition_transition (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal) (position : Nat)
     (unique : ∀ history view command, command ∈ (scheduler history view).support →
       command.actor? app = some who → history.length = position)
@@ -36,24 +36,24 @@ theorem calendarPosition_transition (initial : FinDist app.State) (horizon : Nat
     app.calendarPosition horizon who position after := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact ⟨by simp [Execution.initial], by simp⟩
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some actor =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           refine ⟨?_, by simp⟩
           rw [app.respond_environmentRecall]
           exact valid.1
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, selected, moved⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
-              obtain ⟨updated, _, same⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
+              obtain ⟨updated, _, same⟩ := PMF.support_map .. ▸ supported
               cases same
               change (execution.environmentRecall ++ [_]).length + remaining = horizon ∧ _
               simp only [List.length_append, List.length_singleton]
@@ -65,7 +65,7 @@ theorem calendarPosition_transition (initial : FinDist app.State) (horizon : Nat
                 (execution.observeEnvironment app) command selected active
               simp only [located]
 
-theorem calendarPosition_history (initial : FinDist app.State) (horizon : Nat)
+theorem calendarPosition_history (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal) (position : Nat)
     (unique : ∀ history view command, command ∈ (scheduler history view).support →
       command.actor? app = some who → history.length = position) :
@@ -77,7 +77,7 @@ theorem calendarPosition_history (initial : FinDist app.State) (horizon : Nat)
         (calendarPosition_history initial horizon scheduler who position unique prior) reached
 
 /-- Exact remaining time at every legal decision of a uniquely scheduled player. -/
-theorem remaining_at_activation (initial : FinDist app.State) (horizon : Nat)
+theorem remaining_at_activation (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal) (position : Nat)
     (unique : ∀ history view command, command ∈ (scheduler history view).support →
       command.actor? app = some who → history.length = position)

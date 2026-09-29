@@ -37,8 +37,8 @@ private theorem resolution_dispatch_resources
       ((runtime setup).packetEvidence leaks).Sound next ∧
       next.application.BindingInvariant := by
   let app := application setup leaks
-  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
   exact ⟨app.respond_inputRecall middle actor response
     (app.environment_inputRecall original middle (.activate actor) recalled moved),
     ((runtime setup).packetEvidence leaks).sound_respond middle actor response
@@ -97,7 +97,7 @@ theorem resolution_roster_stopped_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -128,10 +128,10 @@ theorem resolution_roster_stopped_coupling
       owner reference (players owner) next (past, view) response member
   induction visits generalizing original repaired memory before with
   | nil =>
-      refine ⟨FinDist.pure (original, repaired, memory), FinDist.map_pure ..,
-        FinDist.map_pure .., ?_⟩
+      refine ⟨PMF.pure (original, repaired, memory), PMF.pure_map ..,
+        PMF.pure_map .., ?_⟩
       intro next member
-      cases FinDist.mem_support_pure.mp member
+      cases (PMF.mem_support_pure_iff _ _).mp member
       exact ⟨⟨trace⟩, Or.inr ⟨frame, started⟩⟩
   | cons actor rest ih =>
       have cursor : repaired.environmentRecall.length = before.length := by
@@ -143,12 +143,12 @@ theorem resolution_roster_stopped_coupling
           Nat.sub_self]
         rfl
       have command : scheduler repaired.environmentRecall (repaired.observeEnvironment app) =
-          FinDist.pure (.activate actor) := by
+          PMF.pure (.activate actor) := by
         simp only [scheduler, rosterScheduler, selected, interactionInstruction]
       have currentTrace : (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
           scheduler).Trace (some ⟨(remaining + rest.length) + 1, none, repaired⟩) := by
         simpa only [List.length_cons, Nat.add_assoc] using trace
-      have existsStep : ∃ coupling : FinDist (app.Execution × app.Execution ×
+      have existsStep : ∃ coupling : PMF (app.Execution × app.Execution ×
           BindingMemory (runtime setup) leaks),
           coupling.map Prod.fst = app.dispatch players (.activate actor) original ∧
           coupling.map Prod.snd = strategy.round owner players scheduler repaired memory ∧
@@ -176,47 +176,47 @@ theorem resolution_roster_stopped_coupling
               change (scheduler repaired.environmentRecall (repaired.observeEnvironment app)).bind
                 (fun command => (repaired.environmentStep app command).bind
                   (fun next => strategy.resume owner players (command.actor? app) next memory)) = _
-              rw [command, FinDist.pure_bind]
+              rw [command, PMF.pure_bind]
               simp only [ReactiveApplication.Implementation.resume,
                 ReactiveApplication.Command.actor?, same, ↓reduceIte,
-                ReactiveApplication.dispatch, ReactiveApplication.resume, FinDist.map_bind]
+                ReactiveApplication.dispatch, ReactiveApplication.resume, PMF.map_bind]
               rfl
           have right : step.map Prod.snd = strategy.round owner players scheduler repaired memory :=
             by
               rw [actualRound]
               calc
                 _ = (physical.map Prod.snd).map (fun next => (next, memory)) := by
-                  simp only [step, FinDist.map_comp]
+                  simp only [step, PMF.map_comp]
                   rfl
-                _ = _ := congrArg (fun law : FinDist app.Execution =>
+                _ = _ := congrArg (fun law : PMF app.Execution =>
                   law.map (fun next => (next, memory))) second
           refine ⟨step, ?_, right, ?_⟩
-          · simpa only [step, FinDist.map_comp, Function.comp_def] using first
+          · simpa only [step, PMF.map_comp, Function.comp_def] using first
           · intro next member
-            obtain ⟨pair, supported, rfl⟩ := FinDist.support_map .. ▸ member
+            obtain ⟨pair, supported, rfl⟩ := PMF.support_map .. ▸ member
             have rightSupport : (pair.2, memory) ∈
                 (strategy.round owner players scheduler repaired memory).support := by
-              rw [← right, FinDist.support_map]
+              rw [← right, PMF.support_map]
               refine ⟨(pair.1, pair.2, memory), ?_, rfl⟩
-              rw [FinDist.support_map]
+              rw [PMF.support_map]
               exact ⟨pair, supported, rfl⟩
             refine ⟨menu.trace_implementation_round (initialLaw setup)
               (rosterPlan setup rosters).length scheduler strategy owner players opponents own
                 (remaining + rest.length) repaired memory currentTrace _ rightSupport,
               Or.inr ⟨related pair supported, ?_⟩⟩
             have reached : pair.2 ∈ (app.dispatch players (.activate actor) repaired).support := by
-              rw [← second, FinDist.support_map]
+              rw [← second, PMF.support_map]
               exact ⟨pair, supported, rfl⟩
             obtain ⟨middle, moved, resumed⟩ :=
-              Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-            obtain ⟨response, _, equal⟩ := FinDist.support_map .. ▸ resumed
+              Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+            obtain ⟨response, _, equal⟩ := PMF.support_map .. ▸ resumed
             change reference.length ≤ (pair.2.recall owner).length
             rw [← equal, app.respond_recall_other middle actor owner (Ne.symm same) response,
               app.environmentStep_recall repaired middle (.activate actor) moved]
             exact started
       obtain ⟨step, first, second, related⟩ := existsStep
       have existsTail next (member : next ∈ step.support) :
-          ∃ coupling : FinDist (app.Execution × app.Execution ×
+          ∃ coupling : PMF (app.Execution × app.Execution ×
             BindingMemory (runtime setup) leaks),
             coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
               (rest.map ServiceInstruction.player) next.1 ∧
@@ -235,12 +235,12 @@ theorem resolution_roster_stopped_coupling
         · let left := (runtime setup).runInteractionPlan leaks players network
             (rest.map ServiceInstruction.player) next.1
           let right := strategy.runJoint owner players scheduler rest.length next.2.1 next.2.2
-          refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+          refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
             FinDist.map_snd_product .., ?_⟩
           intro final supported
           obtain ⟨record, present, authored, rejected⟩ := bad
           have reached : final.1 ∈ left.support := by
-            rw [← FinDist.map_fst_product left right, FinDist.support_map]
+            rw [← bindPairLaw_map_fst left right, PMF.support_map]
             exact ⟨final, supported, rfl⟩
           exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
             network (rest.map ServiceInstruction.player) next.1 final.1 reached).subset present,
@@ -248,14 +248,14 @@ theorem resolution_roster_stopped_coupling
         · obtain ⟨nextTrace⟩ := (related next member).1
           obtain ⟨paired, begun⟩ := ((related next member).2).resolve_left bad
           have reached : next.1 ∈ (app.dispatch players (.activate actor) original).support := by
-            rw [← first, FinDist.support_map]
+            rw [← first, PMF.support_map]
             exact ⟨next, member, rfl⟩
           obtain ⟨recalled, certified, valid⟩ := resolution_dispatch_resources setup leaks players
             original next.1 actor leftRecall sound leftBinding reached
           have single : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
               ([actor].map ServiceInstruction.player) original).support := by
             simpa only [List.map_cons, List.map_nil, runInteractionPlan, interactionStep,
-              interactionInstruction, FinDist.pure_bind, FinDist.bind_pure] using reached
+              interactionInstruction, PMF.pure_bind, PMF.bind_pure] using reached
           have publicEq := ((runtime setup).player_window_application leaks players network [actor]
             original next.1 single).2
           have nextGrant : next.2.1.application.serviceGrant = some event :=
@@ -278,42 +278,42 @@ theorem resolution_roster_stopped_coupling
       have leftLaw : coupling.map Prod.fst =
           (runtime setup).runInteractionPlan leaks players network
           ((actor :: rest).map ServiceInstruction.player) original := by
-        rw [FinDist.map_bindOnSupport]
+        rw [map_bindOnSupport]
         calc
           _ = step.bind (fun next => (runtime setup).runInteractionPlan leaks players network
               (rest.map ServiceInstruction.player) next.1) := by
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next member
             exact (existsTail next member).choose_spec.1
           _ = _ := by
-            rw [← FinDist.bind_map, first]
+            rw [← PMF.bind_map, first]
             simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-              FinDist.pure_bind]
+              PMF.pure_bind]
             rfl
       have rightLaw : coupling.map Prod.snd = strategy.runJoint owner players scheduler
           (actor :: rest).length repaired memory := by
-        rw [FinDist.map_bindOnSupport]
+        rw [map_bindOnSupport]
         calc
           _ = step.bind (fun next =>
               strategy.runJoint owner players scheduler rest.length next.2.1 next.2.2) := by
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next member
             exact (existsTail next member).choose_spec.2.1
           _ = (step.map Prod.snd).bind (fun next =>
               strategy.runJoint owner players scheduler rest.length next.1 next.2) := by
-            rw [FinDist.bind_map]
+            rw [PMF.bind_map]
           _ = _ := by rw [second]; rfl
       refine ⟨coupling, leftLaw, rightLaw, ?_⟩
       intro final supported
       have rightSupport : final.2 ∈ (strategy.runJoint owner players scheduler
           (actor :: rest).length repaired memory).support := by
-        rw [← rightLaw, FinDist.support_map]
+        rw [← rightLaw, PMF.support_map]
         exact ⟨final, supported, rfl⟩
       refine ⟨menu.trace_implementation_runJoint (initialLaw setup)
         (rosterPlan setup rosters).length scheduler strategy owner players opponents own remaining
           (actor :: rest).length repaired memory trace final.2 rightSupport, ?_⟩
       obtain ⟨next, member, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
       exact (existsTail next member).choose_spec.2.2 final reached
 
 end Vegas

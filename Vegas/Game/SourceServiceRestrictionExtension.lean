@@ -36,12 +36,12 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (observe : (application setup leaks).ProtocolState → Observation)
     (source : ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -128,23 +128,23 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       source sourceRemaining
   have full := (target.sequentialEquilibrium_remaining_iff
     (effective.information (initialLaw setup) count scheduler)
-    (effective.decisionRecall (initialLaw setup) count scheduler).antichain (2 * count + 1)
+    (effective.decisionRecall (initialLaw setup) count scheduler).decisionInformationAntichain (2 * count + 1)
     (effective.bounded (initialLaw setup) count scheduler) depth clock
     (fun who history => payoff history.state who)).mp remaining
   refine ⟨target, full, agrees, historyLaw, ?_⟩
-  rw [← historyLaw, FinDist.bind_map]
+  rw [← historyLaw, PMF.bind_map]
   calc
     _ = ((menu.information (initialLaw setup) count scheduler).runBehavioral source.strategy
         (2 * count + 1)).bind (fun final =>
-          FinDist.pure (observe final.state, base final.state)) := by
-      apply FinDist.bind_congr
+          PMF.pure (observe final.state, base final.state)) := by
+      apply bind_congr_on_support _
       intro final _
       have clean := sourceService_history_settlement setup leaks bounds values capacity rosters
         opportunities network sample authentic base deposit final
-      change settle final.state = FinDist.pure (base final.state) at clean
+      change settle final.state = PMF.pure (base final.state) at clean
       change (settle final.state).map (fun payoffs => (observe final.state, payoffs)) =
-        FinDist.pure (observe final.state, base final.state)
-      rw [clean, FinDist.map_pure]
+        PMF.pure (observe final.state, base final.state)
+      rw [clean, PMF.pure_map]
     _ = _ := (FinDist.map_eq_bind ..).symm
 
 end Vegas

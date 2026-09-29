@@ -23,14 +23,14 @@ private theorem sample_completed (runtime : EventGraphRuntime graph)
     (completed : event ∈ execution.native.application.config.cut.completed) :
     (runtime.serviceStep (runtime.compileProfile profile) wire (.sample event) execution).map
         (fun next => next.native.application.config) =
-      FinDist.pure execution.native.application.config ∧
+      PMF.pure execution.native.application.config ∧
     ∀ next ∈ (runtime.serviceStep (runtime.compileProfile profile) wire
       (.sample event) execution).support, HonestBoundary runtime inputs next := by
   constructor
-  · have projected := congrArg (fun law : FinDist runtime.application.State =>
+  · have projected := congrArg (fun law : PMF runtime.application.State =>
         law.map (fun native => native.application.config))
       (runtime.application.environmentStep_native execution (.application (.executeSample event)))
-    simp only [FinDist.map_comp, Function.comp_def] at projected
+    simp only [PMF.map_comp, Function.comp_def] at projected
     change (runtime.application.environmentPolicyStep execution
       (.application (.executeSample event))).map (fun next => next.native.application.config) = _
     rw [projected]
@@ -39,7 +39,7 @@ private theorem sample_completed (runtime : EventGraphRuntime graph)
       (fun application => ({ execution.native with application } : runtime.application.State))).map
         (fun native => native.application.config) = _
     rw [environmentStep_executeSample_of_not_ready runtime execution.native.application event
-      (fun ready => ready.1 completed), FinDist.map_pure, FinDist.map_pure]
+      (fun ready => ready.1 completed), PMF.pure_map, PMF.pure_map]
   · intro next member
     exact environmentPolicyStep_honestBoundary runtime inputs execution next
       (.executeSample event) boundary member
@@ -66,24 +66,24 @@ private theorem append_sample (runtime : EventGraphRuntime graph)
     have supported : middle.native.application.config ∈
         (graph.normalizedPolicyStep profile
           execution.native.application.config event ready).support := by
-      rw [← configLaw, FinDist.support_map]
+      rw [← configLaw, PMF.support_map]
       exact ⟨middle, member, rfl⟩
     rw [graph.normalizedPolicyStep_cut profile _ event ready _ supported]
     exact Finset.mem_insert_self _ _
   rw [runtime.runServicePlan_append]
-  simp only [runServicePlan, FinDist.bind_pure]
+  simp only [runServicePlan, PMF.bind_pure]
   constructor
-  · rw [FinDist.map_bind]
+  · rw [PMF.map_bind]
     calc
       _ = (runtime.runServicePlan (runtime.compileProfile profile) wire plan execution).bind
-          (fun next => FinDist.pure next.native.application.config) := by
-        apply FinDist.bind_congr
+          (fun next => PMF.pure next.native.application.config) := by
+        apply bind_congr_on_support _
         intro next member
         exact (sample_completed runtime inputs profile wire next
           (boundaryLaw next member) event (middleCompleted next member)).1
-      _ = _ := by rw [← FinDist.map_eq_bind]; exact configLaw
+      _ = _ := by rw [← ← PMF.bind_pure_comp, Function.comp_def]; exact configLaw
   · intro next member
-    rw [FinDist.support_bind] at member
+    rw [PMF.support_bind] at member
     simp only [Set.mem_iUnion] at member
     obtain ⟨middle, head, tail⟩ := member
     exact (sample_completed runtime inputs profile wire middle
@@ -122,7 +122,7 @@ theorem HonestBoundary.ready_event_block (runtime : EventGraphRuntime graph)
               (List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
               [.includeLatest event owner]) ++ [.sample event]) := by
         simp [eventServicePlan, actor]
-      rw [plan, runServicePlan, runtime.serviceStep_grant_eq, FinDist.pure_bind]
+      rw [plan, runServicePlan, runtime.serviceStep_grant_eq, PMF.pure_bind]
       apply append_sample runtime inputs profile wire (runtime.afterGrant execution event)
         event ready
       · exact (boundary.afterGrant event).bind_ownerBlock_reactions_law runtime inputs
@@ -141,7 +141,7 @@ theorem HonestBoundary.ready_event_block (runtime : EventGraphRuntime graph)
               ((List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
                 [.includeLatest event owner])) ++ [.sample event]) := by
         simp [eventServicePlan, actor]
-      rw [plan, runServicePlan, runtime.serviceStep_grant_eq, FinDist.pure_bind]
+      rw [plan, runServicePlan, runtime.serviceStep_grant_eq, PMF.pure_bind]
       have block := (boundary.afterGrant event).resolve_reacted_block runtime inputs profile
         wire _ event owner payload binding checks outputEq codeEq viewNode rfl ready
         (timely owner actor) actor _ (honestReactionPlan_allowed roster reactionRounds)

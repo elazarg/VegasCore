@@ -26,7 +26,7 @@ variable {Principal : Type} [Fintype Principal] [DecidableEq Principal]
     raw.actions who (normal.recall who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 theorem canonical_initial_stateLaw
     (source : ∀ who,
@@ -43,7 +43,7 @@ theorem canonical_initial_stateLaw
     (fun who observed => normal.canonicalPolicy_project raw stable closed initial horizon scheduler
       who (source who) observed) fuel (raw.protocol initial horizon scheduler).initHistory
   have projected := congrArg (fun law => law.map History.state) law
-  rw [FinDist.map_comp] at projected
+  rw [PMF.map_comp] at projected
   exact projected
 
 /-- Erasing ineffective private response names supplies a deterministic
@@ -81,12 +81,12 @@ def aliasContinuationSimulation
         normal.aliasDeviation raw initial horizon scheduler who
           (data who deviation.1).1 deviation.2)) ?_ ?_
   · intro who deviation payoff
-    simpa only [assessmentComparison, FinDist.expect_map, Context.value,
+    simpa only [assessmentComparison, expect_map, Context.value,
       BehavioralAssessment.continuationContext] using
       normal.canonical_context_value raw stable closed initial horizon scheduler
         source target strategy who deviation.1 (beliefs who deviation.1) payoff
   · intro who deviation payoff
-    simpa only [assessmentComparison, FinDist.expect_map, Context.value,
+    simpa only [assessmentComparison, expect_map, Context.value,
       BehavioralAssessment.continuationContext] using
       normal.aliasDeviation_context_value raw stable closed initial horizon scheduler
         source target strategy who deviation.1 (beliefs who deviation.1)

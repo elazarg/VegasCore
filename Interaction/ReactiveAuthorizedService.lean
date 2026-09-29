@@ -81,7 +81,7 @@ theorem authorizedScheduler_atMostOnce
     (scheduler : app.Scheduler) (once : app.AtMostOnce scheduler) :
     app.AtMostOnce (app.authorizedScheduler condition scheduler) := by
   intro history view id selected
-  obtain ⟨command, supported, same⟩ := FinDist.support_map .. ▸ selected
+  obtain ⟨command, supported, same⟩ := PMF.support_map .. ▸ selected
   have original := (app.authorizedCommand_include condition history view command id same).1
   exact once history view id (original ▸ supported)
 
@@ -91,7 +91,7 @@ theorem submissionPermitted_fresh_history
     (project : app.LocalObservation → app.PublicObservation)
     (agrees : ∀ state who, project (app.observePlayer state who) = app.observePublic state)
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (who : Principal) (active : control.actor = some who) (payload : app.Payload) :
@@ -109,12 +109,12 @@ theorem authorizedScheduler_requiresAuthorization
     (project : app.LocalObservation → app.PublicObservation)
     (agrees : ∀ state who, project (app.observePlayer state who) = app.observePublic state)
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     app.RequiresSubmissionAuthorization
       (fun view message => condition (project view.application) message) initial horizon
       (app.authorizedScheduler condition scheduler) := by
   intro control trace _ _ message _ pending selected _
-  obtain ⟨command, _, same⟩ := FinDist.support_map .. ▸ selected
+  obtain ⟨command, _, same⟩ := PMF.support_map .. ▸ selected
   obtain ⟨_, found, equal, permitted⟩ := app.authorizedCommand_include condition
     control.execution.environmentRecall (control.execution.observeEnvironment app)
     command message.id same

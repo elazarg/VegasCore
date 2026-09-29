@@ -94,7 +94,7 @@ theorem replay_extra_submission
     · subst who
       rw [replay_menu_watcher]
       have quiet : (application setup leaks).reportFirstUnpublished (execution.recall watcher)
-          (execution.observe (application setup leaks) watcher) = FinDist.pure ⟨none⟩ := by
+          (execution.observe (application setup leaks) watcher) = PMF.pure ⟨none⟩ := by
         apply ReactiveApplication.reportFirstUnpublished_silent
         intro message observed
         change message ∈ execution.network.leaked watcher at observed
@@ -104,7 +104,7 @@ theorem replay_extra_submission
         silence | opening | replayed
       · subst response
         apply Finset.mem_union_left
-        rw [quiet, FinDist.mem_supportFinset, FinDist.mem_support_pure]
+        rw [quiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _]
       · rw [observer_opening_none setup leaks watcher observer] at opening
         cases opening
       · exact Finset.mem_union_right _ ((mem_publishedReplays setup leaks _ response).mpr replayed)
@@ -266,7 +266,7 @@ theorem replay_extra_choice_traffic
               (some (execution.recall who,
                 execution.observe (application setup leaks) who)) action))
           1 native).map History.state =
-            FinDist.pure (some ⟨remaining, none,
+            PMF.pure (some ⟨remaining, none,
               execution.respond (application setup leaks) who response⟩) := by
         have transport
             (first last : (effectiveInformation setup leaks bounds watcher).InfoState who)
@@ -284,11 +284,11 @@ theorem replay_extra_choice_traffic
         exact one
       have nextState : next.state = some ⟨remaining, none,
           execution.respond (application setup leaks) who response⟩ := by
-        have inMap : next.state ∈ (FinDist.pure (some ⟨remaining, none,
+        have inMap : next.state ∈ (PMF.pure (some ⟨remaining, none,
             execution.respond (application setup leaks) who response⟩)).support := by
-          rw [← stateLaw, FinDist.support_map]
+          rw [← stateLaw, PMF.support_map]
           exact ⟨next, supported, rfl⟩
-        exact FinDist.mem_support_pure.mp inMap
+        exact (PMF.mem_support_pure_iff _ _).mp inMap
       let original := sourceMenu.toRawHistory initial horizon scheduler history.1
       have transition : some ⟨remaining, none,
           execution.respond (application setup leaks) who response⟩ ∈
@@ -297,7 +297,7 @@ theorem replay_extra_choice_traffic
         change _ ∈ ((application setup leaks).transition initial horizon scheduler history.1.state
           (fun _ => some response)).support
         simp only [current, ReactiveApplication.transition, Option.getD_some,
-          FinDist.mem_support_pure]
+          PMF.mem_support_pure_iff _ _]
       have audit := (application setup leaks).stateTraffic_transition initial horizon scheduler
         original (fun _ => some response) _ transition
       refine ⟨record, ?_, attributed, forbidden⟩

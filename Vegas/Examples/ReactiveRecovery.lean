@@ -49,7 +49,7 @@ private def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
 private def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) :=
-  fun _ _ => FinDist.pure ∅
+  fun _ _ => PMF.pure ∅
 
 private abbrev app := runtime.reactiveApplication leaks
 

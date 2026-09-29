@@ -32,8 +32,8 @@ private theorem inclusion_players
     (runtime setup).runInteractionPlan leaks left network [.includeLatest event owner] current =
       (runtime setup).runInteractionPlan leaks right network [.includeLatest event owner] current :=
     by
-  simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
-    FinDist.pure_bind]
+  simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
+    PMF.pure_bind]
   unfold reactiveLatest
   split <;> rfl
 
@@ -64,9 +64,9 @@ theorem roster_remaining_settlement
     (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visited.map ServiceInstruction.player) initial).support)
-    (choiceFull : (sourceChoiceLaw setup leaks profile owner
-      (initial.observe (application setup leaks) owner)).FullSupport)
-    (timingFull : (timing event owner ownedEvent).FullSupport) :
+    (choiceFull : FullSupport (sourceChoiceLaw setup leaks profile owner
+      (initial.observe (application setup leaks) owner)))
+    (timingFull : FullSupport (timing event owner ownedEvent)) :
     let app := application setup leaks
     let choices := rosterSelection (sourceChoiceLaw setup leaks profile owner
       (initial.observe app owner)) (timing event owner ownedEvent)
@@ -79,22 +79,22 @@ theorem roster_remaining_settlement
         (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) current).map
           (fun final => final.application) =
         (match selected with
-          | none => choices.condOn (ReactiveApplication.remainingOpeningSlots (visited.count owner))
+          | none => choices.filter (ReactiveApplication.remainingOpeningSlots (visited.count owner))
               ⟨none, True.intro, rosterSelection_fullSupport _ _ choiceFull timingFull none⟩
-          | some slot => FinDist.pure (some slot)).map
+          | some slot => PMF.pure (some slot)).map
           (fun mode : Option (Fin ((rosters event).count owner)) => if mode.isSome then
             (app.handle initial.application
               ((runtime setup).windowEnvelope leaks owner event candidate raw initial)).getD
                 initial.application else initial.application) := by
   intro app choices
-  have full : choices.FullSupport := rosterSelection_fullSupport _ _ choiceFull timingFull
+  have full : FullSupport choices := rosterSelection_fullSupport _ _ choiceFull timingFull
   obtain ⟨selected, frame, _past, recorded, exactModes⟩ :=
     roster_window_posterior setup leaks bounds rosters initial event owner granted ownedEvent
       candidate raw opening owned valid offset serials
       published players covered network visited (by omega) current reached
   let family := fun mode : Option (Fin ((rosters event).count owner)) =>
     app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-      (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+      (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         app.replayPolicy
   let posterior := (app.policyMixture choices family).posterior (current.recall owner)
   have frames (mode : Option (Fin ((rosters event).count owner)))
@@ -107,7 +107,7 @@ theorem roster_remaining_settlement
     cases selected with
     | none =>
         rw [modes] at possible
-        have kept := (FinDist.support_condOn choices _ _ possible).1
+        have kept := ((PMF.mem_support_filter_iff _).mp possible).1
         apply frame.relabel (runtime setup) leaks owner event candidate raw
           (rosterOffset setup rosters owner event) none mode (visited.count owner) initial current
         cases mode with
@@ -118,7 +118,7 @@ theorem roster_remaining_settlement
               decide_eq_false_iff_not, not_lt]
             exact kept
     | some slot =>
-        rw [modes, FinDist.mem_support_pure] at possible
+        rw [modes, PMF.mem_support_pure_iff _ _] at possible
         cases possible
         exact frame
   have law := (runtime setup).openingWindowMixture_continuation_settlement leaks owner event
@@ -134,7 +134,7 @@ theorem roster_remaining_settlement
     rw [runInteractionPlan_append, runInteractionPlan_append,
       rosterPolicy_window_eq setup leaks rosters timing profile initial current event owner
         granted ownedEvent candidate raw opening frame.application network remaining]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro next _
     exact inclusion_players setup leaks _ _ network event owner next
   refine ⟨selected, recorded, ?_⟩

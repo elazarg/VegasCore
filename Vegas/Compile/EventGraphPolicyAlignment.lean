@@ -5,7 +5,9 @@ import Vegas.Compile.EventGraphIndependence
 import Vegas.Compile.EventGraphPolicyBacktranslation
 import Vegas.EventGraph.CanonicalNormalization
 import Vegas.EventGraph.PolicyCongruence
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Canonical policy backtranslation law
 
@@ -77,7 +79,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           index ((toEventGraph whole).playerObserve who config).store
           (decodeCompletions whole
             ((toEventGraph whole).playerObserve who config).ownActions) =
-        cast (congrArg FinDist
+        cast (congrArg PMF
           (congrArg Vegas.EventGraph.EventField.Action (embedding.layout_eq index)))
           ((toEventGraph whole).normalizePolicy who replacement
             (embedding.event index) actor
@@ -186,7 +188,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
             headIndex ((toEventGraph whole).playerStore who config.store)
             (decodeCompletions whole
               ((toEventGraph whole).ownCompletions who config.history)) =
-          cast (congrArg FinDist (congrArg Vegas.EventGraph.EventField.Action
+          cast (congrArg PMF (congrArg Vegas.EventGraph.EventField.Action
             (embedding.layout_eq headIndex)))
             (replacement (embedding.event headIndex) headActor
               ((toEventGraph whole).normalizeObservation
@@ -196,7 +198,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
           (backtranslatePolicyTable whole who replacement
             (.commit name owner fresh guard next) refs embedding actorEq)
           ownerEq _ _ sourceObservation decodedStore]
-        rw [FinDist.cast_eq_map_cast]
+        rw [cast_eq_map_cast]
         change _ = (replacement (embedding.event headIndex) headActor
           ((toEventGraph whole).normalizeObservation
             (embedding.event headIndex) who
@@ -290,7 +292,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
             headIndex ((toEventGraph whole).playerStore who config.store)
             (decodeCompletions whole
               ((toEventGraph whole).ownCompletions who config.history)) =
-          cast (congrArg FinDist (congrArg Vegas.EventGraph.EventField.Action
+          cast (congrArg PMF (congrArg Vegas.EventGraph.EventField.Action
             (embedding.layout_eq headIndex)))
             (replacement (embedding.event headIndex) headActor
               ((toEventGraph whole).normalizeObservation
@@ -301,7 +303,7 @@ private theorem compilePolicyTable_backtranslate_eq_normalized
             (.reveal published owner name fresh selected unresolved next) refs
               embedding actorEq)
           ownerEq _ _ sourceObservation decodedStore]
-        rw [FinDist.cast_eq_map_cast]
+        rw [cast_eq_map_cast]
         change _ = (replacement (embedding.event headIndex) headActor
           ((toEventGraph whole).normalizeObservation
             (embedding.event headIndex) who

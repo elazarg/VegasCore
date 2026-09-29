@@ -34,7 +34,7 @@ theorem one_step_then_baseline_eq_local_law (antichain : M.DecisionInformationAn
       (alternative (M.infoOf who history.trace)))
   by_cases terminal : E.terminal history.state
   · rw [M.runBehavioralFrom_of_terminal _ _ terminal,
-      FinDist.pure_bind, M.runBehavioralFrom_of_terminal _ _ terminal,
+      PMF.pure_bind, M.runBehavioralFrom_of_terminal _ _ terminal,
       M.runBehavioralFrom_of_terminal _ _ terminal]
   · have current : M.behavioralJoint updated history.trace terminal =
         M.behavioralJoint localProfile history.trace terminal := by
@@ -45,14 +45,14 @@ theorem one_step_then_baseline_eq_local_law (antichain : M.DecisionInformationAn
         simp [updated, localProfile]
       · simp [updated, localProfile, Profile.update_of_ne _ _ same]
     rw [M.runBehavioralFrom_succ_of_not_terminal _ 0 terminal,
-      M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal, current, FinDist.bind_bind]
-    apply FinDist.bind_congr
+      M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal, current, PMF.bind_bind]
+    apply bind_congr_on_support _
     intro draw _
-    rw [FinDist.bind_bindOnSupport]
-    apply FinDist.bindOnSupport_congr
+    rw [bindOnSupport_bind]
+    apply bindOnSupport_congr _
     intro target realized
-    change (FinDist.pure _).bind _ = _
-    rw [FinDist.pure_bind]
+    change (PMF.pure _).bind _ = _
+    rw [PMF.pure_bind]
     apply M.runBehavioralFrom_congr
     intro later reached _ player
     by_cases same : player = who

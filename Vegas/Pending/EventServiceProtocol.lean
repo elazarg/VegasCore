@@ -99,7 +99,7 @@ theorem serviceStep_focalHistory_length (runtime : EventGraphRuntime graph)
         if instruction.isFocalPlayer focal then 1 else 0 := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, _, step⟩ := supported
       by_cases same : who = focal
@@ -111,7 +111,7 @@ theorem serviceStep_focalHistory_length (runtime : EventGraphRuntime graph)
         simp [ServiceInstruction.isFocalPlayer, same]
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at supported
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, step⟩ := supported
       rw [congrFun (runtime.application.environmentStep_principalHistory execution
         (WireCommand.toEnvironmentCommand runtime.application command) next step) focal]
@@ -137,14 +137,14 @@ theorem serviceStep_environmentHistory_length (runtime : EventGraphRuntime graph
       if instruction.isEnvironment then 1 else 0 := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, _, step⟩ := supported
       rw [runtime.application.playerStep_environmentHistory who execution command next step]
       rfl
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at supported
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, step⟩ := supported
       simpa [ServiceInstruction.isEnvironment] using
         runtime.application.environmentStep_history_length execution
@@ -160,9 +160,9 @@ theorem serviceStep_environmentHistory_length (runtime : EventGraphRuntime graph
 def ServiceControl.executeHead (runtime : EventGraphRuntime graph)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy)
-    (control : ServiceControl runtime) : FinDist (ServiceControl runtime) :=
+    (control : ServiceControl runtime) : PMF (ServiceControl runtime) :=
   match control.plan with
-  | [] => FinDist.pure control
+  | [] => PMF.pure control
   | instruction :: rest =>
       (runtime.serviceStep players wire instruction control.execution).map fun execution =>
         { control with plan := rest, execution := execution }
@@ -174,13 +174,13 @@ def serviceControlStep (runtime : EventGraphRuntime graph)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (control : ServiceControl runtime) : FinDist (ServiceControl runtime) :=
+    (control : ServiceControl runtime) : PMF (ServiceControl runtime) :=
   match control.plan with
   | instruction :: rest =>
       (runtime.serviceStep players wire instruction control.execution).map fun execution =>
         { control with plan := rest, execution := execution }
   | [] => match control.epochs with
-    | 0 => FinDist.pure control
+    | 0 => PMF.pure control
     | epochs + 1 =>
         (order control.execution.environmentHistory
           (MessageApplication.State.environmentView runtime.application
@@ -212,14 +212,14 @@ theorem serviceControlStep_cases (runtime : EventGraphRuntime graph)
   | nil =>
       cases epochs : before.epochs with
       | zero =>
-          simp only [serviceControlStep, plan, epochs, FinDist.mem_support_pure] at member
+          simp only [serviceControlStep, plan, epochs, PMF.mem_support_pure_iff _ _] at member
           exact Or.inl ⟨rfl, rfl, member⟩
       | succ count =>
-          simp only [serviceControlStep, plan, epochs, FinDist.support_map, Set.mem_image] at member
+          simp only [serviceControlStep, plan, epochs, PMF.support_map, Set.mem_image] at member
           obtain ⟨chosen, chosenMem, same⟩ := member
           exact Or.inr (Or.inl ⟨count, chosen, rfl, rfl, chosenMem, same.symm⟩)
   | cons instruction rest =>
-      simp only [serviceControlStep, plan, FinDist.support_map, Set.mem_image] at member
+      simp only [serviceControlStep, plan, PMF.support_map, Set.mem_image] at member
       obtain ⟨execution, executionMem, same⟩ := member
       subst after
       exact Or.inr (Or.inr ⟨instruction, rest, rfl, rfl, rfl, executionMem⟩)
@@ -260,11 +260,11 @@ def runServiceControlSteps (runtime : EventGraphRuntime graph)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
-    Nat → ServiceControl runtime → FinDist (ServiceControl runtime)
-  | 0, control => FinDist.pure control
+    Nat → ServiceControl runtime → PMF (ServiceControl runtime)
+  | 0, control => PMF.pure control
   | fuel + 1, control =>
       match control.epochs, control.plan with
-      | 0, [] => FinDist.pure control
+      | 0, [] => PMF.pure control
       | _, _ => (runtime.serviceControlStep roster reactionRounds players wire order control).bind
           (runtime.runServiceControlSteps roster reactionRounds players wire order fuel)
 
@@ -276,7 +276,7 @@ def evalServiceControl (runtime : EventGraphRuntime graph)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     Nat → List (ServiceInstruction graph) → runtime.application.PolicyExecution →
-      FinDist runtime.application.PolicyExecution
+      PMF runtime.application.PolicyExecution
   | 0, plan, execution => runtime.runServicePlan players wire plan execution
   | epochs + 1, plan, execution =>
       (runtime.runServicePlan players wire plan execution).bind fun boundary =>
@@ -312,12 +312,12 @@ theorem runServiceControlSteps_map_execution_eq_bind (runtime : EventGraphRuntim
               runtime.serviceControlFuel roster reactionRounds 0 rest + 1 := by
             simp [serviceControlFuel]
           rw [fuelEq]
-          simp only [runServiceControlSteps, serviceControlStep, FinDist.map_bind,
-            FinDist.bind_map, runServicePlan, runService, FinDist.bind_pure]
-          apply FinDist.bind_congr
+          simp only [runServiceControlSteps, serviceControlStep, PMF.map_bind,
+            PMF.bind_map, runServicePlan, runService, PMF.bind_pure]
+          apply bind_congr_on_support _
           intro next _
           simpa only [serviceControlFuel, Nat.zero_mul, Nat.add_zero, runService,
-            FinDist.bind_pure] using ih next
+            PMF.bind_pure] using ih next
   | succ epochs outer =>
       intro plan
       induction plan with
@@ -329,9 +329,9 @@ theorem runServiceControlSteps_map_execution_eq_bind (runtime : EventGraphRuntim
             simp [serviceControlFuel, Nat.add_assoc]
             omega
           rw [fuelEq]
-          simp only [runServiceControlSteps, serviceControlStep, FinDist.map_bind,
-            FinDist.bind_map, runServicePlan, FinDist.bind_bind]
-          apply FinDist.bind_congr
+          simp only [runServiceControlSteps, serviceControlStep, PMF.map_bind,
+            PMF.bind_map, runServicePlan, PMF.bind_bind]
+          apply bind_congr_on_support _
           intro next _
           simpa only [serviceControlFuel] using ih next
       | nil =>
@@ -344,10 +344,10 @@ theorem runServiceControlSteps_map_execution_eq_bind (runtime : EventGraphRuntim
                 (ServiceOrder.increasing graph)]
             omega
           rw [fuelEq]
-          simp only [runServiceControlSteps, serviceControlStep, FinDist.map_bind,
-            FinDist.bind_map, runServicePlan, FinDist.pure_bind, runService, serviceEpoch,
-            FinDist.bind_bind]
-          apply FinDist.bind_congr
+          simp only [runServiceControlSteps, serviceControlStep, PMF.map_bind,
+            PMF.bind_map, runServicePlan, PMF.pure_bind, runService, serviceEpoch,
+            PMF.bind_bind]
+          apply bind_congr_on_support _
           intro chosen _
           have chosenLength := runtime.epochPlan_length_eq_epochInstructionCount roster
             reactionRounds chosen
@@ -378,10 +378,10 @@ theorem evalServiceControl_eq_runServicePlan_bind (runtime : EventGraphRuntime g
       simp [evalServiceControl, runService]
   | succ epochs ih =>
       intro plan execution
-      simp only [evalServiceControl, runService, serviceEpoch, FinDist.bind_bind]
-      apply FinDist.bind_congr
+      simp only [evalServiceControl, runService, serviceEpoch, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro boundary _
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro chosen _
       exact ih _ _
 
@@ -411,14 +411,14 @@ theorem evalServiceControl_nil (runtime : EventGraphRuntime graph)
     (epochs : Nat) (execution : runtime.application.PolicyExecution) :
     runtime.evalServiceControl roster reactionRounds players wire order epochs [] execution =
       runtime.runService roster reactionRounds players wire order epochs execution := by
-  simpa only [runServicePlan, FinDist.pure_bind] using
+  simpa only [runServicePlan, PMF.pure_bind] using
     runtime.evalServiceControl_eq_runServicePlan_bind roster reactionRounds players wire order
       epochs [] execution
 
 /-- The serviced event game is the setup law followed by evaluation of the
 initial empty control. -/
 theorem servicedEventGame_eq_evalServiceControl (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy) :
     (runtime.servicedEventGame inputs roster reactionRounds wire order).play players =
@@ -428,7 +428,7 @@ theorem servicedEventGame_eq_evalServiceControl (runtime : EventGraphRuntime gra
           (MessageApplication.PolicyExecution.initial runtime.application
             (MessageApplication.State.initial runtime.application (State.initial input))) := by
   unfold servicedEventGame
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro input _
   exact (runtime.evalServiceControl_nil roster reactionRounds players wire order
     runtime.serviceEpochs _).symm

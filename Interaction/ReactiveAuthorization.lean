@@ -136,7 +136,7 @@ theorem authorizedAtSubmission_submit
           (execution.network.known who) material⟩ :=
   ⟨_, app.submissionOrigin_submit execution who material fresh, rfl, allowed⟩
 
-theorem submissionOrigin_next_none_history (initial : FinDist app.State) (horizon : Nat)
+theorem submissionOrigin_next_none_history (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control)) (who : Principal) :
     control.execution.submissionOrigin? app
@@ -145,7 +145,7 @@ theorem submissionOrigin_next_none_history (initial : FinDist app.State) (horizo
     (app.history_inputRecall initial horizon scheduler trace)
     (app.serialsBeforeNext_history scheduler initial horizon trace)
 
-theorem submissionOrigin_reaches (initial : FinDist app.State) (horizon : Nat)
+theorem submissionOrigin_reaches (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler)
     {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last)
@@ -161,7 +161,7 @@ theorem submissionOrigin_reaches (initial : FinDist app.State) (horizon : Nat)
 even when the application condition later becomes true. -/
 theorem authorizedAtSubmission_reaches_iff
     (condition : app.PlayerView → Message Principal app.Payload → Prop)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last)
     (before after : app.Control) (firstEq : first.state = some before)
@@ -180,7 +180,7 @@ passive observations remain legal. Implementation requires observable evidence
 of the original submission condition, not access to this proof's private recall. -/
 def RequiresSubmissionAuthorization
     (condition : app.PlayerView → Message Principal app.Payload → Prop)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) : Prop :=
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) : Prop :=
   ∀ (control : app.Control),
     (app.protocol initial horizon scheduler).Trace (some control) →
     control.actor = none →
@@ -196,7 +196,7 @@ def RequiresSubmissionAuthorization
 New submissions with new identifiers remain possible. -/
 theorem unauthorized_not_accepted
     (condition : app.PlayerView → Message Principal app.Payload → Prop)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (contract : app.RequiresSubmissionAuthorization condition initial horizon scheduler)
     {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last)

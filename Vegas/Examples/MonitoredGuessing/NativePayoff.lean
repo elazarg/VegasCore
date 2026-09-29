@@ -56,41 +56,41 @@ theorem native_initialized_some (profile : Profile nativeModel.behavioralSignatu
     nativeScheduler profile (2 * nativeHorizon + 1) nativeArena.initHistory (by rfl)] at supported
   change state ∈ (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _ none).support
     at supported
-  obtain ⟨initial, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨final, _, rfl⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨initial, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨final, _, rfl⟩ := PMF.support_map .. ▸ reached
   exact ⟨_, rfl⟩
 
 theorem native_initialized_payoffs (deposit : ℝ)
-    (profile : Profile nativeModel.behavioralSignature) (guesses : FinDist Bool)
+    (profile : Profile nativeModel.behavioralSignature) (guesses : PMF Bool)
     (alicePolicy : profile alice = nativeAliceBehavior)
     (watcherPolicy : profile watcher = nativeWatcherBehavior)
     (atQuiet : profile bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1) :
     ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
-      (nativePayoffObservation deposit) = (FinDist.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (nativePayoffObservation deposit) = (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
         guesses.map (guessingPayoffs bit)) := by
   have observationLaw := native_initialized_observation profile guesses alicePolicy watcherPolicy
     atQuiet
   calc
     _ = (((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
         nativeObservation).map (observationPayoffs deposit) := by
-      conv_rhs => rw [FinDist.map_comp]
-      apply FinDist.map_congr_of_eq_on_support
+      conv_rhs => rw [PMF.map_comp]
+      apply map_congr_on_support _
       intro state supported
       obtain ⟨control, rfl⟩ := native_initialized_some profile state supported
       exact native_some_payoffs deposit control
     _ = _ := by
       rw [observationLaw]
-      simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+      simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
         observation_guessing_payoffs]
 
 theorem source_equilibrium_payoffs (assessment : sourceModel.BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       assessment.continuationContext site (sourcePayoff who) 3)) :
     ((sourceModel.runBehavioral assessment.strategy 3).map History.state).map
-      sourcePayoffObservation = (FinDist.uniformOfFintype (α := Bool)).bind (fun bit =>
+      sourcePayoffObservation = (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
         (sourceDecisionLaw assessment.strategy bob sourceBobSite.1).map (guessingPayoffs bit)) := by
   rw [source_equilibrium_states assessment equilibrium]
-  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def, source_done_payoffs]
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, source_done_payoffs]
 
 /-- This equality includes actual source and native payoff vectors, not only
 an interpretation of the public outcome. In particular, no sanction is paid
@@ -115,7 +115,7 @@ theorem native_source_joint_payoffs (deposit : ℝ)
     (sourceDecisionLaw source.strategy bob sourceBobSite.1) alicePolicy watcherPolicy atQuiet
   have original := source_equilibrium_payoffs source equilibrium
   have same := native.trans original.symm
-  simpa only [FinDist.map_comp, Function.comp_def, nativePayoffObservation,
+  simpa only [PMF.map_comp, Function.comp_def, nativePayoffObservation,
     sourcePayoffObservation, sourcePayoff] using same
 
 end Vegas.Examples.MonitoredGuessing

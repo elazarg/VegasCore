@@ -59,14 +59,14 @@ theorem native_carol_reserved_views (left right response : nativeApp.Action)
   obtain ⟨next, pureStep⟩ := nativeRuntime.reactiveLatest_step_pure nativeLeaks carol carolBinding
     ((carolSite false left).respond nativeApp carol response)
   rw [pureStep] at leftMem
-  have firstEq := FinDist.mem_support_pure.mp leftMem
+  have firstEq := (PMF.mem_support_pure_iff _ _).mp leftMem
   subst afterLeft
-  rw [pureStep, FinDist.map_pure] at law
+  rw [pureStep, PMF.pure_map] at law
   have mapped : afterRight.application.playerView carol ∈
-      (FinDist.pure (next.application.playerView carol)).support := by
-    rw [law, FinDist.support_map]
+      (PMF.pure (next.application.playerView carol)).support := by
+    rw [law, PMF.support_map]
     exact ⟨afterRight, rightMem, rfl⟩
-  exact (FinDist.mem_support_pure.mp mapped).symm
+  exact ((PMF.mem_support_pure_iff _ _).mp mapped).symm
 
 private theorem maintenance_views (players : Player → nativeApp.Policy)
     (left right afterLeft afterRight : nativeApp.Execution)
@@ -85,13 +85,13 @@ private theorem maintenance_views (players : Player → nativeApp.Policy)
   have mapped : afterLeft.application.playerView who ∈
       ((environmentStep nativeRuntime right.application command).map
         fun state => state.playerView who).support := by
-    rw [← law, FinDist.support_map]
+    rw [← law, PMF.support_map]
     exact ⟨afterLeft.application, leftMoved, rfl⟩
   cases command with
   | executeSample event => exact (maintenance event rfl).elim
   | advanceClock | grant event | expire event =>
-      simp only [environmentStep, FinDist.mem_support_pure] at rightMoved
-      simp only [environmentStep, FinDist.map_pure, FinDist.mem_support_pure] at mapped
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at rightMoved
+      simp only [environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] at mapped
       rw [rightMoved]
       exact mapped
 
@@ -99,7 +99,7 @@ def nativeCarolSettlement : List (ServiceInstruction nativeGraph) :=
   [.includeLatest carolBinding carol, .tick, .tick, .expire carolBinding]
 
 def nativeCarolGuess (players : Player → nativeApp.Policy)
-    (bit : Bool) (prior response : nativeApp.Action) : FinDist nativeApp.Execution :=
+    (bit : Bool) (prior response : nativeApp.Action) : PMF nativeApp.Execution :=
   nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativeCarolSettlement
     ((carolSite bit prior).respond nativeApp carol response)
 
@@ -119,30 +119,30 @@ theorem native_carol_settled_views (players : Player → nativeApp.Policy)
     (rightMem : afterRight ∈ (nativeCarolGuess players true right response).support) :
     afterLeft.application.playerView carol = afterRight.application.playerView carol := by
   simp only [nativeCarolGuess, nativeCarolSettlement, runInteractionPlan,
-    FinDist.bind_pure] at leftMem rightMem
+    PMF.bind_pure] at leftMem rightMem
   obtain ⟨leftIncluded, leftIn, leftMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftMem)
   obtain ⟨rightIncluded, rightIn, rightMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightMem)
   have included := native_carol_reserved_views left right response players
     leftIncluded rightIncluded leftIn rightIn
   obtain ⟨leftTicked, leftTick, leftMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftMem)
   obtain ⟨rightTicked, rightTick, rightMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightMem)
   have ticked := maintenance_views players _ _ _ _ carol .advanceClock (by simp) included
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using leftTick)
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using rightTick)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using leftTick)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using rightTick)
   obtain ⟨leftDue, leftTick, leftMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftMem)
   obtain ⟨rightDue, rightTick, rightMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightMem)
   have due := maintenance_views players _ _ _ _ carol .advanceClock (by simp) ticked
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using leftTick)
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using rightTick)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using leftTick)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using rightTick)
   exact maintenance_views players _ _ _ _ carol (.expire carolBinding) (by simp) due
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using leftMem)
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using rightMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using leftMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using rightMem)
 
 theorem native_carol_binding_views (left right : EventGraphRuntime.State nativeGraph)
     (views : left.playerView carol = right.playerView carol) :
@@ -164,18 +164,18 @@ theorem native_carol_guess_law (players : Player → nativeApp.Policy)
   obtain ⟨second, secondMem⟩ := (nativeCarolGuess players true right response).support_nonempty
   have comparison := native_carol_binding_views _ _
     (native_carol_settled_views players left right response first second firstMem secondMem)
-  trans FinDist.pure (carolBindingRef.get? second.application.config.store)
-  · apply FinDist.eq_pure_of_support_subset_singleton _
+  trans PMF.pure (carolBindingRef.get? second.application.config.store)
+  · apply pmf_eq_pure_of_support_subset_singleton _
       (carolBindingRef.get? second.application.config.store)
     intro value member
-    obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ member
     exact native_carol_binding_views _ _
       (native_carol_settled_views players left right response final second finalMem secondMem)
   · symm
-    apply FinDist.eq_pure_of_support_subset_singleton _
+    apply pmf_eq_pure_of_support_subset_singleton _
       (carolBindingRef.get? second.application.config.store)
     intro value member
-    obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ member
     have equal := native_carol_binding_views _ _
       (native_carol_settled_views players left right response first final firstMem finalMem)
     exact equal.symm.trans comparison
@@ -183,7 +183,7 @@ theorem native_carol_guess_law (players : Player → nativeApp.Policy)
 /-- Carol uses one behavioral policy on her entire input. Bob's earlier raw
 response may differ arbitrarily between the two hidden-bit worlds. -/
 def nativeCarolPlay (players : Player → nativeApp.Policy)
-    (bit : Bool) (prior : nativeApp.Action) : FinDist nativeApp.Execution :=
+    (bit : Bool) (prior : nativeApp.Action) : PMF nativeApp.Execution :=
   (players carol ((carolSite bit prior).recall carol)
     ((carolSite bit prior).observe nativeApp carol)).bind (nativeCarolGuess players bit prior)
 
@@ -199,38 +199,38 @@ theorem native_carol_policy_law (players : Player → nativeApp.Policy)
       players carol ((carolSite true right).recall carol)
         ((carolSite true right).observe nativeApp carol) :=
     congrArg (fun input => players carol input.1 input.2) inputs
-  simp only [nativeCarolPlay, FinDist.map_bind]
+  simp only [nativeCarolPlay, PMF.map_bind]
   rw [same]
-  exact FinDist.bind_congr fun response _ => native_carol_guess_law players left right response
+  exact bind_congr_on_support _ fun response _ => native_carol_guess_law players left right response
 
 /-- Even type-dependent or certificate-dependent randomization in Bob's
 earlier response leaves Carol's committed-guess law unchanged. -/
 theorem native_carol_mixture_law (players : Player → nativeApp.Policy)
-    (left right : FinDist nativeApp.Action) :
+    (left right : PMF nativeApp.Action) :
     (left.bind (nativeCarolPlay players false)).map (fun final =>
       carolBindingRef.get? final.application.config.store) =
     (right.bind (nativeCarolPlay players true)).map (fun final =>
       carolBindingRef.get? final.application.config.store) := by
-  rw [FinDist.map_bind, FinDist.map_bind]
+  rw [PMF.map_bind, PMF.map_bind]
   trans (nativeCarolPlay players true ⟨none⟩).map
     (fun final => carolBindingRef.get? final.application.config.store)
   · calc
       _ = left.bind (fun _ => (nativeCarolPlay players true ⟨none⟩).map
           (fun final => carolBindingRef.get? final.application.config.store)) :=
-        FinDist.bind_congr fun response _ => native_carol_policy_law players response ⟨none⟩
-      _ = _ := FinDist.bind_const _ _
+        bind_congr_on_support _ fun response _ => native_carol_policy_law players response ⟨none⟩
+      _ = _ := PMF.bind_const _ _
   · symm
     calc
       _ = right.bind (fun _ => (nativeCarolPlay players true ⟨none⟩).map
           (fun final => carolBindingRef.get? final.application.config.store)) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro response _
         exact (native_carol_policy_law players ⟨none⟩ response).symm.trans
           (native_carol_policy_law players ⟨none⟩ ⟨none⟩)
-      _ = _ := FinDist.bind_const _ _
+      _ = _ := PMF.bind_const _ _
 
 def nativeCarolGuessLaw (players : Player → nativeApp.Policy) :
-    FinDist (PublicationResult Bool) :=
+    PMF (PublicationResult Bool) :=
   (nativeCarolPlay players false ⟨none⟩).map (fun final =>
     (carolBindingRef.get? final.application.config.store).getD .failure)
 
@@ -247,7 +247,7 @@ theorem native_carol_common_law (players : Player → nativeApp.Policy)
     · exact (native_carol_policy_law players prior ⟨none⟩).trans
         (native_carol_policy_law players ⟨none⟩ ⟨none⟩).symm
     · exact (native_carol_policy_law players ⟨none⟩ prior).symm
-  simpa only [FinDist.map_comp, Function.comp_def, nativeCarolGuessLaw] using
+  simpa only [PMF.map_comp, Function.comp_def, nativeCarolGuessLaw] using
     congrArg (fun law => law.map (fun result => result.getD .failure)) options
 theorem native_carol_prefix_ready (bit : Bool) (response : nativeApp.Action) :
     (carolSite bit response).application.config.cut.Ready carolBinding :=
@@ -257,9 +257,9 @@ theorem native_carol_prefix_invariant (bit : Bool) (response : nativeApp.Action)
     (carolSite bit response).application.Invariant nativeInputs := by
   obtain ⟨trace⟩ := native_carol_raw_trace bit response
   exact (nativeRuntime.reactiveStateInvariant nativeLeaks nativeInputs).history
-    (FinDist.pure nativeInitial) nativeHorizon nativeScheduler (by
+    (PMF.pure nativeInitial) nativeHorizon nativeScheduler (by
       intro state member
-      cases FinDist.mem_support_pure.mp member
+      cases (PMF.mem_support_pure_iff _ _).mp member
       exact State.initial_invariant nativeInputs) trace
 
 theorem native_carol_guess_stored (players : Player → nativeApp.Policy)
@@ -304,7 +304,7 @@ theorem native_carol_guess_stored (players : Player → nativeApp.Policy)
       nativeNetwork _ execution due submitted.invariant dueMem
     have expiredProgress := nativeRuntime.interactionStep_facts nativeLeaks nativeInputs players
       nativeNetwork (.expire carolBinding) due expired beforeExpiry.invariant expiryMem
-    have finalEq : final = expired := FinDist.mem_support_pure.mp finalMem
+    have finalEq : final = expired := (PMF.mem_support_pure_iff _ _).mp finalMem
     rw [finalEq]
     rcases beforeExpiry.ready_or_completed carolBinding ready with completed | stillReady
     · exact expiredProgress.completed completed

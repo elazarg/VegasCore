@@ -42,7 +42,7 @@ theorem roster_local_law_state
     (before rest : List (ServiceInstruction (graph setup)))
     (split : rosterPlan setup rosters = before ++ rest)
     (position : execution.environmentRecall.length = before.length)
-    (law : FinDist ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
+    (law : PMF ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).Choice who
       ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
         (rosterScheduler setup leaks rosters network)).infoOf who history.trace))) :
@@ -65,7 +65,7 @@ theorem roster_local_law_state
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)
       players covered history who remaining execution current law
   refine physical.trans ?_
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro response _
   have traced : (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).Trace
@@ -77,7 +77,7 @@ theorem roster_local_law_state
     at accounted
   rw [position, split, List.length_append] at accounted
   have count : remaining = rest.length := by omega
-  simp only [ReactiveApplication.finish, ReactiveApplication.resume, FinDist.pure_bind, count]
+  simp only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.pure_bind, count]
   rw [roster_segment_rounds setup leaks rosters network players before rest []
     (by simpa only [List.append_nil] using split) _
     (by rw [ReactiveApplication.respond_environmentRecall]; exact position)]
@@ -105,7 +105,7 @@ theorem roster_local_law_complete_state
       (rosterScheduler setup leaks rosters network)).InfoState who}
     (observed : (menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).infoOf who history.trace = info)
-    (law : FinDist ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
+    (law : PMF ((menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).Choice who info)) :
     let model := menu.information (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)

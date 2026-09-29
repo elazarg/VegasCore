@@ -44,7 +44,7 @@ theorem includeReported_fresh (watcher : Principal) (view : app.EnvironmentView)
 /-- A single reporting policy, fixed independently of any deviation or
 equilibrium. Previously published material cannot conceal a fresh report. -/
 def reportFirstUnpublished : app.Policy := fun _ view =>
-  FinDist.pure <| match view.messages.leaked.find? (fun message =>
+  PMF.pure <| match view.messages.leaked.find? (fun message =>
       decide (message.id ∉ view.messages.ledger.map Message.id)) with
     | none => ⟨none⟩
     | some message => ⟨some (.replay message.id)⟩
@@ -52,7 +52,7 @@ def reportFirstUnpublished : app.Policy := fun _ view =>
 theorem reportFirstUnpublished_silent (past : List app.PlayerEntry) (view : app.PlayerView)
     (published : ∀ message ∈ view.messages.leaked,
       message.id ∈ view.messages.ledger.map Message.id) :
-    app.reportFirstUnpublished past view = FinDist.pure ⟨none⟩ := by
+    app.reportFirstUnpublished past view = PMF.pure ⟨none⟩ := by
   have absent : view.messages.leaked.find? (fun message =>
       decide (message.id ∉ view.messages.ledger.map Message.id)) = none := by
     apply List.find?_eq_none.mpr
@@ -80,7 +80,7 @@ theorem reportFirstUnpublished_reports (past : List app.PlayerEntry) (view : app
     (fresh : id ∉ view.messages.ledger.map Message.id)
     (unique : ∀ packet ∈ view.messages.leaked,
       packet.id ∉ view.messages.ledger.map Message.id → packet.id = id) :
-    app.reportFirstUnpublished past view = FinDist.pure ⟨some (.replay id)⟩ := by
+    app.reportFirstUnpublished past view = PMF.pure ⟨some (.replay id)⟩ := by
   unfold reportFirstUnpublished
   cases selected : view.messages.leaked.find? (fun packet =>
       decide (packet.id ∉ view.messages.ledger.map Message.id)) with
@@ -143,7 +143,7 @@ private theorem activation_law (execution : app.Execution) (watcher : Principal)
     execution.environmentStep app (.activate watcher) =
       (app.observePending watcher execution.network.pending).map
         (sampled app execution watcher) := by
-  simp only [Execution.environmentStep, FinDist.map_comp]
+  simp only [Execution.environmentStep, PMF.map_comp]
   rfl
 
 private theorem sampled_mem (execution : app.Execution) (watcher : Principal)
@@ -151,7 +151,7 @@ private theorem sampled_mem (execution : app.Execution) (watcher : Principal)
     (supported : selected ∈ (app.observePending watcher execution.network.pending).support) :
     sampled app execution watcher selected ∈
       (execution.environmentStep app (.activate watcher)).support := by
-  rw [activation_law, FinDist.support_map]
+  rw [activation_law, PMF.support_map]
   exact ⟨selected, supported, rfl⟩
 
 /-- A clean prefix plus one unpublished identifier is enough for the fixed
@@ -169,8 +169,8 @@ theorem reportFirstUnpublished_after_activation
     (reached : observed ∈ (execution.environmentStep app (.activate watcher)).support)
     (seen : message ∈ (observed.observe app watcher).messages.leaked) :
     app.reportFirstUnpublished (observed.recall watcher) (observed.observe app watcher) =
-      FinDist.pure ⟨some (.replay id)⟩ := by
-  rw [activation_law, FinDist.support_map] at reached
+      PMF.pure ⟨some (.replay id)⟩ := by
+  rw [activation_law, PMF.support_map] at reached
   obtain ⟨selected, _, rfl⟩ := reached
   apply app.reportFirstUnpublished_reports _ _ id message seen identified fresh
   intro packet retained unpublished
@@ -190,7 +190,7 @@ theorem receipt_policyInvariant (players : Principal → app.Policy)
 
 /-- Composition of existing activation, response and public inclusion operations. -/
 def reportInclusion (players : Principal → app.Policy) (watcher : Principal)
-    (execution : app.Execution) : FinDist app.Execution :=
+    (execution : app.Execution) : PMF app.Execution :=
   (app.dispatch players (.activate watcher) execution).bind fun reported =>
     app.dispatch players (app.includeReported watcher (reported.observeEnvironment app)) reported
 
@@ -204,7 +204,7 @@ theorem reportInclusion_quiescent (players : Principal → app.Policy) (watcher 
       message.id ∈ execution.network.ledger.map Message.id)
     (inputs : ∀ input ∈ execution.network.inputs, input.broadcaster = watcher →
       input.envelope.id ∈ execution.network.ledger.map Message.id) :
-    ∃ next, app.reportInclusion players watcher execution = FinDist.pure next ∧
+    ∃ next, app.reportInclusion players watcher execution = PMF.pure next ∧
       next.application = execution.application ∧ next.network = execution.network ∧
       next.receipts = execution.receipts ∧
       next.recall = (execution.respond app watcher ⟨none⟩).recall ∧
@@ -216,20 +216,20 @@ theorem reportInclusion_quiescent (players : Principal → app.Policy) (watcher 
   let next : app.Execution := { silent with environmentRecall := silent.environmentRecall ++
     [⟨silent.observeEnvironment app, .wait⟩] }
   have reports : app.reportFirstUnpublished (activated.recall watcher)
-      (activated.observe app watcher) = FinDist.pure ⟨none⟩ :=
+      (activated.observe app watcher) = PMF.pure ⟨none⟩ :=
     app.reportFirstUnpublished_silent _ _ leaked
   have activation : app.dispatch players (.activate watcher) execution =
-      FinDist.pure silent := by
+      PMF.pure silent := by
     rw [dispatch, execution.activate_of_pending_published app watcher pending,
-      FinDist.pure_bind]
+      PMF.pure_bind]
     change app.invoke players watcher activated = _
-    rw [invoke, policy, reports, FinDist.map_pure]
+    rw [invoke, policy, reports, PMF.pure_map]
   have quiet : app.includeReported watcher (silent.observeEnvironment app) = .wait :=
     app.includeReported_wait_of_published watcher _ inputs
   refine ⟨next, ?_, rfl, rfl, rfl, rfl, ?_⟩
-  · rw [reportInclusion, activation, FinDist.pure_bind, quiet]
+  · rw [reportInclusion, activation, PMF.pure_bind, quiet]
     simp only [dispatch, Command.actor?, resume, Execution.environmentStep,
-      FinDist.map_pure, FinDist.pure_bind, next]
+      PMF.pure_map, PMF.pure_bind, next]
   · simp only [next, silent, activated, Execution.respond, List.length_append,
       List.length_cons, List.length_nil]
 
@@ -241,7 +241,7 @@ private theorem reportInclusion_law (players : Principal → app.Policy) (watche
           app.dispatch players (app.includeReported watcher (reported.observeEnvironment app))
             reported := by
   unfold reportInclusion
-  rw [dispatch, activation_law, FinDist.bind_map, FinDist.bind_bind]
+  rw [dispatch, activation_law, PMF.bind_map, PMF.bind_bind]
   rfl
 
 private theorem sampled_leaked (execution : app.Execution) (watcher : Principal)
@@ -268,7 +268,7 @@ private theorem report_recorded (players : Principal → app.Policy)
     (fresh : id ∉ execution.network.ledger.map Message.id)
     (seen : message ∈ execution.network.leaked watcher)
     (reports : players watcher (execution.recall watcher) (execution.observe app watcher) =
-      FinDist.pure ⟨some (.replay id)⟩)
+      PMF.pure ⟨some (.replay id)⟩)
     (next : app.Execution)
     (reached : next ∈ ((app.invoke players watcher execution).bind fun reported =>
       app.dispatch players (app.includeReported watcher (reported.observeEnvironment app))
@@ -278,12 +278,12 @@ private theorem report_recorded (players : Principal → app.Policy)
   have identified : message.id = id := by
     simpa using (List.find?_eq_some_iff_append.mp found).1
   obtain ⟨packet, known⟩ := app.known_of_leaked execution watcher id message seen identified
-  rw [invoke, reports, FinDist.map_pure, FinDist.pure_bind,
+  rw [invoke, reports, PMF.pure_map, PMF.pure_bind,
     app.replay_reported execution watcher id packet known foreign fresh] at reached
-  simp only [dispatch, Command.actor?, Execution.environmentStep, FinDist.map_pure,
-    FinDist.pure_bind] at reached
-  change next ∈ (FinDist.pure _).support at reached
-  cases FinDist.mem_support_pure.mp reached
+  simp only [dispatch, Command.actor?, Execution.environmentStep, PMF.pure_map,
+    PMF.pure_bind] at reached
+  change next ∈ (PMF.pure _).support at reached
+  cases (PMF.mem_support_pure_iff _ _).mp reached
   have lookup := app.replay_lookup execution watcher id message found
   change (id, (app.handle execution.application message).isSome) ∈
     ((execution.respond app watcher ⟨some (.replay id)⟩).includePending app id).receipts ∧
@@ -308,15 +308,14 @@ theorem sampling_receipt_lower (players : Principal → app.Policy) (watcher : P
     (reports : ∀ observed ∈ (execution.environmentStep app (.activate watcher)).support,
       message ∈ (observed.observe app watcher).messages.leaked →
         players watcher (observed.recall watcher) (observed.observe app watcher) =
-          FinDist.pure ⟨some (.replay id)⟩)
+          PMF.pure ⟨some (.replay id)⟩)
     (scheduler : app.Scheduler) (count : Nat) :
-    (app.observePending watcher execution.network.pending).probOf {selected | id ∈ selected} ≤
-      ((app.reportInclusion players watcher execution).bind
-        (app.runRounds scheduler players count)).probOf
-          {final | (id, (app.handle execution.application message).isSome) ∈ final.receipts} := by
+    ((app.observePending watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+      (((app.reportInclusion players watcher execution).bind
+        (app.runRounds scheduler players count)).toOuterMeasure {final | (id, (app.handle execution.application message).isSome) ∈ final.receipts}).toReal := by
   classical
-  rw [app.reportInclusion_law, FinDist.bind_bind,
-    ← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf,
+  rw [app.reportInclusion_law, PMF.bind_bind,
+    ← expect_indicator, ← expect_indicator,
     FinDist.expect_bind]
   apply FinDist.expect_mono
   intro selected supported
@@ -324,7 +323,7 @@ theorem sampling_receipt_lower (players : Principal → app.Policy) (watcher : P
     fun reported => app.dispatch players
       (app.includeReported watcher (reported.observeEnvironment app)) reported).bind
         (app.runRounds scheduler players count)
-  change (if id ∈ selected then (1 : ℝ) else 0) ≤ law.expect _
+  change (if id ∈ selected then (1 : ℝ) else 0) ≤ expect law _
   by_cases chosen : id ∈ selected
   · have seen := app.sampled_leaked execution watcher id message found foreign unknown fresh
       selected chosen
@@ -336,12 +335,12 @@ theorem sampling_receipt_lower (players : Principal → app.Policy) (watcher : P
         (sampled app execution watcher selected).network.ledger.map Message.id := fresh
     simp only [chosen, ↓reduceIte]
     calc
-      (1 : ℝ) = law.expect (fun _ => 1) := (FinDist.expect_const law 1).symm
+      (1 : ℝ) = expect law (fun _ => 1) := (expect_constant law 1).symm
       _ ≤ _ := by
         apply FinDist.expect_mono
         intro final reached
         obtain ⟨recorded, included, continued⟩ :=
-          Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         have receipt := app.report_recorded players (sampled app execution watcher selected)
           watcher id message observedLookup foreign observedFresh seen reported recorded included
         have persists := (app.receipt_policyInvariant players
@@ -350,7 +349,7 @@ theorem sampling_receipt_lower (players : Principal → app.Policy) (watcher : P
         simp only [Set.mem_ofPred_eq, persists, ↓reduceIte, le_refl]
   · simp only [chosen, ↓reduceIte]
     calc
-      (0 : ℝ) = law.expect (fun _ => 0) := (FinDist.expect_const law 0).symm
+      (0 : ℝ) = expect law (fun _ => 0) := (expect_constant law 0).symm
       _ ≤ _ := FinDist.expect_mono (fun _ _ => by split <;> norm_num)
 
 /-- A rejected report remains attributable after its payload becomes admissible
@@ -365,12 +364,12 @@ theorem sampling_rejected_receipt_lower (players : Principal → app.Policy) (wa
     (reports : ∀ observed ∈ (execution.environmentStep app (.activate watcher)).support,
       message ∈ (observed.observe app watcher).messages.leaked →
         players watcher (observed.recall watcher) (observed.observe app watcher) =
-          FinDist.pure ⟨some (.replay id)⟩)
+          PMF.pure ⟨some (.replay id)⟩)
     (rejected : app.handle execution.application message = none)
     (scheduler : app.Scheduler) (count : Nat) :
-    (app.observePending watcher execution.network.pending).probOf {selected | id ∈ selected} ≤
-      ((app.reportInclusion players watcher execution).bind
-        (app.runRounds scheduler players count)).probOf {final | (id, false) ∈ final.receipts} := by
+    ((app.observePending watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+      (((app.reportInclusion players watcher execution).bind
+        (app.runRounds scheduler players count)).toOuterMeasure {final | (id, false) ∈ final.receipts}).toReal := by
   simpa only [rejected, Option.isSome_none] using
     app.sampling_receipt_lower players watcher execution id message found foreign unknown fresh
       reports scheduler count
@@ -388,15 +387,14 @@ theorem sampling_ledger_violation_lower (players : Principal → app.Policy) (wa
     (reports : ∀ observed ∈ (execution.environmentStep app (.activate watcher)).support,
       message ∈ (observed.observe app watcher).messages.leaked →
         players watcher (observed.recall watcher) (observed.observe app watcher) =
-          FinDist.pure ⟨some (.replay id)⟩)
+          PMF.pure ⟨some (.replay id)⟩)
     (scheduler : app.Scheduler) (count : Nat) :
-    (app.observePending watcher execution.network.pending).probOf {selected | id ∈ selected} ≤
-      ((app.reportInclusion players watcher execution).bind
-        (app.runRounds scheduler players count)).probOf
-          {final | ledgerViolation who permitted final.network.ledger = true} := by
+    ((app.observePending watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+      (((app.reportInclusion players watcher execution).bind
+        (app.runRounds scheduler players count)).toOuterMeasure {final | ledgerViolation who permitted final.network.ledger = true}).toReal := by
   classical
-  rw [app.reportInclusion_law, FinDist.bind_bind,
-    ← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf,
+  rw [app.reportInclusion_law, PMF.bind_bind,
+    ← expect_indicator, ← expect_indicator,
     FinDist.expect_bind]
   apply FinDist.expect_mono
   intro selected supported
@@ -404,7 +402,7 @@ theorem sampling_ledger_violation_lower (players : Principal → app.Policy) (wa
     fun reported => app.dispatch players
       (app.includeReported watcher (reported.observeEnvironment app)) reported).bind
         (app.runRounds scheduler players count)
-  change (if id ∈ selected then (1 : ℝ) else 0) ≤ law.expect _
+  change (if id ∈ selected then (1 : ℝ) else 0) ≤ expect law _
   by_cases chosen : id ∈ selected
   · have seen := app.sampled_leaked execution watcher id message found foreign unknown fresh
       selected chosen
@@ -416,12 +414,12 @@ theorem sampling_ledger_violation_lower (players : Principal → app.Policy) (wa
         (sampled app execution watcher selected).network.ledger.map Message.id := fresh
     simp only [chosen, ↓reduceIte]
     calc
-      (1 : ℝ) = law.expect (fun _ => 1) := (FinDist.expect_const law 1).symm
+      (1 : ℝ) = expect law (fun _ => 1) := (expect_constant law 1).symm
       _ ≤ _ := by
         apply FinDist.expect_mono
         intro final reached
         obtain ⟨recorded, included, continued⟩ :=
-          Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         have receipt := app.report_recorded players (sampled app execution watcher selected)
           watcher id message observedLookup foreign observedFresh seen reported recorded included
         have detected : ledgerViolation who permitted recorded.network.ledger = true :=
@@ -431,7 +429,7 @@ theorem sampling_ledger_violation_lower (players : Principal → app.Policy) (wa
         simp only [Set.mem_ofPred_eq, persists, ↓reduceIte, le_refl]
   · simp only [chosen, ↓reduceIte]
     calc
-      (0 : ℝ) = law.expect (fun _ => 0) := (FinDist.expect_const law 0).symm
+      (0 : ℝ) = expect law (fun _ => 0) := (expect_constant law 0).symm
       _ ≤ _ := FinDist.expect_mono (fun _ _ => by split <;> norm_num)
 
 end Interaction.ReactiveApplication

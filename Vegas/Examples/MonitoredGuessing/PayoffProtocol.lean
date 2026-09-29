@@ -41,7 +41,7 @@ theorem payoffSetup_protocol (table : PayoffTable) :
 theorem payoffSetup_information (table : PayoffTable) :
     HEq ((payoffSetup table).informationModel (payoffAdmission table)) sourceModel := by
   let arena (kernel : sourceSetup.ProtocolState →
-      (Player → Option (OwnAction Player simpleExpr)) → FinDist sourceSetup.ProtocolState) :
+      (Player → Option (OwnAction Player simpleExpr)) → PMF sourceSetup.ProtocolState) :
       ExecutionProtocol Player :=
     { sourceArena with step state joint := kernel state joint.val }
   let signals kernel : InfoSignals (arena kernel) := {

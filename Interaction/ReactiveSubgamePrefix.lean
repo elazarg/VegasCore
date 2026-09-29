@@ -23,9 +23,9 @@ structure TwoResponsePrefix (app : ReactiveApplication Unit) where
   remaining : Nat
   scheduler : app.Scheduler
   schedules : ∀ history view, history.length < 2 →
-    scheduler history view = FinDist.pure (.activate ())
+    scheduler history view = PMF.pure (.activate ())
   activation : ∀ execution : app.Execution,
-    execution.environmentStep app (.activate ()) = FinDist.pure
+    execution.environmentStep app (.activate ()) = PMF.pure
       { execution with environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .activate ()⟩] }
 
@@ -33,9 +33,9 @@ namespace TwoResponsePrefix
 
 variable {app : ReactiveApplication Unit} (stem : app.TwoResponsePrefix)
 
-abbrev arena := app.protocol (FinDist.pure stem.initialState) (stem.remaining + 2)
+abbrev arena := app.protocol (PMF.pure stem.initialState) (stem.remaining + 2)
   stem.scheduler
-abbrev model := app.information (FinDist.pure stem.initialState) (stem.remaining + 2)
+abbrev model := app.information (PMF.pure stem.initialState) (stem.remaining + 2)
   stem.scheduler
 
 def initial : app.Execution := .initial app stem.initialState
@@ -52,16 +52,16 @@ def afterSecond (one two : app.Action) : app.Execution :=
 
 private def extendPure (history : stem.arena.History) (joint : Unit → Option app.Action)
     (legal : stem.arena.Legal history.state joint) (target : stem.arena.State)
-    (law : stem.arena.step history.state ⟨joint, legal⟩ = FinDist.pure target) :
+    (law : stem.arena.step history.state ⟨joint, legal⟩ = PMF.pure target) :
     stem.arena.History :=
-  history.extend legal (by rw [law]; exact FinDist.mem_support_pure.mpr rfl)
+  history.extend legal (by rw [law]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 private def setupHistory : stem.arena.History :=
   stem.extendPure stem.arena.initHistory (fun _ => none)
     ⟨by change ¬ False; simp, fun _ => by change ¬ (none : Option Unit) = some _; simp⟩
     (some ⟨(stem.remaining + 2), none, stem.initial⟩) (by
-      change (FinDist.pure stem.initialState).map _ = _
-      rw [FinDist.map_pure]; rfl)
+      change (PMF.pure stem.initialState).map _ = _
+      rw [PMF.pure_map]; rfl)
 
 private def firstActivation : stem.arena.History :=
   stem.extendPure stem.setupHistory (fun _ => none)
@@ -69,8 +69,8 @@ private def firstActivation : stem.arena.History :=
       fun _ => by change ¬ (none : Option Unit) = some _; simp⟩
     (some ⟨(stem.remaining + 1), some (), stem.activated stem.initial⟩) (by
       change (stem.scheduler _ _).bind _ = _
-      rw [stem.schedules _ _ (by change 0 < 2; decide), FinDist.pure_bind,
-        stem.activation, FinDist.map_pure]; rfl)
+      rw [stem.schedules _ _ (by change 0 < 2; decide), PMF.pure_bind,
+        stem.activation, PMF.pure_map]; rfl)
 
 private def firstHistory (action : app.Action) : stem.arena.History :=
   stem.extendPure stem.firstActivation (fun _ => some action)
@@ -89,8 +89,8 @@ private def secondActivation (action : app.Action) : stem.arena.History :=
     (some ⟨stem.remaining, some (), stem.activated (stem.afterFirst action)⟩) (by
       change (stem.scheduler (stem.afterFirst action).environmentRecall _).bind _ = _
       rw [stem.afterFirst_environment]
-      rw [stem.schedules _ _ (by change 1 < 2; decide), FinDist.pure_bind,
-        stem.activation, FinDist.map_pure]; rfl)
+      rw [stem.schedules _ _ (by change 1 < 2; decide), PMF.pure_bind,
+        stem.activation, PMF.pure_map]; rfl)
 
 def secondHistory (one two : app.Action) : stem.arena.History :=
   stem.extendPure (stem.secondActivation one) (fun _ => some two)
@@ -100,12 +100,12 @@ def secondHistory (one two : app.Action) : stem.arena.History :=
 
 private theorem extendPure_unique (history : stem.arena.History) (joint : Unit → Option app.Action)
     (legal : stem.arena.Legal history.state joint) (target : stem.arena.State)
-    (law : stem.arena.step history.state ⟨joint, legal⟩ = FinDist.pure target)
+    (law : stem.arena.step history.state ⟨joint, legal⟩ = PMF.pure target)
     (otherLegal : stem.arena.Legal history.state joint) (other : stem.arena.State)
     (supported : other ∈ (stem.arena.step history.state ⟨joint, otherLegal⟩).support) :
     history.extend otherLegal supported = stem.extendPure history joint legal target law := by
   rw [law] at supported
-  have same := FinDist.mem_support_pure.mp supported
+  have same := (PMF.mem_support_pure_iff _ _).mp supported
   subst other
   rfl
 
@@ -190,7 +190,7 @@ private theorem initial_actions_recalled (one two : app.Action)
     (reached : stem.arena.HistoryReaches (stem.secondHistory one two) history)
     (stateEq : history.state = some control) : [one, two] <+: actionRecall control := by
   obtain ⟨fuel, path⟩ := reached
-  have retained := app.reaches_recall_prefix (FinDist.pure stem.initialState)
+  have retained := app.reaches_recall_prefix (PMF.pure stem.initialState)
     (stem.remaining + 2) stem.scheduler path
     ⟨stem.remaining, none, stem.afterSecond one two⟩ control rfl stateEq ()
   have mapped := retained.map ReactiveApplication.PlayerEntry.action

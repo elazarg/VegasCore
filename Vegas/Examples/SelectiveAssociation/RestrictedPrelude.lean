@@ -22,11 +22,11 @@ theorem prelude_position (who : Player) (control : app.Control)
     (ambient : control.execution.application.serviceGrant = none) :
     (who = alice ∧ control.remaining = 88 ∧ control.execution.environmentRecall.length = 1) ∨
       (who = bob ∧ control.remaining = 87 ∧ control.execution.environmentRecall.length = 2) := by
-  obtain ⟨accounted, supported⟩ := menu.roundSupported_uniform (FinDist.pure nativeInitial)
+  obtain ⟨accounted, supported⟩ := menu.roundSupported_uniform (PMF.pure nativeInitial)
     nativeHorizon scheduler trace
   rw [active] at supported
   obtain ⟨count, prior, command, position, priorMem, commandMem, actor, observed⟩ := supported
-  have cursor := app.roundsFrom_recall (FinDist.pure nativeInitial) scheduler
+  have cursor := app.roundsFrom_recall (PMF.pure nativeInitial) scheduler
     menu.uniformResponses count prior priorMem
   have bounded : count < nativePlan.length := by
     change _ + _ = nativePlan.length at accounted
@@ -35,7 +35,7 @@ theorem prelude_position (who : Player) (control : app.Control)
     simp only [serviceScheduler, cursor] at commandMem
     cases found : nativePlan[count]? with
     | none =>
-        simp only [found, FinDist.mem_support_pure] at commandMem
+        simp only [found, PMF.mem_support_pure_iff _ _] at commandMem
         subst command
         cases actor
     | some instruction =>
@@ -107,7 +107,7 @@ theorem prescribed_prelude_results (who : Player) (control : app.Control)
       ⟨.success false, .success false, .success false⟩ := by
   have short : preludeSteps who ≤ 2 * nativeHorizon + 1 := by fin_cases who <;> decide
   rw [← Nat.add_sub_of_le short, model.runBehavioralFrom_add] at supported
-  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨atBinding, bindingEq, ownerActive, ownerGrant⟩ := prelude_reaches_binding profile who
     control trace active ambient later laterMem
   rcases later with ⟨state, laterTrace⟩
@@ -137,10 +137,10 @@ theorem bob_prelude_rational (assessment : model.BehavioralAssessment)
   have controlAmbient : control.execution.application.serviceGrant = none := by
     rw [← observed] at ambient
     exact ambient
-  have prescribed : (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
-      ⟨some control, trace⟩).expect (fun final => nativeUtility bob final.state) = 1 := by
-    refine (FinDist.expect_congr (v := fun _ => (1 : ℝ)) ?_).trans
-      (FinDist.expect_const _ 1)
+  have prescribed : expect (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
+      ⟨some control, trace⟩) (fun final => nativeUtility bob final.state) = 1 := by
+    refine (expect_congr_on_support (v := fun _ => (1 : ℝ)) ?_).trans
+      (expect_constant _ 1)
     intro final finalMem
     obtain ⟨result, finalEq, outcomes⟩ := prescribed_prelude_results bob control trace active
       controlAmbient final finalMem

@@ -87,15 +87,15 @@ theorem bob_addressed_included (players : Player → nativeApp.Policy) (bit : Bo
     (addressed : submission.call.packet.event? nativeGraph = some bobPublication) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       (.includeLatest bobPublication bob) (bobSubmission bit submission) =
-        FinDist.pure (bobIncluded bit submission) := by
+        PMF.pure (bobIncluded bit submission) := by
   have selected : nativeRuntime.reactiveLatest nativeLeaks bobPublication bob
       ((bobSubmission bit submission).observeEnvironment nativeApp) = .include (bob, 0) := by
     simpa only [bobSubmission, quiet_bob_network, MessageNetwork.empty] using
       nativeRuntime.reactiveLatest_after_submit nativeLeaks bob bobPublication
         (quietBob bit) (quiet_bob_serials bit) submission addressed
   rw [nativeRuntime.interaction_includeLatest_environment, selected]
-  change (FinDist.pure _).map _ = _
-  rw [FinDist.map_pure]
+  change (PMF.pure _).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 theorem bob_submission_network (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
@@ -201,12 +201,12 @@ theorem bob_ledger_plan_persists (players : Player → nativeApp.Policy)
     (reached : next ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       plan before).support) : bobLedgerViolation next = true := by
   induction plan generalizing before with
-  | nil => cases FinDist.mem_support_pure.mp reached; exact detected
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; exact detected
   | cons instruction rest ih =>
       obtain ⟨middle, moved, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨command, _, executed⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
       exact ih middle ((nativeApp.ledgerViolation_policyInvariant bob bobPacketPermitted
         players).dispatch command before middle detected executed) continued
 
@@ -219,12 +219,12 @@ theorem bob_addressed_liability_law (players : Player → nativeApp.Policy)
     (rest : List (ServiceInstruction nativeGraph)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       (.includeLatest bobPublication bob :: rest) (bobSubmission bit submission)).map
-        bobLedgerLiability = FinDist.pure 1 := by
+        bobLedgerLiability = PMF.pure 1 := by
   rw [runInteractionPlan, bob_addressed_included players bit submission addressed,
-    FinDist.pure_bind]
-  apply FinDist.eq_pure_of_support_subset_singleton
+    PMF.pure_bind]
+  apply pmf_eq_pure_of_support_subset_singleton
   intro liability supported
-  obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
   have detected := bob_ledger_plan_persists players rest (bobIncluded bit submission) final
     (bob_nonconforming_detected bit submission nonconforming) reached
   simp only [bobLedgerLiability, detected, ↓reduceIte]

@@ -37,8 +37,8 @@ arbitrary deviations, forwarding, replays, rejected calls and scheduler choices.
 The publication may be rejected by the game; it still carries public evidence. -/
 theorem foreign_certificate_published (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (emptyObservation : ∀ who pending, leaks who pending = FinDist.pure ∅)
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (emptyObservation : ∀ who pending, leaks who pending = PMF.pure ∅)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace

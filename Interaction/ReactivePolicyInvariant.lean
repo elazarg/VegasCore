@@ -40,15 +40,15 @@ theorem PolicyInvariant.resume (invariant : app.PolicyInvariant players predicat
     (actor : Option Principal) (execution next : app.Execution) (valid : predicate execution)
     (reached : next ∈ (app.resume players actor execution).support) : predicate next := by
   cases actor with
-  | none => cases FinDist.mem_support_pure.mp reached; exact valid
+  | none => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
   | some who =>
-      obtain ⟨action, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨action, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact invariant.respond execution who action valid supported
 
 theorem PolicyInvariant.dispatch (invariant : app.PolicyInvariant players predicate)
     (command : app.Command) (execution next : app.Execution) (valid : predicate execution)
     (reached : next ∈ (app.dispatch players command execution).support) : predicate next := by
-  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   exact invariant.resume _ middle next
     (invariant.environment execution middle command valid supported) moved
 
@@ -58,10 +58,10 @@ theorem PolicyInvariant.runRounds (invariant : app.PolicyInvariant players predi
     (reached : next ∈ (app.runRounds scheduler players count execution).support) :
     predicate next := by
   induction count generalizing execution with
-  | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
   | succ count ih =>
-      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨command, _, stepped⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨command, _, stepped⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       exact ih middle (invariant.dispatch command execution middle valid stepped) moved
 
 def executionInvariant (predicate : app.Execution → Prop) : app.ProtocolState → Prop
@@ -69,37 +69,37 @@ def executionInvariant (predicate : app.Execution → Prop) : app.ProtocolState 
   | some control => predicate control.execution
 
 theorem PolicyInvariant.controlStep (invariant : app.PolicyInvariant players predicate)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state))
     (before after : app.ProtocolState) (valid : executionInvariant predicate before)
     (reached : after ∈ (app.controlStep initial horizon scheduler players before).support) :
     executionInvariant predicate after := by
   cases before with
   | none =>
-      obtain ⟨state, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact setup state supported
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
           obtain ⟨action, supported, stepped⟩ :=
-            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           simp only [transition, ↓reduceIte, Option.getD_some] at stepped
-          cases FinDist.mem_support_pure.mp stepped
+          cases (PMF.mem_support_pure_iff _ _).mp stepped
           exact invariant.respond execution who action valid supported
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               exact invariant.environment execution next command valid moved
 
 /-- Includes intermediate scheduler and player states, for any amount of fuel.
 Only the chosen players' supported responses constrain the invariant. -/
 theorem PolicyInvariant.canonical_run (invariant : app.PolicyInvariant players predicate)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state))
     (fuel : Nat) (result : app.ProtocolState)
     (supported : result ∈ (((app.information initial horizon scheduler).runSingleMoverBehavioralFrom
@@ -109,12 +109,12 @@ theorem PolicyInvariant.canonical_run (invariant : app.PolicyInvariant players p
           ExecutionProtocol.History.state).support) : executionInvariant predicate result := by
   rw [app.run_map_state] at supported
   change result ∈ ((fun law => law.bind (app.controlStep initial horizon scheduler players))^[fuel]
-    (FinDist.pure none)).support at supported
+    (PMF.pure none)).support at supported
   induction fuel generalizing result with
-  | zero => cases FinDist.mem_support_pure.mp supported; trivial
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; trivial
   | succ fuel ih =>
       rw [Function.iterate_succ_apply'] at supported
-      obtain ⟨before, prior, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      obtain ⟨before, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       exact invariant.controlStep initial horizon scheduler setup before result (ih before prior)
         reached
 

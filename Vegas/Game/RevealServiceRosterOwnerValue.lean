@@ -23,16 +23,16 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 open Classical in
-private theorem expect_binary {α : Type*} (law : FinDist α) (predicate : Set α)
+private theorem expect_binary {α : Type*} (law : PMF α) (predicate : Set α)
     (first second : ℝ) :
-    law.expect (fun value => if value ∈ predicate then first else second) =
-      law.probOf predicate * first + (1 - law.probOf predicate) * second := by
+    expect law (fun value => if value ∈ predicate then first else second) =
+      (law.toOuterMeasure predicate).toReal * first + (1 - (law.toOuterMeasure predicate).toReal) * second := by
   classical
   have point (value : α) : (if value ∈ predicate then first else second) =
       (if value ∈ predicate then 1 else 0) * (first - second) + second := by
     split <;> ring
   simp only [point, FinDist.expect_add, FinDist.expect_mul_const,
-    FinDist.expect_indicator_eq_probOf, FinDist.expect_const]
+    expect_indicator, expect_constant]
   ring
 
 section
@@ -47,7 +47,7 @@ variable (setup : Setup (Player := Player) (L := L))
   (source : (setup.informationModel admission).BehavioralAssessment)
   (mixed : source.IsFullyMixed)
   (timing : TimingLaw setup rosters)
-  (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+  (timingFull : ∀ event who owned, FullSupport (timing event who owned))
 
 open Classical in
 include reveals openable mixed timingFull in
@@ -71,7 +71,7 @@ theorem roster_owner_context_value
     (openingView : rosterOpening? setup leaks who event view = some (candidate, raw))
     (unopened : ¬ ∃ entry ∈ past.drop (rosterOffset setup rosters who event),
       entry.action = (runtime setup).windowOpening leaks event candidate raw)
-    (law : FinDist (((rosterMenu setup leaks
+    (law : PMF (((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network)).Choice who site.1))
@@ -80,15 +80,15 @@ theorem roster_owner_context_value
     (utility : State L setup.program.terminalCtx → ℝ) :
     let stateLaw := (assessment.stateBelief who site).map (fun state => state.bind fun current =>
       sourcePrefix? setup event.val current.execution.application.config)
-    let values := fun disclose => stateLaw.expect (fun state =>
-      ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
-        (setup.decodeBehavioralProfile admission source.strategy))).expect utility)
-    let residual := FinDist.deferredRemaining
-      ((sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source.strategy)
-        who view).prob true) (timing event who ownedEvent)
+    let values := fun disclose => expect stateLaw (fun state =>
+      expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
+        (setup.decodeBehavioralProfile admission source.strategy))) utility)
+    let residual := PMF.deferredRemaining
+      (((sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source.strategy)
+        who view) true).toReal) (timing event who ownedEvent)
       (past.length - rosterOffset setup rosters who event + 1)
-    let opens := law.probOf {choice | choice.1.getD ⟨none⟩ =
-      (runtime setup).windowOpening leaks event candidate raw}
+    let opens := (law.toOuterMeasure {choice | choice.1.getD ⟨none⟩ =
+      (runtime setup).windowOpening leaks event candidate raw}).toReal
     (assessment.continuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * (rosterPlan setup rosters).length + 1)).value
@@ -101,21 +101,21 @@ theorem roster_owner_context_value
     (rosterScheduler setup leaks rosters network)
   let app := application setup leaks
   let valueAt := fun state disclose =>
-    ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
-      (setup.decodeBehavioralProfile admission source.strategy))).expect utility
+    expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
+      (setup.decodeBehavioralProfile admission source.strategy))) utility
   have averaged : (assessment.continuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * (rosterPlan setup rosters).length + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
-      (assessment.belief who site).expect (fun history =>
+      expect (assessment.belief who site) (fun history =>
         let decoded := history.1.state.bind fun current =>
           sourcePrefix? setup event.val current.execution.application.config
-        law.expect (fun choice =>
+        expect law (fun choice =>
           if choice.1.getD ⟨none⟩ = (runtime setup).windowOpening leaks event candidate raw
           then valueAt decoded true
           else residual * valueAt decoded true + (1 - residual) * valueAt decoded false)) := by
     rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-    apply FinDist.expect_congr
+    apply expect_congr_on_support
     intro history _supported
     have active := InformationModel.InformationSite.active model site history
     obtain ⟨control, current⟩ : ∃ control, history.1.state = some control := by
@@ -136,18 +136,18 @@ theorem roster_owner_context_value
     rw [strategy]
     simpa only [current, Option.bind_some, valueAt, residual] using value
   rw [averaged]
-  trans (assessment.belief who site).expect (fun history =>
+  trans (expect (assessment.belief who site)) (fun history =>
     let decoded := history.1.state.bind fun current =>
       sourcePrefix? setup event.val current.execution.application.config
     opens * valueAt decoded true + (1 - opens) *
       (residual * valueAt decoded true + (1 - residual) * valueAt decoded false))
-  · apply FinDist.expect_congr
+  · apply expect_congr_on_support
     intro history _
     exact expect_binary law {choice | choice.1.getD ⟨none⟩ =
       (runtime setup).windowOpening leaks event candidate raw} _ _
   simp only [FinDist.expect_add, FinDist.expect_smul]
   simp only [values, stateLaw, InformationModel.BehavioralAssessment.stateBelief,
-    FinDist.expect_map, valueAt]
+    expect_map, valueAt]
 
 end
 

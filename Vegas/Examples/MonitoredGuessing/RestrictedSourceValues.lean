@@ -23,27 +23,27 @@ def sourceResultPayoff (reward : Results → Player → ℝ) (who : Player)
 
 theorem source_result_alice_value (reward : Results → Player → ℝ)
     (profile : Profile sourceModel.behavioralSignature) (bit guess : Bool) :
-    (sourceModel.runBehavioralFrom profile 3 (SourcePath.guessed bit guess).history).expect
+    expect (sourceModel.runBehavioralFrom profile 3 (SourcePath.guessed bit guess).history)
       (sourceResultPayoff reward alice) =
-      (sourceDisclosures profile bit guess).expect fun disclose =>
+      expect (sourceDisclosures profile bit guess) fun disclose =>
         reward (decisionResult bit guess disclose) alice := by
   unfold sourceResultPayoff
-  have value := congrArg (fun law : FinDist sourceArena.State =>
-    law.expect (sourceResultUtility reward · alice)) (source_alice_run profile bit guess)
-  simpa only [FinDist.expect_map, sourceDisclosures,
+  have value := congrArg (fun law : PMF sourceArena.State =>
+    expect law (sourceResultUtility reward · alice)) (source_alice_run profile bit guess)
+  simpa only [expect_map, sourceDisclosures,
     sourceResultUtility, SourcePath.state, source_results, decisionResult] using value
 
 theorem source_result_bob_value (reward : Results → Player → ℝ)
     (profile : Profile sourceModel.behavioralSignature) (bit : Bool) :
-    (sourceModel.runBehavioralFrom profile 3 (SourcePath.drawn bit).history).expect
+    expect (sourceModel.runBehavioralFrom profile 3 (SourcePath.drawn bit).history)
       (sourceResultPayoff reward bob) =
-      (sourceGuesses profile).expect fun guess =>
-        (sourceDisclosures profile bit guess).expect fun disclose =>
+      expect (sourceGuesses profile) fun guess =>
+        expect (sourceDisclosures profile bit guess) fun disclose =>
           reward (decisionResult bit guess disclose) bob := by
   unfold sourceResultPayoff
-  have value := congrArg (fun law : FinDist sourceArena.State =>
-    law.expect (sourceResultUtility reward · bob)) (source_bob_run profile bit)
-  simpa only [FinDist.expect_map, FinDist.expect_bind,
+  have value := congrArg (fun law : PMF sourceArena.State =>
+    expect law (sourceResultUtility reward · bob)) (source_bob_run profile bit)
+  simpa only [expect_map, FinDist.expect_bind,
     sourceGuesses, sourceDisclosures, sourceResultUtility, SourcePath.state,
     source_results, decisionResult] using value
 
@@ -52,19 +52,19 @@ theorem source_result_alice_context (reward : Results → Player → ℝ)
     (alternative : sourceModel.BehavioralPolicy alice) :
     (assessment.continuationContext (sourceAliceSite bit guess)
       (sourceResultPayoff reward alice) 3).value alternative =
-      (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
-        assessment.strategy alice alternative) bit guess).expect
+      expect (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
+        assessment.strategy alice alternative) bit guess)
         fun disclose => reward (decisionResult bit guess disclose) alice := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief alice (sourceAliceSite bit guess)).expect (fun _ =>
-        (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
-          assessment.strategy alice alternative) bit guess).expect
+    _ = expect (assessment.belief alice (sourceAliceSite bit guess)) (fun _ =>
+        expect (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
+          assessment.strategy alice alternative) bit guess)
           fun disclose => reward (decisionResult bit guess disclose) alice) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro history _
       rw [source_alice_history_unique bit guess history, source_result_alice_value]
-    _ = _ := FinDist.expect_const ..
+    _ = _ := expect_constant ..
 
 theorem source_result_bob_context (reward : Results → Player → ℝ)
     (assessment : sourceModel.BehavioralAssessment)
@@ -72,20 +72,20 @@ theorem source_result_bob_context (reward : Results → Player → ℝ)
     (alternative : sourceModel.BehavioralPolicy bob) :
     (assessment.continuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
         alternative =
-      (FinDist.uniformOfFintype (α := Bool)).expect fun bit =>
-        (sourceGuesses (Profile.update (sig := sourceModel.behavioralSignature)
-          assessment.strategy bob alternative)).expect fun guess =>
-          (sourceDisclosures assessment.strategy bit guess).expect fun disclose =>
+      expect (PMF.uniformOfFintype (α := Bool)) fun bit =>
+        expect (sourceGuesses (Profile.update (sig := sourceModel.behavioralSignature)
+          assessment.strategy bob alternative)) fun guess =>
+          expect (sourceDisclosures assessment.strategy bit guess) fun disclose =>
             reward (decisionResult bit guess disclose) bob := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind,
-    source_consistent_bob assessment consistent, FinDist.expect_map]
-  apply FinDist.expect_congr
+    source_consistent_bob assessment consistent, expect_map]
+  apply expect_congr_on_support
   intro bit _
-  change (sourceModel.runBehavioralFrom (Profile.update (sig := sourceModel.behavioralSignature)
+  change expect (sourceModel.runBehavioralFrom (Profile.update (sig := sourceModel.behavioralSignature)
     assessment.strategy bob alternative)
-    3 (SourcePath.drawn bit).history).expect (sourceResultPayoff reward bob) = _
+    3 (SourcePath.drawn bit).history) (sourceResultPayoff reward bob) = _
   rw [source_result_bob_value]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro guess _
   simp only [sourceDisclosures, sourceDecisionLaw, sourceChoice,
     Profile.update_of_ne _ _ (by decide : alice ≠ bob)]
@@ -95,9 +95,9 @@ theorem source_disclosure_optimal (reward : Results → Player → ℝ)
     (rational : assessment.IsSequentiallyRationalWithin (sourceResultPayoff reward) 3)
     (bit guess disclose : Bool) :
     reward (decisionResult bit guess disclose) alice ≤
-      (sourceDisclosures assessment.strategy bit guess).expect fun decision =>
+      expect (sourceDisclosures assessment.strategy bit guess) fun decision =>
         reward (decisionResult bit guess decision) alice := by
-  let alternative := (sourceProfile (FinDist.pure false) (FinDist.pure disclose)) alice
+  let alternative := (sourceProfile (PMF.pure false) (PMF.pure disclose)) alice
   have optimal := rational alice (sourceAliceSite bit guess) alternative (Set.mem_univ _)
   change (assessment.continuationContext (sourceAliceSite bit guess)
     (sourceResultPayoff reward alice) 3).value alternative ≤ _ at optimal
@@ -105,25 +105,25 @@ theorem source_disclosure_optimal (reward : Results → Player → ℝ)
     Profile.update_eq_self] at optimal
   have chosen : sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
       assessment.strategy alice alternative)
-      bit guess = FinDist.pure disclose := by
+      bit guess = PMF.pure disclose := by
     simpa only [sourceDisclosures, sourceDecisionLaw, sourceChoice, Profile.update_same,
       alternative, sourceAliceSite, InformationModel.informationSite] using
-        profile_opening_law (FinDist.pure false) (FinDist.pure disclose) bit guess
-  rwa [chosen, FinDist.expect_pure] at optimal
+        profile_opening_law (PMF.pure false) (PMF.pure disclose) bit guess
+  rwa [chosen, expect_pure] at optimal
 
 theorem source_guess_optimal (reward : Results → Player → ℝ)
     (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain)
     (rational : assessment.IsSequentiallyRationalWithin (sourceResultPayoff reward) 3)
     (guess : Bool) :
-    (FinDist.uniformOfFintype (α := Bool)).expect (fun bit =>
-      (sourceDisclosures assessment.strategy bit guess).expect fun disclose =>
+    expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+      expect (sourceDisclosures assessment.strategy bit guess) fun disclose =>
         reward (decisionResult bit guess disclose) bob) ≤
-      (FinDist.uniformOfFintype (α := Bool)).expect (fun bit =>
-        (sourceGuesses assessment.strategy).expect fun decision =>
-          (sourceDisclosures assessment.strategy bit decision).expect fun disclose =>
+      expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+        expect (sourceGuesses assessment.strategy) fun decision =>
+          expect (sourceDisclosures assessment.strategy bit decision) fun disclose =>
             reward (decisionResult bit decision disclose) bob) := by
-  let alternative := (sourceProfile (FinDist.pure guess) (FinDist.pure false)) bob
+  let alternative := (sourceProfile (PMF.pure guess) (PMF.pure false)) bob
   have optimal := rational bob sourceBobSite alternative (Set.mem_univ _)
   change (assessment.continuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
     alternative ≤ _ at optimal
@@ -131,10 +131,10 @@ theorem source_guess_optimal (reward : Results → Player → ℝ)
     source_result_bob_context reward assessment consistent, Profile.update_eq_self] at optimal
   have chosen : sourceGuesses (Profile.update (sig := sourceModel.behavioralSignature)
       assessment.strategy bob alternative) =
-      FinDist.pure guess := by
+      PMF.pure guess := by
     simpa only [sourceGuesses, sourceDecisionLaw, sourceChoice, Profile.update_same,
       alternative, sourceBobSite, InformationModel.informationSite] using
-        profile_guess_law (FinDist.pure guess) (FinDist.pure false) false
-  simpa only [chosen, FinDist.expect_pure] using optimal
+        profile_guess_law (PMF.pure guess) (PMF.pure false) false
+  simpa only [chosen, expect_pure] using optimal
 
 end Vegas.Examples.MonitoredGuessing.Restricted

@@ -123,7 +123,7 @@ theorem roster_reveal_continuation_law [Finite Player]
     (associated : execution.application.accepted (refs.get binding).field = some candidate)
     (owned : candidate.1 = owner)
     (valid : execution.application.candidates.lookup candidate = .openable ⟨payload, value⟩)
-    (responseOffset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots))) (visits : Nat)
+    (responseOffset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots))) (visits : Nat)
     (current : (application setup leaks).Execution)
     (serials : execution.network.SerialsBeforeNext)
     (remaining : List Player) (complete : visits + remaining.count owner = slots)
@@ -133,7 +133,7 @@ theorem roster_reveal_continuation_law [Finite Player]
     let event := embedding.event ⟨0, by simp [eventCount]⟩
     let app := application setup leaks
     let family := fun mode => app.scheduledPolicy responseOffset mode
-      (fun _ _ => FinDist.pure
+      (fun _ _ => PMF.pure
         ((runtime setup).windowOpening leaks event candidate ⟨payload, value⟩)) app.replayPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ mode ∈ posterior.support,
@@ -219,14 +219,14 @@ theorem roster_reveal_continuation_law [Finite Player]
         apply embedding.strictMono
         exact Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _)
     | there ref => exact refsBefore ref (Fin.succ remaining)
-  rw [← second, FinDist.bind_map, FinDist.map_bind, ← first, FinDist.bind_map,
-    FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [← second, PMF.bind_map, PMF.map_bind, ← first, PMF.bind_map,
+    PMF.map_bind]
+  apply bind_congr_on_support _
   intro pair present
   have supported : pair.2 ∈ ((runtime setup).runInteractionPlan leaks phasePlayers network
       phase current).support := by
     rw [← second]
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨pair, present, rfl⟩
   obtain ⟨applicationEq, clean, ledger, receipts, counters⟩ := endpoint pair present
   have progressed := (runtime setup).runInteractionPlan_facts leaks (setup.eventInputs initial)
@@ -294,7 +294,7 @@ theorem prefix_roster_window_continuation_law [Finite Player]
       ∀ (candidate : Handle (graph setup)) (raw : Raw L),
       rosterOpening? setup leaks owner (embedding.event ⟨count, inside⟩)
         (execution.observe (application setup leaks) owner) = some (candidate, raw) →
-      ∀ (responseOffset slots : Nat) (choices : FinDist (Option (Fin slots))) (visits : Nat)
+      ∀ (responseOffset slots : Nat) (choices : PMF (Option (Fin slots))) (visits : Nat)
         (current : (application setup leaks).Execution),
       execution.network.SerialsBeforeNext →
       ∀ (remaining : List Player), visits + remaining.count owner = slots →
@@ -306,7 +306,7 @@ theorem prefix_roster_window_continuation_law [Finite Player]
       let event := embedding.event ⟨count, inside⟩
       let app := application setup leaks
       let family := fun mode => app.scheduledPolicy responseOffset mode
-        (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
           app.replayPolicy
       let posterior := (app.policyMixture choices family).posterior (current.recall owner)
       (∀ mode ∈ posterior.support,
@@ -379,10 +379,10 @@ theorem prefix_roster_window_continuation_law [Finite Player]
                   (ProtocolState.continuationLaw _ profile)) =
                 runFrom next (afterReveal profile)
                   (revealSuccessor published binding source disclose) := by
-            change (FinDist.pure (Sum.inr (α := Config Player L Γ)
+            change (PMF.pure (Sum.inr (α := Config Player L Γ)
               (ProtocolState.entry next (revealSuccessor published binding source
                 (OwnAction.disclosure (joint disclose owner)))))).bind _ = _
-            rw [FinDist.pure_bind, chosen]
+            rw [PMF.pure_bind, chosen]
             exact ProtocolState.continuationLaw_entry next (afterReveal profile) _
           simp_rw [sourceStep]
           simpa only [eventCount, List.finRange_succ, List.drop_succ_cons, List.drop_zero,
@@ -424,7 +424,7 @@ theorem prefix_roster_window_continuation_law [Finite Player]
                 current serials remaining complete tailCounts joint chosen frames
               simp only [eventCount, List.finRange_succ, List.drop_succ_cons, ← List.map_drop,
                 List.flatMap_map, terminalRefsWith, ProtocolState.step, Sum.elim_inr,
-                FinDist.bind_map, ProtocolState.continuationLaw]
+                PMF.bind_map, ProtocolState.continuationLaw]
               convert law using 1 <;> rfl
 
 omit [Fintype Player] in
@@ -446,7 +446,7 @@ theorem roster_window_source_step_law [Finite Player]
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
       (execution.observe (application setup leaks) owner) = some (candidate, raw))
-    (responseOffset slots : Nat) (choices : FinDist (Option (Fin slots))) (visits : Nat)
+    (responseOffset slots : Nat) (choices : PMF (Option (Fin slots))) (visits : Nat)
     (current : (application setup leaks).Execution)
     (serials : execution.network.SerialsBeforeNext)
     (remaining : List Player) (complete : visits + remaining.count owner = slots)
@@ -457,7 +457,7 @@ theorem roster_window_source_step_law [Finite Player]
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose owner) = disclose) :
     let app := application setup leaks
     let family := fun mode => app.scheduledPolicy responseOffset mode
-      (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+      (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         app.replayPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ mode ∈ posterior.support,

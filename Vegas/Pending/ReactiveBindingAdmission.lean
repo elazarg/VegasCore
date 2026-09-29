@@ -93,7 +93,7 @@ theorem reactiveDecision_binding_continuation_admitted (runtime : EventGraphRunt
         ⟨.commitment event (owner, .prepared serial), none⟩⟩)
     (ready : next.application.config.cut.Ready event)
     (timely : next.application.WithinDeadline runtime event) :
-    FinDist.pure ((next.includePending (runtime.reactiveApplication leaks)
+    PMF.pure ((next.includePending (runtime.reactiveApplication leaks)
       (owner, execution.network.nextSerial owner)).application.config) =
         next.application.config.step event ready action ∧
     (next.includePending (runtime.reactiveApplication leaks)
@@ -146,7 +146,7 @@ theorem reactiveDecision_binding_retained_or_realized (runtime : EventGraphRunti
         ⟨.commitment event (owner, .prepared serial), none⟩⟩ :
           Message Player (WitnessedPacket graph)) ∈
       (next.includePending (runtime.reactiveApplication leaks) selected).network.pending ∨
-    FinDist.pure
+    PMF.pure
         (next.includePending (runtime.reactiveApplication leaks) selected).application.config =
       next.application.config.step event ready action ∧
       (next.includePending (runtime.reactiveApplication leaks) selected).receipts =

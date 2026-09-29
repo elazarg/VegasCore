@@ -56,14 +56,14 @@ private def openBinding : Vegas.EventGraph.EventCode BindingLayout (.publication
 example : openBinding.eval? true (fun _ => none) = none := rfl
 
 example : openBinding.eval? true (fun _ => some .failure) =
-    some (FinDist.pure .failure) := rfl
+    some (PMF.pure .failure) := rfl
 
 example : openBinding.eval? true (fun _ => some (.success true)) =
-    some (FinDist.pure (.success true)) := rfl
+    some (PMF.pure (.success true)) := rfl
 
 /-- Withholding produces failure, not an ordinary Boolean default. -/
 example : openBinding.eval? false (fun _ => some (.success true)) =
-    some (FinDist.pure .failure) := rfl
+    some (PMF.pure .failure) := rfl
 
 private def falseCheck : Vegas.EventGraph.GuardCheck BindingLayout .bool where
   subject := 7
@@ -81,7 +81,7 @@ private def guardedOpening : Vegas.EventGraph.EventCode BindingLayout (.publicat
 
 /-- An unsatisfiable guard is retained; its valid opening resolves to failure. -/
 example : guardedOpening.eval? true (fun _ => some (.success true)) =
-    some (FinDist.pure .failure) := rfl
+    some (PMF.pure .failure) := rfl
 
 /-- Failure vacuously satisfies the same retained check. -/
 example : falseCheck.eval? (fun _ => none) .failure = some true := rfl
@@ -93,7 +93,7 @@ private def rangeBinding :
 /-- A native candidate that will never open binds to failure. No source policy
 produces one, and the graph still has to represent it. -/
 example : rangeBinding.eval? .failure (fun _ => none) =
-    some (FinDist.pure .failure) := rfl
+    some (PMF.pure .failure) := rfl
 
 private abbrev DeferredLayout : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
   Fin.cases (.binding false .bool) (fun _ => .publication .bool)
@@ -149,7 +149,7 @@ private def closeRelation : Vegas.EventGraph.EventCode DeferredLayout (.publicat
     [closingEquality]
 
 /-- The current conflicting publication fails; the already published y is retained. -/
-example : closeRelation.eval? true publishedTrue = some (FinDist.pure .failure) := rfl
+example : closeRelation.eval? true publishedTrue = some (PMF.pure .failure) := rfl
 
 example : publishedTrue 1 = some (.success true) := rfl
 
@@ -241,7 +241,7 @@ private theorem secondAccepted_ready0 : secondAccepted.cut.Ready (0 : Fin 2) := 
 
 /-- This is an actual binding transition, not just a reordered submission. -/
 example : pairInitial.step (1 : Fin 2) (pairInitial_ready 1) (.success true) =
-    FinDist.pure secondAccepted := by
+    PMF.pure secondAccepted := by
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, secondAccepted]
 
 example : secondAccepted.outputs 1 = some (.success true) ∧
@@ -291,7 +291,7 @@ private def reverseResult : pairGraph.Config :=
 
 /-- Each player supplies its own Boolean bit at its binding event. -/
 private def pairProfile : pairGraph.BehavioralProfile :=
-  fun who _event _owner _observation => FinDist.pure (.success who)
+  fun who _event _owner _observation => PMF.pure (.success who)
 
 private theorem pairInitial_notTerminal : ¬ pairInitial.cut.Terminal := by
   intro terminal
@@ -304,7 +304,7 @@ private theorem pairInitial_notTerminal : ¬ pairInitial.cut.Terminal := by
 steps on the same genuinely concurrent configuration. -/
 example :
     (pairGraph.policyPlan pairProfile pairGraph.canonicalScheduler pairInitial
-      pairInitial_notTerminal).map (fun choice => choice.1.1) = FinDist.pure 0 := by
+      pairInitial_notTerminal).map (fun choice => choice.1.1) = PMF.pure 0 := by
   have minUniv (nonempty : (Finset.univ : Finset (Fin 2)).Nonempty) :
       (Finset.univ : Finset (Fin 2)).min' nonempty = 0 := by
     refine (Finset.min'_eq_iff _ _ _).2 ⟨by simp, ?_⟩
@@ -317,7 +317,7 @@ example :
 
 example :
     (pairGraph.policyPlan pairProfile pairGraph.greatestScheduler pairInitial
-      pairInitial_notTerminal).map (fun choice => choice.1.1) = FinDist.pure 1 := by
+      pairInitial_notTerminal).map (fun choice => choice.1.1) = PMF.pure 1 := by
   have maxUniv (nonempty : (Finset.univ : Finset (Fin 2)).Nonempty) :
       (Finset.univ : Finset (Fin 2)).max' nonempty = 1 := by
     refine (Finset.max'_eq_iff _ _ _).2 ⟨by simp, ?_⟩
@@ -330,15 +330,15 @@ example :
 
 /-- Both schedule traces consist of supported semantic binding transitions. -/
 example : pairInitial.step (0 : Fin 2) (pairInitial_ready 0) (.success false) =
-    FinDist.pure firstAccepted := by
+    PMF.pure firstAccepted := by
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, firstAccepted]
 
 example : firstAccepted.step (1 : Fin 2) firstAccepted_ready1 (.success true) =
-    FinDist.pure canonicalResult := by
+    PMF.pure canonicalResult := by
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, canonicalResult]
 
 example : secondAccepted.step (0 : Fin 2) secondAccepted_ready0 (.success false) =
-    FinDist.pure reverseResult := by
+    PMF.pure reverseResult := by
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, reverseResult]
 
 /-- The semantic outputs do not depend on which independent binding ran first. -/

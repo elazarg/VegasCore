@@ -58,10 +58,10 @@ theorem after_prelude_law {Claim : Type} (players : Player → (application Clai
   change runInstructions players (visit 0 ++ (visit 1 ++
     [.application (.grant 2), .player bob] ++ afterResponse 2)) (prelude first second) = _
   rw [runInstructions_visit]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro binding _
   rw [List.append_assoc, runInstructions_visit]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro guess _
   rw [List.cons_append, List.cons_append, List.nil_append, runInstructions_application,
     runInstructions_player]
@@ -71,10 +71,10 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
     (players : Player → (application Claim).Policy)
     (alicePolicy : players alice = policy Claim defaultClaim alice)
     (first second : (application Claim).Action) :
-    (runInstructions players ((List.finRange 6).flatMap visit) (prelude first second)).expect
+    expect (runInstructions players ((List.finRange 6).flatMap visit) (prelude first second))
       (fun final => utility (results final.application) bob) ≤ 1 / 2 := by
   have aliceLaw : chooseAt players alice (aliceInput first second) =
-      (FinDist.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype (α := Bool)).map
         (fun bit => playing Claim defaultClaim 0 (.success bit)) := by
     simp only [chooseAt, alicePolicy, policy]
     rfl
@@ -90,13 +90,13 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
         (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess) := by
     have same := prescribed_bob_input_same Claim defaultClaim first second guess bit
     exact congrArg (fun info => players bob info.1 info.2) same
-  rw [after_prelude_law, aliceLaw, FinDist.expect_bind, FinDist.expect_map]
+  rw [after_prelude_law, aliceLaw, FinDist.expect_bind, expect_map]
   calc
-    _ ≤ (FinDist.uniformOfFintype (α := Bool)).expect (fun bit =>
-        (chooseAt players carol
-          (carolInput first second (playing Claim defaultClaim 0 (.success false)))).expect
-            (fun guess => (chooseAt players bob
-              (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess)).expect
+    _ ≤ expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+        expect (chooseAt players carol
+          (carolInput first second (playing Claim defaultClaim 0 (.success false))))
+            (fun guess => expect (chooseAt players bob
+              (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess))
                 (fun response => correctness (.success bit) (selectedBinding 2 response)))) := by
       apply FinDist.expect_mono
       intro bit _
@@ -115,11 +115,11 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
       have penalty : 0 ≤ openingPenalty (selectedBinding 2 response) := by
         cases selectedBinding 2 response <;> norm_num [openingPenalty]
       linarith
-    _ = (chooseAt players carol
-        (carolInput first second (playing Claim defaultClaim 0 (.success false)))).expect
-          (fun guess => (FinDist.uniformOfFintype (α := Bool)).expect
-            (fun bit => (chooseAt players bob
-              (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess)).expect
+    _ = expect (chooseAt players carol
+        (carolInput first second (playing Claim defaultClaim 0 (.success false))))
+          (fun guess => expect (PMF.uniformOfFintype (α := Bool))
+            (fun bit => expect (chooseAt players bob
+              (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess))
                 (fun response => correctness (.success bit) (selectedBinding 2 response)))) :=
       FinDist.expect_comm _ _ _
     _ ≤ 1 / 2 := by
@@ -128,19 +128,19 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
       have bound := fair_guess_le_half ((chooseAt players bob
         (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess)).map
           (selectedBinding 2))
-      simpa only [FinDist.expect_map] using bound
+      simpa only [expect_map] using bound
 
 theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     (first second : (application Claim).Action) :
-    (runInstructions (policy Claim defaultClaim) ((List.finRange 6).flatMap visit)
-      (prelude first second)).expect (fun final => utility (results final.application) bob) =
+    expect (runInstructions (policy Claim defaultClaim) ((List.finRange 6).flatMap visit)
+      (prelude first second)) (fun final => utility (results final.application) bob) =
         1 / 2 := by
   let players := policy Claim defaultClaim
   let binding := fun bit => playing Claim defaultClaim 0 (.success bit)
   let input := fun guess => bobInput first second (binding false) guess
   let target := fun guess => publicGuess ((input guess).observe (application Claim) bob)
   have aliceLaw : chooseAt players alice (aliceInput first second) =
-      (FinDist.uniformOfFintype (α := Bool)).map binding := by
+      (PMF.uniformOfFintype (α := Bool)).map binding := by
     simp only [chooseAt, players, policy]
     rfl
   have carolLaw (bit : Bool) : chooseAt players carol (carolInput first second (binding bit)) =
@@ -149,7 +149,7 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     exact congrArg (fun info => players carol info.1 info.2) same
   have bobLaw (guess : (application Claim).Action) (bit : Bool) :
       chooseAt players bob (bobInput first second (binding bit) guess) =
-        FinDist.pure (playing Claim defaultClaim 2 (.success (target guess))) := by
+        PMF.pure (playing Claim defaultClaim 2 (.success (target guess))) := by
     have same := prescribed_bob_input_same Claim defaultClaim first second guess bit
     have sameLaw := congrArg (fun info => players bob info.1 info.2) same
     change chooseAt players bob (bobInput first second (binding bit) guess) =
@@ -158,23 +158,23 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     dsimp only [chooseAt, players]
     simp only [policy]
     rfl
-  rw [after_prelude_law, aliceLaw, FinDist.expect_bind, FinDist.expect_map]
+  rw [after_prelude_law, aliceLaw, FinDist.expect_bind, expect_map]
   calc
-    _ = (FinDist.uniformOfFintype (α := Bool)).expect (fun bit =>
-        (chooseAt players carol (carolInput first second (binding false))).expect
+    _ = expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+        expect (chooseAt players carol (carolInput first second (binding false)))
           (fun guess => correctness (.success bit) (.success (target guess)))) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro bit _
       rw [FinDist.expect_bind, carolLaw bit]
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro guess _
-      rw [FinDist.expect_bind, bobLaw guess bit, FinDist.expect_pure]
+      rw [FinDist.expect_bind, bobLaw guess bit, expect_pure]
       calc
-        _ = (runInstructions players (afterResponse 2)
+        _ = expect (runInstructions players (afterResponse 2)
             ((bobInput first second (binding bit) guess).respond (application Claim) bob
-              (playing Claim defaultClaim 2 (.success (target guess))))).expect
+              (playing Claim defaultClaim 2 (.success (target guess)))))
                 (fun _ => correctness (.success bit) (.success (target guess))) := by
-          apply FinDist.expect_congr
+          apply expect_congr_on_support
           intro final supported
           apply bob_guess_response_payoff_eq players
             (bobInput first second (binding bit) guess) final
@@ -187,40 +187,40 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
           · exact policy_opensAt Claim defaultClaim 3 (by decide)
           · exact policy_opensAt Claim defaultClaim 5 (by decide)
           · exact supported
-        _ = _ := FinDist.expect_const ..
-    _ = (chooseAt players carol (carolInput first second (binding false))).expect
-        (fun guess => (FinDist.uniformOfFintype (α := Bool)).expect
+        _ = _ := expect_constant ..
+    _ = expect (chooseAt players carol (carolInput first second (binding false)))
+        (fun guess => expect (PMF.uniformOfFintype (α := Bool))
           (fun bit => correctness (.success bit) (.success (target guess)))) :=
       FinDist.expect_comm _ _ _
     _ = 1 / 2 := by
       have fair (guess : (application Claim).Action) :
-          (FinDist.uniformOfFintype (α := Bool)).expect
+          expect (PMF.uniformOfFintype (α := Bool))
             (fun bit => correctness (.success bit) (.success (target guess))) = 1 / 2 := by
-        rw [FinDist.expect_eq_sum]
+        rw [expect_eq_sum]
         simp only [FinDist.prob_uniformOfFintype, Fintype.card_bool, Nat.cast_ofNat,
           Fintype.sum_bool]
         cases target guess <;> norm_num [correctness]
       simp_rw [fair]
-      exact FinDist.expect_const ..
+      exact expect_constant ..
 
 theorem finish_bob_ambient_bound (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (players : Player → (application Claim).Policy)
     (alicePolicy : players alice = policy Claim defaultClaim alice)
     (control : (application Claim).Control) (trace : (arena Claim).Trace (some control))
     (active : control.actor = some bob) (ambient : control.execution.application.visit = none) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
-      (some control)).expect (fun state => utility (protocolResults state) bob) ≤ 1 / 2 := by
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
+      (some control)) (fun state => utility (protocolResults state) bob) ≤ 1 / 2 := by
   obtain ⟨remaining, first, execution⟩ :=
     bob_ambient_representation Claim control trace active ambient
   have position : control.execution.environmentRecall.length = 2 := by
     rw [execution]
     rfl
   rw [finish_ambient_law players 2 (by decide) bob control active remaining position,
-    FinDist.expect_map, FinDist.expect_bind]
+    expect_map, FinDist.expect_bind]
   apply FinDist.expect_le_of_forall
   intro response _
-  change (runInstructions players (calendar.drop 2)
-    (control.execution.respond (application Claim) bob response)).expect
+  change expect (runInstructions players (calendar.drop 2)
+    (control.execution.respond (application Claim) bob response))
       (fun final => utility (results final.application) bob) ≤ 1 / 2
   rw [execution]
   exact after_prelude_bob_bound Claim defaultClaim players alicePolicy first response
@@ -228,25 +228,25 @@ theorem finish_bob_ambient_bound (Claim : Type) [Fintype Claim] (defaultClaim : 
 theorem finish_bob_ambient_prescribed (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (control : (application Claim).Control) (trace : (arena Claim).Trace (some control))
     (active : control.actor = some bob) (ambient : control.execution.application.visit = none) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-      (policy Claim defaultClaim) (some control)).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+      (policy Claim defaultClaim) (some control))
         (fun state => utility (protocolResults state) bob) = 1 / 2 := by
   obtain ⟨remaining, first, execution⟩ :=
     bob_ambient_representation Claim control trace active ambient
   have position : control.execution.environmentRecall.length = 2 := by rw [execution]; rfl
   rw [finish_ambient_law (policy Claim defaultClaim) 2 (by decide) bob control active remaining
-    position, FinDist.expect_map, FinDist.expect_bind]
+    position, expect_map, FinDist.expect_bind]
   calc
-    _ = (policy Claim defaultClaim bob (control.execution.recall bob)
-        (control.execution.observe (application Claim) bob)).expect (fun _ => 1 / 2) := by
-      apply FinDist.expect_congr
+    _ = expect (policy Claim defaultClaim bob (control.execution.recall bob)
+        (control.execution.observe (application Claim) bob)) (fun _ => 1 / 2) := by
+      apply expect_congr_on_support
       intro response _
-      change (runInstructions (policy Claim defaultClaim) (calendar.drop 2)
-        (control.execution.respond (application Claim) bob response)).expect
+      change expect (runInstructions (policy Claim defaultClaim) (calendar.drop 2)
+        (control.execution.respond (application Claim) bob response))
           (fun final => utility (results final.application) bob) = 1 / 2
       rw [execution]
       exact after_prelude_bob_prescribed Claim defaultClaim first response
-    _ = _ := FinDist.expect_const ..
+    _ = _ := expect_constant ..
 
 open Classical in
 /-- At Bob's ambient information sets, every whole continuation policy earns
@@ -262,10 +262,10 @@ theorem bob_ambient_sequentially_rational (Claim : Type) [Fintype Claim] (defaul
   intro alternative _
   rw [prescribed_context_value_finish Claim defaultClaim assessment strategy,
     prescribed_context_baseline Claim defaultClaim assessment strategy]
-  have bound : (assessment.belief bob site).expect (fun history =>
-      ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
+  have bound : expect (assessment.belief bob site) (fun history =>
+      expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
         (Function.update (policy Claim defaultClaim) bob
-          (decodedAlternative Claim bob alternative)) history.1.state).expect
+          (decodedAlternative Claim bob alternative)) history.1.state)
             (fun state => utility (protocolResults state) bob)) ≤ 1 / 2 := by
       apply FinDist.expect_le_of_forall
       intro history _
@@ -280,13 +280,13 @@ theorem bob_ambient_sequentially_rational (Claim : Type) [Fintype Claim] (defaul
         (Function.update_of_ne (by decide : alice ≠ bob) _ _) control trace active
       rw [← observed] at ambient
       exact ambient
-  have baseline : (assessment.belief bob site).expect (fun history =>
-      ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-        (policy Claim defaultClaim) history.1.state).expect
+  have baseline : expect (assessment.belief bob site) (fun history =>
+      expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+        (policy Claim defaultClaim) history.1.state)
           (fun state => utility (protocolResults state) bob)) = 1 / 2 := by
       calc
-        _ = (assessment.belief bob site).expect (fun _ => 1 / 2) := by
-          apply FinDist.expect_congr
+        _ = expect (assessment.belief bob site) (fun _ => 1 / 2) := by
+          apply expect_congr_on_support
           intro history _
           obtain ⟨control, stateEq, active, _, observed⟩ := information_control Claim bob past view
             ⟨history.1, history.2.trans siteEq⟩
@@ -296,7 +296,7 @@ theorem bob_ambient_sequentially_rational (Claim : Type) [Fintype Claim] (defaul
           apply finish_bob_ambient_prescribed Claim defaultClaim control trace active
           rw [← observed] at ambient
           exact ambient
-        _ = _ := FinDist.expect_const ..
+        _ = _ := expect_constant ..
   exact bound.trans_eq baseline.symm
 
 end Vegas.Examples.SelectiveAssociation.NamedSource

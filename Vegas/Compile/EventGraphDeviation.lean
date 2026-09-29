@@ -62,7 +62,7 @@ theorem canonical_deviation_terminalState_law
   rw [Vegas.EventGraph.normalizeProfile_update, normalizeProfile_compileEventProfile,
     ← kernelLaw] at normalized
   rw [← canonical_terminalState_law program translated state]
-  apply FinDist.map_injective (f := some) (Option.some_injective _)
+  apply pmf_map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode, terminalOutcomes_map_decode, normalized]
 
 /-- Decode a canonical graph replacement through its source backtranslation.
@@ -80,8 +80,8 @@ theorem canonical_setup_deviation_decode
           (decodeState? (terminalRefs setup.program))) =
       (setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program) profile who
         (backtranslateEventPolicy setup.program who replacement))).map some := by
-  rw [Setup.run, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [Setup.run, PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial _
   rw [← setup.eventGraph.runPolicies_canonical_normalize_eq]
   have law := congrArg (fun measure => measure.map some)
@@ -106,8 +106,8 @@ theorem canonical_setup_deviation_law
         profile who
           (backtranslateEventPolicy setup.program who replacement)) := by
   unfold Vegas.EventGraph.canonicalGame Vegas.EventGraph.gameForm Setup.run
-  simp only [FinDist.map_bind, FinDist.bind_map]
-  apply FinDist.bind_congr
+  simp only [PMF.map_bind, PMF.bind_map]
+  apply bind_congr_on_support _
   intro initial _
   exact canonical_deviation_terminalState_law setup.program profile who
     replacement initial
@@ -119,7 +119,7 @@ private theorem scheduled_canonical_deviation_mixture
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
-    ∃ mixture : FinDist (setup.eventGraph.BehavioralPolicy who),
+    ∃ mixture : PMF (setup.eventGraph.BehavioralPolicy who),
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
@@ -140,13 +140,13 @@ private theorem scheduled_canonical_deviation_mixture
       (compileEventProfile setup.program profile) who replacement
   rw [normalizeProfile_compileEventProfile] at law
   refine ⟨mixture, ?_⟩
-  apply FinDist.map_injective (f := some) (Option.some_injective _)
-  simp only [FinDist.map_bind]
+  apply pmf_map_injective (f := some) (Option.some_injective _)
+  simp only [PMF.map_bind]
   simp_rw [terminalOutcomes_map_decode]
   have decoded := congrArg
     (fun distribution => distribution.map
       (decodeState? (terminalRefs setup.program))) law
-  simpa only [FinDist.map_bind, FinDist.bind_map] using decoded
+  simpa only [PMF.map_bind, PMF.bind_map] using decoded
 
 /-- Every unilateral asynchronous graph deviation has the law of a finite
 mixture of source deviations, against unchanged source opponents. The mixture
@@ -156,7 +156,7 @@ theorem scheduled_setup_deviation_law
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
-    ∃ mixture : FinDist (BehavioralPolicy who setup.program),
+    ∃ mixture : PMF (BehavioralPolicy who setup.program),
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
@@ -169,11 +169,11 @@ theorem scheduled_setup_deviation_law
   obtain ⟨mixture, law⟩ := scheduled_canonical_deviation_mixture setup scheduler
     profile who replacement
   refine ⟨mixture.map (backtranslateEventPolicy setup.program who), ?_⟩
-  rw [law, FinDist.bind_map]
-  apply FinDist.bind_congr
+  rw [law, PMF.bind_map]
+  apply bind_congr_on_support _
   intro alternative _
   unfold Setup.run
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro initial _
   exact canonical_deviation_terminalState_law setup.program profile
     who alternative initial

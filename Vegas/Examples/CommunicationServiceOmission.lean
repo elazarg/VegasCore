@@ -43,9 +43,9 @@ theorem select_empty (execution : nativeApp.Execution)
     (eligible : Message Bool (WitnessedPacket nativeGraph) → Bool)
     (empty : execution.network.pending = []) :
     nativeApp.uniformInstruction dependencyCondition execution.environmentRecall
-      (execution.observeEnvironment nativeApp) (.select eligible) = FinDist.pure .wait := by
+      (execution.observeEnvironment nativeApp) (.select eligible) = PMF.pure .wait := by
   change (MessageNetwork.uniformPending _ execution.network.pending).map _ = _
-  rw [empty, MessageNetwork.uniformPending_empty, FinDist.map_pure]
+  rw [empty, MessageNetwork.uniformPending_empty, PMF.pure_map]
   rfl
 
 def silentWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
@@ -82,7 +82,7 @@ def silentWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
   apply nativeEnvironmentTrace remaining responded (silentWindow execution event who) third .wait
   · rw [native_schedule responded _ selectPosition]
     exact select_empty responded _ empty
-  · rw [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+  · rw [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
 
 def silentFirst (bit : Bool) : nativeApp.Execution :=

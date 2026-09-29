@@ -237,7 +237,7 @@ theorem compilePlayerPolicy_nonwait_ready
   repeat' first | split at member
   all_goals subst_vars
   all_goals
-    simp_all only [FinDist.mem_support_pure, FinDist.support_map, Set.mem_image,
+    simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
       reduceCtorEq, Option.some.injEq]
 
 theorem compilePlayerPolicy_binding_stage_one_command
@@ -295,7 +295,7 @@ theorem compilePlayerPolicy_binding_stage_one_command
         event owner payload outputEq codeEq viewEq action observedGrant notSubmitted rfl ready
         coherent.1.actor stage viewCached
       rw [policyEq] at member
-      simp only [FinDist.mem_support_pure] at member
+      simp only [PMF.mem_support_pure_iff _ _] at member
       exact ⟨action, cached, member.symm⟩
   | resolve actualOwner actualPayload binding checks actualOutput codeEq =>
       have impossible : EventField.binding owner payload = .publication actualPayload :=
@@ -321,7 +321,7 @@ theorem playerStep_other_bindingPolicyCoherentAll
   cases command with
   | privateCommand privateCommand =>
       rw [runtime.application.playerStep_private_eq] at supported
-      simp only [FinDist.mem_support_pure] at supported
+      simp only [PMF.mem_support_pure_iff _ _] at supported
       subst next
       have frame := runtime.afterPrivate_opponent_event execution focal owner different
         event actor privateCommand
@@ -331,7 +331,7 @@ theorem playerStep_other_bindingPolicyCoherentAll
       exact frame.2.2.1
   | submit packet =>
       rw [runtime.application.playerStep_submit_eq] at supported
-      simp only [FinDist.mem_support_pure] at supported
+      simp only [PMF.mem_support_pure_iff _ _] at supported
       subst next
       have frame := runtime.afterSubmit_opponent_event execution focal owner different event packet
       apply (coherent event payload outputEq actor unfinished).copy runtime execution _ owner event
@@ -339,8 +339,8 @@ theorem playerStep_other_bindingPolicyCoherentAll
       exact frame.2.2.1
   | replay id =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at supported
+        MessageApplication.advance, MessageApplication.step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at supported
       subst next
       apply (coherent event payload outputEq actor unfinished).copy runtime execution _ owner event
         payload outputEq
@@ -349,7 +349,7 @@ theorem playerStep_other_bindingPolicyCoherentAll
       · rfl
   | wait =>
       rw [runtime.application.playerStep_wait] at supported
-      simp only [FinDist.mem_support_pure] at supported
+      simp only [PMF.mem_support_pure_iff _ _] at supported
       subst next
       apply (coherent event payload outputEq actor unfinished).copy runtime execution _ owner event
         payload outputEq
@@ -374,19 +374,19 @@ theorem environmentPolicyStep_candidate_of_unfinished
   have native : next.native ∈
       ((runtime.application.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   cases command with
   | deliver observer id | wait =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       simpa only using congrArg
         (fun state : runtime.application.State =>
           state.application.candidates.lookup (owner, eventSlot event)) native
   | «include» id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       cases lookup : execution.native.pool.lookup id with
       | none =>
           rw [runtime.application.includePending_missing execution.native id lookup] at native
@@ -417,7 +417,7 @@ theorem environmentPolicyStep_candidate_of_unfinished
                 stateUnfinished).1
   | application applicationCommand =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.support_map, Set.mem_image] at native
+        MessageApplication.step, PMF.support_map, Set.mem_image] at native
       obtain ⟨state, stateMem, same⟩ := native
       have nextEq : next.native.application = state := by
         exact congrArg (fun result : runtime.application.State => result.application) same.symm
@@ -445,14 +445,14 @@ theorem environmentPolicyStep_bindingPolicyCoherentAll
   have native : next.native ∈
       ((runtime.application.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   have completed : execution.native.application.config.cut.completed ⊆
       next.native.application.config.cut.completed := by
     cases actionEq : command.toAction with
     | none =>
-        simp only [actionEq, FinDist.mem_support_pure] at native
+        simp only [actionEq, PMF.mem_support_pure_iff _ _] at native
         rw [native]
     | some action =>
         simp only [actionEq] at native
@@ -489,7 +489,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
   cases command with
   | wait =>
       rw [runtime.application.playerStep_wait] at stepMem
-      simp only [FinDist.mem_support_pure] at stepMem
+      simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
       intro query payload outputEq actor unfinished
       exact (coherent query payload outputEq actor unfinished).afterWait runtime execution owner
@@ -498,7 +498,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
       simp [CommandAt, stagesEvent] at atEvent
   | privateCommand privateCommand =>
       rw [runtime.application.playerStep_private_eq] at stepMem
-      simp only [FinDist.mem_support_pure] at stepMem
+      simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
       obtain ⟨stagedEvent, stagedGrant, stageLt, staged⟩ :=
         runtime.compilePlayerPolicy_private_stage owner policy
@@ -553,7 +553,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
           runtime execution owner query payload outputEq privateCommand notStage memory candidate
   | submit packet =>
       rw [runtime.application.playerStep_submit_eq] at stepMem
-      simp only [FinDist.mem_support_pure] at stepMem
+      simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
       have eventActor := runtime.compilePlayerPolicy_nonwait_actor owner policy
         (execution.principalHistory owner)
@@ -602,13 +602,13 @@ theorem compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyGrant
     BindingPolicyCoherentAll runtime next owner := by
   cases grant : execution.native.application.serviceGrant with
   | some event =>
-      simp only [MessageApplication.invoke, ownerCompiled, FinDist.support_bind,
+      simp only [MessageApplication.invoke, ownerCompiled, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, commandMem, stepMem⟩ := supported
       exact runtime.compilePlayerPolicy_playerStep_bindingPolicyCoherentAll owner policy execution
         next event grant coherent command commandMem stepMem
   | none =>
-      simp only [MessageApplication.invoke, ownerCompiled, FinDist.support_bind,
+      simp only [MessageApplication.invoke, ownerCompiled, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, commandMem, stepMem⟩ := supported
       have observedGrant :
@@ -618,10 +618,10 @@ theorem compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyGrant
         exact grant
       unfold compilePlayerPolicy at commandMem
       rw [observedGrant] at commandMem
-      simp only [FinDist.mem_support_pure] at commandMem
+      simp only [PMF.mem_support_pure_iff _ _] at commandMem
       subst command
       rw [runtime.application.playerStep_wait] at stepMem
-      simp only [FinDist.mem_support_pure] at stepMem
+      simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
       intro event payload outputEq actor unfinished
       exact (coherent event payload outputEq actor unfinished).afterWait runtime execution owner
@@ -643,7 +643,7 @@ theorem playerInvoke_bindingPolicyCoherentAll
   · subst who
     exact runtime.compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyGrant owner policy
       players environment execution next ownerCompiled coherent supported
-  · simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion] at supported
+  · simp only [MessageApplication.invoke, PMF.support_bind, Set.mem_iUnion] at supported
     obtain ⟨command, _, stepMem⟩ := supported
     exact runtime.playerStep_other_bindingPolicyCoherentAll execution next who owner
       (Ne.symm same) command coherent stepMem
@@ -669,7 +669,7 @@ theorem serviceStep_bindingPolicyCoherentAll
         (runtime.application.wireEnvironment wire) execution next ownerCompiled coherent who
         supported
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, _, stepMem⟩ := supported
       exact runtime.environmentPolicyStep_bindingPolicyCoherentAll owner execution next command
@@ -695,11 +695,11 @@ theorem runServicePlan_bindingPolicyCoherentAll
     BindingPolicyCoherentAll runtime next owner := by
   induction plan generalizing execution with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at supported
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at supported
       subst next
       exact coherent
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨middle, head, tail⟩ := supported
       have singleton : middle ∈
           (runtime.runServicePlan players wire [instruction] execution).support := by
@@ -724,7 +724,7 @@ theorem serviceEpoch_bindingPolicyCoherentAll
     (supported : next ∈
       (runtime.serviceEpoch roster reactionRounds players wire order execution).support) :
     BindingPolicyCoherentAll runtime next owner := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at supported
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at supported
   obtain ⟨chosen, _, planMem⟩ := supported
   exact runtime.runServicePlan_bindingPolicyCoherentAll owner policy players wire
     (epochPlan chosen roster reactionRounds) execution next ownerCompiled safe coherent planMem
@@ -747,11 +747,11 @@ theorem runService_bindingPolicyCoherentAll
     BindingPolicyCoherentAll runtime next owner := by
   induction count generalizing execution with
   | zero =>
-      simp only [runService, FinDist.mem_support_pure] at supported
+      simp only [runService, PMF.mem_support_pure_iff _ _] at supported
       subst next
       exact coherent
   | succ count ih =>
-      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runService, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨middle, epochMem, tail⟩ := supported
       have safeMiddle := runtime.serviceEpoch_canonicalCommitments owner policy roster
         reactionRounds players ownerCompiled wire order execution middle safe epochMem

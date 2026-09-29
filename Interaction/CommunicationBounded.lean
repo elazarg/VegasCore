@@ -30,13 +30,13 @@ theorem transition_accounting (roster : List Player) (before after : channel.Sta
   unfold transition at reached
   split at reached
   next pending =>
-      simp only [gameTransition, FinDist.support_bindOnSupport, Set.mem_iUnion] at reached
+      simp only [gameTransition, PMF.support_bindOnSupport, Set.mem_iUnion] at reached
       obtain ⟨target, realized, same⟩ := reached
-      cases FinDist.mem_support_pure.mp same
+      cases (PMF.mem_support_pure_iff _ _).mp same
       simp [advance, History.extend, Trace.length, pending, Nat.add_mul]
       omega
   next actor rest pending =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simp [communicate, pending, Nat.add_assoc]
 
 theorem history_accounting (roster : List Player) :

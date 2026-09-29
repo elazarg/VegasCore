@@ -67,31 +67,31 @@ theorem remaining_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .sample _ _ _ next, before, after, joint, running, reached => by
       cases before with
       | inl config =>
-          simp only [step, Sum.elim_inl, FinDist.support_map, Set.mem_image] at reached
+          simp only [step, Sum.elim_inl, PMF.support_map, Set.mem_image] at reached
           obtain ⟨value, _, rfl⟩ := reached
           simp [remaining]
       | inr rest =>
-          simp only [step, Sum.elim_inr, FinDist.support_map, Set.mem_image] at reached
+          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨target, supported, rfl⟩ := reached
           exact remaining_step next rest target joint running supported
   | _, _, .commit _ _ _ _ next, before, after, joint, running, reached => by
       cases before with
       | inl config =>
-          simp only [step, Sum.elim_inl, FinDist.mem_support_pure] at reached
+          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff _ _] at reached
           subst after
           simp [remaining]
       | inr rest =>
-          simp only [step, Sum.elim_inr, FinDist.support_map, Set.mem_image] at reached
+          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨target, supported, rfl⟩ := reached
           exact remaining_step next rest target joint running supported
   | _, _, .reveal _ _ _ _ _ _ next, before, after, joint, running, reached => by
       cases before with
       | inl config =>
-          simp only [step, Sum.elim_inl, FinDist.mem_support_pure] at reached
+          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff _ _] at reached
           subst after
           simp [remaining]
       | inr rest =>
-          simp only [step, Sum.elim_inr, FinDist.support_map, Set.mem_image] at reached
+          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨target, supported, rfl⟩ := reached
           exact remaining_step next rest target joint running supported
 

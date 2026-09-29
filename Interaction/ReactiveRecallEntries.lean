@@ -39,7 +39,7 @@ namespace ResponseMenu
 
 variable [DecidableEq Principal] {app} (menu : app.ResponseMenu)
 
-theorem recall_entry_legal (initial : FinDist app.State) (horizon : Nat)
+theorem recall_entry_legal (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal)
     (history : (menu.protocol initial horizon scheduler).History)
     (past : List app.PlayerEntry) (view : app.PlayerView)
@@ -56,7 +56,7 @@ theorem recall_entry_legal (initial : FinDist app.State) (horizon : Nat)
   exact legal
 
 theorem recall_entry_supported [Fintype Principal]
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal) (history : (menu.protocol initial horizon scheduler).History)
     (positive : 0 < (menu.information initial horizon scheduler).historyReachProbability

@@ -50,11 +50,11 @@ theorem commit_step {owner : Player} {payload : L.Ty}
       .bind owner payload)
     (binding : PublicationResult (L.Val payload)) :
     config.step event ready (cast (congrArg EventField.Action outputEq.symm) binding) =
-      FinDist.pure (config.complete event ready
+      PMF.pure (config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) binding)
         (cast (congrArg EventField.Value outputEq.symm) binding)) := by
   rw [config.step_eq_map_of_code event ready outputEq _ codeEq _
-    (FinDist.pure binding) rfl, FinDist.map_pure]
+    (PMF.pure binding) rfl, PMF.pure_map]
 
 /-- A compiled reveal performs the checks of the obligations the reveal completes
 and publishes the accepted result. The completion retains the original
@@ -79,13 +79,13 @@ theorem reveal_step
               proposal state))
         then proposal else PublicationResult.failure
     config.step event ready (cast (congrArg EventField.Action outputEq.symm) disclose) =
-      FinDist.pure (config.complete event ready
+      PMF.pure (config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) disclose)
         (cast (congrArg EventField.Value outputEq.symm) accepted)) := by
   classical
   dsimp only
   rw [config.step_eq_map_of_code event ready outputEq _ codeEq _ _
     (compileResolve_eval? refs registry revelations state config.store refsAgree selected
-      disclose), FinDist.map_pure]
+      disclose), PMF.pure_map]
 
 end Vegas

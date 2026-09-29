@@ -295,7 +295,7 @@ theorem playerStep
     exact replay.submittedAt_other owner different event
   cases command with
   | privateCommand privateCommand =>
-      rw [runtime.application.playerStep_private_eq, FinDist.mem_support_pure]
+      rw [runtime.application.playerStep_private_eq, PMF.mem_support_pure_iff _ _]
         at leftSupported rightSupported
       subst leftNext
       subst rightNext
@@ -326,7 +326,7 @@ theorem playerStep
           · simp only [privateStep, dite_eq_right owned]
             exact replay.observation
   | submit payload =>
-      rw [runtime.application.playerStep_submit_eq, FinDist.mem_support_pure]
+      rw [runtime.application.playerStep_submit_eq, PMF.mem_support_pure_iff _ _]
         at leftSupported rightSupported
       subst leftNext
       subst rightNext
@@ -345,8 +345,8 @@ theorem playerStep
       rw [replay.pool]
   | replay id =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at leftSupported rightSupported
+        MessageApplication.advance, MessageApplication.step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at leftSupported rightSupported
       subst leftNext
       subst rightNext
       refine
@@ -363,7 +363,7 @@ theorem playerStep
       simp only
       rw [replay.pool]
   | wait =>
-      rw [runtime.application.playerStep_wait, FinDist.mem_support_pure]
+      rw [runtime.application.playerStep_wait, PMF.mem_support_pure_iff _ _]
         at leftSupported rightSupported
       subst leftNext
       subst rightNext
@@ -440,7 +440,7 @@ theorem nonfocalPlayerStep
       rightCommand rightNext rightSupported
   cases paired with
   | wait =>
-      rw [runtime.application.playerStep_wait, FinDist.mem_support_pure]
+      rw [runtime.application.playerStep_wait, PMF.mem_support_pure_iff _ _]
         at leftSupported rightSupported
       subst leftNext
       subst rightNext
@@ -471,7 +471,7 @@ theorem nonfocalPlayerStep
         · simp only [ite_eq_right queryOwner]
           exact replay.submittedAt_other query queryFocal event
   | privateCommand leftPrivate rightPrivate stages =>
-      rw [runtime.application.playerStep_private_eq, FinDist.mem_support_pure]
+      rw [runtime.application.playerStep_private_eq, PMF.mem_support_pure_iff _ _]
         at leftSupported rightSupported
       subst leftNext
       subst rightNext
@@ -516,7 +516,7 @@ theorem nonfocalPlayerStep
         · rw [leftHistoryOther query queryOwner, rightHistoryOther query queryOwner]
           exact replay.submittedAt_other query queryFocal event
   | submit payload =>
-      rw [runtime.application.playerStep_submit_eq, FinDist.mem_support_pure]
+      rw [runtime.application.playerStep_submit_eq, PMF.mem_support_pure_iff _ _]
         at leftSupported rightSupported
       subst leftNext
       subst rightNext
@@ -593,7 +593,7 @@ theorem prescribedPlayer_afterInvoke
     (rightSupported : rightNext ∈ (runtime.application.invoke players environment right
       (.player owner)).support) :
     NativeReplay runtime focal leftNext rightNext := by
-  simp only [MessageApplication.invoke, compiled, FinDist.support_bind, Set.mem_iUnion]
+  simp only [MessageApplication.invoke, compiled, PMF.support_bind, Set.mem_iUnion]
     at leftSupported rightSupported
   obtain ⟨leftCommand, leftChosen, leftStep⟩ := leftSupported
   obtain ⟨rightCommand, rightChosen, rightStep⟩ := rightSupported
@@ -628,17 +628,17 @@ theorem prescribedPlayer_afterInvoke
         rw [← submittedEq]
         exact submitted
       have leftLaw : runtime.compilePlayerPolicy owner policy
-          (left.principalHistory owner) leftView = FinDist.pure .wait := by
+          (left.principalHistory owner) leftView = PMF.pure .wait := by
         unfold compilePlayerPolicy
         rw [leftGrant]
         simp [submitted]
       have rightLaw : runtime.compilePlayerPolicy owner policy
-          (right.principalHistory owner) rightView = FinDist.pure .wait := by
+          (right.principalHistory owner) rightView = PMF.pure .wait := by
         unfold compilePlayerPolicy
         rw [rightGrant]
         simp [rightSubmitted]
-      rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-      rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
       subst leftCommand
       subst rightCommand
       exact .wait
@@ -653,17 +653,17 @@ theorem prescribedPlayer_afterInvoke
         · cases viewNode : nodeView graph event with
           | sample payload law outputEq codeEq =>
               have leftLaw : runtime.compilePlayerPolicy owner policy
-                  (left.principalHistory owner) leftView = FinDist.pure .wait := by
+                  (left.principalHistory owner) leftView = PMF.pure .wait := by
                 unfold compilePlayerPolicy
                 rw [leftGrant]
                 simp [leftNotSubmitted, leftOwner, ready, actor, viewNode]
               have rightLaw : runtime.compilePlayerPolicy owner policy
-                  (right.principalHistory owner) rightView = FinDist.pure .wait := by
+                  (right.principalHistory owner) rightView = PMF.pure .wait := by
                 unfold compilePlayerPolicy
                 rw [rightGrant]
                 simp [rightNotSubmitted, rightOwner, rightReady, actor, viewNode]
-              rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-              rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+              rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+              rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
               subst leftCommand
               subst rightCommand
               exact .wait
@@ -680,8 +680,8 @@ theorem prescribedPlayer_afterInvoke
                     (right.principalHistory owner) rightView event eventOwner payload outputEq
                     codeEq viewNode rightGrant rightNotSubmitted rightOwner rightReady actor
                     rightCount
-                  rw [leftLaw, FinDist.support_map] at leftChosen
-                  rw [rightLaw, FinDist.support_map] at rightChosen
+                  rw [leftLaw, PMF.support_map] at leftChosen
+                  rw [rightLaw, PMF.support_map] at rightChosen
                   obtain ⟨leftAction, _, rfl⟩ := leftChosen
                   obtain ⟨rightAction, _, rfl⟩ := rightChosen
                   exact .privateCommand _ _ (by intro query; simp [stagesEvent])
@@ -714,8 +714,8 @@ theorem prescribedPlayer_afterInvoke
                         (right.principalHistory owner) rightView event eventOwner payload outputEq
                         codeEq viewNode rightAction rightGrant rightNotSubmitted rightOwner
                         rightReady actor rightCount rightRemembered
-                      rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-                      rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
                       subst leftCommand
                       subst rightCommand
                       obtain ⟨leftPrivate, leftPrivateEq⟩ :=
@@ -755,8 +755,8 @@ theorem prescribedPlayer_afterInvoke
                         (right.principalHistory owner) rightView event eventOwner payload outputEq
                         codeEq viewNode rightGrant rightNotSubmitted rightOwner rightReady actor
                         rightStage
-                      rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-                      rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
                       subst leftCommand
                       subst rightCommand
                       exact .submit _
@@ -784,8 +784,8 @@ theorem prescribedPlayer_afterInvoke
                     (right.principalHistory owner) rightView event owner payload binding checks
                     outputEq codeEq viewNode rightGrant rightNotSubmitted rightOwner rightReady
                     actor rightCount
-                  rw [leftLaw, FinDist.support_map] at leftChosen
-                  rw [rightLaw, FinDist.support_map] at rightChosen
+                  rw [leftLaw, PMF.support_map] at leftChosen
+                  rw [rightLaw, PMF.support_map] at rightChosen
                   obtain ⟨leftAction, _, rfl⟩ := leftChosen
                   obtain ⟨rightAction, _, rfl⟩ := rightChosen
                   exact .privateCommand _ _ (by intro query; simp [stagesEvent])
@@ -818,8 +818,8 @@ theorem prescribedPlayer_afterInvoke
                         (right.principalHistory owner) rightView event owner payload binding
                         checks outputEq codeEq viewNode rightAction rightGrant rightNotSubmitted
                         rightOwner rightReady actor rightCount rightRemembered
-                      rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-                      rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
                       subst leftCommand
                       subst rightCommand
                       exact .privateCommand _ _ (by intro query; simp [stagesEvent])
@@ -851,8 +851,8 @@ theorem prescribedPlayer_afterInvoke
                         (right.principalHistory owner) rightView event owner payload binding
                         checks outputEq codeEq viewNode rightAction rightGrant rightNotSubmitted
                         rightOwner rightReady actor rightStage rightRemembered
-                      rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-                      rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
                       have packetEq := resolutionPayloadEq payload binding checks outputEq codeEq
                         viewNode actor
                         ((State.publicView_eventReady left.native.application event).mp ready)
@@ -864,34 +864,34 @@ theorem prescribedPlayer_afterInvoke
                       rw [packetEq]
                       exact .submit _
         · have leftLaw : runtime.compilePlayerPolicy owner policy
-              (left.principalHistory owner) leftView = FinDist.pure .wait := by
+              (left.principalHistory owner) leftView = PMF.pure .wait := by
             unfold compilePlayerPolicy
             rw [leftGrant]
             simp [leftNotSubmitted, leftOwner, ready, actor]
           have rightLaw : runtime.compilePlayerPolicy owner policy
-              (right.principalHistory owner) rightView = FinDist.pure .wait := by
+              (right.principalHistory owner) rightView = PMF.pure .wait := by
             unfold compilePlayerPolicy
             rw [rightGrant]
             simp [rightNotSubmitted, rightOwner, rightReady, actor]
-          rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-          rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+          rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+          rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
           subst leftCommand
           subst rightCommand
           exact .wait
       · have rightReady : ¬rightView.application.publicView.EventReady event :=
           fun rightReady => ready (readyEq.mpr rightReady)
         have leftLaw : runtime.compilePlayerPolicy owner policy
-            (left.principalHistory owner) leftView = FinDist.pure .wait := by
+            (left.principalHistory owner) leftView = PMF.pure .wait := by
           unfold compilePlayerPolicy
           rw [leftGrant]
           simp [leftNotSubmitted, leftOwner, ready]
         have rightLaw : runtime.compilePlayerPolicy owner policy
-            (right.principalHistory owner) rightView = FinDist.pure .wait := by
+            (right.principalHistory owner) rightView = PMF.pure .wait := by
           unfold compilePlayerPolicy
           rw [rightGrant]
           simp [rightNotSubmitted, rightOwner, rightReady]
-        rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-        rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+        rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+        rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
         subst leftCommand
         subst rightCommand
         exact .wait
@@ -907,17 +907,17 @@ theorem purePlayer_afterInvoke
     (environment : runtime.application.EnvironmentPolicy)
     (response : List runtime.application.PlayerEntry →
       runtime.application.View → runtime.application.PlayerCommand)
-    (fixed : players focal = fun history view => FinDist.pure (response history view))
+    (fixed : players focal = fun history view => PMF.pure (response history view))
     (leftSupported : leftNext ∈ (runtime.application.invoke players environment left
       (.player focal)).support)
     (rightSupported : rightNext ∈ (runtime.application.invoke players environment right
       (.player focal)).support) :
     NativeReplay runtime focal leftNext rightNext := by
-  simp only [MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion]
+  simp only [MessageApplication.invoke, PMF.support_bind, Set.mem_iUnion]
     at leftSupported rightSupported
   obtain ⟨leftCommand, leftChosen, leftStep⟩ := leftSupported
   obtain ⟨rightCommand, rightChosen, rightStep⟩ := rightSupported
-  rw [fixed, FinDist.mem_support_pure] at leftChosen rightChosen
+  rw [fixed, PMF.mem_support_pure_iff _ _] at leftChosen rightChosen
   have inputEq :
       (left.principalHistory focal,
         MessageApplication.State.observe runtime.application left.native focal) =

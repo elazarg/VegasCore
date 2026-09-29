@@ -16,7 +16,7 @@ namespace GameTheoryExtensionsTests.ObservationErasure
 
 open GameTheory.DecisionExperiment GameTheory.Math.Probability
 
-def twoBits : FinDist (Bool × Bool) := FinDist.uniformOfFintype
+def twoBits : PMF (Bool × Bool) := PMF.uniformOfFintype
 
 theorem firstBit_determines : Determines twoBits Prod.fst Prod.fst := by
   intro first _ second _ same
@@ -31,47 +31,47 @@ theorem firstBit_not_injective : ¬ Function.Injective (Prod.fst : Bool × Bool 
 /-- The erased second bit is a genuine supported distinction, yet every
 utility on the retained first bit and arbitrary public actions is preserved. -/
 theorem firstBit_preserves_every_optimal_law {Action : Type*}
-    (utility : Bool → Action → ℝ) (law : FinDist (Bool × Action)) :
-    (∃ policy : Bool → FinDist Action,
+    (utility : Bool → Action → ℝ) (law : PMF (Bool × Action)) :
+    (∃ policy : Bool → PMF Action,
       IsBayesOptimal twoBits Prod.fst (fun state => utility state.1) policy ∧
         resultLaw twoBits Prod.fst Prod.fst policy = law) ↔
-    (∃ policy : (Bool × Bool) → FinDist Action,
+    (∃ policy : (Bool × Bool) → PMF Action,
       IsBayesOptimal twoBits id (fun state => utility state.1) policy ∧
         resultLaw twoBits id Prod.fst policy = law) :=
   optimal_result_law_iff twoBits Prod.fst Prod.fst firstBit_determines utility law
 
 theorem constant_determines_on_singleton :
-    Determines (FinDist.pure false) (fun _ : Bool => ()) id := by
+    Determines (PMF.pure false) (fun _ : Bool => ()) id := by
   intro first firstPresent second secondPresent _
-  rw [FinDist.mem_support_pure] at firstPresent secondPresent
+  rw [PMF.mem_support_pure_iff _ _] at firstPresent secondPresent
   exact firstPresent.trans secondPresent.symm
 
 /-- Global collisions are harmless if they concern states outside the prior support. -/
 theorem unreachable_merge_preserves {Action : Type*} (utility : Bool → Action → ℝ)
-    (law : FinDist (Bool × Action)) :
-    (∃ policy : Unit → FinDist Action,
-      IsBayesOptimal (FinDist.pure false) (fun _ => ()) utility policy ∧
-        resultLaw (FinDist.pure false) (fun _ => ()) id policy = law) ↔
-    (∃ policy : Bool → FinDist Action,
-      IsBayesOptimal (FinDist.pure false) id utility policy ∧
-        resultLaw (FinDist.pure false) id id policy = law) :=
-  optimal_result_law_iff (FinDist.pure false) (fun _ => ()) id
+    (law : PMF (Bool × Action)) :
+    (∃ policy : Unit → PMF Action,
+      IsBayesOptimal (PMF.pure false) (fun _ => ()) utility policy ∧
+        resultLaw (PMF.pure false) (fun _ => ()) id policy = law) ↔
+    (∃ policy : Bool → PMF Action,
+      IsBayesOptimal (PMF.pure false) id utility policy ∧
+        resultLaw (PMF.pure false) id id policy = law) :=
+  optimal_result_law_iff (PMF.pure false) (fun _ => ()) id
     constant_determines_on_singleton utility law
 
 /-- With both bits possible, removing the bit forbids all-optimum preservation.
 The quantifier allows an arbitrary utility-dependent strategy translator. -/
 theorem supported_merge_does_not_preserve :
-    ¬ (∀ utility : Bool → Bool → ℝ, ∀ source : Unit → FinDist Bool,
-      IsBayesOptimal (FinDist.uniformOfFintype : FinDist Bool) (fun _ => ()) utility source →
-        ∃ target : Bool → FinDist Bool,
-          IsBayesOptimal (FinDist.uniformOfFintype : FinDist Bool) id utility target ∧
-            resultLaw FinDist.uniformOfFintype id id target =
-              resultLaw FinDist.uniformOfFintype (fun _ => ()) id source) := by
+    ¬ (∀ utility : Bool → Bool → ℝ, ∀ source : Unit → PMF Bool,
+      IsBayesOptimal (PMF.uniformOfFintype Bool) (fun _ => ()) utility source →
+        ∃ target : Bool → PMF Bool,
+          IsBayesOptimal (PMF.uniformOfFintype Bool) id utility target ∧
+            resultLaw PMF.uniformOfFintype id id target =
+              resultLaw PMF.uniformOfFintype (fun _ => ()) id source) := by
   intro preserves
   have determines := (preserves_all_optima_iff_determines
-    (FinDist.uniformOfFintype : FinDist Bool) (fun _ => ()) id).mp preserves
-  have impossible := determines false (FinDist.mem_support_uniformOfFintype false)
-    true (FinDist.mem_support_uniformOfFintype true) rfl
+    (PMF.uniformOfFintype Bool) (fun _ => ()) id).mp preserves
+  have impossible := determines false (PMF.mem_support_uniformOfFintype false)
+    true (PMF.mem_support_uniformOfFintype true) rfl
   cases impossible
 
 end GameTheoryExtensionsTests.ObservationErasure

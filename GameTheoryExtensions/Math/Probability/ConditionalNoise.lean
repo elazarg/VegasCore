@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Auxiliary observations conditional on an existing observation
 
@@ -12,16 +14,18 @@ an assertion about arbitrary off-path beliefs.
 
 noncomputable section
 
-namespace GameTheory.Math.Probability.FinDist
+namespace PMF
+
+open GameTheory.Math.Probability
 
 variable {State Observation Noise : Type*}
 
 /-- Conditioning ignores differences between information events outside the
-finite law's support, including the empty-event fallback. -/
-theorem condOnFibre_eq_of_support_fiber {A First Second : Type*} (law : FinDist A)
+law's support, including the empty-event fallback. -/
+theorem fiberConditional_eq_of_support_fiber {A First Second : Type*} (law : PMF A)
     (first : A → First) (second : A → Second) (left : First) (right : Second)
     (same : ∀ value ∈ law.support, first value = left ↔ second value = right) :
-    law.condOnFibre first left = law.condOnFibre second right := by
+    fiberConditional law first left = fiberConditional law second right := by
   classical
   by_cases meets : ∃ value ∈ first ⁻¹' {left}, value ∈ law.support
   · obtain ⟨witness, matched, supported⟩ := meets
@@ -29,37 +33,34 @@ theorem condOnFibre_eq_of_support_fiber {A First Second : Type*} (law : FinDist 
       ⟨witness, matched, supported⟩
     have other : ∃ value ∈ second ⁻¹' {right}, value ∈ law.support :=
       ⟨witness, (same witness supported).mp matched, supported⟩
-    rw [condOnFibre, dite_eq_left meets, condOnFibre, dite_eq_left other]
-    apply ext_of_prob
-    intro value
-    rw [prob_condOn, prob_condOn]
-    have mass : law.probOf (first ⁻¹' {left}) = law.probOf (second ⁻¹' {right}) :=
-      law.probOf_congr same
-    rw [mass]
-    by_cases present : value ∈ law.support
-    · simp only [Set.mem_preimage, Set.mem_singleton_iff, same value present]
-    · have zero := prob_eq_zero_iff.mpr present
-      simp only [zero, zero_div, ite_self]
+    rw [fiberConditional, dite_eq_left meets, fiberConditional, dite_eq_left other]
+    have indicators : (first ⁻¹' {left}).indicator law = (second ⁻¹' {right}).indicator law := by
+      funext value
+      by_cases present : value ∈ law.support
+      · simp only [Set.indicator, Set.mem_preimage, Set.mem_singleton_iff, same value present]
+      · simp [Set.indicator, (PMF.apply_eq_zero_iff law value).mpr present]
+    ext value
+    rw [PMF.filter_apply, PMF.filter_apply, indicators]
   · have other : ¬ ∃ value ∈ second ⁻¹' {right}, value ∈ law.support := by
       rintro ⟨value, matched, supported⟩
       exact meets ⟨value, (same value supported).mpr matched, supported⟩
-    rw [condOnFibre, dite_eq_right meets, condOnFibre, dite_eq_right other]
+    rw [fiberConditional, dite_eq_right meets, fiberConditional, dite_eq_right other]
 
-theorem conditional_observation_kernel (prior : FinDist State)
-    (observe : State → Observation) (noise : Observation → FinDist Noise)
+theorem conditional_observation_kernel (prior : PMF State)
+    (observe : State → Observation) (noise : Observation → PMF Noise)
     (observed : Observation) (extra : Noise)
     (present : observed ∈ (prior.map observe).support)
     (possible : extra ∈ (noise observed).support) :
     let joint := prior.bind fun state =>
       (noise (observe state)).map fun signal => (state, signal)
-    (joint.condOnFibre (fun pair => (observe pair.1, pair.2)) (observed, extra)).map
-      Prod.fst = prior.condOnFibre observe observed := by
+    (fiberConditional joint (fun pair => (observe pair.1, pair.2)) (observed, extra)).map
+      Prod.fst = fiberConditional prior observe observed := by
   classical
   dsimp only
   let joint := prior.bind fun state =>
     (noise (observe state)).map fun signal => (state, signal)
   let information := fun pair : State × Noise => (observe pair.1, pair.2)
-  obtain ⟨witness, supported, equal⟩ := support_map .. ▸ present
+  obtain ⟨witness, supported, equal⟩ := (PMF.mem_support_map_iff _ _ _).mp present
   have oldMeets : ∃ state ∈ observe ⁻¹' {observed}, state ∈ prior.support :=
     ⟨witness, equal, supported⟩
   have meets : ∃ pair ∈ information ⁻¹' {(observed, extra)}, pair ∈ joint.support := by
@@ -70,47 +71,56 @@ theorem conditional_observation_kernel (prior : FinDist State)
       rw [support_map]
       exact ⟨extra, by simpa only [equal] using possible, rfl⟩
   have mapped : joint.map information =
-      (prior.map observe).bind fun observation =>
-        (noise observation).map fun signal => (observation, signal) := by
-    simp only [joint, information, map_bind, map_comp, bind_map, Function.comp_def]
-  have mass : joint.probOf (information ⁻¹' {(observed, extra)}) =
-      (prior.map observe).prob observed * (noise observed).prob extra := by
-    rw [← prob_map_eq_probOf_preimage_singleton, mapped, prob_bind_map_prod]
-  have noisePositive : 0 < (noise observed).prob extra := prob_pos_iff.mpr possible
-  have conditional : joint.condOnFibre information (observed, extra) =
-      (prior.condOnFibre observe observed).map (fun state => (state, extra)) := by
-    rw [condOnFibre, dite_eq_left meets, condOnFibre, dite_eq_left oldMeets]
-    apply ext_of_prob
-    rintro ⟨state, signal⟩
-    rw [prob_condOn, mass]
-    simp only [Set.mem_preimage, Set.mem_singleton_iff, information, Prod.mk.injEq]
+      bindPairLaw (prior.map observe) noise := by
+    simp only [joint, information, bindPairLaw, map_bind, map_comp, PMF.bind_map,
+      Function.comp_def]
+  have jointAt (state : State) (signal : Noise) :
+      joint (state, signal) = prior state * noise (observe state) signal :=
+    bindPairLaw_apply prior (fun state => noise (observe state)) state signal
+  have mass : joint.toOuterMeasure (information ⁻¹' {(observed, extra)}) =
+      (prior.map observe) observed * noise observed extra := by
+    rw [← PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_apply_singleton, mapped,
+      bindPairLaw_apply]
+  have oldMass : prior.toOuterMeasure (observe ⁻¹' {observed}) = (prior.map observe) observed := by
+    rw [← PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_apply_singleton]
+  have noisePositive : noise observed extra ≠ 0 := (PMF.mem_support_iff _ _).mp possible
+  have conditional : fiberConditional joint information (observed, extra) =
+      (fiberConditional prior observe observed).map (fun state => (state, extra)) := by
+    rw [fiberConditional, dite_eq_left meets, fiberConditional, dite_eq_left oldMeets]
+    ext ⟨state, signal⟩
+    rw [PMF.filter_apply, ← PMF.toOuterMeasure_apply, mass]
     by_cases signalEq : signal = extra
     · subst signal
-      rw [prob_map_of_injective (fun state => (state, extra))
-        (fun _ _ same => (Prod.mk.inj same).1), prob_condOn]
-      simp only [Set.mem_preimage, Set.mem_singleton_iff]
+      rw [pmf_map_apply_of_injective _ (fun _ _ same => (Prod.mk.inj same).1) state,
+        PMF.filter_apply, ← PMF.toOuterMeasure_apply, oldMass]
       by_cases same : observe state = observed
-      · rw [ite_eq_left ⟨same, True.intro⟩, ite_eq_left same]
-        rw [show joint.prob (state, extra) =
-          prior.prob state * (noise (observe state)).prob extra from
-            prob_bind_map_prod prior (fun state => noise (observe state)) state extra]
-        rw [same, ← prob_map_eq_probOf_preimage_singleton]
-        exact mul_div_mul_right _ _ (ne_of_gt noisePositive)
-      · rw [ite_eq_right (fun h => same h.1), ite_eq_right same]
-    · rw [ite_eq_right (fun h => signalEq h.2)]
+      · have member : (state, extra) ∈ information ⁻¹' {(observed, extra)} := by
+          simp [information, same]
+        rw [Set.indicator_of_mem member, Set.indicator_of_mem (show state ∈ observe ⁻¹' {observed}
+          from same), jointAt, same, ENNReal.mul_inv (Or.inr (PMF.apply_ne_top _ _))
+            (Or.inr noisePositive), mul_comm (((prior.map observe) observed)⁻¹), ← mul_assoc,
+          mul_assoc (prior state), ENNReal.mul_inv_cancel noisePositive (PMF.apply_ne_top _ _),
+          mul_one]
+      · have outside : (state, extra) ∉ information ⁻¹' {(observed, extra)} := by
+          simp [information, same]
+        rw [Set.indicator_of_notMem outside, Set.indicator_of_notMem
+          (show state ∉ observe ⁻¹' {observed} from same), zero_mul, zero_mul]
+    · have outside : (state, signal) ∉ information ⁻¹' {(observed, extra)} := by
+        simp [information, signalEq]
+      rw [Set.indicator_of_notMem outside, zero_mul]
       symm
-      apply prob_eq_zero_iff.mpr
+      apply (PMF.apply_eq_zero_iff _ _).mpr
       intro member
-      obtain ⟨old, _, same⟩ := support_map .. ▸ member
+      obtain ⟨old, _, same⟩ := (PMF.mem_support_map_iff _ _ _).mp member
       exact signalEq (congrArg Prod.snd same).symm
-  change (joint.condOnFibre information (observed, extra)).map Prod.fst = _
+  change (fiberConditional joint information (observed, extra)).map Prod.fst = _
   rw [conditional, map_comp]
   exact map_id _
 
 /-- If the extra input itself determines the old observation on its supported
 fiber, conditioning on that actual input gives the original source posterior. -/
-theorem conditional_observation_kernel_recovered (prior : FinDist State)
-    (observe : State → Observation) (noise : Observation → FinDist Noise)
+theorem conditional_observation_kernel_recovered (prior : PMF State)
+    (observe : State → Observation) (noise : Observation → PMF Noise)
     (observed : Observation) (extra : Noise)
     (present : ∃ state ∈ prior.support,
       observe state = observed ∧ extra ∈ (noise observed).support)
@@ -118,8 +128,8 @@ theorem conditional_observation_kernel_recovered (prior : FinDist State)
       observe state = observed) :
     let joint := prior.bind fun state =>
       (noise (observe state)).map fun signal => (state, signal)
-    (joint.condOnFibre Prod.snd extra).map Prod.fst =
-      prior.condOnFibre observe observed := by
+    (fiberConditional joint Prod.snd extra).map Prod.fst =
+      fiberConditional prior observe observed := by
   obtain ⟨witness, supported, matched, possible⟩ := present
   have oldPresent : observed ∈ (prior.map observe).support := by
     rw [support_map]
@@ -127,7 +137,7 @@ theorem conditional_observation_kernel_recovered (prior : FinDist State)
   have ordinary := conditional_observation_kernel prior observe noise observed extra
     oldPresent possible
   dsimp only at ordinary ⊢
-  have conditioning := condOnFibre_eq_of_support_fiber
+  have conditioning := fiberConditional_eq_of_support_fiber
     (prior.bind fun state => (noise (observe state)).map fun signal => (state, signal))
     (fun pair => (observe pair.1, pair.2)) Prod.snd (observed, extra) extra (by
       intro pair member
@@ -142,8 +152,8 @@ theorem conditional_observation_kernel_recovered (prior : FinDist State)
 /-- The same calculation needs channel equality only on supported states in
 each original information fiber. No global factorization is supplied as a
 premise: it is constructed from those finite supported fibers. -/
-theorem conditional_kernel_of_fiber (prior : FinDist State)
-    (observe : State → Observation) (kernel : State → FinDist Noise)
+theorem conditional_kernel_of_fiber (prior : PMF State)
+    (observe : State → Observation) (kernel : State → PMF Noise)
     (same : ∀ left ∈ prior.support, ∀ right ∈ prior.support,
       observe left = observe right → kernel left = kernel right)
     (observed : Observation) (extra : Noise)
@@ -151,8 +161,8 @@ theorem conditional_kernel_of_fiber (prior : FinDist State)
       observe state = observed ∧ extra ∈ (kernel state).support) :
     let joint := prior.bind fun state =>
       (kernel state).map fun signal => (state, signal)
-    (joint.condOnFibre (fun pair => (observe pair.1, pair.2)) (observed, extra)).map
-      Prod.fst = prior.condOnFibre observe observed := by
+    (fiberConditional joint (fun pair => (observe pair.1, pair.2)) (observed, extra)).map
+      Prod.fst = fiberConditional prior observe observed := by
   classical
   let noise := fun observed =>
     if existsState : ∃ state ∈ prior.support, observe state = observed then
@@ -167,7 +177,7 @@ theorem conditional_kernel_of_fiber (prior : FinDist State)
       existsState.choose_spec.2.symm
   have joint : (prior.bind fun state => (kernel state).map fun signal => (state, signal)) =
       prior.bind fun state => (noise (observe state)).map fun signal => (state, signal) := by
-    apply bind_congr
+    apply bind_congr_on_support _
     intro state supported
     rw [factors state supported]
   obtain ⟨state, supported, equal, possible⟩ := present
@@ -188,10 +198,10 @@ through that new observation. Source action probabilities may depend on the
 entire hidden state; no independence of source choices is assumed. -/
 theorem exists_updated_observation_kernel
     {Action NextState NextObservation NextNoise : Type*}
-    (prior : FinDist State) (observe : State → Observation)
-    (noise : Observation → FinDist Noise) (choice : State → FinDist Action)
+    (prior : PMF State) (observe : State → Observation)
+    (noise : Observation → PMF Noise) (choice : State → PMF Action)
     (advance : State → Action → NextState) (nextObserve : NextState → NextObservation)
-    (channel : State → Action → Noise → FinDist NextNoise)
+    (channel : State → Action → Noise → PMF NextNoise)
     (reflects : ∀ left ∈ prior.support, ∀ leftAction ∈ (choice left).support,
       ∀ right ∈ prior.support, ∀ rightAction ∈ (choice right).support,
       nextObserve (advance left leftAction) = nextObserve (advance right rightAction) →
@@ -201,7 +211,7 @@ theorem exists_updated_observation_kernel
       nextObserve (advance left leftAction) = nextObserve (advance right rightAction) →
       ∀ extra ∈ (noise (observe left)).support,
         channel left leftAction extra = channel right rightAction extra) :
-    ∃ nextNoise : NextObservation → FinDist NextNoise,
+    ∃ nextNoise : NextObservation → PMF NextNoise,
       (prior.bind fun state => (noise (observe state)).bind fun extra =>
         (choice state).bind fun action => (channel state action extra).map fun next =>
           (advance state action, next)) =
@@ -227,7 +237,8 @@ theorem exists_updated_observation_kernel
       rightAction equal
     change (noise (observe left.1)).bind _ = (noise (observe right.1)).bind _
     rw [← priorView]
-    exact bind_congr fun extra member => coupled left.1 leftPrior left.2 leftAction right.1
+    exact bind_congr_on_support _ fun extra member => coupled left.1 leftPrior left.2 leftAction
+        right.1
       rightPrior right.2 rightAction equal extra member
   let nextNoise := fun view =>
     if present : ∃ pair ∈ pairs.support, observation pair = view then branch present.choose
@@ -242,28 +253,28 @@ theorem exists_updated_observation_kernel
   calc
     _ = pairs.bind (fun pair => (branch pair).map fun extra =>
         (advance pair.1 pair.2, extra)) := by
-      simp only [pairs, branch, bind_bind, bind_map, map_bind]
-      apply bind_congr
+      simp only [pairs, branch, bind_bind, PMF.bind_map, map_bind, Function.comp_def]
+      apply bind_congr_on_support _
       intro state _
       exact bind_comm _ _ _
     _ = pairs.bind (fun pair => (nextNoise (observation pair)).map fun extra =>
         (advance pair.1 pair.2, extra)) := by
-      apply bind_congr
+      apply bind_congr_on_support _
       intro pair member
       rw [factors pair member]
-    _ = _ := by simp only [pairs, observation, bind_bind, bind_map]
+    _ = _ := by simp only [pairs, observation, bind_bind, PMF.bind_map, Function.comp_def]
 
 /-- Readout form of the conditional-noise induction. A native state may contain
 more information than its source state and auxiliary readout; that remainder
 is eliminated by actual transition coupling on supported inputs. -/
 theorem exists_updated_observation_kernel_of_readout
     {Native Action NextState NextObservation NextNoise : Type*}
-    (law : FinDist Native) (state : Native → State) (read : Native → Noise)
-    (observe : State → Observation) (noise : Observation → FinDist Noise)
+    (law : PMF Native) (state : Native → State) (read : Native → Noise)
+    (observe : State → Observation) (noise : Observation → PMF Noise)
     (factor : law.map (fun point => (state point, read point)) =
       (law.map state).bind fun source => (noise (observe source)).map fun extra => (source, extra))
-    (choice : State → FinDist Action) (advance : State → Action → NextState)
-    (nextObserve : NextState → NextObservation) (step : Native → Action → FinDist NextNoise)
+    (choice : State → PMF Action) (advance : State → Action → NextState)
+    (nextObserve : NextState → NextObservation) (step : Native → Action → PMF NextNoise)
     (reflects : ∀ left ∈ (law.map state).support, ∀ leftAction ∈ (choice left).support,
       ∀ right ∈ (law.map state).support, ∀ rightAction ∈ (choice right).support,
       nextObserve (advance left leftAction) = nextObserve (advance right rightAction) →
@@ -273,7 +284,7 @@ theorem exists_updated_observation_kernel_of_readout
       nextObserve (advance (state left) leftAction) =
         nextObserve (advance (state right) rightAction) →
       read left = read right → step left leftAction = step right rightAction) :
-    ∃ nextNoise : NextObservation → FinDist NextNoise,
+    ∃ nextNoise : NextObservation → PMF NextNoise,
       (law.bind fun point => (choice (state point)).bind fun action =>
         (step point action).map fun extra => (advance (state point) action, extra)) =
       ((law.map state).bind fun source => (choice source).map (advance source)).bind fun source =>
@@ -339,21 +350,21 @@ theorem exists_updated_observation_kernel_of_readout
       have extraEq : read point = extra := (Prod.mk.inj equal).2
       obtain ⟨present, represented, readEq⟩ := realizes source sourceSupport extra extraSupport
       rw [sourceEq]
-      apply bind_congr
+      apply bind_congr_on_support _
       intro action chosen
       have steps := coupled point pointSupport action (by rwa [sourceEq])
         (representative source extra) present action (by rwa [represented])
           (by rw [sourceEq, represented]) (extraEq.trans readEq.symm)
       exact congrArg (fun selected => selected.map fun next => (advance source action, next)) steps
     _ = _ := by
-      simpa only [joint, bind_bind, bind_map, channel] using nextLaw
+      simpa only [joint, bind_bind, PMF.bind_map, Function.comp_def, channel] using nextLaw
 
 /-- Re-encoding the state preserves an observation-local auxiliary law when
 its new observation explicitly recovers the old one. -/
 theorem map_observation_factor
     {Source View Extra Next NextView : Type*}
-    (law : FinDist (Source × Extra)) (observe : Source → View)
-    (noise : View → FinDist Extra)
+    (law : PMF (Source × Extra)) (observe : Source → View)
+    (noise : View → PMF Extra)
     (factor : law = (law.map Prod.fst).bind fun state =>
       (noise (observe state)).map fun extra => (state, extra))
     (embed : Source → Next) (nextObserve : Next → NextView) (recover : NextView → View)
@@ -363,10 +374,10 @@ theorem map_observation_factor
       (noise (recover (nextObserve state))).map fun extra => (state, extra) := by
   dsimp only
   have transformed := congrArg
-    (fun μ : FinDist (Source × Extra) => μ.map (fun pair => (embed pair.1, pair.2))) factor
-  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def] at transformed
+    (fun μ : PMF (Source × Extra) => μ.map (fun pair => (embed pair.1, pair.2))) factor
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def] at transformed
   rw [transformed]
-  simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-    FinDist.map_const, FinDist.bind_map, FinDist.bind_bind, FinDist.pure_bind, recovers]
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
+    PMF.bind_map, PMF.bind_bind, PMF.bind_const, recovers]
 
-end GameTheory.Math.Probability.FinDist
+end PMF

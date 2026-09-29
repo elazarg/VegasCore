@@ -186,8 +186,8 @@ theorem replay_compiled (who : Player)
   apply Finset.mem_inter.mpr
   refine ⟨Finset.mem_union_right _ (FinDist.mem_supportFinset.mpr supported), ?_⟩
   let app := runtime.reactiveApplication leaks
-  obtain ⟨selected, member, rfl⟩ := FinDist.support_map .. ▸ supported
-  have selectedIn := (FinDist.mem_support_uniformSet_iff _ _ _).mp member
+  obtain ⟨selected, member, rfl⟩ := PMF.support_map .. ▸ supported
+  have selectedIn := (PMF.mem_support_uniformOfFinset_iff _ _ _).mp member
   cases selected with
   | none =>
       rw [bounds.menu_mem]

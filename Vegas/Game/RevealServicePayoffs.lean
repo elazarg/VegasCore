@@ -181,17 +181,17 @@ play. No independence between collection, disclosure, and payoff is required. -/
 theorem netUtility_expect_le (watcher who : Player) (ordinary : who ≠ watcher)
     (base : (application setup leaks).ProtocolState → Player → ℝ)
     (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit who)
-    (law : FinDist (application setup leaks).ProtocolState) (upper probability : ℝ)
+    (law : PMF (application setup leaks).ProtocolState) (upper probability : ℝ)
     (bounded : ∀ state ∈ law.support, base state who ≤ upper)
-    (collection : probability ≤ law.probOf {state | departureAtState setup leaks who state}) :
-    law.expect (fun state => netUtility setup leaks watcher base deposit state who) ≤
+    (collection : probability ≤ (law.toOuterMeasure {state | departureAtState setup leaks who state}).toReal) :
+    expect law (fun state => netUtility setup leaks watcher base deposit state who) ≤
       upper - probability * deposit who := by
   rw [netUtility_ordinary setup leaks watcher who ordinary,
     Enforcement.expect_sanctionedUtility]
   apply sub_le_sub _ (mul_le_mul_of_nonneg_right collection nonnegative)
   calc
-    _ ≤ law.expect (fun _ => upper) := FinDist.expect_mono bounded
-    _ = upper := FinDist.expect_const ..
+    _ ≤ expect law (fun _ => upper) := FinDist.expect_mono bounded
+    _ = upper := expect_constant ..
 
 /-- A whole-payoff-range deposit compares a monitored extra response with any
 clean legal continuation. Both distributions are the actual native state laws;
@@ -199,20 +199,20 @@ the legal continuation may be randomized and may withhold later openings. -/
 theorem netUtility_comparison (watcher who : Player) (ordinary : who ≠ watcher)
     (base : (application setup leaks).ProtocolState → Player → ℝ)
     (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit who)
-    (extra legal : FinDist (application setup leaks).ProtocolState)
+    (extra legal : PMF (application setup leaks).ProtocolState)
     (lower upper probability : ℝ)
     (above : ∀ state ∈ extra.support, base state who ≤ upper)
     (below : ∀ state ∈ legal.support, lower ≤ base state who)
     (clean : ∀ state ∈ legal.support, ¬ departureAtState setup leaks who state)
-    (collection : probability ≤ extra.probOf {state | departureAtState setup leaks who state})
+    (collection : probability ≤ (extra.toOuterMeasure {state | departureAtState setup leaks who state}).toReal)
     (sufficient : upper - lower ≤ probability * deposit who) :
-    extra.expect (fun state => netUtility setup leaks watcher base deposit state who) ≤
-      legal.expect (fun state => netUtility setup leaks watcher base deposit state who) := by
+    expect extra (fun state => netUtility setup leaks watcher base deposit state who) ≤
+      expect legal (fun state => netUtility setup leaks watcher base deposit state who) := by
   calc
     _ ≤ upper - probability * deposit who := netUtility_expect_le setup leaks watcher who ordinary
       base deposit nonnegative extra upper probability above collection
     _ ≤ lower := by linarith
-    _ = legal.expect (fun _ => lower) := (FinDist.expect_const ..).symm
+    _ = expect legal (fun _ => lower) := (expect_constant ..).symm
     _ ≤ _ := by
       apply FinDist.expect_mono
       intro state supported

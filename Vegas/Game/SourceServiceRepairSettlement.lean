@@ -42,14 +42,14 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (who : Player) (rate gap : ℝ) (deposit : Player → ℝ)
     (coverage : ∀ actual record, record ∈ actual → record.2.2.sender = who →
       (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
-      rate ≤ (sample actual).probOf {observed | record ∈ observed})
+      rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (nonnegative : 0 ≤ deposit who) (sufficient : gap ≤ min rate 1 * deposit who)
-    (coupled : FinDist ((application setup leaks).Control ×
+    (coupled : PMF ((application setup leaks).Control ×
       (application setup leaks).Control × BindingMemory (runtime setup) leaks))
     (permitted : ∀ pair ∈ coupled.support,
       Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -72,8 +72,8 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
       (baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state)))
       ((runtime setup).serviceAuditObservation leaks) (sourceServiceAudit setup leaks sample)
       deposit
-    ((coupled.map (fun pair => some pair.1)).bind settle).expect (fun payoffs => payoffs who) ≤
-      ((coupled.map (fun pair => some pair.2.1)).bind settle).expect
+    expect ((coupled.map (fun pair => some pair.1)).bind settle) (fun payoffs => payoffs who) ≤
+      expect ((coupled.map (fun pair => some pair.2.1)).bind settle)
         (fun payoffs => payoffs who) := by
   classical
   intro settle
@@ -96,13 +96,13 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
         (envelopeEvidence setup leaks) (fun evidence => evidence.2.2.sender)
         (fun evidence => (runtime setup).permittedServiceEnvelope
           evidence.1 evidence.2.1 evidence.2.2) sample
-        (FinDist.pure (some pair.1)) who rate coverage record
+        (PMF.pure (some pair.1)) who rate coverage record
         (by
           intro state supported
-          cases FinDist.mem_support_pure.mp supported
+          cases (PMF.mem_support_pure_iff _ _).mp supported
           exact present) author forbidden
       have lowerCharge : rate ≤ TerminalAudit.charge observe audit (some pair.1) who := by
-        simpa only [FinDist.map_pure, FinDist.pure_bind, TerminalAudit.charge, observe, audit,
+        simpa only [PMF.pure_map, PMF.pure_bind, TerminalAudit.charge, observe, audit,
           sourceServiceAudit] using lower
       exact (min_le_left _ _).trans lowerCharge
     · change min rate 1 ≤ TerminalAudit.charge
@@ -111,28 +111,28 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
       rw [(runtime setup).serviceAudit_charge]
       simpa only [Option.elim_some, missing, ↓reduceIte] using min_le_right rate (1 : ℝ)
     · exact (bad framed).elim
-  have incremental : coupled.probOf departed * min rate 1 ≤
-      (coupled.map (fun pair => some pair.1)).expect
+  have incremental : (coupled.toOuterMeasure departed).toReal * min rate 1 ≤
+      expect (coupled.map (fun pair => some pair.1))
           (fun state => TerminalAudit.charge observe audit state who) -
-        (coupled.map (fun pair => some pair.2.1)).expect
+        expect (coupled.map (fun pair => some pair.2.1))
           (fun state => TerminalAudit.charge observe audit state who) := by
-    have zero : (coupled.map (fun pair => some pair.2.1)).expect
+    have zero : expect (coupled.map (fun pair => some pair.2.1))
         (fun state => TerminalAudit.charge observe audit state who) = 0 := by
-      rw [FinDist.expect_map]
+      rw [expect_map]
       calc
-        _ = coupled.expect (fun _ => (0 : ℝ)) := FinDist.expect_congr clean
-        _ = 0 := FinDist.expect_const _ _
-    rw [zero, sub_zero, FinDist.expect_map]
+        _ = expect coupled (fun _ => (0 : ℝ)) := expect_congr_on_support clean
+        _ = 0 := expect_constant _ _
+    rw [zero, sub_zero, expect_map]
     calc
-      _ = coupled.expect (fun pair => (if pair ∈ departed then 1 else 0) * min rate 1) := by
-        rw [FinDist.expect_mul_const, FinDist.expect_indicator_eq_probOf]
+      _ = expect coupled (fun pair => (if pair ∈ departed then 1 else 0) * min rate 1) := by
+        rw [FinDist.expect_mul_const, expect_indicator]
       _ ≤ _ := by
         apply FinDist.expect_mono
         intro pair supported
         by_cases bad : pair ∈ departed
         · simpa only [bad, ite_true, one_mul] using collected pair supported bad
         · simp only [bad, ite_false, zero_mul]
-          exact FinDist.prob_nonneg _ _
+          exact ENNReal.toReal_nonneg
   apply TerminalAudit.settlement_le_of_departure_coupling coupled
     (fun pair => some pair.1) (fun pair => some pair.2.1) _ observe audit deposit who departed
       gap (min rate 1) _ _ incremental nonnegative sufficient
@@ -158,13 +158,13 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (who : Player) (probability : Player → ℝ) (positive : 0 < probability who)
     (coverage : ∀ actual record, record ∈ actual → record.2.2.sender = who →
       (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
-    (coupled : FinDist ((application setup leaks).Control ×
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
+    (coupled : PMF ((application setup leaks).Control ×
       (application setup leaks).Control × BindingMemory (runtime setup) leaks))
     (realized : ∀ pair ∈ coupled.support,
       Nonempty (((bounds.menu (runtime setup) leaks).protocol (initialLaw setup)
@@ -188,8 +188,8 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
       (fun owner => min (probability owner) 1)
     let settle := TerminalAudit.settlement base ((runtime setup).serviceAuditObservation leaks)
       (sourceServiceAudit setup leaks sample) deposit
-    ((coupled.map (fun pair => some pair.1)).bind settle).expect (fun payoffs => payoffs who) ≤
-      ((coupled.map (fun pair => some pair.2.1)).bind settle).expect
+    expect ((coupled.map (fun pair => some pair.1)).bind settle) (fun payoffs => payoffs who) ≤
+      expect ((coupled.map (fun pair => some pair.2.1)).bind settle)
         (fun payoffs => payoffs who) := by
   intro base deposit settle
   have ratePositive : 0 < min (probability who) 1 := lt_min positive zero_lt_one

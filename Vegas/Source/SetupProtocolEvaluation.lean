@@ -19,7 +19,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 def continuationLaw (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
-    setup.ProtocolState → FinDist (State L setup.program.terminalCtx)
+    setup.ProtocolState → PMF (State L setup.program.terminalCtx)
   | none => setup.run profile
   | some state => SourceProgram.ProtocolState.continuationLaw setup.program profile state
 
@@ -37,7 +37,7 @@ theorem continuationLaw_terminal (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (state : setup.ProtocolState)
     (stopped : state.elim False (SourceProgram.ProtocolState.terminal setup.program)) :
     (setup.continuationLaw profile state).map some =
-      FinDist.pure (setup.protocolReadout state) := by
+      PMF.pure (setup.protocolReadout state) := by
   cases state with
   | none => exact stopped.elim
   | some state =>
@@ -52,10 +52,10 @@ theorem continuationLaw_step (setup : Setup (Player := Player) (L := L))
       setup.continuationLaw (fun who => (profile who).toBehavioral setup.program) state := by
   cases state with
   | none =>
-      simp [protocolStep, FinDist.bind_map, continuationLaw, run, initialConfig,
+      simp [protocolStep, PMF.bind_map, continuationLaw, run, initialConfig,
         SourceProgram.run, runFrom]
   | some state =>
-      simp only [protocolStep, FinDist.bind_map, continuationLaw, protocolJoint]
+      simp only [protocolStep, PMF.bind_map, continuationLaw, protocolJoint]
       exact SourceProgram.ProtocolState.continuationLaw_step setup.program profile state running
 
 def protocolChooser (setup : Setup (Player := Player) (L := L))
@@ -97,16 +97,16 @@ theorem protocol_runFor_eq (setup : Setup (Player := Player) (L := L))
             (fun who => (profile who).toBehavioral setup.program) (some state) stopped).symm
   | succ fuel ih =>
       by_cases stopped : (setup.executionProtocol admission).terminal state
-      · rw [ExecutionProtocol.runFor_of_terminal _ _ stopped, FinDist.map_pure]
+      · rw [ExecutionProtocol.runFor_of_terminal _ _ stopped, PMF.pure_map]
         exact (setup.continuationLaw_terminal
           (fun who => (profile who).toBehavioral setup.program) state stopped).symm
-      · rw [ExecutionProtocol.runFor_succ_of_not_terminal _ _ stopped, FinDist.map_bind]
+      · rw [ExecutionProtocol.runFor_succ_of_not_terminal _ _ stopped, PMF.map_bind]
         change (setup.protocolStep state (setup.protocolJoint profile state)).bind _ = _
         calc
           _ = (setup.protocolStep state (setup.protocolJoint profile state)).bind
                 (fun after => (setup.continuationLaw
                 (fun who => (profile who).toBehavioral setup.program) after).map some) := by
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro after reached
             have consumed := setup.protocol_remaining_step state after
               (setup.protocolJoint profile state) stopped reached
@@ -114,7 +114,7 @@ theorem protocol_runFor_eq (setup : Setup (Player := Player) (L := L))
           _ = ((setup.protocolStep state (setup.protocolJoint profile state)).bind
               (setup.continuationLaw
                 (fun who => (profile who).toBehavioral setup.program))).map some :=
-            (FinDist.map_bind _ _ _).symm
+            (PMF.map_bind _ _ _).symm
           _ = _ := congrArg (fun law => law.map some)
             (setup.continuationLaw_step profile state stopped)
 
@@ -153,7 +153,7 @@ theorem protocol_runFrom_eq (setup : Setup (Player := Player) (L := L))
     _ = (((setup.executionProtocol admission).runHistoryFor
         (setup.protocolChooser admission profile permitted).toHistoryChooser fuel history).map
         ExecutionProtocol.History.state).map setup.protocolReadout := by
-      rw [FinDist.map_comp]; rfl
+      rw [PMF.map_comp]; rfl
     _ = _ := by
       rw [ExecutionProtocol.map_state_runHistoryFor]
       exact setup.protocol_runFor_eq admission profile permitted fuel history.state enough

@@ -30,19 +30,19 @@ private theorem supported_reaches (profile : ∀ who, M.BehavioralPolicy who)
     E.ReachesWithin fuel start last := by
   induction fuel generalizing start with
   | zero =>
-      rw [runBehavioralFrom, runRandomizedFor_zero, FinDist.mem_support_pure] at supported
+      rw [runBehavioralFrom, runRandomizedFor_zero, PMF.mem_support_pure_iff _ _] at supported
       subst last
       exact .refl 0 start
   | succ fuel ih =>
       by_cases stopped : E.terminal start.state
       · rw [M.runBehavioralFrom_of_terminal profile _ stopped,
-          FinDist.mem_support_pure] at supported
+          PMF.mem_support_pure_iff _ _] at supported
         subst last
         exact .refl _ start
       · rw [M.runBehavioralFrom_succ_of_not_terminal profile fuel stopped,
-          FinDist.support_bind] at supported
+          PMF.support_bind] at supported
         obtain ⟨draw, _, supported⟩ := Set.mem_iUnion₂.mp supported
-        rw [FinDist.support_bindOnSupport] at supported
+        rw [PMF.support_bindOnSupport] at supported
         obtain ⟨next, realized, supported⟩ := Set.mem_iUnion₂.mp supported
         exact .step draw.1 draw.2 realized (ih (start.extend draw.2 realized) supported)
 
@@ -69,7 +69,7 @@ theorem continuationBranch_suffix_iff (profile : ∀ who, M.BehavioralPolicy who
     simpa only [initHistory, Trace.length, zero_add] using bound
   have absent := M.site_not_recorded_before_depth who site depth sameDepth first before
   by_cases stopped : E.terminal first.state
-  · rw [M.runBehavioralFrom_of_terminal profile fuel stopped, FinDist.mem_support_pure] at suffix
+  · rw [M.runBehavioralFrom_of_terminal profile fuel stopped, PMF.mem_support_pure_iff _ _] at suffix
     subst last
     simp only [continuationBranch, Set.mem_ofPred_eq, absent, or_false]
   · have atDepth := M.terminal_or_trace_length_eq_of_mem_support_runBehavioralFrom
@@ -98,23 +98,23 @@ theorem continuationBranch_probability [Finite E.History]
     (profile : ∀ who, M.BehavioralPolicy who) (who : Player) (site : M.InformationSite who)
     [Fintype (M.InformationHistory who site.1)] (depth : Nat)
     (sameDepth : InformationSite.CommonDepth M site depth) (fuel : Nat) :
-    (M.runBehavioral profile (depth + fuel)).probOf (M.continuationBranch who site) =
+    ((M.runBehavioral profile (depth + fuel)).toOuterMeasure (M.continuationBranch who site)).toReal =
       M.informationMass profile who site := by
   classical
   rw [M.informationMass_eq_fixedDepth_probOf profile who site depth sameDepth]
   unfold runBehavioral
-  rw [M.runBehavioralFrom_add, FinDist.probOf_bind, ← FinDist.expect_indicator_eq_probOf]
-  apply FinDist.expect_congr
+  rw [M.runBehavioralFrom_add, FinDist.toReal_toOuterMeasure_bind, ← expect_indicator]
+  apply expect_congr_on_support
   intro first inPrefix
-  rw [← FinDist.expect_indicator_eq_probOf]
+  rw [← expect_indicator]
   calc
-    _ = (M.runBehavioralFrom profile fuel first).expect
+    _ = expect (M.runBehavioralFrom profile fuel first)
         (fun _ => if M.infoOf who first.trace = site.1 then (1 : ℝ) else 0) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro last suffix
       rw [M.continuationBranch_suffix_iff profile who site depth sameDepth fuel
         first inPrefix last suffix]
-    _ = _ := FinDist.expect_const ..
+    _ = _ := expect_constant ..
 
 /-- Switching at a selected information set leaves its branch probability
 equal to the original reach mass at every subsequent depth. -/
@@ -123,9 +123,8 @@ theorem switched_continuationBranch_probability [DecidableEq Player] [Finite E.H
     (who : Player) (site : M.InformationSite who)
     [Fintype (M.InformationHistory who site.1)] (alternative : M.BehavioralPolicy who)
     (depth : Nat) (sameDepth : InformationSite.CommonDepth M site depth) (fuel : Nat) :
-    (M.runBehavioral (Profile.update (sig := M.behavioralSignature) profile who
-      ((profile who).switchAt M alternative site)) (depth + fuel)).probOf
-        (M.continuationBranch who site) = M.informationMass profile who site := by
+    ((M.runBehavioral (Profile.update (sig := M.behavioralSignature) profile who
+      ((profile who).switchAt M alternative site)) (depth + fuel)).toOuterMeasure (M.continuationBranch who site)).toReal = M.informationMass profile who site := by
   rw [M.continuationBranch_probability _ who site depth sameDepth fuel,
     M.informationMass_eq_fixedDepth_probOf _ who site depth sameDepth,
     M.run_switchAt_prefix recall profile who site alternative depth sameDepth,

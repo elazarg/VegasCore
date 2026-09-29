@@ -72,9 +72,9 @@ theorem interaction_includeLatest_of_pending_published (runtime : EventGraphRunt
   unfold interactionStep
   rw [interactionInstruction,
     runtime.reactiveLatest_wait_of_pending_published leaks event owner _ published,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-  exact FinDist.bind_pure _
+  exact PMF.bind_pure _
 
 /-- A published replay follows the same application wait as silence, while
 retaining its actual broadcast and private response recall. -/
@@ -114,9 +114,9 @@ theorem canonical_silent_inclusion (runtime : EventGraphRuntime graph)
     empty
   simp only [interactionStep, interactionInstruction, reactiveLatest,
     ReactiveApplication.Execution.observeEnvironment, MessageNetwork.publicView, pending,
-    List.reverse_nil, List.find?_nil, FinDist.pure_bind, ReactiveApplication.dispatch,
+    List.reverse_nil, List.find?_nil, PMF.pure_bind, ReactiveApplication.dispatch,
     ReactiveApplication.Command.actor?]
-  exact FinDist.bind_pure _
+  exact PMF.bind_pure _
 
 /-- A fresh opening is selected by immediate reserved inclusion, independently
 of how its evidence is requested and in the presence of earlier traffic. -/
@@ -146,9 +146,9 @@ theorem opening_inclusion (runtime : EventGraphRuntime graph)
     exact runtime.reactiveLatest_last leaks owner event _ execution.network.pending
       ⟨(owner, execution.network.nextSerial owner), packet⟩ rfl rfl rfl fresh
   unfold interactionStep
-  rw [interactionInstruction, selected, FinDist.pure_bind]
+  rw [interactionInstruction, selected, PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-  exact FinDist.bind_pure _
+  exact PMF.bind_pure _
 
 /-- A fresh opening also preserves quiescence when earlier spent replays are
 still pending. Inclusion publishes the new identifier; remaining copies carry
@@ -171,7 +171,7 @@ theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
     let submitted := execution.respond app owner
       ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
     ∃ next, runtime.interactionStep leaks players network (.includeLatest event owner)
-        submitted = FinDist.pure next ∧
+        submitted = PMF.pure next ∧
       next.application = after ∧
       (∀ message ∈ next.network.pending, message.id ∈ next.network.ledger.map Message.id) ∧
       next.receipts = execution.receipts ++
@@ -211,7 +211,7 @@ theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
   refine ⟨next, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [runtime.opening_inclusion leaks players network execution owner event
       candidate raw evidence fresh]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   · change (submitted.includePending app envelope.id).application = after
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
@@ -249,7 +249,7 @@ theorem interaction_ticks_pure (runtime : EventGraphRuntime graph)
     (network : runtime.NetworkPolicy leaks) (ticks : Nat)
     (execution : (runtime.reactiveApplication leaks).Execution) :
     ∃ next, runtime.runInteractionPlan leaks players network (List.replicate ticks .tick)
-        execution = FinDist.pure next ∧
+        execution = PMF.pure next ∧
       next.application =
         { execution.application with clock := execution.application.clock + ticks } ∧
       next.network = execution.network ∧ next.receipts = execution.receipts ∧
@@ -267,23 +267,23 @@ theorem interaction_ticks_pure (runtime : EventGraphRuntime graph)
         environmentRecall := execution.environmentRecall ++
           [⟨execution.observeEnvironment app, .application .advanceClock⟩] }
       have step : runtime.interactionStep leaks players network .tick execution =
-          FinDist.pure first := by
+          PMF.pure first := by
         have clockLaw : app.environment execution.application .advanceClock =
-            FinDist.pure { execution.application with clock := execution.application.clock + 1 } :=
+            PMF.pure { execution.application with clock := execution.application.clock + 1 } :=
           rfl
-        simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+        simp only [interactionStep, interactionInstruction, PMF.pure_bind,
           ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-        change (execution.environmentStep app (.application .advanceClock)).bind FinDist.pure = _
-        rw [FinDist.bind_pure]
+        change (execution.environmentStep app (.application .advanceClock)).bind PMF.pure = _
+        rw [PMF.bind_pure]
         change ((app.environment execution.application .advanceClock).map
           (fun state => { execution with application := state })).map (fun next : app.Execution =>
             { next with environmentRecall := execution.environmentRecall ++
               [(⟨execution.observeEnvironment app, .application .advanceClock⟩ :
                 app.EnvironmentEntry)] }) = _
-        rw [clockLaw, FinDist.map_pure, FinDist.map_pure]
+        rw [clockLaw, PMF.pure_map, PMF.pure_map]
       obtain ⟨next, law, application, messages, receipts, recall⟩ := ih first
       refine ⟨next, ?_, ?_, messages, receipts, recall⟩
-      · rw [List.replicate_succ, runInteractionPlan, step, FinDist.pure_bind]
+      · rw [List.replicate_succ, runInteractionPlan, step, PMF.pure_bind]
         exact law
       · rw [application]
         change { execution.application with clock := execution.application.clock + 1 + ticks } = _
@@ -310,7 +310,7 @@ theorem canonical_silent_expiry (runtime : EventGraphRuntime graph)
     (entered ticks : Nat) (activated : execution.application.activatedAt event = some entered)
     (due : runtime.deadline event ≤ execution.application.clock + ticks - entered) :
     ∃ next, runtime.runInteractionPlan leaks players network
-        (List.replicate ticks .tick ++ [.expire event]) execution = FinDist.pure next ∧
+        (List.replicate ticks .tick ++ [.expire event]) execution = PMF.pure next ∧
       next.application =
         ({ execution.application with clock := execution.application.clock + ticks } :
           State graph).complete event ready
@@ -333,7 +333,7 @@ theorem canonical_silent_expiry (runtime : EventGraphRuntime graph)
   let after := ticked.application.complete event tickedReady
     (cast (congrArg EventField.Action outputEq.symm) false)
     (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)
-  have expiry : app.environment ticked.application (.expire event) = FinDist.pure after :=
+  have expiry : app.environment ticked.application (.expire event) = PMF.pure after :=
     runtime.environmentStep_expire_resolve_eq ticked.application event tickedReady entered
       tickedActivation tickedDue owner payload binding checks outputEq codeEq node
   let next : app.Execution := { ticked with
@@ -341,20 +341,20 @@ theorem canonical_silent_expiry (runtime : EventGraphRuntime graph)
     environmentRecall := ticked.environmentRecall ++
       [⟨ticked.observeEnvironment app, .application (.expire event)⟩] }
   have step : runtime.interactionStep leaks players network (.expire event) ticked =
-      FinDist.pure next := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+      PMF.pure next := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-    change (ticked.environmentStep app (.application (.expire event))).bind FinDist.pure = _
-    rw [FinDist.bind_pure]
+    change (ticked.environmentStep app (.application (.expire event))).bind PMF.pure = _
+    rw [PMF.bind_pure]
     change ((app.environment ticked.application (.expire event)).map
       (fun state => { ticked with application := state })).map (fun result : app.Execution =>
         { result with environmentRecall := ticked.environmentRecall ++
           [(⟨ticked.observeEnvironment app, .application (.expire event)⟩ :
             app.EnvironmentEntry)] }) = _
-    rw [expiry, FinDist.map_pure, FinDist.map_pure]
+    rw [expiry, PMF.pure_map, PMF.pure_map]
   refine ⟨next, ?_, ?_, messages, receipts, recall⟩
-  · rw [runtime.runInteractionPlan_append, ticksLaw, FinDist.pure_bind,
-      runInteractionPlan, step, FinDist.pure_bind]
+  · rw [runtime.runInteractionPlan_append, ticksLaw, PMF.pure_bind,
+      runInteractionPlan, step, PMF.pure_bind]
     rfl
   · change after = _
     unfold after

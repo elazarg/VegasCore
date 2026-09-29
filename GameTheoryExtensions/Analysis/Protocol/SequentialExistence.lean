@@ -36,7 +36,7 @@ theorem exists_sequential_equilibrium
     (within : ∀ who site, depth who site ≤ horizon) :
     ∃ assessment : M.BehavioralAssessment,
       assessment.IsSequentialEquilibriumFor
-        decisionRecall.antichain
+        decisionRecall.decisionInformationAntichain
         (fun who site =>
           assessment.continuationContext site (payoff who) (horizon - depth who site)) := by
   classical
@@ -53,7 +53,7 @@ theorem exists_sequential_equilibrium
   let fallback (who : Player) : M.Policy who := fun info =>
     ((reference.strategy who info).support_nonempty).choose
   let laws (agent : M.InformationAgent sites) := reference.strategy agent.1 agent.2.1
-  have full (agent : M.InformationAgent sites) : (laws agent).FullSupport := by
+  have full (agent : M.InformationAgent sites) : FullSupport (laws agent) := by
     obtain ⟨history, _, observed⟩ := Finset.mem_image.mp agent.2.2
     dsimp only [laws]
     rw [← observed]

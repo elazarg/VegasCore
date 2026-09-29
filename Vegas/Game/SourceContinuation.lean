@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.SetupProtocolBehavioral
-import GameTheoryExtensions.Protocol.SingleMover
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.SingleMover
+import GameTheory.Protocol.StateKernel
 import GameTheory.Protocol.BehavioralAssessment
 
 /-! # Source continuation values depend on the source state
@@ -38,11 +38,11 @@ open Classical in
 absorption. It uses the protocol's existing observations and transition. -/
 def behavioralStateStep
     (profile : Profile (setup.informationModel admission).behavioralSignature)
-    (state : setup.ProtocolState) : FinDist setup.ProtocolState :=
+    (state : setup.ProtocolState) : PMF setup.ProtocolState :=
   if state.elim False (SourceProgram.ProtocolState.terminal setup.program) then
-    FinDist.pure state
+    PMF.pure state
   else
-    (FinDist.pi fun who => profile who (setup.protocolObserve who state)).bind fun choices =>
+    (independentProduct fun who => profile who (setup.protocolObserve who state)).bind fun choices =>
       setup.protocolStep state (fun who => (choices who).1)
 
 /-- Forgetting history commutes with ordinary iteration of the actual source
@@ -52,19 +52,19 @@ theorem runBehavioralFrom_state
     (fuel : Nat) (history : (setup.executionProtocol admission).History) :
     ((setup.informationModel admission).runBehavioralFrom profile fuel history).map History.state =
       (fun law => law.bind (setup.behavioralStateStep admission profile))^[fuel]
-        (FinDist.pure history.state) := by
+        (PMF.pure history.state) := by
   apply ExecutionProtocol.runRandomizedFor_map_state
   · intro state stopped
     exact ite_eq_left stopped
   · intro current running
     change ((setup.informationModel admission).behavioralJoint profile current.trace running).bind
       ((setup.executionProtocol admission).step current.state) = _
-    rw [InformationModel.behavioralJoint, FinDist.bind_map]
+    rw [InformationModel.behavioralJoint, PMF.bind_map]
     unfold behavioralStateStep
     have active : ¬ current.state.elim False
         (SourceProgram.ProtocolState.terminal setup.program) := running
     rw [ite_eq_right active]
-    change (FinDist.pi fun who => profile who
+    change (independentProduct fun who => profile who
       ((setup.informationModel admission).infoOf who current.trace)).bind
         (fun choices => setup.protocolStep current.state (fun who => (choices who).1)) = _
     have observed (who : Player) : (setup.informationModel admission).infoOf who current.trace =
@@ -72,7 +72,7 @@ theorem runBehavioralFrom_state
     have infos : (fun who => (setup.informationModel admission).infoOf who current.trace) =
         (fun who => setup.protocolObserve who current.state) := funext observed
     exact congrArg (fun infos =>
-      (FinDist.pi fun who => profile who (infos who)).bind fun choices =>
+      (independentProduct fun who => profile who (infos who)).bind fun choices =>
         setup.protocolStep current.state (fun who => (choices who).1)) infos
 
 theorem runBehavioralFrom_readout
@@ -100,13 +100,13 @@ theorem runBehavioralFrom_value
     (utility : State L setup.program.terminalCtx → ℝ)
     (fuel : Nat) (history : (setup.executionProtocol admission).History)
     (enough : setup.protocolRemaining history.state ≤ fuel) :
-    ((setup.informationModel admission).runBehavioralFrom profile fuel history).expect
+    expect ((setup.informationModel admission).runBehavioralFrom profile fuel history)
         (fun final => (setup.protocolReadout final.state).elim 0 utility) =
-      (setup.continuationLaw (setup.decodeBehavioralProfile admission profile)
-        history.state).expect utility := by
-  have law := congrArg (fun distribution => distribution.expect (fun state => state.elim 0 utility))
+      expect (setup.continuationLaw (setup.decodeBehavioralProfile admission profile)
+        history.state) utility := by
+  have law := congrArg (fun distribution => expect distribution (fun state => state.elim 0 utility))
     (setup.runBehavioralFrom_readout admission profile fuel history enough)
-  simpa only [FinDist.expect_map, Option.elim_some] using law
+  simpa only [expect_map, Option.elim_some] using law
 
 /-- The original assessment and its whole-policy deviations are retained.
 Only the belief is pushed to the actual source state for evaluating utility. -/
@@ -119,13 +119,13 @@ theorem continuationContext_value_stateBelief
       setup.protocolRemaining history.1.state ≤ fuel) :
     (assessment.continuationContext site
       (fun final => (setup.protocolReadout final.state).elim 0 utility) fuel).value alternative =
-      (assessment.stateBelief who site).expect (fun state =>
-        (setup.continuationLaw (setup.decodeBehavioralProfile admission
+      expect (assessment.stateBelief who site) (fun state =>
+        expect (setup.continuationLaw (setup.decodeBehavioralProfile admission
           (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
-            assessment.strategy who alternative)) state).expect utility) := by
+            assessment.strategy who alternative)) state) utility) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, InformationModel.BehavioralAssessment.stateBelief, FinDist.expect_map]
-  apply FinDist.expect_congr
+    FinDist.expect_bind, InformationModel.BehavioralAssessment.stateBelief, expect_map]
+  apply expect_congr_on_support
   intro history _supported
   exact setup.runBehavioralFrom_value admission _ utility fuel history.1 (enough history)
 

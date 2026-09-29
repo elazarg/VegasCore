@@ -36,7 +36,7 @@ theorem runBehavioralFrom_remaining
       (horizon - (horizon - history.trace.length)) := by omega
   conv_rhs => rw [split, M.runBehavioralFrom_add]
   symm
-  refine Eq.trans (FinDist.bind_congr fun last supported => ?_) (FinDist.bind_pure _)
+  refine Eq.trans (bind_congr_on_support _ fun last supported => ?_) (PMF.bind_pure _)
   exact M.runBehavioralFrom_of_terminal profile _ (terminal last supported)
 
 theorem BehavioralAssessment.continuationContext_remaining
@@ -56,7 +56,7 @@ theorem BehavioralAssessment.continuationContext_remaining
           (GameTheory.Profile.update (sig := M.behavioralSignature)
             assessment.strategy who alternative) horizon history.1) := by
     funext alternative
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro history _
     rw [← clock history]
     exact M.runBehavioralFrom_remaining _ horizon bounded history.1

@@ -32,64 +32,64 @@ namespace GameTheoryExtensionsTests.MonitoredSignaling
 
 open GameTheory.Math.Probability
 
-def fairBit : FinDist Bool :=
-  FinDist.mix (1 / 2) (by norm_num) (by norm_num) (FinDist.pure false) (FinDist.pure true)
+def fairBit : PMF Bool :=
+  mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure false) (PMF.pure true)
 
 /-- The pair records the private shared bit and the public message field. -/
-def honest : FinDist (Bool × Bool) := FinDist.product fairBit fairBit
+def honest : PMF (Bool × Bool) := bindPairLaw fairBit (fun _ => fairBit)
 
-def signaling (secret : Bool) : FinDist (Bool × Bool) :=
+def signaling (secret : Bool) : PMF (Bool × Bool) :=
   fairBit.map fun pad => (pad, xor secret pad)
 
 def decode (packet : Bool × Bool) : Bool := xor packet.2 packet.1
 
 theorem honest_public_law : honest.map Prod.snd = fairBit := by
-  simp only [honest, FinDist.product, FinDist.map_bind, FinDist.map_comp]
+  simp only [honest, FinDist.product, PMF.map_bind, PMF.map_comp]
   simp
 
 theorem signaling_public_law (secret : Bool) :
     (signaling secret).map Prod.snd = fairBit := by
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro message
   cases secret <;> cases message <;>
-    norm_num [signaling, fairBit, FinDist.map_eq_bind, FinDist.mix_bind,
-      FinDist.prob_mix, FinDist.prob_pure_eq_ite]
+    norm_num [signaling, fairBit, ← PMF.bind_pure_comp, Function.comp_def, mix_bind,
+      mix_apply_toReal, toReal_pure_apply]
 
-def honestTranscript (prior : FinDist Bool) : FinDist (Bool × Bool) :=
+def honestTranscript (prior : PMF Bool) : PMF (Bool × Bool) :=
   prior.bind fun secret => honest.map fun packet => (secret, packet.2)
 
-def signalingTranscript (prior : FinDist Bool) : FinDist (Bool × Bool) :=
+def signalingTranscript (prior : PMF Bool) : PMF (Bool × Bool) :=
   prior.bind fun secret => (signaling secret).map fun packet => (secret, packet.2)
 
 /-- The public law agrees jointly with any prior on the eventual disclosed
 secret, not merely after forgetting that secret. The shared bit stays private. -/
-theorem public_transcript_law (prior : FinDist Bool) :
+theorem public_transcript_law (prior : PMF Bool) :
     signalingTranscript prior = honestTranscript prior := by
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro secret _
   change (signaling secret).map ((fun message => (secret, message)) ∘ Prod.snd) =
     honest.map ((fun message => (secret, message)) ∘ Prod.snd)
-  rw [← FinDist.map_comp, ← FinDist.map_comp, signaling_public_law, honest_public_law]
+  rw [← PMF.map_comp, ← PMF.map_comp, signaling_public_law, honest_public_law]
 
 /-- Any randomized monitor of the entire matched observation has the same
 output distribution, including monitors that wait until the secret is public. -/
-theorem monitor_law {Report : Type*} (prior : FinDist Bool)
-    (monitor : Bool × Bool → FinDist Report) :
+theorem monitor_law {Report : Type*} (prior : PMF Bool)
+    (monitor : Bool × Bool → PMF Report) :
     (signalingTranscript prior).bind monitor = (honestTranscript prior).bind monitor := by
   rw [public_transcript_law]
 
-theorem monitor_expectation {Report : Type*} (prior : FinDist Bool)
-    (monitor : Bool × Bool → FinDist Report) (sanction : Report → ℝ) :
-    ((signalingTranscript prior).bind monitor).expect sanction =
-      ((honestTranscript prior).bind monitor).expect sanction := by
+theorem monitor_expectation {Report : Type*} (prior : PMF Bool)
+    (monitor : Bool × Bool → PMF Report) (sanction : Report → ℝ) :
+    expect ((signalingTranscript prior).bind monitor) sanction =
+      expect ((honestTranscript prior).bind monitor) sanction := by
   rw [monitor_law]
 
 /-- A zero-false-positive monitor cannot impose positive expected sanctions
 on this signaling use through the specified public observation. -/
-theorem sanction_expectation_zero {Report : Type*} (prior : FinDist Bool)
-    (monitor : Bool × Bool → FinDist Report) (sanction : Report → ℝ)
-    (honest_zero : ((honestTranscript prior).bind monitor).expect sanction = 0) :
-    ((signalingTranscript prior).bind monitor).expect sanction = 0 := by
+theorem sanction_expectation_zero {Report : Type*} (prior : PMF Bool)
+    (monitor : Bool × Bool → PMF Report) (sanction : Report → ℝ)
+    (honest_zero : expect ((honestTranscript prior).bind monitor) sanction = 0) :
+    expect ((signalingTranscript prior).bind monitor) sanction = 0 := by
   rw [monitor_expectation, honest_zero]
 
 theorem decode_signaling (secret pad : Bool) : decode (pad, xor secret pad) = secret := by
@@ -98,55 +98,55 @@ theorem decode_signaling (secret pad : Bool) : decode (pad, xor secret pad) = se
 /-- Knowledge of the shared bit changes the receiver's information even though
 the monitor's complete observation law is unchanged. -/
 theorem signaling_decoded_law (secret : Bool) :
-    (signaling secret).map decode = FinDist.pure secret := by
-  rw [signaling, FinDist.map_comp]
-  change fairBit.map (fun pad => decode (pad, xor secret pad)) = FinDist.pure secret
+    (signaling secret).map decode = PMF.pure secret := by
+  rw [signaling, PMF.map_comp]
+  change fairBit.map (fun pad => decode (pad, xor secret pad)) = PMF.pure secret
   simp_rw [decode_signaling]
   exact FinDist.map_const _ _
 
 theorem honest_decoded_law : honest.map decode = fairBit := by
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro guess
   cases guess <;>
-    norm_num [honest, decode, fairBit, FinDist.product, FinDist.map_eq_bind,
-      FinDist.mix_bind, FinDist.prob_mix, FinDist.prob_pure_eq_ite]
+    norm_num [honest, decode, fairBit, FinDist.product, ← PMF.bind_pure_comp, Function.comp_def,
+      mix_bind, mix_apply_toReal, toReal_pure_apply]
 
 theorem signaling_correct (secret : Bool) :
-    (signaling secret).expect (fun packet => if decode packet = secret then (1 : ℝ) else 0) =
+    expect (signaling secret) (fun packet => if decode packet = secret then (1 : ℝ) else 0) =
       1 := by
-  have decoded := congrArg (fun law : FinDist Bool =>
-    law.expect (fun guess => if guess = secret then (1 : ℝ) else 0))
+  have decoded := congrArg (fun law : PMF Bool =>
+    expect law (fun guess => if guess = secret then (1 : ℝ) else 0))
     (signaling_decoded_law secret)
-  simpa only [FinDist.expect_map, FinDist.expect_pure, ite_true] using decoded
+  simpa only [expect_map, expect_pure, ite_true] using decoded
 
 theorem honest_correct (secret : Bool) :
-    honest.expect (fun packet => if decode packet = secret then (1 : ℝ) else 0) = 1 / 2 := by
-  have decoded := congrArg (fun law : FinDist Bool =>
-    law.expect (fun guess => if guess = secret then (1 : ℝ) else 0)) honest_decoded_law
-  rw [FinDist.expect_map] at decoded
+    expect honest (fun packet => if decode packet = secret then (1 : ℝ) else 0) = 1 / 2 := by
+  have decoded := congrArg (fun law : PMF Bool =>
+    expect law (fun guess => if guess = secret then (1 : ℝ) else 0)) honest_decoded_law
+  rw [expect_map] at decoded
   rw [decoded]
   cases secret <;> norm_num [fairBit, FinDist.expect_mix]
 
 /-- Public secret, allowed message field, and Bob's independent honest guess. -/
-def honestInteraction (secret : Bool) : FinDist (Bool × Bool × Bool) :=
-  (FinDist.product fairBit fairBit).map fun pair => (secret, pair.1, pair.2)
+def honestInteraction (secret : Bool) : PMF (Bool × Bool × Bool) :=
+  (bindPairLaw fairBit (fun _ => fairBit)).map fun pair => (secret, pair.1, pair.2)
 
 /-- Bob publicly uses the answer decoded from the message and his private pad. -/
-def signalingInteraction (secret : Bool) : FinDist (Bool × Bool × Bool) :=
+def signalingInteraction (secret : Bool) : PMF (Bool × Bool × Bool) :=
   (signaling secret).map fun packet => (secret, packet.2, decode packet)
 
 theorem honest_interaction_support (secret message guess : Bool) :
     (secret, message, guess) ∈ (honestInteraction secret).support := by
-  rw [honestInteraction, FinDist.support_map]
+  rw [honestInteraction, PMF.support_map]
   refine ⟨(message, guess), ?_, rfl⟩
-  rw [← FinDist.prob_pos_iff, FinDist.prob_product]
+  rw [← pmf_toReal_pos_iff, FinDist.prob_product]
   cases message <;> cases guess <;>
-    norm_num [fairBit, FinDist.prob_mix, FinDist.prob_pure_eq_ite]
+    norm_num [fairBit, mix_apply_toReal, toReal_pure_apply]
 
 theorem signaling_interaction_support_subset (secret : Bool) :
     (signalingInteraction secret).support ⊆ (honestInteraction secret).support := by
   intro transcript supported
-  rw [signalingInteraction, FinDist.support_map] at supported
+  rw [signalingInteraction, PMF.support_map] at supported
   obtain ⟨packet, _, rfl⟩ := supported
   exact honest_interaction_support secret packet.2 (decode packet)
 
@@ -157,12 +157,12 @@ theorem interaction_laws_differ (secret : Bool) :
   intro same
   let score : Bool × Bool × Bool → ℝ := fun transcript =>
     if transcript.1 = transcript.2.2 then 1 else 0
-  have signaling_score : (signalingInteraction secret).expect score = 1 := by
-    simpa only [signalingInteraction, FinDist.expect_map, score, eq_comm] using
+  have signaling_score : expect (signalingInteraction secret) score = 1 := by
+    simpa only [signalingInteraction, expect_map, score, eq_comm] using
       signaling_correct secret
-  have honest_score : (honestInteraction secret).expect score = 1 / 2 := by
+  have honest_score : expect (honestInteraction secret) score = 1 / 2 := by
     cases secret <;>
-      norm_num [honestInteraction, FinDist.expect_map, FinDist.expect_product,
+      norm_num [honestInteraction, expect_map, FinDist.expect_product,
         fairBit, FinDist.expect_mix, score]
   rw [same, honest_score] at signaling_score
   norm_num at signaling_score
@@ -170,20 +170,20 @@ theorem interaction_laws_differ (secret : Bool) :
 /-- Every monitor report possible after signaling is also possible after honest
 complete public interaction. This is support inclusion, not equality of laws. -/
 theorem interaction_monitor_support_subset {Report : Type*} (secret : Bool)
-    (monitor : Bool × Bool × Bool → FinDist Report) :
+    (monitor : Bool × Bool × Bool → PMF Report) :
     ((signalingInteraction secret).bind monitor).support ⊆
       ((honestInteraction secret).bind monitor).support := by
   intro report supported
-  simp only [FinDist.support_bind, Set.mem_iUnion] at supported ⊢
+  simp only [PMF.support_bind, Set.mem_iUnion] at supported ⊢
   obtain ⟨transcript, transcript_supported, reported⟩ := supported
   exact ⟨transcript, signaling_interaction_support_subset secret transcript_supported, reported⟩
 
 /-- Even after observing Bob's public guess, a randomized alarm that never
 fires on honest transcripts cannot fire on these signaling transcripts. -/
 theorem interaction_alarm_zero (secret : Bool)
-    (monitor : Bool × Bool × Bool → FinDist Bool)
-    (no_false_positives : ((honestInteraction secret).bind monitor).prob true = 0) :
-    ((signalingInteraction secret).bind monitor).prob true = 0 :=
+    (monitor : Bool × Bool × Bool → PMF Bool)
+    (no_false_positives : (((honestInteraction secret).bind monitor) true).toReal = 0) :
+    (((signalingInteraction secret).bind monitor) true).toReal = 0 :=
   GameTheory.Enforcement.alarm_zero_of_support_subset
     (honestInteraction secret) (signalingInteraction secret)
     (signaling_interaction_support_subset secret) monitor no_false_positives
@@ -192,31 +192,31 @@ theorem interaction_alarm_zero (secret : Bool)
 the correct-answer branch has exactly the signaling public transcript law. -/
 theorem honest_interaction_mixture (secret : Bool) :
     honestInteraction secret =
-      FinDist.mix (1 / 2) (by norm_num) (by norm_num) (signalingInteraction secret)
+      mix (1 / 2) (by norm_num) (by norm_num) (signalingInteraction secret)
         (fairBit.map fun message => (secret, message, !secret)) := by
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   rintro ⟨actualSecret, message, guess⟩
   cases secret <;> cases actualSecret <;> cases message <;> cases guess <;>
     norm_num [honestInteraction, signalingInteraction, signaling, decode, fairBit,
-      FinDist.product, FinDist.map_eq_bind, FinDist.mix_bind, FinDist.prob_mix,
-      FinDist.prob_pure_eq_ite]
+      FinDist.product, ← PMF.bind_pure_comp, Function.comp_def, mix_bind, mix_apply_toReal,
+      toReal_pure_apply]
 
 /-- With the receiver's action visible, detecting signaling requires accepting
 false positives: any nonnegative expected sanction is at most twice its honest
 expectation. The monitor may randomize and see the eventual secret as well. -/
 theorem interaction_sanction_le_twice_honest {Report : Type*} (secret : Bool)
-    (monitor : Bool × Bool × Bool → FinDist Report) (sanction : Report → ℝ)
+    (monitor : Bool × Bool × Bool → PMF Report) (sanction : Report → ℝ)
     (nonnegative : ∀ report, 0 ≤ sanction report) :
-    ((signalingInteraction secret).bind monitor).expect sanction ≤
-      2 * ((honestInteraction secret).bind monitor).expect sanction := by
+    expect ((signalingInteraction secret).bind monitor) sanction ≤
+      2 * expect ((honestInteraction secret).bind monitor) sanction := by
   have opposite_nonnegative :
-      0 ≤ ((fairBit.map fun message => (secret, message, !secret)).bind monitor).expect
+      0 ≤ expect ((fairBit.map fun message => (secret, message, !secret)).bind monitor)
         sanction := by
     have bound := FinDist.expect_mono
       (μ := (fairBit.map fun message => (secret, message, !secret)).bind monitor)
       (fun report _ => nonnegative report)
-    simpa only [FinDist.expect_const] using bound
-  rw [honest_interaction_mixture, FinDist.mix_bind, FinDist.expect_mix]
+    simpa only [expect_constant] using bound
+  rw [honest_interaction_mixture, mix_bind, FinDist.expect_mix]
   linarith
 
 end GameTheoryExtensionsTests.MonitoredSignaling

@@ -24,15 +24,15 @@ variable {Player : Type} [Fintype Player] {E T : ExecutionProtocol Player}
 theorem runBehavioralFrom_one_localStep (profile : ∀ who, M.BehavioralPolicy who)
     (history : E.History) :
     M.runBehavioralFrom profile 1 history =
-      (FinDist.pi fun who => profile who (M.infoOf who history.trace)).bind
+      (independentProduct fun who => profile who (M.infoOf who history.trace)).bind
         (M.localStep history) := by
   rw [M.runBehavioralFrom_succ_localStep profile 0]
-  exact FinDist.bind_pure _
+  exact PMF.bind_pure _
 
 theorem runBehavioralFrom_eq_iterate (profile : ∀ who, M.BehavioralPolicy who)
     (fuel : Nat) (history : E.History) :
     M.runBehavioralFrom profile fuel history =
-      (fun law => law.bind (M.runBehavioralFrom profile 1))^[fuel] (FinDist.pure history) := by
+      (fun law => law.bind (M.runBehavioralFrom profile 1))^[fuel] (PMF.pure history) := by
   induction fuel with
   | zero => rfl
   | succ fuel induction =>
@@ -50,16 +50,16 @@ theorem perturbed_step_domination
     (perturbs : restriction.PerturbsProfile source reference target epsilon nonnegative small)
     (original : E.History) (next : T.History) :
     (1 - epsilon) ^ Fintype.card Player *
-        ((M.runBehavioralFrom source 1 original).map restriction.history).prob next ≤
-      (N.runBehavioralFrom target 1 (restriction.history original)).prob next := by
+        (((M.runBehavioralFrom source 1 original).map restriction.history) next).toReal ≤
+      ((N.runBehavioralFrom target 1 (restriction.history original)) next).toReal := by
   classical
   by_cases stopped : E.terminal original.state
   · rw [M.runBehavioralFrom_of_terminal source _ stopped,
       N.runBehavioralFrom_of_terminal target _ ((restriction.terminal original).mpr stopped),
-      FinDist.map_pure]
+      PMF.pure_map]
     have factor : (1 - epsilon) ^ Fintype.card Player ≤ 1 :=
       pow_le_one₀ (sub_nonneg.mpr small) (by linarith)
-    exact mul_le_of_le_one_left (FinDist.prob_nonneg _ _) factor
+    exact mul_le_of_le_one_left (ENNReal.toReal_nonneg) factor
   · let legal := restriction.extendProfile source reference
     have agrees := restriction.extendProfile_extends source reference
     rw [restriction.runFrom_law source legal agrees 1 original,
@@ -70,7 +70,7 @@ theorem perturbed_step_domination
       (restriction.perturbs_at_history source reference target epsilon nonnegative small
         perturbs original stopped)
     rw [good, bad]
-    exact FinDist.prob_pi_mix_bind_lower _ _ epsilon nonnegative small
+    exact PMF.prob_pi_mix_bind_lower _ _ epsilon nonnegative small
       (N.localStep (restriction.history original)) next
 
 /-- Every target depth law dominates the embedded source law by the product
@@ -83,14 +83,14 @@ theorem perturbed_run_domination [Finite T.History]
     (perturbs : restriction.PerturbsProfile source reference target epsilon nonnegative small)
     (fuel : Nat) (next : T.History) :
     (1 - epsilon) ^ (Fintype.card Player * fuel) *
-        ((M.runBehavioral source fuel).map restriction.history).prob next ≤
-      (N.runBehavioral target fuel).prob next := by
-  have bound := FinDist.iterate_prob_domination (FinDist.pure E.initHistory)
+        (((M.runBehavioral source fuel).map restriction.history) next).toReal ≤
+      ((N.runBehavioral target fuel) next).toReal := by
+  have bound := PMF.iterate_prob_domination (PMF.pure E.initHistory)
     restriction.history (M.runBehavioralFrom source 1) (N.runBehavioralFrom target 1)
     ((1 - epsilon) ^ Fintype.card Player) (pow_nonneg (sub_nonneg.mpr small) _)
     (restriction.perturbed_step_domination source reference target epsilon nonnegative small
       perturbs) fuel next
-  simpa only [FinDist.map_pure, restriction.initial, ← runBehavioralFrom_eq_iterate,
+  simpa only [PMF.pure_map, restriction.initial, ← runBehavioralFrom_eq_iterate,
     ← pow_mul, runBehavioral] using bound
 
 end ActionRestriction

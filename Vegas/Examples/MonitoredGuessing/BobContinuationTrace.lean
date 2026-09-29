@@ -27,12 +27,12 @@ theorem bob_service_policy_irrel (left right : Player → nativeApp.Policy)
       [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
       execution := by
   have resume (players : Player → nativeApp.Policy) :
-      nativeApp.resume players none = FinDist.pure := rfl
-  simp only [runInteractionPlan, FinDist.bind_pure]
+      nativeApp.resume players none = PMF.pure := rfl
+  simp only [runInteractionPlan, PMF.bind_pure]
   rw [nativeRuntime.interaction_includeLatest_environment,
     nativeRuntime.interaction_includeLatest_environment]
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-    ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, resume, FinDist.bind_pure]
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+    ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, resume, PMF.bind_pure]
 
 theorem bob_response_to_alice_trace (players : Player → nativeApp.Policy) (bit : Bool)
     (response : nativeApp.Action)
@@ -44,7 +44,7 @@ theorem bob_response_to_alice_trace (players : Player → nativeApp.Policy) (bit
         execution.environmentStep nativeApp (.activate alice)).support) :
     Nonempty (nativeArena.Trace (some ⟨4, some alice, next⟩)) := by
   obtain ⟨granted, prior, activated⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have initialPosition : ((quietBob bit).respond nativeApp bob response).environmentRecall.length =
       (nativePlan.take 5).length := by
     rw [nativeApp.respond_environmentRecall]
@@ -68,17 +68,17 @@ theorem bob_response_to_alice_trace (players : Player → nativeApp.Policy) (bit
   exact nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 4 granted next
     (.activate alice) before (by
       simp only [nativeScheduler, cursor]
-      exact FinDist.mem_support_pure.mpr rfl) activated
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl) activated
 
 theorem before_alice_trace (bit guess : Bool) :
     Nonempty (nativeArena.Trace (some ⟨4, some alice, beforeAlice bit guess⟩)) := by
-  refine bob_response_to_alice_trace (fun _ _ _ => FinDist.pure nativeSilent) bit
+  refine bob_response_to_alice_trace (fun _ _ _ => PMF.pure nativeSilent) bit
     (choiceAction bobPublication bobHandle true guess) ?_ (beforeAlice bit guess) ?_
   · cases guess with
     | false => exact native_silent_available _ _ _
     | true => exact native_opening_available bob _ _ bobPublication bobHandle trivial true
-  · rw [bob_to_granted_alice, FinDist.pure_bind, activate_alice]
-    exact FinDist.mem_support_pure.mpr rfl
+  · rw [bob_to_granted_alice, PMF.pure_bind, activate_alice]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem before_alice_false_local (bit : Bool) : FinalResponseLocal (beforeAlice bit false) := by
   obtain ⟨trace⟩ := before_alice_trace bit false

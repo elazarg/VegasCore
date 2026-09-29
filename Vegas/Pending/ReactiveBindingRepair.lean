@@ -394,8 +394,8 @@ theorem reactiveBinding_reserved_hidden_congr (runtime : EventGraphRuntime graph
   have nonce : right.network.nextSerial owner = left.network.nextSerial owner :=
     congrArg (fun net => net.nextSerial owner) network.symm
   rw [nonce]
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
-  apply congrArg FinDist.pure
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+  apply congrArg PMF.pure
   change ( (before.includePending app id).network, (before.includePending app id).receipts,
       (before.includePending app id).application.publicView,
       before.environmentRecall ++ [⟨before.observeEnvironment app, .include id⟩], _, _) =

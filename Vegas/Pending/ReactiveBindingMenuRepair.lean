@@ -97,7 +97,7 @@ theorem retainedImplementation_binding_response
   intro result supported
   change result ∈ ((policy (memory.restoreRecall runtime leaks past)
     (memory.shadow.inputView runtime leaks view)).map _).support at supported
-  obtain ⟨response, selected, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
   obtain ⟨opening, bounded, rfl⟩ := canonical response selected
   apply coverage
   exact repairResponse_binding_available runtime leaks bounds who memory past view event payload

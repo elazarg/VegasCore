@@ -102,12 +102,12 @@ theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
   | nil => exact reached
   | cons actor rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached ⊢
-      obtain ⟨sample, sampled, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, chosen, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached ⊢
+      obtain ⟨sample, sampled, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, chosen, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       let activated := initial.sampledActivation app actor sample
       have transport : response ∈ (app.replayPolicy (activated.recall actor)
           (activated.observe app actor)).support := by
@@ -126,9 +126,9 @@ theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
             ⟨entry, kept present, action⟩
           rw [unsent] at impossible
           cases impossible
-      rw [FinDist.support_bind]
+      rw [PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨sample, sampled, ?_⟩
-      rw [FinDist.support_bind]
+      rw [PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨response, transport, ?_⟩
       apply ih (activated.respond app actor response) ?_ reached
       exact (congrArg PublicView.serviceGrant

@@ -2,7 +2,9 @@
 
 import Vegas.Game.SourceServiceLocalComparison
 import Vegas.Game.SourceServiceAssessment
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Owner sites as mixtures of original source deviations
 
@@ -99,11 +101,11 @@ comparisons; after replacing the owner's policy by any admitted alternative,
 they are the mixture's alternative laws. -/
 theorem owner_source_comparisons (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
     [∀ who (site : service.sourceModel.InformationSite who),
       Fintype (service.sourceModel.InformationHistory who site.1)]
-    (full : ∀ who info, (source.strategy who info).FullSupport)
+    (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
@@ -119,7 +121,7 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
     (alternative : BehavioralPolicy who service.setup.program)
     (admitted : alternative.Admitted service.setup.program
       (CommitmentInterface.values service.setup.program)) :
-    ∃ mixture : FinDist (service.sourceModel.AssessmentDeviation who),
+    ∃ mixture : PMF (service.sourceModel.AssessmentDeviation who),
       ((approx.assessment.belief who site).bind fun history =>
         (service.setup.continuationLaw approx.profile
           (decodedState service event history.1)).map some) =
@@ -145,12 +147,12 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
     visits count selected before site reference control current position alternative admitted
   refine ⟨mixture, ?_, ?_⟩
   · rw [← prescribedLaw]
-    simp only [InformationModel.BehavioralAssessment.stateBelief, FinDist.map_bind,
-      FinDist.bind_map]
+    simp only [InformationModel.BehavioralAssessment.stateBelief, PMF.map_bind,
+      PMF.bind_map]
     rfl
   · rw [← alternativeLaw]
-    simp only [InformationModel.BehavioralAssessment.stateBelief, FinDist.map_bind,
-      FinDist.bind_map]
+    simp only [InformationModel.BehavioralAssessment.stateBelief, PMF.map_bind,
+      PMF.bind_map]
     rfl
 
 open Classical in
@@ -161,11 +163,11 @@ equal to the prescribed and alternative laws of one mixture of original source
 assessment comparisons. -/
 theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
     [∀ who (site : service.sourceModel.InformationSite who),
       Fintype (service.sourceModel.InformationHistory who site.1)]
-    (full : ∀ who info, (source.strategy who info).FullSupport)
+    (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
@@ -178,7 +180,7 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
     {event : (graph service.setup).EventId}
     (owned : (graph service.setup).actor? event = some who)
     (granted : view.application.publicView.serviceGrant = some event)
-    (law : FinDist (service.model.Choice who site.1))
+    (law : PMF (service.model.Choice who site.1))
     (alternative : BehavioralPolicy who service.setup.program)
     (admitted : alternative.Admitted service.setup.program
       (CommitmentInterface.values service.setup.program))
@@ -193,7 +195,7 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
           service.fuel history.1).map service.readout =
         (service.setup.continuationLaw (Function.update approx.profile who alternative)
           (decodedState service event history.1)).map some) :
-    ∃ mixture : FinDist (service.sourceModel.AssessmentDeviation who),
+    ∃ mixture : PMF (service.sourceModel.AssessmentDeviation who),
       (service.model.assessmentComparison service.readout service.fuel approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).prescribed =
         mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
@@ -211,14 +213,14 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
   · rw [← prescribedLaw]
     simp only [InformationModel.assessmentComparison,
       InformationModel.BehavioralAssessment.continuationContext, Profile.update_eq_self,
-      FinDist.map_bind]
-    apply FinDist.bind_congr
+      PMF.map_bind]
+    apply bind_congr_on_support _
     intro history member
     exact prescribedContinuation history member
   · rw [← alternativeLaw]
     simp only [InformationModel.assessmentComparison,
-      InformationModel.BehavioralAssessment.continuationContext, FinDist.map_bind]
-    apply FinDist.bind_congr
+      InformationModel.BehavioralAssessment.continuationContext, PMF.map_bind]
+    apply bind_congr_on_support _
     intro history member
     exact alternativeContinuation history member
 
@@ -227,11 +229,11 @@ approximant decodes to a state that an actual source history reaches, and all
 these source histories give the owner one common information state. -/
 theorem owner_site_source_histories (service : SourceServiceSpec Player L)
     (timing : TimingLaw service.setup service.rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : service.sourceModel.BehavioralAssessment)
     [∀ who (site : service.sourceModel.InformationSite who),
       Fintype (service.sourceModel.InformationHistory who site.1)]
-    (full : ∀ who info, (source.strategy who info).FullSupport)
+    (full : ∀ who info, FullSupport (source.strategy who info))
     (sourceBayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       service.sourceModel source
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program)))
@@ -278,13 +280,13 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
       (((ofSource service timing timingFull source.strategy full).assessment.stateBelief who
         site).map (fun state => state.bind fun current => sourceServicePrefix? service.setup
           event.val current.execution.application.config)).support := by
-    rw [FinDist.support_map]
-    exact ⟨history.1.state, FinDist.support_map .. ▸ ⟨history, member, rfl⟩, rfl⟩
-  rw [belief, FinDist.support_map] at decodedMember
+    rw [PMF.support_map]
+    exact ⟨history.1.state, PMF.support_map .. ▸ ⟨history, member, rfl⟩, rfl⟩
+  rw [belief, PMF.support_map] at decodedMember
   obtain ⟨state, conditioned, stateEq⟩ := decodedMember
-  obtain ⟨_, _, _⟩ := FinDist.support_map .. ▸ viewSupport
-  obtain ⟨matched, supported⟩ := FinDist.mem_support_condOnFibre (by
-    obtain ⟨witness, witnessSupport, witnessView⟩ := FinDist.support_map .. ▸ viewSupport
+  obtain ⟨_, _, _⟩ := PMF.support_map .. ▸ viewSupport
+  obtain ⟨matched, supported⟩ := mem_support_fiberConditional (by
+    obtain ⟨witness, witnessSupport, witnessView⟩ := PMF.support_map .. ▸ viewSupport
     exact ⟨witness, witnessView, witnessSupport⟩) conditioned
   let encoded := fun player => service.setup.toProtocolBehavioralPolicy admission player
     (normalizeDisclosureProfile service.setup.program [] (Revelations.initial service.setup.context)
@@ -294,13 +296,13 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
       original) normalizedAdmitted event.val
   have reached : some state ∈ (((service.setup.informationModel admission).runBehavioral encoded
       (event.val + 1)).map History.state).support := by
-    rw [law, FinDist.support_bind]
-    rw [FinDist.support_bind] at supported
+    rw [law, PMF.support_bind]
+    rw [PMF.support_bind] at supported
     obtain ⟨config, configSupport, supported⟩ := Set.mem_iUnion₂.mp supported
-    obtain ⟨initial, initialSupport, rfl⟩ := FinDist.support_map .. ▸ configSupport
-    exact Set.mem_iUnion₂.mpr ⟨initial, initialSupport, FinDist.support_map .. ▸
+    obtain ⟨initial, initialSupport, rfl⟩ := PMF.support_map .. ▸ configSupport
+    exact Set.mem_iUnion₂.mpr ⟨initial, initialSupport, PMF.support_map .. ▸
       ⟨state, supported, rfl⟩⟩
-  obtain ⟨sourceHistory, _, sourceState⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨sourceHistory, _, sourceState⟩ := PMF.support_map .. ▸ reached
   refine ⟨sourceHistory, sourceState.trans stateEq, ?_, ?_, ?_⟩
   · rw [sourceState]
     intro stopped

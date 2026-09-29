@@ -22,17 +22,17 @@ theorem native_deviation_publications (assessment : nativeModel.BehavioralAssess
       (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
     (bit : Bool) (result : Results)
     (supported : result ∈ (nativeDeviationOutcomes (nativeMenu.decodeProfile
-      (FinDist.pure nativeInitial) nativeHorizon nativeScheduler assessment.strategy)
+      (PMF.pure nativeInitial) nativeHorizon nativeScheduler assessment.strategy)
         bit).support) :
     result.alice = .success bit ∧ result.bob = .success bit := by
-  let opponents := nativeMenu.decodeProfile (FinDist.pure nativeInitial)
+  let opponents := nativeMenu.decodeProfile (PMF.pure nativeInitial)
     nativeHorizon nativeScheduler assessment.strategy
   let players := nativeAliceProfile opponents
   obtain ⟨settled, settledMem, finished⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨prior, priorMem, carolMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ settledMem)
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ finished
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ settledMem)
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ finished
   have global := native_deviation_settled_global opponents bit prior priorMem settled carolMem
   have aliceStored := native_carol_settlement_alice players bit prior settled carolMem
   have alicePublished := native_alice_deviation_opening assessment.strategy bit settled final
@@ -42,7 +42,7 @@ theorem native_deviation_publications (assessment : nativeModel.BehavioralAssess
       (nativeApp.runRounds nativeScheduler players (3 + 73) settled).support := finalMem
   rw [ReactiveApplication.runRounds_add] at continuation
   obtain ⟨bound, boundMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ continuation)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ continuation)
   have bobStored := native_deviation_bob_binding assessment rational bit settled bound global
     evidence boundMem
   have boundGlobal := native_run_support_append players 13 3 settled bound global boundMem
@@ -57,9 +57,9 @@ public-result utility. It needs sequential rationality, without consistency. -/
 theorem native_sequential_deviation_gain (assessment : nativeModel.BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)) :
-    1 / 2 ≤ (nativeApp.runRounds nativeScheduler
-      (nativeAliceProfile (nativeMenu.decodeProfile (FinDist.pure nativeInitial)
-        nativeHorizon nativeScheduler assessment.strategy)) nativeHorizon nativeRoot).expect
+    1 / 2 ≤ expect (nativeApp.runRounds nativeScheduler
+      (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
+        nativeHorizon nativeScheduler assessment.strategy)) nativeHorizon nativeRoot)
           (fun final => utility (nativeResults final.application.config) alice) := by
   apply native_deviation_advantage
   · intro bit result supported

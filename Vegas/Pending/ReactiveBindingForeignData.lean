@@ -74,19 +74,19 @@ theorem foreign_window_data
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨rfl, rfl, rfl, packets, List.Subset.refl _⟩
   | cons actor rest ih =>
       have different : actor ≠ owner := fun equal => absent (by
         simp only [equal, List.mem_cons_self])
       have restAbsent : owner ∉ rest := fun member => absent (List.mem_cons_of_mem _ member)
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have data := runtime.foreign_response_data leaks (initial.sampledActivation app actor sample)
         owner actor different safe foreign (packets.learn actor sample) response
       obtain ⟨view, ledger, receipts, valid, pending⟩ := ih restAbsent _ data.2.2.2.1 reached

@@ -290,43 +290,43 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
     remembered.shadow.inputView runtime leaks (rightNext.observe app owner) =
       leftNext.observe app owner ∧
     (rightNext.recall owner).length = remembered.responses.length at restored
-  let players : Player → app.Policy := fun _ _ _ => FinDist.pure ⟨none⟩
-  let scheduler : runtime.NetworkPolicy leaks := fun _ _ => FinDist.pure .wait
+  let players : Player → app.Policy := fun _ _ _ => PMF.pure ⟨none⟩
+  let scheduler : runtime.NetworkPolicy leaks := fun _ _ => PMF.pure .wait
   have coupled := runtime.rawBinding_reserved_hidden_congr leaks original repaired owner
     frame.network frame.receipts frame.publicView frame.service frame.views frame.recall
       frame.slots event payload outputEq codeEq node opening
         replacementOpening serial ready timely vacant unused serials
           players scheduler
   have firstStep : runtime.interactionStep leaks players scheduler (.includeLatest event owner)
-      left = FinDist.pure leftNext := by
+      left = PMF.pure leftNext := by
     rw [show left = original.respond app owner response from rfl,
       runtime.rawBinding_reserved_selection leaks original owner event serial opening
         serials players scheduler]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   have secondStep : runtime.interactionStep leaks players scheduler (.includeLatest event owner)
-      right = FinDist.pure rightNext := by
+      right = PMF.pure rightNext := by
     dsimp only [right, rightNext]
     rw [changed, runtime.rawBinding_reserved_selection leaks repaired owner event serial
       replacementOpening (frame.network ▸ serials) players scheduler,
       show repaired.network.nextSerial owner = original.network.nextSerial owner from
         congrArg (fun net => net.nextSerial owner) frame.network.symm]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   change (runtime.interactionStep leaks players scheduler (.includeLatest event owner) left).map
       _ = (runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         (repaired.respond app owner ⟨some (.submit
           ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩)⟩)).map _
             at coupled
-  rw [← changed, firstStep, secondStep, FinDist.map_pure, FinDist.map_pure] at coupled
+  rw [← changed, firstStep, secondStep, PMF.pure_map, PMF.pure_map] at coupled
   let readout (next : app.Execution) :=
     (next.network, next.receipts, next.application.publicView, next.environmentRecall,
       (fun who => if who = owner then none
         else some (next.recall who, next.application.playerView who)),
       fun query => next.application.candidates.lookup (owner, query) = .fresh)
-  change FinDist.pure (readout leftNext) = FinDist.pure (readout rightNext) at coupled
-  have facts : readout leftNext = readout rightNext := FinDist.mem_support_pure.mp
-    (coupled ▸ (FinDist.mem_support_pure.mpr rfl))
+  change PMF.pure (readout leftNext) = PMF.pure (readout rightNext) at coupled
+  have facts : readout leftNext = readout rightNext := (PMF.mem_support_pure_iff _ _).mp
+    (coupled ▸ ((PMF.mem_support_pure_iff _ _).mpr rfl))
   have equalities := Prod.mk.inj facts
   have rest := Prod.mk.inj equalities.2
   have publicAndRest := Prod.mk.inj rest.2
@@ -369,18 +369,18 @@ theorem binding (frame : Frame runtime leaks memory owner original repaired)
       outputEq codeEq node serial opening ready timely fresh vacant unused serials players scheduler
     change (runtime.interactionStep leaks players scheduler (.includeLatest event owner) left).map
       _ = _ at originalLaw
-    rw [firstStep, FinDist.map_pure] at originalLaw
+    rw [firstStep, PMF.pure_map] at originalLaw
     have repairedLaw := runtime.rawBinding_reserved_config leaks repaired owner event payload
       outputEq codeEq node serial replacementOpening rightReady rightTimely actualFresh rightVacant
         rightUnused (frame.network ▸ serials) players scheduler
     rw [← changed] at repairedLaw
     change (runtime.interactionStep leaks players scheduler (.includeLatest event owner) right).map
       _ = _ at repairedLaw
-    rw [secondStep, FinDist.map_pure] at repairedLaw
-    have leftConfig := congrArg Prod.fst (FinDist.mem_support_pure.mp
-      (originalLaw ▸ FinDist.mem_support_pure.mpr rfl))
-    have rightConfig := congrArg Prod.fst (FinDist.mem_support_pure.mp
-      (repairedLaw ▸ FinDist.mem_support_pure.mpr rfl))
+    rw [secondStep, PMF.pure_map] at repairedLaw
+    have leftConfig := congrArg Prod.fst ((PMF.mem_support_pure_iff _ _).mp
+      (originalLaw ▸ (PMF.mem_support_pure_iff _ _).mpr rfl))
+    have rightConfig := congrArg Prod.fst ((PMF.mem_support_pure_iff _ _).mp
+      (repairedLaw ▸ (PMF.mem_support_pure_iff _ _).mpr rfl))
     change leftNext.application.config.store.BindingRefines rightNext.application.config.store
     apply (congrArg₂ (fun (first second : graph.Config) =>
       first.store.BindingRefines second.store) leftConfig rightConfig).mpr

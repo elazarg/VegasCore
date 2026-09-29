@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # An interleaved restricted menu
 
@@ -50,11 +53,11 @@ theorem reply_payoff_sum (command : Option Bool) :
 
 /-- Sampling a command before receipt cannot replace responding to the reply.
 This also rules out randomized batches that ignore the incoming information. -/
-theorem no_randomized_fixed_response (law : FinDist (Option Bool)) :
-    ¬ (2 ≤ law.expect (fun command => payoff true (resolve false command)) ∧
-      2 ≤ law.expect (fun command => payoff true (resolve true command))) := by
+theorem no_randomized_fixed_response (law : PMF (Option Bool)) :
+    ¬ (2 ≤ expect law (fun command => payoff true (resolve false command)) ∧
+      2 ≤ expect law (fun command => payoff true (resolve true command))) := by
   rintro ⟨first, second⟩
-  have total : law.expect (fun command =>
+  have total : expect law (fun command =>
       payoff true (resolve false command) + payoff true (resolve true command)) ≤ 3 :=
     FinDist.expect_le_of_forall _ _ _ (fun command _ => reply_payoff_sum command)
   rw [FinDist.expect_add] at total
@@ -68,11 +71,11 @@ theorem payoff_sum (result : Option Bool) :
 
 /-- At either observed reply, no behavioral choice is optimal for both utilities.
 Both bounds are required by SPE at a proper root with this final decision. -/
-theorem no_common_randomized_completion (reply : Bool) (law : FinDist (Option Bool)) :
-    ¬ (2 ≤ law.expect (fun command => payoff false (resolve reply command)) ∧
-      2 ≤ law.expect (fun command => payoff true (resolve reply command))) := by
+theorem no_common_randomized_completion (reply : Bool) (law : PMF (Option Bool)) :
+    ¬ (2 ≤ expect law (fun command => payoff false (resolve reply command)) ∧
+      2 ≤ expect law (fun command => payoff true (resolve reply command))) := by
   rintro ⟨first, second⟩
-  have total : law.expect (fun command =>
+  have total : expect law (fun command =>
       payoff false (resolve reply command) + payoff true (resolve reply command)) ≤ 3 :=
     FinDist.expect_le_of_forall _ _ _ (fun command _ => payoff_sum (resolve reply command))
   rw [FinDist.expect_add] at total

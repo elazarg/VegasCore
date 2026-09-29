@@ -118,19 +118,19 @@ theorem entryView_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finse
     entryView who program (ProtocolState.observe who program after) =
       entryView who program (ProtocolState.observe who program before)
   | _, _, .ret _, before, after, _, supported => by
-      have same := FinDist.mem_support_pure.mp supported
+      have same := (PMF.mem_support_pure_iff _ _).mp supported
       subst after
       rfl
   | _, _, .sample name fresh law next, before, after, joint, supported => by
       cases before with
       | inl config =>
-          simp only [ProtocolState.step, Sum.elim_inl, FinDist.support_map,
+          simp only [ProtocolState.step, Sum.elim_inl, PMF.support_map,
             Set.mem_image] at supported
           obtain ⟨value, _, rfl⟩ := supported
           simp only [ProtocolState.observe, Sum.elim_inr, Sum.elim_inl,
             entryView, id_eq, entryView_observe_entry, back_sample_view]
       | inr rest =>
-          simp only [ProtocolState.step, Sum.elim_inr, FinDist.support_map,
+          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,
             Set.mem_image] at supported
           obtain ⟨after, reached, rfl⟩ := supported
           exact congrArg (DecisionView.back false)
@@ -138,12 +138,12 @@ theorem entryView_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finse
   | _, _, .commit name owner fresh guard next, before, after, joint, supported => by
       cases before with
       | inl config =>
-          simp only [ProtocolState.step, Sum.elim_inl, FinDist.mem_support_pure] at supported
+          simp only [ProtocolState.step, Sum.elim_inl, PMF.mem_support_pure_iff _ _] at supported
           subst after
           simp only [ProtocolState.observe, Sum.elim_inr, Sum.elim_inl,
             entryView, id_eq, entryView_observe_entry, back_commit_view]
       | inr rest =>
-          simp only [ProtocolState.step, Sum.elim_inr, FinDist.support_map,
+          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,
             Set.mem_image] at supported
           obtain ⟨after, reached, rfl⟩ := supported
           exact congrArg (DecisionView.back (decide (owner = who)))
@@ -152,12 +152,12 @@ theorem entryView_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finse
       before, after, joint, supported => by
       cases before with
       | inl config =>
-          simp only [ProtocolState.step, Sum.elim_inl, FinDist.mem_support_pure] at supported
+          simp only [ProtocolState.step, Sum.elim_inl, PMF.mem_support_pure_iff _ _] at supported
           subst after
           simp only [ProtocolState.observe, Sum.elim_inr, Sum.elim_inl,
             entryView, id_eq, entryView_observe_entry, back_reveal_view]
       | inr rest =>
-          simp only [ProtocolState.step, Sum.elim_inr, FinDist.support_map,
+          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,
             Set.mem_image] at supported
           obtain ⟨after, reached, rfl⟩ := supported
           exact congrArg (DecisionView.back (decide (owner = who)))
@@ -254,7 +254,7 @@ theorem atRank_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset V
     atRank who program rank (ProtocolState.observe who program after) =
       atRank who program rank (ProtocolState.observe who program before)
   | _, _, .ret _, before, after, _, supported, _, _ => by
-      have same := FinDist.mem_support_pure.mp supported
+      have same := (PMF.mem_support_pure_iff _ _).mp supported
       subst after
       rfl
   | _, _, .sample name fresh law next, before, after, joint, supported, rank, within => by
@@ -266,7 +266,7 @@ theorem atRank_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset V
           cases before with
           | inl config => simp [ProtocolState.observe, position] at within
           | inr rest =>
-              simp only [ProtocolState.step, Sum.elim_inr, FinDist.support_map,
+              simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,
                 Set.mem_image] at supported
               obtain ⟨after, reached, rfl⟩ := supported
               have earlier : rank ≤ position who next (ProtocolState.observe who next rest) := by
@@ -283,7 +283,7 @@ theorem atRank_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset V
           cases before with
           | inl config => simp [ProtocolState.observe, position] at within
           | inr rest =>
-              simp only [ProtocolState.step, Sum.elim_inr, FinDist.support_map,
+              simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,
                 Set.mem_image] at supported
               obtain ⟨after, reached, rfl⟩ := supported
               have earlier : rank ≤ position who next (ProtocolState.observe who next rest) := by
@@ -302,7 +302,7 @@ theorem atRank_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset V
           cases before with
           | inl config => simp [ProtocolState.observe, position] at within
           | inr rest =>
-              simp only [ProtocolState.step, Sum.elim_inr, FinDist.support_map,
+              simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,
                 Set.mem_image] at supported
               obtain ⟨after, reached, rfl⟩ := supported
               have earlier : rank ≤ position who next (ProtocolState.observe who next rest) := by
@@ -380,12 +380,12 @@ the protocol observation, including before non-strategic instructions. -/
 theorem entry_noise_factor
     {Seed : Type*} {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (focal : Player)
-    {Extra : Type*} (prior : FinDist Seed) (source : Seed → Config Player L Γ)
-    (extra : Seed → Extra) (noise : DecisionView focal Γ → FinDist Extra)
+    {Extra : Type*} (prior : PMF Seed) (source : Seed → Config Player L Γ)
+    (extra : Seed → Extra) (noise : DecisionView focal Γ → PMF Extra)
     (factor : prior.map (fun seed => (source seed, extra seed)) =
       (prior.map source).bind fun config =>
         (noise (config.view focal)).map fun value => (config, value)) :
-    ∃ nextNoise : Option (ProtocolView focal program) → FinDist Extra,
+    ∃ nextNoise : Option (ProtocolView focal program) → PMF Extra,
       let law := prior.map fun seed =>
         (some (ProtocolState.entry program (source seed)), extra seed)
       law = (law.map Prod.fst).bind fun state =>
@@ -400,12 +400,12 @@ theorem entry_noise_factor
     simp only [recover, Option.map_some, Option.elim_some,
       ProtocolView.entryView_observe_entry]
   refine ⟨fun view => noise (recover view), ?_⟩
-  have result := FinDist.map_observation_factor (prior.map fun seed => (source seed, extra seed))
+  have result := PMF.map_observation_factor (prior.map fun seed => (source seed, extra seed))
     (fun config => config.view focal) noise (by
-      simpa only [FinDist.map_comp, Function.comp_def] using factor)
+      simpa only [PMF.map_comp, Function.comp_def] using factor)
       (fun config => some (ProtocolState.entry program config))
       (Option.map (ProtocolState.observe focal program)) recover recovered
-  simpa only [FinDist.map_comp, Function.comp_def] using result
+  simpa only [PMF.map_comp, Function.comp_def] using result
 
 end ProtocolView
 

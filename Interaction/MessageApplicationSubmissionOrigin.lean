@@ -25,12 +25,12 @@ private theorem invoke_history_origin
         next ∈ (app.playerStep who execution entry.command).support) := by
   cases invocation with
   | environment =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, step⟩ := supported
       left
       rwa [app.environmentStep_principalHistory execution command next step] at member
   | player actor =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, commandMem, step⟩ := supported
       by_cases same : actor = who
       · subst actor
@@ -61,11 +61,11 @@ theorem runPolicies_history_origin
         final ∈ (app.runPolicies players environment suffix after).support := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at supported
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at supported
       subst final
       exact Or.inl member
   | cons invocation rest ih =>
-      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runPolicies, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨middle, first, last⟩ := supported
       rcases ih middle last with prior | origin
       · rcases app.invoke_history_origin players environment invocation execution middle
@@ -74,13 +74,13 @@ theorem runPolicies_history_origin
         · rcases here with ⟨invocationEq, viewEq, commandMem, step⟩
           subst invocation
           exact Or.inr ⟨[], rest, execution, middle, rfl,
-            FinDist.mem_support_pure.mpr rfl, viewEq, commandMem, step, last⟩
+            (PMF.mem_support_pure_iff _ _).mpr rfl, viewEq, commandMem, step, last⟩
       · rcases origin with
           ⟨front, suffix, before, after, split, beforeMem, viewEq, commandMem, step, residual⟩
         refine Or.inr ⟨invocation :: front, suffix, before, after, ?_, ?_,
           viewEq, commandMem, step, residual⟩
         · simp only [List.cons_append, split]
-        · simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion]
+        · simp only [runPolicies, PMF.support_bind, Set.mem_iUnion]
           exact ⟨middle, first, beforeMem⟩
 
 /-- Every history entry in an initialized run has its own supported invocation
@@ -162,7 +162,7 @@ private theorem invoke_retained_origin
         message.id = (message.sender, execution.native.pool.nextSerial message.sender)) := by
   cases invocation with
   | environment =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, step⟩ := supported
       left
       have safe := app.environmentPolicyStep_pool_satisfies
@@ -170,7 +170,7 @@ private theorem invoke_retained_origin
         (app.satisfies_retained execution.native.pool) step
       exact app.satisfies_of_retained safe retained
   | player actor =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, commandMem, step⟩ := supported
       cases command with
       | submit payload =>
@@ -220,11 +220,11 @@ theorem runPolicies_retained_submission_origin
         final ∈ (app.runPolicies players environment suffix submitted).support := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at supported
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at supported
       subst final
       exact Or.inl retained
   | cons invocation rest ih =>
-      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runPolicies, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨middle, first, last⟩ := supported
       rcases ih middle last with old | origin
       · rcases app.invoke_retained_origin players environment invocation execution middle
@@ -233,14 +233,14 @@ theorem runPolicies_retained_submission_origin
         · rcases submittedHere with ⟨invocationEq, commandMem, step, idEq⟩
           subst invocation
           exact Or.inr ⟨[], rest, execution, middle, rfl,
-            FinDist.mem_support_pure.mpr rfl, commandMem, step, idEq, last⟩
+            (PMF.mem_support_pure_iff _ _).mpr rfl, commandMem, step, idEq, last⟩
       · rcases origin with
           ⟨front, suffix, before, submitted, split, beforeMem, commandMem,
             step, idEq, residual⟩
         refine Or.inr ⟨invocation :: front, suffix, before, submitted, ?_, ?_,
           commandMem, step, idEq, residual⟩
         · simp only [List.cons_append, split]
-        · simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion]
+        · simp only [runPolicies, PMF.support_bind, Set.mem_iUnion]
           exact ⟨middle, first, beforeMem⟩
 
 /-- From the actual empty-pool initialization, every pending message has a

@@ -24,25 +24,25 @@ theorem secondRank_injective : Function.Injective secondRank := by decide
 abbrev firstOrder : LinearOrder (Fin 3) := inferInstance
 abbrev secondOrder : LinearOrder (Fin 3) := LinearOrder.lift' secondRank secondRank_injective
 
-def priorities : FinDist (LinearOrder (Fin 3)) :=
-  FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-    (FinDist.pure firstOrder) (FinDist.pure secondOrder)
+def priorities : PMF (LinearOrder (Fin 3)) :=
+  mix (1 / 2) (by norm_num) (by norm_num)
+    (PMF.pure firstOrder) (PMF.pure secondOrder)
 
 def before := PriorityChoice.law priorities {0, 2}
 def after := PriorityChoice.law priorities (insert 1 {0, 2})
 
-theorem before_eq : before = FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-    (FinDist.pure (some 0)) (FinDist.pure (some 2)) := by
+theorem before_eq : before = mix (1 / 2) (by norm_num) (by norm_num)
+    (PMF.pure (some 0)) (PMF.pure (some 2)) := by
   have first : PriorityChoice.choose firstOrder {0, 2} = some 0 := by decide
   have second : PriorityChoice.choose secondOrder {0, 2} = some 2 := by decide
-  simp only [before, PriorityChoice.law, priorities, FinDist.map_mix, FinDist.map_pure,
+  simp only [before, PriorityChoice.law, priorities, mix_map, PMF.pure_map,
     first, second]
 
-theorem after_eq : after = FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-    (FinDist.pure (some 0)) (FinDist.pure (some 1)) := by
+theorem after_eq : after = mix (1 / 2) (by norm_num) (by norm_num)
+    (PMF.pure (some 0)) (PMF.pure (some 1)) := by
   have first : PriorityChoice.choose firstOrder (insert 1 {0, 2}) = some 0 := by decide
   have second : PriorityChoice.choose secondOrder (insert 1 {0, 2}) = some 1 := by decide
-  simp only [after, PriorityChoice.law, priorities, FinDist.map_mix, FinDist.map_pure,
+  simp only [after, PriorityChoice.law, priorities, mix_map, PMF.pure_map,
     first, second]
 
 theorem regular : before.RegularAt after (some 1) :=
@@ -51,12 +51,12 @@ theorem regular : before.RegularAt after (some 1) :=
 /-- No fixed mixture with the original retained law gives this selection. -/
 theorem not_fixed_mixture : ¬ ∃ (weight : ℝ) (nonnegative : 0 ≤ weight)
     (atMostOne : weight ≤ 1),
-    after = FinDist.mix weight nonnegative atMostOne (FinDist.pure (some 1)) before := by
+    after = mix weight nonnegative atMostOne (PMF.pure (some 1)) before := by
   rintro ⟨weight, nonnegative, atMostOne, same⟩
-  have fresh := congrArg (fun law => law.prob (some 1)) same
-  have old := congrArg (fun law => law.prob (some 0)) same
+  have fresh := congrArg (fun law => (law (some 1)).toReal) same
+  have old := congrArg (fun law => (law (some 0)).toReal) same
   rw [after_eq, before_eq] at fresh old
-  norm_num [FinDist.prob_mix, FinDist.prob_pure_eq_ite] at fresh old
+  norm_num [mix_apply_toReal, toReal_pure_apply] at fresh old
   linarith
 
 end GameTheoryExtensionsTests.RegularChoice

@@ -67,19 +67,19 @@ theorem foreign_window_owner_published
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨rfl, published⟩
   | cons actor rest ih =>
       have different : actor ≠ owner := fun same => absent (by
         simp only [same, List.mem_cons_self])
       have restAbsent : owner ∉ rest := fun member => absent (List.mem_cons_of_mem _ member)
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have preserved := runtime.foreign_response_published leaks
         (initial.sampledActivation app actor sample) owner actor different
         (published.learn actor sample) response
@@ -136,16 +136,16 @@ private theorem binding_omission_of_selection_waits
   let waited : app.Execution := { initial with environmentRecall := initial.environmentRecall ++
     [⟨initial.observeEnvironment app, .wait⟩] }
   have waitLaw : runtime.interactionStep leaks players network (.includeLatest event owner)
-      initial = FinDist.pure waited := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind, selected]
-    change (initial.environmentStep app .wait).bind FinDist.pure = _
-    rw [FinDist.bind_pure]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+      initial = PMF.pure waited := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind, selected]
+    change (initial.environmentStep app .wait).bind PMF.pure = _
+    rw [PMF.bind_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   obtain ⟨after, law, missed⟩ := runtime.binding_deadline_omission leaks players network waited
     owner event payload outputEq codeEq node ready unbound entered ticks activated due
-  rw [List.cons_append, runInteractionPlan, waitLaw, FinDist.pure_bind, law] at reached
-  cases FinDist.mem_support_pure.mp reached
+  rw [List.cons_append, runInteractionPlan, waitLaw, PMF.pure_bind, law] at reached
+  cases (PMF.mem_support_pure_iff _ _).mp reached
   exact missed
 
 /-- The genuine deadline obligation survives an arbitrary raw foreign tail
@@ -174,7 +174,7 @@ theorem foreign_tail_binding_omission
           initial).support) :
     final.application.publicView.missedBinding event = true := by
   rw [runtime.runInteractionPlan_append] at reached
-  obtain ⟨middle, leading, suffix⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, leading, suffix⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have application := runtime.player_window_application leaks players network visits initial
     middle leading
   have carried := runtime.foreign_window_owner_published leaks players network owner visits
@@ -292,7 +292,7 @@ theorem omitted_binding_continuation_coupling
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
     let plan := visits.map ServiceInstruction.player ++
       (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = (app.invoke players owner original).bind
         (runtime.runInteractionPlan leaks players network plan) ∧
       coupling.map Prod.snd =
@@ -306,17 +306,17 @@ theorem omitted_binding_continuation_coupling
   let right := (strategy.resume owner players (some owner) repaired memory).bind fun next =>
     (runtime.runInteractionPlan leaks players network plan next.1).map
       fun execution => (execution, next.2)
-  refine ⟨FinDist.product left right, FinDist.map_fst_product .., FinDist.map_snd_product .., ?_⟩
+  refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst .., FinDist.map_snd_product .., ?_⟩
   intro next supported
   have leftSupported : next.1 ∈ left.support := by
-    rw [← FinDist.map_fst_product left right, FinDist.support_map]
+    rw [← bindPairLaw_map_fst left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   change next.1 ∈ (((players owner (original.recall owner) (original.observe app owner)).map
     (original.respond app owner)).bind
       (runtime.runInteractionPlan leaks players network plan)).support at leftSupported
-  rw [FinDist.bind_map] at leftSupported
+  rw [PMF.bind_map] at leftSupported
   obtain ⟨response, chosen, reached⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftSupported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftSupported)
   exact runtime.last_binding_transport_omission leaks players network original owner event payload
     outputEq codeEq node ready unbound published entered ticks activated due visits absent response
       (omits response chosen) next.1 reached

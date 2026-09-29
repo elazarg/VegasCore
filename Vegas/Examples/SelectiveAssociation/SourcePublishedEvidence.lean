@@ -20,9 +20,9 @@ open Vegas Vegas.SourceProgram Interaction GameTheory.Math.Probability
 theorem effect_serials {Claim : Type} (execution : (application Claim).Execution)
     (cmd : (application Claim).Command) (serials : execution.network.SerialsBeforeNext) :
     (effect execution cmd).network.SerialsBeforeNext :=
-  ((application Claim).serialsBeforeNextInvariant (fun _ _ => FinDist.pure cmd)).environment
-    execution (effect execution cmd) cmd serials (FinDist.mem_support_pure.mpr rfl)
-      (by rw [effect_law]; exact FinDist.mem_support_pure.mpr rfl)
+  ((application Claim).serialsBeforeNextInvariant (fun _ _ => PMF.pure cmd)).environment
+    execution (effect execution cmd) cmd serials ((PMF.mem_support_pure_iff _ _).mpr rfl)
+      (by rw [effect_law]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem aliceInput_serials {Claim : Type} (first second : (application Claim).Action) :
     (aliceInput first second).network.SerialsBeforeNext := by

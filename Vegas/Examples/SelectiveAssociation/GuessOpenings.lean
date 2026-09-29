@@ -21,7 +21,7 @@ open GameTheory GameTheory.Protocol
 private theorem native_acts_once : nativeModel.ActsOnceWhereItMatters :=
   nativeModel.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
-      (nativeMenu.decisionInformationAntichain (FinDist.pure nativeInitial)
+      (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial)
         nativeHorizon nativeScheduler))
 
 theorem native_bob_future_opening (profile : ∀ who, nativeModel.BehavioralPolicy who)
@@ -34,14 +34,14 @@ theorem native_bob_future_opening (profile : ∀ who, nativeModel.BehavioralPoli
     ∃ result, later.state = some result ∧ result.actor = some bob ∧
       result.execution.application.serviceGrant = some bobPublication := by
   rw [show 43 = 9 + (13 + 21) by decide, nativeModel.runBehavioralFrom_add] at supported
-  obtain ⟨first, firstMem, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨first, firstMem, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨firstControl, firstEq, firstActive, firstGrant⟩ := native_next_decision profile bobBinding
     alicePublication rfl control trace active granted first firstMem
   rcases first with ⟨firstState, firstTrace⟩
   change firstState = some firstControl at firstEq
   subst firstState
   rw [nativeModel.runBehavioralFrom_add] at rest
-  obtain ⟨second, secondMem, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rest)
+  obtain ⟨second, secondMem, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rest)
   obtain ⟨secondControl, secondEq, secondActive, secondGrant⟩ :=
     native_next_decision profile alicePublication carolPublication rfl firstControl firstTrace
       firstActive firstGrant second secondMem
@@ -89,13 +89,13 @@ theorem native_bob_committed_alice_opens
     (nativeModel.runBehavioralFrom changed 9 ⟨some control, trace⟩).bind
       (nativeModel.runBehavioralFrom assessment.strategy 170) at split
   rw [split] at supported
-  obtain ⟨opening, openingMem, tailMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨opening, openingMem, tailMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨openingControl, openingEq, openingActive, openingGrant⟩ :=
     native_next_decision changed bobBinding alicePublication rfl control trace active grant
       opening openingMem
   obtain ⟨preservedControl, preservedEq, preserved⟩ :=
     (native_binding_invariant alice (.success bit)).behavioral_continuation nativeMenu
-      (FinDist.pure nativeInitial) nativeHorizon nativeScheduler changed 9 control trace opening
+      (PMF.pure nativeInitial) nativeHorizon nativeScheduler changed 9 control trace opening
       aliceStored openingMem
   have same : preservedControl = openingControl := Option.some.inj
     (preservedEq.symm.trans openingEq)
@@ -154,7 +154,7 @@ theorem native_bob_committed_bob_opens
     (nativeModel.runBehavioralFrom changed 43 ⟨some control, trace⟩).bind
       (nativeModel.runBehavioralFrom assessment.strategy 136) at split
   rw [split] at supported
-  obtain ⟨opening, openingMem, tailMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨opening, openingMem, tailMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨openingControl, openingEq, openingActive, openingGrant⟩ :=
     native_bob_future_opening changed control trace active grant opening openingMem
   rcases opening with ⟨openingState, openingTrace⟩

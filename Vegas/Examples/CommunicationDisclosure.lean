@@ -75,11 +75,11 @@ def privateDraw (bit : Bool) : (channel.protocol [false]).History :=
   channel.advanceHistory [false] privateStart rfl (fun _ => none) source_draw_legal
     (SourcePath.drawn bit).state (by
       change (SourcePath.drawn bit).state ∈ (sourceSetup.initialLaw.map _).support
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       refine ⟨initialState bit, ?_, rfl⟩
-      change initialState bit ∈ ((FinDist.uniformOfFintype (α := Bool)).map initialState).support
-      rw [FinDist.support_map]
-      exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)
+      change initialState bit ∈ ((PMF.uniformOfFintype (α := Bool)).map initialState).support
+      rw [PMF.support_map]
+      exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
 
 theorem private_draw_history (bit : Bool) :
     (privateDraw bit).state.history = (SourcePath.drawn bit).history := by
@@ -182,9 +182,9 @@ the old uniform uncertainty about the bit. -/
 theorem belief_type (roster : List Bool) (who bit : Bool)
     (view : (channel.informationModel roster).InfoState who)
     (received : ∃ message ∈ view.current.transcript, message.content = .evidence (secretFact bit))
-    (belief : FinDist ((channel.informationModel roster).InformationHistory who view)) :
+    (belief : PMF ((channel.informationModel roster).InformationHistory who view)) :
     belief.map (fun history => sourceType history.1.state.history.state) =
-      FinDist.pure (some bit) := by
+      PMF.pure (some bit) := by
   have known := channel.knows_of_received roster who view (secretFact bit) received
   have typed := known.mono (fun history evidence =>
     certificate_identifies_type history.state.history bit evidence)

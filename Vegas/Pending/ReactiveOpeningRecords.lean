@@ -43,14 +43,14 @@ theorem OpeningWindowFrame.settle_records (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   have selection := frame.selection runtime leaks owner event candidate raw offset selected
     initial current serials
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind, selection] at reached
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind, selection] at reached
   cases selected with
   | none =>
       simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
         ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume] at reached
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       refine ⟨frame.ledger, frame.receipts, ?_⟩
       exact frame.counters
   | some slot =>
@@ -61,9 +61,9 @@ theorem OpeningWindowFrame.settle_records (runtime : EventGraphRuntime graph)
       have receipt := accepted rfl
       simp only [Option.isSome_some, ↓reduceIte,
         ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume] at reached
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
         found, frame.application, receipt, frame.ledger, frame.receipts,
         Option.isSome_some, ↓reduceIte]
@@ -97,7 +97,7 @@ theorem openingWindow_records (runtime : EventGraphRuntime graph)
     final.network.nextSerial = fun who => initial.network.nextSerial who +
       if who = owner ∧ selected.isSome then 1 else 0 := by
   rw [runtime.runInteractionPlan_append] at reached
-  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have frame := OpeningWindowFrame.initial runtime leaks owner event candidate raw selected
     initial serials published
   have finished := frame.run runtime leaks owner event candidate raw (initial.recall owner).length
@@ -106,7 +106,7 @@ theorem openingWindow_records (runtime : EventGraphRuntime graph)
   have inclusion : final ∈ (runtime.interactionStep leaks
       (runtime.openingWindowPlayers leaks owner event candidate raw (initial.recall owner).length
         selected) network (.includeLatest event owner) current).support := by
-    simpa only [runInteractionPlan, FinDist.bind_pure] using reached
+    simpa only [runInteractionPlan, PMF.bind_pure] using reached
   exact finished.settle_records runtime leaks owner event candidate raw
     (initial.recall owner).length selected initial current serials accepted _ network final
       inclusion

@@ -51,16 +51,16 @@ private theorem unopened_mixture_probability
     (unseen : ∀ entry ∈ (current.recall owner).drop
       (rosterOffset setup rosters owner event),
       entry.action ≠ (runtime setup).windowOpening leaks event candidate raw)
-    (choice : FinDist Bool) (choiceFull : choice.FullSupport)
-    (timing : FinDist (Fin ((rosters event).count owner))) (timingFull : timing.FullSupport) :
+    (choice : PMF Bool) (choiceFull : FullSupport choice)
+    (timing : PMF (Fin ((rosters event).count owner))) (timingFull : FullSupport timing) :
     let app := application setup leaks
     let activated := current.sampledActivation app owner sample
     let packet := (runtime setup).windowOpening leaks event candidate raw
-    (((app.policyMixture (rosterSelection choice timing) (fun selected =>
+    ((((app.policyMixture (rosterSelection choice timing) (fun selected =>
       app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure packet) app.replayPolicy)).policy
-          (activated.recall owner) (activated.observe app owner))).prob packet =
-      FinDist.deferredHazard (choice.prob true) timing
+        (fun _ _ => PMF.pure packet) app.replayPolicy)).policy
+          (activated.recall owner) (activated.observe app owner))) packet).toReal =
+      PMF.deferredHazard ((choice true).toReal) timing
         ((activated.recall owner).length - rosterOffset setup rosters owner event) := by
   intro app activated packet
   obtain ⟨selected, frame, _, recorded, posterior⟩ :=
@@ -75,24 +75,24 @@ private theorem unopened_mixture_probability
         exact (unseen entry member same).elim
   subst selected
   have full := rosterSelection_fullSupport choice timing choiceFull timingFull
-  have small : choice.prob true < 1 := by
-    have positive := FinDist.prob_pos_iff.mpr (choiceFull false)
-    have total := choice.sum_prob
+  have small : (choice true).toReal < 1 := by
+    have positive := pmf_toReal_pos_iff.mpr (choiceFull false)
+    have total := pmf_sum_toReal_eq_one choice
     simp only [Fintype.sum_bool] at total
     linarith
   let slot : Fin ((rosters event).count owner) := ⟨visits.count owner, inside⟩
   have atSlot : (activated.recall owner).length =
       rosterOffset setup rosters owner event + slot.val := frame.count
   have exactPost := posterior (rosterSelection choice timing) full
-  have representation := FinDist.bind_bool_mix choice (timing.map some) (FinDist.pure none)
+  have representation := PMF.bind_bool_mix choice (timing.map some) (PMF.pure none)
   change rosterSelection choice timing = _ at representation
   simp only [representation] at exactPost ⊢
-  have probability := app.scheduledMixture_probability_of_posterior (choice.prob true)
-    (choice.prob_nonneg true) small timing (rosterOffset setup rosters owner event) packet
+  have probability := app.scheduledMixture_probability_of_posterior ((choice true).toReal)
+    (ENNReal.toReal_nonneg) small timing (rosterOffset setup rosters owner event) packet
     app.replayPolicy (activated.recall owner) slot atSlot exactPost
       (activated.observe app owner) packet
-  have replayZero : (app.replayPolicy (activated.recall owner)
-      (activated.observe app owner)).prob packet = 0 := by
+  have replayZero : ((app.replayPolicy (activated.recall owner)
+      (activated.observe app owner)) packet).toReal = 0 := by
     apply FinDist.prob_eq_zero_iff.mpr
     intro member
     rcases app.replayPolicy_cases _ _ _ member with
@@ -118,7 +118,7 @@ theorem roster_owner_opening_probability
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (who : Player)
     (site : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
@@ -130,12 +130,11 @@ theorem roster_owner_opening_probability
     (granted : view.application.publicView.serviceGrant = some event)
     (packet : (application setup leaks).Action)
     (fresh : rosterFresh? setup leaks rosters who past view = some packet) :
-    (rosterPerturbedProfile setup leaks bounds rosters network admission
-      source timing who site.1).probOf
-        {choice | choice.1.getD ⟨none⟩ = packet} =
-      FinDist.deferredHazard
-        ((sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source.strategy)
-          who view).prob true) (timing event who owned)
+    ((rosterPerturbedProfile setup leaks bounds rosters network admission
+      source timing who site.1).toOuterMeasure {choice | choice.1.getD ⟨none⟩ = packet}).toReal =
+      PMF.deferredHazard
+        (((sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission source.strategy)
+          who view) true).toReal) (timing event who owned)
             (past.length - rosterOffset setup rosters who event) := by
   let app := application setup leaks
   let extended := bounds.withInitialValues (initialLaw setup)
@@ -194,7 +193,7 @@ theorem roster_owner_opening_probability
   cases Option.some.inj sentOpening
   subst packet
   have choiceFull :
-      (sourceChoiceLaw setup leaks profile who (boundary.observe app who)).FullSupport :=
+      FullSupport (sourceChoiceLaw setup leaks profile who (boundary.observe app who)) :=
     choiceLaw ▸ setup.reveal_choice_fullSupport reveals admission source mixed who sourceSite
   have physical := rosterPolicy_at_phase setup leaks rosters timing profile boundary
     control.execution event who grant owned candidate raw opening unchanged who
@@ -211,12 +210,11 @@ theorem roster_owner_opening_probability
   have choiceNow := sourceChoiceLaw_application_eq setup leaks profile who
     control.execution boundary unchanged
   rw [viewEq] at choiceNow
-  have actual : (players who past view).prob
-      ((runtime setup).windowOpening leaks event candidate raw) =
-      FinDist.deferredHazard ((sourceChoiceLaw setup leaks profile who view).prob true)
+  have actual : ((players who past view) ((runtime setup).windowOpening leaks event candidate raw)).toReal =
+      PMF.deferredHazard (((sourceChoiceLaw setup leaks profile who view) true).toReal)
         (timing event who owned) (past.length - rosterOffset setup rosters who event) := by
     rw [pastEq, viewEq] at physical
-    change (rosterPolicy setup leaks rosters timing profile who past view).prob _ = _
+    change ((rosterPolicy setup leaks rosters timing profile who past view) _).toReal = _
     rw [physical]
     dsimp only at hazard
     rw [choiceNow]
@@ -228,11 +226,11 @@ theorem roster_owner_opening_probability
         exact rosterPolicy_admissible setup leaks bounds rosters network reveals openable
           admission source mixed timing timingFull who control trace acting action supported)
   have restored := congrArg (fun law => law.map (fun action => action.getD ⟨none⟩)) represented
-  simp only [FinDist.map_comp, Function.comp_def, Option.getD_some] at restored
+  simp only [PMF.map_comp, Function.comp_def, Option.getD_some] at restored
   change _ = (players who past view).map id at restored
-  rw [FinDist.map_id] at restored
+  rw [PMF.map_id] at restored
   have probability := congrArg
-    (fun law => law.prob ((runtime setup).windowOpening leaks event candidate raw)) restored
+    (fun law => (law ((runtime setup).windowOpening leaks event candidate raw)).toReal) restored
   rw [FinDist.prob_map_eq_probOf_preimage_singleton] at probability
   rw [observed]
   exact probability.trans actual

@@ -52,19 +52,19 @@ theorem environmentPolicyStep_prescribed_resolution_completion
   have nativeMem : after.native ∈
       ((runtime.application.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨after, supported, rfl⟩
   rw [runtime.application.environmentStep_native] at nativeMem
   cases command with
   | deliver observer id | wait =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at nativeMem
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at nativeMem
       have same := congrArg
         (fun state : runtime.application.State => state.application.config) nativeMem
       exact (ready.1 (same ▸ completed)).elim
   | «include» id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at nativeMem
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at nativeMem
       cases lookup : execution.native.pool.lookup id with
       | none =>
           rw [runtime.application.includePending_missing execution.native id lookup] at nativeMem
@@ -115,7 +115,7 @@ theorem environmentPolicyStep_prescribed_resolution_completion
               exact savedMember
   | application applicationCommand =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.support_map, Set.mem_image] at nativeMem
+        MessageApplication.step, PMF.support_map, Set.mem_image] at nativeMem
       obtain ⟨next, nextMem, nativeEq⟩ := nativeMem
       have afterApplication : after.native.application = next := congrArg
         (fun state : runtime.application.State => state.application) nativeEq.symm
@@ -123,7 +123,7 @@ theorem environmentPolicyStep_prescribed_resolution_completion
         applicationCommand).support at nextMem
       cases applicationCommand with
       | grant query | advanceClock =>
-          simp only [environmentStep, FinDist.mem_support_pure] at nextMem
+          simp only [environmentStep, PMF.mem_support_pure_iff _ _] at nextMem
           rw [afterApplication, nextMem] at completed
           exact (ready.1 completed).elim
       | executeSample query =>
@@ -140,7 +140,7 @@ theorem environmentPolicyStep_prescribed_resolution_completion
               execution.native.application event ready (by
                 intro samplePayload law sampleOutput sampleCode sampleView
                 rw [viewNode] at sampleView
-                contradiction), FinDist.mem_support_pure] at nextMem
+                contradiction), PMF.mem_support_pure_iff _ _] at nextMem
             rw [afterApplication, nextMem] at completed
             exact (ready.1 completed).elim
       | expire query =>
@@ -154,7 +154,7 @@ theorem environmentPolicyStep_prescribed_resolution_completion
             subst query
             rw [runtime.environmentStep_expire_eq_of_age execution.native.application event
               (feasible event) (assumptions.activationAge owner other event actor),
-              FinDist.mem_support_pure] at nextMem
+              PMF.mem_support_pure_iff _ _] at nextMem
             rw [afterApplication, nextMem] at completed
             exact (ready.1 completed).elim
 
@@ -164,7 +164,7 @@ cannot be that transition. -/
 theorem serviceControlStep_prescribed_resolution_completion
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal owner : Player) (other : owner ≠ focal)
@@ -197,19 +197,19 @@ theorem serviceControlStep_prescribed_resolution_completion
   · obtain ⟨instruction, rest, plan, _, _, step⟩ := executed
     cases instruction with
     | player who =>
-        simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+        simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
           Set.mem_iUnion] at step
         obtain ⟨command, _, playerStep⟩ := step
         have nativeMem : after.execution.native ∈
             ((runtime.application.playerStep who before.execution command).map
               MessageInterface.PolicyExecution.native).support := by
-          rw [FinDist.support_map]
+          rw [PMF.support_map]
           exact ⟨after.execution, playerStep, rfl⟩
         rw [runtime.application.playerStep_native] at nativeMem
         cases command with
         | privateCommand privateCommand =>
             simp only [MessageApplication.PlayerCommand.toAction,
-              MessageApplication.step, FinDist.mem_support_pure] at nativeMem
+              MessageApplication.step, PMF.mem_support_pure_iff _ _] at nativeMem
             have application := congrArg
               (fun state : runtime.application.State => state.application) nativeMem
             have config : after.execution.native.application.config =
@@ -220,13 +220,13 @@ theorem serviceControlStep_prescribed_resolution_completion
             exact (ready.1 completed).elim
         | submit packet | replay id | wait =>
             simp only [MessageApplication.PlayerCommand.toAction,
-              MessageApplication.step, FinDist.mem_support_pure] at nativeMem
+              MessageApplication.step, PMF.mem_support_pure_iff _ _] at nativeMem
             have config := congrArg
               (fun state : runtime.application.State => state.application.config) nativeMem
             rw [config] at completed
             exact (ready.1 completed).elim
     | wire =>
-        simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+        simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
           Set.mem_iUnion] at step
         obtain ⟨command, _, environmentStep⟩ := step
         exact runtime.environmentPolicyStep_prescribed_resolution_completion feasible ordered
@@ -269,7 +269,7 @@ obtained from reachability. -/
 theorem ServiceControlPath.prescribed_resolution_output
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -364,7 +364,7 @@ effective result. -/
 theorem ServiceControlPath.prescribed_resolutionPayload_eq_of_endpoint
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)

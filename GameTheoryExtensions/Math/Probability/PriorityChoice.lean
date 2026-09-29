@@ -55,31 +55,31 @@ theorem choose_insert [DecidableEq Candidate]
     subst candidates
     simp [choose]
 
-def law (priorities : FinDist (LinearOrder Candidate)) (candidates : Finset Candidate) :
-    FinDist (Option Candidate) := priorities.map (fun priority => choose priority candidates)
+def law (priorities : PMF (LinearOrder Candidate)) (candidates : Finset Candidate) :
+    PMF (Option Candidate) := priorities.map (fun priority => choose priority candidates)
 
 /-- A fixed law over priority orders is regular under candidate insertion. -/
 theorem law_regular_insert [DecidableEq Candidate]
-    (priorities : FinDist (LinearOrder Candidate)) (candidates : Finset Candidate)
+    (priorities : PMF (LinearOrder Candidate)) (candidates : Finset Candidate)
     (fresh : Candidate) :
     (law priorities candidates).RegularAt (law priorities (insert fresh candidates))
       (some fresh) := by
-  apply FinDist.regularAt_of_coupling
+  apply PMF.regularAt_of_coupling
   intro priority _
   exact choose_insert priority candidates fresh
 
-theorem law_supported (priorities : FinDist (LinearOrder Candidate))
+theorem law_supported (priorities : PMF (LinearOrder Candidate))
     (candidates : Finset Candidate) (candidate : Candidate)
     (supported : some candidate ∈ (law priorities candidates).support) :
     candidate ∈ candidates := by
-  rw [law, FinDist.support_map] at supported
+  rw [law, PMF.support_map] at supported
   obtain ⟨priority, _, chosen⟩ := supported
   exact choose_mem priority candidates candidate chosen
 
-theorem law_none_not_supported (priorities : FinDist (LinearOrder Candidate))
+theorem law_none_not_supported (priorities : PMF (LinearOrder Candidate))
     (candidates : Finset Candidate) (nonempty : candidates.Nonempty) :
     none ∉ (law priorities candidates).support := by
-  rw [law, FinDist.support_map]
+  rw [law, PMF.support_map]
   rintro ⟨priority, _, chosen⟩
   simp only [choose, dite_eq_left nonempty] at chosen
   cases chosen

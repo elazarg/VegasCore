@@ -19,7 +19,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 theorem stateBelief_eq_conditional_prefix
     (assessment : (menu.information initial horizon scheduler).BehavioralAssessment)
@@ -33,8 +33,8 @@ theorem stateBelief_eq_conditional_prefix
     (clock : ∀ history : (menu.information initial horizon scheduler).InformationHistory
       who site.1, history.1.trace.length = depth) :
     assessment.stateBelief who site =
-      (((menu.information initial horizon scheduler).runBehavioral assessment.strategy depth).map
-        History.state).condOnFibre (app.observe who) site.1 := by
+      fiberConditional (((menu.information initial horizon scheduler).runBehavioral assessment.strategy depth).map
+        History.state) (app.observe who) site.1 := by
   classical
   let M := menu.information initial horizon scheduler
   let prefixLaw := M.runBehavioral assessment.strategy depth
@@ -42,7 +42,7 @@ theorem stateBelief_eq_conditional_prefix
   have belief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site
         (menu.decisionInformationAntichain initial horizon scheduler who site) positive := by
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro history
     rw [M.bayesBelief_prob]
     exact bayes who site positive history
@@ -53,14 +53,14 @@ theorem stateBelief_eq_conditional_prefix
   have meets : ∃ h ∈ {h | M.infoOf who h.trace = site.1}, h ∈ prefixLaw.support :=
     ⟨history.1, history.2, supported⟩
   have present : site.1 ∈ (prefixLaw.map (app.observe who ∘ History.state)).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     refine ⟨history.1, supported, ?_⟩
     exact (menu.info initial horizon scheduler who history.1.trace).symm.trans history.2
   have conditioned := M.bayesBelief_map_eq_condOn assessment.strategy who site depth clock
     (menu.decisionInformationAntichain initial horizon scheduler who site) positive meets
   rw [← belief] at conditioned
-  have fiber : prefixLaw.condOn {h | M.infoOf who h.trace = site.1} meets =
-      prefixLaw.condOnFibre (app.observe who ∘ History.state) site.1 := by
+  have fiber : prefixLaw.filter {h | M.infoOf who h.trace = site.1} meets =
+      fiberConditional prefixLaw (app.observe who ∘ History.state) site.1 := by
     have same : {h : (menu.protocol initial horizon scheduler).History |
         M.infoOf who h.trace = site.1} =
         (app.observe who ∘ History.state) ⁻¹' {site.1} := by
@@ -68,15 +68,15 @@ theorem stateBelief_eq_conditional_prefix
       change M.infoOf who h.trace = site.1 ↔ app.observe who h.state = site.1
       rw [show M.infoOf who h.trace = app.observe who h.state from
         menu.info initial horizon scheduler who h.trace]
-    rw [FinDist.condOnFibre, dite_eq_left (same ▸ meets)]
+    rw [fiberConditional, dite_eq_left (same ▸ meets)]
     congr 1
   calc
     assessment.stateBelief who site =
         ((assessment.belief who site).map Subtype.val).map History.state :=
-      (FinDist.map_comp _ _ _).symm
-    _ = (prefixLaw.condOnFibre (app.observe who ∘ History.state) site.1).map
+      (PMF.map_comp _ _ _).symm
+    _ = (fiberConditional prefixLaw (app.observe who ∘ History.state) site.1).map
         History.state := by rw [conditioned, fiber]
-    _ = _ := FinDist.map_conditional_readout prefixLaw History.state
+    _ = _ := PMF.map_conditional_readout prefixLaw History.state
       (app.observe who) site.1 present
 
 end Interaction.ReactiveApplication.ResponseMenu

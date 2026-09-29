@@ -58,7 +58,7 @@ theorem run_source_prefix_support
           source.view who) ∧
         state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep program
           (fun who => RevealOnly.uniformPolicy who program reveals)))^[count]
-            (FinDist.pure (ProtocolState.entry program source))).support := by
+            (PMF.pure (ProtocolState.entry program source))).support := by
   intro Γ openNames program
   induction program with
   | ret payoffs =>
@@ -67,10 +67,10 @@ theorem run_source_prefix_support
       have zero : count = 0 := by simpa [eventCount] using countBound
       subst count
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact ⟨ProtocolState.entry _ source, ⟨source, rfl, rfl, checkpoint⟩,
         (fun who => ProtocolView.entryView_observe_entry who _ source),
-        FinDist.mem_support_pure.mpr rfl⟩
+        (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   | sample name fresh law next ih =>
       intro impossible
       exact impossible.elim
@@ -83,10 +83,10 @@ theorem run_source_prefix_support
       cases count with
       | zero =>
           simp only [List.take_zero, List.flatMap_nil, runInteractionPlan] at supported
-          cases FinDist.mem_support_pure.mp supported
+          cases (PMF.mem_support_pure_iff _ _).mp supported
           exact ⟨ProtocolState.entry _ source, ⟨source, rfl, rfl, checkpoint⟩,
             (fun who => ProtocolView.entryView_observe_entry who _ source),
-            FinDist.mem_support_pure.mpr rfl⟩
+            (PMF.mem_support_pure_iff _ _).mpr rfl⟩
       | succ count =>
           let index : Fin (eventCount
             (.reveal published owner name fresh selected unresolved next)) :=
@@ -142,9 +142,9 @@ theorem run_source_prefix_support
             change block setup watcher event ++ remaining = _
             rw [block_of_owner setup watcher owner event actor]
             simp only [suffix, List.append_assoc, List.cons_append, List.nil_append]
-          rw [planEq, runInteractionPlan_append, opportunityLaw, FinDist.bind_map] at supported
+          rw [planEq, runInteractionPlan_append, opportunityLaw, PMF.bind_map] at supported
           obtain ⟨response, selectedResponse, continued⟩ :=
-            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
           have member := ordinary owner different _ _ response selectedResponse
           have decoded (disclose : Bool) : decodeEventAction setup.program event
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
@@ -156,7 +156,7 @@ theorem run_source_prefix_support
             activeCheckpoint.reveal_response bounds players watcher watcherPolicy published
               selected event eventRank actor outputEq codeEq node
               (fun ref => refsBefore ref index) decoded granted response member
-          rw [runInteractionPlan_append, afterLaw, FinDist.pure_bind] at continued
+          rw [runInteractionPlan_append, afterLaw, PMF.pure_bind] at continued
           have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs
               (revealSuccessor published selected source
@@ -174,11 +174,11 @@ theorem run_source_prefix_support
             change (ProtocolView.entryView who next
               (ProtocolState.observe who next state)).back (decide (owner = who)) = _
             rw [priorView who, back_reveal_view]
-          · rw [ProtocolState.behavioralStatePrefix_reveal, FinDist.support_bind]
+          · rw [ProtocolState.behavioralStatePrefix_reveal, PMF.support_bind]
             apply Set.mem_iUnion₂.mpr
             refine ⟨sourceChoice setup leaks response, ?_, ?_⟩
-            · exact FinDist.mem_support_uniformOfFintype _
-            · rw [FinDist.support_map]
+            · exact PMF.mem_support_uniformOfFintype _
+            · rw [PMF.support_map]
               exact ⟨state, sourceReach, rfl⟩
 
 /-- Every initialized restricted prefix has a valid source-state readout and
@@ -212,9 +212,9 @@ theorem initialized_prefix_support
           (setup.initialConfig initial).view who) ∧
       state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
         (fun who => RevealOnly.uniformPolicy who setup.program reveals)))^[count]
-          (FinDist.pure (ProtocolState.entry setup.program
+          (PMF.pure (ProtocolState.entry setup.program
             (setup.initialConfig initial)))).support := by
-  rw [initialLaw, FinDist.bind_map, FinDist.support_bind] at supported
+  rw [initialLaw, PMF.bind_map, PMF.support_bind] at supported
   obtain ⟨initial, initialSupport, reached⟩ := Set.mem_iUnion₂.mp supported
   let profile : BehavioralProfile setup.program :=
     fun who => RevealOnly.uniformPolicy who setup.program reveals

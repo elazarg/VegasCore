@@ -42,20 +42,20 @@ def layeredUtility : UtilitySimulation source target
 the source action with utility two rather than the action with utility zero. -/
 example :
     ∃ alternative : source.sig.Strategy (), alternative = true ∧
-      (target.play (Profile.update (layeredUtility.compileProfile (fun _ => false))
-        () (2 : Fin 3))).expect
+      expect (target.play (Profile.update (layeredUtility.compileProfile (fun _ => false))
+        () (2 : Fin 3)))
           (fun outcome => booleanUtility (targetObserve outcome) ()) ≤
-        (source.play (Profile.update (fun _ => false) () alternative)).expect
+        expect (source.play (Profile.update (fun _ => false) () alternative))
           (fun outcome => booleanUtility (sourceObserve outcome) ()) := by
   obtain ⟨alternative, bound⟩ :=
     layeredUtility.unilateral_bound subset_rfl (fun _ => false) () (2 : Fin 3)
   refine ⟨alternative, ?_, bound⟩
   cases alternative
   · norm_num [source, target, targetObserve, sourceObserve, booleanUtility, coin,
-      Fin.isValue, Fin.reduceEq, FinDist.expect_map, FinDist.expect_mix] at bound
+      Fin.isValue, Fin.reduceEq, expect_map, FinDist.expect_mix] at bound
     simp only [show (2 : Fin 3) ≠ 0 by decide, show (2 : Fin 3) ≠ 1 by decide,
       ite_false] at bound
-    norm_num [coin, FinDist.expect_map, FinDist.expect_mix, targetObserve,
+    norm_num [coin, expect_map, FinDist.expect_mix, targetObserve,
       booleanUtility] at bound
   · rfl
 
@@ -99,7 +99,7 @@ example :
   · simp only [target, Profile.update_same, show (2 : Fin 3) ≠ 0 by decide,
       show (2 : Fin 3) ≠ 1 by decide, ite_false]
     norm_num [targetObserve, booleanUtility, coin, expectedUtility,
-      FinDist.expect_map, FinDist.expect_mix]
+      expect_map, FinDist.expect_mix]
   · rw [hcompile]
     norm_num [target, targetObserve, booleanUtility, expectedUtility, Profile.update_same]
 

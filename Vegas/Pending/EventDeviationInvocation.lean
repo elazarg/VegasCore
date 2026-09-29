@@ -29,14 +29,14 @@ theorem playerStep_nonprivate_deviationContinuation
   cases command with
   | privateCommand command => exact False.elim (nonprivate command rfl)
   | submit payload =>
-      rw [runtime.application.playerStep_submit_eq, FinDist.pure_bind]
+      rw [runtime.application.playerStep_submit_eq, PMF.pure_bind]
       rfl
   | replay id =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, FinDist.pure_bind]
+        MessageApplication.advance, MessageApplication.step, PMF.pure_bind]
   | wait =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, FinDist.pure_bind]
+        MessageApplication.advance, PMF.pure_bind]
 
 /-- A private command whose first-write table is unchanged at every prescribed
 opponent event preserves the focal-erased continuation. -/
@@ -50,7 +50,7 @@ theorem playerStep_private_deviationContinuation_of_remembered
     (runtime.application.playerStep who execution (.privateCommand command)).bind
         (fun next => next.native.application.deviationContinuation profile focal) =
       execution.native.application.deviationContinuation profile focal := by
-  rw [runtime.application.playerStep_private_eq, FinDist.pure_bind]
+  rw [runtime.application.playerStep_private_eq, PMF.pure_bind]
   apply State.deviationContinuation_congr _ _ profile focal
   · exact (privateStep_facts execution.native.application who command).1
   · intro event unfinished other
@@ -91,15 +91,15 @@ theorem focalPlayer_invoke_deviationContinuation
     (runtime.application.invoke players environment execution (.player focal)).bind
         (fun next => next.native.application.deviationContinuation profile focal) =
       execution.native.application.deviationContinuation profile focal := by
-  simp only [MessageApplication.invoke, FinDist.bind_bind]
+  simp only [MessageApplication.invoke, PMF.bind_bind]
   calc
     _ = (players focal (execution.principalHistory focal)
         (MessageApplication.State.observe runtime.application execution.native focal)).bind
           (fun _ => execution.native.application.deviationContinuation profile focal) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro command _
       exact runtime.playerStep_focal_deviationContinuation profile focal execution command
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 /-- An invocation of an unchanged opponent's compiled graph policy conserves
 the continuation with the focal player's private cache erased. -/
@@ -115,19 +115,19 @@ theorem compiledOpponent_invoke_deviationContinuation
     (runtime.application.invoke players environment execution (.player owner)).bind
         (fun next => next.native.application.deviationContinuation profile focal) =
       execution.native.application.deviationContinuation profile focal := by
-  simp only [MessageApplication.invoke, ownerCompiled, FinDist.bind_bind]
+  simp only [MessageApplication.invoke, ownerCompiled, PMF.bind_bind]
   unfold compilePlayerPolicy
   cases grant :
       (MessageApplication.State.observe runtime.application execution.native
         owner).application.publicView.serviceGrant with
   | none =>
-      rw [FinDist.pure_bind]
+      rw [PMF.pure_bind]
       exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner execution
         .wait (by simp)
   | some event =>
       simp only
       split
-      · rw [FinDist.pure_bind]
+      · rw [PMF.pure_bind]
         exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner execution
           .wait (by simp)
       · split
@@ -140,14 +140,14 @@ theorem compiledOpponent_invoke_deviationContinuation
             · rename_i actor
               cases view : nodeView graph event with
               | sample payload law outputEq codeEq =>
-                  rw [FinDist.pure_bind]
+                  rw [PMF.pure_bind]
                   exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner
                     execution .wait (by simp)
               | bind nodeOwner payload outputEq codeEq =>
                   simp only
                   cases stageEq : stagingCount (execution.principalHistory owner) event with
                   | zero =>
-                      simp only [FinDist.bind_map]
+                      simp only [PMF.bind_map]
                       change ((graph.normalizePolicy owner (profile owner) event actor
                         (graph.playerObserve owner execution.native.application.config)).bind
                           fun action =>
@@ -169,7 +169,7 @@ theorem compiledOpponent_invoke_deviationContinuation
                             change (State.playerView execution.native.application
                               owner).remembered event = some action
                             simpa [State.playerView, actor] using cached
-                          rw [viewCached, FinDist.pure_bind]
+                          rw [viewCached, PMF.pure_bind]
                           unfold bindingStageCommand
                           generalize cast (congrArg EventField.Action outputEq) action = result
                           cases result with
@@ -186,7 +186,7 @@ theorem compiledOpponent_invoke_deviationContinuation
                               intro query selected impossible
                               contradiction
                       | succ later =>
-                          rw [FinDist.pure_bind]
+                          rw [PMF.pure_bind]
                           exact runtime.playerStep_nonprivate_deviationContinuation profile focal
                             owner execution (.submit (.commitment event (owner, eventSlot event)))
                             (by simp)
@@ -194,7 +194,7 @@ theorem compiledOpponent_invoke_deviationContinuation
                   simp only
                   cases stageEq : stagingCount (execution.principalHistory owner) event with
                   | zero =>
-                      simp only [FinDist.bind_map]
+                      simp only [PMF.bind_map]
                       change ((graph.normalizePolicy owner (profile owner) event actor
                         (graph.playerObserve owner execution.native.application.config)).bind
                           fun action =>
@@ -216,7 +216,7 @@ theorem compiledOpponent_invoke_deviationContinuation
                             change (State.playerView execution.native.application
                               owner).remembered event = some action
                             simpa [State.playerView, actor] using cached
-                          rw [viewCached, FinDist.pure_bind]
+                          rw [viewCached, PMF.pure_bind]
                           apply runtime.playerStep_private_deviationContinuation_of_cached
                             profile focal owner execution (.remember event action)
                           intro query selected same
@@ -228,11 +228,11 @@ theorem compiledOpponent_invoke_deviationContinuation
                               (MessageApplication.State.observe runtime.application
                                 execution.native owner).application.remembered event with
                           | none =>
-                              rw [FinDist.pure_bind]
+                              rw [PMF.pure_bind]
                               exact runtime.playerStep_nonprivate_deviationContinuation profile
                                 focal owner execution (.submit (.withhold event)) (by simp)
                           | some action =>
-                              rw [FinDist.pure_bind]
+                              rw [PMF.pure_bind]
                               apply runtime.playerStep_nonprivate_deviationContinuation profile
                                 focal owner execution
                                 (runtime.resolutionSubmission owner event payload binding checks
@@ -241,10 +241,10 @@ theorem compiledOpponent_invoke_deviationContinuation
                                     execution.native owner))
                               intro privateCommand
                               simp [resolutionSubmission]
-            · rw [FinDist.pure_bind]
+            · rw [PMF.pure_bind]
               exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner
                 execution .wait (by simp)
-          · rw [FinDist.pure_bind]
+          · rw [PMF.pure_bind]
             exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner execution
               .wait (by simp)
         · rename_i notOwner

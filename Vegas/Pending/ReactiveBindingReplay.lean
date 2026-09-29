@@ -136,7 +136,7 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
   have immediate := runtime.replay_window_settlement leaks players network owner submitted
     transport event message rfl rfl packets pending unpublished []
   exact delayed.trans (by
-    simpa only [List.map_nil, List.nil_append, runInteractionPlan, FinDist.bind_pure]
+    simpa only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure]
       using immediate.symm)
 
 /-- Every delayed retained endpoint has actual immediate-inclusion provenance
@@ -184,11 +184,11 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
     (next.application, next.network.ledger, next.receipts, next.network.nextSerial)
   have mapped : readout final ∈ ((runtime.runInteractionPlan leaks players network
       (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted).map
-        readout).support := FinDist.support_map .. ▸ ⟨final, reached, rfl⟩
+        readout).support := PMF.support_map .. ▸ ⟨final, reached, rfl⟩
   rw [runtime.rawBinding_delayed_inclusion leaks bounds players lawful network execution owner
     event payload outputEq codeEq node granted owned ready published serials serial opening roster]
     at mapped
-  obtain ⟨immediate, included, same⟩ := FinDist.support_map .. ▸ mapped
+  obtain ⟨immediate, included, same⟩ := PMF.support_map .. ▸ mapped
   refine ⟨immediate, included, (congrArg Prod.fst same).symm,
     (congrArg (fun value => value.2.1) same).symm,
     (congrArg (fun value => value.2.2.1) same).symm,

@@ -50,7 +50,7 @@ namespace Implementation
 
 variable {app} {Memory : Type} (implementation : app.Implementation Memory)
 
-def posterior (past : List app.PlayerEntry) : FinDist Memory :=
+def posterior (past : List app.PlayerEntry) : PMF Memory :=
   PrivateStrategy.posterior implementation (app.privateTranscript past)
 
 def policy : app.Policy := fun past view =>
@@ -58,8 +58,8 @@ def policy : app.Policy := fun past view =>
 
 theorem posterior_snoc (past : List app.PlayerEntry) (entry : app.PlayerEntry) :
     implementation.posterior (past ++ [entry]) =
-      (((implementation.posterior past).bind fun memory =>
-        implementation.respond memory (past, entry.beforeView)).condOnFibre
+      (fiberConditional ((implementation.posterior past).bind fun memory =>
+        implementation.respond memory (past, entry.beforeView))
           Prod.fst entry.action).map Prod.snd := by
   rw [posterior, app.privateTranscript_snoc]
   rfl
@@ -73,8 +73,8 @@ variable [DecidableEq Principal]
 
 theorem posterior_respond (execution : app.Execution) (who : Principal) (action : app.Action) :
     implementation.posterior ((execution.respond app who action).recall who) =
-      (((implementation.posterior (execution.recall who)).bind fun memory =>
-        implementation.respond memory (execution.recall who, execution.observe app who)).condOnFibre
+      (fiberConditional ((implementation.posterior (execution.recall who)).bind fun memory =>
+        implementation.respond memory (execution.recall who, execution.observe app who))
           Prod.fst action).map Prod.snd := by
   rcases action with ⟨transmission⟩
   cases transmission with
@@ -85,7 +85,7 @@ theorem posterior_respond (execution : app.Execution) (who : Principal) (action 
 /-- Disintegrate one real response using only the focal player's recall. The
 continuation may inspect the complete external execution and private state. -/
 theorem response_disintegrate {Result : Type} (execution : app.Execution) (who : Principal)
-    (next : app.Execution → Memory → FinDist Result) :
+    (next : app.Execution → Memory → PMF Result) :
     (implementation.posterior (execution.recall who)).bind (fun memory =>
       (implementation.respond memory (execution.recall who, execution.observe app who)).bind
         fun response => next (execution.respond app who response.1) response.2) =
@@ -95,23 +95,23 @@ theorem response_disintegrate {Result : Type} (execution : app.Execution) (who :
             (next (execution.respond app who action))) := by
   let law := (implementation.posterior (execution.recall who)).bind fun memory =>
     implementation.respond memory (execution.recall who, execution.observe app who)
-  rw [← FinDist.bind_bind]
+  rw [← PMF.bind_bind]
   change law.bind (fun response => next (execution.respond app who response.1) response.2) = _
-  conv_lhs => arg 1; rw [FinDist.eq_bind_fst_conditional_snd law]
-  simp only [FinDist.bind_bind, FinDist.bind_map, policy_eq, posterior_respond, law]
+  conv_lhs => arg 1; rw [eq_bind_fst_conditional_snd law]
+  simp only [PMF.bind_bind, PMF.bind_map, policy_eq, posterior_respond, law]
 
 /-- One activation with implementation state carried outside the game. -/
 def resume (who : Principal) (players : Principal → app.Policy) (actor : Option Principal)
-    (execution : app.Execution) (memory : Memory) : FinDist (app.Execution × Memory) :=
+    (execution : app.Execution) (memory : Memory) : PMF (app.Execution × Memory) :=
   match actor with
-  | none => FinDist.pure (execution, memory)
+  | none => PMF.pure (execution, memory)
   | some owner => if owner = who then
       (implementation.respond memory (execution.recall who, execution.observe app who)).map
         fun response => (execution.respond app who response.1, response.2)
     else (app.invoke players owner execution).map fun next => (next, memory)
 
 def round (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
-    (execution : app.Execution) (memory : Memory) : FinDist (app.Execution × Memory) :=
+    (execution : app.Execution) (memory : Memory) : PMF (app.Execution × Memory) :=
   (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind fun command =>
     (execution.environmentStep app command).bind fun next =>
       implementation.resume who players (command.actor? app) next memory
@@ -119,28 +119,28 @@ def round (who : Principal) (players : Principal → app.Policy) (scheduler : ap
 /-- The single internal iteration retains private memory for composition of
 successive service segments. The memory is never placed in the execution. -/
 def runJoint (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler) :
-    Nat → app.Execution → Memory → FinDist (app.Execution × Memory)
-  | 0, execution, memory => FinDist.pure (execution, memory)
+    Nat → app.Execution → Memory → PMF (app.Execution × Memory)
+  | 0, execution, memory => PMF.pure (execution, memory)
   | count + 1, execution, memory =>
       (implementation.round who players scheduler execution memory).bind fun next =>
         runJoint who players scheduler count next.1 next.2
 
 /-- The external result discards private memory from the same joint iteration. -/
 def run (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
-    (count : Nat) (execution : app.Execution) (memory : Memory) : FinDist app.Execution :=
+    (count : Nat) (execution : app.Execution) (memory : Memory) : PMF app.Execution :=
   (implementation.runJoint who players scheduler count execution memory).map Prod.fst
 
 theorem run_zero (who : Principal) (players : Principal → app.Policy)
     (scheduler : app.Scheduler) (execution : app.Execution) (memory : Memory) :
-    implementation.run who players scheduler 0 execution memory = FinDist.pure execution := by
-  simp only [run, runJoint, FinDist.map_pure]
+    implementation.run who players scheduler 0 execution memory = PMF.pure execution := by
+  simp only [run, runJoint, PMF.pure_map]
 
 theorem run_succ (who : Principal) (players : Principal → app.Policy)
     (scheduler : app.Scheduler) (count : Nat) (execution : app.Execution) (memory : Memory) :
     implementation.run who players scheduler (count + 1) execution memory =
       (implementation.round who players scheduler execution memory).bind
         (fun next => implementation.run who players scheduler count next.1 next.2) := by
-  simp only [run, runJoint, FinDist.map_bind]
+  simp only [run, runJoint, PMF.map_bind]
 
 /-- Exact composition retains the joint memory law, rather than choosing an
 arbitrary memory witness after observing an external execution. Binding the
@@ -153,10 +153,10 @@ theorem runJoint_add (who : Principal) (players : Principal → app.Policy)
       (implementation.runJoint who players scheduler first execution memory).bind
         (fun next => implementation.runJoint who players scheduler second next.1 next.2) := by
   induction first generalizing execution memory with
-  | zero => simp only [Nat.zero_add, runJoint, FinDist.pure_bind]
+  | zero => simp only [Nat.zero_add, runJoint, PMF.pure_bind]
   | succ first ih =>
-      simp only [Nat.succ_add, runJoint, FinDist.bind_bind]
-      exact FinDist.bind_congr fun next _ => ih next.1 next.2
+      simp only [Nat.succ_add, runJoint, PMF.bind_bind]
+      exact bind_congr_on_support _ fun next _ => ih next.1 next.2
 
 theorem run_add (who : Principal) (players : Principal → app.Policy)
     (scheduler : app.Scheduler) (first second : Nat) (execution : app.Execution)
@@ -164,7 +164,7 @@ theorem run_add (who : Principal) (players : Principal → app.Policy)
     implementation.run who players scheduler (first + second) execution memory =
       (implementation.runJoint who players scheduler first execution memory).bind
         (fun next => implementation.run who players scheduler second next.1 next.2) := by
-  simp only [run, runJoint_add, FinDist.map_bind]
+  simp only [run, runJoint_add, PMF.map_bind]
 
 /-- Replacing any one player by its behavioral realization preserves the whole
 execution law against arbitrary opponents and observation-local scheduling. -/
@@ -178,7 +178,7 @@ theorem realize (who : Principal) (players : Principal → app.Policy) (schedule
   | zero =>
       change (implementation.posterior (execution.recall who)).bind
         (fun memory => implementation.run who players scheduler 0 execution memory) = _
-      simp only [run_zero, runRounds, FinDist.bind_const]
+      simp only [run_zero, runRounds, PMF.bind_const]
   | succ count ih =>
       let next := implementation.run who players scheduler count
       have resumed (current : app.Execution) (actor : Option Principal) :
@@ -190,29 +190,29 @@ theorem realize (who : Principal) (players : Principal → app.Policy) (schedule
               count) := by
         cases actor with
         | none =>
-            simpa only [resume, ReactiveApplication.resume, FinDist.pure_bind] using ih current
+            simpa only [resume, ReactiveApplication.resume, PMF.pure_bind] using ih current
         | some owner =>
             by_cases same : owner = who
             · subst owner
-              simp only [resume, ↓reduceIte, FinDist.bind_map]
+              simp only [resume, ↓reduceIte, PMF.bind_map]
               rw [implementation.response_disintegrate]
               simp only [next, ih, ReactiveApplication.resume, invoke, Function.update_self,
-                FinDist.bind_map]
-            · simp only [resume, same, ↓reduceIte, FinDist.bind_map,
+                PMF.bind_map]
+            · simp only [resume, same, ↓reduceIte, PMF.bind_map,
                 ReactiveApplication.resume, invoke, Function.update_of_ne same]
-              rw [FinDist.bind_comm]
-              apply FinDist.bind_congr
+              rw [PMF.bind_comm]
+              apply bind_congr_on_support _
               intro action _
               rw [← app.respond_recall_other current owner who (Ne.symm same) action]
               exact ih _
       change (implementation.posterior (execution.recall who)).bind
         (fun memory => implementation.run who players scheduler (count + 1) execution memory) = _
-      simp only [run_succ, round, runRounds, ReactiveApplication.round, dispatch, FinDist.bind_bind]
-      rw [FinDist.bind_comm]
-      apply FinDist.bind_congr
+      simp only [run_succ, round, runRounds, ReactiveApplication.round, dispatch, PMF.bind_bind]
+      rw [PMF.bind_comm]
+      apply bind_congr_on_support _
       intro command _
-      rw [FinDist.bind_comm]
-      apply FinDist.bind_congr
+      rw [PMF.bind_comm]
+      apply bind_congr_on_support _
       intro current reached
       rw [← app.environmentStep_recall execution current command reached]
       exact resumed current (command.actor? app)

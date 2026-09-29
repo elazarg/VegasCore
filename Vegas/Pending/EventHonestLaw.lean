@@ -31,23 +31,23 @@ theorem runService_honest (runtime : EventGraphRuntime graph) (inputs : graph.In
       HonestBoundary runtime inputs next ∧ next.native.application.ActivationAgeOne := by
   induction count generalizing execution with
   | zero =>
-      simp only [runService, FinDist.pure_bind, FinDist.mem_support_pure]
+      simp only [runService, PMF.pure_bind, PMF.mem_support_pure_iff _ _]
       exact ⟨trivial, fun next same => same ▸ ⟨boundary, age⟩⟩
   | succ count ih =>
       have epoch := runtime.serviceEpoch_honest inputs ordered feasible profile roster
         reactionRounds wire order execution boundary age
       constructor
-      · rw [runService, FinDist.bind_bind]
+      · rw [runService, PMF.bind_bind]
         calc
           _ = (runtime.serviceEpoch roster reactionRounds (runtime.compileProfile profile)
                 wire order execution).bind
                   (fun middle => middle.native.application.continuationLaw profile) := by
-              apply FinDist.bind_congr
+              apply bind_congr_on_support _
               intro middle member
               exact (ih middle (epoch.2 middle member).1 (epoch.2 middle member).2).1
           _ = _ := epoch.1
       · intro next member
-        simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+        simp only [runService, PMF.support_bind, Set.mem_iUnion] at member
         obtain ⟨middle, middleMem, tailMem⟩ := member
         exact (ih middle (epoch.2 middle middleMem).1 (epoch.2 middle middleMem).2).2 next tailMem
 
@@ -74,8 +74,8 @@ theorem runService_honest_semantic_law (runtime : EventGraphRuntime graph)
     _ = (runtime.runService roster reactionRounds (runtime.compileProfile profile) wire order
           runtime.serviceEpochs initial).bind
             (fun next => next.native.application.continuationLaw profile) := by
-      rw [FinDist.map_eq_bind]
-      apply FinDist.bind_congr
+      rw [← PMF.bind_pure_comp, Function.comp_def]
+      apply bind_congr_on_support _
       intro next member
       have terminal := runtime.runService_terminal inputs roster reactionRounds
         (runtime.compileProfile profile) wire order initial next boundary.invariant member
@@ -89,7 +89,7 @@ theorem runService_honest_semantic_law (runtime : EventGraphRuntime graph)
 typed terminal-store law agrees with canonical normalized graph execution. -/
 theorem servicedEventGame_honest_store_law (runtime : EventGraphRuntime graph)
     (ordered : graph.BarrierOrdered) (feasible : runtime.ServiceFeasible)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ((runtime.servicedEventGame inputs roster reactionRounds wire order).play
@@ -98,14 +98,14 @@ theorem servicedEventGame_honest_store_law (runtime : EventGraphRuntime graph)
         (graph.runPolicies graph.canonicalScheduler (graph.normalizeProfile profile) input).map
           (fun config => config.store) := by
   change (inputs.bind _).map _ = _
-  rw [FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind]
+  apply bind_congr_on_support _
   intro input _
   have semanticLaw := runtime.runService_honest_semantic_law ordered feasible input profile
     roster reactionRounds wire order
-  have projected := congrArg (fun measure : FinDist graph.SemanticKey =>
+  have projected := congrArg (fun measure : PMF graph.SemanticKey =>
     measure.map fun key => key.2.1) semanticLaw
-  simp only [FinDist.map_comp, Function.comp_def, semanticKey, storeRecall] at projected
+  simp only [PMF.map_comp, Function.comp_def, semanticKey, storeRecall] at projected
   convert projected using 1
   rfl
 

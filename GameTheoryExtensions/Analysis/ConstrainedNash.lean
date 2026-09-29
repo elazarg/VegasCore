@@ -24,13 +24,13 @@ variable {ι : Type*} [Fintype ι] [DecidableEq ι] {F : GameForm ι}
 def pinnedTremble (free : Finset ι) (pinned reference residual : Profile F.sig.mixed)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon ≤ 1) :
     Profile F.sig.mixed := fun who =>
-  if who ∈ free then FinDist.mix epsilon nonnegative small (reference who) (residual who)
+  if who ∈ free then mix epsilon nonnegative small (reference who) (residual who)
   else pinned who
 
 private def responseKernel (free : Finset ι) (pinned reference : Profile F.sig.mixed)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon ≤ 1)
-    (who : ι) (action : F.sig.Strategy who) : FinDist (F.sig.Strategy who) :=
-  if who ∈ free then FinDist.mix epsilon nonnegative small (reference who) (FinDist.pure action)
+    (who : ι) (action : F.sig.Strategy who) : PMF (F.sig.Strategy who) :=
+  if who ∈ free then mix epsilon nonnegative small (reference who) (PMF.pure action)
   else pinned who
 
 private def responseGame (free : Finset ι) (pinned reference : Profile F.sig.mixed)
@@ -46,38 +46,38 @@ private theorem response_kernel_law (free : Finset ι)
     (residual who).bind (responseKernel free pinned reference epsilon nonnegative small who) =
       pinnedTremble free pinned reference residual epsilon nonnegative small who := by
   change (residual who).bind (fun action =>
-    if who ∈ free then FinDist.mix epsilon nonnegative small (reference who) (FinDist.pure action)
+    if who ∈ free then mix epsilon nonnegative small (reference who) (PMF.pure action)
     else pinned who) = _
   by_cases active : who ∈ free
   · simp only [pinnedTremble, active, ↓reduceIte]
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro action
-    simp only [FinDist.prob_bind, FinDist.prob_mix, FinDist.expect_add,
-      FinDist.expect_const, FinDist.expect_smul]
-    rw [← FinDist.prob_bind, FinDist.bind_pure]
-  · simp only [pinnedTremble, active, ↓reduceIte, FinDist.bind_const]
+    simp only [toReal_bind_apply, mix_apply_toReal, FinDist.expect_add,
+      expect_constant, FinDist.expect_smul]
+    rw [← toReal_bind_apply, PMF.bind_pure]
+  · simp only [pinnedTremble, active, ↓reduceIte, PMF.bind_const]
 
 private theorem response_game_law (free : Finset ι)
     (pinned reference residual : Profile F.sig.mixed)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon ≤ 1) :
     (responseGame free pinned reference epsilon nonnegative small).mixed.play residual =
       F.mixed.play (pinnedTremble free pinned reference residual epsilon nonnegative small) := by
-  change ((FinDist.pi residual).bind fun profile =>
-    (FinDist.pi fun who =>
+  change ((independentProduct residual).bind fun profile =>
+    (independentProduct fun who =>
       responseKernel free pinned reference epsilon nonnegative small who (profile who)).bind
         F.play) = _
-  rw [← FinDist.bind_bind, FinDist.pi_bind]
+  rw [← PMF.bind_bind, FinDist.pi_bind]
   simp only [response_kernel_law]
 
 omit [Fintype ι] in
 private theorem pinned_tremble_update (free : Finset ι)
     (pinned reference residual : Profile F.sig.mixed)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon ≤ 1)
-    (who : ι) (active : who ∈ free) (alternative : FinDist (F.sig.Strategy who)) :
+    (who : ι) (active : who ∈ free) (alternative : PMF (F.sig.Strategy who)) :
     pinnedTremble free pinned reference (Profile.update residual who alternative)
         epsilon nonnegative small =
       Profile.update (pinnedTremble free pinned reference residual epsilon nonnegative small)
-        who (FinDist.mix epsilon nonnegative small (reference who) alternative) := by
+        who (mix epsilon nonnegative small (reference who) alternative) := by
   funext player
   by_cases same : player = who
   · subst player
@@ -87,13 +87,13 @@ private theorem pinned_tremble_update (free : Finset ι)
 private theorem expected_mixed_update_mix (utility : F.sig.Outcome → ι → ℝ)
     (profile : Profile F.sig.mixed) (who : ι)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon ≤ 1)
-    (first second : FinDist (F.sig.Strategy who)) :
+    (first second : PMF (F.sig.Strategy who)) :
     expectedUtility utility who (F.mixed.play
-      (Profile.update profile who (FinDist.mix epsilon nonnegative small first second))) =
+      (Profile.update profile who (mix epsilon nonnegative small first second))) =
       epsilon * expectedUtility utility who (F.mixed.play (Profile.update profile who first)) +
         (1 - epsilon) *
           expectedUtility utility who (F.mixed.play (Profile.update profile who second)) := by
-  rw [F.mixed_play_update profile who (FinDist.mix epsilon nonnegative small first second),
+  rw [F.mixed_play_update profile who (mix epsilon nonnegative small first second),
     F.mixed_play_update profile who first, F.mixed_play_update profile who second]
   simp only [expectedUtility_bind, FinDist.expect_mix]
 
@@ -107,7 +107,7 @@ theorem exists_pinned_tremble_bestResponses [∀ who, Finite (F.sig.Strategy who
     (pinned reference : Profile F.sig.mixed)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon < 1) :
     ∃ residual : Profile F.sig.mixed, ∀ who ∈ free,
-      ∀ alternative : FinDist (F.sig.Strategy who),
+      ∀ alternative : PMF (F.sig.Strategy who),
         expectedUtility utility who (F.mixed.play
           (Profile.update
             (pinnedTremble free pinned reference residual epsilon nonnegative small.le)
@@ -140,7 +140,7 @@ theorem exists_pinned_tremble_bestResponses [∀ who, Finite (F.sig.Strategy who
       who active alternative] at comparison
   have self : pinnedTremble free pinned reference residual epsilon nonnegative small.le =
       Profile.update (pinnedTremble free pinned reference residual epsilon nonnegative small.le)
-        who (FinDist.mix epsilon nonnegative small.le (reference who) (residual who)) := by
+        who (mix epsilon nonnegative small.le (reference who) (residual who)) := by
     conv_lhs => rw [← Profile.update_eq_self residual who]
     exact pinned_tremble_update free pinned reference residual epsilon nonnegative small.le
       who active (residual who)
@@ -152,15 +152,15 @@ omit [Fintype ι] in
 theorem pinnedTremble_fullSupport (free : Finset ι)
     (pinned reference residual : Profile F.sig.mixed)
     (epsilon : ℝ) (positive : 0 < epsilon) (small : epsilon ≤ 1)
-    (pinnedFull : ∀ who, who ∉ free → (pinned who).FullSupport)
-    (referenceFull : ∀ who, who ∈ free → (reference who).FullSupport) :
+    (pinnedFull : ∀ who, who ∉ free → FullSupport (pinned who))
+    (referenceFull : ∀ who, who ∈ free → FullSupport (reference who)) :
     ∀ who,
-      (pinnedTremble free pinned reference residual epsilon positive.le small who).FullSupport :=
+      FullSupport (pinnedTremble free pinned reference residual epsilon positive.le small who) :=
     by
   intro who action
   by_cases active : who ∈ free
   · simp only [pinnedTremble, active, ↓reduceIte]
-    exact FinDist.mem_support_mix_left _ _ _ positive (referenceFull who active action)
+    exact mem_support_mix_left _ _ _ positive (referenceFull who active action)
   · simpa only [pinnedTremble, active, ↓reduceIte] using pinnedFull who active action
 
 end GameTheory

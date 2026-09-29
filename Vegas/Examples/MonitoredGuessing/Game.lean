@@ -51,7 +51,7 @@ def initialState (bit : Bool) : State simpleExpr initialCtx :=
 def sourceSetup : Setup (Player := Player) (L := simpleExpr) where
   context := initialCtx
   namesNodup := by decide
-  initialLaw := (FinDist.uniformOfFintype (α := Bool)).map initialState
+  initialLaw := (PMF.uniformOfFintype (α := Bool)).map initialState
   obligations := {0, 1}
   program := sourceProgram
   accounts := rfl

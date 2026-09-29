@@ -60,16 +60,16 @@ structure PlayerView where
   secret : Option Bool
   deriving DecidableEq
 
-def fair : FinDist Bool :=
-  FinDist.mix (1 / 2) (by norm_num) (by norm_num) (FinDist.pure false) (FinDist.pure true)
+def fair : PMF Bool :=
+  mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure false) (PMF.pure true)
 
 def privateStep (state : Application) (who : Principal) :
     PrivateCommand → Application
   | .guess value =>
       if who = 1 ∧ state.guess.isNone then { state with guess := some value } else state
 
-def environmentStep (state : Application) : EnvironmentCommand → FinDist Application
-  | .noop => FinDist.pure state
+def environmentStep (state : Application) : EnvironmentCommand → PMF Application
+  | .noop => PMF.pure state
 
 /-- Every message is rejected, so no payload reaches application state. -/
 def handle (_ : Application) (_ : Message Principal Payload) : Option Application := none
@@ -97,7 +97,7 @@ def initialState (secret : Bool) : channel.State :=
 
 /-- The wire delivers the first principal's message before any inclusion. -/
 def environmentPolicy : channel.EnvironmentPolicy :=
-  fun _ _ => FinDist.pure (.deliver 1 (0, 0))
+  fun _ _ => PMF.pure (.deliver 1 (0, 0))
 
 /-- Signal, deliver, guess. -/
 def schedule : List (@MessageApplication.Invocation Principal) :=
@@ -123,20 +123,20 @@ def baseUtility (outcome : Bool × Bool) (_ : Principal) : ℝ :=
 
 /-- A guess that cannot depend on the draw is right half the time. -/
 theorem base_expect (profile : Profile baseGame.sig) (who : Principal) :
-    (baseGame.play profile).expect (fun outcome => baseUtility outcome who) = 1 / 2 := by
+    expect (baseGame.play profile) (fun outcome => baseUtility outcome who) = 1 / 2 := by
   cases h : profile 1 <;>
-    norm_num [fair, baseUtility, FinDist.expect_map, FinDist.expect_mix, h]
+    norm_num [fair, baseUtility, expect_map, FinDist.expect_mix, h]
 
 /-- The first principal writes the secret onto the wire. -/
 def signalPolicy : channel.PlayerPolicy :=
-  fun _ view => FinDist.pure <|
+  fun _ view => PMF.pure <|
     match view.application.secret with
     | some value => .submit (.bit value)
     | none => .wait
 
 /-- The second principal reads its inbox and guesses what it finds. -/
 def copyPolicy : channel.PlayerPolicy :=
-  fun _ view => FinDist.pure <|
+  fun _ view => PMF.pure <|
     match view.messages.inbox with
     | message :: _ => match message.payload with
       | .bit value => .privateCommand (.guess value)
@@ -147,8 +147,8 @@ def collusion : Profile hostGame.sig :=
 
 /-- The pair always guesses the secret, so the coalition is worth one. -/
 theorem collusion_expect (who : Principal) :
-    (hostGame.play collusion).expect (fun execution => hostUtility execution who) = 1 := by
-  change FinDist.expect (fair.bind fun secret =>
+    expect (hostGame.play collusion) (fun execution => hostUtility execution who) = 1 := by
+  change expect (fair.bind fun secret =>
       MessageApplication.runPolicies channel collusion environmentPolicy schedule
         (MessageApplication.PolicyExecution.initial channel (initialState secret)))
     (fun execution => hostUtility execution who) = 1

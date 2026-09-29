@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Protocol.DecisionRecall
+import GameTheory.Protocol.DecisionRecall
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
 /-! # Ex ante and conditional comparisons at one information site
@@ -42,23 +42,23 @@ variable [Fintype Player] [DecidableEq Player]
   (depth fuel : Nat) (sameDepth : InformationSite.CommonDepth M site depth)
   (positive : 0 < M.informationMass assessment.strategy who site)
   (bayes : BehavioralAssessment.IsBayesConsistentAt M assessment who site
-    (recall.antichain who site) positive)
+    (recall.decisionInformationAntichain who site) positive)
   (payoff : E.History → ℝ)
 
 include recall sameDepth positive bayes in
 theorem root_gain_eq_mass_mul_context_gain
     (alternative : M.BehavioralPolicy who)
     (onlyHere : ∀ {info}, info ≠ site.1 → alternative info = assessment.strategy who info) :
-    (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-      assessment.strategy who alternative) (depth + fuel)).expect payoff -
-      (M.runBehavioral assessment.strategy (depth + fuel)).expect payoff =
+    expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+      assessment.strategy who alternative) (depth + fuel)) payoff -
+      expect (M.runBehavioral assessment.strategy (depth + fuel)) payoff =
     M.informationMass assessment.strategy who site *
       ((assessment.continuationContext site payoff fuel).value alternative -
         (assessment.continuationContext site payoff fuel).value (assessment.strategy who)) := by
-  let antichain := recall.antichain who site
+  let antichain := recall.decisionInformationAntichain who site
   have belief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site antichain positive := by
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro history
     rw [M.bayesBelief_prob]
     exact bayes history
@@ -82,10 +82,10 @@ theorem local_root_comparison_iff_context_comparison
     (first second : M.BehavioralPolicy who)
     (firstOnly : ∀ {info}, info ≠ site.1 → first info = assessment.strategy who info)
     (secondOnly : ∀ {info}, info ≠ site.1 → second info = assessment.strategy who info) :
-    (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-      assessment.strategy who first) (depth + fuel)).expect payoff ≤
-      (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy who second) (depth + fuel)).expect payoff ↔
+    expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+      assessment.strategy who first) (depth + fuel)) payoff ≤
+      expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+        assessment.strategy who second) (depth + fuel)) payoff ↔
     (assessment.continuationContext site payoff fuel).value first ≤
       (assessment.continuationContext site payoff fuel).value second := by
   have firstGain := M.root_gain_eq_mass_mul_context_gain assessment recall who site
@@ -99,13 +99,13 @@ include recall sameDepth positive bayes in
 agreement certificates for the unchanged information states. -/
 theorem local_law_root_comparison_iff_context_comparison
     [DecidableEq (M.InfoState who)]
-    (first second : FinDist (M.Choice who site.1)) :
-    (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+    (first second : PMF (M.Choice who site.1)) :
+    expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy who ((assessment.strategy who).withLaw site.1 first))
-        (depth + fuel)).expect payoff ≤
-      (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+        (depth + fuel)) payoff ≤
+      expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy who ((assessment.strategy who).withLaw site.1 second))
-          (depth + fuel)).expect payoff ↔
+          (depth + fuel)) payoff ↔
     (assessment.continuationContext site payoff fuel).value
         ((assessment.strategy who).withLaw site.1 first) ≤
       (assessment.continuationContext site payoff fuel).value

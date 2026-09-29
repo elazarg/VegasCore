@@ -79,22 +79,22 @@ theorem pendingOrPublishedInvariant (scheduler : app.Scheduler) :
   environment execution next command valid _ reached := by
     cases command with
     | wait =>
-        simp only [Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         exact valid
     | activate who =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact valid.learn who selected
     | «include» id =>
-        simp only [Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         change (execution.includePending app id).network.PendingOrPublished
         rw [app.includePending_network]
         exact valid.includePending id
     | application command =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact valid
 
 theorem publishedOnceInvariant (scheduler : app.Scheduler) (once : app.AtMostOnce scheduler) :
@@ -113,33 +113,33 @@ theorem publishedOnceInvariant (scheduler : app.Scheduler) (once : app.AtMostOnc
   environment execution next command valid selected reached := by
     cases command with
     | wait =>
-        simp only [Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         exact valid
     | activate who =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨observations, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨observations, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact valid.learn who observations
     | «include» id =>
-        simp only [Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         change (execution.includePending app id).network.PublishedOnce
         rw [app.includePending_network]
         exact valid.includePending id (once _ _ id selected)
     | application command =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact valid
 
 theorem pendingOrPublished_history (scheduler : app.Scheduler)
-    (initial : FinDist app.State) (horizon : Nat) {state : app.ProtocolState}
+    (initial : PMF app.State) (horizon : Nat) {state : app.ProtocolState}
     (trace : (app.protocol initial horizon scheduler).Trace state) :
     serviceInvariant (fun execution => execution.network.PendingOrPublished) state :=
   (app.pendingOrPublishedInvariant scheduler).history initial horizon
     (fun _ _ => MessageNetwork.PendingOrPublished.empty) trace
 
 theorem publishedOnce_history (scheduler : app.Scheduler) (once : app.AtMostOnce scheduler)
-    (initial : FinDist app.State) (horizon : Nat) {state : app.ProtocolState}
+    (initial : PMF app.State) (horizon : Nat) {state : app.ProtocolState}
     (trace : (app.protocol initial horizon scheduler).Trace state) :
     serviceInvariant (fun execution => execution.network.PublishedOnce) state :=
   (app.publishedOnceInvariant scheduler once).history initial horizon
@@ -148,7 +148,7 @@ theorem publishedOnce_history (scheduler : app.Scheduler) (once : app.AtMostOnce
 /-- At every initialized legal history, any rebroadcast leaves the set of
 unpublished eligible identifiers unchanged. No player honesty is assumed. -/
 theorem replay_unpublished_history (scheduler : app.Scheduler)
-    (initial : FinDist app.State) (horizon : Nat) (control : app.Control)
+    (initial : PMF app.State) (horizon : Nat) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (eligible : Message Principal app.Payload → Bool) (who : Principal)
     (id : MessageId Principal) :

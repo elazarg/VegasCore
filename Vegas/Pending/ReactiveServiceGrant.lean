@@ -44,17 +44,17 @@ theorem reactive_environment_serviceGrant (runtime : EventGraphRuntime graph)
     next.application.serviceGrant = execution.application.serviceGrant := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.mem_support_pure] at reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at reached
       subst next
       rfl
   | activate who =>
-      obtain ⟨middle, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨sample, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
       rfl
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.mem_support_pure] at reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at reached
       subst next
       change (execution.includePending (runtime.reactiveApplication leaks)
         id).application.serviceGrant = _
@@ -69,8 +69,8 @@ theorem reactive_environment_serviceGrant (runtime : EventGraphRuntime graph)
           | none => rfl
           | some state => exact runtime.handle_serviceGrant _ _ _ accepted
   | application command =>
-      obtain ⟨middle, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       have same := environmentStep_serviceGrant runtime execution.application state command changed
       cases command with
       | grant event => exact (noGrant event rfl).elim
@@ -87,22 +87,22 @@ theorem interactionStep_serviceGrant (runtime : EventGraphRuntime graph)
       execution).support) :
     next.application.serviceGrant = execution.application.serviceGrant := by
   obtain ⟨command, selected, dispatched⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, observed, resumed⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ dispatched)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have unchanged : next.application.serviceGrant = middle.application.serviceGrant := by
     cases actor : command.actor? (runtime.reactiveApplication leaks) with
     | none =>
         change next ∈ ((runtime.reactiveApplication leaks).resume players
           (command.actor? (runtime.reactiveApplication leaks)) middle).support at resumed
         rw [actor] at resumed
-        cases FinDist.mem_support_pure.mp resumed
+        cases (PMF.mem_support_pure_iff _ _).mp resumed
         rfl
     | some who =>
         change next ∈ ((runtime.reactiveApplication leaks).resume players
           (command.actor? (runtime.reactiveApplication leaks)) middle).support at resumed
         rw [actor] at resumed
-        obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+        obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
         exact runtime.reactive_respond_serviceGrant leaks middle who response
   rw [unchanged]
   apply runtime.reactive_environment_serviceGrant leaks execution middle command _ observed
@@ -111,12 +111,12 @@ theorem interactionStep_serviceGrant (runtime : EventGraphRuntime graph)
   | wire => exact (fixed rfl).elim
   | grant granted => exact (noGrant granted rfl).elim
   | player who | sample sampled | tick | expire expired =>
-      simp only [interactionInstruction, FinDist.mem_support_pure] at selected
+      simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at selected
       subst command
       intro impossible
       cases impossible
   | includeLatest target owner =>
-      simp only [interactionInstruction, FinDist.mem_support_pure] at selected
+      simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at selected
       subst command
       unfold reactiveLatest
       split <;> simp
@@ -133,10 +133,10 @@ theorem runInteractionPlan_serviceGrant (runtime : EventGraphRuntime graph)
     (reached : next ∈ (runtime.runInteractionPlan leaks players network plan execution).support) :
     next.application.serviceGrant = execution.application.serviceGrant := by
   induction plan generalizing execution with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons instruction rest ih =>
       obtain ⟨middle, stepped, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       rw [ih (fun member => fixed (List.mem_cons_of_mem _ member))
         (fun event member => noGrant event (List.mem_cons_of_mem _ member)) middle continued]
       exact runtime.interactionStep_serviceGrant leaks players network instruction

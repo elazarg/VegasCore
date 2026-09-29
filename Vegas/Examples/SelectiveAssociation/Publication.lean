@@ -58,12 +58,12 @@ theorem native_publication_correctness_le (config : nativeGraph.Config)
 theorem native_history_reachable (control : (serviceApp observation).Control)
     (trace : (serviceArena observation).Trace (some control)) :
     control.execution.application.config.Reachable nativeInputs := by
-  have raw := (serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+  have raw := (serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation) trace
   obtain ⟨inputs, selected, reachable⟩ := nativeRuntime.reactive_history_graph_reachable
-    observation (FinDist.pure nativeInputs) nativeHorizon (serviceScheduler observation)
-    (by rw [FinDist.map_pure]; exact raw)
-  cases FinDist.mem_support_pure.mp selected
+    observation (PMF.pure nativeInputs) nativeHorizon (serviceScheduler observation)
+    (by rw [PMF.pure_map]; exact raw)
+  cases (PMF.mem_support_pure_iff _ _).mp selected
   exact reachable
 
 /-- The inequality applies to every legal native history, independently of an

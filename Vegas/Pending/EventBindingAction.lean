@@ -128,10 +128,10 @@ theorem bindingAction_available (runtime : EventGraphRuntime graph) (who : Playe
         (runtime.actionStep who execution
           (bindingAction who event payload result serial)).map
             (fun next => next.native.application.bindingResult (who, .prepared serial) payload) =
-          FinDist.pure result := by
+          PMF.pure result := by
   obtain ⟨serial, beyond, candidate, unused⟩ := fresh.exists_prepared who lower
   refine ⟨serial, beyond, unused, fun result => ?_⟩
-  rw [actionStep, FinDist.map_pure,
+  rw [actionStep, PMF.pure_map,
     runtime.bindingAction_result who event payload result serial execution candidate]
 
 end Vegas.EventGraphRuntime

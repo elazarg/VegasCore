@@ -45,9 +45,9 @@ theorem environmentStep_expire_playerView_congr
         have rightActivated : right.activatedAt event = none := by
           rw [← activatedEq]; exact leftActivated
         rw [environmentStep_expire_of_not_activated runtime left event leftReady leftActivated,
-          FinDist.mem_support_pure] at leftSupported
+          PMF.mem_support_pure_iff _ _] at leftSupported
         rw [environmentStep_expire_of_not_activated runtime right event rightReady rightActivated,
-          FinDist.mem_support_pure] at rightSupported
+          PMF.mem_support_pure_iff _ _] at rightSupported
         subst leftNext
         subst rightNext
         exact views
@@ -61,20 +61,20 @@ theorem environmentStep_expire_playerView_congr
           | sample payload law outputEq codeEq =>
               rw [environmentStep_expire_sample_eq runtime left event leftReady entered
                 leftActivated due payload law outputEq codeEq view,
-                FinDist.mem_support_pure] at leftSupported
+                PMF.mem_support_pure_iff _ _] at leftSupported
               rw [environmentStep_expire_sample_eq runtime right event rightReady entered
                 rightActivated rightDue payload law outputEq codeEq view,
-                FinDist.mem_support_pure] at rightSupported
+                PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
               subst rightNext
               exact views
           | bind owner payload outputEq codeEq =>
               rw [environmentStep_expire_bind_eq runtime left event leftReady entered
                 leftActivated due owner payload outputEq codeEq view,
-                FinDist.mem_support_pure] at leftSupported
+                PMF.mem_support_pure_iff _ _] at leftSupported
               rw [environmentStep_expire_bind_eq runtime right event rightReady entered
                 rightActivated rightDue owner payload outputEq codeEq view,
-                FinDist.mem_support_pure] at rightSupported
+                PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
               subst rightNext
               exact State.complete_playerView_congr left right focal publicEq observationEq
@@ -83,10 +83,10 @@ theorem environmentStep_expire_playerView_congr
           | resolve owner payload binding checks outputEq codeEq =>
               rw [environmentStep_expire_resolve_eq runtime left event leftReady entered
                 leftActivated due owner payload binding checks outputEq codeEq view,
-                FinDist.mem_support_pure] at leftSupported
+                PMF.mem_support_pure_iff _ _] at leftSupported
               rw [environmentStep_expire_resolve_eq runtime right event rightReady entered
                 rightActivated rightDue owner payload binding checks outputEq codeEq view,
-                FinDist.mem_support_pure] at rightSupported
+                PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
               subst rightNext
               exact State.complete_playerView_congr left right focal publicEq observationEq
@@ -95,17 +95,17 @@ theorem environmentStep_expire_playerView_congr
         · have rightNotDue : ¬runtime.deadline event ≤ right.clock - entered := by
             rw [← clockEq]; exact due
           rw [environmentStep_expire_of_not_due runtime left event leftReady entered leftActivated
-            due, FinDist.mem_support_pure] at leftSupported
+            due, PMF.mem_support_pure_iff _ _] at leftSupported
           rw [environmentStep_expire_of_not_due runtime right event rightReady entered
-            rightActivated rightNotDue, FinDist.mem_support_pure] at rightSupported
+            rightActivated rightNotDue, PMF.mem_support_pure_iff _ _] at rightSupported
           subst leftNext
           subst rightNext
           exact views
   · have rightNotReady : ¬right.config.cut.Ready event := by rw [← cuts]; exact leftReady
     rw [environmentStep_expire_of_not_ready runtime left event leftReady,
-      FinDist.mem_support_pure] at leftSupported
+      PMF.mem_support_pure_iff _ _] at leftSupported
     rw [environmentStep_expire_of_not_ready runtime right event rightNotReady,
-      FinDist.mem_support_pure] at rightSupported
+      PMF.mem_support_pure_iff _ _] at rightSupported
     subst leftNext
     subst rightNext
     exact views
@@ -129,11 +129,11 @@ theorem NativeReplay.environmentExpire
     have native : after.native ∈
         ((runtime.application.environmentPolicyStep before
           (.application (.expire event))).map MessageInterface.PolicyExecution.native).support := by
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨after, supported, rfl⟩
     rw [runtime.application.environmentStep_native] at native
     simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-      MessageApplication.step, FinDist.support_map, Set.mem_image] at native
+      MessageApplication.step, PMF.support_map, Set.mem_image] at native
     obtain ⟨next, nextSupported, equal⟩ := native
     rw [← equal]
     exact nextSupported

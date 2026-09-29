@@ -113,23 +113,23 @@ theorem sourceServiceLastPolicy_commit_opportunity
         let activated := execution.sampledActivation app owner sample
         (players owner (activated.recall owner) (activated.observe app owner)).map
           (activated.respond app owner)) := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
       ReactiveApplication.invoke, ReactiveApplication.Execution.activation_samples,
-      FinDist.bind_map]
+      PMF.bind_map]
     rfl
   change ((runtime setup).runInteractionPlan leaks players network
     (.player owner :: remaining.map ServiceInstruction.player ++
       [.includeLatest event owner]) execution).map result = _
-  rw [List.cons_append, runInteractionPlan, FinDist.map_bind, step, FinDist.bind_bind]
-  simp only [FinDist.bind_map]
+  rw [List.cons_append, runInteractionPlan, PMF.map_bind, step, PMF.bind_bind]
+  simp only [PMF.bind_map]
   let expected := (commitKernel profile (source.view owner)).map fun choice =>
     (execution.application.config.complete event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
       (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
       execution.receipts ++ [((owner, execution.network.nextSerial owner), true)])
   trans (app.observePending owner execution.network.pending).bind (fun _ => expected)
-  · apply FinDist.bind_congr
+  · apply bind_congr_on_support _
     intro sample _
     let activated := execution.sampledActivation app owner sample
     have sourceLaw := sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile
@@ -138,7 +138,7 @@ theorem sourceServiceLastPolicy_commit_opportunity
         (activated.recall owner) (activated.observe app owner)).support,
         response.transmission ≠ none := by
       intro response supported
-      rw [sourceLaw, FinDist.support_map] at supported
+      rw [sourceLaw, PMF.support_map] at supported
       obtain ⟨choice, _, responseEq⟩ := supported
       have physical := serviceDecision_binding_fresh (runtime setup) leaks activated owner event
         payload outputEq codeEq node serial selected candidate choice
@@ -160,16 +160,16 @@ theorem sourceServiceLastPolicy_commit_opportunity
         bounds transport (fun who past view response supported =>
           bounds.replay_compiled (runtime setup) leaks who past view response supported)
         network remaining granted ready timely vacant
-    rw [FinDist.map_bind] at delayed
+    rw [PMF.map_bind] at delayed
     apply Eq.trans ?_ delayed
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro response _
-    apply congrArg (FinDist.map result)
+    apply congrArg (PMF.map result)
     apply sourceServiceLastPolicy_foreign_tail setup leaks rosters wholeProfile network event owner
       owned remaining absent
     exact (congrArg PublicView.serviceGrant ((runtime setup).reactive_respond_application leaks
       activated owner response).2).trans granted
-  · exact FinDist.bind_const _ expected
+  · exact PMF.bind_const _ expected
 
 /-- The complete actual roster, including every early owner and foreign
 opportunity, implements the original typed source commitment lottery. -/
@@ -259,10 +259,10 @@ theorem sourceServiceLastPolicy_commit_roster
     ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution).map
       result = expected
   rw [position, List.map_append, List.map_cons, List.append_assoc,
-    (runtime setup).runInteractionPlan_append, FinDist.map_bind]
+    (runtime setup).runInteractionPlan_append, PMF.map_bind]
   trans ((runtime setup).runInteractionPlan leaks players network
     (visited.map ServiceInstruction.player) execution).bind (fun _ => expected)
-  · apply FinDist.bind_congr
+  · apply bind_congr_on_support _
     intro current reached
     obtain ⟨same, ledger, receipts, counters, packets, _⟩ :=
       sourceServiceLastPolicy_waiting_data setup leaks rosters wholeProfile network event owner
@@ -312,7 +312,7 @@ theorem sourceServiceLastPolicy_commit_roster
         currentSerials currentPublished network remaining absent currentGrant currentReady
           currentTimely currentVacant currentUnsent last
     simpa only [same, receipts, counters] using completed
-  · exact FinDist.bind_const _ expected
+  · exact PMF.bind_const _ expected
 
 private theorem binding_opportunity_provenance
     (setup : Setup (Player := Player) (L := L))
@@ -369,11 +369,11 @@ private theorem binding_opportunity_provenance
     (.player owner :: remaining.map ServiceInstruction.player ++ [.includeLatest event owner])
       current).support at reached
   rw [List.cons_append] at reached
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
     ReactiveApplication.invoke, ReactiveApplication.Execution.activation_samples,
-    FinDist.bind_map, FinDist.bind_bind] at reached
-  obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    PMF.bind_map, PMF.bind_bind] at reached
+  obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   let activated := current.sampledActivation app owner sample
   have physical (response : app.Action)
       (supported : response ∈ (sourceServicePolicy setup leaks profile owner
@@ -381,7 +381,7 @@ private theorem binding_opportunity_provenance
       ∃ choice : PublicationResult (L.Val payload), response =
         (runtime setup).reactiveBinding leaks owner event payload choice serial := by
     rw [sourceServicePolicy_at_event setup leaks profile owner activated event
-      currentGrant owned, FinDist.support_map] at supported
+      currentGrant owned, PMF.support_map] at supported
     obtain ⟨choice, _, equal⟩ := supported
     refine ⟨cast (congrArg EventGraph.EventField.Action outputEq) choice, ?_⟩
     apply equal.symm.trans
@@ -395,7 +395,7 @@ private theorem binding_opportunity_provenance
         cases choice <;> exact Option.some_ne_none _)
   change players owner (activated.recall owner) (activated.observe app owner) = _ at responseLaw
   rw [responseLaw] at reached
-  obtain ⟨response, chosen, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨response, chosen, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have sourceChosen := chosen
   obtain ⟨choice, responseEq⟩ := physical response chosen
   have responseGrant : (activated.respond app owner response).application.serviceGrant =
@@ -409,7 +409,7 @@ private theorem binding_opportunity_provenance
       (remaining.map ServiceInstruction.player ++ [.includeLatest event owner])
         (activated.respond app owner
           ((runtime setup).reactiveBinding leaks owner event payload choice serial))).map
-            readout).support := FinDist.support_map .. ▸ ⟨final, tail, rfl⟩
+            readout).support := PMF.support_map .. ▸ ⟨final, tail, rfl⟩
   have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion leaks
     bounds transport (fun who past view response supported =>
       bounds.replay_compiled (runtime setup) leaks who past view response supported) network
@@ -428,7 +428,7 @@ private theorem binding_opportunity_provenance
     | failure => exact delayed none
     | success value => exact delayed (some ⟨payload, value⟩)
   rw [delayedChoice] at mapped
-  obtain ⟨immediate, included, equal⟩ := FinDist.support_map .. ▸ mapped
+  obtain ⟨immediate, included, equal⟩ := PMF.support_map .. ▸ mapped
   have publishedFinal : final.network.Satisfies fun message =>
       message.id ∈ final.network.ledger.map Message.id := by
     have publish (submission : WitnessedSubmission (graph setup))
@@ -448,7 +448,7 @@ private theorem binding_opportunity_provenance
     (congrArg Prod.fst equal).symm, (congrArg (fun value => value.2.1) equal).symm,
     (congrArg (fun value => value.2.2.1) equal).symm,
     (congrArg (fun value => value.2.2.2) equal).symm, publishedFinal⟩
-  rw [FinDist.support_bind]
+  rw [PMF.support_bind]
   apply Set.mem_iUnion₂.mpr
   refine ⟨response, sourceChosen, ?_⟩
   rwa [responseEq]
@@ -516,7 +516,7 @@ theorem sourceServiceLastPolicy_binding_provenance
     omega
   rw [position, List.map_append, List.map_cons, List.append_assoc,
     (runtime setup).runInteractionPlan_append] at reached
-  obtain ⟨current, priorSupport, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨current, priorSupport, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨same, ledger, receipts, counters, packets, _⟩ :=
     sourceServiceLastPolicy_waiting_data setup leaks rosters profile network event owner owned
       visited initial current granted waiting _ published priorSupport

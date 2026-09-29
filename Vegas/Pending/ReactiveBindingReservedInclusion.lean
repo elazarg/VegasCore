@@ -153,8 +153,8 @@ private theorem latest_step_frame
   rcases runtime.reactiveLatest_wait_or_owned leaks event actor
       (original.observeEnvironment app) with waiting | ⟨id, _, selected⟩
   · rw [waiting] at leftSupport rightSupport
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at leftSupport rightSupport
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at leftSupport rightSupport
     subst left
     subst right
     exact { frame with
@@ -164,8 +164,8 @@ private theorem latest_step_frame
   · have unpublished := runtime.reactiveLatest_fresh leaks event actor
       (original.observeEnvironment app) id selected
     rw [selected] at leftSupport rightSupport
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at leftSupport rightSupport
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at leftSupport rightSupport
     subst left
     subst right
     cases found : original.network.lookup id with
@@ -275,26 +275,26 @@ theorem resolution_reserved_tail_coupling
         message = true) (ticks : Nat) :
     let app := runtime.reactiveApplication leaks
     let tail := .includeLatest event actor :: List.replicate ticks .tick ++ [.expire event]
-    ∃ coupling : FinDist (app.Execution × app.Execution),
+    ∃ coupling : PMF (app.Execution × app.Execution),
       coupling.map Prod.fst = runtime.runInteractionPlan leaks players network tail original ∧
       coupling.map Prod.snd = runtime.runInteractionPlan leaks players network tail repaired ∧
       ∀ next ∈ coupling.support, Frame runtime leaks memory owner next.1 next.2 := by
   intro app tail
   let left := runtime.runInteractionPlan leaks players network tail original
   let right := runtime.runInteractionPlan leaks players network tail repaired
-  refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+  refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
     FinDist.map_snd_product .., ?_⟩
   intro next supported
   have first : next.1 ∈ left.support := by
-    rw [← FinDist.map_fst_product left right, FinDist.support_map]
+    rw [← bindPairLaw_map_fst left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   have second : next.2 ∈ right.support := by
-    rw [← FinDist.map_snd_product left right, FinDist.support_map]
+    rw [← FinDist.map_snd_product left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   obtain ⟨leftIncluded, leftStep, leftTail⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ first)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ first)
   obtain ⟨rightIncluded, rightStep, rightTail⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ second)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ second)
   have paired := frame.resolution_reserved_step onlyBindings sound leftBinding rightBinding
     players network event actor payload binding checks outputEq codeEq node granted permitted
       leftIncluded rightIncluded leftStep rightStep
@@ -323,26 +323,26 @@ theorem foreign_binding_reserved_tail_coupling
         message = true) (ticks : Nat) :
     let app := runtime.reactiveApplication leaks
     let tail := .includeLatest event actor :: List.replicate ticks .tick ++ [.expire event]
-    ∃ coupling : FinDist (app.Execution × app.Execution),
+    ∃ coupling : PMF (app.Execution × app.Execution),
       coupling.map Prod.fst = runtime.runInteractionPlan leaks players network tail original ∧
       coupling.map Prod.snd = runtime.runInteractionPlan leaks players network tail repaired ∧
       ∀ next ∈ coupling.support, Frame runtime leaks memory owner next.1 next.2 := by
   intro app tail
   let left := runtime.runInteractionPlan leaks players network tail original
   let right := runtime.runInteractionPlan leaks players network tail repaired
-  refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+  refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
     FinDist.map_snd_product .., ?_⟩
   intro next supported
   have first : next.1 ∈ left.support := by
-    rw [← FinDist.map_fst_product left right, FinDist.support_map]
+    rw [← bindPairLaw_map_fst left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   have second : next.2 ∈ right.support := by
-    rw [← FinDist.map_snd_product left right, FinDist.support_map]
+    rw [← FinDist.map_snd_product left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   obtain ⟨leftIncluded, leftStep, leftTail⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ first)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ first)
   obtain ⟨rightIncluded, rightStep, rightTail⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ second)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ second)
   have paired := frame.foreign_binding_reserved_step onlyBindings players network event actor
     different payload outputEq codeEq node granted fixed permitted
       leftIncluded rightIncluded leftStep rightStep

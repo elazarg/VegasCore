@@ -50,9 +50,9 @@ theorem ServiceBoundary.sample_state_law [Fintype Player]
             (setup.eventGraph.fromModeCompletion .sequential)))) =
       (ProtocolState.behavioralStateStep (.sample name fresh distribution next)
         profile (ProtocolState.entry _ source)).map some := by
-  have kernel := congrArg (FinDist.map some)
+  have kernel := congrArg (PMF.map some)
     (ProtocolState.behavioralStateStep_sample_entry profile source)
-  simp only [FinDist.map_comp, Function.comp_def] at kernel
+  simp only [PMF.map_comp, Function.comp_def] at kernel
   apply Eq.trans ?_ kernel.symm
   let index : Fin (eventCount (.sample name fresh distribution next)) :=
     ⟨0, by simp [eventCount]⟩
@@ -85,19 +85,19 @@ theorem ServiceBoundary.sample_state_law [Fintype Player]
       source.revelations embedding.ref 1 result.1.store
       (decodeHistory setup.program (result.1.history.map
         (setup.eventGraph.fromModeCompletion .sequential)))
-  have mapped := congrArg (FinDist.map readout) phase
-  simp only [FinDist.map_comp, Function.comp_def] at mapped
+  have mapped := congrArg (PMF.map readout) phase
+  simp only [PMF.map_comp, Function.comp_def] at mapped
   change ((runtime setup).runInteractionPlan leaks players network
     (rosterBlock setup rosters event) execution).map _ = _
   rw [rosterBlock, chance]
   simp only [List.append_assoc, List.cons_append, List.nil_append,
     runInteractionPlan, grantLaw,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   refine mapped.trans ?_
-  rw [FinDist.map_eq_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro value _
-  apply congrArg FinDist.pure
+  apply congrArg PMF.pure
   have decoded : decodeEventAction setup.program event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) = none := by
     have action := aligned.actionEq index
@@ -157,9 +157,9 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
             (setup.eventGraph.fromModeCompletion .sequential)))) =
       (ProtocolState.behavioralStateStep (.commit name owner fresh guard next)
         profile (ProtocolState.entry _ source)).map some := by
-  have kernel := congrArg (FinDist.map some)
+  have kernel := congrArg (PMF.map some)
     (ProtocolState.behavioralStateStep_commit_entry profile source)
-  simp only [FinDist.map_comp, Function.comp_def] at kernel
+  simp only [PMF.map_comp, Function.comp_def] at kernel
   apply Eq.trans ?_ kernel.symm
   let index : Fin (eventCount (.commit name owner fresh guard next)) :=
     ⟨0, by simp [eventCount]⟩
@@ -194,8 +194,8 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
     intro middle reached
     have observed : (middle.application.config, middle.receipts) ∈
         (inclusion.map fun point => (point.application.config, point.receipts)).support :=
-      FinDist.support_map .. ▸ ⟨middle, reached, rfl⟩
-    rw [phase, FinDist.support_map] at observed
+      PMF.support_map .. ▸ ⟨middle, reached, rfl⟩
+    rw [phase, PMF.support_map] at observed
     obtain ⟨choice, _, same⟩ := observed
     have configuration := congrArg Prod.fst same
     dsimp only at configuration
@@ -209,15 +209,15 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
       source.revelations embedding.ref 1 result.1.store
       (decodeHistory setup.program (result.1.history.map
         (setup.eventGraph.fromModeCompletion .sequential)))
-  have mapped := congrArg (FinDist.map readout) full
-  simp only [FinDist.map_comp, Function.comp_def] at mapped
+  have mapped := congrArg (PMF.map readout) full
+  simp only [PMF.map_comp, Function.comp_def] at mapped
   have executionEq : (runtime setup).runInteractionPlan leaks players network
       (rosterBlock setup rosters event) execution = inclusion.bind
         ((runtime setup).runInteractionPlan leaks players network
           (List.replicate (event.val + 1) .tick ++ [.expire event])) := by
     rw [rosterBlock_of_owner setup rosters event owner owned,
       (runtime setup).runInteractionPlan_append]
-    simp only [runInteractionPlan, grantLaw, FinDist.pure_bind]
+    simp only [runInteractionPlan, grantLaw, PMF.pure_bind]
     have splitPlan :
         ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner] ++
           List.replicate (event.val + 1) .tick ++ [.expire event] :
@@ -230,10 +230,10 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
     (rosterBlock setup rosters event) execution).map _ = _
   rw [executionEq]
   refine mapped.trans ?_
-  rw [FinDist.map_eq_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro choice _
-  apply congrArg FinDist.pure
+  apply congrArg PMF.pure
   have decoded : decodeEventAction setup.program event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
         some (.commit owner name payload choice) := by
@@ -314,7 +314,7 @@ theorem ServiceBoundary.reveal_state_law [Fintype Player]
     (rosterBlock setup rosters event) execution).map _ = _
   rw [rosterBlock_of_owner setup rosters event owner owned,
     (runtime setup).runInteractionPlan_append]
-  simp only [runInteractionPlan, grantLaw, FinDist.pure_bind]
+  simp only [runInteractionPlan, grantLaw, PMF.pure_bind]
   simp only [List.append_assoc, List.singleton_append] at phase ⊢
   exact phase.trans (effective_reveal_state_law fresh binding unresolved next profile source
     effective)

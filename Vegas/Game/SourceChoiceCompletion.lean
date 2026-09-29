@@ -32,7 +32,7 @@ def completeChoices (setup : Setup (Player := Player) (L := L))
     let := Fintype.ofFinite ((setup.informationModel admission).Choice who info)
     let : Nonempty ((setup.informationModel admission).Choice who info) :=
       ⟨(profile who info).support_nonempty.choose⟩
-    exact FinDist.uniformOfFintype)
+    exact PMF.uniformOfFintype)
 
 theorem completeChoices_site (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
@@ -47,7 +47,7 @@ theorem completeChoices_fullSupport (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed) (who : Player) (info : setup.ProtocolView who) :
-    (setup.completeChoices finite admission assessment.strategy who info).FullSupport := by
+    FullSupport (setup.completeChoices finite admission assessment.strategy who info) := by
   classical
   let := setup.finite_choice finite admission who info
   let := Fintype.ofFinite ((setup.informationModel admission).Choice who info)
@@ -57,7 +57,7 @@ theorem completeChoices_fullSupport (setup : Setup (Player := Player) (L := L))
   split
   · rename_i available
     exact mixed who ⟨info, available⟩
-  · exact FinDist.mem_support_uniformOfFintype
+  · exact PMF.mem_support_uniformOfFintype
 
 /-- The completed syntax policy supports every legal source constructor
 choice, so disclosure normalization retains every effective native choice. -/
@@ -148,7 +148,7 @@ theorem completeChoiceAssessment_bayes [Fintype Player]
   change 0 < (setup.informationModel admission).informationMass
     (setup.completeChoices finite admission assessment.strategy) who site at positive
   rw [setup.completeChoices_informationMass] at positive
-  change (assessment.belief who site).prob history = _
+  change ((assessment.belief who site) history).toReal = _
   change _ = (setup.informationModel admission).historyReachProbability
     (setup.completeChoices finite admission assessment.strategy) history /
       (setup.informationModel admission).informationMass
@@ -168,7 +168,7 @@ theorem exists_complete_consistent_sequence [Fintype Player]
       Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (consistent : assessment.IsSequentiallyConsistent antichain) :
     ∃ sequence : Nat → (setup.informationModel admission).BehavioralAssessment,
-      (∀ n who info, ((sequence n).strategy who info).FullSupport) ∧
+      (∀ n who info, FullSupport ((sequence n).strategy who info)) ∧
       (∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent
         (setup.informationModel admission) (sequence n) antichain) ∧
       InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment := by

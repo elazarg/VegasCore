@@ -23,19 +23,19 @@ def normalizedChoice (who : Player) (past : List nativeApp.PlayerEntry)
   if disclose then opening who past view event handle value else nativeSilent
 
 open Classical in
-def responsePolicy (guesses : FinDist Bool) (disclosures : Bool → Bool → FinDist Bool)
+def responsePolicy (guesses : PMF Bool) (disclosures : Bool → Bool → PMF Bool)
     (who : Player) : nativeApp.Policy := fun past view =>
-  if who = watcher then FinDist.pure (nativeWatcherResponse view)
+  if who = watcher then PMF.pure (nativeWatcherResponse view)
   else if who = bob ∧ view.application.publicView.serviceGrant = some bobPublication then
     guesses.map (normalizedChoice who past view bobPublication bobHandle true)
   else if who = alice ∧ view.application.publicView.serviceGrant = some alicePublication then
     let input := decodeAliceInput (some (past, view))
     (disclosures input.1 input.2).map
       (normalizedChoice who past view alicePublication aliceHandle (observedAliceBit view))
-  else FinDist.pure nativeSilent
+  else PMF.pure nativeSilent
 
-theorem responsePolicy_covered (guesses : FinDist Bool)
-    (disclosures : Bool → Bool → FinDist Bool) (who : Player)
+theorem responsePolicy_covered (guesses : PMF Bool)
+    (disclosures : Bool → Bool → PMF Bool) (who : Player)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (response : nativeApp.Action)
     (supported : response ∈ (responsePolicy guesses disclosures who past view).support) :
@@ -46,41 +46,41 @@ theorem responsePolicy_covered (guesses : FinDist Bool)
   split at supported
   · rename_i same
     rw [ite_eq_left same, Finset.mem_singleton]
-    exact FinDist.mem_support_pure.mp supported
+    exact (PMF.mem_support_pure_iff _ _).mp supported
   · rename_i different
     rw [ite_eq_right different]
     unfold ordinaryActions
     split at supported
     · rename_i granted
       rw [ite_eq_left granted]
-      obtain ⟨choice, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
       cases choice <;> simp [normalizedChoice]
     · rename_i notBob
       rw [ite_eq_right notBob]
       split at supported
       · rename_i granted
         rw [ite_eq_left granted]
-        obtain ⟨choice, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
         cases choice <;> simp [normalizedChoice]
       · rename_i notAlice
         rw [ite_eq_right notAlice, Finset.mem_singleton]
-        exact FinDist.mem_support_pure.mp supported
+        exact (PMF.mem_support_pure_iff _ _).mp supported
 
-def responseProfile (guesses : FinDist Bool) (disclosures : Bool → Bool → FinDist Bool) :
+def responseProfile (guesses : PMF Bool) (disclosures : Bool → Bool → PMF Bool) :
     Profile restrictedModel.behavioralSignature := fun who =>
   restrictedMenu.restrictPolicy nativeInitialLaw nativeHorizon nativeScheduler who
     (responsePolicy guesses disclosures who)
 
-theorem decode_responseProfile (guesses : FinDist Bool)
-    (disclosures : Bool → Bool → FinDist Bool) :
+theorem decode_responseProfile (guesses : PMF Bool)
+    (disclosures : Bool → Bool → PMF Bool) :
     restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
       (responseProfile guesses disclosures) = responsePolicy guesses disclosures := by
   funext who
   exact restrictedMenu.decode_restrictPolicy_of_covered nativeInitialLaw nativeHorizon
     nativeScheduler who _ (responsePolicy_covered guesses disclosures who)
 
-theorem responsePolicy_bob (guesses : FinDist Bool)
-    (disclosures : Bool → Bool → FinDist Bool) (bit : Bool) :
+theorem responsePolicy_bob (guesses : PMF Bool)
+    (disclosures : Bool → Bool → PMF Bool) (bit : Bool) :
     responsePolicy guesses disclosures bob ((quietBob bit).recall bob)
       ((quietBob bit).observe nativeApp bob) =
         guesses.map (choiceAction bobPublication bobHandle true) := by
@@ -92,8 +92,8 @@ theorem responsePolicy_bob (guesses : FinDist Bool)
   cases choice <;> simp only [normalizedChoice, choiceAction, Bool.false_eq_true,
     ↓reduceIte, quiet_bob_opening]
 
-theorem responsePolicy_alice (guesses : FinDist Bool)
-    (disclosures : Bool → Bool → FinDist Bool) (bit guess : Bool) :
+theorem responsePolicy_alice (guesses : PMF Bool)
+    (disclosures : Bool → Bool → PMF Bool) (bit guess : Bool) :
     responsePolicy guesses disclosures alice ((beforeAlice bit guess).recall alice)
       ((beforeAlice bit guess).observe nativeApp alice) =
         (disclosures bit guess).map (choiceAction alicePublication aliceHandle bit) := by
@@ -109,27 +109,27 @@ theorem responsePolicy_alice (guesses : FinDist Bool)
   cases choice <;> simp only [normalizedChoice, choiceAction, Bool.false_eq_true,
     ↓reduceIte, before_alice_opening]
 
-theorem responsePolicy_early_alice (guesses : FinDist Bool)
-    (disclosures : Bool → Bool → FinDist Bool) (bit : Bool) :
+theorem responsePolicy_early_alice (guesses : PMF Bool)
+    (disclosures : Bool → Bool → PMF Bool) (bit : Bool) :
     responsePolicy guesses disclosures alice ((aliceActivated bit).recall alice)
-      ((aliceActivated bit).observe nativeApp alice) = FinDist.pure nativeSilent := by
+      ((aliceActivated bit).observe nativeApp alice) = PMF.pure nativeSilent := by
   have notWatcher : alice ≠ watcher := by decide
   have notBob : alice ≠ bob := by decide
   simp only [responsePolicy, notWatcher, notBob, false_and, ↓reduceIte]
   rfl
 
-theorem responsePolicy_watcher (guesses : FinDist Bool)
-    (disclosures : Bool → Bool → FinDist Bool) :
+theorem responsePolicy_watcher (guesses : PMF Bool)
+    (disclosures : Bool → Bool → PMF Bool) :
     responsePolicy guesses disclosures watcher = nativeWatcherPolicy := by
   funext past view
   simp only [responsePolicy, ↓reduceIte]
   rfl
 
-def sourceGuesses (profile : Profile sourceModel.behavioralSignature) : FinDist Bool :=
+def sourceGuesses (profile : Profile sourceModel.behavioralSignature) : PMF Bool :=
   sourceDecisionLaw profile bob sourceBobSite.1
 
 def sourceDisclosures (profile : Profile sourceModel.behavioralSignature)
-    (bit guess : Bool) : FinDist Bool :=
+    (bit guess : Bool) : PMF Bool :=
   sourceDecisionLaw profile alice (sourceAliceSite bit guess).1
 
 def compile (profile : Profile sourceModel.behavioralSignature) :

@@ -16,62 +16,67 @@ namespace GameTheory.Math.Probability
 
 open Filter
 
-namespace FinDist
-
 /-- Conditioning commutes with an injective encoding when the two events
 correspond on encoded values. Extra target values need not have source names. -/
-theorem map_condOn_embedding {Source Target : Type*} (law : FinDist Source)
+theorem map_filter_embedding {Source Target : Type*} (law : PMF Source)
     (embed : Source ↪ Target) (sourceEvent : Set Source) (targetEvent : Set Target)
     (corresponds : ∀ state, embed state ∈ targetEvent ↔ state ∈ sourceEvent)
     (sourceMeet : ∃ state ∈ sourceEvent, state ∈ law.support)
     (targetMeet : ∃ state ∈ targetEvent, state ∈ (law.map embed).support) :
-    (law.condOn sourceEvent sourceMeet).map embed =
-      (law.map embed).condOn targetEvent targetMeet := by
+    (law.filter sourceEvent sourceMeet).map embed =
+      (law.map embed).filter targetEvent targetMeet := by
   classical
   have preimage : embed ⁻¹' targetEvent = sourceEvent := Set.ext corresponds
-  have mass : (law.map embed).probOf targetEvent = law.probOf sourceEvent := by
-    rw [probOf_map, preimage]
-  apply ext_of_prob
-  intro value
+  have mass : (law.map embed).toOuterMeasure targetEvent = law.toOuterMeasure sourceEvent := by
+    rw [PMF.toOuterMeasure_map_apply, preimage]
+  ext value
   by_cases encoded : value ∈ Set.range embed
   · obtain ⟨original, rfl⟩ := encoded
-    rw [prob_map_of_injective embed embed.injective, prob_condOn, prob_condOn,
-      prob_map_of_injective embed embed.injective, mass, corresponds]
-  · have unsupported (distribution : FinDist Source) : (distribution.map embed).prob value = 0 := by
-      apply prob_eq_zero_iff.mpr
-      rw [support_map]
+    rw [pmf_map_apply_of_injective _ embed.injective, PMF.filter_apply, PMF.filter_apply,
+      ← PMF.toOuterMeasure_apply, ← PMF.toOuterMeasure_apply, mass]
+    by_cases member : original ∈ sourceEvent
+    · rw [Set.indicator_of_mem member, Set.indicator_of_mem ((corresponds original).mpr member),
+        pmf_map_apply_of_injective _ embed.injective]
+    · rw [Set.indicator_of_notMem member,
+        Set.indicator_of_notMem fun inside => member ((corresponds original).mp inside)]
+  · have unsupported (distribution : PMF Source) : (distribution.map embed) value = 0 := by
+      apply (PMF.apply_eq_zero_iff _ _).mpr
+      rw [PMF.support_map]
       rintro ⟨original, _, same⟩
       exact encoded ⟨original, same⟩
-    rw [unsupported, prob_condOn, unsupported]
-    split_ifs <;> simp
+    rw [unsupported, PMF.filter_apply, Set.indicator_apply]
+    split_ifs <;> simp [unsupported]
 
 variable {State : Type*} [Finite State]
 
-theorem probOf_domination (source target : FinDist State) (factor : ℝ)
-    (lower : ∀ state, factor * source.prob state ≤ target.prob state) (event : Set State) :
-    factor * source.probOf event ≤ target.probOf event := by
+theorem probOf_domination (source target : PMF State) (factor : ℝ)
+    (lower : ∀ state, factor * (source state).toReal ≤ (target state).toReal) (event : Set State) :
+    factor * (source.toOuterMeasure event).toReal ≤ (target.toOuterMeasure event).toReal := by
   classical
-  rw [← expect_indicator_eq_probOf, ← expect_indicator_eq_probOf]
-  exact mul_expect_le_of_prob_le source target factor lower _ (fun state => by
+  rw [← expect_indicator, ← expect_indicator]
+  exact PMF.mul_expect_le_of_prob_le source target factor lower _ (fun state => by
     split_ifs <;> norm_num)
 
 omit [Finite State] in
-private theorem probOf_add_compl (law : FinDist State) (event : Set State) :
-    law.probOf event + law.probOf eventᶜ = 1 := by
+private theorem probOf_add_compl (law : PMF State) (event : Set State) :
+    (law.toOuterMeasure event).toReal + (law.toOuterMeasure eventᶜ).toReal = 1 := by
   classical
-  rw [← expect_indicator_eq_probOf, ← expect_indicator_eq_probOf, ← expect_add]
+  rw [← expect_indicator, ← expect_indicator,
+    ← expect_add (payoffIntegrable_of_bounded _ _ (C := 1) fun _ => by split_ifs <;> norm_num)
+      (payoffIntegrable_of_bounded _ _ (C := 1) fun _ => by split_ifs <;> norm_num)]
   calc
-    _ = law.expect (fun _ => (1 : ℝ)) := by
-      apply expect_congr
+    _ = expect law (fun _ => (1 : ℝ)) := by
+      apply expect_congr_on_support
       intro state _
       by_cases member : state ∈ event <;> simp [member]
-    _ = 1 := expect_const _ _
+    _ = 1 := expect_constant _ _
 
 /-- All mass in excess of the dominated source component is at most its
 missing normalization mass, including after restricting to an event. -/
-theorem probOf_domination_excess (source target : FinDist State) (factor : ℝ)
-    (lower : ∀ state, factor * source.prob state ≤ target.prob state) (event : Set State) :
-    target.probOf event - factor * source.probOf event ≤ 1 - factor := by
+theorem probOf_domination_excess (source target : PMF State) (factor : ℝ)
+    (lower : ∀ state, factor * (source state).toReal ≤ (target state).toReal) (event : Set State) :
+    (target.toOuterMeasure event).toReal - factor * (source.toOuterMeasure event).toReal ≤ 1 -
+        factor := by
   have complement := probOf_domination source target factor lower eventᶜ
   have sourceTotal := probOf_add_compl source event
   have targetTotal := probOf_add_compl target event
@@ -111,56 +116,55 @@ private theorem ratio_domination_bound (point mass changed total factor : ℝ)
 
 /-- Domination by a near-unit source component bounds each posterior error by
 the missing mass divided by the retained source event mass. -/
-theorem conditional_domination_bound (source target : FinDist State) (event : Set State)
+theorem conditional_domination_bound (source target : PMF State) (event : Set State)
     (sourceMeet : ∃ state ∈ event, state ∈ source.support)
     (targetMeet : ∃ state ∈ event, state ∈ target.support)
     (factor : ℝ) (positive : 0 < factor) (atMostOne : factor ≤ 1)
-    (lower : ∀ state, factor * source.prob state ≤ target.prob state) (state : State) :
-    |(target.condOn event targetMeet).prob state -
-      (source.condOn event sourceMeet).prob state| ≤
-        (1 - factor) / (factor * source.probOf event) := by
+    (lower : ∀ state, factor * (source state).toReal ≤ (target state).toReal) (state : State) :
+    |((target.filter event targetMeet) state).toReal -
+      ((source.filter event sourceMeet) state).toReal| ≤
+        (1 - factor) / (factor * (source.toOuterMeasure event).toReal) := by
   classical
-  have sourcePositive := probOf_pos sourceMeet
-  have targetPositive := probOf_pos targetMeet
-  rw [prob_condOn, prob_condOn]
+  have sourcePositive := toOuterMeasure_toReal_pos source sourceMeet
+  have targetPositive := toOuterMeasure_toReal_pos target targetMeet
+  rw [toReal_filter_apply, toReal_filter_apply]
   by_cases member : state ∈ event
   · rw [ite_eq_left member, ite_eq_left member]
-    have pointWithin : source.prob state ≤ source.probOf event := by
-      have normalized := (source.condOn event sourceMeet).prob_le_one state
-      rw [prob_condOn, ite_eq_left member] at normalized
+    have pointWithin : (source state).toReal ≤ (source.toOuterMeasure event).toReal := by
+      have normalized := pmf_toReal_apply_le_one (source.filter event sourceMeet) state
+      rw [toReal_filter_apply, ite_eq_left member] at normalized
       exact (div_le_one sourcePositive).mp normalized
-    have pointExcess : target.prob state - factor * source.prob state ≤ 1 - factor := by
-      simpa only [probOf_singleton] using
+    have pointExcess : (target state).toReal - factor * (source state).toReal ≤ 1 - factor := by
+      simpa only [PMF.toOuterMeasure_apply_singleton] using
         probOf_domination_excess source target factor lower {state}
     exact ratio_domination_bound _ _ _ _ _ sourcePositive targetPositive
-      (source.prob_nonneg state) pointWithin positive atMostOne (lower state) pointExcess
+      ENNReal.toReal_nonneg pointWithin positive atMostOne (lower state) pointExcess
       (probOf_domination source target factor lower event)
       (probOf_domination_excess source target factor lower event)
   · rw [ite_eq_right member, ite_eq_right member, sub_self, abs_zero]
     exact div_nonneg (sub_nonneg.mpr atMostOne) (mul_pos positive sourcePositive).le
 
-end FinDist
-
 /-- A vanishing relative loss transports conditioned laws without any lower
 bound on the limiting probability of the conditioning event. -/
 theorem conditional_domination_converges {State : Type*} [Finite State]
-    (source target : ℕ → FinDist State) (event : Set State)
+    (source target : ℕ → PMF State) (event : Set State)
     (sourceMeet : ∀ n, ∃ state ∈ event, state ∈ (source n).support)
     (targetMeet : ∀ n, ∃ state ∈ event, state ∈ (target n).support)
     (factor : ℕ → ℝ) (positive : ∀ n, 0 < factor n) (atMostOne : ∀ n, factor n ≤ 1)
-    (lower : ∀ n state, factor n * (source n).prob state ≤ (target n).prob state)
+    (lower : ∀ n state, factor n * ((source n) state).toReal ≤ ((target n) state).toReal)
     (negligible : Tendsto (fun n =>
-      (1 - factor n) / (factor n * (source n).probOf event)) atTop (nhds 0))
-    (limit : FinDist State)
-    (converges : FinDistConvergesPointwise
-      (fun n => (source n).condOn event (sourceMeet n)) limit) :
-    FinDistConvergesPointwise (fun n => (target n).condOn event (targetMeet n)) limit := by
+      (1 - factor n) / (factor n * ((source n).toOuterMeasure event).toReal)) atTop (nhds 0))
+    (limit : PMF State)
+    (converges : PMFConvergesPointwise
+      (fun n => (source n).filter event (sourceMeet n)) limit) :
+    PMFConvergesPointwise (fun n => (target n).filter event (targetMeet n)) limit := by
+  rw [pmfConvergesPointwise_iff_toReal]
   intro state
-  apply (converges state).congr_dist
+  apply (converges.toReal state).congr_dist
   apply squeeze_zero (fun _ => dist_nonneg) _ negligible
   intro n
   simpa only [Real.dist_eq, abs_sub_comm] using
-    FinDist.conditional_domination_bound (source n) (target n) event
+    conditional_domination_bound (source n) (target n) event
       (sourceMeet n) (targetMeet n) (factor n) (positive n) (atMostOne n) (lower n) state
 
 end GameTheory.Math.Probability

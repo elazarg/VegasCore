@@ -29,19 +29,19 @@ theorem realize_continuation (who : Principal) (players : Principal → app.Poli
         (app.runRounds scheduler (Function.update players who implementation.policy) count) := by
   cases actor with
   | none =>
-      simpa only [resume, ReactiveApplication.resume, FinDist.pure_bind] using
+      simpa only [resume, ReactiveApplication.resume, PMF.pure_bind] using
         implementation.realize who players scheduler count execution
   | some owner =>
       by_cases same : owner = who
       · subst owner
-        simp only [resume, ↓reduceIte, FinDist.bind_map]
+        simp only [resume, ↓reduceIte, PMF.bind_map]
         rw [implementation.response_disintegrate]
         simp only [implementation.realize, ReactiveApplication.resume, invoke,
-          Function.update_self, FinDist.bind_map]
-      · simp only [resume, same, ↓reduceIte, FinDist.bind_map,
+          Function.update_self, PMF.bind_map]
+      · simp only [resume, same, ↓reduceIte, PMF.bind_map,
           ReactiveApplication.resume, invoke, Function.update_of_ne same]
-        rw [FinDist.bind_comm]
-        apply FinDist.bind_congr
+        rw [PMF.bind_comm]
+        apply bind_congr_on_support _
         intro action _
         rw [← app.respond_recall_other execution owner who (Ne.symm same) action]
         exact implementation.realize who players scheduler count _

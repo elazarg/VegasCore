@@ -22,8 +22,8 @@ open GameTheory.Protocol GameTheory.Math.Probability
 
 def typeInput : nativeGraph.InputId := ⟨0, by decide⟩
 
-def nativeInitialLaw : FinDist (EventGraphRuntime.State nativeGraph) :=
-  (FinDist.uniformOfFintype (α := Bool)).map nativeStart
+def nativeInitialLaw : PMF (EventGraphRuntime.State nativeGraph) :=
+  (PMF.uniformOfFintype (α := Bool)).map nativeStart
 
 variable (leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket nativeGraph))
 
@@ -60,7 +60,7 @@ theorem native_type_evidence_initial (state : EventGraphRuntime.State nativeGrap
     (supported : state ∈ nativeInitialLaw.support) :
     nativeTypeEvidence leaks
       (.initial (nativeRuntime.reactiveApplication leaks) state) := by
-  obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ supported
   refine ⟨bit, rfl, ?_, List.Forall₂.nil⟩
   change (nativeStart bit).candidates.lookup (false, .initial secretInput) = _
   cases bit <;> rfl
@@ -137,13 +137,13 @@ theorem native_belief_type
     (view : (nativeRuntime.reactiveApplication leaks).PlayerView)
     (observed : nativeRuntime.openingObserved leaks view
       (false, .initial secretInput) ⟨.bool, bit⟩)
-    (belief : FinDist ((menu.information nativeInitialLaw horizon scheduler).InformationHistory
+    (belief : PMF ((menu.information nativeInitialLaw horizon scheduler).InformationHistory
       who (some (past, view)))) :
     belief.map (fun history => nativeStoredType leaks history.1.state) =
-      FinDist.pure (some bit) := by
+      PMF.pure (some bit) := by
   calc
     _ = belief.map (fun _ => some bit) := by
-      apply FinDist.map_congr_of_eq_on_support
+      apply map_congr_on_support _
       intro history _
       exact native_information_type leaks menu horizon scheduler who bit past view observed history
     _ = _ := FinDist.map_const _ _

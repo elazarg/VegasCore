@@ -117,15 +117,15 @@ theorem execution_environmentStep (original : app.Execution) (command : app.Comm
     (original.environmentStep app command).map normal.execution =
       (normal.execution original).environmentStep app command := by
   cases command with
-  | wait => simp only [Execution.environmentStep, FinDist.map_pure]; rfl
+  | wait => simp only [Execution.environmentStep, PMF.pure_map]; rfl
   | activate who =>
-      simp only [Execution.environmentStep, FinDist.map_comp]
+      simp only [Execution.environmentStep, PMF.map_comp]
       rfl
   | application command =>
-      simp only [Execution.environmentStep, FinDist.map_comp]
+      simp only [Execution.environmentStep, PMF.map_comp]
       rfl
   | «include» id =>
-      simp only [execution, Execution.environmentStep, FinDist.map_pure,
+      simp only [execution, Execution.environmentStep, PMF.pure_map,
         Execution.includePending, MessageNetwork.includePending]
       cases original.network.lookup id <;> rfl
 

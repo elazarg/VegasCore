@@ -66,8 +66,8 @@ theorem compiled_plan_source_law
     rw [policy, ite_eq_right different]
     exact ordinaryPolicy_projects setup leaks extended profile weight nonnegative atMostOne
       who past view opening selected covered
-  rw [initialLaw, FinDist.bind_map, FinDist.map_bind, Setup.run, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [initialLaw, PMF.bind_map, PMF.map_bind, Setup.run, PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial supported
   have current := run_source_suffix_option_law setup leaks bounds watcher observer profile players
     watcherPolicy ordinary projects initial supported setup.program reveals profile
@@ -100,12 +100,12 @@ theorem compiled_behavioral_source_law
   rw [show (fun final : (protocol setup leaks
       (bounds.withInitialValues (initialLaw setup)) watcher).History =>
       sourceReadout setup leaks final.state) = sourceReadout setup leaks ∘ History.state from rfl,
-    ← FinDist.map_comp, menu_execution_law setup leaks _ watcher, decoded_compiledProfile]
-  simp only [FinDist.map_bind, FinDist.map_comp]
-  rw [initialLaw, FinDist.bind_map, FinDist.bind_map]
-  apply FinDist.bind_congr
+    ← PMF.map_comp, menu_execution_law setup leaks _ watcher, decoded_compiledProfile]
+  simp only [PMF.map_bind, PMF.map_comp]
+  rw [initialLaw, PMF.bind_map, PMF.bind_map]
+  apply bind_congr_on_support _
   intro initial _supported
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro final supported
   have settled := plan_terminal setup leaks watcher reveals
     (policy setup leaks (bounds.withInitialValues (initialLaw setup)) watcher profile
@@ -170,6 +170,6 @@ theorem compiled_profile_joint_utility_law
   have mapped := congrArg (fun distribution => distribution.map
     (fun state => (state, fun who => state.elim 0 (fun current => utility current who)))) law
   unfold baseUtility
-  simpa only [FinDist.map_comp, Function.comp_def] using mapped
+  simpa only [PMF.map_comp, Function.comp_def] using mapped
 
 end Vegas

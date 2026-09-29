@@ -90,8 +90,8 @@ theorem replay_equilibrium_extends
   let comparator (who : Player)
       (site : (information setup leaks bounds watcher).InformationSite who)
       (_ : model.Choice who (restriction.site who site).1) :
-      FinDist ((information setup leaks bounds watcher).Choice who site.1) :=
-    FinDist.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
+      PMF ((information setup leaks bounds watcher).Choice who site.1) :=
+    PMF.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
   have comparison : ∀
       (sourceProfile : Profile (information setup leaks bounds watcher).behavioralSignature)
       (targetProfile : Profile model.behavioralSignature),
@@ -100,22 +100,22 @@ theorem replay_equilibrium_extends
         (action : model.Choice who (restriction.site who site).1),
         action ∉ Set.range (restriction.choice who site.1) →
         ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
-          (model.runBehavioralFrom
+          expect (model.runBehavioralFrom
             (Profile.update targetProfile who
               ((targetProfile who).commit (restriction.site who site).1 action))
             (2 * count + 1 - depth who (restriction.site who site))
-            (restriction.history history.1)).expect (fun final => utility final.state who) ≤
-          ((information setup leaks bounds watcher).runBehavioralFrom
+            (restriction.history history.1)) (fun final => utility final.state who) ≤
+          expect ((information setup leaks bounds watcher).runBehavioralFrom
             (Profile.update sourceProfile who
               ((sourceProfile who).withLaw site.1 (comparator who site action)))
-            (2 * count + 1 - depth who (restriction.site who site)) history.1).expect
+            (2 * count + 1 - depth who (restriction.site who site)) history.1)
               (fun final => utility final.state who) := by
     intro sourceProfile targetProfile paired who site action extra history
     have sameLaw := replay_extra_continuation_law setup leaks bounds watcher reveals observer
       openable sourceProfile targetProfile paired who site action extra
         (comparator who site action) history
-    have sameValue := congrArg (fun law => law.expect (fun state => payoff state who)) sameLaw
-    simp only [FinDist.expect_map] at sameValue
+    have sameValue := congrArg (fun law => expect law (fun state => payoff state who)) sameLaw
+    simp only [expect_map] at sameValue
     rw [sourceClock who site history] at sameValue
     exact sameValue.le
   obtain ⟨target, targetRemaining, agrees, _beliefs, historyLaw, _joint, _terminal⟩ :=
@@ -129,7 +129,7 @@ theorem replay_equilibrium_extends
       (fun history who => utility history.state who) (fun _ _ => rfl)
       comparator comparison source sourceRemaining
   have targetFull := (target.sequentialEquilibrium_remaining_iff model
-    (replayed.decisionRecall initial count service).antichain (2 * count + 1)
+    (replayed.decisionRecall initial count service).decisionInformationAntichain (2 * count + 1)
     (replayed.bounded initial count service) depth clock
     (fun who history => utility history.state who)).mp targetRemaining
   exact ⟨target, targetFull, agrees, historyLaw⟩

@@ -17,45 +17,45 @@ open GameTheory.Math.Probability
 
 variable {Principal : Type} (app : ReactiveApplication Principal)
 
-private theorem posterior_point {Index : Type} (initial : FinDist Index)
+private theorem posterior_point {Index : Type} (initial : PMF Index)
     (policies : Index → app.Policy) (past : List app.PlayerEntry) (entry : app.PlayerEntry)
-    (positive : 0 < (((app.policyMixture initial policies).posterior past).bind
-      (fun index => policies index past entry.beforeView)).prob entry.action) (index : Index) :
-    ((app.policyMixture initial policies).posterior (past ++ [entry])).prob index =
-      ((app.policyMixture initial policies).posterior past).prob index *
-        (policies index past entry.beforeView).prob entry.action /
-          (((app.policyMixture initial policies).posterior past).bind
-            (fun index => policies index past entry.beforeView)).prob entry.action := by
+    (positive : 0 < ((((app.policyMixture initial policies).posterior past).bind
+      (fun index => policies index past entry.beforeView)) entry.action).toReal) (index : Index) :
+    (((app.policyMixture initial policies).posterior (past ++ [entry])) index).toReal =
+      (((app.policyMixture initial policies).posterior past) index).toReal *
+        ((policies index past entry.beforeView) entry.action).toReal /
+          ((((app.policyMixture initial policies).posterior past).bind
+            (fun index => policies index past entry.beforeView)) entry.action).toReal := by
   classical
   let prior := (app.policyMixture initial policies).posterior past
   let joint := prior.bind fun selected =>
     (policies selected past entry.beforeView).map fun response => (response, selected)
   have marginal : joint.map Prod.fst = prior.bind
       (fun selected => policies selected past entry.beforeView) := by
-    simp only [joint, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
-    exact FinDist.bind_congr fun _ _ => FinDist.map_id _
+    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def]
+    exact bind_congr_on_support _ fun _ _ => PMF.map_id _
   have meets : ∃ pair ∈ Prod.fst ⁻¹' {entry.action}, pair ∈ joint.support := by
-    obtain ⟨pair, supported, same⟩ := FinDist.support_map .. ▸
-      FinDist.prob_pos_iff.mp (marginal.symm ▸ positive)
+    obtain ⟨pair, supported, same⟩ := PMF.support_map .. ▸
+      pmf_toReal_pos_iff.mp (marginal.symm ▸ positive)
     exact ⟨pair, same, supported⟩
-  have reconstruct : (joint.condOn (Prod.fst ⁻¹' {entry.action}) meets).map
-      (fun pair => (entry.action, pair.2)) = joint.condOn (Prod.fst ⁻¹' {entry.action}) meets := by
-    conv_rhs => rw [← FinDist.map_id (joint.condOn _ meets)]
-    apply FinDist.map_congr_of_eq_on_support
+  have reconstruct : (joint.filter (Prod.fst ⁻¹' {entry.action}) meets).map
+      (fun pair => (entry.action, pair.2)) = joint.filter (Prod.fst ⁻¹' {entry.action}) meets := by
+    conv_rhs => rw [← PMF.map_id (joint.filter _ meets)]
+    apply map_congr_on_support _
     intro pair supported
-    have same := (FinDist.support_condOn _ _ _ supported).1
+    have same := ((PMF.mem_support_filter_iff _).mp supported).1
     exact Prod.ext same.symm rfl
-  have reconstructed : ((joint.condOn (Prod.fst ⁻¹' {entry.action}) meets).map Prod.snd).map
+  have reconstructed : ((joint.filter (Prod.fst ⁻¹' {entry.action}) meets).map Prod.snd).map
       (fun selected => (entry.action, selected)) =
-        joint.condOn (Prod.fst ⁻¹' {entry.action}) meets := by
-    rw [FinDist.map_comp]
+        joint.filter (Prod.fst ⁻¹' {entry.action}) meets := by
+    rw [PMF.map_comp]
     exact reconstruct
-  have point := congrArg (fun law => law.prob (entry.action, index)) reconstructed
+  have point := congrArg (fun law => (law (entry.action, index)).toReal) reconstructed
   rw [FinDist.prob_map_of_injective (fun selected => (entry.action, selected))
       (fun _ _ equal => (Prod.mk.inj equal).2)] at point
   rw [Implementation.posterior_snoc]
-  change ((joint.condOnFibre Prod.fst entry.action).map Prod.snd).prob index = _
-  rw [FinDist.condOnFibre, dite_eq_left meets, point, FinDist.prob_condOn,
+  change (((fiberConditional joint Prod.fst entry.action).map Prod.snd) index).toReal = _
+  rw [fiberConditional, dite_eq_left meets, point, toReal_filter_apply,
     ite_eq_left (show (entry.action, index) ∈ Prod.fst ⁻¹' {entry.action} from rfl),
     ← FinDist.prob_map_eq_probOf_preimage_singleton, marginal]
   congr 1
@@ -65,57 +65,57 @@ private theorem posterior_point {Index : Type} (initial : FinDist Index)
   · rw [FinDist.prob_map_of_injective (fun response : app.Action => (response, index))
       (fun _ _ same => (Prod.mk.inj same).1)]
   · intro selected _ supported
-    obtain ⟨response, _, same⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, _, same⟩ := PMF.support_map .. ▸ supported
     exact congrArg Prod.snd same
 
 /-- Updating after one replay downweights precisely the selected timing slot.
 All observation-dependent replay probabilities cancel. -/
 theorem scheduledChoice_posterior_step {slots : Nat}
-    (timing : FinDist (Fin slots)) (policies : Fin slots → app.Policy)
+    (timing : PMF (Fin slots)) (policies : Fin slots → app.Policy)
     (probability : ℝ) (nonnegative : 0 ≤ probability) (small : probability < 1)
     (past : List app.PlayerEntry) (entry : app.PlayerEntry) (current : Fin slots)
-    (waiting : FinDist app.Action) (possible : entry.action ∈ waiting.support)
+    (waiting : PMF app.Action) (possible : entry.action ∈ waiting.support)
     (likelihood : ∀ selected,
-      (policies selected past entry.beforeView).prob entry.action =
-        (if selected = current then 1 - probability else 1) * waiting.prob entry.action)
-    (old : ∀ selected, ((app.policyMixture timing policies).posterior past).prob selected =
-      timing.prob selected * (if selected.val < current.val then 1 - probability else 1) /
-        FinDist.deferredSurvival probability timing current.val) :
-    ∀ selected, ((app.policyMixture timing policies).posterior (past ++ [entry])).prob selected =
-      timing.prob selected * (if selected.val < current.val + 1 then 1 - probability else 1) /
-        FinDist.deferredSurvival probability timing (current.val + 1) := by
+      ((policies selected past entry.beforeView) entry.action).toReal =
+        (if selected = current then 1 - probability else 1) * (waiting entry.action).toReal)
+    (old : ∀ selected, (((app.policyMixture timing policies).posterior past) selected).toReal =
+      (timing selected).toReal * (if selected.val < current.val then 1 - probability else 1) /
+        PMF.deferredSurvival probability timing current.val) :
+    ∀ selected, (((app.policyMixture timing policies).posterior (past ++ [entry])) selected).toReal =
+      (timing selected).toReal * (if selected.val < current.val + 1 then 1 - probability else 1) /
+        PMF.deferredSurvival probability timing (current.val + 1) := by
   classical
   let prior := (app.policyMixture timing policies).posterior past
-  let mass := (prior.bind fun selected => policies selected past entry.beforeView).prob entry.action
-  have massEq : mass = waiting.prob entry.action *
-      (1 - probability * prior.prob current) := by
+  let mass := ((prior.bind fun selected => policies selected past entry.beforeView) entry.action).toReal
+  have massEq : mass = (waiting entry.action).toReal *
+      (1 - probability * (prior current).toReal) := by
     dsimp only [mass]
-    rw [FinDist.prob_bind]
+    rw [toReal_bind_apply]
     calc
-      _ = prior.expect (fun selected => waiting.prob entry.action *
+      _ = expect prior (fun selected => (waiting entry.action).toReal *
           (1 - probability * (if current = selected then 1 else 0))) := by
-        apply FinDist.expect_congr
+        apply expect_congr_on_support
         intro selected _
         rw [likelihood]
         by_cases same : selected = current <;> simp [same, Ne.symm, mul_comm]
       _ = _ := by
-        rw [FinDist.expect_smul, FinDist.expect_sub, FinDist.expect_const,
-          FinDist.expect_smul, FinDist.expect_ite_eq, mul_one]
-  have denominator := FinDist.deferredSurvival_positive probability nonnegative small
+        rw [FinDist.expect_smul, FinDist.expect_sub, expect_constant,
+          FinDist.expect_smul, expect_ite_eq, mul_one]
+  have denominator := PMF.deferredSurvival_positive probability nonnegative small
     timing current.val
-  have nextDenominator := FinDist.deferredSurvival_positive probability nonnegative small
+  have nextDenominator := PMF.deferredSurvival_positive probability nonnegative small
     timing (current.val + 1)
-  have priorCurrent : prior.prob current = timing.prob current /
-      FinDist.deferredSurvival probability timing current.val := by
+  have priorCurrent : (prior current).toReal = (timing current).toReal /
+      PMF.deferredSurvival probability timing current.val := by
     simpa only [lt_self_iff_false, ↓reduceIte, mul_one] using old current
-  have massValue : mass = waiting.prob entry.action *
-      FinDist.deferredSurvival probability timing (current.val + 1) /
-        FinDist.deferredSurvival probability timing current.val := by
-    rw [massEq, priorCurrent, FinDist.deferredSurvival_succ]
+  have massValue : mass = (waiting entry.action).toReal *
+      PMF.deferredSurvival probability timing (current.val + 1) /
+        PMF.deferredSurvival probability timing current.val := by
+    rw [massEq, priorCurrent, PMF.deferredSurvival_succ]
     field_simp
   have positive : 0 < mass := by
     rw [massValue]
-    exact div_pos (mul_pos (FinDist.prob_pos_iff.mpr possible) nextDenominator) denominator
+    exact div_pos (mul_pos (pmf_toReal_pos_iff.mpr possible) nextDenominator) denominator
   intro selected
   rw [app.posterior_point timing policies past entry positive selected, likelihood, old]
   change _ / mass = _
@@ -132,30 +132,30 @@ theorem scheduledChoice_posterior_step {slots : Nat}
       · simp [same, earlier, show selected.val < current.val + 1 by omega]
       · simp [same, earlier, show ¬ selected.val < current.val + 1 by omega]
   field_simp [ne_of_gt denominator, ne_of_gt nextDenominator,
-    ne_of_gt (FinDist.prob_pos_iff.mpr possible)]
-  simpa only [mul_assoc] using congrArg (fun value => timing.prob selected * value) factors
+    ne_of_gt (pmf_toReal_pos_iff.mpr possible)]
+  simpa only [mul_assoc] using congrArg (fun value => (timing selected).toReal * value) factors
 
 /-- The mass of timing choices that can still open gives exactly the deferred
 source probability. Past silent choices remain in the denominator. -/
 theorem scheduledChoice_remaining_probability {slots : Nat}
-    (timing posterior : FinDist (Fin slots)) (probability : ℝ) (count : Nat)
-    (points : ∀ slot, posterior.prob slot =
-      timing.prob slot * (if slot.val < count then 1 - probability else 1) /
-        FinDist.deferredSurvival probability timing count) :
-    probability * posterior.probOf {slot | count ≤ slot.val} =
-      FinDist.deferredRemaining probability timing count := by
+    (timing posterior : PMF (Fin slots)) (probability : ℝ) (count : Nat)
+    (points : ∀ slot, (posterior slot).toReal =
+      (timing slot).toReal * (if slot.val < count then 1 - probability else 1) /
+        PMF.deferredSurvival probability timing count) :
+    probability * (posterior.toOuterMeasure {slot | count ≤ slot.val}).toReal =
+      PMF.deferredRemaining probability timing count := by
   classical
-  have total : (∑ slot : Fin slots, if count ≤ slot.val then timing.prob slot else 0) =
+  have total : (∑ slot : Fin slots, if count ≤ slot.val then (timing slot).toReal else 0) =
       1 - timing.timingPrefix count := by
-    rw [← timing.sum_prob, FinDist.timingPrefix, ← Finset.sum_sub_distrib]
+    rw [← pmf_sum_toReal_eq_one timing, PMF.timingPrefix, ← Finset.sum_sub_distrib]
     apply Finset.sum_congr rfl
     intro slot _
     by_cases before : slot.val < count
     · simp only [before, Nat.not_le.mpr before, ↓reduceIte, sub_self]
     · simp only [before, Nat.le_of_not_gt before, ↓reduceIte, sub_zero]
-  have mass : posterior.probOf {slot | count ≤ slot.val} =
-      (1 - timing.timingPrefix count) / FinDist.deferredSurvival probability timing count := by
-    rw [← FinDist.expect_indicator_eq_probOf, FinDist.expect_eq_sum, ← total]
+  have mass : (posterior.toOuterMeasure {slot | count ≤ slot.val}).toReal =
+      (1 - timing.timingPrefix count) / PMF.deferredSurvival probability timing count := by
+    rw [← expect_indicator, expect_eq_sum, ← total]
     simp only [div_eq_mul_inv, Finset.sum_mul]
     apply Finset.sum_congr rfl
     intro slot _
@@ -165,7 +165,7 @@ theorem scheduledChoice_remaining_probability {slots : Nat}
         mul_zero, zero_mul]
     · simp only [Set.mem_ofPred_eq, before, Nat.le_of_not_gt before, ↓reduceIte, mul_one,
         div_eq_mul_inv]
-  rw [mass, FinDist.deferredRemaining]
+  rw [mass, PMF.deferredRemaining]
   ring
 
 end Interaction.ReactiveApplication

@@ -29,7 +29,7 @@ theorem native_segment_rounds (players : Player → nativeApp.Policy)
         simp only [ReactiveApplication.round, nativeScheduler, position, selected,
           interactionStep]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next supported
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
@@ -49,8 +49,8 @@ theorem native_finish_response (players : Player → nativeApp.Policy)
           (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork rest
             (execution.respond nativeApp who response)).map nativeApp.finished) := by
   simp only [ReactiveApplication.finish, ReactiveApplication.resume,
-    ReactiveApplication.invoke, FinDist.bind_map, FinDist.map_bind]
-  apply FinDist.bind_congr
+    ReactiveApplication.invoke, PMF.bind_map, PMF.map_bind]
+  apply bind_congr_on_support _
   intro response _
   congr 1
   apply native_segment_rounds players (before ++ [.player who]) rest []
@@ -60,11 +60,11 @@ theorem native_finish_response (players : Player → nativeApp.Policy)
 
 theorem native_finish_initial (players : Player → nativeApp.Policy) :
     nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players none =
-      (FinDist.uniformOfFintype (α := Bool)).bind (fun bit =>
+      (PMF.uniformOfFintype (α := Bool)).bind (fun bit =>
         (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan
           (nativeStart bit)).map nativeApp.finished) := by
-  simp only [ReactiveApplication.finish, nativeInitialLaw, FinDist.bind_map]
-  apply FinDist.bind_congr
+  simp only [ReactiveApplication.finish, nativeInitialLaw, PMF.bind_map]
+  apply bind_congr_on_support _
   intro bit _
   congr 1
   exact native_segment_rounds players [] nativePlan [] (List.append_nil _).symm

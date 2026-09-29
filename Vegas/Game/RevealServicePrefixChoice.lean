@@ -103,9 +103,9 @@ theorem owner_choices_at_prefix
           refine ⟨?_, ?_⟩
           · rw [law]
             simp only [ProtocolState.entry, ProtocolState.observe, Sum.elim_inl,
-              BehavioralPolicy.protocolAction, dite_true, FinDist.map_comp,
+              BehavioralPolicy.protocolAction, dite_true, PMF.map_comp,
               Function.comp_def, OwnAction.disclosure, revealKernel]
-            exact (FinDist.map_id _).symm
+            exact (PMF.map_id _).symm
           · have outputEq : (graph setup).outputLayout (embedding.event index) =
                 .publication payload := embedding.layout_eq index
             have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)

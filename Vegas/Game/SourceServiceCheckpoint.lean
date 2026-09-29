@@ -173,7 +173,7 @@ theorem SourceCheckpoint.sample_environment
       SourceCheckpoint setup (sampleSuccessor name source value)
         (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) after.config := by
   rw [source_sample_environment (runtime setup) native event ready outputEq refs law codeEq node
-    source.state checkpoint.agrees, FinDist.support_map] at supported
+    source.state checkpoint.agrees, PMF.support_map] at supported
   obtain ⟨value, member, rfl⟩ := supported
   exact ⟨value, member,
     checkpoint.sample name event eventRank ready outputEq before decoded value⟩
@@ -239,9 +239,9 @@ theorem sourceServicePolicy_commit_checkpoint
           (runtime setup).interactionStep leaks players network (.includeLatest event owner)
             (execution.respond (application setup leaks) owner response)).map
               (fun final => (final.application.config, final.receipts))).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨after, supported, rfl⟩
-  rw [law, FinDist.support_map] at mapped
+  rw [law, PMF.support_map] at mapped
   obtain ⟨choice, chosen, same⟩ := mapped
   have stateEq := congrArg Prod.fst same
   have receiptEq := congrArg Prod.snd same

@@ -110,7 +110,7 @@ theorem roster_owner_bayes_posterior
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player)
     (count : Nat)
@@ -142,8 +142,8 @@ theorem roster_owner_bayes_posterior
       site.1 = some (reference.recall owner, reference.observe (application setup leaks) owner) →
       (native.stateBelief owner site).map (fun state => state.bind fun control =>
         sourcePrefix? setup event.val control.execution.application.config) =
-        (((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
-          History.state).condOnFibre (setup.protocolObserve owner)
+        fiberConditional (((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
+          History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourcePrefix? setup event.val reference.application.config)) := by
   intro players executions menu scheduler horizon model assessment native
@@ -166,9 +166,9 @@ theorem roster_owner_bayes_posterior
         source mixed timing timingFull) count owner selected
   have referenceState : embed reference ∈
       ((model.runBehavioral native.strategy depth).map History.state).support := by
-    rw [law, FinDist.support_map]
+    rw [law, PMF.support_map]
     exact ⟨reference, referenceSupport, rfl⟩
-  obtain ⟨history, historySupport, stateEq⟩ := FinDist.support_map .. ▸ referenceState
+  obtain ⟨history, historySupport, stateEq⟩ := PMF.support_map .. ▸ referenceState
   have observed : model.infoOf owner history.trace = site.1 := by
     rw [show model.infoOf owner history.trace =
       (application setup leaks).observe owner history.state from menu.info .., stateEq, siteInput]
@@ -200,11 +200,11 @@ theorem roster_owner_bayes_posterior
   rw [law, siteInput] at conditioned
   have present : some (input reference) ∈
       (executions.map ((application setup leaks).observe owner ∘ embed)).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨reference, referenceSupport, observeEmbed reference⟩
-  have transported := FinDist.map_conditional_readout executions embed
+  have transported := PMF.map_conditional_readout executions embed
     ((application setup leaks).observe owner) (some (input reference)) present
-  have fiber := FinDist.condOnFibre_eq_of_support_fiber executions
+  have fiber := fiberConditional_eq_of_support_fiber executions
     ((application setup leaks).observe owner ∘ embed) input (some (input reference))
     (input reference) (by
       intro value _
@@ -221,7 +221,7 @@ theorem roster_owner_bayes_posterior
     by simpa only [executions, before] using referenceSupport
   have result := posterior supported
   change (native.stateBelief owner site).map read = _
-  rw [conditioned, ← transported, FinDist.map_comp]
+  rw [conditioned, ← transported, PMF.map_comp]
   simpa only [executions, before, Function.comp_def, read, embed, Option.bind_some, input]
     using result
 
@@ -239,7 +239,7 @@ theorem roster_owner_bayes_at_history
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player)
     (count : Nat)
@@ -264,8 +264,8 @@ theorem roster_owner_bayes_at_history
       control.execution.environmentRecall.length = count + 1 →
       (native.stateBelief owner site).map (fun state => state.bind fun current =>
         sourcePrefix? setup event.val current.execution.application.config) =
-        (((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
-          History.state).condOnFibre (setup.protocolObserve owner)
+        fiberConditional (((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
+          History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourcePrefix? setup event.val control.execution.application.config)) := by
   intro menu scheduler horizon model assessment native site history control current position
@@ -300,9 +300,9 @@ theorem roster_owner_bayes_at_history
   change (model.runBehavioral native.strategy depth).map History.state = _ at law
   have stateSupport : some control ∈
       ((model.runBehavioral native.strategy depth).map History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨history.1, supported, current⟩
-  rw [law, FinDist.support_map] at stateSupport
+  rw [law, PMF.support_map] at stateSupport
   obtain ⟨execution, executionSupport, same⟩ := stateSupport
   have executionEq : execution = control.execution :=
     congrArg ReactiveApplication.Control.execution (Option.some.inj same)
@@ -336,7 +336,7 @@ theorem roster_owner_bayes_source_state
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (setup.informationModel admission) source (setup.decision_antichain admission))
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) (visits : List Player)
     (count : Nat)

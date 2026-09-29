@@ -35,7 +35,7 @@ theorem early_choices_subsingleton (bit : Bool) :
       ((aliceActivated bit).observe nativeApp alice) response).mpr available
     change response ∈ (restrictedMenu.uniformResponses alice ((aliceActivated bit).recall alice)
       ((aliceActivated bit).observe nativeApp alice)).support at supported
-    rw [reference_early_alice, FinDist.mem_support_pure] at supported
+    rw [reference_early_alice, PMF.mem_support_pure_iff _ _] at supported
     exact same.trans (congrArg some supported)
   exact (unique first).trans (unique second).symm
 
@@ -66,7 +66,7 @@ theorem compiled_bob_optimal (table : PayoffTable)
     (sourceConsistent : source.IsSequentiallyConsistent sourceAntichain)
     (rational : source.IsSequentiallyRationalWithin (sourceResultPayoff (tableReward table)) 3)
     (target : restrictedModel.BehavioralAssessment)
-    (consistent : target.IsSequentiallyConsistent restricted_decisionRecall.antichain)
+    (consistent : target.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
     (strategy : target.strategy = compile source.strategy)
     (site : restrictedModel.InformationSite bob)
     (alternative : restrictedModel.BehavioralPolicy bob) :
@@ -92,10 +92,10 @@ theorem compiled_local_optimal (table : PayoffTable)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.continuationContext site (sourceResultPayoff (tableReward table) who) 3))
     (target : restrictedModel.BehavioralAssessment)
-    (consistent : target.IsSequentiallyConsistent restricted_decisionRecall.antichain)
+    (consistent : target.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
     (strategy : target.strategy = compile source.strategy)
     (who : Player) (site : restrictedModel.InformationSite who)
-    (law : FinDist (restrictedModel.Choice who site.1)) :
+    (law : PMF (restrictedModel.Choice who site.1)) :
     (target.continuationContext site
       (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1)).value ((target.strategy who).withLaw site.1 law) ≤
@@ -105,7 +105,7 @@ theorem compiled_local_optimal (table : PayoffTable)
   classical
   fin_cases who
   · change restrictedModel.InformationSite alice at site
-    change FinDist (restrictedModel.Choice alice site.1) at law
+    change PMF (restrictedModel.Choice alice site.1) at law
     change (target.continuationContext site
       (fun history => Enforcement.stateUtility table history.state alice)
         (2 * nativeHorizon + 1)).value ((target.strategy alice).withLaw site.1 law) ≤
@@ -118,14 +118,14 @@ theorem compiled_local_optimal (table : PayoffTable)
         exact early_choices_subsingleton bit
       let choice := (target.strategy alice site.1).support_nonempty.choose
       have same : law = target.strategy alice site.1 :=
-        (FinDist.eq_pure_of_subsingleton law choice).trans
-          (FinDist.eq_pure_of_subsingleton (target.strategy alice site.1) choice).symm
+        (eq_pure_of_subsingleton law choice).trans
+          (eq_pure_of_subsingleton (target.strategy alice site.1) choice).symm
       rw [same, InformationModel.BehavioralPolicy.withLaw_eq_self]
     · exact compiled_alice_optimal table source equilibrium.1 target strategy site bit guess final _
   · exact compiled_bob_optimal table source equilibrium.2 equilibrium.1 target consistent
       strategy site _
   · change restrictedModel.InformationSite watcher at site
-    change FinDist (restrictedModel.Choice watcher site.1) at law
+    change PMF (restrictedModel.Choice watcher site.1) at law
     change (target.continuationContext site
       (fun history => Enforcement.stateUtility table history.state watcher)
         (2 * nativeHorizon + 1)).value ((target.strategy watcher).withLaw site.1 law) ≤
@@ -133,7 +133,7 @@ theorem compiled_local_optimal (table : PayoffTable)
         (fun history => Enforcement.stateUtility table history.state watcher)
           (2 * nativeHorizon + 1)).value (target.strategy watcher)
     simp only [InformationModel.BehavioralAssessment.continuationContext_value,
-      Enforcement.stateUtility_watcher table watcherZero, FinDist.expect_const, le_refl]
+      Enforcement.stateUtility_watcher table watcherZero, expect_constant, le_refl]
 
 /-- Every source SE, with arbitrary declared result incentives, has a consistent
 SE at its fixed translated policy in the restricted native game. -/
@@ -144,7 +144,7 @@ theorem source_equilibrium_compiles (table : PayoffTable)
       source.continuationContext site (sourceResultPayoff (tableReward table) who) 3)) :
     ∃ target : restrictedModel.BehavioralAssessment,
       target.strategy = compile source.strategy ∧
-      target.IsSequentialEquilibriumFor restricted_decisionRecall.antichain (fun who site =>
+      target.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain (fun who site =>
         target.continuationContext site
           (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1 - restrictedDepth who site)) := by

@@ -24,7 +24,7 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
   (mixed : assessment.IsFullyMixed)
   (bayes : BehavioralAssessment.IsBayesConsistent M assessment
-    recall.antichain)
+    recall.decisionInformationAntichain)
   (who : Player) (alternative : M.BehavioralPolicy who)
 
 include recall mixed bayes in
@@ -35,20 +35,20 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
     (reached : ∃ history ∈ {history | M.infoOf who history.trace = site.1},
       history ∈ (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy who alternative) depth).support) :
-    (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-      assessment.strategy who alternative) depth).condOnFibre
+    fiberConditional (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+      assessment.strategy who alternative) depth)
         (fun history => M.infoOf who history.trace) site.1 =
       (assessment.belief who site).map Subtype.val := by
   classical
   let updated := Profile.update (sig := M.behavioralSignature) assessment.strategy who alternative
-  let antichain := recall.antichain who site
+  let antichain := recall.decisionInformationAntichain who site
   have positive : 0 < M.informationMass updated who site := by
     rw [M.informationMass_eq_fixedDepth_probOf updated who site depth sameDepth]
-    exact FinDist.probOf_pos reached
+    exact toOuterMeasure_toReal_pos _ reached
   have originalPositive := mixed.informationMass_pos who site
   have originalBelief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site antichain originalPositive := by
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro history
     rw [M.bayesBelief_prob]
     exact bayes who site originalPositive history
@@ -77,27 +77,27 @@ theorem one_step_gain_le_after_own_prefix
           ((assessment.strategy who).withLaw site.1 (alternative site.1)) -
         (assessment.continuationContext site payoff (fuel + 1)).value
           (assessment.strategy who) ≤ allowance site.1) :
-    (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-      assessment.strategy who alternative) depth).expect (fun history =>
-        ((M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+    expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+      assessment.strategy who alternative) depth) (fun history =>
+        expect ((M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
           assessment.strategy who alternative) 1 history).bind
-            (M.runBehavioralFrom assessment.strategy fuel)).expect payoff -
-          (M.runBehavioralFrom assessment.strategy (fuel + 1) history).expect payoff) ≤
-      (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy who alternative) depth).expect
+            (M.runBehavioralFrom assessment.strategy fuel)) payoff -
+          expect (M.runBehavioralFrom assessment.strategy (fuel + 1) history) payoff) ≤
+      expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+        assessment.strategy who alternative) depth)
           (fun history => allowance (M.infoOf who history.trace)) := by
   classical
   let updated := Profile.update (sig := M.behavioralSignature) assessment.strategy who alternative
   let prefixLaw := M.runBehavioral updated depth
   let observation := fun history : E.History => M.infoOf who history.trace
   let gain := fun history : E.History =>
-    ((M.runBehavioralFrom updated 1 history).bind
-      (M.runBehavioralFrom assessment.strategy fuel)).expect payoff -
-        (M.runBehavioralFrom assessment.strategy (fuel + 1) history).expect payoff
+    expect ((M.runBehavioralFrom updated 1 history).bind
+      (M.runBehavioralFrom assessment.strategy fuel)) payoff -
+        expect (M.runBehavioralFrom assessment.strategy (fuel + 1) history) payoff
   have conditionalBound (info : M.InfoState who)
       (supported : info ∈ (prefixLaw.map observation).support) :
-      (prefixLaw.condOnFibre observation info).expect gain ≤ allowance info := by
-    obtain ⟨witness, witnessSupported, observed⟩ := FinDist.support_map .. ▸ supported
+      expect (fiberConditional prefixLaw observation info) gain ≤ allowance info := by
+    obtain ⟨witness, witnessSupported, observed⟩ := PMF.support_map .. ▸ supported
     have meet : ∃ history ∈ observation ⁻¹' {info}, history ∈ prefixLaw.support :=
       ⟨witness, observed, witnessSupported⟩
     by_cases decision : ∃ history ∈ prefixLaw.support,
@@ -126,7 +126,7 @@ theorem one_step_gain_le_after_own_prefix
       have sameDepth : InformationSite.CommonDepth M site depth := siteDepthEq ▸ uniformDepth
       have posterior := M.own_prefix_conditional_eq_belief assessment recall mixed bayes who
         alternative depth site sameDepth meet
-      rw [posterior, FinDist.expect_map]
+      rw [posterior, expect_map]
       calc
         _ = (assessment.continuationContext site payoff (fuel + 1)).value
               ((assessment.strategy who).withLaw site.1 (alternative site.1)) -
@@ -135,21 +135,21 @@ theorem one_step_gain_le_after_own_prefix
           rw [BehavioralAssessment.continuationContext_value,
             BehavioralAssessment.continuationContext_value, Profile.update_eq_self,
             FinDist.expect_bind, FinDist.expect_bind, ← FinDist.expect_sub]
-          apply FinDist.expect_congr
+          apply expect_congr_on_support
           intro compatible _
           dsimp only [gain]
-          rw [M.one_step_then_baseline_eq_local_law recall.antichain assessment.strategy who
+          rw [M.one_step_then_baseline_eq_local_law recall.decisionInformationAntichain assessment.strategy who
             alternative compatible.1 (InformationSite.active M site compatible) fuel, compatible.2]
         _ ≤ allowance info := localBound site sameDepth
-    · have zero : (prefixLaw.condOnFibre observation info).expect gain = 0 := by
-        rw [← FinDist.expect_const (prefixLaw.condOnFibre observation info) (0 : ℝ)]
-        apply FinDist.expect_congr
+    · have zero : expect (fiberConditional prefixLaw observation info) gain = 0 := by
+        rw [← expect_constant (fiberConditional prefixLaw observation info) (0 : ℝ)]
+        apply expect_congr_on_support
         intro history historySupported
-        rw [FinDist.condOnFibre, dite_eq_left meet] at historySupported
-        obtain ⟨observed, historySupported⟩ := FinDist.support_condOn _ _ _ historySupported
+        rw [fiberConditional, dite_eq_left meet] at historySupported
+        obtain ⟨observed, historySupported⟩ := (PMF.mem_support_filter_iff _).mp historySupported
         by_cases stopped : E.terminal history.state
         · simp only [gain, M.runBehavioralFrom_of_terminal _ _ stopped,
-            FinDist.pure_bind, sub_self]
+            PMF.pure_bind, sub_self]
         · have inactive : ¬ E.active history.state who := by
             intro active
             exact decision ⟨history, historySupported, observed, stopped, active⟩
@@ -159,13 +159,13 @@ theorem one_step_gain_le_after_own_prefix
       rw [zero]
       exact nonnegative info
   calc
-    prefixLaw.expect gain =
-        (prefixLaw.map observation).expect (fun info =>
-          (prefixLaw.condOnFibre observation info).expect gain) := by
+    expect prefixLaw gain =
+        expect (prefixLaw.map observation) (fun info =>
+          expect (fiberConditional prefixLaw observation info) gain) := by
       conv_lhs => rw [prefixLaw.eq_bind_condOnFibre observation]
       exact FinDist.expect_bind ..
-    _ ≤ (prefixLaw.map observation).expect allowance :=
+    _ ≤ expect (prefixLaw.map observation) allowance :=
       FinDist.expect_mono conditionalBound
-    _ = _ := FinDist.expect_map ..
+    _ = _ := expect_map ..
 
 end GameTheory.Protocol.InformationModel

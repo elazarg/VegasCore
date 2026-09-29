@@ -68,7 +68,7 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
     ∃ next, (runtime setup).runInteractionPlan leaks players
         ((runtime setup).reportNetwork leaks watcher)
         ([.includeLatest event owner, .player watcher, .wire] ++
-          List.replicate ticks .tick ++ [.expire event]) submitted = FinDist.pure next ∧
+          List.replicate ticks .tick ++ [.expire event]) submitted = PMF.pure next ∧
       next.application =
         (if disclose then
           { execution.application.complete event ready action result with
@@ -201,7 +201,7 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
         ((runtime setup).reportNetwork leaks watcher)
         ([.includeLatest event owner, .player watcher, .wire] ++
           List.replicate ticks .tick ++ [.expire event])
-        (execution.respond (application setup leaks) owner response) = FinDist.pure next ∧
+        (execution.respond (application setup leaks) owner response) = PMF.pure next ∧
       (refs.cons (name := published) resultRef).Agrees sourceNext.state
         next.application.config.store ∧
       decodeHistory setup.program

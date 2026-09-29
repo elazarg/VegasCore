@@ -60,7 +60,7 @@ theorem active_evaluator_stopped_coupling
       owner alternative)
     let repair := BindingMemory.retainedPolicy (runtime setup) leaks menu (initialLaw setup)
       horizon scheduler owner reference policy
-    ∃ coupled : FinDist (app.Control × app.Control × BindingMemory (runtime setup) leaks),
+    ∃ coupled : PMF (app.Control × app.Control × BindingMemory (runtime setup) leaks),
       coupled.map (fun pair => some pair.1) =
         ((effective.information (initialLaw setup) horizon scheduler).runBehavioralFrom
           (Function.update target owner alternative) fuel
@@ -102,21 +102,21 @@ theorem active_evaluator_stopped_coupling
         owner policy) history.state
     rw [current, ReactiveApplication.finish, ReactiveApplication.resume]
     dsimp only [coupled]
-    rw [FinDist.map_comp]
+    rw [PMF.map_comp]
     have mapped := congrArg (fun law => law.map app.finished) left
-    rw [FinDist.map_comp] at mapped
+    rw [PMF.map_comp] at mapped
     exact mapped
   · have law := BindingMemory.retainedPolicy_runFrom (runtime setup) leaks menu effective inclusion
       (initialLaw setup) horizon scheduler source target agrees owner reference policy remaining
       fuel enough execution history current recalled
     rw [law]
     dsimp only [coupled]
-    rw [FinDist.map_comp]
+    rw [PMF.map_comp]
     have mapped := congrArg (fun law => law.map (fun next => app.finished next.1)) right
-    simp only [Function.update_self, recalled, FinDist.map_comp] at mapped
+    simp only [Function.update_self, recalled, PMF.map_comp] at mapped
     exact mapped
   · intro pair supported
-    obtain ⟨next, member, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨next, member, rfl⟩ := PMF.support_map .. ▸ supported
     exact related next member
 
 end Vegas

@@ -51,11 +51,11 @@ theorem final_comparator_results (rawPlayers legalPlayers : Player → nativeApp
           (fun final => nativeResults final.application.config) := by
   have summary := alice_service_summary legalPlayers bit guess
     (finalResponseChoice (beforeAlice bit guess) response)
-  have results := congrArg (fun law : FinDist (Results × Bool) => law.map Prod.fst) summary
-  rw [FinDist.map_comp, FinDist.map_pure] at results
+  have results := congrArg (fun law : PMF (Results × Bool) => law.map Prod.fst) summary
+  rw [PMF.map_comp, PMF.pure_map] at results
   simp only [Function.comp_def] at results
-  rw [final_response_law, FinDist.map_pure, final_comparator_eq, results]
-  exact congrArg FinDist.pure (final_response_result (beforeAlice bit guess) response bit
+  rw [final_response_law, PMF.pure_map, final_comparator_eq, results]
+  exact congrArg PMF.pure (final_response_result (beforeAlice bit guess) response bit
     (guessResult guess) (before_alice_fixed bit guess) (after_bob_stored bit guess))
 
 /-- A nonnegative collectible charge makes the legal comparator weakly better
@@ -63,22 +63,22 @@ for Alice, for every real-valued payoff on source results. -/
 theorem final_comparator_payoff_le (payoff : Results → ℝ) (charge : ℝ)
     (nonnegative : 0 ≤ charge) (rawPlayers legalPlayers : Player → nativeApp.Policy)
     (bit guess : Bool) (response : nativeApp.Action) :
-    (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
-      ((beforeAlice bit guess).respond nativeApp alice response)).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice response))
         (fun final => payoff (nativeResults final.application.config) -
           if rejectedAlice final.receipts then charge else 0) ≤
-    (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
+    expect (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice
-        (finalComparator (aliceInput bit guess) response))).expect
+        (finalComparator (aliceInput bit guess) response)))
           (fun final => payoff (nativeResults final.application.config) -
             if rejectedAlice final.receipts then charge else 0) := by
   have summary := alice_service_summary legalPlayers bit guess
     (finalResponseChoice (beforeAlice bit guess) response)
-  have expected := congrArg (fun law : FinDist (Results × Bool) =>
-    law.expect (fun outcome => payoff outcome.1 - if outcome.2 then charge else 0)) summary
-  rw [FinDist.expect_map, FinDist.expect_pure] at expected
+  have expected := congrArg (fun law : PMF (Results × Bool) =>
+    expect law (fun outcome => payoff outcome.1 - if outcome.2 then charge else 0)) summary
+  rw [expect_map, expect_pure] at expected
   simp only [Bool.false_eq_true, ↓reduceIte, sub_zero] at expected
-  rw [final_response_law, FinDist.expect_pure, final_comparator_eq, expected,
+  rw [final_response_law, expect_pure, final_comparator_eq, expected,
     final_response_result (beforeAlice bit guess) response bit (guessResult guess)
       (before_alice_fixed bit guess) (after_bob_stored bit guess)]
   exact sub_le_self _ (by split <;> first | exact nonnegative | exact le_rfl)
@@ -87,13 +87,13 @@ theorem final_comparator_payoff_le (payoff : Results → ℝ) (charge : ℝ)
 theorem final_comparator_declared_payoff_le (table : PayoffTable) (charge : ℝ)
     (nonnegative : 0 ≤ charge) (rawPlayers legalPlayers : Player → nativeApp.Policy)
     (bit guess : Bool) (response : nativeApp.Action) :
-    (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
-      ((beforeAlice bit guess).respond nativeApp alice response)).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
+      ((beforeAlice bit guess).respond nativeApp alice response))
         (fun final => (table (nativeResults final.application.config) alice : ℝ) -
           if rejectedAlice final.receipts then charge else 0) ≤
-    (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
+    expect (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice
-        (finalComparator (aliceInput bit guess) response))).expect
+        (finalComparator (aliceInput bit guess) response)))
           (fun final => (table (nativeResults final.application.config) alice : ℝ) -
             if rejectedAlice final.receipts then charge else 0) :=
   final_comparator_payoff_le (fun outcome => (table outcome alice : ℝ)) charge nonnegative

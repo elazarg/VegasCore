@@ -227,9 +227,9 @@ def compilePlayerPolicy (runtime : EventGraphRuntime graph) (who : Player)
     (policy : graph.BehavioralPolicy who) : runtime.application.PlayerPolicy :=
   fun history view =>
     match _grant : view.application.publicView.serviceGrant with
-    | none => FinDist.pure .wait
+    | none => PMF.pure .wait
     | some event =>
-        if _already : submittedAt history event then FinDist.pure .wait
+        if _already : submittedAt history event then PMF.pure .wait
         else if viewOwner : view.application.who = who then
           if _ready : view.application.publicView.EventReady event then
             if actor : graph.actor? event = some who then
@@ -237,7 +237,7 @@ def compilePlayerPolicy (runtime : EventGraphRuntime graph) (who : Player)
                 viewOwner ▸ view.application.observation
               let normalized := graph.normalizePolicy who policy
               match nodeView graph event with
-              | .sample .. => FinDist.pure .wait
+              | .sample .. => PMF.pure .wait
               | .bind _owner payload outputEq _codeEq =>
                   match stagingCount history event with
                   | 0 =>
@@ -245,11 +245,11 @@ def compilePlayerPolicy (runtime : EventGraphRuntime graph) (who : Player)
                         .privateCommand (.remember event action)
                   | 1 =>
                       match view.application.remembered event with
-                      | none => FinDist.pure .wait
+                      | none => PMF.pure .wait
                       | some action =>
-                          FinDist.pure
+                          PMF.pure
                             (bindingStageCommand runtime event payload outputEq action)
-                  | _ + 2 => FinDist.pure
+                  | _ + 2 => PMF.pure
                       (.submit (.commitment event (who, eventSlot event)))
               | .resolve _owner payload binding checks outputEq _codeEq =>
                   match stagingCount history event with
@@ -258,18 +258,18 @@ def compilePlayerPolicy (runtime : EventGraphRuntime graph) (who : Player)
                         .privateCommand (.remember event action)
                   | 1 =>
                       match view.application.remembered event with
-                      | none => FinDist.pure .wait
-                      | some action => FinDist.pure
+                      | none => PMF.pure .wait
+                      | some action => PMF.pure
                           (.privateCommand (.remember event action))
                   | _ + 2 =>
                       match view.application.remembered event with
-                      | none => FinDist.pure (.submit (.withhold event))
-                      | some action => FinDist.pure
+                      | none => PMF.pure (.submit (.withhold event))
+                      | some action => PMF.pure
                           (resolutionSubmission runtime who event payload binding checks
                             outputEq action view)
-            else FinDist.pure .wait
-          else FinDist.pure .wait
-        else FinDist.pure .wait
+            else PMF.pure .wait
+          else PMF.pure .wait
+        else PMF.pure .wait
 
 /-- Compile every player policy independently. -/
 def compileProfile (runtime : EventGraphRuntime graph)

@@ -24,14 +24,14 @@ variable {graph : Vegas.EventGraph Player L}
 /-- Canonical future semantic law with the native cache's sampled actions
 fixed. Completed cache entries are harmless by graph-policy irrelevance. -/
 def State.continuationLaw (state : State graph) (profile : graph.BehavioralProfile) :
-    FinDist graph.SemanticKey :=
+    PMF graph.SemanticKey :=
   graph.canonicalContinuation (graph.memoizedProfile profile state.remembered) state.config
 
 /-- At terminal execution the continuation is exactly the native semantic
 state, independently of all retained cache entries. -/
 theorem State.continuationLaw_terminal (state : State graph)
     (profile : graph.BehavioralProfile) (terminal : state.config.cut.Terminal) :
-    state.continuationLaw profile = FinDist.pure (graph.semanticKey state.config) :=
+    state.continuationLaw profile = PMF.pure (graph.semanticKey state.config) :=
   (graph.canonicalContinuation_terminal _ state.config terminal).symm
 
 /-- The actual private sampling command preserves the continuation law in
@@ -48,7 +48,7 @@ theorem playerStep_remember_continuation (runtime : EventGraphRuntime graph)
           (.privateCommand (.remember event action))).bind
           fun next => next.native.application.continuationLaw profile) =
       execution.native.application.continuationLaw profile := by
-  simp only [runtime.application.playerStep_private_eq, FinDist.pure_bind]
+  simp only [runtime.application.playerStep_private_eq, PMF.pure_bind]
   change ((graph.normalizePolicy who (profile who) event actor
     (graph.playerObserve who execution.native.application.config)).bind fun action =>
       (privateStep execution.native.application who (.remember event action)).continuationLaw

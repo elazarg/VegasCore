@@ -28,20 +28,20 @@ private theorem early_scheduler_count (history : List nativeApp.EnvironmentEntry
   interval_cases count
   · unfold nativeScheduler at supported
     rw [size] at supported
-    change command ∈ (FinDist.pure (.activate alice : nativeApp.Command)).support at supported
-    cases FinDist.mem_support_pure.mp supported
+    change command ∈ (PMF.pure (.activate alice : nativeApp.Command)).support at supported
+    cases (PMF.mem_support_pure_iff _ _).mp supported
     rfl
   · unfold nativeScheduler at supported
     rw [size] at supported
-    change command ∈ (FinDist.pure (.activate watcher : nativeApp.Command)).support at supported
-    cases FinDist.mem_support_pure.mp supported
+    change command ∈ (PMF.pure (.activate watcher : nativeApp.Command)).support at supported
+    cases (PMF.mem_support_pure_iff _ _).mp supported
     rfl
   · unfold nativeScheduler at supported
     rw [size] at supported
     change command ∈ (nativeRuntime.interactionInstruction nativeLeaks nativeNetwork history
       view .wire).support at supported
-    simp only [interactionInstruction, nativeNetwork, FinDist.map_pure,
-      FinDist.mem_support_pure] at supported
+    simp only [interactionInstruction, nativeNetwork, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at supported
     subst command
     cases last : view.network.inputs.getLast? with
     | none => simp [NetworkChoice.command, ReactiveApplication.atMostOnceCommand,
@@ -58,14 +58,14 @@ private theorem early_scheduler_count (history : List nativeApp.EnvironmentEntry
             ReactiveApplication.Command.actor?, earlyActivations]
   · unfold nativeScheduler at supported
     rw [size] at supported
-    change command ∈ (FinDist.pure
+    change command ∈ (PMF.pure
       (.application (.grant bobPublication) : nativeApp.Command)).support at supported
-    cases FinDist.mem_support_pure.mp supported
+    cases (PMF.mem_support_pure_iff _ _).mp supported
     rfl
   · unfold nativeScheduler at supported
     rw [size] at supported
-    change command ∈ (FinDist.pure (.activate bob : nativeApp.Command)).support at supported
-    cases FinDist.mem_support_pure.mp supported
+    change command ∈ (PMF.pure (.activate bob : nativeApp.Command)).support at supported
+    cases (PMF.mem_support_pure_iff _ _).mp supported
     rfl
 
 private def EarlyDepth (state : nativeApp.ProtocolState) (depth : Nat) : Prop :=
@@ -84,7 +84,7 @@ private theorem early_trace_count :
           nativeScheduler source joint).support := realized
       cases source with
       | none =>
-          obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
           have counted : before.length = 0 := inherited
           simpa only [EarlyDepth, Trace.length, ReactiveApplication.Execution.initial,
             List.length_nil, Option.toList_none, Nat.add_zero, earlyActivations,
@@ -93,7 +93,7 @@ private theorem early_trace_count :
           rcases control with ⟨remaining, actor, execution⟩
           cases actor with
           | some who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               intro early
               have counted := inherited
                 (by simpa only [nativeApp.respond_environmentRecall] using early)
@@ -107,12 +107,12 @@ private theorem early_trace_count :
                   exact (stopped ⟨rfl, rfl⟩).elim
               | succ remaining =>
                   obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   intro early
                   have schedulerRecall : next.environmentRecall = execution.environmentRecall ++
                       [⟨execution.observeEnvironment nativeApp, command⟩] := by
-                    obtain ⟨updated, _, equal⟩ := FinDist.support_map .. ▸ supported
+                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
                     cases equal
                     rfl
                   have previousEarly : execution.environmentRecall.length ≤ 4 := by

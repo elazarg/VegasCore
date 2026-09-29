@@ -64,11 +64,11 @@ theorem bob_correction_fresh (control : nativeApp.Control)
       bobCorrectiveResponse bit (control.execution.observe nativeApp bob) =
         bobCorrection serial bit := by
   have recall := native_bob_binding_recall control trace active granted
-  have rawTrace := nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+  have rawTrace := nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler trace
-  have recorded := nativeRuntime.candidateRecall_history nativeLeaks (FinDist.pure nativeInputs)
+  have recorded := nativeRuntime.candidateRecall_history nativeLeaks (PMF.pure nativeInputs)
     nativeHorizon nativeScheduler (state := some control)
-    (by rw [FinDist.map_pure]; exact rawTrace)
+    (by rw [PMF.pure_map]; exact rawTrace)
   obtain ⟨serial, bound, allocated⟩ := nativeRuntime.reactiveFreshSlot_le_recall nativeLeaks
     control.execution bob recorded
   have bounded : serial < 2 := by omega
@@ -94,7 +94,7 @@ theorem bob_correction_realizes (players : Player → nativeApp.Policy)
       (nativeRuntime.interactionStep nativeLeaks players nativeNetwork
         (.includeLatest bobBinding bob)
         (execution.respond nativeApp bob (bobCorrection serial bit))).map
-          (fun result => result.application) = FinDist.pure next := by
+          (fun result => result.application) = PMF.pure next := by
   let submitted := execution.respond nativeApp bob (bobCorrection serial bit)
   have facts := nativeRuntime.reactive_respond_application nativeLeaks execution bob
     (bobCorrection serial bit)
@@ -136,15 +136,15 @@ theorem bob_correction_realizes (players : Player → nativeApp.Policy)
         some ⟨(bob, execution.network.nextSerial bob),
           ⟨.commitment bobBinding (bob, .prepared serial), none⟩⟩ := serials.lookup_submit bob _
     simp only [interactionStep, interactionInstruction,
-      bob_correction_selected execution serial bit serials, FinDist.pure_bind,
+      bob_correction_selected execution serial bit serials, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
-      ReactiveApplication.resume, FinDist.map_pure]
-    change FinDist.pure (submitted.includePending nativeApp
+      PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
+      ReactiveApplication.resume, PMF.pure_map]
+    change PMF.pure (submitted.includePending nativeApp
       (bob, execution.network.nextSerial bob)).application = _
     unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
     rw [found]
-    change FinDist.pure ((handle nativeRuntime submitted.application
+    change PMF.pure ((handle nativeRuntime submitted.application
       ⟨(bob, execution.network.nextSerial bob),
         .commitment bobBinding (bob, .prepared serial)⟩).getD submitted.application) = _
     rfl
@@ -161,7 +161,7 @@ theorem bob_corrective_response_realizes (players : Player → nativeApp.Policy)
         (.includeLatest bobBinding bob)
         (control.execution.respond nativeApp bob
           (bobCorrectiveResponse bit (control.execution.observe nativeApp bob)))).map
-            (fun result => result.application) = FinDist.pure next := by
+            (fun result => result.application) = PMF.pure next := by
   have position := (native_decision_cursor bobBinding control trace bob active granted).2
   obtain ⟨_, service⟩ := native_decision_service bobBinding control trace active position
   obtain ⟨ready, timely⟩ := service.resolve_left unfinished

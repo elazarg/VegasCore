@@ -114,20 +114,20 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      simp only [List.map_nil, List.nil_append, runInteractionPlan, FinDist.bind_pure] at reached
+      simp only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure] at reached
       rw [runtime.interaction_includeLatest_of_pending_published leaks players network
         initial owner event published.pending] at reached
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact published
   | cons who rest ih =>
-      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at step
+      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at step
       change middle ∈ ((initial.environmentStep app (.activate who)).bind
         (app.invoke players who)).support at step
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at step
-      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ step)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ step
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at step
+      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app who sample
       have activePublished : activated.network.Satisfies fun message =>
           message.id ∈ activated.network.ledger.map Message.id := published.learn who sample
@@ -141,7 +141,7 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
           (published.learn who sample) who response transport
         exact ih (activated.respond app who response) (by rw [preserved.1]; exact granted)
           (by rw [preserved.2.1]; exact preserved.2.2.2.2.1)
-          ((app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+          ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
             activated who response (serials.learn who sample)) tail
       rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding
         checks outputEq codeEq node granted response allowed with silent | replay |

@@ -72,7 +72,7 @@ theorem resolution_history_tail_coupling
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let ending : List (ServiceInstruction (graph setup)) :=
       .includeLatest event actor :: List.replicate ticks .tick ++ [.expire event]
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         ending original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -112,23 +112,23 @@ theorem resolution_history_tail_coupling
   let coupling := physical.map fun pair => (pair.1, pair.2, memory)
   have leftLaw : coupling.map Prod.fst =
       (runtime setup).runInteractionPlan leaks players network ending original := by
-    simpa only [coupling, FinDist.map_comp, Function.comp_def] using first
+    simpa only [coupling, PMF.map_comp, Function.comp_def] using first
   have rightLaw : coupling.map Prod.snd = strategy.runJoint owner players scheduler
       ending.length repaired memory := by
     rw [roster_segment_runJoint setup leaks rosters network strategy owner players before ending
       after split (by simp [ending]) repaired memory cursor]
     change (physical.map _).map Prod.snd = _
-    rw [FinDist.map_comp, ← second, FinDist.map_comp]
+    rw [PMF.map_comp, ← second, PMF.map_comp]
     rfl
   refine ⟨coupling, leftLaw, rightLaw, ?_⟩
   intro next supported
-  obtain ⟨pair, member, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨pair, member, rfl⟩ := PMF.support_map .. ▸ supported
   refine ⟨?_, related pair member, rfl⟩
   have reached : (pair.2, memory) ∈
       (strategy.runJoint owner players scheduler ending.length repaired memory).support := by
-    rw [← rightLaw, FinDist.support_map]
+    rw [← rightLaw, PMF.support_map]
     refine ⟨(pair.1, pair.2, memory), ?_, rfl⟩
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨pair, member, rfl⟩
   apply menu.trace_implementation_runJoint (initialLaw setup) (rosterPlan setup rosters).length
     scheduler strategy owner players _ _ remaining ending.length repaired memory _

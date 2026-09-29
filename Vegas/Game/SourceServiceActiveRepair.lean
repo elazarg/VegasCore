@@ -55,7 +55,7 @@ theorem active_history_stopped_coupling
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let scheduler := rosterScheduler setup leaks rosters network
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (app.invoke players owner execution).bind
         (app.runRounds scheduler players remaining) ∧
       coupling.map Prod.snd =
@@ -149,7 +149,7 @@ theorem active_history_stopped_coupling
   have frame := BindingMemory.frame_atRecall (runtime setup) leaks owner execution
   have onlyBindings : memory.shadow.OwnBindings owner := BindingShadow.ownBindings_empty owner
   have existsCurrent :
-      ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         coupling.map Prod.fst = (app.invoke players owner execution).bind
           ((runtime setup).runInteractionPlan leaks players network current) ∧
         coupling.map Prod.snd =
@@ -239,7 +239,7 @@ theorem active_history_stopped_coupling
         ⟨(related next member).1, (related next member).2.imp_right Or.inr⟩⟩
   obtain ⟨firstBlock, first, second, related⟩ := existsCurrent
   have existsTail next (member : next ∈ firstBlock.support) :
-      ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
           future next.1 ∧
         coupling.map Prod.snd = strategy.runJoint owner players scheduler future.length
@@ -256,11 +256,11 @@ theorem active_history_stopped_coupling
         next.1.application.publicView.missedBindingBy owner = true
     · let left := (runtime setup).runInteractionPlan leaks players network future next.1
       let right := strategy.runJoint owner players scheduler future.length next.2.1 next.2.2
-      refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+      refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
         FinDist.map_snd_product .., ?_⟩
       intro final supported
       have reached : final.1 ∈ left.support := by
-        rw [← FinDist.map_fst_product left right, FinDist.support_map]
+        rw [← bindPairLaw_map_fst left right, PMF.support_map]
         exact ⟨final, supported, rfl⟩
       rcases bad with ⟨record, present, authored, forbidden⟩ | missed
       · exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
@@ -273,11 +273,11 @@ theorem active_history_stopped_coupling
         (fun missed => bad (Or.inr missed))
       have leftSupport : next.1 ∈ ((app.invoke players owner execution).bind
           ((runtime setup).runInteractionPlan leaks players network current)).support := by
-        rw [← first, FinDist.support_map]
+        rw [← first, PMF.support_map]
         exact ⟨next, member, rfl⟩
       obtain ⟨responded, invoked, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftSupport)
-      obtain ⟨response, _, responseEq⟩ := FinDist.support_map .. ▸ invoked
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftSupport)
+      obtain ⟨response, _, responseEq⟩ := PMF.support_map .. ▸ invoked
       have nextRecall := (runtime setup).runInteractionPlan_inputRecall leaks players network
         current responded next.1 (responseEq ▸ app.respond_inputRecall execution owner response
           recalled) continued
@@ -310,10 +310,10 @@ theorem active_history_stopped_coupling
           ((strategy.resume owner players (some owner) execution memory).bind (fun middle =>
             strategy.runJoint owner players scheduler current.length
               middle.1 middle.2)).support := by
-        rw [← second, FinDist.support_map]
+        rw [← second, PMF.support_map]
         exact ⟨next, member, rfl⟩
       obtain ⟨middle, resumed, advanced⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightSupport)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightSupport)
       have nextMemory := BindingMemory.retainedImplementation_runJoint_ownBindings
         (runtime setup) leaks menu owner reference (players owner) players scheduler current.length
         middle.1 middle.2 (BindingMemory.retainedImplementation_resume_ownBindings (runtime setup)
@@ -332,43 +332,43 @@ theorem active_history_stopped_coupling
   let coupling := firstBlock.bindOnSupport tail
   have physical : coupling.map Prod.fst = (app.invoke players owner execution).bind
       ((runtime setup).runInteractionPlan leaks players network (current ++ future)) := by
-    rw [FinDist.map_bindOnSupport]
+    rw [map_bindOnSupport]
     calc
       _ = firstBlock.bind (fun next =>
           (runtime setup).runInteractionPlan leaks players network future next.1) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (existsTail next member).choose_spec.1
       _ = _ := by
-        rw [← FinDist.bind_map, first, FinDist.bind_bind]
-        apply FinDist.bind_congr
+        rw [← PMF.bind_map, first, PMF.bind_bind]
+        apply bind_congr_on_support _
         intro afterResponse _
         exact ((runtime setup).runInteractionPlan_append leaks players network current future
           afterResponse).symm
   have privateLaw : coupling.map Prod.snd =
       (strategy.resume owner players (some owner) execution memory).bind (fun next =>
         strategy.runJoint owner players scheduler remaining next.1 next.2) := by
-    rw [FinDist.map_bindOnSupport]
+    rw [map_bindOnSupport]
     calc
       _ = firstBlock.bind (fun next =>
           strategy.runJoint owner players scheduler future.length next.2.1 next.2.2) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (existsTail next member).choose_spec.2.1
       _ = (firstBlock.map Prod.snd).bind (fun next =>
           strategy.runJoint owner players scheduler future.length next.1 next.2) := by
-        rw [FinDist.bind_map]
+        rw [PMF.bind_map]
       _ = _ := by
-        rw [second, FinDist.bind_bind, remainingEq]
-        apply FinDist.bind_congr
+        rw [second, PMF.bind_bind, remainingEq]
+        apply bind_congr_on_support _
         intro next _
         exact (ReactiveApplication.Implementation.runJoint_add strategy owner players scheduler
           current.length future.length next.1 next.2).symm
   refine ⟨coupling, ?_, privateLaw, ?_⟩
   · rw [physical]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro afterResponse supported
-    obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ supported
     have same : (current ++ future).length = remaining := by
       rw [List.length_append, remainingEq]
     rw [← same]
@@ -380,10 +380,10 @@ theorem active_history_stopped_coupling
     have rightSupport : final.2 ∈
         ((strategy.resume owner players (some owner) execution memory).bind (fun middle =>
           strategy.runJoint owner players scheduler remaining middle.1 middle.2)).support := by
-      rw [← privateLaw, FinDist.support_map]
+      rw [← privateLaw, PMF.support_map]
       exact ⟨final, supported, rfl⟩
     obtain ⟨middle, resumed, advanced⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightSupport)
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightSupport)
     have opponents : ∀ who, who ≠ owner → menu.Admissible (initialLaw setup)
         (rosterPlan setup rosters).length scheduler who (players who) := by
       intro who different
@@ -410,7 +410,7 @@ theorem active_history_stopped_coupling
         owner reference (players owner) players scheduler remaining middle.1 middle.2 memoryValid
         final.2 advanced
     · obtain ⟨next, member, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
       exact (existsTail next member).choose_spec.2.2 final reached
 
 end Vegas

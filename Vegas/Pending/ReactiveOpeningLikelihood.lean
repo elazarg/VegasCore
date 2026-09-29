@@ -97,17 +97,17 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
   intro players
   let app := runtime.reactiveApplication leaks
   induction roster generalizing left right with
-  | nil => simpa only [List.map_nil, runInteractionPlan, FinDist.map_pure] using
-      congrArg FinDist.pure same
+  | nil => simpa only [List.map_nil, runInteractionPlan, PMF.pure_map] using
+      congrArg PMF.pure same
   | cons actor rest ih =>
       have networks : left.network = right.network := congrArg Prod.fst same
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.map_bind,
-        FinDist.bind_map, FinDist.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.map_bind,
+        PMF.bind_map, PMF.bind_bind]
       rw [networks]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro sample _
       let before := left.sampledActivation app actor sample
       let after := right.sampledActivation app actor sample
@@ -131,7 +131,7 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
               (rest.map ServiceInstruction.player) (after.respond app actor response)).map
                 (runtime.bindingTraffic leaks focal)) := by
         rw [firstEq, secondEq, replay]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro response supported
         have transport := app.replayPolicy_cases _ _ response supported
         have firstState : (before.respond app actor response).application = before.application := by
@@ -157,14 +157,14 @@ theorem openingWindow_focal_coupling (runtime : EventGraphRuntime graph)
           have chosen : selected.isSome := by
             cases selected <;> simp_all
           have firstNow : players owner (before.recall owner) (before.observe app owner) =
-              FinDist.pure (runtime.windowOpening leaks event candidate raw) := by
+              PMF.pure (runtime.windowOpening leaks event candidate raw) := by
             simp only [players, openingWindowPlayers, ite_true,
               ReactiveApplication.scheduledPolicy, ite_eq_left now]
           have secondNow : players owner (after.recall owner) (after.observe app owner) =
-              FinDist.pure (runtime.windowOpening leaks event candidate raw) := by
+              PMF.pure (runtime.windowOpening leaks event candidate raw) := by
             simp only [players, openingWindowPlayers, ite_true,
               ReactiveApplication.scheduledPolicy, ite_eq_left nextNow]
-          rw [firstNow, secondNow, FinDist.pure_bind, FinDist.pure_bind]
+          rw [firstNow, secondNow, PMF.pure_bind, PMF.pure_bind]
           apply ih (before.respond app owner (runtime.windowOpening leaks event candidate raw))
             (after.respond app owner (runtime.windowOpening leaks event candidate raw))
             (app.respond_inputRecall before owner _ beforeRecall)
@@ -274,8 +274,8 @@ theorem openingWindow_inclusion_focal_coupling (runtime : EventGraphRuntime grap
   have windows := runtime.openingWindow_focal_coupling leaks network roster left right
     leftRecall rightRecall owner focal event candidate raw owned (left.recall owner).length
       selected leftValid rightValid same counts
-  rw [runInteractionPlan_append, runInteractionPlan_append, FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ windows
+  rw [runInteractionPlan_append, runInteractionPlan_append, PMF.map_bind, PMF.map_bind]
+  apply bind_eq_of_map_eq _ _ _ _ windows
   intro before beforeSupport after afterSupport equal
   have leftStart := OpeningWindowFrame.initial runtime leaks owner event candidate raw selected
     left leftSerials leftPublished
@@ -304,17 +304,17 @@ theorem openingWindow_inclusion_focal_coupling (runtime : EventGraphRuntime grap
       before.application.publicView before.receipts = _
     rw [beforeNetworks, beforePublics, beforeReceipts]
     rfl
-  simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
-    firstSelection, secondSelection, FinDist.pure_bind]
+  simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
+    firstSelection, secondSelection, PMF.pure_bind]
   cases selected with
   | none =>
       simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
         ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind]
+        PMF.pure_map, PMF.pure_bind]
       dsimp only [bindingTraffic]
       rw [beforeEnvironment, environment]
-      apply congrArg FinDist.pure
+      apply congrArg PMF.pure
       exact congrArg (fun read => (read.1, read.2.1,
         after.environmentRecall ++ [⟨after.observeEnvironment app, .wait⟩], read.2.2.2)) equal
   | some slot =>
@@ -332,10 +332,10 @@ theorem openingWindow_inclusion_focal_coupling (runtime : EventGraphRuntime grap
       simp only [Option.isSome_some, ↓reduceIte, rightSerial,
         ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind]
+        PMF.pure_map, PMF.pure_bind]
       dsimp only [bindingTraffic] at views ⊢
       rw [beforeEnvironment, environment]
-      apply congrArg FinDist.pure
+      apply congrArg PMF.pure
       exact congrArg (fun read => (read.1, read.2.1,
         after.environmentRecall ++ [⟨after.observeEnvironment app,
           .include (owner, left.network.nextSerial owner)⟩], read.2.2.2)) views
@@ -370,13 +370,13 @@ theorem bindingTraffic_maintenance (runtime : EventGraphRuntime graph)
     rfl
   have changes := maintenance_playerView_congr runtime left.application right.application focal
     command maintenance views
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
   change ((environmentStep runtime left.application command).map _) =
     ((environmentStep runtime right.application command).map _)
-  rw [FinDist.map_eq_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ changes
+  rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_eq_of_map_eq _ _ _ _ changes
   intro before _ after _ equal
-  apply congrArg FinDist.pure
+  apply congrArg PMF.pure
   dsimp only [bindingTraffic, Function.comp_apply]
   rw [networks, receipts, environments, environment, recalled, equal]
   exact congrArg (fun publicView => (right.network, right.receipts,
@@ -398,11 +398,11 @@ theorem settlement_focal_law (runtime : EventGraphRuntime graph)
       (runtime.runInteractionPlan leaks players network
         (List.replicate ticks .tick ++ [.expire event]) right).map
           (runtime.bindingTraffic leaks focal) := by
-  have waiting : (runtime.reactiveApplication leaks).resume players none = FinDist.pure := rfl
+  have waiting : (runtime.reactiveApplication leaks).resume players none = PMF.pure := rfl
   induction ticks generalizing left right with
   | zero =>
-      simpa only [List.replicate_zero, List.nil_append, runInteractionPlan, FinDist.bind_pure,
-        interactionStep, interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+      simpa only [List.replicate_zero, List.nil_append, runInteractionPlan, PMF.bind_pure,
+        interactionStep, interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
         ReactiveApplication.Command.actor?, waiting] using
         runtime.bindingTraffic_maintenance leaks left right focal same (.expire event)
           (fun _ impossible => by cases impossible)
@@ -411,13 +411,13 @@ theorem settlement_focal_law (runtime : EventGraphRuntime graph)
           (runtime.bindingTraffic leaks focal) =
         (runtime.interactionStep leaks players network .tick right).map
           (runtime.bindingTraffic leaks focal) := by
-        simpa only [interactionStep, interactionInstruction, FinDist.pure_bind,
+        simpa only [interactionStep, interactionInstruction, PMF.pure_bind,
           ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-          waiting, FinDist.bind_pure] using
+          waiting, PMF.bind_pure] using
           runtime.bindingTraffic_maintenance leaks left right focal same .advanceClock
             (fun _ impossible => by cases impossible)
-      simp only [List.replicate_succ, List.cons_append, runInteractionPlan, FinDist.map_bind]
-      apply FinDist.bind_eq_of_map_eq _ _ _ _ step
+      simp only [List.replicate_succ, List.cons_append, runInteractionPlan, PMF.map_bind]
+      apply bind_eq_of_map_eq _ _ _ _ step
       intro before _ after _ equal
       exact ih before after equal
 
@@ -459,8 +459,8 @@ theorem withholdingWindow_focal_coupling (runtime : EventGraphRuntime graph)
     rw [ledger]
     exact packets
   dsimp only [phase]
-  rw [runInteractionPlan_append, runInteractionPlan_append, FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ windows
+  rw [runInteractionPlan_append, runInteractionPlan_append, PMF.map_bind, PMF.map_bind]
+  apply bind_eq_of_map_eq _ _ _ _ windows
   intro before beforeSupport after afterSupport equal
   have first := runtime.interaction_includeLatest_of_pending_published leaks
     (fun _ => app.replayPolicy) network before owner event
@@ -468,7 +468,7 @@ theorem withholdingWindow_focal_coupling (runtime : EventGraphRuntime graph)
   have second := runtime.interaction_includeLatest_of_pending_published leaks
     (fun _ => app.replayPolicy) network after owner event
       (stillPublished right after rightPublished afterSupport).pending
-  simp only [runInteractionPlan, first, second, FinDist.map_bind]
+  simp only [runInteractionPlan, first, second, PMF.map_bind]
   have networks : before.network = after.network := congrArg Prod.fst equal
   have receipts : before.receipts = after.receipts := congrArg (fun value => value.2.1) equal
   have environments : before.environmentRecall = after.environmentRecall :=
@@ -480,7 +480,7 @@ theorem withholdingWindow_focal_coupling (runtime : EventGraphRuntime graph)
       before.application.publicView before.receipts = _
     rw [networks, publics, receipts]
     rfl
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
   apply runtime.settlement_focal_law
   dsimp only [bindingTraffic]
   rw [environments, environment]

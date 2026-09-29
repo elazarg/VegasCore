@@ -68,15 +68,15 @@ theorem runPolicies_canonical_eq_of_reachable
           | none =>
               rw [runPlan_canonical_ownerless left fuel config event ready least actor,
                 runPlan_canonical_ownerless right fuel config event ready least actor]
-              apply FinDist.bind_congr
+              apply bind_congr_on_support _
               exact tails _
           | some who =>
               rw [runPlan_canonical_actor left fuel config event ready least who actor,
                 runPlan_canonical_actor right fuel config event ready least who actor,
                 kernels config reachable offset ordered event ready rfl who actor]
-              apply FinDist.bind_congr
+              apply bind_congr_on_support _
               intro action _
-              apply FinDist.bind_congr
+              apply bind_congr_on_support _
               exact tails action
   exact continuation graph.order.eventCount (Config.initial inputs) .initial 0
     (EventOrder.Cut.empty_isPrefix graph.order)

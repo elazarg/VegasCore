@@ -123,7 +123,7 @@ theorem binding_window_response_coupling
           ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.invoke players owner original ∧
       coupling.map Prod.snd = strategy.resume owner players (some owner) repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -148,16 +148,16 @@ theorem binding_window_response_coupling
     simp only [pair, app, frame.observed]
     rfl
   refine ⟨coupling, ?_, ?_, ?_⟩
-  · simp only [coupling, FinDist.map_comp]
+  · simp only [coupling, PMF.map_comp]
     rfl
-  · simp only [coupling, FinDist.map_comp, ReactiveApplication.Implementation.resume,
+  · simp only [coupling, PMF.map_comp, ReactiveApplication.Implementation.resume,
       ↓reduceIte]
     change law.map _ = (strategy.respond memory
       (repaired.recall owner, repaired.observe app owner)).map _
-    rw [responseLaw, FinDist.map_comp]
+    rw [responseLaw, PMF.map_comp]
     rfl
   · intro next supported
-    obtain ⟨response, member, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, member, rfl⟩ := PMF.support_map .. ▸ supported
     refine ⟨?_, ?_⟩
     · rcases clean response member with transport | ⟨serial, opening, fresh, rfl⟩
       · have unchanged : memory.repairResponse runtime leaks owner

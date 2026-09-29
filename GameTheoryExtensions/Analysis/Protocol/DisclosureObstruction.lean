@@ -33,14 +33,14 @@ structure BinaryDecision (M : InformationModel E)
     (utility : Bool → ι → E.History → ℝ) (fuel : Nat) where
   player : ι
   site : M.InformationSite player
-  outcome : Profile M.behavioralSignature → FinDist Bool
+  outcome : Profile M.behavioralSignature → PMF Bool
   policy : Bool → M.BehavioralPolicy player
   history_value : ∀ profile goal (history : M.InformationHistory player site.1),
-    (M.runBehavioralFrom profile fuel history.1).expect (utility goal player) =
-      (outcome profile).expect (fun result => if result = goal then 1 else 0)
+    expect (M.runBehavioralFrom profile fuel history.1) (utility goal player) =
+      expect (outcome profile) (fun result => if result = goal then 1 else 0)
   force : ∀ profile goal,
     outcome (Profile.update (sig := M.behavioralSignature) profile player (policy goal)) =
-      FinDist.pure goal
+      PMF.pure goal
 
 namespace BinaryDecision
 
@@ -64,7 +64,7 @@ private theorem expectedReward_eq (assessment : M.BehavioralAssessment) (goal : 
     (decision.toContinuationDecision goal).expectedReward assessment =
       fun result => if result = goal then 1 else 0 := by
   funext result
-  exact FinDist.expect_const _ _
+  exact expect_constant _ _
 
 /-- The compatible-history law removes all dependence on the assessment's
 beliefs; the deviation still replaces a complete continuation policy. -/
@@ -72,8 +72,8 @@ theorem continuation_value (assessment : M.BehavioralAssessment)
     (goal : Bool) (alternative : M.BehavioralPolicy decision.player) :
     (assessment.continuationContext decision.site (utility goal decision.player) fuel).value
         alternative =
-      (decision.outcome (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy decision.player alternative)).expect
+      expect (decision.outcome (Profile.update (sig := M.behavioralSignature)
+        assessment.strategy decision.player alternative))
           (fun result => if result = goal then 1 else 0) := by
   have value := (decision.toContinuationDecision goal).continuation_value assessment alternative
   rw [decision.expectedReward_eq] at value
@@ -82,7 +82,7 @@ theorem continuation_value (assessment : M.BehavioralAssessment)
 /-- Rationality for either utility forces that utility's maximal value. -/
 theorem rational_value (assessment : M.BehavioralAssessment) (goal : Bool)
     (rational : assessment.IsSequentiallyRationalWithin (utility goal) fuel) :
-    1 ≤ (decision.outcome assessment.strategy).expect
+    1 ≤ expect (decision.outcome assessment.strategy)
       (fun result => if result = goal then 1 else 0) := by
   have bound :=
     (decision.toContinuationDecision goal).rational_value_bound assessment rational goal
@@ -101,16 +101,16 @@ theorem no_common_rational_strategy : ¬ ∃ first second : M.BehavioralAssessme
   have secondOptimal := decision.rational_value second false secondRational
   rw [← same] at secondOptimal
   have total :
-      (decision.outcome first.strategy).expect (fun result => if result = true then 1 else 0) +
-        (decision.outcome first.strategy).expect
+      expect (decision.outcome first.strategy) (fun result => if result = true then 1 else 0) +
+        expect (decision.outcome first.strategy)
           (fun result => if result = false then (1 : ℝ) else 0) = 1 := by
     rw [← FinDist.expect_add]
     calc
-      _ = (decision.outcome first.strategy).expect (fun _ => (1 : ℝ)) := by
-        apply FinDist.expect_congr
+      _ = expect (decision.outcome first.strategy) (fun _ => (1 : ℝ)) := by
+        apply expect_congr_on_support
         intro result _
         cases result <;> norm_num
-      _ = _ := FinDist.expect_const _ _
+      _ = _ := expect_constant _ _
   linarith
 
 variable {S : ExecutionProtocol ι} {N : InformationModel S}

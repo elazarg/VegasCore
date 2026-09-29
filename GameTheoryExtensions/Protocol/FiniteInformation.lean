@@ -106,7 +106,7 @@ theorem runFrom_extend_restrict (policies fallback : (who : ι) → M.Policy who
 
 /-- Local randomization over the same finite decision table. -/
 abbrev BehavioralDecisionPlan (who : ι) :=
-  (site : M.InformationSite who) → FinDist (M.Choice who site.1)
+  (site : M.InformationSite who) → PMF (M.Choice who site.1)
 
 /-- Restrict an existing behavioral policy to its legal decision sites. -/
 def BehavioralPolicy.restrictToDecisions {who : ι} (policy : M.BehavioralPolicy who) :

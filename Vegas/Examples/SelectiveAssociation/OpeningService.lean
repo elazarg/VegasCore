@@ -84,14 +84,14 @@ theorem native_opening_inclusion (players : Player → (serviceApp observation).
       event who)
       (execution.respond (serviceApp observation) who (nativeOpeningAction event candidate
         bit))).map
-        (fun next => next.application) = FinDist.pure state := by
+        (fun next => next.application) = PMF.pure state := by
   simp only [interactionStep, interactionInstruction, native_opening_selected execution who
-    event candidate bit serials, FinDist.pure_bind, ReactiveApplication.dispatch,
-    ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind,
-    ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.map_pure]
+    event candidate bit serials, PMF.pure_bind, ReactiveApplication.dispatch,
+    ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
+    ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_map]
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [native_opening_lookup execution who event candidate bit serials]
-  change FinDist.pure ((handle nativeRuntime execution.application
+  change PMF.pure ((handle nativeRuntime execution.application
     ⟨(who, execution.network.nextSerial who), .opening event candidate ⟨.bool, bit⟩⟩).getD
       execution.application) = _
   rw [accepted]
@@ -190,7 +190,7 @@ theorem native_opening_response_available (who : Player)
   · exact silent
 
 def nativeOpenPolicy (who : Player) : (serviceApp observation).Policy :=
-  fun _ view => FinDist.pure (nativeOpeningResponse who view)
+  fun _ view => PMF.pure (nativeOpeningResponse who view)
 
 theorem native_opening_response_eq (execution : (serviceApp observation).Execution) (who : Player)
     (candidate : Handle nativeGraph) (bit : Bool)
@@ -228,7 +228,7 @@ theorem native_opening_response_realizes (players : Player → (serviceApp obser
         (.includeLatest (nativePublicationEvent who) who)
         (execution.respond (serviceApp observation) who
           (nativeOpeningResponse who (execution.observe (serviceApp observation) who)))).map
-            (fun result => result.application) = FinDist.pure next := by
+            (fun result => result.application) = PMF.pure next := by
   obtain ⟨candidate, associated, owned, verified⟩ :=
     valid.success_provenance (nativeBindingRef who) bit stored
   have allowed := bounded _ candidate associated

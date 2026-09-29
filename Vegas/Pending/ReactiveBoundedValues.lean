@@ -131,16 +131,16 @@ theorem candidateValues_environment (runtime : EventGraphRuntime graph)
       command).support) : bounds.CandidateValues next.application := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
       cases found : execution.network.lookup id with
       | none => exact valid
@@ -155,8 +155,8 @@ theorem candidateValues_environment (runtime : EventGraphRuntime graph)
               exact bounds.candidateValues_handle runtime execution.application state
                 ⟨message.id, message.payload.call⟩ valid accepted
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       simpa only [CandidateValues,
         (environmentStep_tables runtime execution.application state command changed).2] using valid
 
@@ -164,7 +164,7 @@ variable [Fintype Player]
 
 theorem candidateValues_raw_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (covered : ∀ state ∈ initial.support, bounds.CandidateValues state) :
     ∀ {state} (_trace : ((bounds.rawMenu runtime leaks).protocol initial
@@ -184,7 +184,7 @@ theorem candidateValues_raw_history (runtime : EventGraphRuntime graph)
   intro state trace
   exact invariant.history initial horizon covered trace
 
-theorem candidateValues_initial (inputs : FinDist graph.Inputs)
+theorem candidateValues_initial (inputs : PMF graph.Inputs)
     (input : graph.Inputs) (supported : input ∈ inputs.support) :
     (bounds.withInitialValues (inputs.map State.initial)).CandidateValues
       (State.initial input) := by
@@ -193,7 +193,7 @@ theorem candidateValues_initial (inputs : FinDist graph.Inputs)
   cases slot with
   | initial index =>
       exact bounds.initial_value_covered (inputs.map State.initial) (State.initial input)
-        (FinDist.support_map .. ▸ ⟨input, supported, rfl⟩) who index raw opened
+        (PMF.support_map .. ▸ ⟨input, supported, rfl⟩) who index raw opened
   | prepared serial =>
       rw [State.initial_candidate] at opened
       contradiction
@@ -202,7 +202,7 @@ theorem candidateValues_initial (inputs : FinDist graph.Inputs)
 the compiler's finite alphabet is chosen before any strategy. -/
 theorem candidateValues_initialized_raw_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
     (trace : (((bounds.withInitialValues (inputs.map State.initial)).rawMenu runtime leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state) :
@@ -212,7 +212,7 @@ theorem candidateValues_initialized_raw_history (runtime : EventGraphRuntime gra
   apply (bounds.withInitialValues (inputs.map State.initial)).candidateValues_raw_history
     runtime leaks (inputs.map State.initial) horizon scheduler _ trace
   intro initial supported
-  obtain ⟨input, present, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨input, present, rfl⟩ := PMF.support_map .. ▸ supported
   exact bounds.candidateValues_initial inputs input present
 
 end Vegas.EventGraphRuntime.MessageBounds

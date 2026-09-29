@@ -96,16 +96,16 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
       command).support) : bounds.ExecutionHandles runtime leaks next := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨valid.1, valid.2.learn who selected⟩
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       refine ⟨?_, ?_⟩
       · unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
         cases found : execution.network.lookup id with
@@ -125,8 +125,8 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
         rw [ReactiveApplication.includePending_network]
         exact valid.2.includePending id
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨?_, valid.2⟩
       simpa only [AcceptedHandles,
         (environmentStep_tables runtime execution.application state command changed).1]
@@ -134,7 +134,7 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
 
 theorem executionHandles_history [Fintype Player] (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     ∀ {state} (_trace : ((bounds.menu runtime leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state),
@@ -153,14 +153,14 @@ theorem executionHandles_history [Fintype Player] (runtime : EventGraphRuntime g
   intro state trace
   exact invariant.history (inputs.map State.initial) horizon (by
     intro state supported
-    obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨bounds.acceptedHandles_initial input, MessageNetwork.Satisfies.empty⟩) trace
 
 /-- The same bounds hold before normalization, for every raw response admitted
 by the complete finite menu. -/
 theorem executionHandles_raw_history [Fintype Player] (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     ∀ {state} (_trace : ((bounds.rawMenu runtime leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state),
@@ -179,7 +179,7 @@ theorem executionHandles_raw_history [Fintype Player] (runtime : EventGraphRunti
   intro state trace
   exact invariant.history (inputs.map State.initial) horizon (by
     intro state supported
-    obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨bounds.acceptedHandles_initial input, MessageNetwork.Satisfies.empty⟩) trace
 
 end Vegas.EventGraphRuntime.MessageBounds

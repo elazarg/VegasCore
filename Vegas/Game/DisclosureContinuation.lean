@@ -139,23 +139,23 @@ theorem normalized_disclosure_prefix_deviation [Fintype Player]
     (profile : BehavioralProfile program) (policy alternative : BehavioralPolicy who program)
     (permitted : alternative.Admitted program admission)
     (registry : Registry Γ) (revelations : Revelations Γ)
-    (initial : FinDist (Config Player L Γ))
+    (initial : PMF (Config Player L Γ))
     (registryEq : ∀ config ∈ initial.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
     (count : Nat) :
     let original := initial.bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who policy)))^[count]
-          (FinDist.pure (ProtocolState.entry program config))
+          (PMF.pure (ProtocolState.entry program config))
     let normalized := initial.bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who (policy.normalizeDisclosures program registry revelations))))
-          ^[count] (FinDist.pure (ProtocolState.entry program config))
+          ^[count] (PMF.pure (ProtocolState.entry program config))
     ∀ observed ∈ (original.map (ProtocolState.observe who program)).support,
       ∃ lifted : BehavioralPolicy who program, lifted.Admitted program admission ∧
-        ((original.condOnFibre (ProtocolState.observe who program) observed).bind
+        ((fiberConditional original (ProtocolState.observe who program) observed).bind
           (ProtocolState.continuationLaw program (Function.update profile who lifted))) =
-        (normalized.condOnFibre (ProtocolState.observe who program)
+        (fiberConditional normalized (ProtocolState.observe who program)
           (ProtocolView.normalizeDisclosureRecall program (fun view => view.2) observed)).bind
             (ProtocolState.continuationLaw program (Function.update profile who alternative)) := by
   classical
@@ -166,18 +166,18 @@ theorem normalized_disclosure_prefix_deviation [Fintype Player]
   refine ⟨lifted, admitted, ?_⟩
   have posterior := normalized_disclosure_prefix_posterior program profile policy registry
     revelations initial registryEq revelationsEq count observed present
-  rw [← posterior, FinDist.bind_map]
-  apply FinDist.bind_congr
+  rw [← posterior, PMF.bind_map]
+  apply bind_congr_on_support _
   intro state member
   apply realizes state
-  obtain ⟨witness, supported, equal⟩ := FinDist.support_map .. ▸ present
+  obtain ⟨witness, supported, equal⟩ := PMF.support_map .. ▸ present
   have meets : ∃ state ∈ (ProtocolState.observe who program) ⁻¹' {observed},
       state ∈ (initial.bind fun config =>
         (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
           (Function.update profile who policy)))^[count]
-            (FinDist.pure (ProtocolState.entry program config))).support :=
+            (PMF.pure (ProtocolState.entry program config))).support :=
     ⟨witness, equal, supported⟩
-  rw [FinDist.condOnFibre, dite_eq_left meets] at member
-  exact (FinDist.support_condOn _ _ _ member).1
+  rw [fiberConditional, dite_eq_left meets] at member
+  exact ((PMF.mem_support_filter_iff _).mp member).1
 
 end Vegas.SourceProgram

@@ -71,7 +71,7 @@ private theorem opening_replay_inclusion
   have immediate := (runtime setup).replay_window_settlement leaks players network owner submitted
     responses event message rfl rfl packets pending (serials.next_unpublished owner) []
   exact delayed.trans (by
-    simpa only [List.map_nil, List.nil_append, runInteractionPlan, FinDist.bind_pure]
+    simpa only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure]
       using immediate.symm)
 
 /-- The actual replay lottery implementing an effective disclosure preserves
@@ -110,13 +110,13 @@ theorem guarded_reveal_replay_service
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
     let law := if response.transmission = none then
       app.replayPolicy (execution.recall owner) (execution.observe app owner)
-      else FinDist.pure response
+      else PMF.pure response
     (law.bind fun action => (runtime setup).runInteractionPlan leaks players network
       (remaining.map ServiceInstruction.player ++
         (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
       (execution.respond app owner action)).map
         (fun final => (final.application.config, final.receipts)) =
-      FinDist.pure
+      PMF.pure
         (execution.application.config.complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
@@ -138,10 +138,10 @@ theorem guarded_reveal_replay_service
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
         (cast (congrArg EventGraph.EventField.Value outputEq.symm)
           (disclosureResult published binding source false)), execution.receipts)
-      rw [lawEq, FinDist.map_bind]
+      rw [lawEq, PMF.map_bind]
       trans (app.replayPolicy (execution.recall owner) (execution.observe app owner)).bind
-        (fun _ => FinDist.pure expected)
-      · apply FinDist.bind_congr
+        (fun _ => PMF.pure expected)
+      · apply bind_congr_on_support _
         intro action supported
         let submitted := execution.respond app owner action
         obtain ⟨same, ledger, receipt, _, safe, _⟩ :=
@@ -149,11 +149,11 @@ theorem guarded_reveal_replay_service
             (app.replayPolicy_cases _ _ action supported)
         change submitted.application = execution.application at same
         change submitted.receipts = execution.receipts at receipt
-        rw [(runtime setup).runInteractionPlan_append, FinDist.map_bind]
+        rw [(runtime setup).runInteractionPlan_append, PMF.map_bind]
         trans ((runtime setup).runInteractionPlan leaks players network
           (remaining.map ServiceInstruction.player) submitted).bind
-            (fun _ => FinDist.pure expected)
-        · apply FinDist.bind_congr
+            (fun _ => PMF.pure expected)
+        · apply bind_congr_on_support _
           intro current reached
           obtain ⟨currentSame, currentLedger, currentReceipt, _, currentSafe, _⟩ :=
             (runtime setup).replay_window_preserves leaks players network owner submitted
@@ -170,10 +170,10 @@ theorem guarded_reveal_replay_service
             environmentRecall := current.environmentRecall ++
               [⟨current.observeEnvironment app, .wait⟩] }
           have included : (runtime setup).interactionStep leaks players network
-              (.includeLatest event owner) current = FinDist.pure waited := by
+              (.includeLatest event owner) current = PMF.pure waited := by
             rw [(runtime setup).interaction_includeLatest_of_pending_published leaks players
               network current owner event currentPending]
-            simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+            simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
             rfl
           obtain ⟨final, tailLaw, state, _, receipts, _⟩ :=
             (runtime setup).canonical_silent_expiry leaks players network waited owner event
@@ -185,13 +185,13 @@ theorem guarded_reveal_replay_service
                   rw [currentSame, same]; exact activated)
               (by change _ ≤ current.application.clock + ticks - entered
                   rw [currentSame, same]; exact due)
-          rw [List.cons_append, runInteractionPlan, included, FinDist.pure_bind,
-            tailLaw, FinDist.map_pure,
+          rw [List.cons_append, runInteractionPlan, included, PMF.pure_bind,
+            tailLaw, PMF.pure_map,
             state, receipts]
           simp only [waited, currentSame, same, currentReceipt, receipt, expected,
             disclosureResult_false, EventGraphRuntime.State.complete]
-        · exact FinDist.bind_const _ _
-      · exact FinDist.bind_const _ _
+        · exact PMF.bind_const _ _
+      · exact PMF.bind_const _ _
   | true =>
       obtain ⟨value, success⟩ : ∃ value, disclosureResult published binding source true =
           PublicationResult.success value := by
@@ -232,7 +232,7 @@ theorem guarded_reveal_replay_service
       obtain ⟨evidence, shape⟩ := (runtime setup).normalized_reveal_response leaks owner
         (execution.recall owner) (execution.observe app owner) event candidate ⟨payload, value⟩
       have responseEq := canonical.trans shape
-      have lawEq : law = FinDist.pure response := by
+      have lawEq : law = PMF.pure response := by
         simp only [law, responseEq, reduceCtorEq, ↓reduceIte]
       obtain ⟨included, inclusion, state, _, receipts, _, _⟩ :=
         (runtime setup).opening_published_checkpoint leaks players network execution owner event
@@ -243,12 +243,12 @@ theorem guarded_reveal_replay_service
         (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted
       have delayedLaw : delayed.map (fun final => (final.application, final.network.ledger,
           final.receipts, final.network.nextSerial)) =
-          FinDist.pure (included.application, included.network.ledger,
+          PMF.pure (included.application, included.network.ledger,
             included.receipts, included.network.nextSerial) := by
         dsimp only [delayed, submitted]
         rw [responseEq, opening_replay_inclusion setup leaks network execution owner event
           candidate ⟨payload, value⟩ evidence packets serials remaining,
-          inclusion, FinDist.map_pure]
+          inclusion, PMF.pure_map]
       have settled : ∀ final ∈ delayed.support,
           ¬final.application.config.cut.Ready event := by
         intro final reached
@@ -256,14 +256,14 @@ theorem guarded_reveal_replay_service
             final.network.nextSerial) ∈ (delayed.map (fun next =>
               (next.application, next.network.ledger,
                 next.receipts, next.network.nextSerial))).support :=
-          FinDist.support_map .. ▸ ⟨final, reached, rfl⟩
+          PMF.support_map .. ▸ ⟨final, reached, rfl⟩
         rw [delayedLaw] at member
-        have equal := congrArg Prod.fst (FinDist.mem_support_pure.mp member)
+        have equal := congrArg Prod.fst ((PMF.mem_support_pure_iff _ _).mp member)
         change final.application = included.application at equal
         rw [equal, state]
         intro active
         exact active.1 (by simp [EventGraphRuntime.State.complete, EventOrder.Cut.complete])
-      rw [lawEq, FinDist.pure_bind]
+      rw [lawEq, PMF.pure_bind]
       have splitPlan : remaining.map ServiceInstruction.player ++
           (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]) =
           (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
@@ -273,11 +273,11 @@ theorem guarded_reveal_replay_service
       change (delayed.bind _).map _ = _
       rw [(runtime setup).settled_tail_config_receipts leaks players network delayed event ticks
         settled]
-      have projected := congrArg (FinDist.map (fun result : EventGraphRuntime.State (graph setup) ×
+      have projected := congrArg (PMF.map (fun result : EventGraphRuntime.State (graph setup) ×
           List (Message Player (WitnessedPacket (graph setup))) ×
           List (MessageId Player × Bool) × (Player → Nat) =>
           (result.1.config, result.2.2.1))) delayedLaw
-      simpa only [FinDist.map_comp, FinDist.map_pure, Function.comp_def, state, receipts,
+      simpa only [PMF.map_comp, PMF.pure_map, Function.comp_def, state, receipts,
         success, ↓reduceIte, EventGraphRuntime.State.complete] using projected
 
 private theorem foreign_service_law
@@ -308,7 +308,7 @@ private theorem foreign_service_law
   conv_rhs => rw [(runtime setup).runInteractionPlan_append]
   rw [sourceServiceLastPolicy_foreign_tail setup leaks rosters profile network event owner
     owned remaining absent execution granted]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro current _
   exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
 
@@ -392,15 +392,15 @@ theorem sourceServiceLastPolicy_reveal_opportunity
     EventGraphRuntime.nodeView_eq_resolve _ _
   rw [List.cons_append, runInteractionPlan,
     (runtime setup).player_instruction_published leaks players network execution owner
-      packets.pending, FinDist.bind_map, FinDist.map_bind]
+      packets.pending, PMF.bind_map, PMF.map_bind]
   change (players owner (execution.recall owner) (execution.observe app owner)).bind _ = _
   dsimp only [players]
   rw [sourceServiceLastPolicy_at_last setup leaks rosters wholeProfile owner _ _ event
     granted owned unsent last,
     sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
       refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
-        granted, FinDist.bind_map, FinDist.bind_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+        granted, PMF.bind_map, PMF.bind_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro disclose _
   rw [serviceDecision_effectiveDisclosure (runtime setup) leaks published binding source refs
     execution checkpoint.agrees event outputEq codeEq node disclose]
@@ -410,16 +410,16 @@ theorem sourceServiceLastPolicy_reveal_opportunity
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) effective)
   trans ((if response.transmission = none then
     app.replayPolicy (execution.recall owner) (execution.observe app owner)
-    else FinDist.pure response).bind fun action =>
+    else PMF.pure response).bind fun action =>
       (runtime setup).runInteractionPlan leaks transport network
         (remaining.map ServiceInstruction.player ++
           (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]))
         (observed.respond app owner action)).map
           (fun final => (final.application.config, final.receipts))
-  · rw [FinDist.map_bind]
-    apply FinDist.bind_congr
+  · rw [PMF.map_bind]
+    apply bind_congr_on_support _
     intro action _
-    apply congrArg (FinDist.map (fun final : app.Execution =>
+    apply congrArg (PMF.map (fun final : app.Execution =>
       (final.application.config, final.receipts)))
     apply foreign_service_law setup leaks rosters wholeProfile network event owner owned
       remaining absent ticks
@@ -512,10 +512,10 @@ theorem sourceServiceLastPolicy_reveal_roster
     rw [counted, total]
     omega
   rw [position, List.map_append, List.map_cons, List.append_assoc,
-    (runtime setup).runInteractionPlan_append, FinDist.map_bind]
+    (runtime setup).runInteractionPlan_append, PMF.map_bind]
   trans ((runtime setup).runInteractionPlan leaks players network
     (visited.map ServiceInstruction.player) execution).bind (fun _ => expected)
-  · apply FinDist.bind_congr
+  · apply bind_congr_on_support _
     intro current reached
     obtain ⟨same, ledger, receipts, counters, safe, _⟩ :=
       sourceServiceLastPolicy_waiting_data setup leaks rosters wholeProfile network event owner
@@ -558,6 +558,6 @@ theorem sourceServiceLastPolicy_reveal_roster
         remaining absent currentGrant currentReady currentTimely currentActivated currentDue
           currentUnsent last
     simpa only [same, receipts, counters] using completed
-  · exact FinDist.bind_const _ expected
+  · exact PMF.bind_const _ expected
 
 end Vegas

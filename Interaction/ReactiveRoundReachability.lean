@@ -25,7 +25,7 @@ def uniformResponses (who : Principal) : app.Policy := fun past view => by
   let choices := menu.actions who past view
   letI : Nonempty choices := ⟨⟨(menu.nonempty who past view).choose,
     (menu.nonempty who past view).choose_spec⟩⟩
-  exact (FinDist.uniformOfFintype : FinDist choices).map Subtype.val
+  exact (PMF.uniformOfFintype choices).map Subtype.val
 
 omit [DecidableEq Principal] in
 theorem uniformResponses_support (who : Principal) (past : List app.PlayerEntry)
@@ -34,12 +34,12 @@ theorem uniformResponses_support (who : Principal) (past : List app.PlayerEntry)
       action ∈ menu.actions who past view := by
   let : Nonempty (menu.actions who past view) :=
     ⟨⟨(menu.nonempty who past view).choose, (menu.nonempty who past view).choose_spec⟩⟩
-  simp only [uniformResponses, FinDist.support_map]
+  simp only [uniformResponses, PMF.support_map]
   constructor
   · rintro ⟨choice, _, rfl⟩
     exact choice.2
   · intro member
-    exact ⟨⟨action, member⟩, FinDist.mem_support_uniformOfFintype _, rfl⟩
+    exact ⟨⟨action, member⟩, PMF.mem_support_uniformOfFintype _, rfl⟩
 
 end ResponseMenu
 
@@ -48,25 +48,25 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 open GameTheory.Protocol GameTheory.Math.Probability
 
 /-- Initialization followed by a specified number of complete scheduler rounds. -/
-def roundsFrom (initial : FinDist app.State) (scheduler : app.Scheduler)
-    (players : Principal → app.Policy) (count : Nat) : FinDist app.Execution :=
+def roundsFrom (initial : PMF app.State) (scheduler : app.Scheduler)
+    (players : Principal → app.Policy) (count : Nat) : PMF app.Execution :=
   initial.bind fun state => app.runRounds scheduler players count (Execution.initial app state)
 
-theorem roundsFrom_succ (initial : FinDist app.State) (scheduler : app.Scheduler)
+theorem roundsFrom_succ (initial : PMF app.State) (scheduler : app.Scheduler)
     (players : Principal → app.Policy) (count : Nat) :
     app.roundsFrom initial scheduler players (count + 1) =
       (app.roundsFrom initial scheduler players count).bind (app.round scheduler players) := by
   unfold roundsFrom
-  simp only [app.runRounds_add scheduler players count 1, FinDist.bind_bind]
+  simp only [app.runRounds_add scheduler players count 1, PMF.bind_bind]
   congr 1
   funext state
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro execution _
-  simp only [runRounds, FinDist.bind_pure]
+  simp only [runRounds, PMF.bind_pure]
 
 /-- The scheduler cursor and a support witness for either a completed round
 or its pending player response. -/
-def RoundSupported (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+def RoundSupported (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (players : Principal → app.Policy) : app.ProtocolState → Prop
   | none => True
   | some control =>
@@ -81,25 +81,25 @@ def RoundSupported (initial : FinDist app.State) (horizon : Nat) (scheduler : ap
           command.actor? app = some who ∧
           control.execution ∈ (prior.environmentStep app command).support
 
-theorem roundsFrom_recall (initial : FinDist app.State) (scheduler : app.Scheduler)
+theorem roundsFrom_recall (initial : PMF app.State) (scheduler : app.Scheduler)
     (players : Principal → app.Policy) (count : Nat) (execution : app.Execution)
     (reached : execution ∈ (app.roundsFrom initial scheduler players count).support) :
     execution.environmentRecall.length = count := by
   induction count generalizing execution with
   | zero =>
-      obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      cases FinDist.mem_support_pure.mp supported
+      obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | succ count ih =>
       rw [roundsFrom_succ] at reached
-      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
       rw [app.dispatch_environmentRecall players command prior execution dispatched]
       simp only [List.length_append, List.length_singleton, ih prior priorMem]
 
 namespace ResponseMenu
 
-variable {app} (menu : app.ResponseMenu) (initial : FinDist app.State) (horizon : Nat)
+variable {app} (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Nat)
   (scheduler : app.Scheduler) (players : Principal → app.Policy)
   (full : ∀ who past view action, action ∈ menu.actions who past view →
     action ∈ (players who past view).support)
@@ -113,12 +113,12 @@ theorem roundSupported_transition (before after : app.ProtocolState)
     app.RoundSupported initial horizon scheduler players after := by
   cases before with
   | none =>
-      obtain ⟨state, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
       refine ⟨by simp [Execution.initial], ?_⟩
       change Execution.initial app state ∈ (app.roundsFrom initial scheduler players 0).support
-      rw [roundsFrom, FinDist.support_bind]
+      rw [roundsFrom, PMF.support_bind]
       apply Set.mem_iUnion₂.mpr
-      exact ⟨state, supported, FinDist.mem_support_pure.mpr rfl⟩
+      exact ⟨state, supported, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
@@ -128,7 +128,7 @@ theorem roundSupported_transition (before after : app.ProtocolState)
           | none => simp [selected, protocol, ReactiveApplication.actor] at localLegal
           | some action =>
               rw [selected] at localLegal
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               obtain ⟨accounted, count, prior, command, position, priorMem,
                 commandMem, active, observed⟩ := valid
               simp only [RoundSupported, selected, Option.getD_some]
@@ -138,27 +138,27 @@ theorem roundSupported_transition (before after : app.ProtocolState)
                     (execution.respond app who action).environmentRecall.length).support
               rw [app.respond_environmentRecall]
               refine ⟨accounted, ?_⟩
-              rw [position, app.roundsFrom_succ, FinDist.support_bind]
+              rw [position, app.roundsFrom_succ, PMF.support_bind]
               apply Set.mem_iUnion₂.mpr
               refine ⟨prior, priorMem, ?_⟩
-              rw [round, FinDist.support_bind]
+              rw [round, PMF.support_bind]
               apply Set.mem_iUnion₂.mpr
               refine ⟨command, commandMem, ?_⟩
-              rw [dispatch, FinDist.support_bind]
+              rw [dispatch, PMF.support_bind]
               apply Set.mem_iUnion₂.mpr
               refine ⟨execution, observed, ?_⟩
-              simp only [resume, active, invoke, FinDist.support_map]
+              simp only [resume, active, invoke, PMF.support_map]
               exact ⟨action, full who _ _ action localLegal.2, rfl⟩
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, selected, moved⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               have advanced : next.environmentRecall.length =
                   execution.environmentRecall.length + 1 := by
-                obtain ⟨updated, _, same⟩ := FinDist.support_map .. ▸ supported
+                obtain ⟨updated, _, same⟩ := PMF.support_map .. ▸ supported
                 cases same
                 simp
               refine ⟨by have accounted := valid.1; dsimp at *; omega, ?_⟩
@@ -168,13 +168,13 @@ theorem roundSupported_transition (before after : app.ProtocolState)
               | none =>
                   change next ∈ (app.roundsFrom initial scheduler players
                     next.environmentRecall.length).support
-                  rw [advanced, app.roundsFrom_succ, FinDist.support_bind]
+                  rw [advanced, app.roundsFrom_succ, PMF.support_bind]
                   apply Set.mem_iUnion₂.mpr
                   refine ⟨execution, valid.2, ?_⟩
-                  rw [round, FinDist.support_bind]
+                  rw [round, PMF.support_bind]
                   apply Set.mem_iUnion₂.mpr
                   refine ⟨command, selected, ?_⟩
-                  rw [dispatch, FinDist.support_bind]
+                  rw [dispatch, PMF.support_bind]
                   apply Set.mem_iUnion₂.mpr
                   exact ⟨next, supported, by simp [resume, active]⟩
 

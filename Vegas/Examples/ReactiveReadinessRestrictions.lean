@@ -147,13 +147,13 @@ theorem certified_submission_authorized (bit : Bool) :
     aliceBinding rfl ready rfl
   convert permitted using 1 <;> cases bit <;> rfl
 
-def silentPlayers : Player → nativeApp.Policy := fun _ _ _ => FinDist.pure ⟨none⟩
+def silentPlayers : Player → nativeApp.Policy := fun _ _ _ => PMF.pure ⟨none⟩
 
 /-- This is the actual first five service rounds. Bob sends nothing; the
 certificate is learned passively, before Alice's certificate-free inclusion. -/
 theorem silent_bob_prefix :
     nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 5 nativeRoot =
-      (FinDist.uniformOfFintype (α := Bool)).map (fun bit => includedAfter bit ⟨none⟩) := by
+      (PMF.uniformOfFintype (α := Bool)).map (fun bit => includedAfter bit ⟨none⟩) := by
   have bridge := native_prefix_rounds (nativeAliceProfile silentPlayers)
     (nativePlan.take 5) (nativePlan.drop 5) (by simp)
   change nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 5 nativeRoot = _
@@ -162,17 +162,17 @@ theorem silent_bob_prefix :
   change nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile silentPlayers)
     nativeNetwork [.player alice, .player bob, .grant aliceBinding, .player alice,
       .includeLatest aliceBinding alice] initial = _
-  rw [runInteractionPlan, native_alice_first_round, FinDist.bind_map]
-  rw [FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [runInteractionPlan, native_alice_first_round, PMF.bind_map]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro bit _
   rw [runInteractionPlan, native_alice_bob_round]
-  simp only [silentPlayers, FinDist.map_pure, FinDist.pure_bind]
+  simp only [silentPlayers, PMF.pure_map, PMF.pure_bind]
   change nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile silentPlayers)
     nativeNetwork ([.grant aliceBinding, .player alice] ++
       [.includeLatest aliceBinding alice]) (reacted bit ⟨none⟩) = _
-  rw [runInteractionPlan_append, native_alice_offer_rounds, FinDist.pure_bind,
-    runInteractionPlan, native_alice_include_round, FinDist.pure_bind]
+  rw [runInteractionPlan_append, native_alice_offer_rounds, PMF.pure_bind,
+    runInteractionPlan, native_alice_include_round, PMF.pure_bind]
   rfl
 
 /-- Selective, subsequently associated evidence survives the absence of every
@@ -248,7 +248,7 @@ theorem accepted_winner_leaves_unready_competitor (bit : Bool) :
 inadmissible. Dependency readiness and successful execution are distinct. -/
 theorem readiness_survives_deadline_but_acceptance_does_not (bit : Bool) :
     let aged : EventGraphRuntime.State nativeGraph := { (first bit).application with clock := 1 }
-    environmentStep nativeRuntime (first bit).application .advanceClock = FinDist.pure aged ∧
+    environmentStep nativeRuntime (first bit).application .advanceClock = PMF.pure aged ∧
       aged.config.cut.Ready aliceBinding ∧
       handle nativeRuntime aged ⟨(alice, 0), .commitment aliceBinding candidate⟩ = none := by
   dsimp only

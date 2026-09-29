@@ -102,11 +102,11 @@ theorem bindingReward_success_nonneg {Claim : Type} (bit : Bool)
 theorem expected_bindingReward_success (Claim : Type) [Fintype Claim]
     (assessment : (model Claim).BehavioralAssessment) (who : Player)
     (site : (model Claim).InformationSite who) (bit : Bool) :
-    (assessment.belief who site).expect (fun history =>
+    expect (assessment.belief who site) (fun history =>
       bindingReward (.success bit) history.1.state) =
-      (assessment.belief who site).probOf {history | hasAliceBit bit history.1.state} := by
+      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit bit history.1.state}).toReal := by
   classical
-  exact FinDist.expect_indicator_eq_probOf (assessment.belief who site)
+  exact expect_indicator (assessment.belief who site)
     {history | hasAliceBit bit history.1.state}
 
 theorem prescribed_guess_optimal (Claim : Type) [Fintype Claim]
@@ -116,8 +116,8 @@ theorem prescribed_guess_optimal (Claim : Type) [Fintype Claim]
     (observed : site.1 = some (past, view))
     (decision : (who = carol ∧ view.application.visit = some 1) ∨
       (who = bob ∧ view.application.visit = some 2)) (guess : PublicationResult Bool) :
-    (assessment.belief who site).expect (fun history => bindingReward guess history.1.state) ≤
-      (assessment.belief who site).expect (fun history =>
+    expect (assessment.belief who site) (fun history => bindingReward guess history.1.state) ≤
+      expect (assessment.belief who site) (fun history =>
         bindingReward (.success (publicGuess view)) history.1.state) := by
   classical
   by_cases hidden : NoPublicAlice view
@@ -125,12 +125,12 @@ theorem prescribed_guess_optimal (Claim : Type) [Fintype Claim]
     | failure =>
         rw [show (fun history : (model Claim).InformationHistory who site.1 =>
           bindingReward .failure history.1.state) = (fun _ => -4) from rfl,
-          FinDist.expect_const]
-        have nonnegative : 0 ≤ (assessment.belief who site).expect (fun history =>
+          expect_constant]
+        have nonnegative : 0 ≤ expect (assessment.belief who site) (fun history =>
             bindingReward (.success (publicGuess view)) history.1.state) := by
           calc
-            0 = (assessment.belief who site).expect (fun _ => 0) :=
-              (FinDist.expect_const _ _).symm
+            0 = expect (assessment.belief who site) (fun _ => 0) :=
+              (expect_constant _ _).symm
             _ ≤ _ := FinDist.expect_mono (fun history _ =>
               bindingReward_success_nonneg (publicGuess view) history.1.state)
         linarith
@@ -140,14 +140,14 @@ theorem prescribed_guess_optimal (Claim : Type) [Fintype Claim]
         cases bit <;> cases publicGuess view <;> exact le_of_eq (by first | rfl | exact equal |
           exact equal.symm)
   · have known := publicGuess_known Claim who past view hidden
-    have target : (assessment.belief who site).expect (fun history =>
+    have target : expect (assessment.belief who site) (fun history =>
         bindingReward (.success (publicGuess view)) history.1.state) = 1 := by
       calc
-        _ = (assessment.belief who site).expect (fun _ => 1) := by
-          apply FinDist.expect_congr
+        _ = expect (assessment.belief who site) (fun _ => 1) := by
+          apply expect_congr_on_support
           intro history _
           exact ite_eq_left (known ⟨history.1, history.2.trans observed⟩)
-        _ = 1 := FinDist.expect_const _ _
+        _ = 1 := expect_constant _ _
     rw [target]
     exact FinDist.expect_le_of_forall _ _ _
       (fun history _ => bindingReward_le_one guess history.1.state)
@@ -158,10 +158,10 @@ theorem prescribed_mixed_guess_optimal (Claim : Type) [Fintype Claim]
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (observed : site.1 = some (past, view))
     (decision : (who = carol ∧ view.application.visit = some 1) ∨
-      (who = bob ∧ view.application.visit = some 2)) (guesses : FinDist (PublicationResult Bool)) :
-    (assessment.belief who site).expect (fun history =>
-        guesses.expect (fun guess => bindingReward guess history.1.state)) ≤
-      (assessment.belief who site).expect (fun history =>
+      (who = bob ∧ view.application.visit = some 2)) (guesses : PMF (PublicationResult Bool)) :
+    expect (assessment.belief who site) (fun history =>
+        expect guesses (fun guess => bindingReward guess history.1.state)) ≤
+      expect (assessment.belief who site) (fun history =>
         bindingReward (.success (publicGuess view)) history.1.state) := by
   rw [FinDist.expect_comm]
   exact FinDist.expect_le_of_forall _ _ _ (fun guess _ =>

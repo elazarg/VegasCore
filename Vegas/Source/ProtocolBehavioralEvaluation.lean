@@ -2,8 +2,8 @@
 
 import Vegas.Source.ProtocolBehavioralPolicy
 import Vegas.Source.ProtocolEvaluation
-import GameTheoryExtensions.Protocol.SingleMover
-import GameTheoryExtensions.Protocol.ContinuationLaw
+import GameTheory.Protocol.SingleMover
+import GameTheory.Protocol.ContinuationLaw
 
 /-! # Behavioral continuation laws
 
@@ -27,7 +27,7 @@ continuation law. No finiteness assumption on the player universe is needed. -/
 theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →
     (state : ProtocolState program) → ¬ terminal program state →
-    (joint : FinDist (Player → Option (OwnAction Player L))) →
+    (joint : PMF (Player → Option (OwnAction Player L))) →
     (∀ who, joint.map (fun actions => actions who) =
       (profile who).protocolAction program (observe who program state)) →
     (joint.bind (step program state)).bind (continuationLaw program profile) =
@@ -36,11 +36,11 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
   | _, _, .sample _ _ _ next, profile, state, running, joint, marginal => by
       cases state with
       | inl config =>
-          simp [step, continuationLaw, FinDist.bind_const, FinDist.bind_map, runFrom_sample]
+          simp [step, continuationLaw, PMF.bind_const, PMF.bind_map, runFrom_sample]
           rfl
       | inr rest =>
-          simpa only [step, continuationLaw, Sum.elim_inr, FinDist.bind_bind,
-            FinDist.bind_map] using
+          simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
+            PMF.bind_map] using
             continuationLaw_behavioral_step next profile rest running joint marginal
   | _, _, .commit (payload := payload) name owner fresh guard next,
       profile, state, running, joint, marginal => by
@@ -50,15 +50,15 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
             runFrom next (fun who => (profile who).2)
               (commitSuccessor name guard config (OwnAction.binding owner name payload action))))
             (marginal owner)
-          simp only [FinDist.bind_map, BehavioralPolicy.protocolAction, observe,
+          simp only [PMF.bind_map, BehavioralPolicy.protocolAction, observe,
             Sum.elim_inl, Sum.elim_inr, dite_true, OwnAction.binding_commit, step,
-            FinDist.bind_bind, FinDist.pure_bind, continuationLaw, continuationLaw_entry,
+            PMF.bind_bind, PMF.pure_bind, continuationLaw, continuationLaw_entry,
             runFrom_commit, commitKernel, Config.view] at law ⊢
           convert law using 1
           rfl
       | inr rest =>
-          simpa only [step, continuationLaw, Sum.elim_inr, FinDist.bind_bind,
-            FinDist.bind_map] using
+          simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
+            PMF.bind_map] using
             continuationLaw_behavioral_step next (fun who => (profile who).2)
               rest running joint marginal
   | _, _, .reveal published owner name fresh source unresolved next,
@@ -69,15 +69,15 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
             runFrom next (fun who => (profile who).2)
               (revealSuccessor published source config (OwnAction.disclosure action))))
             (marginal owner)
-          simp only [FinDist.bind_map, BehavioralPolicy.protocolAction, observe,
+          simp only [PMF.bind_map, BehavioralPolicy.protocolAction, observe,
             Sum.elim_inl, Sum.elim_inr, dite_true, OwnAction.disclosure, step,
-            FinDist.bind_bind, FinDist.pure_bind, continuationLaw, continuationLaw_entry,
+            PMF.bind_bind, PMF.pure_bind, continuationLaw, continuationLaw_entry,
             runFrom_reveal, revealKernel, Config.view] at law ⊢
           convert law using 1
           rfl
       | inr rest =>
-          simpa only [step, continuationLaw, Sum.elim_inr, FinDist.bind_bind,
-            FinDist.bind_map] using
+          simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
+            PMF.bind_map] using
             continuationLaw_behavioral_step next (fun who => (profile who).2)
               rest running joint marginal
 
@@ -118,7 +118,7 @@ theorem protocol_runBehavioralFrom_eq {Γ : SourceCtx Player L} {O : Finset VarI
         (law.map Subtype.val).map (fun actions => actions who) =
           (profile who).protocolAction program
             (ProtocolState.observe who program before.state) := by
-      rw [FinDist.map_comp]
+      rw [PMF.map_comp]
       change (law.map (fun actions => actions.1 who)) = _
       rw [InformationModel.singleMoverJoint_marginal]
       change ((profile who).toProtocol program admission (permitted who)
@@ -129,7 +129,7 @@ theorem protocol_runBehavioralFrom_eq {Γ : SourceCtx Player L} {O : Finset VarI
         (law.map Subtype.val) marginal)
     change law.bind (fun joint => (ProtocolState.step program before.state joint.1).bind
       (fun state => (ProtocolState.continuationLaw program profile state).map some)) = _
-    simpa only [FinDist.map_bind, FinDist.bind_bind, FinDist.bind_map] using stepLaw
+    simpa only [PMF.map_bind, PMF.bind_bind, PMF.bind_map] using stepLaw
 
 theorem protocol_runBehavioral_eq {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)

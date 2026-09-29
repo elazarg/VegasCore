@@ -73,10 +73,10 @@ theorem native_initial_trace (bit : Bool) :
       change ¬ (none : Option Player) = some who
       simp
   · change _ ∈ (nativeInitialLaw.map _).support
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     refine ⟨nativeInitial bit, ?_, rfl⟩
-    rw [nativeInitialLaw, FinDist.support_map]
-    exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩
+    rw [nativeInitialLaw, PMF.support_map]
+    exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩
 
 def aliceActivated (bit : Bool) : nativeApp.Execution :=
   { nativeStart bit with environmentRecall :=
@@ -99,10 +99,10 @@ def watcherRespond (bit : Bool) (action : nativeApp.Action)
 
 theorem initial_activation (bit : Bool) :
     (nativeStart bit).environmentStep nativeApp (.activate alice) =
-      FinDist.pure (aliceActivated bit) := by
+      PMF.pure (aliceActivated bit) := by
   simp [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
     nativeLeaks, alice, watcher, bob, MessageNetwork.learn_empty,
-    FinDist.map_pure, aliceActivated, nativeStart, ReactiveApplication.Execution.initial]
+    PMF.pure_map, aliceActivated, nativeStart, ReactiveApplication.Execution.initial]
 
 theorem ambient_config (bit : Bool) (action : nativeApp.Action) :
     (ambientRespond bit action).application.config = (nativeInitial bit).config := by

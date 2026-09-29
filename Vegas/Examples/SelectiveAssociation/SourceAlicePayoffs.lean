@@ -55,7 +55,7 @@ theorem prescribed_guessers_bind_same {Claim : Type} (defaultClaim : Claim)
       (.success (publicGuess (execution.observe (application Claim) carol))) := by
   rw [runInstructions_visit] at supported
   obtain ⟨carolResponse, carolMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   rw [show eventOwner 1 = carol from rfl, carolPolicy] at carolMem
   have carolSelected := policy_selected_guess Claim defaultClaim 1 (Or.inl rfl) _ _
     (visitInput_visit 1 execution) carolResponse carolMem
@@ -64,14 +64,14 @@ theorem prescribed_guessers_bind_same {Claim : Type} (defaultClaim : Claim)
   have carolCore := carol_binding_response (visitInput 1 execution) carolResponse rfl a core
   rw [← List.append_nil (visit 2), runInstructions_visit] at restMem
   obtain ⟨bobResponse, bobMem, finalMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ restMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ restMem)
   rw [show eventOwner 2 = bob from rfl, bobPolicy] at bobMem
   let afterCarol := remainingVisit 1
     ((visitInput 1 execution).respond (application Claim) carol carolResponse)
   have bobSelected := policy_selected_guess Claim defaultClaim 2 (Or.inr rfl)
     ((visitInput 2 afterCarol).recall bob)
     ((visitInput 2 afterCarol).observe (application Claim) bob) rfl bobResponse bobMem
-  cases FinDist.mem_support_pure.mp finalMem
+  cases (PMF.mem_support_pure_iff _ _).mp finalMem
   have bobCore := bob_binding_response (visitInput 2 afterCarol) bobResponse rfl a _ carolCore
   change (remainingVisit 2 ((visitInput 2 afterCarol).respond
     (application Claim) bob bobResponse)).application.core = _
@@ -97,7 +97,7 @@ theorem alice_after_binding_payoff_le {Claim : Type} (defaultClaim : Claim)
   rw [List.append_assoc (visit 1 ++ visit 2),
     List.append_assoc (visit 1 ++ visit 2), runInstructions_append] at supported
   obtain ⟨afterGuesses, guessesMem, openingMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   let guess := publicGuess (execution.observe (application Claim) carol)
   have boundCore := prescribed_guessers_bind_same defaultClaim players
     carolPolicy bobPolicy execution afterGuesses a core serials guessesMem
@@ -124,7 +124,7 @@ theorem alice_after_binding_payoff_eq (Claim : Type) (defaultClaim : Claim)
   rw [List.append_assoc (visit 1 ++ visit 2),
     List.append_assoc (visit 1 ++ visit 2), runInstructions_append] at supported
   obtain ⟨afterGuesses, guessesMem, openingMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   let guess := publicGuess (execution.observe (application Claim) carol)
   have boundCore := prescribed_guessers_bind_same defaultClaim
     (policy Claim defaultClaim) rfl rfl execution afterGuesses (.success bit)
@@ -160,10 +160,10 @@ theorem finish_alice_binding_payoff_le {Claim : Type} (defaultClaim : Claim)
     (active : control.actor = some alice)
     (remaining : control.remaining = (afterResponse 0).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 0).length + 1) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
-      (some control)).expect (fun state => utility (protocolResults state) alice) ≤ 0 := by
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
+      (some control)) (fun state => utility (protocolResults state) alice) ≤ 0 := by
   rw [finish_response_law players 0 control active remaining position,
-    FinDist.expect_map, FinDist.expect_bind]
+    expect_map, FinDist.expect_bind]
   apply FinDist.expect_le_of_forall
   intro response _
   apply FinDist.expect_le_of_forall

@@ -157,7 +157,7 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
       execution owner response audit (app.submissionOrigin_next_none execution owner recall serials)
         activated)
     (app.respond_inputRecall execution owner response recall)
-    ((app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond execution owner
+    ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond execution owner
       response serials) emitted afterReady afterTimely retained unpublished reached
   intro current good currentReady currentTimely
   have bindingFrame := good.2.2 binding.field (Finset.mem_insert_self ..)

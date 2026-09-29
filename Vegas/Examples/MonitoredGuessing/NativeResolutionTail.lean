@@ -20,12 +20,12 @@ theorem resolution_plan_invariant (players : Player → nativeApp.Policy)
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan before).support) :
     predicate after.application := by
   induction plan generalizing before with
-  | nil => cases FinDist.mem_support_pure.mp supported; exact valid
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp supported; exact valid
   | cons instruction rest ih =>
       obtain ⟨middle, reached, moved⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨command, _, executed⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact ih middle ((ReactiveApplication.Invariant.policyInvariant nativeApp invariant
         players).dispatch command before middle
         valid executed) moved
@@ -35,10 +35,10 @@ theorem resolution_application_receipts (players : Player → nativeApp.Policy)
     (supported : after ∈ (nativeApp.dispatch players (.application command) before).support) :
     after.receipts = before.receipts := by
   change after ∈ ((before.environmentStep nativeApp (.application command)).bind
-    FinDist.pure).support at supported
-  rw [FinDist.bind_pure] at supported
-  obtain ⟨updated, moved, rfl⟩ := FinDist.support_map .. ▸ supported
-  obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ moved
+    PMF.pure).support at supported
+  rw [PMF.bind_pure] at supported
+  obtain ⟨updated, moved, rfl⟩ := PMF.support_map .. ▸ supported
+  obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ moved
   rfl
 
 theorem resolution_clock_tail_receipts (players : Player → nativeApp.Policy)
@@ -47,16 +47,16 @@ theorem resolution_clock_tail_receipts (players : Player → nativeApp.Policy)
       [.tick, .tick, .expire alicePublication] before).support) :
     after.receipts = before.receipts := by
   obtain ⟨first, firstMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨second, secondMem, lastMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ restMem)
-  simp only [runInteractionPlan, FinDist.bind_pure] at lastMem
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ restMem)
+  simp only [runInteractionPlan, PMF.bind_pure] at lastMem
   have firstEq := resolution_application_receipts players .advanceClock before first
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using firstMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using firstMem)
   have secondEq := resolution_application_receipts players .advanceClock first second
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using secondMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using secondMem)
   have finalEq := resolution_application_receipts players (.expire alicePublication) second after
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using lastMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using lastMem)
   exact finalEq.trans (secondEq.trans firstEq)
 
 def resolutionTail : List (ServiceInstruction nativeGraph) :=
@@ -75,7 +75,7 @@ theorem resolution_tail_summary (players : Player → nativeApp.Policy)
       (execution.respond nativeApp alice
         (nativeOpeningAction alicePublication aliceHandle bit))).map
           (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
-      FinDist.pure (Results.mk (.success bit) guess, rejectedAlice execution.receipts) := by
+      PMF.pure (Results.mk (.success bit) guess, rejectedAlice execution.receipts) := by
   obtain ⟨opened, accepted, published⟩ := resolution_opening_accepted bit execution.application
     valid alicePublication ready timely (execution.network.nextSerial alice)
   have accepted' : handle nativeRuntime execution.application
@@ -92,16 +92,16 @@ theorem resolution_tail_summary (players : Player → nativeApp.Policy)
     bobInvariant.handle execution.application
       ⟨(alice, execution.network.nextSerial alice),
         ⟨.opening alicePublication aliceHandle ⟨.bool, bit⟩, none⟩⟩ opened stored accepted'
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro summary supported
   change summary = _
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   obtain ⟨middle, middleMem, tailMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ finalMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ finalMem)
   have paired : (middle.application, middle.receipts) =
       (opened, execution.receipts ++ [((alice, execution.network.nextSerial alice), true)]) := by
-    apply FinDist.mem_support_pure.mp
-    rw [← inclusion, FinDist.support_map]
+    apply (PMF.mem_support_pure_iff _ _).mp
+    rw [← inclusion, PMF.support_map]
     exact ⟨middle, middleMem, rfl⟩
   have appEq : middle.application = opened := congrArg Prod.fst paired
   have aliceStored := resolution_plan_invariant players _ aliceInvariant
@@ -125,18 +125,18 @@ theorem resolution_tail_alice_value (deposit : ℝ) (players : Player → native
     (ready : execution.application.config.cut.Ready alicePublication)
     (timely : execution.application.WithinDeadline nativeRuntime alicePublication)
     (serials : execution.network.SerialsBeforeNext) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       (execution.respond nativeApp alice
-        (nativeOpeningAction alicePublication aliceHandle bit))).expect
+        (nativeOpeningAction alicePublication aliceHandle bit)))
           (nativeExecutionUtility deposit alice) =
       correctness (.success bit) guess -
         if rejectedAlice execution.receipts then deposit else 0 := by
   have summary := resolution_tail_summary players execution bit guess valid stored ready
     timely serials
-  have expected := congrArg (fun law : FinDist (Results × Bool) =>
-    law.expect (fun outcome => utility outcome.1 alice - if outcome.2 then deposit else 0)) summary
-  rw [FinDist.expect_map, FinDist.expect_pure] at expected
-  change FinDist.expect _ (fun final => nativeExecutionUtility deposit alice final) = _
+  have expected := congrArg (fun law : PMF (Results × Bool) =>
+    expect law (fun outcome => utility outcome.1 alice - if outcome.2 then deposit else 0)) summary
+  rw [expect_map, expect_pure] at expected
+  change expect _ (fun final => nativeExecutionUtility deposit alice final) = _
   simpa only [nativeExecutionUtility, utility_alice, openingPenalty, sub_zero, true_and,
     eq_self_iff_true]
     using expected
@@ -150,16 +150,16 @@ theorem resolution_finish_alice_value (deposit : ℝ) (players : Player → nati
     (serials : execution.network.SerialsBeforeNext)
     (position : execution.environmentRecall.length = 10)
     (opens : players alice (execution.recall alice) (execution.observe nativeApp alice) =
-      FinDist.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨4, some alice, execution⟩)).expect (nativeUtility deposit alice) =
+      PMF.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
+      (some ⟨4, some alice, execution⟩)) (nativeUtility deposit alice) =
       correctness (.success bit) guess -
         if rejectedAlice execution.receipts then deposit else 0 := by
   have finish := native_finish_response players (nativePlan.take 9) resolutionTail alice
     rfl execution position
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
       (some ⟨4, some alice, execution⟩) = _ at finish
-  rw [finish, opens, FinDist.pure_bind, FinDist.expect_map]
+  rw [finish, opens, PMF.pure_bind, expect_map]
   exact resolution_tail_alice_value deposit players execution bit guess valid stored ready
     timely serials
 
@@ -174,11 +174,11 @@ theorem resolution_finish_alice_dominates (deposit : ℝ) (nonnegative : 0 ≤ d
     (serials : execution.network.SerialsBeforeNext)
     (position : execution.environmentRecall.length = 10)
     (opens : prescribed alice (execution.recall alice) (execution.observe nativeApp alice) =
-      FinDist.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler alternative
-      (some ⟨4, some alice, execution⟩)).expect (nativeUtility deposit alice) ≤
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler prescribed
-      (some ⟨4, some alice, execution⟩)).expect (nativeUtility deposit alice) := by
+      PMF.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler alternative
+      (some ⟨4, some alice, execution⟩)) (nativeUtility deposit alice) ≤
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler prescribed
+      (some ⟨4, some alice, execution⟩)) (nativeUtility deposit alice) := by
   rw [resolution_finish_alice_value deposit prescribed execution bit guess valid stored ready
     timely serials position opens]
   exact resolution_finish_payoff_upper deposit nonnegative alternative _ bit guess valid stored

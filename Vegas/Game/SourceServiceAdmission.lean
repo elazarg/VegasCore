@@ -77,7 +77,7 @@ theorem sourceServicePolicy_commit_supported
     EventGraphRuntime.nodeView_eq_bind _ _
   rw [sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile refs source
     embedding refsBefore offset aligned execution agree history granted,
-    FinDist.support_map] at supported
+    PMF.support_map] at supported
   obtain ⟨choice, choiceSupported, responseEq⟩ := supported
   have allowed := permitted.1 rfl (source.view owner) choice choiceSupported
   cases choice with

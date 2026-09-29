@@ -29,19 +29,19 @@ theorem roster_policy_converges
     (mixed : ∀ n, (sequence n).IsFullyMixed)
     (source : Profile (setup.informationModel admission).behavioralSignature)
     (converges : ∀ who (site : (setup.informationModel admission).InformationSite who),
-      FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1) (source who site.1))
+      PMFConvergesPointwise (fun n => (sequence n).strategy who site.1) (source who site.1))
     (timing : Nat → TimingLaw setup rosters)
-    (timingFull : ∀ n event who owned, (timing n event who owned).FullSupport)
+    (timingFull : ∀ n event who owned, FullSupport (timing n event who owned))
     (timingConverges : ∀ event who owned, ∃ last : Fin ((rosters event).count who),
       last.val + 1 = (rosters event).count who ∧
-      FinDistConvergesPointwise (fun n => timing n event who owned) (FinDist.pure last))
+      PMFConvergesPointwise (fun n => timing n event who owned) (PMF.pure last))
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).protocol
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).Trace (some control))
     (active : control.actor = some who) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => rosterPolicy setup leaks rosters (timing n)
         (setup.decodeBehavioralProfile admission (sequence n).strategy) who
         (control.execution.recall who) (control.execution.observe (application setup leaks) who))
@@ -72,12 +72,12 @@ theorem roster_policy_converges
       rw [otherView] at otherLaw
       rw [siteView]
       exact otherLaw
-    have full (n : Nat) : (sourceChoiceLaw setup leaks
+    have full (n : Nat) : FullSupport (sourceChoiceLaw setup leaks
         (setup.decodeBehavioralProfile admission (sequence n).strategy) who
-        (granted.observe app who)).FullSupport := by
+        (granted.observe app who)) := by
       rw [law]
       exact setup.reveal_choice_fullSupport reveals admission (sequence n) (mixed n) who site
-    have choiceConverges : FinDistConvergesPointwise
+    have choiceConverges : PMFConvergesPointwise
         (fun n => sourceChoiceLaw setup leaks
           (setup.decodeBehavioralProfile admission (sequence n).strategy) who
           (granted.observe app who))
@@ -116,14 +116,14 @@ theorem roster_policy_converges
       unfold rosterLimitPolicy
       rw [grant]
       exact ite_eq_right ownedEvent
-    change FinDistConvergesPointwise
+    change PMFConvergesPointwise
       (fun n => rosterPolicy setup leaks rosters (timing n)
         (setup.decodeBehavioralProfile admission (sequence n).strategy) who
         (control.execution.recall who) (control.execution.observe app who))
       (rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source) who
         (control.execution.recall who) (control.execution.observe app who))
     simp_rw [waiting, limitWaiting]
-    exact finDistConvergesPointwise_const _
+    exact pmfConvergesPointwise_const _
 
 /-- A single source perturbation and timing sequence converges to the single
 finite compiled profile at every native information site. -/
@@ -139,18 +139,18 @@ theorem rosterPerturbedProfile_converges
     (mixed : ∀ n, (sequence n).IsFullyMixed)
     (source : Profile (setup.informationModel admission).behavioralSignature)
     (converges : ∀ who (site : (setup.informationModel admission).InformationSite who),
-      FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1) (source who site.1))
+      PMFConvergesPointwise (fun n => (sequence n).strategy who site.1) (source who site.1))
     (timing : Nat → TimingLaw setup rosters)
-    (timingFull : ∀ n event who owned, (timing n event who owned).FullSupport)
+    (timingFull : ∀ n event who owned, FullSupport (timing n event who owned))
     (timingConverges : ∀ event who owned, ∃ last : Fin ((rosters event).count who),
       last.val + 1 = (rosters event).count who ∧
-      FinDistConvergesPointwise (fun n => timing n event who owned) (FinDist.pure last))
+      PMFConvergesPointwise (fun n => timing n event who owned) (PMF.pure last))
     (who : Player)
     (site : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).InformationSite who) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => rosterPerturbedProfile setup leaks bounds rosters network admission
         (sequence n) (timing n) who site.1)
       (rosterCompiledProfile setup leaks bounds rosters network
@@ -195,22 +195,20 @@ theorem rosterPerturbedProfile_converges
           (setup.decodeBehavioralProfile admission source) who control traced acting)
       intro choice
       have approxProb (n : Nat) :
-          (rosterPerturbedProfile setup leaks bounds rosters network admission
+          ((rosterPerturbedProfile setup leaks bounds rosters network admission
             (sequence n) (timing n) who
-            (some (control.execution.recall who, control.execution.observe app who))).prob choice =
-          ((rosterPolicy setup leaks rosters (timing n)
+            (some (control.execution.recall who, control.execution.observe app who))) choice).toReal =
+          (((rosterPolicy setup leaks rosters (timing n)
             (setup.decodeBehavioralProfile admission (sequence n).strategy) who
-            (control.execution.recall who) (control.execution.observe app who)).map some).prob
-              choice.1 := by
+            (control.execution.recall who) (control.execution.observe app who)).map some) choice.1).toReal := by
         rw [← approxLaw n, FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
         rfl
       have limitProb :
-          (rosterCompiledProfile setup leaks bounds rosters network
+          ((rosterCompiledProfile setup leaks bounds rosters network
             (setup.decodeBehavioralProfile admission source) who
-            (some (control.execution.recall who, control.execution.observe app who))).prob choice =
-          ((rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source)
-            who (control.execution.recall who) (control.execution.observe app who)).map some).prob
-              choice.1 := by
+            (some (control.execution.recall who, control.execution.observe app who))) choice).toReal =
+          (((rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source)
+            who (control.execution.recall who) (control.execution.observe app who)).map some) choice.1).toReal := by
         rw [← limitLaw, FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
         rfl
       simp_rw [approxProb, limitProb]

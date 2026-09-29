@@ -38,7 +38,7 @@ theorem eventPendingGame_deviation_law
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (profile : BehavioralProfile setup.program) (who : Player)
     (replacement : runtime.application.PlayerPolicy) :
-    ∃ mixture : FinDist (BehavioralPolicy who setup.program),
+    ∃ mixture : PMF (BehavioralPolicy who setup.program),
       ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
         (Profile.update (sig := (setup.eventPendingGame mode runtime
           roster reactionRounds wire order).sig)
@@ -65,8 +65,8 @@ theorem eventPendingGame_deviation_law
           (Vegas.compileEventProfile setup.program profile)))
       who replacement)).map (fun execution => execution.native.application.config.store)).map _ = _
   rw [law]
-  simp only [FinDist.map_bind, FinDist.bind_map]
-  apply FinDist.bind_congr
+  simp only [PMF.map_bind, PMF.bind_map]
+  apply bind_congr_on_support _
   intro alternative _
   simp_rw [← (setup.eventGraph.withMode mode).runPolicies_canonical_normalize_eq,
     setup.eventGraph.runPolicies_withMode_store, setup.eventGraph.fromModeProfile_update,
@@ -89,10 +89,10 @@ private theorem eventPendingGame_map_publicOutcome (setup : Setup (Player := Pla
         (setup.eventPendingPublicOutcome mode runtime) =
       ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play players).map
         (fun execution => setup.eventPublicDecode execution.native.application.config.store) := by
-  have base := congrArg (FinDist.map (Option.map (publicOutcome setup.program)))
+  have base := congrArg (PMF.map (Option.map (publicOutcome setup.program)))
     (setup.eventPendingGame_map_outcome mode runtime roster reactionRounds wire order players)
-  rw [eventPendingPublicOutcome_eq, ← FinDist.map_comp, base]
-  simp only [FinDist.map_comp, Function.comp_def, eventPublicDecode]
+  rw [eventPendingPublicOutcome_eq, ← PMF.map_comp, base]
+  simp only [PMF.map_comp, Function.comp_def, eventPublicDecode]
 
 /-- A composable exact strategic certificate for the concrete source compiler
 and public pending-message service: the compiler's edge to the canonical graph,
@@ -139,14 +139,14 @@ theorem eventPendingGame_deviation_guarantee
     (profile : BehavioralProfile setup.program) (who : Player)
     (value : PublicOutcome setup.program → ℝ) (missing bound : ℝ)
     (sourceBound : ∀ alternative : BehavioralPolicy who setup.program,
-      bound ≤ (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
-        profile who alternative)).expect value)
+      bound ≤ expect (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who alternative)) value)
     (replacement : runtime.application.PlayerPolicy) :
-    bound ≤ ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+    bound ≤ expect ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
       (Profile.update (sig := (setup.eventPendingGame mode runtime
         roster reactionRounds wire order).sig)
         (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
-        who replacement)).expect
+        who replacement))
           (fun outcome =>
             (setup.eventPendingPublicOutcome mode runtime outcome).elim missing value) := by
   let optionValue : Option (PublicOutcome setup.program) → ℝ :=
@@ -172,15 +172,15 @@ theorem eventPendingGame_deviation_utility_bound
     (value : PublicOutcome setup.program → ℝ) (missing : ℝ)
     (replacement : runtime.application.PlayerPolicy) :
     ∃ alternative : BehavioralPolicy who setup.program,
-      ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+      expect ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
         (Profile.update
           (sig := (setup.eventPendingGame mode runtime roster reactionRounds wire order).sig)
           (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
-          who replacement)).expect
+          who replacement))
             (fun outcome =>
               (setup.eventPendingPublicOutcome mode runtime outcome).elim missing value) ≤
-      (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
-        profile who alternative)).expect (fun result => value result) := by
+      expect (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who alternative)) (fun result => value result) := by
   let optionValue : Option (PublicOutcome setup.program) → Player → ℝ :=
     fun outcome _ => outcome.elim missing value
   let simulation :=
@@ -190,13 +190,13 @@ theorem eventPendingGame_deviation_utility_bound
       subset_rfl profile who replacement
   refine ⟨alternative, ?_⟩
   change
-    ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+    expect ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
       (Profile.update
         (sig := (setup.eventPendingGame mode runtime roster reactionRounds wire order).sig)
         (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
-        who replacement)).expect
+        who replacement))
           (fun outcome => optionValue (setup.eventPendingPublicOutcome mode runtime outcome) who) ≤
-      (setup.gameForm.play (Profile.update profile who alternative)).expect
+      expect (setup.gameForm.play (Profile.update profile who alternative))
         (fun result => optionValue (some result) who) at hbound
   exact hbound
 

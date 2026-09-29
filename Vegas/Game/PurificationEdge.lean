@@ -44,8 +44,8 @@ def pureSimulationOn {Observation : Type} (setup : Setup (Player := Player) (L :
     refine ⟨mixture, ?_⟩
     change (setup.publicRun (Function.update (pureProfile profile) who replacement)).map
       observe = _
-    rw [hmixture, FinDist.map_bind]
-    refine FinDist.bind_congr fun choice _ => ?_
+    rw [hmixture, PMF.map_bind]
+    refine bind_congr_on_support _ fun choice _ => ?_
     rw [pureGame_play, pureProfile_update]
 
 /-- The edge read on the source outcome itself. -/

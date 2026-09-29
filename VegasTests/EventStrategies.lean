@@ -20,7 +20,7 @@ noncomputable section
 example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
     (chosen : Bool) (who : SourceSetup.Player)
     (replacement : SourceSetup.fairSetup.eventGraph.BehavioralPolicy who) :
-    ∃ mixture : FinDist
+    ∃ mixture : PMF
         (SourceProgram.BehavioralPolicy who SourceSetup.fairSetup.program),
       ((SourceSetup.fairSetup.eventGame scheduler).play
         (Profile.update (sig := SourceSetup.fairSetup.eventGraph.gameSignature)
@@ -33,7 +33,7 @@ example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
               (sig := SourceProgram.gameSignature SourceSetup.fairSetup.program)
               (SourceSetup.profile chosen) who alternative) := by
   simpa only [SourceProgram.Setup.eventGame, EventGraph.gameForm,
-    FinDist.map_bind, FinDist.bind_map] using
+    PMF.map_bind, PMF.bind_map] using
     scheduled_setup_deviation_law SourceSetup.fairSetup scheduler
       (SourceSetup.profile chosen) who replacement
 
@@ -41,7 +41,7 @@ private def mixedSetup : SourceProgram.Setup
     (Player := SourceSemantics.Player) (L := simpleExpr) where
   context := SourceSemantics.mixedInitial.context
   namesNodup := SourceSemantics.mixedInitial.namesNodup
-  initialLaw := FinDist.pure SourceSemantics.mixedInitial.state
+  initialLaw := PMF.pure SourceSemantics.mixedInitial.state
   obligations := SourceSemantics.mixedInitial.obligations
   program := SourceSemantics.mixedInitial.program
   accounts := SourceSemantics.mixedInitial.accounts

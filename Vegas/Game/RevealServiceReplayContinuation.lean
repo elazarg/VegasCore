@@ -85,7 +85,7 @@ theorem replay_control_bind_eq {Outcome : Type}
         (menu setup leaks bounds watcher).decodeProfile (initialLaw setup)
           (horizon setup watcher) (scheduler setup leaks watcher) source who
           (first.recall who) (first.observe (application setup leaks) who))
-    (leftValue rightValue : (application setup leaks).ProtocolState → FinDist Outcome)
+    (leftValue rightValue : (application setup leaks).ProtocolState → PMF Outcome)
     (continued : ∀ count nextActor left right,
       some ⟨count, nextActor, left⟩ ∈
         ((application setup leaks).controlStep (initialLaw setup) (horizon setup watcher)
@@ -126,22 +126,22 @@ theorem replay_control_bind_eq {Outcome : Type}
             (players who (execution.recall who) (execution.observe app who)).map fun response =>
               some ⟨remaining, none, execution.respond app who response⟩ := by
         simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-          ReactiveApplication.transition, reduceIte, Option.getD_some, FinDist.map_eq_bind]
-      rw [step, step, FinDist.bind_map, FinDist.bind_map]
+          ReactiveApplication.transition, reduceIte, Option.getD_some, ← PMF.bind_pure_comp, Function.comp_def]
+      rw [step, step, PMF.bind_map, PMF.bind_map]
       by_cases watches : who = watcher
       · subst who
         have quiet := watcher_history_silent setup leaks bounds watcher reveals observer openable
           history ⟨remaining, some watcher, first⟩ current rfl
         have prescribed : firstPlayers watcher (first.recall watcher)
-            (first.observe app watcher) = FinDist.pure ⟨none⟩ := by
+            (first.observe app watcher) = PMF.pure ⟨none⟩ := by
           rw [show firstPlayers watcher = app.reportFirstUnpublished from
             menu_decode_reports setup leaks bounds watcher source]
           exact quiet
-        rw [prescribed, FinDist.pure_bind]
+        rw [prescribed, PMF.pure_bind]
         symm
-        refine (FinDist.bind_congr (g := fun _ =>
+        refine (bind_congr_on_support _ (g := fun _ =>
           leftValue (some ⟨remaining, none, first.respond app watcher ⟨none⟩⟩)) ?_).trans
-            (FinDist.bind_const _ _)
+            (PMF.bind_const _ _)
         intro response supported
         have allowed := targetMenu.decode_embedPolicy_covered (initialLaw setup)
           (horizon setup watcher) (scheduler setup leaks watcher) watcher
@@ -150,7 +150,7 @@ theorem replay_control_bind_eq {Outcome : Type}
           (second.observe app watcher) at allowed
         rw [replay_menu_watcher] at allowed
         have secondQuiet : app.reportFirstUnpublished (second.recall watcher)
-            (second.observe app watcher) = FinDist.pure ⟨none⟩ := by
+            (second.observe app watcher) = PMF.pure ⟨none⟩ := by
           apply app.reportFirstUnpublished_silent
           intro message seen
           have clean := (active_history_clean setup leaks bounds watcher reveals observer openable
@@ -162,12 +162,12 @@ theorem replay_control_bind_eq {Outcome : Type}
             (app.controlStep (initialLaw setup) (horizon setup watcher)
               (scheduler setup leaks watcher) firstPlayers
               (some ⟨remaining, some watcher, first⟩)).support := by
-          rw [step, prescribed, FinDist.map_pure]
-          exact FinDist.mem_support_pure.mpr rfl
+          rw [step, prescribed, PMF.pure_map]
+          exact (PMF.mem_support_pure_iff _ _).mpr rfl
         have related : ReplayAgreement setup leaks watcher
             (first.respond app watcher ⟨none⟩) (second.respond app watcher response) := by
           rcases Finset.mem_union.mp allowed with prescribedResponse | replayed
-          · rw [secondQuiet, FinDist.mem_supportFinset, FinDist.mem_support_pure]
+          · rw [secondQuiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _]
               at prescribedResponse
             subst response
             exact same.respond_watcher_silent
@@ -179,25 +179,25 @@ theorem replay_control_bind_eq {Outcome : Type}
       · have policyEq := ordinaryLaw who rfl watches
         change secondPlayers who _ _ = firstPlayers who _ _ at policyEq
         rw [policyEq]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro response supported
         apply continued remaining none
-        · rw [step, FinDist.support_map]
+        · rw [step, PMF.support_map]
           exact ⟨response, supported, rfl⟩
         · exact same.respond_ordinary who watches response
   | none =>
       cases remaining with
       | zero =>
           simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
-            Option.bind_some, ReactiveApplication.transition, FinDist.pure_bind]
-          exact continued 0 none first second (FinDist.mem_support_pure.mpr rfl) same
+            Option.bind_some, ReactiveApplication.transition, PMF.pure_bind]
+          exact continued 0 none first second ((PMF.mem_support_pure_iff _ _).mpr rfl) same
       | succ remaining =>
           simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
-            Option.bind_some, ReactiveApplication.transition, FinDist.bind_bind, FinDist.bind_map]
+            Option.bind_some, ReactiveApplication.transition, PMF.bind_bind, PMF.bind_map]
           have scheduled := replay_scheduler_eq setup leaks bounds watcher reveals observer openable
             history ⟨remaining + 1, none, first⟩ current second same
           rw [← scheduled]
-          apply FinDist.bind_congr
+          apply bind_congr_on_support _
           intro command supported
           apply same.environment_bind_eq command
           · intro id chosen
@@ -211,10 +211,10 @@ theorem replay_control_bind_eq {Outcome : Type}
             apply continued remaining (command.actor? app) left right _ related
             change _ ∈ ((scheduler setup leaks watcher first.environmentRecall
               (first.observeEnvironment app)).bind _).support
-            rw [FinDist.support_bind]
+            rw [PMF.support_bind]
             apply Set.mem_iUnion₂.mpr
             refine ⟨command, supported, ?_⟩
-            rw [FinDist.support_map]
+            rw [PMF.support_map]
             exact ⟨left, reached, rfl⟩
 
 
@@ -261,14 +261,14 @@ theorem replay_finish_application_law
     by_cases stopped : app.terminal (some ⟨remaining, actor, first⟩)
     · have otherStopped : app.terminal (some ⟨remaining, actor, second⟩) := stopped
       rw [app.finish_terminal _ _ _ _ _ stopped,
-        app.finish_terminal _ _ _ _ _ otherStopped, FinDist.map_pure, FinDist.map_pure]
+        app.finish_terminal _ _ _ _ _ otherStopped, PMF.pure_map, PMF.pure_map]
       congr 1
       exact congrArg some same.applicationEq
     · rw [← app.finish_step (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) firstPlayers (some ⟨remaining, actor, first⟩),
         ← app.finish_step (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) secondPlayers (some ⟨remaining, actor, second⟩),
-        FinDist.map_bind, FinDist.map_bind]
+        PMF.map_bind, PMF.map_bind]
       apply replay_control_bind_eq setup leaks bounds watcher reveals observer openable
         source target history remaining actor first second current same
       · intro who active ordinary
@@ -278,13 +278,13 @@ theorem replay_finish_application_law
       intro count nextActor left right reached related
       have prefixLaw := sourceMenu.run_map_controlSteps (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) source 1 history
-      simp only [Function.iterate_one, FinDist.pure_bind, current] at prefixLaw
+      simp only [Function.iterate_one, PMF.pure_bind, current] at prefixLaw
       have reachable : some ⟨count, nextActor, left⟩ ∈
           (((information setup leaks bounds watcher).runBehavioralFrom source 1 history).map
             History.state).support := by
         rw [prefixLaw]
         exact reached
-      rw [FinDist.support_map] at reachable
+      rw [PMF.support_map] at reachable
       obtain ⟨nextHistory, _, nextState⟩ := reachable
       have decreases := app.controlStep_rank (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) firstPlayers _ _ stopped reached

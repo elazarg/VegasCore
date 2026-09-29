@@ -261,17 +261,17 @@ theorem instruction_actor (watcher : Player)
     command.actor? (application setup leaks) = instructionActor instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
-      simp only [EventGraphRuntime.interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       rfl
   | includeLatest event owner =>
-      simp only [EventGraphRuntime.interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       unfold reactiveLatest
       split <;> rfl
   | wire =>
       rw [(runtime setup).reportNetwork_instruction leaks watcher history view,
-        FinDist.mem_support_pure] at supported
+        PMF.mem_support_pure_iff _ _] at supported
       subst command
       unfold ReactiveApplication.includeReported
       split
@@ -290,17 +290,17 @@ private theorem instruction_grant (watcher : Player)
     commandGrant setup leaks command = instructionGrant instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
-      simp only [EventGraphRuntime.interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       rfl
   | includeLatest event owner =>
-      simp only [EventGraphRuntime.interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       unfold reactiveLatest
       split <;> rfl
   | wire =>
       rw [(runtime setup).reportNetwork_instruction leaks watcher history view,
-        FinDist.mem_support_pure] at supported
+        PMF.mem_support_pure_iff _ _] at supported
       subst command
       unfold ReactiveApplication.includeReported
       split
@@ -319,7 +319,7 @@ private theorem scheduled_grant (watcher : Player)
   unfold scheduler at supported
   cases selected : (plan setup watcher)[history.length]? with
   | none =>
-      rw [selected, FinDist.mem_support_pure] at supported
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       simp only [calendarGrant, List.take_add_one, selected, Option.toList_none,
         List.append_nil, commandGrant, Option.none_or]
@@ -354,16 +354,16 @@ private theorem environment_grant (before after : (application setup leaks).Exec
       (commandGrant setup leaks command).or before.application.serviceGrant := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨sample, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
       rfl
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       change (before.includePending (application setup leaks) id).application.serviceGrant = _
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
       cases found : before.network.lookup id with
@@ -376,8 +376,8 @@ private theorem environment_grant (before after : (application setup leaks).Exec
           | none => rfl
           | some next => exact (runtime setup).handle_serviceGrant _ _ _ accepted
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       have preserved := (runtime setup).environmentStep_serviceGrant
         before.application state command changed
       cases command <;> exact preserved
@@ -398,14 +398,14 @@ private theorem trace_grant_calendar (watcher : Player) :
         (horizon setup watcher) (scheduler setup leaks watcher) source joint).support := realized
       cases source with
       | none =>
-          obtain ⟨initial, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-          obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ supported
+          obtain ⟨initial, supported, rfl⟩ := PMF.support_map .. ▸ reached
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
           rfl
       | some control =>
           rcases control with ⟨remaining, actor, execution⟩
           cases actor with
           | some who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               change
                 (execution.respond (application setup leaks) who _).application.serviceGrant = _
               rw [respond_grant, (application setup leaks).respond_environmentRecall]
@@ -415,11 +415,11 @@ private theorem trace_grant_calendar (watcher : Player) :
               | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
               | succ remaining =>
                   obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   have recall : next.environmentRecall = execution.environmentRecall ++
                       [⟨execution.observeEnvironment (application setup leaks), command⟩] := by
-                    obtain ⟨updated, _, equal⟩ := FinDist.support_map .. ▸ supported
+                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
                     cases equal
                     rfl
                   change next.application.serviceGrant = _
@@ -440,7 +440,7 @@ private theorem scheduler_activation_position (watcher who : Player)
   unfold scheduler at supported
   cases selected : (plan setup watcher)[history.length]? with
   | none =>
-      rw [selected, FinDist.mem_support_pure] at supported
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases active
   | some instruction =>
@@ -469,14 +469,14 @@ private theorem trace_active_calendar (watcher : Player) (reveals : setup.progra
         (horizon setup watcher) (scheduler setup leaks watcher) source joint).support := realized
       cases source with
       | none =>
-          obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
           intro who active
           cases active
       | some control =>
           rcases control with ⟨remaining, actor, execution⟩
           cases actor with
           | some who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               intro who active
               cases active
           | none =>
@@ -484,11 +484,11 @@ private theorem trace_active_calendar (watcher : Player) (reveals : setup.progra
               | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
               | succ remaining =>
                   obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   have recall : next.environmentRecall = execution.environmentRecall ++
                       [⟨execution.observeEnvironment (application setup leaks), command⟩] := by
-                    obtain ⟨updated, _, equal⟩ := FinDist.support_map .. ▸ supported
+                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
                     cases equal
                     rfl
                   have granted : next.application.serviceGrant = calendarGrant setup watcher
@@ -537,7 +537,7 @@ theorem scheduled_activation_count (watcher : Player)
   unfold scheduler at supported
   cases selected : (plan setup watcher)[history.length]? with
   | none =>
-      rw [selected, FinDist.mem_support_pure] at supported
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       simp only [activationCount, List.take_add_one, selected, Option.toList_none,
         List.append_nil, ReactiveApplication.Command.actor?, List.length_nil, Nat.add_zero]
@@ -568,7 +568,7 @@ private theorem trace_counted_depth (watcher : Player) :
         (horizon setup watcher) (scheduler setup leaks watcher) source joint).support := realized
       cases source with
       | none =>
-          obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
           have counted : before.length = 0 := inherited
           simpa only [CountedDepth, Trace.length, ReactiveApplication.Execution.initial,
             List.length_nil, Option.toList_none, Nat.add_zero, activationCount,
@@ -577,7 +577,7 @@ private theorem trace_counted_depth (watcher : Player) :
           rcases control with ⟨remaining, actor, execution⟩
           cases actor with
           | some who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               simpa only [CountedDepth, Trace.length,
                 (application setup leaks).respond_environmentRecall, Option.toList_some,
                 Option.toList_none, List.length_singleton, List.length_nil, Nat.add_zero]
@@ -587,11 +587,11 @@ private theorem trace_counted_depth (watcher : Player) :
               | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
               | succ remaining =>
                   obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                   have schedulerRecall : next.environmentRecall = execution.environmentRecall ++
                       [⟨execution.observeEnvironment (application setup leaks), command⟩] := by
-                    obtain ⟨updated, _, equal⟩ := FinDist.support_map .. ▸ supported
+                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
                     cases equal
                     rfl
                   have activations := scheduled_activation_count setup leaks watcher

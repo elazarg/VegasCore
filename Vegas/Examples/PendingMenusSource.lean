@@ -33,13 +33,13 @@ def sourceInitial : Config Unit simpleExpr [] :=
   ⟨Env.empty _, [], Revelations.initial [], fun _ => []⟩
 
 def sourcePolicy (who : Unit) : BehavioralPolicy who sourceProgram :=
-  (fun _ _ => FinDist.pure (.success 0), (fun _ _ => FinDist.pure true, PUnit.unit))
+  (fun _ _ => PMF.pure (.success 0), (fun _ _ => PMF.pure true, PUnit.unit))
 
 theorem source_admitted (admission : CommitmentInterface sourceProgram) (who : Unit) :
     (sourcePolicy who).Admitted sourceProgram admission := by
   refine ⟨?_, trivial⟩
   intro _ _ choice reached
-  have same := FinDist.mem_support_pure.mp reached
+  have same := (PMF.mem_support_pure_iff _ _).mp reached
   subst choice
   trivial
 
@@ -85,7 +85,7 @@ theorem source_graph_publication (choice : PublicationResult Int) (disclose : Bo
     let bound := (EventGraph.Config.initial (graph := graph) input).complete 0
       (by decide) choice choice
     (graph.nodes 1).eval? disclose bound.store =
-      some (FinDist.pure
+      some (PMF.pure
         ((revealSuccessor 1 .here (commitSuccessor 0 guard sourceInitial choice)
           disclose).state.get .here)) := by
   rw [source_publication]
@@ -96,13 +96,13 @@ theorem source_graph_publication (choice : PublicationResult Int) (disclose : Bo
       EventGraph.Config.complete_output_same, EventGraph.GuardCheck.allAccepted?]
 
 private theorem honest_commit_value (preferOne : Bool) (config : Config Unit simpleExpr []) :
-    (ProtocolState.continuationLaw sourceProgram sourcePolicy (Sum.inl config)).expect
+    expect (ProtocolState.continuationLaw sourceProgram sourcePolicy (Sum.inl config))
       (sourceUtility preferOne · ()) = 3 := by
   simp only [sourceProgram, ProtocolState.continuationLaw, Sum.elim_inl, runFrom_commit,
-    commitKernel, sourcePolicy, FinDist.pure_bind, runFrom_reveal, afterCommit, revealKernel]
-  change (FinDist.pure (revealSuccessor 1 .here
-    (commitSuccessor 0 guard config (.success 0)) true).state).expect _ = _
-  rw [FinDist.expect_pure]
+    commitKernel, sourcePolicy, PMF.pure_bind, runFrom_reveal, afterCommit, revealKernel]
+  change expect (PMF.pure (revealSuccessor 1 .here
+    (commitSuccessor 0 guard config (.success 0)) true).state) _ = _
+  rw [expect_pure]
   change publicUtility preferOne (some ((revealSuccessor 1 .here
     (commitSuccessor 0 guard config (.success 0)) true).state.get .here)) = _
   rw [source_publication]
@@ -118,9 +118,9 @@ private theorem withholding_result
 opening weakly dominates withholding, and a fresh zero earns the global maximum. -/
 theorem source_continuation_optimal (preferOne : Bool)
     (replacement : BehavioralProfile sourceProgram) (state : ProtocolState sourceProgram) :
-    (ProtocolState.continuationLaw sourceProgram replacement state).expect
+    expect (ProtocolState.continuationLaw sourceProgram replacement state)
         (sourceUtility preferOne · ()) ≤
-      (ProtocolState.continuationLaw sourceProgram sourcePolicy state).expect
+      expect (ProtocolState.continuationLaw sourceProgram sourcePolicy state)
         (sourceUtility preferOne · ()) := by
   cases state with
   | inl config =>
@@ -131,14 +131,14 @@ theorem source_continuation_optimal (preferOne : Bool)
       cases state with
       | inr config => exact le_rfl
       | inl config =>
-          change (((replacement ()).2.1 rfl (config.view ())).bind (fun disclose =>
-            FinDist.pure (revealSuccessor 1 .here config disclose).state)).expect _ ≤
-            ((FinDist.pure true).bind (fun disclose =>
-              FinDist.pure (revealSuccessor 1 .here config disclose).state)).expect _
-          rw [FinDist.pure_bind, FinDist.expect_pure, FinDist.expect_bind]
+          change expect (((replacement ()).2.1 rfl (config.view ())).bind (fun disclose =>
+            PMF.pure (revealSuccessor 1 .here config disclose).state)) _ ≤
+            expect ((PMF.pure true).bind (fun disclose =>
+              PMF.pure (revealSuccessor 1 .here config disclose).state)) _
+          rw [PMF.pure_bind, expect_pure, FinDist.expect_bind]
           apply FinDist.expect_le_of_forall
           intro disclose _
-          rw [FinDist.expect_pure]
+          rw [expect_pure]
           cases disclose with
           | true => exact le_rfl
           | false =>
@@ -182,8 +182,8 @@ theorem no_utility_independent_spe_compiler (admission : CommitmentInterface sou
           (sourceProtocolProfile admission)
           (protocolUtility sourceProgram admission sourceInitial (sourceUtility preferOne)) →
         nativeModel.IsBehavioralSubgamePerfect
-          (runtime.native_singleMover (FinDist.pure input) [] 1 wire ordering)
-          (runtime.native_bounded (FinDist.pure input) [] 1 wire ordering)
+          (runtime.native_singleMover (PMF.pure input) [] 1 wire ordering)
+          (runtime.native_bounded (PMF.pure input) [] 1 wire ordering)
           (compile (sourceProtocolProfile admission)) (nativePayoff preferOne) := by
   rintro ⟨compile, preserves⟩
   exact no_common_native_spe ⟨compile (sourceProtocolProfile admission),

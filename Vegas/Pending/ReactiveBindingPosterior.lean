@@ -29,7 +29,7 @@ theorem binding_replay_joint_law (runtime : EventGraphRuntime graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (owner focal : Player) (different : focal ≠ owner) (event : graph.EventId)
-    (payload : L.Ty) (prior : FinDist (PublicationResult (L.Val payload))) (serial : Nat)
+    (payload : L.Ty) (prior : PMF (PublicationResult (L.Val payload))) (serial : Nat)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext) :
@@ -41,7 +41,7 @@ theorem binding_replay_joint_law (runtime : EventGraphRuntime graph)
           result serial))
     prior.bind (fun result => (run result).map fun final =>
       (runtime.bindingTraffic leaks focal final, result)) =
-      FinDist.product ((run .failure).map (runtime.bindingTraffic leaks focal)) prior := by
+      bindPairLaw ((run .failure).map (runtime.bindingTraffic leaks focal)) (fun _ => prior) := by
   intro app phase run
   have same (result : PublicationResult (L.Val payload)) :
       (run result).map (runtime.bindingTraffic leaks focal) =
@@ -53,14 +53,14 @@ theorem binding_replay_joint_law (runtime : EventGraphRuntime graph)
     _ = prior.bind (fun result =>
         ((run .failure).map (runtime.bindingTraffic leaks focal)).map fun traffic =>
           (traffic, result)) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro result _supported
-      simpa only [FinDist.map_comp, Function.comp_def] using
-        congrArg (FinDist.map (fun traffic => (traffic, result))) (same result)
+      simpa only [PMF.map_comp, Function.comp_def] using
+        congrArg (PMF.map (fun traffic => (traffic, result))) (same result)
     _ = _ := by
-      exact FinDist.bind_comm prior
+      exact PMF.bind_comm prior
         ((run .failure).map (runtime.bindingTraffic leaks focal))
-          (fun result traffic => FinDist.pure (traffic, result))
+          (fun result traffic => PMF.pure (traffic, result))
 
 /-- Conditioning the actual joint phase law on any foreign readout preserves
 the private-result lottery. The finite-law fallback also covers absent inputs. -/
@@ -70,7 +70,7 @@ theorem binding_replay_posterior (runtime : EventGraphRuntime graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (owner focal : Player) (different : focal ≠ owner) (event : graph.EventId)
-    (payload : L.Ty) (prior : FinDist (PublicationResult (L.Val payload))) (serial : Nat)
+    (payload : L.Ty) (prior : PMF (PublicationResult (L.Val payload))) (serial : Nat)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
@@ -82,15 +82,15 @@ theorem binding_replay_posterior (runtime : EventGraphRuntime graph)
         (execution.respond app owner
           (runtime.reactiveBinding leaks owner event payload result serial))).map fun final =>
             (runtime.bindingTraffic leaks focal final, result)
-    (joint.condOnFibre Prod.fst (runtime.bindingTraffic leaks focal observed)).map Prod.snd =
+    (fiberConditional joint Prod.fst (runtime.bindingTraffic leaks focal observed)).map Prod.snd =
       prior := by
   intro app phase joint
   have product := runtime.binding_replay_joint_law leaks network roster execution recalled
     owner focal different event payload prior serial published serials
   dsimp only at product
-  change (joint.condOnFibre _ _).map _ = _
+  change (fiberConditional joint _ _).map _ = _
   rw [show joint = _ from product]
-  exact FinDist.conditional_snd_product _ _ _
+  exact conditional_snd_bindPairLaw_const _ _ _
 
 /-- For arbitrarily correlated hidden seeds and initial executions, the actual
 phase preserves the seed posterior conditional on the initial traffic readout.
@@ -99,7 +99,7 @@ theorem binding_replay_conditional_seed {Seed : Type*}
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player)
-    (prior : FinDist Seed)
+    (prior : PMF Seed)
     (execution : Seed → (runtime.reactiveApplication leaks).Execution)
     (owner focal : Player) (different : focal ≠ owner) (event : graph.EventId)
     (payload : L.Ty) (result : Seed → PublicationResult (L.Val payload)) (serial : Nat)
@@ -119,11 +119,11 @@ theorem binding_replay_conditional_seed {Seed : Type*}
     let joint := prior.bind fun seed => (kernel seed).map fun traffic => (seed, traffic)
     (∃ seed ∈ prior.support, observe seed = runtime.bindingTraffic leaks focal before ∧
       runtime.bindingTraffic leaks focal after ∈ (kernel seed).support) →
-    (joint.condOnFibre (fun pair => (observe pair.1, pair.2))
+    (fiberConditional joint (fun pair => (observe pair.1, pair.2))
       (runtime.bindingTraffic leaks focal before, runtime.bindingTraffic leaks focal after)).map
-        Prod.fst = prior.condOnFibre observe (runtime.bindingTraffic leaks focal before) := by
+        Prod.fst = fiberConditional prior observe (runtime.bindingTraffic leaks focal before) := by
   intro app observe phase kernel joint present
-  apply FinDist.conditional_kernel_of_fiber prior observe kernel
+  apply PMF.conditional_kernel_of_fiber prior observe kernel
     (fun left leftSupport right rightSupport same => ?_) _ _ present
   exact runtime.binding_replay_inclusion_coupling leaks network roster
     (execution left) (execution right) (recalled left leftSupport) (recalled right rightSupport)

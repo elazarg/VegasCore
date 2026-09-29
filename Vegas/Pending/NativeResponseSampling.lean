@@ -35,11 +35,11 @@ theorem actionsSince_takeAction (runtime : EventGraphRuntime graph) (who : Playe
 
 /-- The entry offset and desired law are private data available when a
 response starts. Subsequent choices read only the player's actual recall. -/
-def sampleResponsePolicy (law : FinDist (List (PlayerAction graph))) (start : Nat) :
+def sampleResponsePolicy (law : PMF (List (PlayerAction graph))) (start : Nat) :
     NativePolicy graph := fun history _ => ResponseSampling.next law (actionsSince start history)
 
 private theorem sampleResponsePolicy_run (runtime : EventGraphRuntime graph) (who : Player)
-    (law : FinDist (List (PlayerAction graph))) (start count : Nat)
+    (law : PMF (List (PlayerAction graph))) (start count : Nat)
     (execution : NativeExecution runtime)
     (within : start ≤ (execution.principalHistory who).length) :
     runtime.invokeNativeFor who (sampleResponsePolicy law start) count execution =
@@ -47,13 +47,13 @@ private theorem sampleResponsePolicy_run (runtime : EventGraphRuntime graph) (wh
         (actionsSince start (execution.principalHistory who) ++ past)) count).map
           (runtime.takeActions who execution) := by
   induction count generalizing execution with
-  | zero => simp only [invokeNativeFor, ResponseSampling.run, FinDist.map_pure,
+  | zero => simp only [invokeNativeFor, ResponseSampling.run, PMF.pure_map,
       takeActions, List.foldl_nil]
   | succ count ih =>
       simp only [invokeNativeFor, invokeNative, sampleResponsePolicy, actionStep,
-        FinDist.bind_bind, FinDist.pure_bind, ResponseSampling.run, List.append_nil,
-        FinDist.map_bind, FinDist.map_comp]
-      apply FinDist.bind_congr
+        PMF.bind_bind, PMF.pure_bind, ResponseSampling.run, List.append_nil,
+        PMF.map_bind, PMF.map_comp]
+      apply bind_congr_on_support _
       intro action _
       have nextWithin : start ≤
           ((runtime.takeAction who execution action).principalHistory who).length := by
@@ -66,7 +66,7 @@ private theorem sampleResponsePolicy_run (runtime : EventGraphRuntime graph) (wh
 /-- Local realization of every response law by one information-local native
 policy. The law and entry offset are uniform across equal player inputs. -/
 theorem sampleResponsePolicy_law (runtime : EventGraphRuntime graph) (who : Player)
-    {count : Nat} (law : FinDist (PlayerResponse graph count))
+    {count : Nat} (law : PMF (PlayerResponse graph count))
     (execution : NativeExecution runtime) :
     runtime.invokeNativeFor who
         (sampleResponsePolicy (law.map Subtype.val) (execution.principalHistory who).length)
@@ -75,15 +75,15 @@ theorem sampleResponsePolicy_law (runtime : EventGraphRuntime graph) (who : Play
   rw [runtime.sampleResponsePolicy_run who _ _ _ execution (Nat.le_refl _)]
   simp only [actionsSince, List.drop_length, List.map_nil, List.nil_append]
   rw [ResponseSampling.run_next]
-  · rw [FinDist.map_comp]
+  · rw [PMF.map_comp]
     rfl
   · intro actions supported
-    obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact response.2
 
 /-- A strategy selects a law of responses at every possible entry input. -/
 abbrev ResponsePolicy (budget : NativeInput graph → Nat) :=
-  (input : NativeInput graph) → FinDist (PlayerResponse graph (budget input))
+  (input : NativeInput graph) → PMF (PlayerResponse graph (budget input))
 
 /-- One policy for all native invocations. Both the entry and conditional
 action prefix are reconstructed from the actual private invocation arguments. -/
@@ -102,7 +102,7 @@ private theorem expandResponsePolicy_run (runtime : EventGraphRuntime graph) (wh
         ((policy fragment.entry).map Subtype.val) (fragment.actions ++ past)) count).map
           (runtime.takeActions who execution) := by
   induction count generalizing execution fragment with
-  | zero => simp only [invokeNativeFor, ResponseSampling.run, FinDist.map_pure,
+  | zero => simp only [invokeNativeFor, ResponseSampling.run, PMF.pure_map,
       takeActions, List.foldl_nil]
   | succ count ih =>
       have chosen : expandResponsePolicy budget policy (execution.principalHistory who)
@@ -113,12 +113,12 @@ private theorem expandResponsePolicy_run (runtime : EventGraphRuntime graph) (wh
             Subtype.val) (responsePosition budget (runtime.nativeInput who execution)).actions = _
         rw [position]
       simp only [invokeNativeFor, invokeNative, chosen, actionStep,
-        FinDist.bind_bind, FinDist.pure_bind, ResponseSampling.run, List.append_nil,
-        FinDist.map_bind, FinDist.map_comp]
-      apply FinDist.bind_congr
+        PMF.bind_bind, PMF.pure_bind, ResponseSampling.run, List.append_nil,
+        PMF.map_bind, PMF.map_comp]
+      apply bind_congr_on_support _
       intro action _
       cases count with
-      | zero => simp only [invokeNativeFor, ResponseSampling.run, FinDist.map_pure,
+      | zero => simp only [invokeNativeFor, ResponseSampling.run, PMF.pure_map,
           Function.comp_apply, takeActions, List.foldl_cons, List.foldl_nil]
       | succ count =>
           have unfinished : (fragment.actions ++ [action]).length < budget fragment.entry := by
@@ -150,10 +150,10 @@ theorem expandResponsePolicy_law (runtime : EventGraphRuntime graph) (who : Play
       rfl) (by simp only [List.length_nil, Nat.zero_add, le_refl])]
   simp only [List.nil_append]
   rw [ResponseSampling.run_next]
-  · rw [FinDist.map_comp]
+  · rw [PMF.map_comp]
     rfl
   · intro actions supported
-    obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact response.2
 
 end Vegas.EventGraphRuntime

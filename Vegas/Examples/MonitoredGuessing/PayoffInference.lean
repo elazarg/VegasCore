@@ -86,8 +86,8 @@ theorem inferredCharge_deters (table : PayoffTable) {charge : ℚ}
     (inferred : inferredCharge table = some charge)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).bind
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan)).expect
+    expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
+      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (monitoredSettlement (fun result => table result alice) charge) ≤ senderLower table := by
   obtain ⟨nonnegative, sufficient⟩ := inferredCharge_bounds table inferred
   apply submission_deterred_by_range (fun result => table result alice)
@@ -98,16 +98,16 @@ theorem inferredCharge_deters (table : PayoffTable) {charge : ℚ}
 /-- The bound is below every mixture of ordinary guesses followed by Alice's
 opening, including a receiver policy chosen in response to the payoff table. -/
 theorem inferredCharge_deters_against_opening (table : PayoffTable) {charge : ℚ}
-    (inferred : inferredCharge table = some charge) (guesses : FinDist Bool)
+    (inferred : inferredCharge table = some charge) (guesses : PMF Bool)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).bind
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan)).expect
+    expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
+      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (monitoredSettlement (fun result => table result alice) charge) ≤
-      guesses.expect (fun guess =>
+      expect guesses (fun guess =>
         (table ⟨.success bit, if guess then .success true else .failure⟩ alice : ℝ)) := by
   apply (inferredCharge_deters table inferred bit submission players plan).trans
-  rw [← FinDist.expect_const guesses (senderLower table : ℝ)]
+  rw [← expect_constant guesses (senderLower table : ℝ)]
   apply FinDist.expect_mono
   intro guess _
   exact_mod_cast senderLower_le table bit guess

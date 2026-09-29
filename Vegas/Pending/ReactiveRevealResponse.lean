@@ -51,10 +51,10 @@ theorem player_instruction_published (runtime : EventGraphRuntime graph)
     runtime.interactionStep leaks players network (.player owner) execution =
       (players owner (execution.recall owner) (execution.observe app owner)).map
         (activated.respond app owner) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch,
     ReactiveApplication.Execution.activate_of_pending_published _ _ _ published,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   rfl
 
 /-- Every physical name for source withholding executes the complete monitored
@@ -87,7 +87,7 @@ theorem refusing_response_settlement (runtime : EventGraphRuntime graph)
     let submitted := execution.respond app owner response
     ∃ next, runtime.runInteractionPlan leaks players (runtime.reportNetwork leaks watcher)
         ([.includeLatest event owner, .player watcher, .wire] ++
-          List.replicate ticks .tick ++ [.expire event]) submitted = FinDist.pure next ∧
+          List.replicate ticks .tick ++ [.expire event]) submitted = PMF.pure next ∧
       next.application =
         ({ execution.application with clock := execution.application.clock + ticks } :
           State graph).complete event ready
@@ -135,10 +135,10 @@ theorem refusing_response_settlement (runtime : EventGraphRuntime graph)
     environmentRecall := submitted.environmentRecall ++
       [⟨submitted.observeEnvironment app, .wait⟩] }
   have inclusion : runtime.interactionStep leaks players (runtime.reportNetwork leaks watcher)
-      (.includeLatest event owner) submitted = FinDist.pure waited := by
+      (.includeLatest event owner) submitted = PMF.pure waited := by
     rw [runtime.interaction_includeLatest_of_pending_published leaks players
       (runtime.reportNetwork leaks watcher) submitted owner event quiet.2.1]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   have waitedReady : waited.application.config.cut.Ready event := by
     change submitted.application.config.cut.Ready event
@@ -159,7 +159,7 @@ theorem refusing_response_settlement (runtime : EventGraphRuntime graph)
   refine ⟨next, ?_, ?_, networkEq, ?_, recallEq⟩
   · change (runtime.interactionStep leaks players (runtime.reportNetwork leaks watcher)
         (.includeLatest event owner) submitted).bind _ = _
-    rw [inclusion, FinDist.pure_bind]
+    rw [inclusion, PMF.pure_bind]
     exact law
   · simpa only [show waited.application = execution.application from quiet.1] using applicationEq
   · exact receiptEq.trans (app.respond_receipts execution owner response)
@@ -188,7 +188,7 @@ theorem opening_response_settlement (runtime : EventGraphRuntime graph)
       ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
     ∃ next, runtime.runInteractionPlan leaks players (runtime.reportNetwork leaks watcher)
         ([.includeLatest event owner, .player watcher, .wire] ++
-          List.replicate ticks .tick ++ [.expire event]) submitted = FinDist.pure next ∧
+          List.replicate ticks .tick ++ [.expire event]) submitted = PMF.pure next ∧
       next.application = { after with clock := after.clock + ticks } ∧
       next.network = (submitted.network.includePending
         (owner, execution.network.nextSerial owner)).2 ∧
@@ -247,7 +247,7 @@ theorem opening_response_settlement (runtime : EventGraphRuntime graph)
   refine ⟨next, ?_, ?_, nextNetwork.trans networkEq, nextReceipts.trans receiptsEq, ?_⟩
   · change (runtime.interactionStep leaks players (runtime.reportNetwork leaks watcher)
         (.includeLatest event owner) submitted).bind _ = _
-    rw [inclusion, FinDist.pure_bind]
+    rw [inclusion, PMF.pure_bind]
     exact law
   · simpa only [applicationEq] using nextApplication
   · intro observer different

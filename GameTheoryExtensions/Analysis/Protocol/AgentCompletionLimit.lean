@@ -35,23 +35,23 @@ theorem BehavioralAssessmentConvergesPointwise.local_optimal_of_responses
     {who : Player} (site : M.InformationSite who)
     [Finite (M.InformationHistory who site.1)]
     (payoff : E.History → ℝ) (fuel : Nat)
-    (reference : FinDist (M.Choice who site.1))
-    (responses : ℕ → FinDist (M.Choice who site.1))
+    (reference : PMF (M.Choice who site.1))
+    (responses : ℕ → PMF (M.Choice who site.1))
     (epsilon : ℕ → ℝ) (positive : ∀ n, 0 < epsilon n)
     (small : ∀ n, epsilon n < 1) (vanishes : Tendsto epsilon atTop (nhds 0))
     (played : ∀ n, (sequence n).strategy who site.1 =
-      FinDist.mix (epsilon n) (positive n).le (small n).le reference (responses n))
+      mix (epsilon n) (positive n).le (small n).le reference (responses n))
     (optimal : ∀ n alternative,
       ((sequence n).continuationContext site payoff fuel).value
         (((sequence n).strategy who).withLaw site.1 alternative) ≤
       ((sequence n).continuationContext site payoff fuel).value
         (((sequence n).strategy who).withLaw site.1 (responses n))) :
-    ∀ alternative : FinDist (M.Choice who site.1),
+    ∀ alternative : PMF (M.Choice who site.1),
       (assessment.continuationContext site payoff fuel).value
         ((assessment.strategy who).withLaw site.1 alternative) ≤
       (assessment.continuationContext site payoff fuel).value (assessment.strategy who) := by
-  have responseLimit : FinDistConvergesPointwise responses (assessment.strategy who site.1) := by
-    apply FinDistConvergesPointwise.of_mix_vanishing reference responses
+  have responseLimit : PMFConvergesPointwise responses (assessment.strategy who site.1) := by
+    apply PMFConvergesPointwise.of_mix_vanishing reference responses
       (assessment.strategy who site.1) epsilon (fun n => (positive n).le) small vanishes
     simpa only [← played] using converges.strategy who site
   intro alternative
@@ -62,7 +62,7 @@ theorem BehavioralAssessmentConvergesPointwise.local_optimal_of_responses
       by_cases same : decision = site
       · subst decision
         simpa only [BehavioralPolicy.withLaw_self] using
-          finDistConvergesPointwise_const alternative
+          pmfConvergesPointwise_const alternative
       · have different : decision.1 ≠ site.1 := fun equal => same (Subtype.ext equal)
         simpa only [BehavioralPolicy.withLaw_of_ne _ _ _ different] using
           converges.strategy who decision)
@@ -90,15 +90,15 @@ theorem exists_consistent_free_agent_completion
     (decisionCovered : ∀ who (site : M.InformationSite who), site.1 ∈ sites who)
     (utility : E.History → Player → ℝ) (free : Finset (M.InformationAgent sites))
     (pinned : ℕ → (agent : M.InformationAgent sites) →
-      FinDist (M.Choice agent.1 agent.2.1))
+      PMF (M.Choice agent.1 agent.2.1))
     (reference : (agent : M.InformationAgent sites) →
-      FinDist (M.Choice agent.1 agent.2.1))
-    (pinnedFull : ∀ n agent, agent ∉ free → (pinned n agent).FullSupport)
-    (referenceFull : ∀ agent, (reference agent).FullSupport)
+      PMF (M.Choice agent.1 agent.2.1))
+    (pinnedFull : ∀ n agent, agent ∉ free → FullSupport (pinned n agent))
+    (referenceFull : ∀ agent, FullSupport (reference agent))
     (epsilon : ℕ → ℝ) (positive : ∀ n, 0 < epsilon n)
     (small : ∀ n, epsilon n < 1) (vanishes : Tendsto epsilon atTop (nhds 0)) :
     ∃ (residual : ℕ → (agent : M.InformationAgent sites) →
-        FinDist (M.Choice agent.1 agent.2.1))
+        PMF (M.Choice agent.1 agent.2.1))
       (sequence : ℕ → M.BehavioralAssessment) (assessment : M.BehavioralAssessment)
       (index : ℕ → ℕ),
       (∀ n, (sequence n).strategy = M.agentBehavior sites fallback
@@ -107,15 +107,15 @@ theorem exists_consistent_free_agent_completion
             (positive n).le (small n).le)) ∧
       (∀ n, (sequence n).IsFullyMixed) ∧
       (∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n)
-        decisionRecall.antichain) ∧
+        decisionRecall.decisionInformationAntichain) ∧
       StrictMono index ∧
       BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) assessment ∧
       assessment.IsSequentiallyConsistent
-        decisionRecall.antichain ∧
+        decisionRecall.decisionInformationAntichain ∧
       ∀ (who : Player) (site : M.InformationSite who) (present : site.1 ∈ sites who),
         (⟨who, ⟨site.1, present⟩⟩ : M.InformationAgent sites) ∈ free →
         ∀ depth fuel, InformationSite.CommonDepth M site depth → depth + fuel = horizon →
-        ∀ alternative : FinDist (M.Choice who site.1),
+        ∀ alternative : PMF (M.Choice who site.1),
           (assessment.continuationContext site (fun history => utility history who) fuel).value
             ((assessment.strategy who).withLaw site.1 alternative) ≤
           (assessment.continuationContext site (fun history => utility history who) fuel).value
@@ -133,7 +133,7 @@ theorem exists_consistent_free_agent_completion
       (epsilon n) (positive n) (small n)
   obtain ⟨assessment, index, increasing, converges, consistent⟩ :=
     BehavioralAssessment.exists_sequentiallyConsistent_subsequence
-      decisionRecall.antichain sequence mixed bayes
+      decisionRecall.decisionInformationAntichain sequence mixed bayes
   refine ⟨residual, sequence, assessment, index, played, mixed, bayes,
     increasing, converges, consistent, ?_⟩
   intro who site present freeSite depth fuel sameDepth total

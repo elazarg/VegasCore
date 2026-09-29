@@ -71,7 +71,7 @@ theorem sourceServiceTimedFamily_active_binding_law
       (commitKernel profile (source.view owner)).bind fun choice =>
         let rawPlayers := Function.update (fun _ => app.replayPolicy) owner
           (app.scheduledPolicy (rosterOffset setup rosters owner event) (some slot)
-            (fun _ _ => FinDist.pure
+            (fun _ _ => PMF.pure
               ((runtime setup).reactiveBinding leaks owner event payload choice serial))
             app.replayPolicy)
         (app.invoke rawPlayers owner execution).bind
@@ -81,7 +81,7 @@ theorem sourceServiceTimedFamily_active_binding_law
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
   let raw := fun choice => (runtime setup).reactiveBinding leaks owner event payload choice serial
   let rawPlayers := fun choice => Function.update (fun _ => app.replayPolicy) owner
-    (app.scheduledPolicy offset (some slot) (fun _ _ => FinDist.pure (raw choice)) app.replayPolicy)
+    (app.scheduledPolicy offset (some slot) (fun _ _ => PMF.pure (raw choice)) app.replayPolicy)
   change (app.invoke players owner execution).bind
     ((runtime setup).runInteractionPlan leaks players network plan) =
     (commitKernel profile (source.view owner)).bind fun choice =>
@@ -104,25 +104,25 @@ theorem sourceServiceTimedFamily_active_binding_law
         (execution.recall owner) (execution.observe app owner) =
           (commitKernel profile (source.view owner)).map raw := by
       apply sourceLaw.trans
-      apply FinDist.map_congr_of_eq_on_support
+      apply map_congr_on_support _
       intro choice _
       exact serviceDecision_binding_fresh (runtime setup) leaks execution owner event payload
         outputEq codeEq node serial freshSlot candidate choice
     have actionLaw : opening (execution.recall owner) (execution.observe app owner) =
         (commitKernel profile (source.view owner)).map raw := by
       simp only [opening, sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte]
-      rw [responses, FinDist.bind_map, FinDist.map_eq_bind]
-      apply FinDist.bind_congr
+      rw [responses, PMF.bind_map, ← PMF.bind_pure_comp, Function.comp_def]
+      apply bind_congr_on_support _
       intro choice _
       cases choice <;> rfl
     have scheduled : some (rosterOffset setup rosters owner event + slot.val) =
         some (execution.recall owner).length := congrArg some now
     simp only [players, rawPlayers, ReactiveApplication.invoke, Function.update_self,
       sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy, Option.map_some,
-      offset, ite_eq_left scheduled, FinDist.bind_map, FinDist.pure_bind]
+      offset, ite_eq_left scheduled, PMF.bind_map, PMF.pure_bind]
     change (opening (execution.recall owner) (execution.observe app owner)).bind _ = _
-    rw [actionLaw, FinDist.bind_map]
-    apply FinDist.bind_congr
+    rw [actionLaw, PMF.bind_map]
+    apply bind_congr_on_support _
     intro choice _
     have after : offset + slot.val <
         ((execution.respond app owner (raw choice)).recall owner).length := by
@@ -132,16 +132,16 @@ theorem sourceServiceTimedFamily_active_binding_law
     exact (scheduled_tail_waiting setup leaks network owner event offset slot opening remaining
       (execution.respond app owner (raw choice)) after).trans
       (scheduled_tail_waiting setup leaks network owner event offset slot
-        (fun _ _ => FinDist.pure (raw choice)) remaining
+        (fun _ _ => PMF.pure (raw choice)) remaining
         (execution.respond app owner (raw choice)) after).symm
   · have unused : some (rosterOffset setup rosters owner event + slot.val) ≠
         some (execution.recall owner).length :=
       fun equal => now (Option.some.inj equal)
     simp only [ReactiveApplication.invoke, players, rawPlayers, Function.update_self,
       sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy, Option.map_some,
-      offset, ite_eq_right unused, FinDist.bind_map]
-    conv_rhs => rw [FinDist.bind_comm]
-    apply FinDist.bind_congr
+      offset, ite_eq_right unused, PMF.bind_map]
+    conv_rhs => rw [PMF.bind_comm]
+    apply bind_congr_on_support _
     intro response supported
     let current := execution.respond app owner response
     have same : current.application = execution.application :=
@@ -195,7 +195,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     {name : VarId} {owner : Player} {payload : L.Ty}
@@ -248,7 +248,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
         posterior.bind fun slot =>
           let scheduled := Function.update (fun _ => app.replayPolicy) owner
             (app.scheduledPolicy (rosterOffset setup rosters owner event) (some slot)
-              (fun _ _ => FinDist.pure
+              (fun _ _ => PMF.pure
                 ((runtime setup).reactiveBinding leaks owner event payload choice serial))
               app.replayPolicy)
           (app.invoke scheduled owner execution).bind
@@ -266,8 +266,8 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
     (timing event owner owned) last (full event owner owned last) (by dsimp only [last]; omega)
   rw [sourceServiceTimedPolicy_active_phase_law setup leaks rosters timing wholeProfile event
     owner owned network remaining ticks execution granted]
-  conv_rhs => rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+  conv_rhs => rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro slot supported
   have notPassed := future slot supported
   have within : rosterOffset setup rosters owner event + slot.val <
@@ -281,7 +281,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
   let raw := fun choice => (runtime setup).reactiveBinding leaks owner event payload choice serial
   let rawPlayers := fun choice => Function.update (fun _ => app.replayPolicy) owner
     (app.scheduledPolicy (rosterOffset setup rosters owner event) (some slot)
-      (fun _ _ => FinDist.pure (raw choice)) app.replayPolicy)
+      (fun _ _ => PMF.pure (raw choice)) app.replayPolicy)
   let firstSteps := remaining.map ServiceInstruction.player ++ [.includeLatest event owner]
   let maintenance : List (ServiceInstruction (graph setup)) :=
     List.replicate ticks .tick ++ [.expire event]
@@ -302,17 +302,17 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
     arg 2
     ext current
     rw [runInteractionPlan_append]
-  rw [← FinDist.bind_bind, active, FinDist.bind_bind]
-  apply FinDist.bind_congr
+  rw [← PMF.bind_bind, active, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro choice _
   conv_rhs =>
     arg 2
     ext current
     rw [runInteractionPlan_append]
-  rw [FinDist.bind_bind]
-  apply FinDist.bind_congr
+  rw [PMF.bind_bind]
+  apply bind_congr_on_support _
   intro current _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro final _
   exact servicePlan_players_eq setup leaks _ _ network maintenance
     (by simp [maintenance]) (by intro who; simp [maintenance]) final

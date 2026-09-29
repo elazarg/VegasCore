@@ -45,12 +45,12 @@ theorem audited_raw_sequentialEquilibrium_preserved {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence service.setup service.leaks) →
-      FinDist (List (EnvelopeEvidence service.setup service.leaks)))
+      PMF (List (EnvelopeEvidence service.setup service.leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : service.sourceModel.BehavioralAssessment)
     [∀ who (site : service.sourceModel.InformationSite who),
       Fintype (service.sourceModel.InformationHistory who site.1)]
@@ -106,7 +106,7 @@ theorem audited_raw_sequentialEquilibrium_preserved {Parameter : Type}
   have jointLaw := congrArg (fun law => law.map (fun output =>
     (output, fun who => output.elim 0
       (fun state => utility (service.setup.parameterOutcome parameter state) who)))) nativeLaw
-  simp only [FinDist.map_comp, Function.comp_def] at jointLaw
+  simp only [PMF.map_comp, Function.comp_def] at jointLaw
   exact ⟨target, targetSE, clear, targetLaw.trans jointLaw⟩
 
 /-- With a complete audit, which reports all traffic, every hypothesis on the
@@ -126,7 +126,7 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (instructionCount service.setup.program + 1))) :
     let sample : List (EnvelopeEvidence service.setup service.leaks) →
-        FinDist (List (EnvelopeEvidence service.setup service.leaks)) := FinDist.pure
+        PMF (List (EnvelopeEvidence service.setup service.leaks)) := PMF.pure
     let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
     let base := baseUtility service.setup service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
@@ -162,7 +162,7 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
   intro sample raw base deposit payoff settle
   have preserved := service.audited_raw_sequentialEquilibrium_preserved parameter utility sample
     (fun actual observed drawn => by
-      rw [FinDist.mem_support_pure.mp drawn])
+      rw [(PMF.mem_support_pure_iff _ _).mp drawn])
     (fun _ => 1) (fun _ => one_pos)
     (fun _ actual _ present _ _ => (FinDist.probOf_pure_self actual _ present).ge)
     source equilibrium

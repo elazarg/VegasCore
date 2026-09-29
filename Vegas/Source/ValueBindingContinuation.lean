@@ -73,7 +73,7 @@ all listed hidden configurations. Opponents' source policies remain unchanged. -
 theorem exists_valueBinding_continuation_mixture
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (replacement : BehavioralPolicy who program) (configs : List (Config Player L Γ)) :
-    ∃ mixture : FinDist (ValueBindingPolicy who program), ∀ config ∈ configs,
+    ∃ mixture : PMF (ValueBindingPolicy who program), ∀ config ∈ configs,
       (runFrom program (Function.update profile who replacement) config).map
           (publicOutcome program) =
         mixture.bind fun alternative =>
@@ -84,17 +84,17 @@ theorem exists_valueBinding_continuation_mixture
     ⟨PurePolicy.toBehavioral program (PurePolicy.bindValues program policy),
       valueBinding_bindValues program policy⟩), ?_⟩
   intro config member
-  rw [law config member, FinDist.map_bind, FinDist.bind_map]
-  exact FinDist.bind_congr fun policy _ =>
+  rw [law config member, PMF.map_bind, PMF.bind_map]
+  exact bind_congr_on_support _ fun policy _ =>
     (bindValues_runFrom_publicOutcome_eq program profile policy config).symm
 
 /-- The mixing draw precedes the hidden configuration draw. The readout can
 retain private types or any other initial parameter jointly with public results. -/
 theorem exists_valueBinding_belief_mixture {Parameter : Type}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
-    (replacement : BehavioralPolicy who program) (belief : FinDist (Config Player L Γ))
+    (replacement : BehavioralPolicy who program) (belief : PMF (Config Player L Γ))
     (parameter : Config Player L Γ → Parameter) :
-    ∃ mixture : FinDist (ValueBindingPolicy who program),
+    ∃ mixture : PMF (ValueBindingPolicy who program),
       (belief.bind fun config =>
         (runFrom program (Function.update profile who replacement) config).map
           (fun result => (parameter config, publicOutcome program result))) =
@@ -105,35 +105,35 @@ theorem exists_valueBinding_belief_mixture {Parameter : Type}
   obtain ⟨mixture, law⟩ := exists_valueBinding_continuation_mixture program profile replacement
     belief.supportFinset.toList
   refine ⟨mixture, ?_⟩
-  rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+  rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro config supported
-  have equality := congrArg (FinDist.map fun result => (parameter config, result))
+  have equality := congrArg (PMF.map fun result => (parameter config, result))
     (law config (Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr supported)))
-  simpa only [FinDist.map_comp, Function.comp_def, FinDist.map_bind] using equality
+  simpa only [PMF.map_comp, Function.comp_def, PMF.map_bind] using equality
 
 /-- Hidden inability to open cannot increase the conditional best-response
 value when opponents retain their source observations and policies. This is
 stronger than an initial Nash comparison, and still weaker than native SE. -/
 theorem exists_valueBinding_continuation_ge {Parameter : Type}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
-    (replacement : BehavioralPolicy who program) (belief : FinDist (Config Player L Γ))
+    (replacement : BehavioralPolicy who program) (belief : PMF (Config Player L Γ))
     (parameter : Config Player L Γ → Parameter)
     (utility : Parameter × PublicOutcome program → ℝ) :
     ∃ alternative : ValueBindingPolicy who program,
-      (belief.bind fun config =>
+      expect (belief.bind fun config =>
         (runFrom program (Function.update profile who replacement) config).map
-          (fun result => (parameter config, publicOutcome program result))).expect utility ≤
-      (belief.bind fun config =>
+          (fun result => (parameter config, publicOutcome program result))) utility ≤
+      expect (belief.bind fun config =>
         (runFrom program (Function.update profile who alternative.1) config).map
-          (fun result => (parameter config, publicOutcome program result))).expect utility := by
+          (fun result => (parameter config, publicOutcome program result))) utility := by
   obtain ⟨mixture, law⟩ := exists_valueBinding_belief_mixture program profile replacement
     belief parameter
   rw [law, FinDist.expect_bind]
   obtain ⟨alternative, _, bound⟩ := mixture.exists_expect_le_support (fun alternative =>
-    (belief.bind fun config =>
+    expect (belief.bind fun config =>
       (runFrom program (Function.update profile who alternative.1) config).map
-        (fun result => (parameter config, publicOutcome program result))).expect utility)
+        (fun result => (parameter config, publicOutcome program result))) utility)
   exact ⟨alternative, bound⟩
 
 end Vegas.SourceProgram

@@ -59,8 +59,7 @@ variable (reveals : setup.program.RevealOnly)
   (sufficient : ∀ who, who ≠ watcher → upper who - lower who ≤ probability who * deposit who)
   (sampling : ∀ owner, owner ≠ watcher →
     ∀ pending (message : Message Player (WitnessedPacket (graph setup))), message ∈ pending →
-      message.id.1 = owner → probability owner ≤ (leaks watcher pending).probOf
-        {selected | message.id ∈ selected})
+      message.id.1 = owner → probability owner ≤ ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
 
 include reveals observer openable nonnegative below above sufficient sampling in
 /-- Fixed utility bounds, deposits and observation coverage suffice for every
@@ -121,8 +120,8 @@ theorem ordinary_equilibrium_extends
       (site : (information setup leaks bounds watcher).InformationSite who)
       (_ : (watchedInformation setup leaks bounds watcher).Choice who
         (restriction.site who site).1) :
-      FinDist ((information setup leaks bounds watcher).Choice who site.1) :=
-    FinDist.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
+      PMF ((information setup leaks bounds watcher).Choice who site.1) :=
+    PMF.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
   have comparison : ∀
       (sourceProfile : Profile (information setup leaks bounds watcher).behavioralSignature)
       (targetProfile : Profile (watchedInformation setup leaks bounds watcher).behavioralSignature),
@@ -132,15 +131,15 @@ theorem ordinary_equilibrium_extends
           (restriction.site who site).1),
         action ∉ Set.range (restriction.choice who site.1) →
         ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
-          ((watchedInformation setup leaks bounds watcher).runBehavioralFrom
+          expect ((watchedInformation setup leaks bounds watcher).runBehavioralFrom
             (Profile.update targetProfile who
               ((targetProfile who).commit (restriction.site who site).1 action))
             (2 * count + 1 - depth who (restriction.site who site))
-            (restriction.history history.1)).expect (fun final => utility final.state who) ≤
-          ((information setup leaks bounds watcher).runBehavioralFrom
+            (restriction.history history.1)) (fun final => utility final.state who) ≤
+          expect ((information setup leaks bounds watcher).runBehavioralFrom
             (Profile.update sourceProfile who
               ((sourceProfile who).withLaw site.1 (comparator who site action)))
-            (2 * count + 1 - depth who (restriction.site who site)) history.1).expect
+            (2 * count + 1 - depth who (restriction.site who site)) history.1)
               (fun final => utility final.state who) := by
     intro sourceProfile targetProfile _paired who site action extra history
     by_cases isWatcher : who = watcher
@@ -169,18 +168,18 @@ theorem ordinary_equilibrium_extends
       (lower who) (upper who) (probability who)
       (by
         intro final supported
-        obtain ⟨reached, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨reached, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact above reached who)
       (by
         intro final supported
-        obtain ⟨reached, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨reached, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact below reached who)
       (by
         intro final supported
-        obtain ⟨reached, member, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨reached, member, rfl⟩ := PMF.support_map .. ▸ supported
         exact clean reached member)
       (by rw [FinDist.probOf_map]; exact collected) (sufficient who isWatcher)
-    simpa only [FinDist.expect_map] using compared
+    simpa only [expect_map] using compared
   obtain ⟨target, targetRemaining, agrees, beliefs, historyLaw, joint, _terminal⟩ :=
     restriction.sequential_equilibrium_extends_of_comparator
       (retained.decisionInformationAntichain initial count service)
@@ -193,7 +192,7 @@ theorem ordinary_equilibrium_extends
       comparator comparison source sourceRemaining
   have targetFull := (target.sequentialEquilibrium_remaining_iff
     (watchedInformation setup leaks bounds watcher)
-    (watched.decisionRecall initial count service).antichain (2 * count + 1)
+    (watched.decisionRecall initial count service).decisionInformationAntichain (2 * count + 1)
     (watched.bounded initial count service) depth clock
     (fun who history => utility history.state who)).mp targetRemaining
   exact ⟨target, targetFull, agrees, beliefs, historyLaw, joint⟩
@@ -240,7 +239,7 @@ theorem ordinary_raw_equilibrium_extends
     (fun state => (netUtility_watcher setup leaks watcher base deposit state).trans
       (indifferent state)) watched watchedSE
   refine ⟨target, targetSE, ?_⟩
-  rw [joint, ← historyLaw, FinDist.map_comp]
+  rw [joint, ← historyLaw, PMF.map_comp]
   rfl
 
 end Vegas

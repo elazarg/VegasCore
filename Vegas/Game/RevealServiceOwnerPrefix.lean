@@ -33,32 +33,32 @@ private theorem grant_activate_readout
     (ownerAt : (plan setup watcher)[cursor + 1]? = some (.player owner)) :
     ((fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) players))^[2]
-        (FinDist.pure (some ⟨remaining + 2, none, execution⟩))).map
+        (PMF.pure (some ⟨remaining + 2, none, execution⟩))).map
           (prefixReadout setup leaks rank) =
-      FinDist.pure (sourcePrefix? setup rank execution.application.config) := by
+      PMF.pure (sourcePrefix? setup rank execution.application.config) := by
   let app := application setup leaks
   let granted : app.Execution := { execution with
     application := { execution.application with serviceGrant := some event }
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
   have first : (scheduler setup leaks watcher) execution.environmentRecall
-      (execution.observeEnvironment app) = FinDist.pure (.application (.grant event)) := by
+      (execution.observeEnvironment app) = PMF.pure (.application (.grant event)) := by
     simp only [scheduler, position, grantAt, interactionInstruction]
   have second : (scheduler setup leaks watcher) granted.environmentRecall
-      (granted.observeEnvironment app) = FinDist.pure (.activate owner) := by
+      (granted.observeEnvironment app) = PMF.pure (.activate owner) := by
     simp only [scheduler, granted, List.length_append, List.length_singleton, position,
       ownerAt, interactionInstruction]
   have grantLaw : execution.environmentStep app (.application (.grant event)) =
-      FinDist.pure granted := by
+      PMF.pure granted := by
     simp only [ReactiveApplication.Execution.environmentStep, app, application, reactiveApplication,
-      environmentStep, FinDist.map_pure]
+      environmentStep, PMF.pure_map]
     rfl
   have one : app.controlStep (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players (some ⟨remaining + 2, none, execution⟩) =
-      FinDist.pure (some ⟨remaining + 1, none, granted⟩) := by
+      PMF.pure (some ⟨remaining + 1, none, granted⟩) := by
     change ((scheduler setup leaks watcher) execution.environmentRecall
       (execution.observeEnvironment app)).bind _ = _
-    rw [first, FinDist.pure_bind, grantLaw, FinDist.map_pure]
+    rw [first, PMF.pure_bind, grantLaw, PMF.pure_map]
     rfl
   have two : app.controlStep (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players (some ⟨remaining + 1, none, granted⟩) =
@@ -66,11 +66,11 @@ private theorem grant_activate_readout
         (fun next => some ⟨remaining, some owner, next⟩) := by
     change ((scheduler setup leaks watcher) granted.environmentRecall
       (granted.observeEnvironment app)).bind _ = _
-    rw [second, FinDist.pure_bind]
+    rw [second, PMF.pure_bind]
     rfl
-  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, FinDist.pure_bind]
-  rw [one, FinDist.pure_bind, two, FinDist.map_comp]
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp, Function.comp_def,
+  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind]
+  rw [one, PMF.pure_bind, two, PMF.map_comp]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp, Function.comp_def,
     prefixReadout, granted]
   exact FinDist.map_const _ _
 
@@ -119,16 +119,16 @@ theorem menu_owner_readout
   change (model.runBehavioral profile (depth + 2)).map _ =
     (model.runBehavioral profile depth).map _
   rw [InformationModel.runBehavioral, InformationModel.runBehavioralFrom_add,
-    FinDist.map_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+    PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro history supported
   have seen : history.state ∈
       ((model.runBehavioral profile depth).map History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨history, supported, rfl⟩
-  rw [prefixes, FinDist.support_bind] at seen
+  rw [prefixes, PMF.support_bind] at seen
   obtain ⟨initial, _initialSupport, reached⟩ := Set.mem_iUnion₂.mp seen
-  obtain ⟨execution, executed, stateEq⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨execution, executed, stateEq⟩ := PMF.support_map .. ▸ reached
   have position : execution.environmentRecall.length = blockOffset event.val := by
     have counted := (runtime setup).runInteractionPlan_recall leaks players
       ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
@@ -137,7 +137,7 @@ theorem menu_owner_readout
       prefixLength] using counted
   change (model.runBehavioralFrom profile 2 history).map
     (prefixReadout setup leaks event.val ∘ History.state) = _
-  rw [← FinDist.map_comp, menu_run_control_steps]
+  rw [← PMF.map_comp, menu_run_control_steps]
   rw [← stateEq]
   have remaining : horizon setup watcher - blockOffset event.val =
       (horizon setup watcher - blockOffset event.val - 2) + 2 := by omega

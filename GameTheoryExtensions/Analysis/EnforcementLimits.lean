@@ -28,8 +28,8 @@ variable {Outcome Index : Type*}
 theorem holds_iff_incremental_sanction (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome) (penalty : ℝ) :
     comparison.Holds (sanctionedUtility base sanction penalty) ↔
-      comparison.alternative.expect base - comparison.prescribed.expect base ≤
-        (comparison.alternative.probOf sanction - comparison.prescribed.probOf sanction) *
+      expect comparison.alternative base - expect comparison.prescribed base ≤
+        ((comparison.alternative.toOuterMeasure sanction).toReal - (comparison.prescribed.toOuterMeasure sanction).toReal) *
           penalty := by
   rw [IncentiveComparison.Holds, ← sub_nonpos, regret_eq]
   exact sub_nonpos
@@ -57,10 +57,10 @@ theorem exists_uniform_sanction_iff [Finite Index]
     (∃ cutoff : ℝ, 0 ≤ cutoff ∧ ∀ penalty, cutoff ≤ penalty → ∀ index,
       (comparisons index).Holds (sanctionedUtility base sanction penalty)) ↔
     ∀ index,
-      0 ≤ (comparisons index).alternative.probOf sanction -
-        (comparisons index).prescribed.probOf sanction ∧
-      ((comparisons index).alternative.probOf sanction =
-          (comparisons index).prescribed.probOf sanction →
+      0 ≤ ((comparisons index).alternative.toOuterMeasure sanction).toReal -
+        ((comparisons index).prescribed.toOuterMeasure sanction).toReal ∧
+      (((comparisons index).alternative.toOuterMeasure sanction).toReal =
+          ((comparisons index).prescribed.toOuterMeasure sanction).toReal →
         (comparisons index).Holds base) := by
   classical
   let _ := Fintype.ofFinite Index
@@ -76,10 +76,10 @@ theorem exists_uniform_sanction_iff [Finite Index]
     exact sub_nonpos.mp atCutoff
   · intro condition
     let gain (index : Index) :=
-      (comparisons index).alternative.expect base - (comparisons index).prescribed.expect base
+      expect ((comparisons index).alternative) base - expect ((comparisons index).prescribed) base
     let increment (index : Index) :=
-      (comparisons index).alternative.probOf sanction -
-        (comparisons index).prescribed.probOf sanction
+      ((comparisons index).alternative.toOuterMeasure sanction).toReal -
+        ((comparisons index).prescribed.toOuterMeasure sanction).toReal
     let amount (index : Index) := max 0 (gain index / increment index)
     let cutoff := ∑ index, amount index
     have amount_nonneg (index : Index) : 0 ≤ amount index := le_max_left ..
@@ -89,8 +89,8 @@ theorem exists_uniform_sanction_iff [Finite Index]
     change gain index ≤ increment index * penalty
     have nonnegative : 0 ≤ increment index := (condition index).1
     by_cases zero : increment index = 0
-    · have equal : (comparisons index).alternative.probOf sanction =
-          (comparisons index).prescribed.probOf sanction := sub_eq_zero.mp zero
+    · have equal : ((comparisons index).alternative.toOuterMeasure sanction).toReal =
+          ((comparisons index).prescribed.toOuterMeasure sanction).toReal := sub_eq_zero.mp zero
       have noGain := (condition index).2 equal
       rw [zero, zero_mul]
       exact sub_nonpos.mpr noGain
@@ -105,8 +105,8 @@ theorem exists_uniform_sanction_iff [Finite Index]
 regardless of its magnitude. This includes a binary charge already certain. -/
 theorem not_holds_of_equal_collection (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome) (penalty : ℝ)
-    (equal : comparison.alternative.probOf sanction = comparison.prescribed.probOf sanction)
-    (profitable : comparison.prescribed.expect base < comparison.alternative.expect base) :
+    (equal : (comparison.alternative.toOuterMeasure sanction).toReal = (comparison.prescribed.toOuterMeasure sanction).toReal)
+    (profitable : expect comparison.prescribed base < expect comparison.alternative base) :
     ¬ comparison.Holds (sanctionedUtility base sanction penalty) := by
   rw [holds_iff_incremental_sanction, equal, sub_self, zero_mul]
   exact not_le.mpr (sub_pos.mpr profitable)
@@ -115,7 +115,7 @@ theorem not_holds_of_equal_collection (comparison : IncentiveComparison Outcome)
 comparisons. Its application to behavioral deviations requires a separate
 realization theorem identifying their conditional outcome laws. -/
 theorem holds_mixture (comparisons : Index → IncentiveComparison Outcome)
-    (weights : FinDist Index) (utility : Outcome → ℝ)
+    (weights : PMF Index) (utility : Outcome → ℝ)
     (holds : ∀ index ∈ weights.support, (comparisons index).Holds utility) :
     (IncentiveComparison.mk
       (weights.bind (fun index => (comparisons index).prescribed))
@@ -131,10 +131,10 @@ theorem holds_of_departure_bound (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome)
     (departure gain detection penalty : ℝ)
     (departure_nonnegative : 0 ≤ departure) (penalty_nonnegative : 0 ≤ penalty)
-    (gain_bound : comparison.alternative.expect base - comparison.prescribed.expect base ≤
+    (gain_bound : expect comparison.alternative base - expect comparison.prescribed base ≤
       departure * gain)
     (collection_bound : departure * detection ≤
-      comparison.alternative.probOf sanction - comparison.prescribed.probOf sanction)
+      (comparison.alternative.toOuterMeasure sanction).toReal - (comparison.prescribed.toOuterMeasure sanction).toReal)
     (sufficient : gain ≤ detection * penalty) :
     comparison.Holds (sanctionedUtility base sanction penalty) := by
   rw [holds_iff_incremental_sanction]

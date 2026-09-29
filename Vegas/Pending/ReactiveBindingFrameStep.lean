@@ -294,7 +294,7 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .sample payload law)
     (node : nodeView graph event = .sample payload law outputEq codeEq) :
-    ∃ coupled : FinDist ((runtime.reactiveApplication leaks).Execution ×
+    ∃ coupled : PMF ((runtime.reactiveApplication leaks).Execution ×
         (runtime.reactiveApplication leaks).Execution),
       coupled.map Prod.fst = original.environmentStep (runtime.reactiveApplication leaks)
           (.application (.executeSample event)) ∧
@@ -340,20 +340,20 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
           (cast (congrArg EventField.Value outputEq.symm) value)) := by
       rw [environmentStep_executeSample_eq runtime execution.application event ready payload
         law outputEq codeEq node, execution.application.config.step_eq_map_of_code event ready
-          outputEq (.sample payload law) codeEq PUnit.unit draw evaluates, FinDist.map_comp]
+          outputEq (.sample payload law) codeEq PUnit.unit draw evaluates, PMF.map_comp]
       rfl
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
     change (environmentStep runtime execution.application (.executeSample event)).map _ = _
-    rw [applicationLaw, FinDist.map_comp]
+    rw [applicationLaw, PMF.map_comp]
     rfl
   refine ⟨draw.map (fun value => (next original ready value, next repaired rightReady value)),
     ?_, ?_, ?_⟩
-  · rw [FinDist.map_comp]
+  · rw [PMF.map_comp]
     exact (actual original ready leftLaw).symm
-  · rw [FinDist.map_comp]
+  · rw [PMF.map_comp]
     exact (actual repaired rightReady rightLaw).symm
   · intro pair supported
-    obtain ⟨value, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨value, _, rfl⟩ := PMF.support_map .. ▸ supported
     have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
     have completed := frame.complete_unmodified event ready rightReady
       (onlyBindings.public_value_none (.inr event) visible)
@@ -374,9 +374,9 @@ theorem completed_clock_tail (frame : Frame runtime leaks memory owner original 
     (completed : event ∈ original.application.config.cut.completed) (ticks : Nat) :
     ∃ left right,
       runtime.runInteractionPlan leaks players scheduler
-        (List.replicate ticks .tick ++ [.expire event]) original = FinDist.pure left ∧
+        (List.replicate ticks .tick ++ [.expire event]) original = PMF.pure left ∧
       runtime.runInteractionPlan leaks players scheduler
-        (List.replicate ticks .tick ++ [.expire event]) repaired = FinDist.pure right ∧
+        (List.replicate ticks .tick ++ [.expire event]) repaired = PMF.pure right ∧
       Frame runtime leaks memory owner left right := by
   let app := runtime.reactiveApplication leaks
   induction ticks generalizing original repaired with
@@ -387,18 +387,18 @@ theorem completed_clock_tail (frame : Frame runtime leaks memory owner original 
       have settled (execution : app.Execution)
           (done : event ∈ execution.application.config.cut.completed) :
           runtime.runInteractionPlan leaks players scheduler [.expire event] execution =
-            FinDist.pure (finish execution) := by
+            PMF.pure (finish execution) := by
         have notReady : ¬ execution.application.config.cut.Ready event := fun ready => ready.1 done
         have unchanged : app.environment execution.application (.expire event) =
-            FinDist.pure execution.application :=
+            PMF.pure execution.application :=
           runtime.environmentStep_expire_of_not_ready execution.application event notReady
-        simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
-          ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, FinDist.bind_pure]
+        simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
+          ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, PMF.bind_pure]
         change (execution.environmentStep app (.application (.expire event))).bind
-          FinDist.pure = _
-        rw [FinDist.bind_pure]
+          PMF.pure = _
+        rw [PMF.bind_pure]
         change (((app.environment execution.application (.expire event)).map _).map _) = _
-        rw [unchanged, FinDist.map_pure, FinDist.map_pure]
+        rw [unchanged, PMF.pure_map, PMF.pure_map]
       have sameCut := cut_eq_of_completionOrder_eq original.application.config
         repaired.application.config
           (congrArg (fun view : PublicView graph => view.observation.completionOrder)
@@ -418,21 +418,21 @@ theorem completed_clock_tail (frame : Frame runtime leaks memory owner original 
             [⟨execution.observeEnvironment app, .application .advanceClock⟩] }
       have tick (execution : app.Execution) :
           runtime.interactionStep leaks players scheduler .tick execution =
-            FinDist.pure (advance execution) := by
-        simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+            PMF.pure (advance execution) := by
+        simp only [interactionStep, interactionInstruction, PMF.pure_bind,
           ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-        change (execution.environmentStep app (.application .advanceClock)).bind FinDist.pure = _
-        rw [FinDist.bind_pure]
-        change ((FinDist.pure { execution.application with
+        change (execution.environmentStep app (.application .advanceClock)).bind PMF.pure = _
+        rw [PMF.bind_pure]
+        change ((PMF.pure { execution.application with
           clock := execution.application.clock + 1 }).map _).map _ = _
-        rw [FinDist.map_pure, FinDist.map_pure]
+        rw [PMF.pure_map, PMF.pure_map]
       obtain ⟨left, right, leftLaw, rightLaw, coupled⟩ :=
         ih (original := advance original) (repaired := advance repaired)
           frame.advanceClock completed
       refine ⟨left, right, ?_, ?_, coupled⟩
-      · rw [List.replicate_succ, List.cons_append, runInteractionPlan, tick, FinDist.pure_bind]
+      · rw [List.replicate_succ, List.cons_append, runInteractionPlan, tick, PMF.pure_bind]
         exact leftLaw
-      · rw [List.replicate_succ, List.cons_append, runInteractionPlan, tick, FinDist.pure_bind]
+      · rw [List.replicate_succ, List.cons_append, runInteractionPlan, tick, PMF.pure_bind]
         exact rightLaw
 
 end BindingMemory.Frame

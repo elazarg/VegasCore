@@ -57,9 +57,9 @@ theorem roster_decision_boundary (setup : Setup (Player := Player) (L := L))
           network ([.grant event] ++ ((rosters event).take slot).map ServiceInstruction.player)
           boundary)).support :=
       by
-    simpa only [planPrefix, runInteractionPlan_append, FinDist.bind_bind] using priorSupport
+    simpa only [planPrefix, runInteractionPlan_append, PMF.bind_bind] using priorSupport
   obtain ⟨boundary, boundarySupport, phase⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ phaseSupport)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phaseSupport)
   exact ⟨event, slot, boundary, prior, owner, by omega, boundarySupport, phase, activated⟩
 
 variable [Fintype Player]
@@ -101,7 +101,7 @@ theorem roster_decision_source (setup : Setup (Player := Player) (L := L))
         sourcePrefix? setup event.val boundary.application.config = some state ∧
         state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
           (fun owner => RevealOnly.uniformPolicy owner setup.program reveals)))^[event.val]
-            (FinDist.pure (ProtocolState.entry setup.program
+            (PMF.pure (ProtocolState.entry setup.program
               (setup.initialConfig initial)))).support ∧
         boundary.network.Satisfies (fun message =>
           message.id ∈ boundary.network.ledger.map Message.id) := by

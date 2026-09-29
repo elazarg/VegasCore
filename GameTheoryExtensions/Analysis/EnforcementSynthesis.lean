@@ -136,11 +136,11 @@ theorem inferred_deposit_holds (rows : Finset Index) (gain collection : Index �
     (comparisons : Index → IncentiveComparison Outcome) (base : Outcome → ℝ)
     (sanction : Set Outcome)
     (gain_bound : ∀ index ∈ rows,
-      (comparisons index).alternative.expect base -
-        (comparisons index).prescribed.expect base ≤ (gain index : ℝ))
+      expect ((comparisons index).alternative) base -
+        expect ((comparisons index).prescribed) base ≤ (gain index : ℝ))
     (collection_bound : ∀ index ∈ rows, (collection index : ℝ) ≤
-      (comparisons index).alternative.probOf sanction -
-        (comparisons index).prescribed.probOf sanction)
+      ((comparisons index).alternative.toOuterMeasure sanction).toReal -
+        ((comparisons index).prescribed.toOuterMeasure sanction).toReal)
     {index : Index} (member : index ∈ rows) :
     (comparisons index).Holds (sanctionedUtility base sanction deposit) := by
   obtain ⟨nonnegative_deposit, deters⟩ :=

@@ -32,7 +32,7 @@ theorem dependencyCondition_iff (view : PublicView graph)
       subst predecessor
       exact allowed address
 
-def authorizedSelect (event : graph.EventId) (execution : app.Execution) : FinDist app.Command :=
+def authorizedSelect (event : graph.EventId) (execution : app.Execution) : PMF app.Command :=
   app.uniformInstruction dependencyCondition execution.environmentRecall
     (execution.observeEnvironment app) (.select (eventProposal event ()))
 
@@ -48,7 +48,7 @@ def authorizedScheduler : app.Scheduler :=
   runtime.dependencyUniformScheduler leaks authorizedCalendar
 
 theorem authorized_service :
-    runtime.DependencyAuthorized leaks (FinDist.pure initialState) 7 authorizedScheduler :=
+    runtime.DependencyAuthorized leaks (PMF.pure initialState) 7 authorizedScheduler :=
   runtime.dependencyUniformScheduler_authorized leaks _ _ authorizedCalendar
 
 theorem authorized_service_once : app.AtMostOnce authorizedScheduler :=
@@ -68,7 +68,7 @@ def authorizedResponsePrefix : app.TwoResponsePrefix where
   activation := activation
 
 theorem authorized_contested_isSubgameRoot :
-    (app.information (FinDist.pure initialState) 7 authorizedScheduler).IsSubgameRoot
+    (app.information (PMF.pure initialState) 7 authorizedScheduler).IsSubgameRoot
       (authorizedResponsePrefix.secondHistory first second) :=
   authorizedResponsePrefix.secondHistory_isSubgameRoot first second
 
@@ -120,7 +120,7 @@ theorem later_permission_granted (repair fresh : Bool) (possible : fresh = true 
 
 theorem authorized_disclosure_selection (repair fresh : Bool)
     (possible : fresh = true → repair = true) :
-    authorizedSelect 1 (disclosed repair fresh) = FinDist.pure (.include ((), 3)) := by
+    authorizedSelect 1 (disclosed repair fresh) = PMF.pure (.include ((), 3)) := by
   have denied := withheld_permission_denied repair fresh
   have allowed := later_permission_granted repair fresh possible
   let keep := fun message => app.authorizedEligibility dependencyCondition
@@ -168,13 +168,13 @@ theorem authorized_disclosure_selection (repair fresh : Bool)
         List.toFinset_cons, List.toFinset_nil, Finset.insert_empty]
   change (MessageNetwork.chooseUniform
     (MessageNetwork.eligibleIds keep (disclosed repair fresh).network.pending)).map _ = _
-  rw [candidates, MessageNetwork.chooseUniform_singleton, FinDist.map_pure]
+  rw [candidates, MessageNetwork.chooseUniform_singleton, PMF.pure_map]
   rfl
 
 theorem authorized_binding_selection (repair : Bool) :
     authorizedSelect 0 (afterResponse repair) =
-      if repair then half (FinDist.pure (.include ((), 0)))
-        (FinDist.pure (.include ((), 2))) else FinDist.pure (.include ((), 0)) := by
+      if repair then half (PMF.pure (.include ((), 0)))
+        (PMF.pure (.include ((), 2))) else PMF.pure (.include ((), 0)) := by
   have oldAllowed : app.SubmissionPermitted dependencyCondition
       (afterResponse repair).environmentRecall
         ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩ := by
@@ -225,28 +225,28 @@ theorem authorized_binding_selection (repair : Bool) :
     cases repair <;> exact Bool.and_true _
   rw [selection, menu]
   cases repair <;> simp only [Bool.false_eq_true, ↓reduceIte]
-  · rw [MessageNetwork.chooseUniform_singleton, FinDist.map_pure]
+  · rw [MessageNetwork.chooseUniform_singleton, PMF.pure_map]
     rfl
   · rw [selection_pair _ _ (by decide)]
-    simp only [half, FinDist.map_mix, FinDist.map_pure]
+    simp only [half, mix_map, PMF.pure_map]
     rfl
 
 theorem authorized_binding_round (policy : app.Policy) (repair : Bool) :
     app.round authorizedScheduler (fun _ => policy) (afterResponse repair) =
-      if repair then half (FinDist.pure (included true false))
-        (FinDist.pure (included true true)) else FinDist.pure (included false false) := by
+      if repair then half (PMF.pure (included true false))
+        (PMF.pure (included true true)) else PMF.pure (included false false) := by
   have choice : authorizedScheduler (afterResponse repair).environmentRecall
       ((afterResponse repair).observeEnvironment app) =
         authorizedSelect 0 (afterResponse repair) := by cases repair <;> rfl
   rw [ReactiveApplication.round, choice, authorized_binding_selection]
-  cases repair <;> simp only [Bool.false_eq_true, ↓reduceIte, half, FinDist.mix_bind,
-    FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    FinDist.map_pure, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
+  cases repair <;> simp only [Bool.false_eq_true, ↓reduceIte, half, mix_bind,
+    PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
+    PMF.pure_map, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
   all_goals rfl
 
 theorem authorized_grant_round (policy : app.Policy) (repair fresh : Bool) :
     app.round authorizedScheduler (fun _ => policy) (included repair fresh) =
-      FinDist.pure (granted repair fresh) := by
+      PMF.pure (granted repair fresh) := by
   have same : app.round authorizedScheduler (fun _ => policy) (included repair fresh) =
       app.round scheduler (fun _ => policy) (included repair fresh) := by
     cases repair <;> cases fresh <;> rfl
@@ -254,9 +254,9 @@ theorem authorized_grant_round (policy : app.Policy) (repair fresh : Bool) :
 
 theorem authorized_disclosure_round (policy : app.Policy) (repair fresh : Bool)
     (responds : policy ((activated (granted repair fresh)).recall ())
-      ((activated (granted repair fresh)).observe app ()) = FinDist.pure (finalOpening fresh)) :
+      ((activated (granted repair fresh)).observe app ()) = PMF.pure (finalOpening fresh)) :
     app.round authorizedScheduler (fun _ => policy) (granted repair fresh) =
-      FinDist.pure (disclosed repair fresh) := by
+      PMF.pure (disclosed repair fresh) := by
   have same : app.round authorizedScheduler (fun _ => policy) (granted repair fresh) =
       app.round scheduler (fun _ => policy) (granted repair fresh) := by
     cases repair <;> cases fresh <;> rfl
@@ -265,65 +265,65 @@ theorem authorized_disclosure_round (policy : app.Policy) (repair fresh : Bool)
 theorem authorized_publication_round (policy : app.Policy) (repair fresh : Bool)
     (possible : fresh = true → repair = true) :
     app.round authorizedScheduler (fun _ => policy) (disclosed repair fresh) =
-      FinDist.pure (finished repair fresh 3) := by
+      PMF.pure (finished repair fresh 3) := by
   have choice : authorizedScheduler (disclosed repair fresh).environmentRecall
       ((disclosed repair fresh).observeEnvironment app) =
         authorizedSelect 1 (disclosed repair fresh) := by cases repair <;> cases fresh <;> rfl
   rw [ReactiveApplication.round, choice, authorized_disclosure_selection repair fresh possible,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    FinDist.map_pure, ReactiveApplication.Command.actor?, FinDist.pure_bind,
+    PMF.pure_map, ReactiveApplication.Command.actor?, PMF.pure_bind,
     ReactiveApplication.resume]
   rfl
 
 theorem authorized_compiled_rounds :
     app.runRounds authorizedScheduler (fun _ => compiled) 5 contested =
-      half (FinDist.pure (finished true false 3)) (FinDist.pure (finished true true 3)) := by
+      half (PMF.pure (finished true false 3)) (PMF.pure (finished true true 3)) := by
   have firstRound : app.round authorizedScheduler (fun _ => compiled) contested =
-      FinDist.pure (afterResponse true) := compiled_first_round
-  simp only [ReactiveApplication.runRounds, firstRound, FinDist.pure_bind,
-    authorized_binding_round, ↓reduceIte, half, FinDist.mix_bind, authorized_grant_round,
+      PMF.pure (afterResponse true) := compiled_first_round
+  simp only [ReactiveApplication.runRounds, firstRound, PMF.pure_bind,
+    authorized_binding_round, ↓reduceIte, half, mix_bind, authorized_grant_round,
     authorized_disclosure_round compiled true false (compiled_later true false (by simp)),
     authorized_disclosure_round compiled true true (compiled_later true true (by simp)),
     authorized_publication_round compiled true false (by simp),
-    authorized_publication_round compiled true true (by simp), FinDist.bind_pure]
+    authorized_publication_round compiled true true (by simp), PMF.bind_pure]
 
 theorem authorized_early_rounds :
     app.runRounds authorizedScheduler (fun _ => earlyPolicy) 5 contested =
-      FinDist.pure (finished false false 3) := by
+      PMF.pure (finished false false 3) := by
   have firstRound : app.round authorizedScheduler (fun _ => earlyPolicy) contested =
-      FinDist.pure (afterResponse false) := early_first_round
-  simp only [ReactiveApplication.runRounds, firstRound, FinDist.pure_bind,
+      PMF.pure (afterResponse false) := early_first_round
+  simp only [ReactiveApplication.runRounds, firstRound, PMF.pure_bind,
     authorized_binding_round, Bool.false_eq_true, ↓reduceIte, authorized_grant_round,
     authorized_disclosure_round earlyPolicy false false earlyPolicy_later,
-    authorized_publication_round earlyPolicy false false (by simp), FinDist.bind_pure]
+    authorized_publication_round earlyPolicy false false (by simp), PMF.bind_pure]
 
 theorem authorized_compiled_value :
-    (app.runRounds authorizedScheduler (fun _ => compiled) 5 contested).expect
+    expect (app.runRounds authorizedScheduler (fun _ => compiled) 5 contested)
       (fun final => PendingMenus.publicUtility true (final.application.config.outputs 1)) =
         5 / 2 := by
   rw [authorized_compiled_rounds]
-  simp only [half, FinDist.expect_mix, FinDist.expect_pure, repaired_opening]
+  simp only [half, FinDist.expect_mix, expect_pure, repaired_opening]
   norm_num [PendingMenus.publicUtility]
 
 theorem authorized_early_value :
-    (app.runRounds authorizedScheduler (fun _ => earlyPolicy) 5 contested).expect
+    expect (app.runRounds authorizedScheduler (fun _ => earlyPolicy) 5 contested)
       (fun final => PendingMenus.publicUtility true (final.application.config.outputs 1)) = 2 := by
-  rw [authorized_early_rounds, FinDist.expect_pure, later_opening]
+  rw [authorized_early_rounds, expect_pure, later_opening]
   norm_num [PendingMenus.publicUtility]
 
 theorem authorized_compiled_publication :
     (app.runRounds authorizedScheduler (fun _ => compiled) 5 contested).map
         (fun final => final.application.config.outputs 1) =
-      half (FinDist.pure (some (.success 1))) (FinDist.pure (some (.success 0))) := by
+      half (PMF.pure (some (.success 1))) (PMF.pure (some (.success 0))) := by
   rw [authorized_compiled_rounds]
-  simp only [half, FinDist.map_mix, FinDist.map_pure, repaired_opening,
+  simp only [half, mix_map, PMF.pure_map, repaired_opening,
     Bool.false_eq_true, ↓reduceIte]
 
 theorem authorized_early_publication :
     (app.runRounds authorizedScheduler (fun _ => earlyPolicy) 5 contested).map
         (fun final => final.application.config.outputs 1) =
-      FinDist.pure (some (.success 1)) := by
-  rw [authorized_early_rounds, FinDist.map_pure, later_opening]
+      PMF.pure (some (.success 1)) := by
+  rw [authorized_early_rounds, PMF.pure_map, later_opening]
 
 end Vegas.Examples.ReactiveEarlyOpening

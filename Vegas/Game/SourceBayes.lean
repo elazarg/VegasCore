@@ -39,8 +39,8 @@ theorem stateBelief_eq_conditional_prefix
       (setup.informationModel admission) assessment (setup.decision_antichain admission))
     (who : Player) (site : (setup.informationModel admission).InformationSite who) :
     assessment.stateBelief who site =
-      (((setup.informationModel admission).runBehavioral assessment.strategy
-        (setup.decisionDepth who site.1)).map History.state).condOnFibre
+      fiberConditional (((setup.informationModel admission).runBehavioral assessment.strategy
+        (setup.decisionDepth who site.1)).map History.state)
           (setup.protocolObserve who) site.1 := by
   classical
   let M := setup.informationModel admission
@@ -53,7 +53,7 @@ theorem stateBelief_eq_conditional_prefix
   have belief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site
         (setup.decision_antichain admission who site) positive := by
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro history
     rw [M.bayesBelief_prob]
     exact bayes who site positive history
@@ -64,14 +64,14 @@ theorem stateBelief_eq_conditional_prefix
   have meets : ∃ h ∈ {h | M.infoOf who h.trace = site.1}, h ∈ prefixLaw.support :=
     ⟨history.1, history.2, supported⟩
   have present : site.1 ∈ (prefixLaw.map (setup.protocolObserve who ∘ History.state)).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     refine ⟨history.1, supported, ?_⟩
     exact (setup.protocol_info admission who history.1.trace).symm.trans history.2
   have conditioned := M.bayesBelief_map_eq_condOn assessment.strategy who site depth clock
     (setup.decision_antichain admission who site) positive meets
   rw [← belief] at conditioned
-  have fiber : prefixLaw.condOn {h | M.infoOf who h.trace = site.1} meets =
-      prefixLaw.condOnFibre (setup.protocolObserve who ∘ History.state) site.1 := by
+  have fiber : prefixLaw.filter {h | M.infoOf who h.trace = site.1} meets =
+      fiberConditional prefixLaw (setup.protocolObserve who ∘ History.state) site.1 := by
     have same : {h : (setup.executionProtocol admission).History |
         M.infoOf who h.trace = site.1} =
         (setup.protocolObserve who ∘ History.state) ⁻¹' {site.1} := by
@@ -79,15 +79,15 @@ theorem stateBelief_eq_conditional_prefix
       change M.infoOf who h.trace = site.1 ↔ setup.protocolObserve who h.state = site.1
       rw [show M.infoOf who h.trace = setup.protocolObserve who h.state from
         setup.protocol_info admission who h.trace]
-    rw [FinDist.condOnFibre, dite_eq_left (same ▸ meets)]
+    rw [fiberConditional, dite_eq_left (same ▸ meets)]
     congr 1
   calc
     assessment.stateBelief who site =
         ((assessment.belief who site).map Subtype.val).map History.state :=
-      (FinDist.map_comp _ _ _).symm
-    _ = (prefixLaw.condOnFibre (setup.protocolObserve who ∘ History.state) site.1).map
+      (PMF.map_comp _ _ _).symm
+    _ = (fiberConditional prefixLaw (setup.protocolObserve who ∘ History.state) site.1).map
         History.state := by rw [conditioned, fiber]
-    _ = _ := FinDist.map_conditional_readout prefixLaw History.state
+    _ = _ := PMF.map_conditional_readout prefixLaw History.state
       (setup.protocolObserve who) site.1 present
 
 /-- Every whole-policy continuation in a Bayesian source assessment is exactly
@@ -103,16 +103,16 @@ theorem continuationContext_law_conditional_prefix
     ((assessment.continuationContext site (fun _ => 0)
         (instructionCount setup.program + 1)).outcome alternative).map
         (fun final => setup.protocolReadout final.state) =
-      (((((setup.informationModel admission).runBehavioral assessment.strategy
-          (setup.decisionDepth who site.1)).map History.state).condOnFibre
+      ((fiberConditional (((setup.informationModel admission).runBehavioral assessment.strategy
+          (setup.decisionDepth who site.1)).map History.state)
             (setup.protocolObserve who) site.1).bind
         (setup.continuationLaw (setup.decodeBehavioralProfile admission
           (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
             assessment.strategy who alternative)))).map some := by
   rw [← setup.stateBelief_eq_conditional_prefix admission assessment mixed bayes who site]
   simp only [InformationModel.BehavioralAssessment.continuationContext,
-    InformationModel.BehavioralAssessment.stateBelief, FinDist.map_bind, FinDist.bind_map]
-  apply FinDist.bind_congr
+    InformationModel.BehavioralAssessment.stateBelief, PMF.map_bind, PMF.bind_map]
+  apply bind_congr_on_support _
   intro history _supported
   apply setup.runBehavioralFrom_readout admission
   have remaining := setup.protocol_history_length admission history.1.trace
@@ -131,12 +131,12 @@ theorem continuationContext_value_conditional_prefix
     (assessment.continuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 utility)
         (instructionCount setup.program + 1)).value alternative =
-      ((((setup.informationModel admission).runBehavioral assessment.strategy
-        (setup.decisionDepth who site.1)).map History.state).condOnFibre
-          (setup.protocolObserve who) site.1).expect (fun state =>
-        (setup.continuationLaw (setup.decodeBehavioralProfile admission
+      expect (fiberConditional (((setup.informationModel admission).runBehavioral assessment.strategy
+        (setup.decisionDepth who site.1)).map History.state)
+          (setup.protocolObserve who) site.1) (fun state =>
+        expect (setup.continuationLaw (setup.decodeBehavioralProfile admission
           (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
-            assessment.strategy who alternative)) state).expect utility) := by
+            assessment.strategy who alternative)) state) utility) := by
   rw [setup.continuationContext_value_stateBelief admission assessment who site alternative
     utility _ (fun history => by
       have remaining := setup.protocol_history_length admission history.1.trace
@@ -163,13 +163,13 @@ theorem exists_uniform_prefix_gain_bound
         (alternative : BehavioralPolicy who setup.program),
         alternative.Admitted setup.program admission →
         let profile := setup.decodeBehavioralProfile admission (sequence n).strategy
-        let posterior := (((setup.informationModel admission).runBehavioral
-          (sequence n).strategy (setup.decisionDepth who site.1)).map History.state).condOnFibre
+        let posterior := fiberConditional (((setup.informationModel admission).runBehavioral
+          (sequence n).strategy (setup.decisionDepth who site.1)).map History.state)
             (setup.protocolObserve who) site.1
-        posterior.expect (fun state =>
-            (setup.continuationLaw (Function.update profile who alternative) state).expect
+        expect posterior (fun state =>
+            expect (setup.continuationLaw (Function.update profile who alternative) state)
               utility) -
-          posterior.expect (fun state => (setup.continuationLaw profile state).expect utility) ≤
+          expect posterior (fun state => expect (setup.continuationLaw profile state) utility) ≤
             error n := by
   classical
   let _ : Finite (setup.executionProtocol admission).History :=

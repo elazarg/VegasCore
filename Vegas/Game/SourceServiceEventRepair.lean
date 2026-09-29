@@ -64,7 +64,7 @@ theorem event_block_stopped_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (rosterBlock setup rosters event) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -112,26 +112,26 @@ theorem event_block_stopped_coupling
       [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
   have grantEnvironment (execution : app.Execution) :
       execution.environmentStep app (.application (.grant event)) =
-        FinDist.pure (advance execution) := by
+        PMF.pure (advance execution) := by
     simp only [ReactiveApplication.Execution.environmentStep, app, application,
-      reactiveApplication, environmentStep, FinDist.map_pure]
+      reactiveApplication, environmentStep, PMF.pure_map]
     rfl
   have grantStep (execution : app.Execution) :
       (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        FinDist.pure (advance execution) := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+        PMF.pure (advance execution) := by
+    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
     change ((execution.environmentStep app (.application (.grant event))).bind
-      (app.resume players none)).bind FinDist.pure = _
+      (app.resume players none)).bind PMF.pure = _
     rw [grantEnvironment]
-    simp only [FinDist.pure_bind, ReactiveApplication.resume]
+    simp only [PMF.pure_bind, ReactiveApplication.resume]
   have paired := frame.grant event
   change BindingMemory.Frame (runtime setup) leaks memory owner
     (advance original) (advance repaired) at paired
   have moved (execution : app.Execution) : advance execution ∈
       (execution.environmentStep app (.application (.grant event))).support := by
     rw [grantEnvironment]
-    exact FinDist.mem_support_pure.mpr rfl
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
   have nextTrace :
       (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length scheduler).Trace
       (some ⟨remaining + body.length, none, advance repaired⟩) := by
@@ -147,7 +147,7 @@ theorem event_block_stopped_coupling
         exact trace)
       (by
         simp only [scheduler, rosterScheduler, selected, interactionInstruction]
-        exact FinDist.mem_support_pure.mpr rfl) (moved repaired)
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl) (moved repaired)
   have nextPosition : (advance original).environmentRecall.length =
       (before ++ [ServiceInstruction.grant event]).length := by
     simp only [advance, List.length_append, List.length_singleton, position]
@@ -173,7 +173,7 @@ theorem event_block_stopped_coupling
     simpa only [total, Nat.add_assoc] using nextTrace
   have nextStarted : reference.length ≤ ((advance repaired).recall owner).length := started
   have granted : (advance repaired).application.serviceGrant = some event := rfl
-  have existsBody : ∃ coupling : FinDist
+  have existsBody : ∃ coupling : PMF
       (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         body (advance original) ∧
@@ -267,12 +267,12 @@ theorem event_block_stopped_coupling
       · exact ⟨(related next member).1, ((related next member).2).imp_right Or.inr⟩
   obtain ⟨coupling, first, second, related⟩ := existsBody
   refine ⟨coupling, ?_, ?_, related⟩
-  · rw [block, runInteractionPlan_append, grantStep, FinDist.pure_bind]
+  · rw [block, runInteractionPlan_append, grantStep, PMF.pure_bind]
     exact first
   · rw [block, List.length_append, ReactiveApplication.Implementation.runJoint_add,
       roster_segment_runJoint setup leaks rosters network strategy owner players before
         [.grant event] (body ++ after) (by simpa only [block, List.append_assoc] using split)
-        (by simp) repaired memory cursor, grantStep, FinDist.map_pure, FinDist.pure_bind]
+        (by simp) repaired memory cursor, grantStep, PMF.pure_map, PMF.pure_bind]
     exact second
 
 end Vegas

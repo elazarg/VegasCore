@@ -77,7 +77,7 @@ def contested : NativeExecution runtime :=
 
 /-- The wire consults public traffic only, not candidate meanings or witnesses. -/
 def wire : app.WirePolicy := fun _ view =>
-  FinDist.pure (.include ((), if (view.pool.lookup ((), 2)).isSome then 0 else 1))
+  PMF.pure (.include ((), if (view.pool.lookup ((), 2)).isSome then 0 else 1))
 
 def afterAction (action : PlayerAction graph) : NativeExecution runtime :=
   runtime.takeAction () contested action
@@ -101,7 +101,7 @@ private theorem candidates_fixed (action : PlayerAction graph) (serial : Nat)
       contested.native.application.candidates.lookup ((), .prepared serial) := by
   obtain ⟨actions, run⟩ := runtime.transmit_native () contested.native action.transmission
   exact runtime.run_candidate_fixed _ _ actions ((), .prepared serial) fixed
-    (by rw [run]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [run]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 private theorem include_value (action : PlayerAction graph) (serial : Nat) (value : Int)
     (pending : (afterAction action).native.pool.lookup ((), serial) =
@@ -170,9 +170,9 @@ theorem fresh_commitment_selects_one :
     selectedValue (bindingAction () 0 .int (.success 0) 2) = 1 := rfl
 
 def ordering : runtime.ServiceOrderPolicy :=
-  fun _ _ => FinDist.pure (ServiceOrder.increasing graph)
+  fun _ _ => PMF.pure (ServiceOrder.increasing graph)
 
-abbrev arena := runtime.nativeProtocol (FinDist.pure input) [] 1 wire ordering
+abbrev arena := runtime.nativeProtocol (PMF.pure input) [] 1 wire ordering
 
 private def setupControl : NativeControl runtime := ⟨runtime.serviceEpochs, [], setup⟩
 
@@ -191,14 +191,14 @@ def secondControl (one two : PlayerAction graph) : NativeControl runtime :=
 
 private def extendPure (history : arena.History) (joint : Unit → Option (PlayerAction graph))
     (legal : arena.Legal history.state joint) (target : arena.State)
-    (law : arena.step history.state ⟨joint, legal⟩ = FinDist.pure target) : arena.History :=
-  history.extend legal (by rw [law]; exact FinDist.mem_support_pure.mpr rfl)
+    (law : arena.step history.state ⟨joint, legal⟩ = PMF.pure target) : arena.History :=
+  history.extend legal (by rw [law]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 private def setupHistory : arena.History :=
   extendPure arena.initHistory (fun _ => none)
     ⟨by change ¬ False; simp, fun _ => by change ¬ (none : Option Unit) = some _; simp⟩
     (some setupControl) (by
-      simp only [arena, nativeProtocol, nativeTransition, FinDist.map_pure]
+      simp only [arena, nativeProtocol, nativeTransition, PMF.pure_map]
       rfl)
 
 private def orderedHistory : arena.History :=
@@ -206,10 +206,10 @@ private def orderedHistory : arena.History :=
     ⟨by change ¬ (6 = 0 ∧ [] = ([] : List (ServiceInstruction graph))); simp,
       fun _ => by change ¬ (none : Option Unit) = some _; simp⟩
     (some orderedControl) (by
-      change runtime.nativeTransition (FinDist.pure input) [] 1 wire ordering
+      change runtime.nativeTransition (PMF.pure input) [] 1 wire ordering
         (some setupControl) (fun _ => none) = _
       change (ordering _ _).map _ = _
-      rw [ordering, FinDist.map_pure]
+      rw [ordering, PMF.pure_map]
       rfl)
 
 private def grantedHistory : arena.History :=
@@ -220,8 +220,8 @@ private def grantedHistory : arena.History :=
       change (runtime.nativeInstructionStep wire (.grant 0) setup _).map _ = _
       simp only [nativeInstructionStep, serviceStep, MessageApplication.environmentPolicyStep,
         MessageApplication.advance, MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, application, environmentStep, FinDist.map_pure,
-        FinDist.pure_bind]
+        MessageApplication.step, application, environmentStep, PMF.pure_map,
+        PMF.pure_bind]
       rfl)
 
 private def firstHistory (action : PlayerAction graph) : arena.History :=
@@ -230,7 +230,7 @@ private def firstHistory (action : PlayerAction graph) : arena.History :=
       fun who => by cases who; exact ⟨rfl, Set.mem_univ _⟩⟩
     (some (firstControl action)) (by
       change (runtime.actionStep () initial action).map _ = _
-      rw [actionStep, FinDist.map_pure]
+      rw [actionStep, PMF.pure_map]
       rfl)
 
 def secondHistory (one two : PlayerAction graph) : arena.History :=
@@ -239,18 +239,18 @@ def secondHistory (one two : PlayerAction graph) : arena.History :=
       fun who => by cases who; exact ⟨rfl, Set.mem_univ _⟩⟩
     (some (secondControl one two)) (by
       change (runtime.actionStep () (runtime.takeAction () initial one) two).map _ = _
-      rw [actionStep, FinDist.map_pure]
+      rw [actionStep, PMF.pure_map]
       rfl)
 
 private theorem extendPure_unique (history : arena.History)
     (joint : Unit → Option (PlayerAction graph))
     (legal : arena.Legal history.state joint) (target : arena.State)
-    (law : arena.step history.state ⟨joint, legal⟩ = FinDist.pure target)
+    (law : arena.step history.state ⟨joint, legal⟩ = PMF.pure target)
     (otherLegal : arena.Legal history.state joint) (other : arena.State)
     (supported : other ∈ (arena.step history.state ⟨joint, otherLegal⟩).support) :
     history.extend otherLegal supported = extendPure history joint legal target law := by
   rw [law] at supported
-  have same := FinDist.mem_support_pure.mp supported
+  have same := (PMF.mem_support_pure_iff _ _).mp supported
   subst other
   rfl
 
@@ -325,7 +325,7 @@ private theorem initial_actions_recalled (one two : PlayerAction graph)
     (reached : arena.HistoryReaches (secondHistory one two) history)
     (stateEq : history.state = some control) : [one, two] <+: actionRecall control := by
   obtain ⟨fuel, path⟩ := reached
-  have retained := runtime.native_reaches_history_prefix (FinDist.pure input) [] 1 wire
+  have retained := runtime.native_reaches_history_prefix (PMF.pure input) [] 1 wire
     ordering path (secondControl one two) control rfl stateEq ()
   exact retained.map NativeEntry.action
 
@@ -365,7 +365,7 @@ private theorem recalled_initial_actions_reached (one two : PlayerAction graph)
 decision information sets. Own recall identifies the first two submissions;
 the service prefix before them is deterministic. -/
 theorem contested_isSubgameRoot :
-    (runtime.nativeInformation (FinDist.pure input) [] 1 wire ordering).IsSubgameRoot
+    (runtime.nativeInformation (PMF.pure input) [] 1 wire ordering).IsSubgameRoot
       (secondHistory first second) := by
   intro who inside outside reached _ insideActive _ outsideActive sameInfo
   cases who
@@ -418,13 +418,13 @@ theorem wire_selects_binding (action : PlayerAction graph)
     (joint : Unit → Option (PlayerAction graph)) :
     (runtime.nativeInstructionStep wire .wire (afterAction action) joint).map
       (fun next => next.native.application.config.outputs 0) =
-        FinDist.pure (some (.success (selectedValue action))) := by
+        PMF.pure (some (.success (selectedValue action))) := by
   simp only [nativeInstructionStep, serviceStep, MessageApplication.invoke,
-    MessageApplication.wireEnvironment, wire, FinDist.map_pure, FinDist.pure_bind,
+    MessageApplication.wireEnvironment, wire, PMF.pure_map, PMF.pure_bind,
     WireCommand.toEnvironmentCommand, MessageApplication.environmentPolicyStep,
     MessageApplication.advance, MessageApplication.EnvironmentPolicyCommand.toAction,
     MessageApplication.step]
-  exact congrArg FinDist.pure (selected_binding action)
+  exact congrArg PMF.pure (selected_binding action)
 
 theorem publication_matches_binding (config : graph.Config)
     (reachable : config.Reachable input) (value : Int)
@@ -435,7 +435,7 @@ theorem publication_matches_binding (config : graph.Config)
   | initial => cases published
   | @step before prior event ready action next supported ih =>
       fin_cases event
-      · rw [EventGraph.Config.step, FinDist.support_map] at supported
+      · rw [EventGraph.Config.step, PMF.support_map] at supported
         obtain ⟨result, _, rfl⟩ := supported
         have earlier : before.outputs 1 = some (.success value) := by
           change (before.complete 0 ready action result).outputs 1 = _ at published
@@ -450,7 +450,7 @@ theorem publication_matches_binding (config : graph.Config)
           (before.output_available 0).mpr (ready.2 (by simp [order]))
         obtain ⟨bound, boundEq⟩ := Option.isSome_iff_exists.mp available
         have evaluates : (graph.nodes 1).eval? action before.store =
-            some (FinDist.pure (if action = true then bound else .failure)) := by
+            some (PMF.pure (if action = true then bound else .failure)) := by
           change (EventGraph.EventCode.resolve (layout := layout) () .int binding []).eval?
             action before.store = _
           cases action <;> cases bound <;>
@@ -458,8 +458,8 @@ theorem publication_matches_binding (config : graph.Config)
               EventGraph.FieldRef.get?, EventGraph.Config.store, boundEq,
               EventGraph.GuardCheck.allAccepted?]
         change next ∈ (before.step 1 ready action).support at supported
-        rw [before.step_eq_map_of_eval 1 ready action _ evaluates, FinDist.map_pure,
-          FinDist.mem_support_pure] at supported
+        rw [before.step_eq_map_of_eval 1 ready action _ evaluates, PMF.pure_map,
+          PMF.mem_support_pure_iff _ _] at supported
         subst next
         rw [EventGraph.Config.complete_output_same] at published
         by_cases opens : action = true
@@ -475,11 +475,11 @@ private theorem afterAction_invariant (action : PlayerAction graph) :
   have initialInvariant : initial.native.application.Invariant input :=
     (State.initial_invariant input).copy rfl rfl rfl
   have firstInvariant := (runtime.nativeStep_progress input () initial _ first initialInvariant
-    (FinDist.mem_support_pure.mpr rfl)).invariant
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)).invariant
   have secondInvariant := (runtime.nativeStep_progress input () _ _ second firstInvariant
-    (FinDist.mem_support_pure.mpr rfl)).invariant
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)).invariant
   exact (runtime.nativeStep_progress input () _ _ action secondInvariant
-    (FinDist.mem_support_pure.mpr rfl)).invariant
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)).invariant
 
 def included (action : PlayerAction graph) : app.State :=
   app.includePending (afterAction action).native ((), selected action)
@@ -487,7 +487,7 @@ def included (action : PlayerAction graph) : app.State :=
 private theorem included_invariant (action : PlayerAction graph) :
     (included action).application.Invariant input :=
   runtime.applicationStep_invariant _ _ (.include ((), selected action))
-    (afterAction_invariant action) (FinDist.mem_support_pure.mpr rfl)
+    (afterAction_invariant action) ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 /-- Every later native trace can publish only the selected earlier value or
 failure. Pending, replayed, fresh, and malformed packets cannot recover zero.
@@ -561,13 +561,13 @@ theorem residual_utility_sum_le (action : PlayerAction graph)
 with value at least two for both public utilities. This is the numerical
 obstruction; converting it into a native SPE impossibility also requires
 information-local deviations attaining the two benchmarks. -/
-theorem no_common_residual_law (law : FinDist app.State)
+theorem no_common_residual_law (law : PMF app.State)
     (supported : ∀ final ∈ law.support, ∃ action actions,
       final ∈ (app.run actions (included action)).support) :
-    ¬ (2 ≤ law.expect (fun final => publicUtility true (final.application.config.outputs 1)) ∧
-      2 ≤ law.expect (fun final => publicUtility false (final.application.config.outputs 1))) := by
+    ¬ (2 ≤ expect law (fun final => publicUtility true (final.application.config.outputs 1)) ∧
+      2 ≤ expect law (fun final => publicUtility false (final.application.config.outputs 1))) := by
   intro both
-  have sumBound : law.expect (fun final =>
+  have sumBound : expect law (fun final =>
       publicUtility true (final.application.config.outputs 1) +
         publicUtility false (final.application.config.outputs 1)) ≤ 3 := by
     apply FinDist.expect_le_of_forall

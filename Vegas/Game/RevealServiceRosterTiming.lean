@@ -42,22 +42,22 @@ theorem rosterLastSlot_final (event : (graph setup).EventId) (owner : Player)
 def rosterTiming (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) :
-    FinDist (Fin ((rosters event).count owner)) :=
+    PMF (Fin ((rosters event).count owner)) :=
   let last := rosterLastSlot setup rosters coverage event owner owned
   letI : Nonempty (Fin ((rosters event).count owner)) := ⟨last⟩
-  FinDist.mix weight nonnegative bounded FinDist.uniformOfFintype (FinDist.pure last)
+  mix weight nonnegative bounded PMF.uniformOfFintype (PMF.pure last)
 
 theorem rosterTiming_fullSupport (weight : ℝ) (nonnegative : 0 ≤ weight)
     (bounded : weight ≤ 1) (positive : 0 < weight)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) :
-    (rosterTiming setup rosters coverage weight nonnegative bounded
-      event owner owned).FullSupport := by
+    FullSupport (rosterTiming setup rosters coverage weight nonnegative bounded
+      event owner owned) := by
   let _ : Nonempty (Fin ((rosters event).count owner)) :=
     ⟨rosterLastSlot setup rosters coverage event owner owned⟩
   intro slot
-  exact FinDist.mem_support_mix_left weight nonnegative bounded positive
-    (FinDist.mem_support_uniformOfFintype slot)
+  exact mem_support_mix_left weight nonnegative bounded positive
+    (PMF.mem_support_uniformOfFintype slot)
 
 /-- One common error bound covers every owner at every occurrence before its
 last opportunity, including source probabilities arbitrarily close to one. -/
@@ -73,11 +73,11 @@ theorem rosterTiming_prefix_le (weight : ℝ) (nonnegative : 0 ≤ weight) (boun
     have final := rosterLastSlot_final setup rosters coverage event owner owned
     change last.val + 1 = _ at final
     omega
-  change (FinDist.mix weight nonnegative bounded FinDist.uniformOfFintype
-    (FinDist.pure last)).timingPrefix visits ≤ weight
-  rw [FinDist.timingPrefix_mix, FinDist.timingPrefix_pure_of_le last visits earlier,
+  change (mix weight nonnegative bounded PMF.uniformOfFintype
+    (PMF.pure last)).timingPrefix visits ≤ weight
+  rw [PMF.timingPrefix_mix, PMF.timingPrefix_pure_of_le last visits earlier,
     mul_zero, add_zero]
-  exact (mul_le_mul_of_nonneg_left (FinDist.timingPrefix_le_one _ _) nonnegative).trans_eq
+  exact (mul_le_mul_of_nonneg_left (PMF.timingPrefix_le_one _ _) nonnegative).trans_eq
     (mul_one weight)
 
 theorem rosterTiming_converges {weight : Nat → ℝ}
@@ -85,18 +85,18 @@ theorem rosterTiming_converges {weight : Nat → ℝ}
     (vanishes : Tendsto weight atTop (nhds 0))
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => rosterTiming setup rosters coverage (weight n) (nonnegative n) (bounded n)
         event owner owned)
-      (FinDist.pure (rosterLastSlot setup rosters coverage event owner owned)) := by
+      (PMF.pure (rosterLastSlot setup rosters coverage event owner owned)) := by
   let last := rosterLastSlot setup rosters coverage event owner owned
   let _ : Nonempty (Fin ((rosters event).count owner)) := ⟨last⟩
   intro slot
   have first := vanishes.mul_const
-    ((FinDist.uniformOfFintype : FinDist (Fin ((rosters event).count owner))).prob slot)
+    (((PMF.uniformOfFintype : PMF (Fin ((rosters event).count owner))) slot).toReal)
   have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-  have second := (one.sub vanishes).mul_const ((FinDist.pure last).prob slot)
-  simpa only [rosterTiming, FinDist.prob_mix, zero_mul, sub_zero, one_mul, zero_add] using
+  have second := (one.sub vanishes).mul_const (((PMF.pure last) slot).toReal)
+  simpa only [rosterTiming, mix_apply_toReal, zero_mul, sub_zero, one_mul, zero_add] using
     first.add second
 
 end Vegas

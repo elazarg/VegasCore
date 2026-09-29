@@ -17,27 +17,27 @@ open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
-theorem rosterSelection_waiting_value {slots : Nat} (choice : FinDist Bool)
-    (full : choice.FullSupport) (timing : FinDist (Fin slots)) (count : Nat)
+theorem rosterSelection_waiting_value {slots : Nat} (choice : PMF Bool)
+    (full : FullSupport choice) (timing : PMF (Fin slots)) (count : Nat)
     (whenTrue whenFalse : ℝ) :
-    ((rosterSelection choice timing).condOn
+    expect ((rosterSelection choice timing).filter
       (ReactiveApplication.remainingOpeningSlots count)
       ⟨none, True.intro, by
-        rw [rosterSelection, FinDist.support_bind]
-        exact Set.mem_iUnion₂.mpr ⟨false, full false, by simp⟩⟩).expect
+        rw [rosterSelection, PMF.support_bind]
+        exact Set.mem_iUnion₂.mpr ⟨false, full false, by simp⟩⟩)
           (fun selected => if selected.isSome then whenTrue else whenFalse) =
-      FinDist.deferredRemaining (choice.prob true) timing count * whenTrue +
-        (1 - FinDist.deferredRemaining (choice.prob true) timing count) * whenFalse := by
-  have total := choice.sum_prob
+      PMF.deferredRemaining ((choice true).toReal) timing count * whenTrue +
+        (1 - PMF.deferredRemaining ((choice true).toReal) timing count) * whenFalse := by
+  have total := pmf_sum_toReal_eq_one choice
   simp only [Fintype.sum_bool] at total
-  have small : choice.prob true < 1 := by
-    have positive := FinDist.prob_pos_iff.mpr (full false)
+  have small : (choice true).toReal < 1 := by
+    have positive := pmf_toReal_pos_iff.mpr (full false)
     linarith
-  have representation := FinDist.bind_bool_mix choice (timing.map some) (FinDist.pure none)
+  have representation := PMF.bind_bool_mix choice (timing.map some) (PMF.pure none)
   change rosterSelection choice timing = _ at representation
   simpa only [representation] using
-    ReactiveApplication.remainingOpeningSlots_value (choice.prob true)
-      (choice.prob_nonneg true) small timing count whenTrue whenFalse
+    ReactiveApplication.remainingOpeningSlots_value ((choice true).toReal)
+      (ENNReal.toReal_nonneg) small timing count whenTrue whenFalse
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -72,26 +72,26 @@ theorem roster_waiting_settlement_value
     (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visited.map ServiceInstruction.player) initial).support)
-    (choiceFull : (sourceChoiceLaw setup leaks profile owner
-      (initial.observe (application setup leaks) owner)).FullSupport)
-    (timingFull : (timing event owner ownedEvent).FullSupport)
+    (choiceFull : FullSupport (sourceChoiceLaw setup leaks profile owner
+      (initial.observe (application setup leaks) owner)))
+    (timingFull : FullSupport (timing event owner ownedEvent))
     (unopened : ¬ ∃ entry ∈
       (current.recall owner).drop (rosterOffset setup rosters owner event),
         entry.action = (runtime setup).windowOpening leaks event candidate raw)
     (value : EventGraphRuntime.State (graph := graph setup) → ℝ) :
     let app := application setup leaks
-    let probability := (sourceChoiceLaw setup leaks profile owner
-      (initial.observe app owner)).prob true
+    let probability := ((sourceChoiceLaw setup leaks profile owner
+      (initial.observe app owner)) true).toReal
     let success := (app.handle initial.application
       ((runtime setup).windowEnvelope leaks owner event candidate raw initial)).getD
         initial.application
-    ((runtime setup).runInteractionPlan leaks
+    expect ((runtime setup).runInteractionPlan leaks
       (rosterPolicy setup leaks rosters timing profile) network
-      (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) current).expect
+      (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) current)
         (fun final => value final.application) =
-      FinDist.deferredRemaining probability (timing event owner ownedEvent)
+      PMF.deferredRemaining probability (timing event owner ownedEvent)
         (visited.count owner) * value success +
-      (1 - FinDist.deferredRemaining probability (timing event owner ownedEvent)
+      (1 - PMF.deferredRemaining probability (timing event owner ownedEvent)
         (visited.count owner)) * value initial.application := by
   intro app probability success
   obtain ⟨selected, recorded, law⟩ := roster_remaining_settlement setup leaks bounds rosters
@@ -104,15 +104,15 @@ theorem roster_waiting_settlement_value
     | some slot => exact False.elim (unopened (recorded.mp rfl))
   subst selected
   simp only at law
-  have values := congrArg (fun distribution => distribution.expect value) law
-  simp only [FinDist.expect_map] at values
+  have values := congrArg (fun distribution => expect distribution value) law
+  simp only [expect_map] at values
   rw [values]
   have conditional := rosterSelection_waiting_value
     (sourceChoiceLaw setup leaks profile owner (initial.observe app owner)) choiceFull
       (timing event owner ownedEvent) (visited.count owner) (value success)
         (value initial.application)
   convert conditional using 1
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro mode _
   cases mode <;> rfl
 
@@ -153,20 +153,20 @@ theorem roster_owner_response_value
     (unopened : ¬ ∃ entry ∈
       (current.recall owner).drop (rosterOffset setup rosters owner event),
         entry.action = (runtime setup).windowOpening leaks event candidate raw)
-    (choice : FinDist Bool) (choiceFull : choice.FullSupport)
-    (timing : FinDist (Fin ((rosters event).count owner))) (timingFull : timing.FullSupport)
+    (choice : PMF Bool) (choiceFull : FullSupport choice)
+    (timing : PMF (Fin ((rosters event).count owner))) (timingFull : FullSupport timing)
     (whenTrue whenFalse : ℝ) :
     let app := application setup leaks
     let packet := (runtime setup).windowOpening leaks event candidate raw
     let policies := fun mode => app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-      (fun _ _ => FinDist.pure packet) app.replayPolicy
+      (fun _ _ => PMF.pure packet) app.replayPolicy
     let after := (current.sampledActivation app owner sample).respond app owner action
-    ((app.policyMixture (rosterSelection choice timing) policies).posterior
-      (after.recall owner)).expect
+    expect ((app.policyMixture (rosterSelection choice timing) policies).posterior
+      (after.recall owner))
         (fun selected => if selected.isSome then whenTrue else whenFalse) =
       if action = packet then whenTrue else
-        FinDist.deferredRemaining (choice.prob true) timing (visited.count owner + 1) * whenTrue +
-          (1 - FinDist.deferredRemaining (choice.prob true) timing (visited.count owner + 1)) *
+        PMF.deferredRemaining ((choice true).toReal) timing (visited.count owner + 1) * whenTrue +
+          (1 - PMF.deferredRemaining ((choice true).toReal) timing (visited.count owner + 1)) *
             whenFalse := by
   classical
   intro app packet policies after
@@ -186,7 +186,7 @@ theorem roster_owner_response_value
       simpa only [↓reduceIte] using rosterSelection_waiting_value choice choiceFull timing
         (visited.count owner + 1) whenTrue whenFalse
   | some slot =>
-      rw [ite_eq_left (selectedIff.mp rfl), FinDist.expect_pure]
+      rw [ite_eq_left (selectedIff.mp rfl), expect_pure]
       rfl
 
 end Vegas

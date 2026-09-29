@@ -24,7 +24,7 @@ variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication P
     raw.actions who (normal.recall who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def selectChoice (who : Principal) (reference : List app.PlayerEntry) (observed : app.Info)
     (chosen : ((normal.menu raw).information initial horizon scheduler).Choice who
@@ -88,13 +88,13 @@ theorem selectorPolicy_project (who : Principal) (reference : List app.PlayerEnt
     ((normal.selectorPolicy raw stable closed initial horizon scheduler who reference source)
       observed).map (normal.choice raw stable initial horizon scheduler who observed) =
         source (normal.info who observed) := by
-  rw [selectorPolicy, FinDist.map_comp]
+  rw [selectorPolicy, PMF.map_comp]
   change (source (normal.info who observed)).map
     (fun chosen => normal.choice raw stable initial horizon scheduler who observed
       (normal.selectChoice raw stable closed initial horizon scheduler who reference observed
         chosen)) = _
   simp only [choice_selectChoice]
-  exact FinDist.map_id _
+  exact PMF.map_id _
 
 theorem selectorPolicy_supported_reference (who : Principal)
     (reference past : List app.PlayerEntry) (view : app.PlayerView) (entry : app.PlayerEntry)
@@ -107,7 +107,7 @@ theorem selectorPolicy_supported_reference (who : Principal)
         (some (past, view))).map Subtype.val).support)
     (same : normal.action who past view response = normal.action who past view entry.action) :
     response = entry.action := by
-  rw [selectorPolicy, FinDist.map_comp, FinDist.support_map] at supported
+  rw [selectorPolicy, PMF.map_comp, PMF.support_map] at supported
   obtain ⟨chosen, _supported, chosenEq⟩ := supported
   change (normal.selectChoice raw stable closed initial horizon scheduler who reference
     (some (past, view)) chosen).1 = some response at chosenEq

@@ -20,16 +20,16 @@ theorem native_dispatch_receipts_prefix (players : Player → nativeApp.Policy)
     (command : nativeApp.Command) (before after : nativeApp.Execution)
     (supported : after ∈ (nativeApp.dispatch players command before).support) :
     before.receipts <+: after.receipts := by
-  obtain ⟨middle, reached, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨middle, reached, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have retained := nativeApp.environmentStep_receipts_prefix before middle command reached
   cases actor : command.actor? nativeApp with
   | none =>
       simp only [ReactiveApplication.resume, actor] at moved
-      cases FinDist.mem_support_pure.mp moved
+      cases (PMF.mem_support_pure_iff _ _).mp moved
       exact retained
   | some who =>
       simp only [ReactiveApplication.resume, actor] at moved
-      obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ moved
+      obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ moved
       rw [nativeApp.respond_receipts]
       exact retained
 
@@ -40,13 +40,13 @@ theorem native_plan_receipts_prefix (players : Player → nativeApp.Policy)
     before.receipts <+: after.receipts := by
   induction plan generalizing before with
   | nil =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | cons instruction rest ih =>
       obtain ⟨middle, reached, moved⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨command, _, executed⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact (native_dispatch_receipts_prefix players command before middle executed).trans
         (ih middle moved)
 
@@ -79,7 +79,7 @@ theorem native_alice_utility_le (deposit : ℝ) (execution : nativeApp.Execution
 theorem native_alice_continuation_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph))
     (execution : nativeApp.Execution) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
       (nativeExecutionUtility deposit alice) ≤
         1 - if rejectedAlice execution.receipts then deposit else 0 := by
   apply FinDist.expect_le_of_forall
@@ -96,17 +96,17 @@ including deliberate final withholding or further malformed calls. -/
 theorem submitted_continuation_utility_le (bit : Bool)
     (submission : WitnessedSubmission nativeGraph) (deposit : ℝ) (nonnegative : 0 ≤ deposit)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).bind
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan)).expect
+    expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
+      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (nativeExecutionUtility deposit alice) ≤ 1 - deposit / 2 := by
   rw [FinDist.expect_bind]
   apply le_trans (FinDist.expect_mono (fun execution _ =>
     native_alice_continuation_le deposit nonnegative players plan execution))
-  rw [← FinDist.expect_map (fun execution : nativeApp.Execution =>
+  rw [← expect_map (fun execution : nativeApp.Execution =>
     rejectedAlice execution.receipts) (monitoredPrefixLaw bit (submissionAction submission))
       (fun alarm : Bool => 1 - if alarm then deposit else 0)]
   rw [submission_monitoring_law, FinDist.expect_mix]
-  simp only [FinDist.expect_pure, ↓reduceIte, Bool.false_eq_true]
+  simp only [expect_pure, ↓reduceIte, Bool.false_eq_true]
   ring_nf
   exact le_rfl
 

@@ -36,8 +36,8 @@ def initial (first middle last : Bool) : State simpleExpr context :=
     (Env.cons (.success first) (Env.empty _)))
 
 def profile (first middle last : Bool) : BehavioralProfile program := fun _ =>
-  (fun _ _ => FinDist.pure first, fun _ _ => FinDist.pure middle,
-    fun _ _ => FinDist.pure last, PUnit.unit)
+  (fun _ _ => PMF.pure first, fun _ _ => PMF.pure middle,
+    fun _ _ => PMF.pure last, PUnit.unit)
 
 def results (state : State simpleExpr program.terminalCtx) :
     PublicationResult Bool × PublicationResult Bool × PublicationResult Bool :=
@@ -47,9 +47,9 @@ def results (state : State simpleExpr program.terminalCtx) :
 successful disclosure on the earlier owner's decision to withhold. -/
 theorem withholding_then_opening (first middle last : Bool) :
     (program.run (profile false true true) (initial first middle last)).map results =
-      FinDist.pure (.failure, .success middle, .success last) := by
+      PMF.pure (.failure, .success middle, .success last) := by
   simp only [program, SourceProgram.run, runWith, revealKernel, profile,
-    afterReveal, FinDist.pure_bind, FinDist.map_pure]
+    afterReveal, PMF.pure_bind, PMF.pure_map]
   rfl
 
 end Vegas.Examples.RevealSequence

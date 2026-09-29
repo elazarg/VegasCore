@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ProtocolEvaluation
-import GameTheoryExtensions.Protocol.Continuation
+import GameTheory.Protocol.Continuation
 
 /-! # Source payoffs and canonical subgame perfection
 
@@ -49,8 +49,8 @@ theorem protocol_continuationValue_eq (program : SourceProgram Player L Γ O)
           (Profile.map (target := (informationModel program admission initial).strategicSignature)
             (fun who => purePolicyEquiv program admission initial who) profile))
         (fun final => protocolUtility program admission initial utility final who) history =
-      (ProtocolState.continuationLaw program
-        (fun who => (profile who).1.toBehavioral program) history.state).expect
+      expect (ProtocolState.continuationLaw program
+        (fun who => (profile who).1.toBehavioral program) history.state)
         (utility · who) := by
   rw [(informationModel program admission initial).historyBackwardValue_eq_expect_runFrom_of_bound
     (protocol_terminates program admission initial) (protocol_bounded program admission initial)]
@@ -58,8 +58,8 @@ theorem protocol_continuationValue_eq (program : SourceProgram Player L Γ O)
     (fun who => (profile who).2) (instructionCount program) history
     (by have count := protocol_history_length program admission initial history.trace; omega)
   have values := congrArg
-    (fun law => law.expect (fun state => state.elim 0 (utility · who))) law
-  simp only [FinDist.expect_map, Option.elim_some] at values
+    (fun law => expect law (fun state => state.elim 0 (utility · who))) law
+  simp only [expect_map, Option.elim_some] at values
   convert values using 1
   rfl
 
@@ -76,12 +76,12 @@ theorem protocol_isSubgamePerfect_iff (program : SourceProgram Player L Γ O)
         (protocolUtility program admission initial utility) ↔
       ∀ history, (informationModel program admission initial).IsSubgameRoot history →
         ∀ who (alternative : (admittedPureSignature program admission).Strategy who),
-          (ProtocolState.continuationLaw program
+          expect (ProtocolState.continuationLaw program
             (fun player => (Profile.update profile who alternative player).1.toBehavioral program)
-            history.state).expect (utility · who) ≤
-          (ProtocolState.continuationLaw program
+            history.state) (utility · who) ≤
+          expect (ProtocolState.continuationLaw program
             (fun player => (profile player).1.toBehavioral program)
-            history.state).expect (utility · who) := by
+            history.state) (utility · who) := by
   constructor
   · intro perfect history proper who alternative
     have bound := perfect history proper who

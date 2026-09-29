@@ -64,12 +64,12 @@ theorem bindingBlockContinuation_eq_pure (runtime : EventGraphRuntime graph)
     (stage : runtime.bindingStageCommand event payload outputEq action =
       .privateCommand command) :
     runtime.bindingBlockContinuation who event payload outputEq execution action =
-      FinDist.pure (runtime.application.afterSubmit
+      PMF.pure (runtime.application.afterSubmit
         (runtime.application.afterPrivate
           (runtime.application.afterPrivate execution who (.remember event action)) who command)
         who (.commitment event (who, eventSlot event))) := by
   simp only [bindingBlockContinuation, stage, runtime.application.playerStep_private_eq,
-    FinDist.pure_bind, runtime.application.playerStep_submit_eq]
+    PMF.pure_bind, runtime.application.playerStep_submit_eq]
 
 /-- Before inclusion, every selected binding action exposes exactly the same
 public submission. The joint environment history and observation retain the
@@ -81,15 +81,15 @@ theorem bindingBlockContinuation_environment_law (runtime : EventGraphRuntime gr
     (runtime.bindingBlockContinuation who event payload outputEq execution action).map
         (fun next => (next.environmentHistory,
           MessageApplication.State.environmentView runtime.application next.native)) =
-      FinDist.pure (execution.environmentHistory,
+      PMF.pure (execution.environmentHistory,
         MessageApplication.State.environmentView runtime.application
         (runtime.application.afterSubmit execution who
           (.commitment event (who, eventSlot event))).native) := by
   obtain ⟨command, stage⟩ :=
     runtime.bindingStageCommand_is_private event payload outputEq action
   rw [runtime.bindingBlockContinuation_eq_pure who event payload outputEq execution
-    action command stage, FinDist.map_pure]
-  change FinDist.pure (execution.environmentHistory, MessageInterface.EnvironmentObservation.mk
+    action command stage, PMF.pure_map]
+  change PMF.pure (execution.environmentHistory, MessageInterface.EnvironmentObservation.mk
     (execution.native.pool.submit who (.commitment event (who, eventSlot event))).2
     (privateStep (privateStep execution.native.application who (.remember event action))
       who command).publicView execution.native.receipts) = _
@@ -106,14 +106,14 @@ theorem bindingBlockContinuation_observer_law (runtime : EventGraphRuntime graph
     (runtime.bindingBlockContinuation who event payload outputEq execution action).map
         (fun next => (next.principalHistory observer,
           MessageApplication.State.observe runtime.application next.native observer)) =
-      FinDist.pure (execution.principalHistory observer,
+      PMF.pure (execution.principalHistory observer,
         MessageApplication.State.observe runtime.application
         (runtime.application.afterSubmit execution who
           (.commitment event (who, eventSlot event))).native observer) := by
   obtain ⟨command, stage⟩ :=
     runtime.bindingStageCommand_is_private event payload outputEq action
   rw [runtime.bindingBlockContinuation_eq_pure who event payload outputEq execution
-    action command stage, FinDist.map_pure]
+    action command stage, PMF.pure_map]
   have historyEq : (runtime.application.afterSubmit
       (runtime.application.afterPrivate
         (runtime.application.afterPrivate execution who (.remember event action)) who command)
@@ -122,7 +122,7 @@ theorem bindingBlockContinuation_observer_law (runtime : EventGraphRuntime graph
     simp only [MessageApplication.afterSubmit, MessageApplication.afterPrivate, different,
       ↓reduceIte]
   rw [historyEq]
-  change FinDist.pure (execution.principalHistory observer, MessageInterface.View.mk
+  change PMF.pure (execution.principalHistory observer, MessageInterface.View.mk
     ((execution.native.pool.submit who (.commitment event (who, eventSlot event))).2.observe
       observer)
     ((submitStep
@@ -161,7 +161,7 @@ theorem bindingBlockContinuation_handle (runtime : EventGraphRuntime graph)
   obtain ⟨command, stage⟩ :=
     runtime.bindingStageCommand_is_private event payload outputEq action
   rw [runtime.bindingBlockContinuation_eq_pure owner event payload outputEq
-    execution action command stage, FinDist.mem_support_pure] at supported
+    execution action command stage, PMF.mem_support_pure_iff _ _] at supported
   subst next
   let first := privateStep execution.native.application owner (.remember event action)
   let second := privateStep first owner command
@@ -233,12 +233,12 @@ theorem bindingBlockContinuation_includeLatest_law (runtime : EventGraphRuntime 
   let submitted := runtime.application.afterSubmit staged owner
     (.commitment event (owner, eventSlot event))
   have block : runtime.bindingBlockContinuation owner event payload outputEq execution action =
-      FinDist.pure submitted :=
+      PMF.pure submitted :=
     runtime.bindingBlockContinuation_eq_pure owner event payload outputEq execution action
       command stage
   have acceptedProjection := runtime.bindingBlockContinuation_handle owner event payload
     outputEq codeEq viewNode execution submitted action ready timely fresh vacant unused
-    (by rw [block]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [block]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
     (execution.native.pool.nextSerial owner)
   change (handle runtime (submitStep staged.native.application owner
       (.commitment event (owner, eventSlot event)))
@@ -257,8 +257,8 @@ theorem bindingBlockContinuation_includeLatest_law (runtime : EventGraphRuntime 
         serialFresh accepted
       have projected := congrArg (fun law => law.map
         (fun native : runtime.application.State => native.application.config)) inclusion
-      simp only [FinDist.map_comp, Function.comp_def, FinDist.map_pure] at projected
-      rw [block, FinDist.pure_bind]
+      simp only [PMF.map_comp, Function.comp_def, PMF.pure_map] at projected
+      rw [block, PMF.pure_bind]
       change (runtime.serviceStep players wire (.includeLatest event owner)
         (runtime.application.afterSubmit staged owner
           (.commitment event (owner, eventSlot event)))).map
@@ -267,8 +267,8 @@ theorem bindingBlockContinuation_includeLatest_law (runtime : EventGraphRuntime 
       have graphLaw := execution.native.application.config.step_eq_map_of_code event ready
         outputEq (.bind owner payload) codeEq
         (cast (congrArg EventField.Action outputEq) action)
-        (FinDist.pure (cast (congrArg EventField.Action outputEq) action)) rfl
-      simpa only [cast_cast, cast_eq, FinDist.map_pure] using graphLaw.symm
+        (PMF.pure (cast (congrArg EventField.Action outputEq) action)) rfl
+      simpa only [cast_cast, cast_eq, PMF.pure_map] using graphLaw.symm
 
 /-- Three prescribed owner invocations followed by their reserved inclusion
 implement the exact normalized binding-policy kernel. This is a local service
@@ -305,10 +305,10 @@ theorem runServicePlan_compiled_bind_includeLatest (runtime : EventGraphRuntime 
   rw [runtime.runServicePlan_append,
     runtime.runServicePlan_compiled_bind_block owner policy players wire execution
       event owner payload outputEq codeEq viewNode playersOwner grant ready actor
-      stage notSubmitted emptyCache, FinDist.bind_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+      stage notSubmitted emptyCache, PMF.bind_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro action _
-  simpa only [runServicePlan, FinDist.bind_pure] using
+  simpa only [runServicePlan, PMF.bind_pure] using
     runtime.bindingBlockContinuation_includeLatest_law players wire owner event payload
       outputEq codeEq viewNode execution action ready timely fresh vacant unused serialFresh
 

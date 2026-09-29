@@ -57,7 +57,7 @@ theorem native_withhold_realizes (players : Player → nativeApp.Policy)
       (nativeRuntime.interactionStep nativeLeaks players nativeNetwork
         (.includeLatest (nativePublicationEvent who) who)
         (execution.respond nativeApp who (nativeWithholdAction who))).map
-          (fun result => result.application) = FinDist.pure next := by
+          (fun result => result.application) = PMF.pure next := by
   obtain ⟨next, accepted, failed⟩ := native_withhold_accepted execution.application who ready timely
     remembered (execution.network.nextSerial who)
   refine ⟨next, failed, ?_⟩
@@ -71,13 +71,13 @@ theorem native_withhold_realizes (players : Player → nativeApp.Policy)
         some ⟨(who, execution.network.nextSerial who),
           (nativeWithholdSubmission who).emit execution.application who
             (execution.network.known who)⟩ := serials.lookup_submit who _
-  simp only [interactionStep, interactionInstruction, selected, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, selected, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
-    ReactiveApplication.resume, FinDist.map_pure]
+    PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
+    ReactiveApplication.resume, PMF.pure_map]
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [lookup]
-  change FinDist.pure ((handle nativeRuntime execution.application
+  change PMF.pure ((handle nativeRuntime execution.application
     ⟨(who, execution.network.nextSerial who), .withhold (nativePublicationEvent who)⟩).getD
       execution.application) = _
   rw [accepted]
@@ -89,9 +89,9 @@ theorem native_withhold_finish (players : Player → nativeApp.Policy)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (withholds : players who (control.execution.recall who)
-      (control.execution.observe nativeApp who) = FinDist.pure (nativeWithholdAction who))
+      (control.execution.observe nativeApp who) = PMF.pure (nativeWithholdAction who))
     (result : nativeApp.ProtocolState)
-    (supported : result ∈ (nativeApp.finish (FinDist.pure nativeInitial) nativeHorizon
+    (supported : result ∈ (nativeApp.finish (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler players (some control)).support) :
     ∃ final, result = some final ∧
       (nativePublicationRef who).get? final.execution.application.config.store = some .failure := by
@@ -104,19 +104,19 @@ theorem native_withhold_finish (players : Player → nativeApp.Policy)
   obtain ⟨ready, timely⟩ := service.resolve_left unfinished
   have remembered := (nativeRuntime.reactiveRememberedInvariant nativeLeaks
     (fun table => table (nativePublicationEvent who) = none)).history
-      (FinDist.pure nativeInitial) nativeHorizon nativeScheduler (by
+      (PMF.pure nativeInitial) nativeHorizon nativeScheduler (by
         intro state member
-        cases FinDist.mem_support_pure.mp member
+        cases (PMF.mem_support_pure_iff _ _).mp member
         rfl)
-      (nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace)
+      (nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace)
   obtain ⟨next, failed, law⟩ := native_withhold_realizes players control.execution who
     (native_history_invariants control trace).2.2 ready timely remembered
   apply native_response_finish players control trace who _ .failure active granted withholds
     _ result supported
   intro middle middleMem
   have same : middle.application = next := by
-    apply FinDist.mem_support_pure.mp
-    rw [← law, FinDist.support_map]
+    apply (PMF.mem_support_pure_iff _ _).mp
+    rw [← law, PMF.support_map]
     exact ⟨middle, middleMem, rfl⟩
   simpa only [same] using failed
 
@@ -149,7 +149,7 @@ theorem native_not_supported_withhold
   subst state
   let profile := Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy who
     ((assessment.strategy who).commit site.1 choice)
-  let players := nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+  let players := nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler profile
   have grant : control.execution.application.serviceGrant = some (nativePublicationEvent who) := by
     rw [← observed] at granted
@@ -162,7 +162,7 @@ theorem native_not_supported_withhold
     exact fun completed => unfinished
       ((control.execution.application.config.history_exact _).mpr completed)
   have chooses : players who (control.execution.recall who)
-      (control.execution.observe nativeApp who) = FinDist.pure (nativeWithholdAction who) := by
+      (control.execution.observe nativeApp who) = PMF.pure (nativeWithholdAction who) := by
     have infoEq : some (control.execution.recall who,
         control.execution.observe nativeApp who) = site.1 :=
       (congrArg some (Prod.ext recall observed)).trans siteEq.symm
@@ -170,18 +170,18 @@ theorem native_not_supported_withhold
       ReactiveApplication.decodePolicy, ReactiveApplication.ResponseMenu.embedPolicy,
       profile, Profile.update_same]
     rw [infoEq]
-    simp only [InformationModel.BehavioralPolicy.commit_self, FinDist.map_pure]
-    change FinDist.pure (choice.1.getD ⟨none⟩) = _
+    simp only [InformationModel.BehavioralPolicy.commit_self, PMF.pure_map]
+    change PMF.pure (choice.1.getD ⟨none⟩) = _
     rw [withhold]
     rfl
-  have law := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+  have law := nativeMenu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler
     profile (2 * nativeHorizon + 1) ⟨some control, trace⟩ (by
       change nativeApp.rank nativeHorizon (some control) ≤ 2 * nativeHorizon + 1
-      have bound := nativeApp.trace_bound (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
-        (nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace)
+      have bound := nativeApp.trace_bound (PMF.pure nativeInitial) nativeHorizon nativeScheduler
+        (nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace)
       omega)
   apply native_withhold_finish players control trace who active grant incomplete chooses final.state
-  rw [← law, FinDist.support_map]
+  rw [← law, PMF.support_map]
   exact ⟨final, finalMem, rfl⟩
 
 end Vegas.Examples.SelectiveAssociation

@@ -37,14 +37,14 @@ theorem roster_prefix_serviceGrant
       refine ⟨none, ?_⟩
       intro initial final initialGrant reached
       simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-        FinDist.mem_support_pure] at reached
+        PMF.mem_support_pure_iff _ _] at reached
       simpa only [reached] using initialGrant
   | succ count =>
       let event : (graph setup).EventId := ⟨count, by omega⟩
       refine ⟨some event, ?_⟩
       intro initial final _ reached
       rw [show count + 1 = event.val + 1 from rfl, rosterPlanPrefix_succ,
-        runInteractionPlan_append, FinDist.support_bind] at reached
+        runInteractionPlan_append, PMF.support_bind] at reached
       obtain ⟨boundary, _, reached⟩ := Set.mem_iUnion₂.mp reached
       let tail := (rosters event).map ServiceInstruction.player ++
         (match (graph setup).actor? event with
@@ -55,13 +55,13 @@ theorem roster_prefix_serviceGrant
         boundary |>.bind ((runtime setup).runInteractionPlan leaks players network tail)).support
         at reached
       obtain ⟨granted, step, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have grantEq : granted.application.serviceGrant = some event := by
-        simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+        simp only [interactionStep, interactionInstruction, PMF.pure_bind,
           ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-          reactiveApplication, environmentStep, FinDist.map_pure,
+          reactiveApplication, environmentStep, PMF.pure_map,
           ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-          FinDist.mem_support_pure] at step
+          PMF.mem_support_pure_iff _ _] at step
         cases step
         rfl
       rw [(runtime setup).runInteractionPlan_serviceGrant leaks players network tail ?_ ?_
@@ -91,11 +91,11 @@ private theorem grant_readout_congr
   have receipts := congrArg (fun value => value.2.1) messages
   have environment := congrArg (fun value => value.2.2.1) messages
   have masked := congrArg (fun value => value.2.2.2) messages
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    reactiveApplication, environmentStep, FinDist.map_pure,
+    reactiveApplication, environmentStep, PMF.pure_map,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-  apply congrArg FinDist.pure
+  apply congrArg PMF.pure
   change ((left.network, left.receipts,
     left.environmentRecall ++ [⟨⟨left.network.publicView, left.application.publicView,
       left.receipts⟩, .application (.grant event)⟩],
@@ -145,7 +145,7 @@ theorem roster_grant_observation_kernel
     {Seed : Type*} (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     {Γ : SourceCtx Player L} (refs : ContextRefs (graph setup).layout Γ) (rank : Nat)
-    (prior : FinDist Seed) (initial : Seed → State L setup.context)
+    (prior : PMF Seed) (initial : Seed → State L setup.context)
     (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (checkpoint : ∀ seed ∈ prior.support,
@@ -155,13 +155,13 @@ theorem roster_grant_observation_kernel
     (network : (runtime setup).NetworkPolicy leaks)
     (grant : Option (graph setup).EventId)
     (granted : ∀ seed ∈ prior.support, (execution seed).application.serviceGrant = grant)
-    (noise : DecisionView focal Γ → FinDist ((application setup leaks).MessageReadout ×
+    (noise : DecisionView focal Γ → PMF ((application setup leaks).MessageReadout ×
       List (application setup leaks).PlayerEntry))
     (factor : prior.map (fun seed => (source seed,
         ((application setup leaks).messageView (execution seed), (execution seed).recall focal))) =
       (prior.map source).bind fun config => (noise (config.view focal)).map fun extra =>
         (config, extra)) :
-    ∃ nextNoise : DecisionView focal Γ → FinDist ((application setup leaks).MessageReadout ×
+    ∃ nextNoise : DecisionView focal Γ → PMF ((application setup leaks).MessageReadout ×
         List (application setup leaks).PlayerEntry),
       (prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks players network [.grant event]
@@ -170,10 +170,10 @@ theorem roster_grant_observation_kernel
       (prior.map source).bind fun config =>
         (nextNoise (config.view focal)).map fun extra => (config, extra) := by
   obtain ⟨nextNoise, nextLaw⟩ :=
-    FinDist.exists_updated_observation_kernel_of_readout prior source
+    PMF.exists_updated_observation_kernel_of_readout prior source
       (fun seed => ((application setup leaks).messageView (execution seed),
         (execution seed).recall focal)) (fun config => config.view focal) noise factor
-      (fun _ => FinDist.pure ()) (fun config _ => config) (fun config => config.view focal)
+      (fun _ => PMF.pure ()) (fun config _ => config) (fun config => config.view focal)
       (fun seed _ => ((runtime setup).runInteractionPlan leaks players network [.grant event]
         (execution seed)).map fun final =>
           ((application setup leaks).messageView final, final.recall focal))
@@ -183,15 +183,15 @@ theorem roster_grant_observation_kernel
           event focal players network
           ((granted left leftSupport).trans (granted right rightSupport).symm) same readouts)
   refine ⟨nextNoise, ?_⟩
-  simpa only [FinDist.pure_bind, FinDist.map_pure, FinDist.bind_pure,
-    FinDist.map_comp, Function.comp_def] using nextLaw
+  simpa only [PMF.pure_bind, PMF.pure_map, PMF.bind_pure,
+    PMF.map_comp, Function.comp_def] using nextLaw
 
 /-- The actual grant preserves ancillary traffic at an existing decoded
 source prefix. The previous grant is fixed by the initialized service plan. -/
 theorem roster_prefix_grant_observation_kernel
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (prior : FinDist (application setup leaks).Execution) (count : Nat)
+    (prior : PMF (application setup leaks).Execution) (count : Nat)
     (checkpoint : ∀ execution ∈ prior.support, ∃ initial state,
       PublicPrefixCheckpoint setup leaks initial setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
@@ -202,7 +202,7 @@ theorem roster_prefix_grant_observation_kernel
     (network : (runtime setup).NetworkPolicy leaks)
     (grant : Option (graph setup).EventId)
     (granted : ∀ execution ∈ prior.support, execution.application.serviceGrant = grant)
-    (noise : setup.ProtocolView focal → FinDist ((application setup leaks).MessageReadout ×
+    (noise : setup.ProtocolView focal → PMF ((application setup leaks).MessageReadout ×
       List (application setup leaks).PlayerEntry))
     (factor : prior.map (fun execution =>
         (sourcePrefix? setup count execution.application.config,
@@ -210,7 +210,7 @@ theorem roster_prefix_grant_observation_kernel
       (prior.map fun execution => sourcePrefix? setup count execution.application.config).bind
         fun state => (noise (setup.protocolObserve focal state)).map fun extra => (state, extra)) :
     ∃ nextNoise : setup.ProtocolView focal →
-        FinDist ((application setup leaks).MessageReadout ×
+        PMF ((application setup leaks).MessageReadout ×
           List (application setup leaks).PlayerEntry),
       let after := prior.bind
         ((runtime setup).runInteractionPlan leaks players network [.grant event])
@@ -220,10 +220,10 @@ theorem roster_prefix_grant_observation_kernel
         fun state => (nextNoise (setup.protocolObserve focal state)).map fun extra =>
           (state, extra) :=
     by
-  obtain ⟨nextNoise, nextLaw⟩ := FinDist.exists_updated_observation_kernel_of_readout prior
+  obtain ⟨nextNoise, nextLaw⟩ := PMF.exists_updated_observation_kernel_of_readout prior
     (fun execution => sourcePrefix? setup count execution.application.config)
     (fun execution => ((application setup leaks).messageView execution, execution.recall focal))
-    (setup.protocolObserve focal) noise factor (fun _ => FinDist.pure ())
+    (setup.protocolObserve focal) noise factor (fun _ => PMF.pure ())
     (fun state _ => state) (setup.protocolObserve focal)
     (fun execution _ => ((runtime setup).runInteractionPlan leaks players network [.grant event]
       execution).map fun final => ((application setup leaks).messageView final, final.recall focal))
@@ -246,8 +246,8 @@ theorem roster_prefix_grant_observation_kernel
         (congrArg (fun view : (application setup leaks).PlayerView => view.application.publicView)
           observed) readouts)
   refine ⟨nextNoise, ?_⟩
-  simpa only [FinDist.pure_bind, FinDist.map_pure, FinDist.bind_pure, FinDist.map_bind,
-    FinDist.map_comp, Function.comp_def, runInteractionPlan, interactionStep,
+  simpa only [PMF.pure_bind, PMF.pure_map, PMF.bind_pure, PMF.map_bind,
+    PMF.map_comp, Function.comp_def, runInteractionPlan, interactionStep,
     interactionInstruction, ReactiveApplication.dispatch,
     ReactiveApplication.Execution.environmentStep, reactiveApplication, environmentStep,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume] using nextLaw

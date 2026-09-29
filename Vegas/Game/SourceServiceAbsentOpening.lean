@@ -91,7 +91,7 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
   · have same : actor = who := Option.some.inj (actorOwned.symm.trans acts)
     subst same
     simp only [sourceServiceTimedPolicy, grant, acts, ↓reduceDIte,
-      ReactiveApplication.policyMixture_policy, FinDist.support_bind] at supported
+      ReactiveApplication.policyMixture_policy, PMF.support_bind] at supported
     obtain ⟨slot, _, drawn⟩ := Set.mem_iUnion₂.mp supported
     unfold sourceServiceTimedFamily ReactiveApplication.scheduledPolicy at drawn
     split at drawn
@@ -99,7 +99,7 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
       split at drawn
       · exact app.replayPolicy_cases _ _ response drawn
       · rw [sourceServicePolicy_at_event setup leaks profile actor current event granted acts,
-          FinDist.bind_map, FinDist.support_bind] at drawn
+          PMF.bind_map, PMF.support_bind] at drawn
         obtain ⟨action, _, drawn⟩ := Set.mem_iUnion₂.mp drawn
         rcases (runtime setup).serviceDecision_resolution_cases leaks actor (current.recall actor)
           (current.observe (application setup leaks) actor) event actor payload binding checks
@@ -211,8 +211,8 @@ theorem absent_opening_phase_invariant {who : Player} {remaining : Nat}
           service.network rest passive after execution sameApp)
     unfold phaseConfigLaw phaseLaw DecisionPhase.tail
     rw [ending]
-    simpa only [FinDist.map_comp, Function.comp_def] using
-      congrArg (FinDist.map EventGraphRuntime.State.config) applications
+    simpa only [PMF.map_comp, Function.comp_def] using
+      congrArg (PMF.map EventGraphRuntime.State.config) applications
   rw [law first firstAllowed, law second secondAllowed]
 
 open Classical in
@@ -229,7 +229,7 @@ theorem absent_opening_comparison_eq (who : Player) (site : service.model.Inform
     (granted : view.application.publicView.serviceGrant = some event)
     (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
     (absent : rosterOpening? service.setup service.leaks who event view = none)
-    (law : FinDist (service.model.Choice who site.1)) :
+    (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparison service.readout service.fuel
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by

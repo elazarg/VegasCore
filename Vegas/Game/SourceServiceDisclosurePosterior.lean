@@ -65,8 +65,8 @@ is the original law. In particular, no artificial resampling or erasure of the
 owner's private failed intention is justified by this response. -/
 theorem failed_disclosure_response_posterior
     (failure : disclosureResult published binding source true = .failure)
-    (intentions : FinDist Bool) :
-    intentions.condOnFibre (fun intention =>
+    (intentions : PMF Bool) :
+    fiberConditional intentions (fun intention =>
       (runtime setup).serviceDecision leaks owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) ⟨none⟩ =
@@ -86,15 +86,15 @@ theorem failed_disclosure_response_posterior
   obtain ⟨intention, supported⟩ := intentions.support_nonempty
   have present : ∃ intention ∈ (Set.univ : Set Bool), intention ∈ intentions.support :=
     ⟨intention, Set.mem_univ _, supported⟩
-  simp only [FinDist.condOnFibre, fiber, dite_eq_left present, FinDist.condOn_univ]
+  simp only [fiberConditional, fiber, dite_eq_left present, FinDist.condOn_univ]
 
 /-- Conditioning the original successor on the actual failed native response
 retains both intended actions. The normalized source successor is withholding;
 its private-history posterior restores the original successor exactly. -/
 theorem failed_disclosure_successor_posterior
     (failure : disclosureResult published binding source true = .failure)
-    (intentions : FinDist Bool) :
-    ((intentions.condOnFibre (fun intention =>
+    (intentions : PMF Bool) :
+    ((fiberConditional intentions (fun intention =>
       (runtime setup).serviceDecision leaks owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) ⟨none⟩).map
@@ -104,7 +104,7 @@ theorem failed_disclosure_successor_posterior
           owner name intention) := by
   rw [failed_disclosure_response_posterior setup leaks published binding source refs
     execution agree event outputEq codeEq node failure intentions]
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro intention _supported
   have effective : effectiveDisclosure published binding source intention = false := by
     cases intention <;> simp only [effectiveDisclosure, disclosureResult_false, failure]

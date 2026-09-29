@@ -33,7 +33,7 @@ theorem settled_reveal_expiry (runtime : EventGraphRuntime graph)
     (event : graph.EventId) (settled : ¬execution.application.config.cut.Ready event)
     (ticks : Nat) :
     ∃ next, runtime.runInteractionPlan leaks players network
-        (List.replicate ticks .tick ++ [.expire event]) execution = FinDist.pure next ∧
+        (List.replicate ticks .tick ++ [.expire event]) execution = PMF.pure next ∧
       next.application =
         { execution.application with clock := execution.application.clock + ticks } ∧
       next.network = execution.network ∧ next.receipts = execution.receipts ∧
@@ -45,26 +45,26 @@ theorem settled_reveal_expiry (runtime : EventGraphRuntime graph)
     rw [application]
     exact settled
   have expiry : app.environment ticked.application (.expire event) =
-      FinDist.pure ticked.application :=
+      PMF.pure ticked.application :=
     runtime.environmentStep_expire_of_not_ready ticked.application event notReady
   let next : app.Execution := { ticked with
     environmentRecall := ticked.environmentRecall ++
       [⟨ticked.observeEnvironment app, .application (.expire event)⟩] }
   have step : runtime.interactionStep leaks players network (.expire event) ticked =
-      FinDist.pure next := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+      PMF.pure next := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-    change (ticked.environmentStep app (.application (.expire event))).bind FinDist.pure = _
-    rw [FinDist.bind_pure]
+    change (ticked.environmentStep app (.application (.expire event))).bind PMF.pure = _
+    rw [PMF.bind_pure]
     change ((app.environment ticked.application (.expire event)).map
       (fun state => { ticked with application := state })).map (fun result : app.Execution =>
         { result with environmentRecall := ticked.environmentRecall ++
           [(⟨ticked.observeEnvironment app, .application (.expire event)⟩ :
             app.EnvironmentEntry)] }) = _
-    rw [expiry, FinDist.map_pure, FinDist.map_pure]
+    rw [expiry, PMF.pure_map, PMF.pure_map]
   refine ⟨next, ?_, application, messages, receipts, recall⟩
-  rw [runtime.runInteractionPlan_append, ticksLaw, FinDist.pure_bind,
-    runInteractionPlan, step, FinDist.pure_bind]
+  rw [runtime.runInteractionPlan_append, ticksLaw, PMF.pure_bind,
+    runInteractionPlan, step, PMF.pure_bind]
   rfl
 
 /-- The complete monitored tail after successful opening is quiet. No sampling
@@ -84,7 +84,7 @@ theorem monitored_settled_reveal (runtime : EventGraphRuntime graph)
     (ticks : Nat) :
     ∃ next, runtime.runInteractionPlan leaks players (runtime.reportNetwork leaks watcher)
         ([.player watcher, .wire] ++ List.replicate ticks .tick ++ [.expire event])
-        execution = FinDist.pure next ∧
+        execution = PMF.pure next ∧
       next.application =
         { execution.application with clock := execution.application.clock + ticks } ∧
       next.network = execution.network ∧ next.receipts = execution.receipts ∧
@@ -102,7 +102,7 @@ theorem monitored_settled_reveal (runtime : EventGraphRuntime graph)
   refine ⟨next, ?_, ?_, networkEq.trans messages, receiptEq.trans receipts,
     recallEq.trans recall⟩
   · rw [List.append_assoc, runtime.runInteractionPlan_append, runtime.run_report_plan,
-      monitor, FinDist.pure_bind]
+      monitor, PMF.pure_bind]
     exact suffix
   · simpa only [application] using after
 
@@ -132,7 +132,7 @@ theorem monitored_silent_reveal (runtime : EventGraphRuntime graph)
     (due : runtime.deadline event ≤ execution.application.clock + ticks - entered) :
     ∃ next, runtime.runInteractionPlan leaks players (runtime.reportNetwork leaks watcher)
         ([.player watcher, .wire] ++ List.replicate ticks .tick ++ [.expire event])
-        execution = FinDist.pure next ∧
+        execution = PMF.pure next ∧
       next.application =
         ({ execution.application with clock := execution.application.clock + ticks } :
           State graph).complete event ready
@@ -160,7 +160,7 @@ theorem monitored_silent_reveal (runtime : EventGraphRuntime graph)
   refine ⟨next, ?_, ?_, networkEq.trans messages, receiptEq.trans receipts,
     recallEq.trans recall⟩
   · rw [List.append_assoc, runtime.runInteractionPlan_append, runtime.run_report_plan,
-      monitor, FinDist.pure_bind]
+      monitor, PMF.pure_bind]
     exact suffix
   · simpa only [application] using after
 

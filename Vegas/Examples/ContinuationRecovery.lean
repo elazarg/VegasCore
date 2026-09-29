@@ -68,7 +68,7 @@ private def afterBadSubmission : runtime.application.PolicyExecution :=
   runtime.application.afterSubmit initialExecution () badPacket
 
 private def disclose : graph.BehavioralPolicy () :=
-  fun _ _ _ => FinDist.pure true
+  fun _ _ _ => PMF.pure true
 
 /-- The wrong packet is genuinely rejected by the application. -/
 theorem badPacket_rejected :
@@ -79,7 +79,7 @@ theorem badPacket_rejected :
 corruption. The invocation can be the first of the three owner opportunities. -/
 theorem badSubmission_playerStep :
     runtime.application.playerStep () initialExecution (.submit badPacket) =
-      FinDist.pure afterBadSubmission := by
+      PMF.pure afterBadSubmission := by
   exact runtime.application.playerStep_submit_eq initialExecution () badPacket
 
 /-- Resuming the compiled policy waits, regardless of the still-open deadline. -/
@@ -87,7 +87,7 @@ theorem compiled_waits_after_badSubmission :
     runtime.compilePlayerPolicy () disclose
         (afterBadSubmission.principalHistory ())
         (MessageApplication.State.observe runtime.application
-          afterBadSubmission.native ()) = FinDist.pure .wait := by
+          afterBadSubmission.native ()) = PMF.pure .wait := by
   simp [compilePlayerPolicy, submittedAt, afterBadSubmission,
     MessageApplication.afterSubmit, initialExecution,
     MessageApplication.PolicyExecution.initial, badPacket, Payload.event?,

@@ -67,25 +67,25 @@ theorem environmentStep_inputs (execution next : app.Execution) (command : app.C
     next.network.inputs = execution.network.inputs := by
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at moved
-      cases FinDist.mem_support_pure.mp moved
+      simp only [Execution.environmentStep, PMF.pure_map] at moved
+      cases (PMF.mem_support_pure_iff _ _).mp moved
       rfl
   | activate who =>
-      simp only [Execution.environmentStep, FinDist.map_comp] at moved
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ moved
+      simp only [Execution.environmentStep, PMF.map_comp] at moved
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ moved
       rfl
   | application operation =>
-      simp only [Execution.environmentStep, FinDist.map_comp] at moved
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ moved
+      simp only [Execution.environmentStep, PMF.map_comp] at moved
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ moved
       rfl
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at moved
-      cases FinDist.mem_support_pure.mp moved
+      simp only [Execution.environmentStep, PMF.pure_map] at moved
+      cases (PMF.mem_support_pure_iff _ _).mp moved
       simp only [Execution.includePending, MessageNetwork.includePending]
       cases execution.network.lookup id <;> rfl
 
 private theorem transition_traffic_inputs
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     before.elim [] (fun control => control.execution.network.inputs) ++
@@ -93,13 +93,13 @@ private theorem transition_traffic_inputs
       after.elim [] (fun control => control.execution.network.inputs) := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       rfl
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           clear reached
           rcases (joint who).getD ⟨none⟩ with ⟨transmission⟩
           cases transmission with
@@ -113,17 +113,17 @@ private theorem transition_traffic_inputs
       | none =>
           cases remaining with
           | zero =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               simp [trafficStep]
           | succ remaining =>
               obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp
-                (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               rw [app.trafficStep_environment execution next command moved remaining]
               simpa using (app.environmentStep_inputs execution next command moved).symm
 
 private theorem trafficAudit_inputs
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ∀ {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state),
       (app.trafficAudit initial horizon scheduler trace).map TrafficRecord.input =
         state.elim [] (fun control => control.execution.network.inputs)
@@ -139,7 +139,7 @@ private def trafficReady : app.ProtocolState → Prop
         past ++ [control.execution.observeEnvironment app]
 
 private theorem traffic_transition
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (ready : app.trafficReady before)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
@@ -147,13 +147,13 @@ private theorem traffic_transition
       app.trafficReady after := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact ⟨rfl, by simp [trafficReady]⟩
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           obtain ⟨past, remembered⟩ := ready (by simp)
           refine ⟨?_, by simp [trafficReady]⟩
           simp only [stateTraffic, executionTraffic, app.respond_environmentRecall, remembered,
@@ -162,16 +162,16 @@ private theorem traffic_transition
       | none =>
           cases remaining with
           | zero =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               refine ⟨?_, ready⟩
               simp [trafficStep]
           | succ remaining =>
               obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp
-                (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               have recorded : next.environmentRecall = execution.environmentRecall ++
                   [⟨execution.observeEnvironment app, command⟩] := by
-                obtain ⟨raw, _, rfl⟩ := FinDist.support_map .. ▸ moved
+                obtain ⟨raw, _, rfl⟩ := PMF.support_map .. ▸ moved
                 rfl
               have noTraffic := app.trafficStep_environment execution next command moved remaining
               have sameInputs := app.environmentStep_inputs execution next command moved
@@ -193,12 +193,12 @@ private theorem traffic_transition
                     refine ⟨execution.environmentRecall.map EnvironmentEntry.beforeView, ?_⟩
                     rw [recorded, List.map_append]
                     congr 1
-                    simp only [Execution.environmentStep, FinDist.map_comp] at moved
-                    obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ moved
+                    simp only [Execution.environmentStep, PMF.map_comp] at moved
+                    obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ moved
                     rfl
 
 private theorem traffic_invariant
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ∀ {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state),
       app.trafficAudit initial horizon scheduler trace = app.stateTraffic state ∧
         app.trafficReady state
@@ -211,7 +211,7 @@ private theorem traffic_invariant
 /-- The history audit factors through the actual final state at every legal
 prefix, including a response with no subsequent service operation. -/
 theorem trafficAudit_eq_stateTraffic
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state) :
     app.trafficAudit initial horizon scheduler trace = app.stateTraffic state :=
   (app.traffic_invariant initial horizon scheduler trace).1
@@ -219,7 +219,7 @@ theorem trafficAudit_eq_stateTraffic
 /-- Every input of an actual execution has exactly its corresponding audit
 record. This includes rebroadcasts, with their original multiplicity and order. -/
 theorem stateTraffic_inputs
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state) :
     (app.stateTraffic state).map TrafficRecord.input =
       state.elim [] (fun control => control.execution.network.inputs) := by
@@ -229,7 +229,7 @@ theorem stateTraffic_inputs
 /-- Actual transmissions append their records to the state readout as well as
 to the history readout. No obedience or eventual settlement is required. -/
 theorem stateTraffic_transition
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (history : (app.protocol initial horizon scheduler).History)
     (joint : Principal → Option app.Action) (next : app.ProtocolState)
     (reached : next ∈ (app.transition initial horizon scheduler history.state joint).support) :
@@ -251,7 +251,7 @@ namespace ResponseMenu
 variable {app} (menu : app.ResponseMenu)
 
 theorem trafficAudit_eq_stateTraffic
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (history : (menu.protocol initial horizon scheduler).History) :
     menu.trafficAudit initial horizon scheduler history = app.stateTraffic history.state :=
   app.trafficAudit_eq_stateTraffic initial horizon scheduler _

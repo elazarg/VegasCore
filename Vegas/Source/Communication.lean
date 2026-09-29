@@ -58,7 +58,7 @@ theorem evidenceValid_step (setup : Setup (Player := Player) (L := L))
   cases before with
   | none => exact known.elim
   | some current =>
-      obtain ⟨target, realized, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨target, realized, rfl⟩ := PMF.support_map .. ▸ reached
       exact SourceProgram.ProtocolState.evidenceHolds_step setup.program current target joint
         realized fact known
 
@@ -70,7 +70,7 @@ theorem disclosedEvidence_sound (setup : Setup (Player := Player) (L := L))
   cases before with
   | none => exact False.elim (List.not_mem_nil member)
   | some current =>
-      obtain ⟨target, realized, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨target, realized, rfl⟩ := PMF.support_map .. ▸ reached
       exact SourceProgram.ProtocolState.disclosedEvidence_sound setup.program current target joint
         realized fact member
 

@@ -56,12 +56,12 @@ private theorem watched_final_depth (bit guess : Bool)
 retained policies, beliefs, and full initialized history/net-payoff law. -/
 theorem ordinary_equilibrium_extends (table : PayoffTable)
     (source : restrictedModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor restricted_decisionRecall.antichain
+    (equilibrium : source.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain
       (fun who site => source.continuationContext site
         (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :
     ∃ target : watchedModel.BehavioralAssessment,
-      target.IsSequentialEquilibriumFor watched_decisionRecall.antichain
+      target.IsSequentialEquilibriumFor watched_decisionRecall.decisionInformationAntichain
         (fun who site => target.continuationContext site
           (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1 - watchedDepth who site)) ∧
@@ -80,7 +80,7 @@ theorem ordinary_equilibrium_extends (table : PayoffTable)
         (2 * nativeHorizon + 1)).support, watchedArena.terminal history.state := by
   classical
   apply ordinaryRestriction.sequential_equilibrium_extends_of_comparator
-    restricted_decisionRecall.antichain
+    restricted_decisionRecall.decisionInformationAntichain
     (watchedMenu.uniformAssessment nativeInitialLaw nativeHorizon nativeScheduler)
     (watchedMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
     watched_decisionRecall (2 * nativeHorizon + 1)
@@ -116,7 +116,7 @@ theorem restricted_raw_equilibrium_extends (table : PayoffTable)
     {Observation : Type} (observe : nativeApp.ProtocolState → Observation)
     (observationInvariant : ∀ state, observe (normalization.state state) = observe state)
     (source : restrictedModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor restricted_decisionRecall.antichain
+    (equilibrium : source.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain
       (fun who site => source.continuationContext site
         (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :
@@ -138,7 +138,7 @@ theorem restricted_raw_equilibrium_extends (table : PayoffTable)
     (Enforcement.stateUtility table) (Enforcement.stateUtility_normalization table)
     (Enforcement.stateUtility_watcher table watcherZero) watched watchedSE
   refine ⟨raw, rawSE, ?_⟩
-  rw [jointLaw, ← executionLaw, FinDist.map_comp]
+  rw [jointLaw, ← executionLaw, PMF.map_comp]
   rfl
 
 end Vegas.Examples.MonitoredGuessing.Restricted

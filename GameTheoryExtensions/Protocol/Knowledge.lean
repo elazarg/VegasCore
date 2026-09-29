@@ -30,10 +30,10 @@ theorem Knows.mono {who : Player} {info : M.InfoState who} {first second : E.His
 theorem Knows.belief_map_eq_pure {who : Player} {info : M.InfoState who}
     {Value : Type*} (read : E.History → Value) (value : Value)
     (known : M.Knows who info (fun history => read history = value))
-    (belief : FinDist (M.InformationHistory who info)) :
-    belief.map (fun history => read history.1) = FinDist.pure value := by
+    (belief : PMF (M.InformationHistory who info)) :
+    belief.map (fun history => read history.1) = PMF.pure value := by
   calc
-    _ = belief.map (fun _ => value) := FinDist.map_congr_of_eq_on_support
+    _ = belief.map (fun _ => value) := map_congr_on_support _
       (fun history _ => known history)
     _ = _ := FinDist.map_const _ _
 

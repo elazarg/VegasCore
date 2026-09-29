@@ -92,9 +92,9 @@ theorem resolutionBlockContinuation_includeLatest_law
       outputEq codeEq viewNode secondReady secondTimely action secondRemembered
       secondInvariant (execution.native.pool.nextSerial owner)
   have block : runtime.resolutionBlockContinuation owner event payload binding checks outputEq
-      execution action = FinDist.pure (runtime.application.afterSubmit second owner packet) := by
+      execution action = PMF.pure (runtime.application.afterSubmit second owner packet) := by
     simp only [resolutionBlockContinuation, runtime.application.playerStep_private_eq,
-      FinDist.pure_bind]
+      PMF.pure_bind]
     rw [submission, runtime.application.playerStep_submit_eq]
   have inclusion := runtime.serviceStep_includeLatest_afterSubmit_native players wire
     second event owner packet
@@ -111,23 +111,23 @@ theorem resolutionBlockContinuation_includeLatest_law
     serialFresh handled
   have projected := congrArg (fun law => law.map
     (fun native : runtime.application.State => native.application.config)) inclusion
-  simp only [FinDist.map_comp, Function.comp_def, FinDist.map_pure] at projected
-  rw [block, FinDist.pure_bind, projected]
+  simp only [PMF.map_comp, Function.comp_def, PMF.pure_map] at projected
+  rw [block, PMF.pure_bind, projected]
   have resolvedInitial : EventCode.resolveOutput? binding checks
       (cast (congrArg EventField.Action outputEq) action)
       execution.native.application.config.store = some result := by
     simpa [second, first] using resolved
   have graphLaw := execution.native.application.config.step_eq_map_of_code event ready
     outputEq (.resolve owner payload binding checks) codeEq
-    (cast (congrArg EventField.Action outputEq) action) (FinDist.pure result)
+    (cast (congrArg EventField.Action outputEq) action) (PMF.pure result)
   rw [EventCode.resolve_eval?, resolvedInitial] at graphLaw
   specialize graphLaw (by rfl)
-  simp only [cast_cast, cast_eq, FinDist.map_pure] at graphLaw
+  simp only [cast_cast, cast_eq, PMF.pure_map] at graphLaw
   have firstConfig : first.native.application.config =
       execution.native.application.config := by simp [first]
   have secondConfig : second.native.application.config =
       execution.native.application.config := by simpa [second] using firstConfig
-  change FinDist.pure (second.native.application.config.complete event secondReady action
+  change PMF.pure (second.native.application.config.complete event secondReady action
       (cast (congrArg EventField.Value outputEq.symm) result)) = _
   have complete_congr {left right : graph.Config} (same : left = right)
       (leftReady : left.cut.Ready event) (rightReady : right.cut.Ready event)
@@ -181,10 +181,10 @@ theorem runServicePlan_compiled_resolve_includeLatest
   rw [runtime.runServicePlan_compiled_resolve_block owner policy players wire execution
     event owner payload binding checks outputEq codeEq viewNode playersOwner grant ready actor
     stage notSubmitted emptyCache]
-  rw [FinDist.bind_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.bind_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro action _
-  simpa only [runServicePlan, FinDist.bind_pure] using
+  simpa only [runServicePlan, PMF.bind_pure] using
     runtime.resolutionBlockContinuation_includeLatest_law players wire owner event payload
       binding checks outputEq codeEq viewNode execution action ready timely invariant actor
       emptyCache serialFresh

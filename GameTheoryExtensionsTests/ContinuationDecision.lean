@@ -22,7 +22,7 @@ open GameTheory.DecisionExperiment.Protocol
 
 variable {State Signal Action : Type} [Nonempty Action]
 
-def decision (prior : FinDist State) (observe : State → Signal)
+def decision (prior : PMF State) (observe : State → Signal)
     (site : (model (Action := Action) prior observe).InformationSite ())
     (utility : State → Action → ℝ) :
     (model prior observe).ContinuationDecision
@@ -32,26 +32,26 @@ def decision (prior : FinDist State) (observe : State → Signal)
   state history := latent prior history.1.state
   response profile := response prior observe (profile ()) (siteSignal prior observe site)
   reward := utility
-  policy action := policy prior observe (fun _ => FinDist.pure action)
+  policy action := policy prior observe (fun _ => PMF.pure action)
   history_value profile history := by
     obtain ⟨state, supported, same, observed⟩ := history_at_site prior observe site history
     have signalEq := Option.some.inj (observed.trans (site_signal prior observe site))
-    have law := congrArg (fun law => law.expect (payoff utility))
+    have law := congrArg (fun law => expect law (payoff utility))
       (run_decision prior observe profile state supported)
     rw [same]
-    change _ = (response prior observe (profile ()) (siteSignal prior observe site)).expect
+    change _ = expect (response prior observe (profile ()) (siteSignal prior observe site))
       (utility state)
-    simpa only [FinDist.expect_map, signalEq, payoff, latent] using law
+    simpa only [expect_map, signalEq, payoff, latent] using law
   realize profile action := by
     simp only [Profile.update_same, response_policy]
 
-def biasedBit : FinDist Bool :=
-  FinDist.mix (1 / 4) (by norm_num) (by norm_num) (FinDist.pure false) (FinDist.pure true)
+def biasedBit : PMF Bool :=
+  mix (1 / 4) (by norm_num) (by norm_num) (PMF.pure false) (PMF.pure true)
 
-theorem biasedBit_full : biasedBit.FullSupport := by
+theorem biasedBit_full : FullSupport biasedBit := by
   intro bit
-  apply FinDist.prob_pos_iff.mp
-  cases bit <;> norm_num [biasedBit, FinDist.prob_mix, FinDist.prob_pure_of_ne]
+  apply pmf_toReal_pos_iff.mp
+  cases bit <;> norm_num [biasedBit, mix_apply_toReal, FinDist.prob_pure_of_ne]
 
 def hiddenSite : (model (Action := Bool) biasedBit (fun _ => ())).InformationSite () :=
   site biasedBit (fun _ => ()) false (biasedBit_full false)
@@ -64,33 +64,32 @@ def hiddenHistory (bit : Bool) :
     (model (Action := Bool) biasedBit (fun _ => ())).InformationHistory () hiddenSite.1 :=
   ⟨decisionHistory biasedBit bit (biasedBit_full bit), rfl⟩
 
-theorem canonical_posterior (original : Unit → FinDist Bool) :
+theorem canonical_posterior (original : Unit → PMF Bool) :
     guess.posterior (assessment biasedBit (fun _ => ()) original) = biasedBit := by
   classical
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro bit
   calc
-    _ = ((assessment biasedBit (fun _ => ()) original).belief () hiddenSite).prob
-        (hiddenHistory bit) := by
+    _ = (((assessment biasedBit (fun _ => ()) original).belief () hiddenSite) (hiddenHistory bit)).toReal := by
       exact FinDist.prob_map_of_injective guess.state
         (information_state_injective biasedBit (fun _ => ()) hiddenSite) _ (hiddenHistory bit)
-    _ = biasedBit.prob bit := by
-      change (((reference biasedBit (fun _ => ())).bayes
+    _ = (biasedBit bit).toReal := by
+      change ((((reference biasedBit (fun _ => ())).bayes
         (reference_mixed biasedBit (fun _ => ()))
-        (antichain biasedBit (fun _ => ()))).belief () hiddenSite).prob (hiddenHistory bit) = _
+        (antichain biasedBit (fun _ => ()))).belief () hiddenSite) (hiddenHistory bit)).toReal = _
       rw [InformationModel.BehavioralAssessment.bayes, InformationModel.bayesBelief_prob,
         information_mass]
       change (model biasedBit (fun _ => ())).historyReachProbability _
         (decisionHistory biasedBit bit (biasedBit_full bit)) /
-          biasedBit.probOf ((fun _ : Bool => ()) ⁻¹'
-            {siteSignal biasedBit (fun _ => ()) hiddenSite}) = _
+          (biasedBit.toOuterMeasure ((fun _ : Bool => ()) ⁻¹'
+            {siteSignal biasedBit (fun _ => ()) hiddenSite})).toReal = _
       rw [reach_decision]
       have all : (fun _ : Bool => ()) ⁻¹' {siteSignal biasedBit (fun _ => ()) hiddenSite} =
           Set.univ := by
         ext state
         simp only [Set.mem_preimage, Set.mem_singleton_iff, Set.mem_univ]
-      have mass : biasedBit.probOf Set.univ = 1 := by
-        rw [← FinDist.expect_indicator_eq_probOf]
+      have mass : (biasedBit.toOuterMeasure Set.univ).toReal = 1 := by
+        rw [← expect_indicator]
         simp
       rw [all, mass, div_one]
 
@@ -103,7 +102,7 @@ theorem posterior_rewards
       guess.expectedReward assessment true = 3 / 4 := by
   simp only [InformationModel.ContinuationDecision.expectedReward, posterior]
   norm_num [guess, decision, reportUtility, biasedBit, FinDist.expect_mix,
-    FinDist.expect_pure]
+    expect_pure]
 
 /-- A response using the minority guess cannot be rational for this fixed
 payoff, even though both latent states have positive probability. -/
@@ -121,15 +120,15 @@ theorem minority_guess_not_rational
 /-- The posterior premise above is attained by consistent assessments of the
 actual protocol. The always-minority strategy is nevertheless not rational. -/
 theorem consistent_minority_not_rational :
-    (assessment biasedBit (fun _ => ()) (fun _ => FinDist.pure false)).IsSequentiallyConsistent
+    (assessment biasedBit (fun _ => ()) (fun _ => PMF.pure false)).IsSequentiallyConsistent
         (antichain biasedBit (fun _ => ())) ∧
       ¬ (assessment biasedBit (fun _ => ())
-        (fun _ => FinDist.pure false)).IsSequentiallyRationalWithin
+        (fun _ => PMF.pure false)).IsSequentiallyRationalWithin
         (fun _ history => payoff (reportUtility id) history.state) 2 := by
   refine ⟨assessment_consistent _ _ _, minority_guess_not_rational _ (canonical_posterior _) ?_⟩
   change false ∈ (response biasedBit (fun _ => ())
-    (policy biasedBit (fun _ => ()) (fun _ => FinDist.pure false)) _).support
+    (policy biasedBit (fun _ => ()) (fun _ => PMF.pure false)) _).support
   rw [response_policy]
-  exact FinDist.mem_support_pure.mpr rfl
+  exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 end GameTheoryExtensionsTests.ContinuationDecision

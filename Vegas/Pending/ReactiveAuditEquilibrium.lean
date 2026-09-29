@@ -29,7 +29,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (bounds : MessageBounds graph) (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-  (initial : FinDist (State graph)) (count : Nat)
+  (initial : PMF (State graph)) (count : Nat)
   (service : (runtime.reactiveApplication leaks).Scheduler)
   (retained : (runtime.reactiveApplication leaks).ResponseMenu)
   (included : retained.IncludedIn (bounds.menu runtime leaks))
@@ -45,7 +45,7 @@ theorem audited_raw_sequential_equilibrium
     {Evidence : Type}
     (project : (runtime.reactiveApplication leaks).TrafficRecord → Evidence)
     (attribution : Evidence → Player) (permitted : Evidence → Bool)
-    (sample : List Evidence → FinDist (List Evidence))
+    (sample : List Evidence → PMF (List Evidence))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (conforming : ∀ (history : (retained.protocol initial count service).History) record,
       record ∈ (runtime.reactiveApplication leaks).stateTraffic history.state →
@@ -76,7 +76,7 @@ theorem audited_raw_sequential_equilibrium
     (sufficient : ∀ who, upper who - probability who * deposit who ≤ lower who)
     (coverage : ∀ who actual record, record ∈ actual →
       attribution record = who → permitted record = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     {Observation : Type}
     (observe : (runtime.reactiveApplication leaks).ProtocolState → Observation)
     (observationInvariant : ∀ state,
@@ -141,11 +141,11 @@ theorem audited_raw_sequential_equilibrium
       (extra : action ∉ Set.range (restriction.choice who site.1))
       (history : (retained.information initial count service).InformationHistory who site.1) :
       probability who ≤
-        ((((((bounds.menu runtime leaks).information initial count service).runBehavioralFrom
+        (((((((bounds.menu runtime leaks).information initial count service).runBehavioralFrom
         (Profile.update profile who ((profile who).commit (restriction.site who site).1 action))
         (2 * count + 1 - depth who (restriction.site who site))
         (restriction.history history.1)).map (fun final => app.stateTraffic final.state)).bind
-          audit).map (fun verdict => verdict who)).prob true := by
+          audit).map (fun verdict => verdict who)) true).toReal := by
     have within : depth who (restriction.site who site) < 2 * count + 1 := by
       obtain ⟨reference, running, _action⟩ := site.2
       have sameDepth := sourceClock who site reference
@@ -181,7 +181,7 @@ theorem audited_raw_sequential_equilibrium
       sourceRemaining
   have targetFull := (effectiveTarget.sequentialEquilibrium_remaining_iff
     ((bounds.menu runtime leaks).information initial count service)
-    (effective.decisionRecall initial count service).antichain (2 * count + 1)
+    (effective.decisionRecall initial count service).decisionInformationAntichain (2 * count + 1)
     (effective.bounded initial count service) depth clock
     (fun who final => utility final.state who)).mp targetRemaining
   obtain ⟨target, _strategy, targetSE, _beliefs, stateLaw⟩ :=
@@ -200,13 +200,13 @@ theorem audited_raw_sequential_equilibrium
   · simpa only [utilityInvariant] using targetSE
   · have rawJoint := congrArg (fun law => law.bind fun state =>
         (settle state).map (fun payoffs => (observe state, payoffs))) stateLaw
-    simp only [FinDist.bind_map, settlementInvariant, observationInvariant] at rawJoint
+    simp only [PMF.bind_map, settlementInvariant, observationInvariant] at rawJoint
     rw [rawJoint]
     have projected := congrArg (fun law => law.map fun result =>
       (observe result.1.state, result.2)) joint
     have sameState (history : (retained.protocol initial count service).History) :
         (restriction.history history).state = history.state := rfl
-    simpa only [FinDist.map_comp, FinDist.map_bind, Function.comp_def, sameState,
+    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def, sameState,
       settle, TerminalAudit.settlement] using projected.symm
 
 

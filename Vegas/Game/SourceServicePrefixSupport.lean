@@ -99,14 +99,14 @@ theorem run_sourceService_prefix_support
       intro Γ openNames program profile source refs embedding refsBefore offset aligned bound
         execution boundary final reached
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan] at reached
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       refine ⟨ProtocolState.entry program source, ?_, Γ, openNames, program, profile,
         source, refs, embedding, refsBefore, ?_, ?_, id, rfl, ?_, ?_, ?_, ?_, ?_⟩
       · cases program <;> exact ⟨source, rfl, rfl, rfl, boundary.toSourceCheckpoint⟩
       · simpa only [Nat.add_zero] using aligned
       · exact fun admitted => admitted
       · refine ⟨fun state => ?_, fun state joint => ?_, Function.injective_id⟩ <;>
-          simp only [id_eq, FinDist.map_id]
+          simp only [id_eq, PMF.map_id]
       · intro more store history
         simp only [Nat.zero_add, Option.map_id, id_eq]
       · exact fun effective => effective
@@ -163,7 +163,7 @@ theorem run_sourceService_prefix_support
               List.flatMap_cons, List.flatMap_map]
             rfl
           rw [planEq, (runtime setup).runInteractionPlan_append] at reached
-          obtain ⟨middle, first, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+          obtain ⟨middle, first, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           obtain ⟨value, _, nextBoundary⟩ := boundary.sample_block bounds players lawful network
             event atRank name payload distribution outputEq codeEq node chance
               (fun ref => refsBefore ref index) decoded middle first
@@ -191,9 +191,9 @@ theorem run_sourceService_prefix_support
           · refine ⟨fun tailState => ?_, fun tailState joint => ?_,
               Sum.inr_injective.comp stepEq.2.2⟩
             · rw [Function.comp_apply, ProtocolState.behavioralStateStep_sample_tail, stepEq.1,
-                FinDist.map_comp]
+                PMF.map_comp]
             · change (ProtocolState.step _ (lift tailState) joint).map Sum.inr = _
-              rw [stepEq.2.1, FinDist.map_comp]
+              rw [stepEq.2.1, PMF.map_comp]
           · intro more store history
             rw [show count + 1 + more = (count + more) + 1 by omega,
               decodeSourcePrefix?_sample]
@@ -253,7 +253,7 @@ theorem run_sourceService_prefix_support
               List.flatMap_cons, List.flatMap_map]
             rfl
           rw [planEq, (runtime setup).runInteractionPlan_append] at reached
-          obtain ⟨middle, first, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+          obtain ⟨middle, first, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           obtain ⟨value, _, nextBoundary⟩ := boundary.binding_block bounds values players lawful
             network event atRank name owner payload guard outputEq codeEq node owned
               (fun ref => refsBefore ref index) decoded
@@ -283,9 +283,9 @@ theorem run_sourceService_prefix_support
           · refine ⟨fun tailState => ?_, fun tailState joint => ?_,
               Sum.inr_injective.comp stepEq.2.2⟩
             · rw [Function.comp_apply, ProtocolState.behavioralStateStep_commit_tail, stepEq.1,
-                FinDist.map_comp]
+                PMF.map_comp]
             · change (ProtocolState.step _ (lift tailState) joint).map Sum.inr = _
-              rw [stepEq.2.1, FinDist.map_comp]
+              rw [stepEq.2.1, PMF.map_comp]
           · intro more store history
             rw [show count + 1 + more = (count + more) + 1 by omega,
               decodeSourcePrefix?_commit]
@@ -348,7 +348,7 @@ theorem run_sourceService_prefix_support
               List.flatMap_cons, List.flatMap_map]
             rfl
           rw [planEq, (runtime setup).runInteractionPlan_append] at reached
-          obtain ⟨middle, first, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+          obtain ⟨middle, first, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           obtain ⟨disclose, _, nextBoundary⟩ := boundary.reveal_block bounds players lawful network
             event atRank published selected outputEq codeEq node owned
               (fun ref => refsBefore ref index) decoded middle first
@@ -377,9 +377,9 @@ theorem run_sourceService_prefix_support
           · refine ⟨fun tailState => ?_, fun tailState joint => ?_,
               Sum.inr_injective.comp stepEq.2.2⟩
             · rw [Function.comp_apply, ProtocolState.behavioralStateStep_reveal_tail, stepEq.1,
-                FinDist.map_comp]
+                PMF.map_comp]
             · change (ProtocolState.step _ (lift tailState) joint).map Sum.inr = _
-              rw [stepEq.2.1, FinDist.map_comp]
+              rw [stepEq.2.1, PMF.map_comp]
           · intro more store history
             rw [show count + 1 + more = (count + more) + 1 by omega,
               decodeSourcePrefix?_reveal]
@@ -457,7 +457,7 @@ theorem initialized_sourceService_prefix_support
               ∀ who, (remainingProfile who).SupportsEffectiveChoices remaining
                 (CommitmentInterface.values remaining) current.registry current.revelations) ∧
           ServiceBoundary setup leaks rosters initial current refs count final := by
-  rw [initialLaw, FinDist.bind_map, FinDist.support_bind] at reached
+  rw [initialLaw, PMF.bind_map, PMF.support_bind] at reached
   obtain ⟨initial, initialSupport, continued⟩ := Set.mem_iUnion₂.mp reached
   obtain ⟨state, related, Γ, names, remaining, remainingProfile, current, refs,
       embedding, refsBefore, aligned, admitted, lift, stateEq, stepEq, decodeEq,

@@ -20,7 +20,7 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 variable (runtime : EventGraphRuntime graph)
-variable (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+variable (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
 variable (players : Player → runtime.application.PlayerPolicy)
 variable (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
 
@@ -39,10 +39,10 @@ theorem EpochBoundary.after_epoch
     EpochBoundary runtime inputs roster reactionRounds players wire order after := by
   obtain ⟨input, inputMem, count, beforeMem⟩ := boundary
   refine ⟨input, inputMem, count + 1, ?_⟩
-  rw [runtime.runService_add, FinDist.support_bind]
+  rw [runtime.runService_add, PMF.support_bind]
   simp only [Set.mem_iUnion]
   refine ⟨before, beforeMem, ?_⟩
-  simpa only [runService, FinDist.bind_pure] using member
+  simpa only [runService, PMF.bind_pure] using member
 
 /-- A boundary or a supported prefix of an actual selected epoch. The
 remaining epoch count is immaterial to prefix invariants. -/
@@ -68,7 +68,7 @@ theorem ServicePosition.boundary_of_empty {control : ServiceControl runtime}
   · have planEq : epochPlan chosen roster reactionRounds = executed := by
       simpa only [empty, List.append_nil] using plan
     apply boundary.after_epoch runtime inputs roster reactionRounds players wire order
-    simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion]
+    simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion]
     exact ⟨chosen, chosenMem, by simpa only [planEq] using run⟩
 
 theorem ServiceReachable.position {control : ServiceControl runtime}
@@ -95,9 +95,9 @@ theorem ServiceReachable.position {control : ServiceControl runtime}
             chosenMem, ?_, ?_⟩
           · rw [splitPlan, planEq, tailEq, List.append_assoc]
             rfl
-          · rw [runtime.runServicePlan_append, FinDist.support_bind]
+          · rw [runtime.runServicePlan_append, PMF.support_bind]
             simp only [Set.mem_iUnion]
             refine ⟨before.execution, prefixMem, ?_⟩
-            simpa only [runServicePlan, FinDist.bind_pure] using member
+            simpa only [runServicePlan, PMF.bind_pure] using member
 
 end Vegas.EventGraphRuntime

@@ -21,13 +21,13 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 private theorem hazard_tendsto_final {slots : Nat} (last : Fin slots)
     (final : last.val + 1 = slots) {probability : Nat → ℝ} {limit : ℝ}
     (probabilityConverges : Filter.Tendsto probability Filter.atTop (nhds limit))
-    {timing : Nat → FinDist (Fin slots)}
-    (timingConverges : FinDistConvergesPointwise timing (FinDist.pure last))
+    {timing : Nat → PMF (Fin slots)}
+    (timingConverges : PMFConvergesPointwise timing (PMF.pure last))
     (slot : Fin slots) :
-    Filter.Tendsto (fun n => FinDist.deferredHazard (probability n) (timing n) slot.val)
+    Filter.Tendsto (fun n => PMF.deferredHazard (probability n) (timing n) slot.val)
       Filter.atTop (nhds (if slot = last then limit else 0)) := by
-  have prefixLimit := FinDist.timingPrefix_tendsto timingConverges slot.val
-  have zero : (FinDist.pure last).timingPrefix slot.val = 0 := by
+  have prefixLimit := PMF.timingPrefix_tendsto timingConverges slot.val
+  have zero : (PMF.pure last).timingPrefix slot.val = 0 := by
     apply Finset.sum_eq_zero
     intro earlier _
     by_cases before : earlier.val < slot.val
@@ -43,8 +43,8 @@ private theorem hazard_tendsto_final {slots : Nat} (last : Fin slots)
   have denominator := one.sub (probabilityConverges.mul prefixLimit)
   have numerator := probabilityConverges.mul (timingConverges slot)
   have quotient := numerator.div denominator (by norm_num : (1 : ℝ) - limit * 0 ≠ 0)
-  simpa only [FinDist.deferredHazard_at, FinDist.deferredSurvival,
-    FinDist.prob_pure_eq_ite, mul_ite, mul_zero, mul_one, sub_zero, div_one,
+  simpa only [PMF.deferredHazard_at, PMF.deferredSurvival,
+    toReal_pure_apply, mul_ite, mul_zero, mul_one, sub_zero, div_one,
     Pi.div_def] using quotient
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
@@ -81,26 +81,26 @@ theorem roster_owner_mixture_limit
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support)
     (sample : Finset (MessageId Player))
-    (choice : Nat → FinDist Bool) (choiceFull : ∀ n, (choice n).FullSupport)
-    (limit : FinDist Bool) (choiceConverges : FinDistConvergesPointwise choice limit)
-    (timing : Nat → FinDist (Fin ((rosters event).count owner)))
-    (timingFull : ∀ n, (timing n).FullSupport)
+    (choice : Nat → PMF Bool) (choiceFull : ∀ n, FullSupport (choice n))
+    (limit : PMF Bool) (choiceConverges : PMFConvergesPointwise choice limit)
+    (timing : Nat → PMF (Fin ((rosters event).count owner)))
+    (timingFull : ∀ n, FullSupport (timing n))
     (last : Fin ((rosters event).count owner)) (final : last.val + 1 = (rosters event).count owner)
-    (timingConverges : FinDistConvergesPointwise timing (FinDist.pure last)) :
+    (timingConverges : PMFConvergesPointwise timing (PMF.pure last)) :
     let app := application setup leaks
     let activated := current.sampledActivation app owner sample
     let past := activated.recall owner
     let view := activated.observe app owner
     let opening := (runtime setup).windowOpening leaks event candidate raw
-    FinDistConvergesPointwise (fun n =>
+    PMFConvergesPointwise (fun n =>
       ((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
         app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-          (fun _ _ => FinDist.pure opening) app.replayPolicy)).policy past view))
+          (fun _ _ => PMF.pure opening) app.replayPolicy)).policy past view))
       (if ∃ entry ∈ past.drop (rosterOffset setup rosters owner event), entry.action = opening then
         app.replayPolicy past view
       else if past.length + 1 = rosterOffset setup rosters owner event +
           (rosters event).count owner then
-        limit.bind (fun disclose => if disclose then FinDist.pure opening
+        limit.bind (fun disclose => if disclose then PMF.pure opening
           else app.replayPolicy past view)
       else app.replayPolicy past view) := by
   classical
@@ -110,15 +110,15 @@ theorem roster_owner_mixture_limit
   let past := activated.recall owner
   let view := activated.observe app owner
   let packet := (runtime setup).windowOpening leaks event candidate raw
-  change FinDistConvergesPointwise (fun n =>
+  change PMFConvergesPointwise (fun n =>
     ((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
       app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure packet) app.replayPolicy)).policy past view))
+        (fun _ _ => PMF.pure packet) app.replayPolicy)).policy past view))
     (if ∃ entry ∈ past.drop (rosterOffset setup rosters owner event), entry.action = packet then
       app.replayPolicy past view
     else if past.length + 1 = rosterOffset setup rosters owner event +
         (rosters event).count owner then
-      limit.bind (fun disclose => if disclose then FinDist.pure packet
+      limit.bind (fun disclose => if disclose then PMF.pure packet
         else app.replayPolicy past view)
     else app.replayPolicy past view)
   obtain ⟨selected, frame, earlier, recorded, posterior⟩ :=
@@ -128,9 +128,9 @@ theorem roster_owner_mixture_limit
   have counts : past.length = rosterOffset setup rosters owner event + visits.count owner :=
     frame.count
   have full n := rosterSelection_fullSupport (choice n) (timing n) (choiceFull n) (timingFull n)
-  have small n : (choice n).prob true < 1 := by
-    have positive := FinDist.prob_pos_iff.mpr (choiceFull n false)
-    have total := (choice n).sum_prob
+  have small n : ((choice n) true).toReal < 1 := by
+    have positive := pmf_toReal_pos_iff.mpr (choiceFull n false)
+    have total := pmf_sum_toReal_eq_one (choice n)
     simp only [Fintype.sum_bool] at total
     linarith
   cases selected with
@@ -141,13 +141,13 @@ theorem roster_owner_mixture_limit
       have stopped n :
           ((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
             app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-              (fun _ _ => FinDist.pure packet) app.replayPolicy)).policy past view) =
+              (fun _ _ => PMF.pure packet) app.replayPolicy)).policy past view) =
                 app.replayPolicy past view := by
         have fixed : ((app.policyMixture (rosterSelection (choice n) (timing n))
             (fun selected => app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-              (fun _ _ => FinDist.pure packet) app.replayPolicy)).posterior past) =
-                FinDist.pure (some slot) := posterior _ (full n)
-        rw [app.policyMixture_policy, fixed, FinDist.pure_bind]
+              (fun _ _ => PMF.pure packet) app.replayPolicy)).posterior past) =
+                PMF.pure (some slot) := posterior _ (full n)
+        rw [app.policyMixture_policy, fixed, PMF.pure_bind]
         unfold ReactiveApplication.scheduledPolicy
         apply ite_eq_right
         simp only [Option.map_some]
@@ -166,20 +166,20 @@ theorem roster_owner_mixture_limit
       let slot : Fin ((rosters event).count owner) := ⟨visits.count owner, inside⟩
       have atSlot : past.length = rosterOffset setup rosters owner event + slot.val := counts
       have probabilities n action :
-          (((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
+          ((((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
             app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-              (fun _ _ => FinDist.pure packet) app.replayPolicy)).policy past view)).prob action =
-            FinDist.deferredHazard ((choice n).prob true) (timing n) slot.val *
-                (FinDist.pure packet).prob action +
-              (1 - FinDist.deferredHazard ((choice n).prob true) (timing n) slot.val) *
-                (app.replayPolicy past view).prob action := by
+              (fun _ _ => PMF.pure packet) app.replayPolicy)).policy past view)) action).toReal =
+            PMF.deferredHazard (((choice n) true).toReal) (timing n) slot.val *
+                ((PMF.pure packet) action).toReal +
+              (1 - PMF.deferredHazard (((choice n) true).toReal) (timing n) slot.val) *
+                ((app.replayPolicy past view) action).toReal := by
         have representation :=
-          FinDist.bind_bool_mix (choice n) ((timing n).map some) (FinDist.pure none)
+          PMF.bind_bool_mix (choice n) ((timing n).map some) (PMF.pure none)
         change rosterSelection (choice n) (timing n) = _ at representation
         have exactPost := posterior _ (full n)
         simp only [representation] at exactPost ⊢
-        exact app.scheduledMixture_probability_of_posterior ((choice n).prob true)
-          ((choice n).prob_nonneg true) (small n) (timing n)
+        exact app.scheduledMixture_probability_of_posterior (((choice n) true).toReal)
+          (ENNReal.toReal_nonneg) (small n) (timing n)
           (rosterOffset setup rosters owner event) packet app.replayPolicy past slot atSlot
           exactPost view action
       have lastIff : slot = last ↔ past.length + 1 =
@@ -195,13 +195,13 @@ theorem roster_owner_mixture_limit
       intro action
       have one : Filter.Tendsto (fun _ : Nat => (1 : ℝ)) Filter.atTop (nhds 1) :=
         tendsto_const_nhds
-      have combined := (hazard.mul_const ((FinDist.pure packet).prob action)).add
-        ((one.sub hazard).mul_const ((app.replayPolicy past view).prob action))
+      have combined := (hazard.mul_const (((PMF.pure packet) action).toReal)).add
+        ((one.sub hazard).mul_const (((app.replayPolicy past view) action).toReal))
       have actual := combined.congr' (Filter.Eventually.of_forall
         (fun n => (probabilities n action).symm))
       by_cases finalSlot : slot = last
-      · rw [ite_eq_left (lastIff.mp finalSlot), FinDist.bind_bool_mix]
-        simpa only [finalSlot, ↓reduceIte, FinDist.prob_mix] using actual
+      · rw [ite_eq_left (lastIff.mp finalSlot), PMF.bind_bool_mix]
+        simpa only [finalSlot, ↓reduceIte, mix_apply_toReal] using actual
       · rw [ite_eq_right (fun same => finalSlot (lastIff.mpr same))]
         simpa only [finalSlot, ↓reduceIte, zero_mul, sub_zero, one_mul, zero_add] using actual
 
@@ -227,7 +227,7 @@ theorem rosterLimitPolicy_at_phase
       else if past.length + 1 = rosterOffset setup rosters owner event +
           (rosters event).count owner then
         (sourceChoiceLaw setup leaks profile owner (initial.observe app owner)).bind
-          (fun disclose => if disclose then FinDist.pure packet else app.replayPolicy past view)
+          (fun disclose => if disclose then PMF.pure packet else app.replayPolicy past view)
       else app.replayPolicy past view := by
   have grant :
       (current.observe (application setup leaks) owner).application.publicView.serviceGrant =
@@ -270,19 +270,19 @@ theorem roster_owner_policy_limit
       (visits.map ServiceInstruction.player) initial).support)
     (sample : Finset (MessageId Player))
     (profiles : Nat → BehavioralProfile setup.program) (source : BehavioralProfile setup.program)
-    (choiceFull : ∀ n, (sourceChoiceLaw setup leaks (profiles n) owner
-      (initial.observe (application setup leaks) owner)).FullSupport)
-    (choiceConverges : FinDistConvergesPointwise
+    (choiceFull : ∀ n, FullSupport (sourceChoiceLaw setup leaks (profiles n) owner
+      (initial.observe (application setup leaks) owner)))
+    (choiceConverges : PMFConvergesPointwise
       (fun n => sourceChoiceLaw setup leaks (profiles n) owner
         (initial.observe (application setup leaks) owner))
       (sourceChoiceLaw setup leaks source owner (initial.observe (application setup leaks) owner)))
     (timing : Nat → TimingLaw setup rosters)
-    (timingFull : ∀ n, (timing n event owner ownedEvent).FullSupport)
+    (timingFull : ∀ n, FullSupport (timing n event owner ownedEvent))
     (last : Fin ((rosters event).count owner)) (final : last.val + 1 = (rosters event).count owner)
-    (timingConverges : FinDistConvergesPointwise
-      (fun n => timing n event owner ownedEvent) (FinDist.pure last)) :
+    (timingConverges : PMFConvergesPointwise
+      (fun n => timing n event owner ownedEvent) (PMF.pure last)) :
     let activated := current.sampledActivation (application setup leaks) owner sample
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => rosterPolicy setup leaks rosters (timing n) (profiles n) owner
         (activated.recall owner) (activated.observe (application setup leaks) owner))
       (rosterLimitPolicy setup leaks rosters source owner
@@ -308,6 +308,6 @@ theorem roster_owner_policy_limit
   have same := rosterPolicy_at_phase setup leaks rosters (timing n) (profiles n)
     initial activated event owner granted ownedEvent candidate raw opening unchanged owner
   simpa only [EventGraphRuntime.openingWindowMixturePlayers, Function.update_self] using
-    congrArg (fun (law : FinDist app.Action) => law.prob action) same
+    congrArg (fun (law : PMF app.Action) => (law action).toReal) same
 
 end Vegas

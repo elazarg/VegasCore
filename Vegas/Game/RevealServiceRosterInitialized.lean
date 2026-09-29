@@ -45,8 +45,8 @@ theorem roster_plan_sourceReadout_law [Finite Player]
       (setup.run profile).map some := by
   let := Fintype.ofFinite Player
   simp_rw [sourceReadout_eq_decode]
-  rw [initialLaw, FinDist.bind_map, FinDist.map_bind, Setup.run, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [initialLaw, PMF.bind_map, PMF.map_bind, Setup.run, PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial supported
   exact run_roster_source_suffix_option_law setup leaks rosters timing network profile initial
     setup.program reveals profile (setup.initialConfig initial)
@@ -84,7 +84,7 @@ theorem roster_restrict_complete_state
     (rosterPlan setup rosters).length (Nat.le_refl _)
   rw [List.take_length] at plan
   rw [← plan]
-  simp only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, FinDist.map_bind]
+  simp only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
   rfl
 
 /-- Every finite fully mixed native approximant has exactly the original
@@ -101,7 +101,7 @@ theorem rosterPerturbedProfile_readout_law
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport) :
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned)) :
     (((rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network)).runBehavioral
@@ -118,7 +118,7 @@ theorem rosterPerturbedProfile_readout_law
     (rosterPolicy_admissible setup leaks bounds rosters network reveals openable admission
       source mixed timing timingFull)
   have observed := congrArg (fun law => law.map (sourceReadout setup leaks)) represented
-  simp only [FinDist.map_comp, Function.comp_def] at observed
+  simp only [PMF.map_comp, Function.comp_def] at observed
   exact observed.trans ((roster_plan_sourceReadout_law setup leaks rosters timing network
     reveals openable (setup.decodeBehavioralProfile admission source.strategy)).trans
       (setup.runBehavioralFrom_readout admission source.strategy

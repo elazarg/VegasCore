@@ -32,14 +32,14 @@ theorem sourceService_state_posterior
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rank : Nat) (who : Player)
-    (executions : FinDist (application setup leaks).Execution)
+    (executions : PMF (application setup leaks).Execution)
     (checkpoints : ∀ execution ∈ executions.support, ∃ state,
       SourcePrefixCheckpoint setup setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program)) []
         (Revelations.initial setup.context) (outputRef setup.program) 0 rank state
           execution.application.config)
-    (prior : FinDist setup.ProtocolState)
-    (channel : setup.ProtocolView who → FinDist
+    (prior : PMF setup.ProtocolState)
+    (channel : setup.ProtocolView who → PMF
       (List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView))
     (factor : executions.map (fun execution =>
         (sourceServicePrefix? setup rank execution.application.config,
@@ -48,11 +48,11 @@ theorem sourceService_state_posterior
         fun input => (state, input)))
     (reference : (application setup leaks).Execution)
     (referenceSupport : reference ∈ executions.support) :
-    (executions.condOnFibre (fun execution =>
+    (fiberConditional executions (fun execution =>
         (execution.recall who, execution.observe (application setup leaks) who))
       (reference.recall who, reference.observe (application setup leaks) who)).map
         (fun execution => sourceServicePrefix? setup rank execution.application.config) =
-      prior.condOnFibre (setup.protocolObserve who)
+      fiberConditional prior (setup.protocolObserve who)
         (setup.protocolObserve who
           (sourceServicePrefix? setup rank reference.application.config)) := by
   let read := fun execution : (application setup leaks).Execution =>
@@ -62,14 +62,14 @@ theorem sourceService_state_posterior
   have referencePair : (read reference, info reference) ∈
       (prior.bind fun state => (channel (setup.protocolObserve who state)).map
         fun input => (state, input)).support := by
-    rw [← factor, FinDist.support_map]
+    rw [← factor, PMF.support_map]
     exact ⟨reference, referenceSupport, rfl⟩
   have present : ∃ state ∈ prior.support,
       setup.protocolObserve who state = setup.protocolObserve who (read reference) ∧
       info reference ∈ (channel (setup.protocolObserve who (read reference))).support := by
     obtain ⟨state, supported, member⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ referencePair)
-    obtain ⟨input, possible, equal⟩ := FinDist.support_map .. ▸ member
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ referencePair)
+    obtain ⟨input, possible, equal⟩ := PMF.support_map .. ▸ member
     have stateEq := (Prod.mk.inj equal).1
     have inputEq := (Prod.mk.inj equal).2
     refine ⟨state, supported, congrArg (setup.protocolObserve who) stateEq, ?_⟩
@@ -80,11 +80,11 @@ theorem sourceService_state_posterior
     have member : (state, info reference) ∈
         (prior.bind fun state => (channel (setup.protocolObserve who state)).map
           fun input => (state, input)).support := by
-      rw [FinDist.support_bind]
+      rw [PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨state, supported, ?_⟩
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨info reference, possible, rfl⟩
-    rw [← factor, FinDist.support_map] at member
+    rw [← factor, PMF.support_map] at member
     obtain ⟨actual, actualSupport, equal⟩ := member
     obtain ⟨actualState, actualCheckpoint⟩ := checkpoints actual actualSupport
     obtain ⟨referenceState, referenceCheckpoint⟩ := checkpoints reference referenceSupport
@@ -104,18 +104,18 @@ theorem sourceService_state_posterior
       exact congrArg some views
     have stateEq : read actual = state := (Prod.mk.inj equal).1
     exact (congrArg (setup.protocolObserve who) stateEq).symm.trans projected
-  have posterior := FinDist.conditional_observation_kernel_recovered prior
+  have posterior := PMF.conditional_observation_kernel_recovered prior
     (setup.protocolObserve who) channel (setup.protocolObserve who (read reference))
     (info reference) present recovers
   have observed : info reference ∈
       (executions.map (Prod.snd ∘ fun execution => (read execution, info execution))).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨reference, referenceSupport, rfl⟩
-  have mapped := FinDist.map_conditional_readout executions
+  have mapped := PMF.map_conditional_readout executions
     (fun execution => (read execution, info execution)) Prod.snd (info reference) observed
   rw [factor] at mapped
-  have retained := congrArg (FinDist.map Prod.fst) mapped
-  simp only [FinDist.map_comp, Function.comp_def] at retained
+  have retained := congrArg (PMF.map Prod.fst) mapped
+  simp only [PMF.map_comp, Function.comp_def] at retained
   exact retained.trans posterior
 
 end Vegas

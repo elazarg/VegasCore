@@ -94,14 +94,14 @@ theorem native_binding_reserved_local (who : Player) (left right : (serviceApp o
     (nativeBindingEvent who)
     (left.execution.respond (serviceApp observation) who response)
   rw [pureStep] at leftMem
-  have firstEq := FinDist.mem_support_pure.mp leftMem
+  have firstEq := (PMF.mem_support_pure_iff _ _).mp leftMem
   subst afterLeft
-  rw [pureStep, FinDist.map_pure] at law
+  rw [pureStep, PMF.pure_map] at law
   have mapped : afterRight.application.playerView who ∈
-      (FinDist.pure (next.application.playerView who)).support := by
-    rw [law, FinDist.support_map]
+      (PMF.pure (next.application.playerView who)).support := by
+    rw [law, PMF.support_map]
     exact ⟨afterRight, rightMem, rfl⟩
-  have same := (FinDist.mem_support_pure.mp mapped).symm
+  have same := ((PMF.mem_support_pure_iff _ _).mp mapped).symm
   have binding := congrArg (fun view : PlayerView nativeGraph =>
     (nativeBindingRef who).get? view.observation.store) same
   change (nativeBindingRef who).get? (nativeGraph.playerStore who next.application.config.store) =

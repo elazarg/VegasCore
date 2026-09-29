@@ -126,17 +126,15 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
       (⟨some (.submit submission)⟩ : (application setup leaks).Action) ∉
         ordinaryActions setup leaks bounds owner (control.execution.recall owner)
           (control.execution.observe (application setup leaks) owner) →
-      probability ≤ (leaks watcher
+      probability ≤ ((leaks watcher
         (control.execution.respond (application setup leaks) owner
-          ⟨some (.submit submission)⟩).network.pending).probOf
-            {selected | (owner, control.execution.network.nextSerial owner) ∈ selected})
+          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
     (fuel : Nat) (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
-    probability ≤ ((watchedInformation setup leaks bounds watcher).runBehavioralFrom
+    probability ≤ (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
       (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
         profile owner ((profile owner).commit
           ((ordinaryRestriction setup leaks bounds watcher).site owner site).1 action))
-      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).probOf
-        {final | departureAtState setup leaks owner final.state} := by
+      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).toOuterMeasure {final | departureAtState setup leaks owner final.state}).toReal := by
   classical
   let restriction := ordinaryRestriction setup leaks bounds watcher
   have active := InformationModel.InformationSite.active
@@ -206,10 +204,9 @@ theorem ordinary_extra_comparison (watcher owner : Player) (different : owner �
       (⟨some (.submit submission)⟩ : (application setup leaks).Action) ∉
         ordinaryActions setup leaks bounds owner (control.execution.recall owner)
           (control.execution.observe (application setup leaks) owner) →
-      probability ≤ (leaks watcher
+      probability ≤ ((leaks watcher
         (control.execution.respond (application setup leaks) owner
-          ⟨some (.submit submission)⟩).network.pending).probOf
-            {selected | (owner, control.execution.network.nextSerial owner) ∈ selected})
+          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (nonnegative : 0 ≤ deposit owner) (lower upper : ℝ)
     (above : ∀ final : ((watchedMenu setup leaks bounds watcher).protocol (initialLaw setup)
@@ -222,14 +219,14 @@ theorem ordinary_extra_comparison (watcher owner : Player) (different : owner �
     (fuel : Nat) (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel)
     (clean : ∀ final ∈ ((information setup leaks bounds watcher).runBehavioralFrom
       legalProfile fuel history.1).support, ¬ departureAtState setup leaks owner final.state) :
-    ((watchedInformation setup leaks bounds watcher).runBehavioralFrom
+    expect ((watchedInformation setup leaks bounds watcher).runBehavioralFrom
       (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
         targetProfile owner ((targetProfile owner).commit
           ((ordinaryRestriction setup leaks bounds watcher).site owner site).1 action))
-      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).expect
+      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1))
         (fun final => netUtility setup leaks watcher base deposit final.state owner) ≤
-      ((information setup leaks bounds watcher).runBehavioralFrom
-        legalProfile fuel history.1).expect
+      expect ((information setup leaks bounds watcher).runBehavioralFrom
+        legalProfile fuel history.1)
         (fun final => netUtility setup leaks watcher base deposit final.state owner) := by
   let targetLaw := (watchedInformation setup leaks bounds watcher).runBehavioralFrom
     (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
@@ -245,17 +242,17 @@ theorem ordinary_extra_comparison (watcher owner : Player) (different : owner �
     nonnegative (targetLaw.map History.state) (legalLaw.map History.state) lower upper probability
     (by
       intro final supported
-      obtain ⟨reached, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨reached, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact above reached)
     (by
       intro final supported
-      obtain ⟨reached, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨reached, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact below reached)
     (by
       intro final supported
-      obtain ⟨reached, member, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨reached, member, rfl⟩ := PMF.support_map .. ▸ supported
       exact clean reached member)
     (by rw [FinDist.probOf_map]; exact collected) sufficient
-  simpa only [FinDist.expect_map] using compared
+  simpa only [expect_map] using compared
 
 end Vegas

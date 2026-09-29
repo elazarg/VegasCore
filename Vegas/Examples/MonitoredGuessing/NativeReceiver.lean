@@ -13,14 +13,14 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
 theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralSignature)
-    (guesses : FinDist Bool) (deposit : ℝ)
+    (guesses : PMF Bool) (deposit : ℝ)
     (alicePolicy : profile alice = nativeAliceBehavior)
     (atQuiet : profile bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1)
     (bit : Bool) :
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-        (quietBobHistory bit).state).expect (nativeUtility deposit bob) =
-      guesses.expect (fun guess => correctness (.success bit) (guessResult guess)) := by
+        (quietBobHistory bit).state) (nativeUtility deposit bob) =
+      expect guesses (fun guess => correctness (.success bit) (guessResult guess)) := by
   let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile
   have aliceEq : players alice = nativeAlicePolicy := by
     change nativeApp.decodePolicy (nativeMenu.embedPolicy nativeInitialLaw nativeHorizon
@@ -32,34 +32,34 @@ theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralS
       .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
     (quietBobHistory bit).state = _ at finishLaw
-  change (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-    (quietBobHistory bit).state).expect _ = _
+  change expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
+    (quietBobHistory bit).state) _ = _
   have decision : players bob ((quietBob bit).recall bob)
       ((quietBob bit).observe nativeApp bob) = guesses.map nativeGuessAction :=
     quiet_guess_policy profile guesses atQuiet bit
   rw [finishLaw, decision]
-  simp only [FinDist.bind_map, FinDist.expect_bind, FinDist.expect_map]
-  apply FinDist.expect_congr
+  simp only [PMF.bind_map, FinDist.expect_bind, expect_map]
+  apply expect_congr_on_support
   intro guess _
-  have value := congrArg (fun law : FinDist (Results × Bool) =>
-    law.expect (fun result => utility result.1 bob))
+  have value := congrArg (fun law : PMF (Results × Bool) =>
+    expect law (fun result => utility result.1 bob))
       (quiet_guess_suffix_summary players aliceEq bit guess)
-  simp only [FinDist.expect_map, FinDist.expect_pure, utility_bob] at value
-  change FinDist.expect _ (fun final => nativeExecutionUtility deposit bob final) = _
+  simp only [expect_map, expect_pure, utility_bob] at value
+  change expect _ (fun final => nativeExecutionUtility deposit bob final) = _
   simp only [nativeExecutionUtility, show bob ≠ alice by decide, false_and,
     ↓reduceIte, sub_zero, utility_bob]
   exact value
 
 theorem fair_correctness (guess : PublicationResult Bool) :
-    (FinDist.uniformOfFintype (α := Bool)).expect
+    expect (PMF.uniformOfFintype (α := Bool))
       (fun bit => correctness (.success bit) guess) = (1 / 2 : ℝ) := by
-  simp only [FinDist.expect_eq_sum, FinDist.prob_uniformOfFintype,
+  simp only [expect_eq_sum, FinDist.prob_uniformOfFintype,
     Fintype.card_bool, Fintype.sum_bool]
   cases guess <;> norm_num [correctness, PublicationResult.isSuccess]
 
 theorem quiet_prescribed_context_value (assessment : nativeModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent nativeAntichain)
-    (guesses : FinDist Bool) (deposit : ℝ)
+    (guesses : PMF Bool) (deposit : ℝ)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (atQuiet : assessment.strategy bob quietBobSite.1 =
@@ -71,6 +71,6 @@ theorem quiet_prescribed_context_value (assessment : nativeModel.BehavioralAsses
   simp only [Profile.update_eq_self]
   simp_rw [quiet_prescribed_finish_value assessment.strategy guesses deposit alicePolicy atQuiet]
   rw [FinDist.expect_comm]
-  simp only [fair_correctness, FinDist.expect_const]
+  simp only [fair_correctness, expect_constant]
 
 end Vegas.Examples.MonitoredGuessing

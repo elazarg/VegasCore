@@ -43,13 +43,13 @@ theorem interactionInstruction_fresh (runtime : EventGraphRuntime graph)
     view.Unpublished (runtime.reactiveApplication leaks) id := by
   cases instruction with
   | wire =>
-      obtain ⟨choice, _, equal⟩ := FinDist.support_map .. ▸ selected
+      obtain ⟨choice, _, equal⟩ := PMF.support_map .. ▸ selected
       exact (runtime.reactiveApplication leaks).atMostOnceCommand_fresh view _ id equal
   | includeLatest event owner =>
       exact runtime.reactiveLatest_fresh leaks event owner view id
-        (FinDist.mem_support_pure.mp selected).symm
+        ((PMF.mem_support_pure_iff _ _).mp selected).symm
   | player who | grant event | sample event | tick | expire event =>
-      cases FinDist.mem_support_pure.mp selected
+      cases (PMF.mem_support_pure_iff _ _).mp selected
 
 theorem interactionScheduler_atMostOnce (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -59,13 +59,13 @@ theorem interactionScheduler_atMostOnce (runtime : EventGraphRuntime graph)
   intro history view id selected
   dsimp only [interactionScheduler] at selected
   split at selected
-  · cases FinDist.mem_support_pure.mp selected
+  · cases (PMF.mem_support_pure_iff _ _).mp selected
   · exact runtime.interactionInstruction_fresh leaks network history view _ id selected
 
 theorem interaction_history_publishedOnce (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (chosen : ServiceOrder graph) (networkTurns : Nat) (network : runtime.NetworkPolicy leaks)
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     {state : (runtime.reactiveApplication leaks).ProtocolState}
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon
       (runtime.interactionScheduler leaks chosen networkTurns network)).Trace state) :

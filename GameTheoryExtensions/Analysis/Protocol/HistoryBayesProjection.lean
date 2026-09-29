@@ -35,8 +35,8 @@ theorem historyReachProbability_projection [Fintype E.History] [DecidableEq T.Hi
         if project original = history then M.historyReachProbability raw original else 0 :=
     by
   classical
-  have law := congrArg (fun law => law.prob history) (laws history.trace.length)
-  rw [FinDist.prob_map, FinDist.expect_eq_sum] at law
+  have law := congrArg (fun law => (law history).toReal) (laws history.trace.length)
+  rw [toReal_map_apply, expect_eq_sum] at law
   rw [historyReachProbability, ← law]
   apply Finset.sum_congr rfl
   intro original _
@@ -74,7 +74,7 @@ theorem informationHistoryReach_projection [DecidableEq T.History]
         · apply le_of_not_gt
           intro positive
           exact absent (reflects original positive (by rw [same]; exact history.2))
-        · exact FinDist.prob_nonneg _ _
+        · exact ENNReal.toReal_nonneg
       simp only [value, same, ite_true, zero]
     · exact ite_eq_right same
   change (∑ original, value original) = ∑ original : M.InformationHistory who rawSite.1,
@@ -122,9 +122,9 @@ theorem bayesBelief_projection
           N.InformationHistory who sourceSite.1)) =
       N.bayesBelief source who sourceSite sourceAntichain sourcePositive := by
   classical
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
-  rw [FinDist.prob_map, FinDist.expect_eq_sum, N.bayesBelief_prob]
+  rw [toReal_map_apply, expect_eq_sum, N.bayesBelief_prob]
   simp_rw [M.bayesBelief_prob]
   rw [← M.informationMass_projection N raw source project lengths laws who rawSite sourceSite
     maps reflects,
@@ -163,7 +163,7 @@ variable {Player : Type} [Fintype Player] {E T : ExecutionProtocol Player}
   (law : (M.runBehavioral raw rawDepth).map project = N.runBehavioral source sourceDepth)
   (maps : ∀ history, M.infoOf who history.trace = rawSite.1 →
     N.infoOf who (project history).trace = sourceSite.1)
-  (reflects : ∀ history, 0 < (M.runBehavioral raw rawDepth).prob history →
+  (reflects : ∀ history, 0 < ((M.runBehavioral raw rawDepth) history).toReal →
     N.infoOf who (project history).trace = sourceSite.1 →
       M.infoOf who history.trace = rawSite.1)
 
@@ -179,20 +179,20 @@ theorem informationHistoryReach_projection_at_depth [DecidableEq T.History]
         if project original.1 = history.1 then M.historyReachProbability raw original.1 else 0 := by
   classical
   let := Fintype.ofFinite E.History
-  have probability := congrArg (fun distribution => distribution.prob history.1) law
-  rw [FinDist.prob_map, FinDist.expect_eq_sum] at probability
+  have probability := congrArg (fun distribution => (distribution history.1).toReal) law
+  rw [toReal_map_apply, expect_eq_sum] at probability
   rw [historyReachProbability, sourceClock history, ← probability]
   let value (original : E.History) :=
-    if project original = history.1 then (M.runBehavioral raw rawDepth).prob original else 0
+    if project original = history.1 then ((M.runBehavioral raw rawDepth) original).toReal else 0
   have outside : ∀ original, M.infoOf who original.trace ≠ rawSite.1 → value original = 0 := by
     intro original absent
     by_cases same : project original = history.1
-    · have zero : (M.runBehavioral raw rawDepth).prob original = 0 := by
+    · have zero : ((M.runBehavioral raw rawDepth) original).toReal = 0 := by
         apply le_antisymm
         · apply le_of_not_gt
           intro positive
           exact absent (reflects original positive (by rw [same]; exact history.2))
-        · exact FinDist.prob_nonneg _ _
+        · exact ENNReal.toReal_nonneg
       simp only [value, same, ite_true, zero]
     · exact ite_eq_right same
   calc
@@ -251,9 +251,9 @@ theorem bayesBelief_projection_at_depth
           N.InformationHistory who sourceSite.1)) =
       N.bayesBelief source who sourceSite sourceAntichain sourcePositive := by
   classical
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
-  rw [FinDist.prob_map, FinDist.expect_eq_sum, N.bayesBelief_prob]
+  rw [toReal_map_apply, expect_eq_sum, N.bayesBelief_prob]
   simp_rw [M.bayesBelief_prob]
   rw [← M.informationMass_projection_at_depth N raw source project who rawSite sourceSite
     rawDepth sourceDepth rawClock sourceClock law maps reflects,
@@ -298,7 +298,7 @@ theorem bayesBelief_projection_at_depth_of_focal_selector
       N.runBehavioral source sourceDepth)
     (maps : ∀ history, M.infoOf who history.trace = rawSite.1 →
       N.infoOf who (project history).trace = sourceSite.1)
-    (reflects : ∀ history, 0 < (M.runBehavioral selected rawDepth).prob history →
+    (reflects : ∀ history, 0 < ((M.runBehavioral selected rawDepth) history).toReal →
       N.infoOf who (project history).trace = sourceSite.1 →
         M.infoOf who history.trace = rawSite.1)
     (agree : ∀ other, other ≠ who → native other = selected other)

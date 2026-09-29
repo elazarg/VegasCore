@@ -44,11 +44,11 @@ def active : State → Bool → Prop
 def available (unrestricted : Bool) (state : State) (who : Bool) : Set Bool :=
   if state = .start ∧ who = false ∧ unrestricted = false then {false} else Set.univ
 
-def transition (state : State) (joint : Bool → Option Bool) : FinDist State :=
+def transition (state : State) (joint : Bool → Option Bool) : PMF State :=
   match state with
-  | .start => FinDist.pure (if (joint false).getD false then .response else .done none)
-  | .response => FinDist.pure (.done (some ((joint true).getD false)))
-  | .done answer => FinDist.pure (.done answer)
+  | .start => PMF.pure (if (joint false).getD false then .response else .done none)
+  | .response => PMF.pure (.done (some ((joint true).getD false)))
+  | .done answer => PMF.pure (.done answer)
 
 @[reducible] def arena (unrestricted : Bool) : ExecutionProtocol Bool where
   State := State
@@ -95,17 +95,17 @@ theorem response_legal (unrestricted answer : Bool) :
 
 def stayHistory (unrestricted : Bool) : (arena unrestricted).History :=
   (arena unrestricted).initHistory.extend (stay_legal unrestricted)
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def responseHistory (unrestricted : Bool) (allowed : unrestricted = true) :
     (arena unrestricted).History :=
   (arena unrestricted).initHistory.extend (leave_legal unrestricted allowed)
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def doneHistory (unrestricted : Bool) (allowed : unrestricted = true) (answer : Bool) :
     (arena unrestricted).History :=
   (responseHistory unrestricted allowed).extend (response_legal unrestricted answer)
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem start_joint (unrestricted : Bool) (choices : Bool → Option Bool)
     (legal : (arena unrestricted).Legal .start choices) :
@@ -150,13 +150,13 @@ theorem classified_step (unrestricted : Bool) (history : (arena unrestricted).Hi
   rcases known with rfl | rfl | ⟨allowed, rfl⟩ | ⟨allowed, answer, rfl⟩
   · obtain ⟨answer, rfl, permitted⟩ := start_joint unrestricted choices legal
     cases answer
-    · cases FinDist.mem_support_pure.mp reached
+    · cases (PMF.mem_support_pure_iff _ _).mp reached
       exact Or.inr (Or.inl rfl)
-    · cases FinDist.mem_support_pure.mp reached
+    · cases (PMF.mem_support_pure_iff _ _).mp reached
       exact Or.inr (Or.inr (Or.inl ⟨permitted rfl, rfl⟩))
   · exact (legal.1 trivial).elim
   · obtain ⟨answer, rfl⟩ := response_joint unrestricted choices legal
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     exact Or.inr (Or.inr (Or.inr ⟨allowed, answer, rfl⟩))
   · exact (legal.1 trivial).elim
 
@@ -259,17 +259,17 @@ theorem localStep_state (unrestricted : Bool) (history : (arena unrestricted).Hi
     (choices : ∀ who, (model unrestricted).Choice who
       ((model unrestricted).infoOf who history.trace)) :
     ((model unrestricted).localStep history choices).map History.state =
-      if terminal history.state then FinDist.pure history.state else
+      if terminal history.state then PMF.pure history.state else
         transition history.state (fun who => (choices who).1) := by
   classical
   by_cases stopped : terminal history.state
-  · simp only [InformationModel.localStep, stopped, ↓reduceDIte, ↓reduceIte, FinDist.map_pure]
+  · simp only [InformationModel.localStep, stopped, ↓reduceDIte, ↓reduceIte, PMF.pure_map]
   · simp only [InformationModel.localStep, stopped, ↓reduceDIte, ↓reduceIte,
-      FinDist.map_bindOnSupport, FinDist.map_pure, History.extend_state]
+      map_bindOnSupport, PMF.pure_map, History.extend_state]
     calc
-      _ = (transition history.state (fun who => (choices who).1)).bind FinDist.pure :=
-        FinDist.bindOnSupport_eq_bind_of_eq_on_support (fun _ _ => rfl)
-      _ = _ := FinDist.bind_pure _
+      _ = (transition history.state (fun who => (choices who).1)).bind PMF.pure :=
+        bindOnSupport_eq_bind_of_eq_on_support _ (fun _ _ => rfl)
+      _ = _ := PMF.bind_pure _
 
 def restriction : (model false).ActionRestriction (model true) where
   history := historyEmbedding
@@ -290,8 +290,8 @@ def restriction : (model false).ActionRestriction (model true) where
       (signals false).infoOf who history.trace
     rw [info_state, info_state, embedHistory_state]
   step history choices := by
-    apply FinDist.map_injective (state_injective true)
-    rw [FinDist.map_comp]
+    apply pmf_map_injective (state_injective true)
+    rw [PMF.map_comp]
     have sameState : History.state ∘ historyEmbedding = History.state :=
       funext embedHistory_state
     rw [sameState, localStep_state, localStep_state]
@@ -361,11 +361,11 @@ instance (unrestricted who : Bool) (info : State) :
   infer_instance
 
 def reference (unrestricted : Bool) : (model unrestricted).BehavioralAssessment :=
-  InformationModel.BehavioralAssessment.ofStrategy fun _ _ => FinDist.uniformOfFintype
+  InformationModel.BehavioralAssessment.ofStrategy fun _ _ => PMF.uniformOfFintype
 
 theorem reference_mixed (unrestricted : Bool) : (reference unrestricted).IsFullyMixed := by
   intro who site choice
-  exact FinDist.mem_support_uniformOfFintype choice
+  exact PMF.mem_support_uniformOfFintype choice
 
 def base (history : (arena true).History) (_ : Bool) : ℝ :=
   if history.state = .done (some true) then 1 else 0
@@ -405,9 +405,9 @@ theorem localStep_leave (choices : ∀ who, (model true).Choice who
     ((model true).infoOf who (arena true).initHistory.trace))
     (leaves : (choices false).1 = some true) :
     (model true).localStep (arena true).initHistory choices =
-      FinDist.pure (responseHistory true rfl) := by
-  apply FinDist.map_injective (state_injective true)
-  rw [localStep_state, FinDist.map_pure]
+      PMF.pure (responseHistory true rfl) := by
+  apply pmf_map_injective (state_injective true)
+  rw [localStep_state, PMF.pure_map]
   simp [terminal, transition, leaves, responseHistory, joint]
 
 theorem run_root_leave (profile : ∀ who, (model true).BehavioralPolicy who)
@@ -415,52 +415,52 @@ theorem run_root_leave (profile : ∀ who, (model true).BehavioralPolicy who)
     (model true).runBehavioralFrom
         (Profile.update (sig := (model true).behavioralSignature) profile false
           ((profile false).commit .start action)) 1 (arena true).initHistory =
-      FinDist.pure (responseHistory true rfl) := by
+      PMF.pure (responseHistory true rfl) := by
   let played := Profile.update (sig := (model true).behavioralSignature) profile false
     ((profile false).commit .start action)
   rw [(model true).runBehavioralFrom_succ_localStep]
-  change ((FinDist.pi fun who => played who .start).bind
-    ((model true).localStep (arena true).initHistory)).bind FinDist.pure = _
-  rw [FinDist.bind_pure]
+  change ((independentProduct fun who => played who .start).bind
+    ((model true).localStep (arena true).initHistory)).bind PMF.pure = _
+  rw [PMF.bind_pure]
   calc
-    _ = (FinDist.pi fun who => played who .start).bind
-        (fun _ => FinDist.pure (responseHistory true rfl)) := by
-      apply FinDist.bind_congr
+    _ = (independentProduct fun who => played who .start).bind
+        (fun _ => PMF.pure (responseHistory true rfl)) := by
+      apply bind_congr_on_support _
       intro choices supported
       have own := FinDist.mem_support_pi.mp supported false
       simp only [played, Profile.update_same, InformationModel.BehavioralPolicy.commit_self] at own
-      have selected : choices false = action := FinDist.mem_support_pure.mp own
+      have selected : choices false = action := (PMF.mem_support_pure_iff _ _).mp own
       exact localStep_leave choices (selected ▸ leaves)
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 theorem response_charge (profile : ∀ who, (model true).BehavioralPolicy who) :
-    ((model true).runBehavioralFrom profile 1 (responseHistory true rfl)).expect
+    expect ((model true).runBehavioralFrom profile 1 (responseHistory true rfl))
       (fun history => charge history false) = 1 := by
   rw [(model true).runBehavioralFrom_succ_localStep]
   simp only [InformationModel.runBehavioralFrom, runRandomizedFor_zero,
-    FinDist.expect_bind, FinDist.expect_pure]
+    FinDist.expect_bind, expect_pure]
   calc
-    _ = (FinDist.pi fun who => profile who
-        ((model true).infoOf who (responseHistory true rfl).trace)).expect (fun _ => 1) := by
-      apply FinDist.expect_congr
+    _ = expect (independentProduct fun who => profile who
+        ((model true).infoOf who (responseHistory true rfl).trace)) (fun _ => 1) := by
+      apply expect_congr_on_support
       intro choices _
       let cost : State → ℝ := fun state => match state with
         | .response | .done (some _) => 1
         | _ => 0
-      change ((model true).localStep (responseHistory true rfl) choices).expect
+      change expect ((model true).localStep (responseHistory true rfl) choices)
         (fun history => cost history.state) = 1
-      rw [← FinDist.expect_map, localStep_state]
-      simp [responseHistory, terminal, transition, cost, joint, FinDist.expect_pure]
-    _ = _ := FinDist.expect_const _ _
+      rw [← expect_map, localStep_state]
+      simp [responseHistory, terminal, transition, cost, joint, expect_pure]
+    _ = _ := expect_constant _ _
 
 theorem leave_collection (profile : ∀ who, (model true).BehavioralPolicy who)
     (action : (model true).Choice false .start) (leaves : action.1 = some true) :
-    ((model true).runBehavioralFrom
+    expect ((model true).runBehavioralFrom
       (Profile.update (sig := (model true).behavioralSignature) profile false
-        ((profile false).commit .start action)) 2 (arena true).initHistory).expect
+        ((profile false).commit .start action)) 2 (arena true).initHistory)
         (fun history => charge history false) = 1 := by
   rw [show (2 : Nat) = 1 + 1 from rfl, (model true).runBehavioralFrom_add,
-    run_root_leave profile action leaves, FinDist.pure_bind]
+    run_root_leave profile action leaves, PMF.pure_bind]
   exact response_charge _
 
 theorem collection (profile : ∀ who, (model true).BehavioralPolicy who) (who : Bool)
@@ -468,11 +468,11 @@ theorem collection (profile : ∀ who, (model true).BehavioralPolicy who) (who :
     (action : (model true).Choice who (restriction.site who site).1)
     (forbidden : action ∉ Set.range (restriction.choice who site.1))
     (history : (model false).InformationHistory who site.1) :
-    (1 : ℝ) ≤ ((model true).runBehavioralFrom
+    (1 : ℝ) ≤ expect ((model true).runBehavioralFrom
       (Profile.update (sig := (model true).behavioralSignature) profile who
         ((profile who).commit (restriction.site who site).1 action))
       (2 - siteDepth true who (restriction.site who site))
-      (restriction.history history.1)).expect (fun final => charge final who) := by
+      (restriction.history history.1)) (fun final => charge final who) := by
   obtain ⟨rfl, atRoot⟩ := source_site who site
   rcases site with ⟨info, site⟩
   dsimp only at atRoot
@@ -495,15 +495,15 @@ theorem collection (profile : ∀ who, (model true).BehavioralPolicy who) (who :
       · apply Subtype.ext
         exact chosen.symm
     · exact chosen
-  change (1 : ℝ) ≤ ((model true).runBehavioralFrom
+  change (1 : ℝ) ≤ expect ((model true).runBehavioralFrom
     (Profile.update (sig := (model true).behavioralSignature) profile false
-      ((profile false).commit .start action)) 2 (embedHistory history.1)).expect _
+      ((profile false).commit .start action)) 2 (embedHistory history.1)) _
   rw [initial, show embedHistory (arena false).initHistory = (arena true).initHistory by rfl,
     leave_collection profile action leaves]
 
 theorem source_initialized (profile : ∀ who, (model false).BehavioralPolicy who) :
-    (model false).runBehavioral profile 2 = FinDist.pure (stayHistory false) := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+    (model false).runBehavioral profile 2 = PMF.pure (stayHistory false) := by
+  apply pmf_eq_pure_of_support_subset_singleton
   intro final supported
   have stopped := (model false).runBehavioralFrom_terminal_of_bound profile (bounded false)
     (arena false).initHistory final supported
@@ -537,10 +537,10 @@ theorem every_source_equilibrium_preserved (deposit : ℝ) (large : 1 ≤ deposi
           (fun history => base history who - charge history who * deposit)
           (2 - siteDepth true who site)) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
-      (model true).runBehavioral target.strategy 2 = FinDist.pure (stayHistory true) ∧
+      (model true).runBehavioral target.strategy 2 = PMF.pure (stayHistory true) ∧
       ((model true).runBehavioral target.strategy 2).map (fun history =>
         (history.state, fun who => base history who - charge history who * deposit)) =
-          FinDist.pure (.done none, fun _ : Bool => (0 : ℝ)) := by
+          PMF.pure (.done none, fun _ : Bool => (0 : ℝ)) := by
   obtain ⟨target, equilibrium, agrees, _, law, _, _⟩ :=
     restriction.sequential_equilibrium_extends
       ((model false).decisionInformationAntichain_of_perfectRecall (perfectRecall false))
@@ -552,11 +552,11 @@ theorem every_source_equilibrium_preserved (deposit : ℝ) (large : 1 ≤ deposi
       (fun history _ => by unfold base; split <;> norm_num)
       (fun _ => by linarith) collection source sourceEquilibrium
   have initialized : (model true).runBehavioral target.strategy 2 =
-      FinDist.pure (stayHistory true) := by
-    rw [source_initialized, FinDist.map_pure] at law
+      PMF.pure (stayHistory true) := by
+    rw [source_initialized, PMF.pure_map] at law
     exact law.symm
   refine ⟨target, equilibrium, agrees, initialized, ?_⟩
-  rw [initialized, FinDist.map_pure]
+  rw [initialized, PMF.pure_map]
   congr 1
   apply Prod.ext
   · rfl
@@ -572,7 +572,7 @@ theorem deposit_one_implements :
         (fun who site => target.continuationContext site
           (fun history => base history who - charge history who)
           (2 - siteDepth true who site)) ∧
-      (model true).runBehavioral target.strategy 2 = FinDist.pure (stayHistory true) := by
+      (model true).runBehavioral target.strategy 2 = PMF.pure (stayHistory true) := by
   obtain ⟨source, sourceEquilibrium⟩ := exists_source_equilibrium
   obtain ⟨target, equilibrium, _, initialized, _⟩ :=
     every_source_equilibrium_preserved 1 le_rfl source sourceEquilibrium

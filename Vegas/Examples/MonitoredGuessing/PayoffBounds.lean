@@ -25,7 +25,7 @@ theorem settlement_continuation_bound (settlement : Results → ℝ) (upper char
     (bounded : ∀ result, settlement result ≤ upper) (nonnegative : 0 ≤ charge)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph))
     (execution : nativeApp.Execution) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
       (monitoredSettlement settlement charge) ≤
         upper - if rejectedAlice execution.receipts then charge else 0 := by
   apply FinDist.expect_le_of_forall
@@ -44,18 +44,18 @@ theorem submission_settlement_bound (settlement : Results → ℝ) (upper charge
     (bounded : ∀ result, settlement result ≤ upper) (nonnegative : 0 ≤ charge)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).bind
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan)).expect
+    expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
+      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (monitoredSettlement settlement charge) ≤ upper - charge / 2 := by
   rw [FinDist.expect_bind]
   apply le_trans (FinDist.expect_mono (fun execution _ =>
     settlement_continuation_bound settlement upper charge bounded nonnegative players plan
       execution))
-  rw [← FinDist.expect_map (fun execution : nativeApp.Execution =>
+  rw [← expect_map (fun execution : nativeApp.Execution =>
     rejectedAlice execution.receipts) (monitoredPrefixLaw bit (submissionAction submission))
       (fun alarm : Bool => upper - if alarm then charge else 0)]
   rw [submission_monitoring_law, FinDist.expect_mix]
-  simp only [FinDist.expect_pure, ↓reduceIte, Bool.false_eq_true]
+  simp only [expect_pure, ↓reduceIte, Bool.false_eq_true]
   ring_nf
   exact le_rfl
 
@@ -67,8 +67,8 @@ theorem submission_deterred_by_range (settlement : Results → ℝ) (lower upper
     (sufficient : 2 * (upper - lower) ≤ charge)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).bind
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan)).expect
+    expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
+      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (monitoredSettlement settlement charge) ≤ lower := by
   apply (submission_settlement_bound settlement upper charge bounded nonnegative bit
     submission players plan).trans

@@ -135,7 +135,7 @@ theorem resolve_response_coupling
           runtime.firstSubmission leaks (original.recall owner) response = true) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.invoke players owner original ∧
       coupling.map Prod.snd = strategy.resume owner players (some owner) repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -176,7 +176,7 @@ theorem resolve_response_coupling
           law.map (fun response => (response, updated response)) := by
     rw [implementation_respond runtime leaks owner reference (players owner) memory
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
-    apply FinDist.map_congr_of_eq_on_support
+    apply map_congr_on_support _
     intro response supported
     rw [unchanged response supported]
     simp only [updated, record, app, frame.observed]
@@ -186,8 +186,8 @@ theorem resolve_response_coupling
           law.map (fun response => (response, updated response)) := by
     change ((implementation runtime leaks owner reference (players owner)).respond memory
       (repaired.recall owner, repaired.observe app owner)).map _ = _
-    rw [responseLaw, FinDist.map_comp]
-    apply FinDist.map_congr_of_eq_on_support
+    rw [responseLaw, PMF.map_comp]
+    apply map_congr_on_support _
     intro response supported
     simp only [Function.comp_def]
     have member : response ∈ menu.actions owner (repaired.recall owner)
@@ -196,16 +196,16 @@ theorem resolve_response_coupling
   let coupling := law.map fun response =>
     (original.respond app owner response, repaired.respond app owner response, updated response)
   refine ⟨coupling, ?_, ?_, ?_⟩
-  · simp only [coupling, FinDist.map_comp]
+  · simp only [coupling, PMF.map_comp]
     rfl
-  · simp only [coupling, FinDist.map_comp, ReactiveApplication.Implementation.resume, ↓reduceIte]
+  · simp only [coupling, PMF.map_comp, ReactiveApplication.Implementation.resume, ↓reduceIte]
     change law.map _ =
       ((retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner)).map _
-    rw [legalLaw, FinDist.map_comp]
+    rw [legalLaw, PMF.map_comp]
     rfl
   · intro next supported
-    obtain ⟨response, member, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, member, rfl⟩ := PMF.support_map .. ▸ supported
     refine ⟨?_, ?_⟩
     · rcases clean response member with replay | ⟨value, stored, resolved, same, _⟩
       · apply frame.transport_response response

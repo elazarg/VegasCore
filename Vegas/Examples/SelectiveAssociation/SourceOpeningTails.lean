@@ -33,7 +33,7 @@ theorem carol_opening_results {Claim : Type} (players : Player → (application 
       (OpensAt players 4 → second = true) ∧ (OpensAt players 5 → third = true) := by
   rw [runInstructions_append] at supported
   obtain ⟨middle, middleMem, finalMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨second, middleCore, secondOpens⟩ := opening_visit_core players 4 execution middle
     (by rw [core]; rfl) (by decide) (CorePath.openedCarol a c b first)
     (by intro unused disclose; rw [core, CorePath.aliceOpening_advance])
@@ -49,7 +49,7 @@ theorem finish_response_law {Claim : Type} (players : Player → (application Cl
     (active : control.actor = some (eventOwner event))
     (remaining : control.remaining = (afterResponse event).length)
     (position : control.execution.environmentRecall.length = (beforeResponse event).length + 1) :
-    (application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
+    (application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
         (some control) =
       ((players (eventOwner event) (control.execution.recall (eventOwner event))
         (control.execution.observe (application Claim) (eventOwner event))).bind
@@ -57,9 +57,9 @@ theorem finish_response_law {Claim : Type} (players : Player → (application Cl
             (control.execution.respond (application Claim) (eventOwner event) response))).map
               (application Claim).finished := by
   simp only [ReactiveApplication.finish, active, ReactiveApplication.resume,
-    ReactiveApplication.invoke, FinDist.bind_map, remaining]
+    ReactiveApplication.invoke, PMF.bind_map, remaining]
   congr 1
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro response _
   apply segment_rounds players (beforeResponse event ++ [.player (eventOwner event)])
     (afterResponse event) []

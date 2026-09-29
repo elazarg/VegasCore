@@ -27,38 +27,38 @@ private theorem statePrefix_readout
     (program : SourceProgram Player L Γ names)
     (profile : BehavioralProfile program) (source : Config Player L Γ) :
     ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[eventCount program]
-      (FinDist.pure (ProtocolState.entry program source))).map (ProtocolState.readout program) =
+      (PMF.pure (ProtocolState.entry program source))).map (ProtocolState.readout program) =
         (runFrom program profile source).map some := by
   induction program with
   | ret payoffs =>
       simp only [eventCount, Function.iterate_zero_apply, ProtocolState.entry,
-        ProtocolState.readout, runFrom, runWith, FinDist.map_pure]
+        ProtocolState.readout, runFrom, runWith, PMF.pure_map]
   | sample name fresh distribution next ih =>
       have law := ProtocolState.behavioralStatePrefix_sample profile source (eventCount next)
-      have mapped := congrArg (FinDist.map (ProtocolState.readout _)) law
-      simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+      have mapped := congrArg (PMF.map (ProtocolState.readout _)) law
+      simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
         ProtocolState.readout, Sum.elim_inr] at mapped
       refine mapped.trans ?_
-      rw [runFrom_sample, FinDist.map_bind]
-      exact FinDist.bind_congr fun value _ => ih (afterSample profile)
+      rw [runFrom_sample, PMF.map_bind]
+      exact bind_congr_on_support _ fun value _ => ih (afterSample profile)
         (sampleSuccessor name source value)
   | commit name owner fresh guard next ih =>
       have law := ProtocolState.behavioralStatePrefix_commit profile source (eventCount next)
-      have mapped := congrArg (FinDist.map (ProtocolState.readout _)) law
-      simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+      have mapped := congrArg (PMF.map (ProtocolState.readout _)) law
+      simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
         ProtocolState.readout, Sum.elim_inr] at mapped
       refine mapped.trans ?_
-      rw [runFrom_commit, FinDist.map_bind]
-      exact FinDist.bind_congr fun value _ => ih (afterCommit profile)
+      rw [runFrom_commit, PMF.map_bind]
+      exact bind_congr_on_support _ fun value _ => ih (afterCommit profile)
         (commitSuccessor name guard source value)
   | reveal published owner name fresh binding unresolved next ih =>
       have law := ProtocolState.behavioralStatePrefix_reveal profile source (eventCount next)
-      have mapped := congrArg (FinDist.map (ProtocolState.readout _)) law
-      simp only [FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+      have mapped := congrArg (PMF.map (ProtocolState.readout _)) law
+      simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
         ProtocolState.readout, Sum.elim_inr] at mapped
       refine mapped.trans ?_
-      rw [runFrom_reveal, FinDist.map_bind]
-      exact FinDist.bind_congr fun disclose _ => ih (afterReveal profile)
+      rw [runFrom_reveal, PMF.map_bind]
+      exact bind_congr_on_support _ fun disclose _ => ih (afterReveal profile)
         (revealSuccessor published binding source disclose)
 
 /-- One source step followed by the source continuation is the source
@@ -73,10 +73,10 @@ theorem sourceStep_continuation
   classical
   unfold ProtocolState.behavioralStateStep
   split
-  · exact FinDist.pure_bind _ _
+  · exact PMF.pure_bind _ _
   · rename_i running
     exact ProtocolState.continuationLaw_behavioral_step program profile state running
-      (FinDist.pi fun who => (profile who).protocolAction program
+      (independentProduct fun who => (profile who).protocolAction program
         (ProtocolState.observe who program state)) (fun who => FinDist.map_apply_pi who _)
 
 private theorem liftedPrefix_continuation
@@ -88,20 +88,20 @@ private theorem liftedPrefix_continuation
       (ProtocolState.behavioralStateStep program profile state).map lift)
     (source : Config Player L Δ) (count : Nat) :
     ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count]
-      (FinDist.pure (ProtocolState.entry program source))).bind
+      (PMF.pure (ProtocolState.entry program source))).bind
         (fun state => ProtocolState.continuationLaw whole wholeProfile (lift state)) =
       ProtocolState.continuationLaw whole wholeProfile
         (lift (ProtocolState.entry program source)) := by
   induction count with
-  | zero => simp only [Function.iterate_zero_apply, FinDist.pure_bind]
+  | zero => simp only [Function.iterate_zero_apply, PMF.pure_bind]
   | succ count ih =>
-      rw [Function.iterate_succ_apply', FinDist.bind_bind]
+      rw [Function.iterate_succ_apply', PMF.bind_bind]
       trans ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count]
-        (FinDist.pure (ProtocolState.entry program source))).bind
+        (PMF.pure (ProtocolState.entry program source))).bind
           (fun state => ProtocolState.continuationLaw whole wholeProfile (lift state))
-      · apply FinDist.bind_congr
+      · apply bind_congr_on_support _
         intro state _
-        rw [← FinDist.bind_map, ← commutes]
+        rw [← PMF.bind_map, ← commutes]
         exact sourceStep_continuation whole wholeProfile (lift state)
       · exact ih
 
@@ -174,20 +174,20 @@ theorem sourceServiceTimedPolicy_suffix_state_law
               (setup.eventGraph.fromModeCompletion .sequential)))) =
       ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[eventCount
         program]
-        (FinDist.pure (ProtocolState.entry program source))).map some := by
+        (PMF.pure (ProtocolState.entry program source))).map some := by
   obtain ⟨noise, law⟩ := sourceServiceTimedPolicy_prefix_joint_factorization setup leaks bounds
     values capacity rosters opportunities timing network wholeProfile covered focal
     (eventCount program) program profile refs embedding refsBefore offset
-    (FinDist.pure ()) (fun _ => source) (fun _ => execution) (fun _ => aligned)
+    (PMF.pure ()) (fun _ => source) (fun _ => execution) (fun _ => aligned)
     (fun _ => checkpoint) (fun _ => supported) (fun _ => effective)
-    (fun _ => FinDist.pure ((runtime setup).bindingTraffic leaks focal execution))
-    (by simp only [FinDist.map_pure, FinDist.pure_bind]) le_rfl
-  have marginal := congrArg (FinDist.map Prod.fst) law
+    (fun _ => PMF.pure ((runtime setup).bindingTraffic leaks focal execution))
+    (by simp only [PMF.pure_map, PMF.pure_bind]) le_rfl
+  have marginal := congrArg (PMF.map Prod.fst) law
   have all : (List.finRange (eventCount program)).take (eventCount program) =
       List.finRange (eventCount program) :=
     List.take_of_length_le (by rw [List.length_finRange])
-  simp only [FinDist.pure_bind, all, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-    FinDist.map_const, FinDist.bind_pure] at marginal
+  simp only [PMF.pure_bind, all, PMF.map_bind, PMF.map_comp, Function.comp_def,
+    FinDist.map_const, PMF.bind_pure] at marginal
   exact marginal
 
 /-- At any supported typed boundary, all remaining actual timed service blocks
@@ -232,9 +232,9 @@ theorem sourceServiceTimedPolicy_suffix_readout_law
   have marginal := sourceServiceTimedPolicy_suffix_state_law setup leaks bounds values capacity
     rosters opportunities timing network wholeProfile covered focal program profile refs embedding
     refsBefore offset source execution aligned checkpoint supported effective
-  have readout := congrArg (FinDist.map fun state => state.bind (ProtocolState.readout program))
+  have readout := congrArg (PMF.map fun state => state.bind (ProtocolState.readout program))
     marginal
-  simp only [FinDist.map_comp, Function.comp_def, Option.bind_some,
+  simp only [PMF.map_comp, Function.comp_def, Option.bind_some,
     decodeSourcePrefix?_terminal_readout] at readout
   exact readout.trans (statePrefix_readout program profile source)
 
@@ -286,7 +286,7 @@ theorem sourceServiceTimedPolicy_continuation_law
     network profile offset within execution uniform
   let sourceLaw := (fun law => law.bind
     (ProtocolState.behavioralStateStep program tailProfile))^[eventCount program]
-      (FinDist.pure (ProtocolState.entry program source))
+      (PMF.pure (ProtocolState.entry program source))
   let physical := (runtime setup).runInteractionPlan leaks players network
     (((List.finRange (graph setup).order.eventCount).drop offset).flatMap
       (rosterBlock setup rosters)) execution
@@ -334,20 +334,20 @@ theorem sourceServiceTimedPolicy_continuation_law
   have marginal : physical.map
       (fun final => sourceServicePrefix? setup (eventCount setup.program)
         final.application.config) = sourceLaw.map (fun state => some (lift state)) := by
-    have mapped := congrArg (FinDist.map (Option.map lift)) residual
-    simpa only [FinDist.map_comp, Function.comp_def, Option.map_some, plans, decoder,
+    have mapped := congrArg (PMF.map (Option.map lift)) residual
+    simpa only [PMF.map_comp, Function.comp_def, Option.map_some, plans, decoder,
       physical, sourceLaw, players] using mapped
   have stopped (current : ProtocolState program) (chosen : current ∈ sourceLaw.support) :
       ProtocolState.terminal setup.program (lift current) := by
     have member : some (lift current) ∈ (physical.map
         (fun final => sourceServicePrefix? setup (eventCount setup.program)
           final.application.config)).support := by
-      rw [marginal, FinDist.support_map]
+      rw [marginal, PMF.support_map]
       exact ⟨current, chosen, rfl⟩
-    obtain ⟨final, _, same⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨final, _, same⟩ := PMF.support_map .. ▸ member
     exact decode_terminal setup.program _ _ _ _ _ _ _ same
-  have readout := congrArg (FinDist.map setup.protocolReadout) marginal
-  simp only [FinDist.map_comp, Function.comp_def, sourceServicePrefix?_terminal_readout]
+  have readout := congrArg (PMF.map setup.protocolReadout) marginal
+  simp only [PMF.map_comp, Function.comp_def, sourceServicePrefix?_terminal_readout]
     at readout
   have conserved := liftedPrefix_continuation setup.program profile program tailProfile lift
     commutes.1 source (eventCount program)
@@ -355,11 +355,11 @@ theorem sourceServiceTimedPolicy_continuation_law
       (lift current)) =
         (ProtocolState.continuationLaw setup.program profile
           (lift (ProtocolState.entry program source))).map some := by
-    rw [← conserved, FinDist.map_bind]
+    rw [← conserved, PMF.map_bind]
     calc
-      _ = sourceLaw.bind (fun current => FinDist.pure
+      _ = sourceLaw.bind (fun current => PMF.pure
           (ProtocolState.readout setup.program (lift current))) := FinDist.map_eq_bind _ _
-      _ = _ := FinDist.bind_congr fun current chosen =>
+      _ = _ := bind_congr_on_support _ fun current chosen =>
         (ProtocolState.continuationLaw_terminal setup.program profile (lift current)
           (stopped current chosen)).symm
   rw [decoded, stateEq]

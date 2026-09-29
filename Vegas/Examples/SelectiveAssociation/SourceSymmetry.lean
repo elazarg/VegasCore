@@ -100,18 +100,18 @@ theorem uniform_flip (Claim : Type) [Fintype Claim] (who : Player)
   let : Nonempty choices :=
     ⟨⟨((menu Claim).nonempty who past view).choose,
       ((menu Claim).nonempty who past view).choose_spec⟩⟩
-  have uniform : (FinDist.uniformOfFintype : FinDist choices).map
-      (responseFlip Claim who past view) = FinDist.uniformOfFintype := by
-    apply FinDist.ext_of_prob
+  have uniform : (PMF.uniformOfFintype choices).map
+      (responseFlip Claim who past view) = PMF.uniformOfFintype := by
+    apply pmf_ext_toReal
     intro action
     obtain ⟨before, rfl⟩ := (responseFlip Claim who past view).surjective action
     rw [FinDist.prob_map_of_injective _ (responseFlip Claim who past view).injective]
     simp only [FinDist.prob_uniformOfFintype]
-  change ((FinDist.uniformOfFintype : FinDist choices).map Subtype.val).map flipResponse = _
-  rw [FinDist.map_comp]
+  change ((PMF.uniformOfFintype choices).map Subtype.val).map flipResponse = _
+  rw [PMF.map_comp]
   calc
-    _ = ((FinDist.uniformOfFintype : FinDist choices).map
-        (responseFlip Claim who past view)).map Subtype.val := by rw [FinDist.map_comp]; rfl
+    _ = ((PMF.uniformOfFintype choices).map
+        (responseFlip Claim who past view)).map Subtype.val := by rw [PMF.map_comp]; rfl
     _ = _ := by rw [uniform]; rfl
 
 theorem flipResponse_playing (Claim : Type) (defaultClaim : Claim)
@@ -120,23 +120,23 @@ theorem flipResponse_playing (Claim : Type) (defaultClaim : Claim)
       playing Claim defaultClaim event (flipBinding binding) := rfl
 
 theorem fairBinding_flip (Claim : Type) (defaultClaim : Claim) (event : Event) :
-    ((FinDist.uniformOfFintype (α := Bool)).map
+    ((PMF.uniformOfFintype (α := Bool)).map
         (fun bit => playing Claim defaultClaim event (.success bit))).map flipResponse =
-      (FinDist.uniformOfFintype (α := Bool)).map
+      (PMF.uniformOfFintype (α := Bool)).map
         (fun bit => playing Claim defaultClaim event (.success bit)) := by
-  have uniform : (FinDist.uniformOfFintype (α := Bool)).map Bool.not =
-      FinDist.uniformOfFintype := by
-    apply FinDist.ext_of_prob
+  have uniform : (PMF.uniformOfFintype (α := Bool)).map Bool.not =
+      PMF.uniformOfFintype := by
+    apply pmf_ext_toReal
     intro bit
     have involutive : Function.Involutive Bool.not := fun bit => Bool.not_not bit
     have same := FinDist.prob_map_of_injective Bool.not involutive.injective
-      (FinDist.uniformOfFintype (α := Bool)) (!bit)
+      (PMF.uniformOfFintype (α := Bool)) (!bit)
     simpa only [Bool.not_not, FinDist.prob_uniformOfFintype] using same
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   calc
-    _ = ((FinDist.uniformOfFintype (α := Bool)).map Bool.not).map
+    _ = ((PMF.uniformOfFintype (α := Bool)).map Bool.not).map
         (fun bit => playing Claim defaultClaim event (.success bit)) := by
-      rw [FinDist.map_comp]
+      rw [PMF.map_comp]
       rfl
     _ = _ := by rw [uniform]
 

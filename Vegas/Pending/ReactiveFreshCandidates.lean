@@ -37,7 +37,7 @@ theorem reactiveFreshInvariant (runtime : EventGraphRuntime graph)
 
 theorem reactive_history_fresh (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     {state} (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
       horizon scheduler).Trace state) :
@@ -45,7 +45,7 @@ theorem reactive_history_fresh (runtime : EventGraphRuntime graph)
   apply (runtime.reactiveFreshInvariant leaks).history (inputs.map State.initial) horizon
     scheduler _ trace
   intro state supported
-  obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ supported
   exact State.initial_freshCandidates input
 
 /-- Allocation uses only the owner's actual view and cannot fail because of

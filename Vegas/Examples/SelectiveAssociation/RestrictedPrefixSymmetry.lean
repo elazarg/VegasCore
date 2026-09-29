@@ -466,7 +466,7 @@ private theorem application_shape (execution : app.Execution)
           [⟨execution.observeEnvironment app, .application command⟩] } := by
   apply Prefix.environmentResult_eq
   simp only [ReactiveApplication.Execution.environmentStep,
-    Prefix.environmentResult_application_law, FinDist.map_pure]
+    Prefix.environmentResult_application_law, PMF.pure_map]
 
 theorem related_application (selected : Handle nativeGraph) (first second : app.Execution)
     (related : Related selected first second) (command : EnvironmentCommand nativeGraph)
@@ -478,11 +478,11 @@ theorem related_application (selected : Handle nativeGraph) (first second : app.
       (app.environment first.application command).map (StoreFlip.state selected) :=
     related.application ▸ commutes
   rw [Prefix.environmentResult_application_law, Prefix.environmentResult_application_law,
-    FinDist.map_pure] at pair
+    PMF.pure_map] at pair
   have sameState : (Prefix.environmentResult second (.application command)).application =
       StoreFlip.state selected
         (Prefix.environmentResult first (.application command)).application :=
-    FinDist.mem_support_pure.mp (pair ▸ FinDist.mem_support_pure.mpr rfl)
+    (PMF.mem_support_pure_iff _ _).mp (pair ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   rw [application_shape first command, application_shape second command]
   refine ⟨sameState, related.network, related.receipts, related.bobRecall, related.carolRecall, ?_⟩
   simpa only [List.length_append, List.length_singleton] using
@@ -519,7 +519,7 @@ theorem related_wait (selected : Handle nativeGraph) (first second : app.Executi
       { execution with environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .wait⟩] } :=
     Prefix.environmentResult_eq execution _ _ (by
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure])
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map])
   rw [shape first, shape second]
   refine ⟨related.application, related.network, related.receipts, related.bobRecall,
     related.carolRecall, ?_⟩
@@ -537,7 +537,7 @@ theorem related_include (selected : Handle nativeGraph) (first second : app.Exec
       { execution.includePending app id with environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .include id⟩] } :=
     Prefix.environmentResult_eq execution _ _ (by
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure])
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map])
   rw [shape first, shape second]
   have included := related_includePending selected first second related id handler
   refine ⟨included.application, included.network, included.receipts, included.bobRecall,

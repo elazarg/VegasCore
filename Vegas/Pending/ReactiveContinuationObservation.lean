@@ -103,7 +103,7 @@ theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
   cases command with
   | executeSample event => exact (maintenance event rfl).elim
   | advanceClock =>
-      simp only [environmentStep, FinDist.map_pure]
+      simp only [environmentStep, PMF.pure_map]
       congr 1
       change { left.playerView who with
         publicView := { left.publicView with clock := left.clock + 1 } } =
@@ -112,7 +112,7 @@ theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
       have clocks : left.clock = right.clock := congrArg PublicView.clock publicEq
       rw [views, publicEq, clocks]
   | grant event =>
-      simp only [environmentStep, FinDist.map_pure]
+      simp only [environmentStep, PMF.pure_map]
       congr 1
       change { left.playerView who with
         publicView := { left.publicView with serviceGrant := some event } } =
@@ -124,9 +124,9 @@ theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
       obtain ⟨b, hb⟩ := (environmentStep runtime right (.expire event)).support_nonempty
       have same := environmentStep_expire_playerView_congr runtime who event left right a b
         publicEq observed remembered candidates ha hb
-      simp only [environmentStep, FinDist.mem_support_pure] at ha hb
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at ha hb
       subst a
       subst b
-      simpa only [environmentStep, FinDist.map_pure] using congrArg FinDist.pure same
+      simpa only [environmentStep, PMF.pure_map] using congrArg PMF.pure same
 
 end Vegas.EventGraphRuntime

@@ -32,7 +32,7 @@ come from the existing wire input; the private sample is not inspected. -/
 def reportNetwork (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (watcher : Player) : runtime.NetworkPolicy leaks := fun _ view =>
-  FinDist.pure <| match view.network.inputs.getLast? with
+  PMF.pure <| match view.network.inputs.getLast? with
     | none => .wait
     | some input =>
         if input.broadcaster = watcher ∧ input.envelope.sender ≠ watcher then
@@ -45,7 +45,7 @@ theorem reportNetwork_instruction (runtime : EventGraphRuntime graph)
     (view : (runtime.reactiveApplication leaks).EnvironmentView) :
     runtime.interactionInstruction leaks (runtime.reportNetwork leaks watcher)
       history view .wire =
-        FinDist.pure ((runtime.reactiveApplication leaks).includeReported watcher view) := by
+        PMF.pure ((runtime.reactiveApplication leaks).includeReported watcher view) := by
   cases latest : view.network.inputs.getLast? with
   | none =>
       simp [interactionInstruction, reportNetwork, ReactiveApplication.includeReported,
@@ -67,10 +67,10 @@ theorem run_report_plan (runtime : EventGraphRuntime graph)
   have active : runtime.interactionStep leaks players (runtime.reportNetwork leaks watcher)
       (.player watcher) execution =
         (runtime.reactiveApplication leaks).dispatch players (.activate watcher) execution := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind]
   rw [runInteractionPlan, active]
   simp only [runInteractionPlan, interactionStep, reportNetwork_instruction,
-    FinDist.pure_bind, FinDist.bind_pure, ReactiveApplication.reportInclusion]
+    PMF.pure_bind, PMF.bind_pure, ReactiveApplication.reportInclusion]
 
 /-- Rejection depends on the current ready event, not merely the author.
 This also covers premature packets for a later event owned by the same player. -/
@@ -111,12 +111,11 @@ theorem sampling_out_of_phase_receipt_lower
       message ∈ (observed.observe (runtime.reactiveApplication leaks) watcher).messages.leaked →
         players watcher (observed.recall watcher)
             (observed.observe (runtime.reactiveApplication leaks) watcher) =
-          FinDist.pure ⟨some (.replay id)⟩)
+          PMF.pure ⟨some (.replay id)⟩)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (count : Nat) :
-    (leaks watcher execution.network.pending).probOf {selected | id ∈ selected} ≤
-      (((runtime.reactiveApplication leaks).reportInclusion players watcher execution).bind
-        ((runtime.reactiveApplication leaks).runRounds scheduler players count)).probOf
-          {final | (id, false) ∈ final.receipts} := by
+    ((leaks watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+      ((((runtime.reactiveApplication leaks).reportInclusion players watcher execution).bind
+        ((runtime.reactiveApplication leaks).runRounds scheduler players count)).toOuterMeasure {final | (id, false) ∈ final.receipts}).toReal := by
   apply (runtime.reactiveApplication leaks).sampling_rejected_receipt_lower players watcher
     execution id message found foreign unknown fresh reports _ scheduler count
   exact runtime.handle_eq_none_of_other_event_ready_public ordered execution.application current

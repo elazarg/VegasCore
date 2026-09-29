@@ -40,9 +40,9 @@ theorem rawBinding_reserved_selection
     material rfl
   dsimp only
   unfold interactionStep
-  rw [interactionInstruction, selected, FinDist.pure_bind]
+  rw [interactionInstruction, selected, PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-  exact FinDist.bind_pure _
+  exact PMF.bind_pure _
 
 theorem rawBinding_submit_hidden_congr
     (left right : (runtime.reactiveApplication leaks).Execution) (owner : Player)
@@ -191,8 +191,8 @@ theorem rawBinding_reserved_hidden_congr
   have nonce : right.network.nextSerial owner = left.network.nextSerial owner :=
     congrArg (fun net => net.nextSerial owner) network.symm
   rw [nonce]
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
-  apply congrArg FinDist.pure
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+  apply congrArg PMF.pure
   change ( (before.includePending app id).network, (before.includePending app id).receipts,
       (before.includePending app id).application.publicView,
       before.environmentRecall ++ [⟨before.observeEnvironment app, .include id⟩], _, _) =

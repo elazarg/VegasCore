@@ -20,19 +20,19 @@ variable {Row Col RowCoord ColCoord : Type}
 
 /-- Distance of the expected feature vector from its supplied reference. -/
 def featureDistance {Plan Coord : Type} [Fintype Coord]
-    (feature : Plan → Coord → ℝ) (reference : Coord → ℝ) (law : FinDist Plan) : ℝ :=
-  ∑ coordinate, |law.expect (fun plan => feature plan coordinate) - reference coordinate|
+    (feature : Plan → Coord → ℝ) (reference : Coord → ℝ) (law : PMF Plan) : ℝ :=
+  ∑ coordinate, |expect law (fun plan => feature plan coordinate) - reference coordinate|
 
 /-- Independent mixed play of a finite matrix payoff. -/
-def expectedPayoff (payoff : Row → Col → ℝ) (row : FinDist Row) (col : FinDist Col) : ℝ :=
-  row.expect (fun first => col.expect (payoff first))
+def expectedPayoff (payoff : Row → Col → ℝ) (row : PMF Row) (col : PMF Col) : ℝ :=
+  expect row (fun first => expect col (payoff first))
 
 /-- A zero-sum objective with separate L1 penalties on expected features. -/
 def objective [Fintype RowCoord] [Fintype ColCoord]
     (payoff : Row → Col → ℝ)
     (rowFeature : Row → RowCoord → ℝ) (rowReference : RowCoord → ℝ)
     (colFeature : Col → ColCoord → ℝ) (colReference : ColCoord → ℝ)
-    (weight : ℝ) (row : FinDist Row) (col : FinDist Col) : ℝ :=
+    (weight : ℝ) (row : PMF Row) (col : PMF Col) : ℝ :=
   expectedPayoff payoff row col -
     weight * featureDistance rowFeature rowReference row +
     weight * featureDistance colFeature colReference col
@@ -65,19 +65,19 @@ private theorem signed_best {Coord : Type} [Fintype Coord] (vector : Coord → �
   · simp [bestSigns, sign, positive, abs_of_neg (lt_of_not_ge positive)]
 
 private theorem expect_signed {Plan Coord : Type} [Fintype Coord]
-    (law : FinDist Plan) (feature : Plan → Coord → ℝ) (reference : Coord → ℝ)
+    (law : PMF Plan) (feature : Plan → Coord → ℝ) (reference : Coord → ℝ)
     (signs : Coord → Bool) :
-    law.expect (fun plan => signed signs (fun coordinate =>
+    expect law (fun plan => signed signs (fun coordinate =>
       feature plan coordinate - reference coordinate)) =
       signed signs (fun coordinate =>
-        law.expect (fun plan => feature plan coordinate) - reference coordinate) := by
+        expect law (fun plan => feature plan coordinate) - reference coordinate) := by
   simp only [signed, ← FinDist.expect_sum_comm, FinDist.expect_smul,
-    FinDist.expect_sub, FinDist.expect_const]
+    FinDist.expect_sub, expect_constant]
 
 private def matrix {First Second : Type} (payoff : First → Second → ℝ) :
     GameForm (Fin 2) where
   sig := { Strategy := fun _ => First × Second, Outcome := ℝ }
-  play profile := FinDist.pure (payoff (profile 0).1 (profile 1).2)
+  play profile := PMF.pure (payoff (profile 0).1 (profile 1).2)
 
 private def matrixUtility (outcome : ℝ) (who : Fin 2) : ℝ :=
   if who = 0 then outcome else -outcome
@@ -85,23 +85,23 @@ private def matrixUtility (outcome : ℝ) (who : Fin 2) : ℝ :=
 private theorem matrix_expected {First Second : Type} (payoff : First → Second → ℝ)
     (profile : Profile (matrix payoff).sig.mixed) :
     expectedUtility matrixUtility 0 ((matrix payoff).mixed.play profile) =
-      (profile 0).expect (fun first => (profile 1).expect (fun second =>
+      expect (profile 0) (fun first => expect (profile 1) (fun second =>
         payoff first.1 second.2)) := by
-  change ((FinDist.pi profile).bind fun pure =>
-    FinDist.pure (payoff (pure 0).1 (pure 1).2)).expect _ = _
+  change expect ((independentProduct profile).bind fun pure =>
+    PMF.pure (payoff (pure 0).1 (pure 1).2)) _ = _
   rw [← FinDist.piFin_eq_pi]
-  simp [FinDist.piFin, FinDist.expect_bind, FinDist.expect_map,
+  simp [FinDist.piFin, FinDist.expect_bind, expect_map,
     FinDist.expect_product, matrixUtility]
   rfl
 
 private theorem matrix_saddle {First Second : Type}
     [Finite First] [Nonempty First] [Finite Second] [Nonempty Second]
     (payoff : First → Second → ℝ) :
-    ∃ first : FinDist First, ∃ second : FinDist Second,
-      (∀ other : FinDist First, other.expect (fun row => second.expect (payoff row)) ≤
-        first.expect (fun row => second.expect (payoff row))) ∧
-      (∀ other : FinDist Second, first.expect (fun row => second.expect (payoff row)) ≤
-        first.expect (fun row => other.expect (payoff row))) := by
+    ∃ first : PMF First, ∃ second : PMF Second,
+      (∀ other : PMF First, expect other (fun row => expect second (payoff row)) ≤
+        expect first (fun row => expect second (payoff row))) ∧
+      (∀ other : PMF Second, expect first (fun row => expect second (payoff row)) ≤
+        expect first (fun row => expect other (payoff row))) := by
   let := Fintype.ofFinite First
   let := Fintype.ofFinite Second
   let : (who : Fin 2) → Fintype ((matrix payoff).sig.Strategy who) :=
@@ -118,7 +118,7 @@ private theorem matrix_saddle {First Second : Type}
       ((matrix payoff).mixed.play (Profile.update profile 0 deviation)) ≤
         expectedUtility matrixUtility 0 ((matrix payoff).mixed.play profile) at bound
     rw [matrix_expected, matrix_expected] at bound
-    simp only [deviation, FinDist.expect_map, Profile.update_same,
+    simp only [deviation, expect_map, Profile.update_same,
       Profile.update_of_ne _ _ (by decide : (1 : Fin 2) ≠ 0)] at bound ⊢
     convert bound using 1 <;> rfl
   · intro other
@@ -128,7 +128,7 @@ private theorem matrix_saddle {First Second : Type}
       expectedUtility matrixUtility 0
         ((matrix payoff).mixed.play (Profile.update profile 1 deviation)) at bound
     rw [matrix_expected, matrix_expected] at bound
-    simp only [deviation, FinDist.expect_map, Profile.update_same,
+    simp only [deviation, expect_map, Profile.update_same,
       Profile.update_of_ne _ _ (by decide : (0 : Fin 2) ≠ 1)] at bound ⊢
     convert bound using 1 <;> rfl
 
@@ -148,71 +148,71 @@ private def signedPayoff (row : Row × (ColCoord → Bool))
       colReference coordinate)
 
 private theorem signedPayoff_expect
-    (row : FinDist (Row × (ColCoord → Bool))) (col : FinDist (Col × (RowCoord → Bool))) :
-    row.expect (fun first => col.expect
+    (row : PMF (Row × (ColCoord → Bool))) (col : PMF (Col × (RowCoord → Bool))) :
+    expect row (fun first => expect col
       (signedPayoff payoff rowFeature rowReference colFeature colReference weight first)) =
-      (row.map Prod.fst).expect (fun first => (col.map Prod.fst).expect (payoff first)) -
-        weight * col.expect (fun second => signed second.2 (fun coordinate =>
-          (row.map Prod.fst).expect (fun first => rowFeature first coordinate) -
+      expect (row.map Prod.fst) (fun first => expect (col.map Prod.fst) (payoff first)) -
+        weight * expect col (fun second => signed second.2 (fun coordinate =>
+          expect (row.map Prod.fst) (fun first => rowFeature first coordinate) -
             rowReference coordinate)) +
-        weight * row.expect (fun first => signed first.2 (fun coordinate =>
-          (col.map Prod.fst).expect (fun second => colFeature second coordinate) -
+        weight * expect row (fun first => signed first.2 (fun coordinate =>
+          expect (col.map Prod.fst) (fun second => colFeature second coordinate) -
             colReference coordinate)) := by
   unfold signedPayoff
   simp only [FinDist.expect_add, FinDist.expect_sub,
-    FinDist.expect_smul, FinDist.expect_map]
+    FinDist.expect_smul, expect_map]
   congr 2
   · rw [FinDist.expect_comm]
     apply congrArg (weight * ·)
-    apply FinDist.expect_congr
+    apply expect_congr_on_support
     intro second _
     exact expect_signed row (fun first => rowFeature first.1) rowReference second.2
-  · apply FinDist.expect_congr
+  · apply expect_congr_on_support
     intro first _
     exact expect_signed col (fun second => colFeature second.1) colReference first.2
 
-private def rowLift (row : FinDist Row) (col : FinDist Col) :
-    FinDist (Row × (ColCoord → Bool)) :=
+private def rowLift (row : PMF Row) (col : PMF Col) :
+    PMF (Row × (ColCoord → Bool)) :=
   row.map fun first => (first, bestSigns (fun coordinate =>
-    col.expect (fun second => colFeature second coordinate) - colReference coordinate))
+    expect col (fun second => colFeature second coordinate) - colReference coordinate))
 
-private def colLift (col : FinDist Col) (row : FinDist Row) :
-    FinDist (Col × (RowCoord → Bool)) :=
+private def colLift (col : PMF Col) (row : PMF Row) :
+    PMF (Col × (RowCoord → Bool)) :=
   col.map fun second => (second, bestSigns (fun coordinate =>
-    row.expect (fun first => rowFeature first coordinate) - rowReference coordinate))
+    expect row (fun first => rowFeature first coordinate) - rowReference coordinate))
 
 private theorem row_deviation_bound (nonnegative : 0 ≤ weight)
-    (row : FinDist Row) (col : FinDist (Col × (RowCoord → Bool))) :
+    (row : PMF Row) (col : PMF (Col × (RowCoord → Bool))) :
     objective payoff rowFeature rowReference colFeature colReference weight row
         (col.map Prod.fst) ≤
-      (rowLift colFeature colReference row (col.map Prod.fst)).expect (fun first =>
-        col.expect (signedPayoff payoff rowFeature rowReference colFeature colReference
+      expect (rowLift colFeature colReference row (col.map Prod.fst)) (fun first =>
+        expect col (signedPayoff payoff rowFeature rowReference colFeature colReference
           weight first)) := by
   rw [signedPayoff_expect]
-  simp only [rowLift, FinDist.map_comp, Function.comp_def,
-    FinDist.expect_map, signed_best, FinDist.expect_const]
-  have bound : col.expect (fun second => signed second.2 (fun coordinate =>
-      row.expect (fun first => rowFeature first coordinate) - rowReference coordinate)) ≤
+  simp only [rowLift, PMF.map_comp, Function.comp_def,
+    expect_map, signed_best, expect_constant]
+  have bound : expect col (fun second => signed second.2 (fun coordinate =>
+      expect row (fun first => rowFeature first coordinate) - rowReference coordinate)) ≤
       featureDistance rowFeature rowReference row :=
     FinDist.expect_le_of_forall _ _ _ fun second _ => signed_le second.2 _
-  simp only [objective, expectedPayoff, featureDistance, FinDist.expect_map] at bound ⊢
+  simp only [objective, expectedPayoff, featureDistance, expect_map] at bound ⊢
   nlinarith
 
 private theorem col_deviation_bound (nonnegative : 0 ≤ weight)
-    (row : FinDist (Row × (ColCoord → Bool))) (col : FinDist Col) :
-    row.expect (fun first =>
-        (colLift rowFeature rowReference col (row.map Prod.fst)).expect
+    (row : PMF (Row × (ColCoord → Bool))) (col : PMF Col) :
+    expect row (fun first =>
+        expect (colLift rowFeature rowReference col (row.map Prod.fst))
           (signedPayoff payoff rowFeature rowReference colFeature colReference weight first)) ≤
       objective payoff rowFeature rowReference colFeature colReference weight
         (row.map Prod.fst) col := by
   rw [signedPayoff_expect]
-  simp only [colLift, FinDist.map_comp, Function.comp_def,
-    FinDist.expect_map, signed_best, FinDist.expect_const]
-  have bound : row.expect (fun first => signed first.2 (fun coordinate =>
-      col.expect (fun second => colFeature second coordinate) - colReference coordinate)) ≤
+  simp only [colLift, PMF.map_comp, Function.comp_def,
+    expect_map, signed_best, expect_constant]
+  have bound : expect row (fun first => signed first.2 (fun coordinate =>
+      expect col (fun second => colFeature second coordinate) - colReference coordinate)) ≤
       featureDistance colFeature colReference col :=
     FinDist.expect_le_of_forall _ _ _ fun first _ => signed_le first.2 _
-  simp only [objective, expectedPayoff, featureDistance, FinDist.expect_map] at bound ⊢
+  simp only [objective, expectedPayoff, featureDistance, expect_map] at bound ⊢
   nlinarith
 
 /-- Finite mixed strategies admit an exact saddle for the L1-regularized
@@ -220,7 +220,7 @@ objective. Only expected feature vectors are penalized; the result does not
 require a positive lower bound on the weight or an interior reference vector. -/
 theorem exists_saddle [Finite Row] [Nonempty Row] [Finite Col] [Nonempty Col]
     (nonnegative : 0 ≤ weight) :
-    ∃ row : FinDist Row, ∃ col : FinDist Col,
+    ∃ row : PMF Row, ∃ col : PMF Col,
       (∀ other, objective payoff rowFeature rowReference colFeature colReference
         weight other col ≤
           objective payoff rowFeature rowReference colFeature colReference weight row col) ∧
@@ -232,14 +232,14 @@ theorem exists_saddle [Finite Row] [Nonempty Row] [Finite Col] [Nonempty Col]
   let := Fintype.ofFinite Col
   obtain ⟨row, col, rowOptimal, colOptimal⟩ := matrix_saddle
     (signedPayoff payoff rowFeature rowReference colFeature colReference weight)
-  let value := row.expect (fun first => col.expect
+  let value := expect row (fun first => expect col
     (signedPayoff payoff rowFeature rowReference colFeature colReference weight first))
-  have lower (other : FinDist Row) :
+  have lower (other : PMF Row) :
       objective payoff rowFeature rowReference colFeature colReference weight other
         (col.map Prod.fst) ≤ value :=
     (row_deviation_bound payoff rowFeature rowReference colFeature colReference weight
       nonnegative other col).trans (rowOptimal _)
-  have upper (other : FinDist Col) : value ≤
+  have upper (other : PMF Col) : value ≤
       objective payoff rowFeature rowReference colFeature colReference weight
         (row.map Prod.fst) other :=
     (colOptimal _).trans
@@ -252,7 +252,7 @@ theorem exists_saddle [Finite Row] [Nonempty Row] [Finite Col] [Nonempty Col]
 /-- Approximate security at reference candidates controls the total feature
 penalty of a regularized saddle. Only its two displayed comparisons are needed;
 the candidates need not have exactly the reference features. -/
-theorem penalty_bound (row referenceRow : FinDist Row) (col referenceCol : FinDist Col)
+theorem penalty_bound (row referenceRow : PMF Row) (col referenceCol : PMF Col)
     (value rowError colError : ℝ)
     (rowOptimal : objective payoff rowFeature rowReference colFeature colReference
       weight referenceRow col ≤

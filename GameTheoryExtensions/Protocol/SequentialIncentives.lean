@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Protocol.BehavioralAssessment
-import GameTheoryExtensions.Core.IncentiveCone
+import GameTheory.Analysis.IncentiveCone
 
 /-! # Incentive comparisons at information sets
 
@@ -44,11 +44,11 @@ theorem isSequentiallyRationalWithin_iff_comparisons
         (utility · who) := by
   constructor
   · intro rational who ⟨site, alternative⟩
-    simpa only [assessmentComparison, IncentiveComparison.Holds, FinDist.expect_map,
+    simpa only [assessmentComparison, IncentiveComparison.Holds, expect_map,
       Context.value, BehavioralAssessment.continuationContext] using
       rational who site alternative (Set.mem_univ _)
   · intro respected who site alternative _
-    simpa only [assessmentComparison, IncentiveComparison.Holds, FinDist.expect_map,
+    simpa only [assessmentComparison, IncentiveComparison.Holds, expect_map,
       Context.value, BehavioralAssessment.continuationContext] using
       respected who (site, alternative)
 
@@ -74,7 +74,7 @@ theorem isSequentiallyRationalWithin_iff_tagged_comparisons
         (M.taggedAssessmentComparison observe fuel assessment deviation).Holds utility := by
   rw [M.isSequentiallyRationalWithin_iff_comparisons observe fuel assessment
     (fun observation who => utility (who, observation))]
-  simp only [taggedAssessmentComparison, IncentiveComparison.Holds, FinDist.expect_map,
+  simp only [taggedAssessmentComparison, IncentiveComparison.Holds, expect_map,
     Sigma.forall]
 
 variable {T : ExecutionProtocol ι} (N : InformationModel T)
@@ -110,7 +110,7 @@ theorem sequential_rationality_preservation_iff_cone
       · subst player
         simpa only [utilities, ↓reduceIte] using respected replacement
       · simp only [IncentiveComparison.Holds, utilities, same, ↓reduceIte,
-          FinDist.expect_const, le_refl]
+          expect_constant, le_refl]
     simpa only [utilities, ↓reduceIte] using preserves utilities sourceRespects who deviation
   · intro included utility sourceRespects who deviation
     exact (IncentiveComparison.mem_cone_iff _ _).mp (included who deviation)

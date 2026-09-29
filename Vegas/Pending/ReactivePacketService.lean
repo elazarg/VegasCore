@@ -117,7 +117,7 @@ private theorem include_other_event_output (runtime : EventGraphRuntime graph)
             exact different (selectedId.symm.trans (congrArg Message.id same))
           have unchanged : state.config.outputs event = execution.application.config.outputs
               event := by
-            rw [Config.step, FinDist.support_map] at supported
+            rw [Config.step, PMF.support_map] at supported
             obtain ⟨value, _, equal⟩ := supported
             rw [← equal]
             exact execution.application.config.complete_output_of_ne actual event ready action
@@ -224,7 +224,7 @@ private theorem packetWireFacts_step (runtime : EventGraphRuntime graph)
     (reached : next ∈ (runtime.interactionStep leaks players network .wire execution).support) :
     PacketWireFacts runtime leaks inputs owner event value message resources next := by
   let app := runtime.reactiveApplication leaks
-  obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have audited := app.submissionAudit_dispatch ReactivePlayerView.publicView (by intros; rfl)
     players command execution next facts.audit facts.recall facts.serials dispatched
   have remembered : app.PolicyInvariant players
@@ -244,37 +244,37 @@ private theorem packetWireFacts_step (runtime : EventGraphRuntime graph)
     unique.dispatch command execution next facts.integrity dispatched,
     audited.1, audited.2.1, audited.2.2,
     remembered.dispatch command execution next facts.emitted dispatched, ?_⟩
-  obtain ⟨choice, _, equal⟩ := FinDist.support_map .. ▸ selected
+  obtain ⟨choice, _, equal⟩ := PMF.support_map .. ▸ selected
   subst command
   cases choice with
   | wait =>
       simp only [NetworkChoice.command, ReactiveApplication.atMostOnceCommand,
         ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume] at dispatched
-      cases FinDist.mem_support_pure.mp dispatched
+      cases (PMF.mem_support_pure_iff _ _).mp dispatched
       exact facts.status
   | activate who =>
       obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp
-        (FinDist.support_bind .. ▸ dispatched)
-      obtain ⟨updated, leaked, rfl⟩ := FinDist.support_map .. ▸ moved
-      obtain ⟨observations, _, rfl⟩ := FinDist.support_map .. ▸ leaked
-      obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+        (PMF.support_bind .. ▸ dispatched)
+      obtain ⟨updated, leaked, rfl⟩ := PMF.support_map .. ▸ moved
+      obtain ⟨observations, _, rfl⟩ := PMF.support_map .. ▸ leaked
+      obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ resumed
       exact packetStatus_respond runtime leaks event value message _ who action facts.status
   | «include» id =>
       dsimp only [NetworkChoice.command, ReactiveApplication.atMostOnceCommand] at dispatched
       split at dispatched
       · simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-          FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+          PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
           ReactiveApplication.resume] at dispatched
-        cases FinDist.mem_support_pure.mp dispatched
+        cases (PMF.mem_support_pure_iff _ _).mp dispatched
         exact packetStatus_include runtime leaks inputs owner event actor value message addressed
           execution facts.valid facts.integrity (realizes execution facts.resources) facts.audit
           facts.emitted facts.status id
       · simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-          FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+          PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
           ReactiveApplication.resume] at dispatched
-        cases FinDist.mem_support_pure.mp dispatched
+        cases (PMF.mem_support_pure_iff _ _).mp dispatched
         exact facts.status
 
 /-- Event-specific stable realization is sufficient for the actual reserved
@@ -322,32 +322,32 @@ theorem reactive_packet_wire_block (runtime : EventGraphRuntime graph)
     induction count with
     | zero =>
         intro before after facts reached
-        cases FinDist.mem_support_pure.mp reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         exact facts
     | succ count ih =>
         intro before after facts reached
         rw [List.replicate_succ, runInteractionPlan] at reached
-        obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         exact ih middle after (packetWireFacts_step runtime leaks inputs owner event actor value
           message addressed players resources preserved unique realizes network before middle facts
             moved) rest
   rw [runtime.runInteractionPlan_append] at reached
-  obtain ⟨middle, moved, endpoint⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, endpoint⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have facts := segment rounds execution middle
     ⟨resourced, valid, integrity, audit, recall, serials, emitted,
       Or.inr ⟨ready, timely, pending, unpublished⟩⟩ moved
-  simp only [runInteractionPlan, FinDist.bind_pure] at endpoint
+  simp only [runInteractionPlan, PMF.bind_pure] at endpoint
   rcases facts.status with done | ⟨middleReady, middleTimely, retained, unspent⟩
-  · obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ endpoint)
+  · obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ endpoint)
     exact (ReactiveApplication.Invariant.policyInvariant app
       (runtime.reactiveStoreInvariant leaks (.inr event) value) players).dispatch
         command middle next done dispatched
   · have selected := runtime.reactiveLatest_prescribed leaks owner event middle facts.integrity
       message facts.emitted authored addressed retained unspent
-    simp only [interactionStep, interactionInstruction, selected, FinDist.pure_bind,
+    simp only [interactionStep, interactionInstruction, selected, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      FinDist.map_pure, ReactiveApplication.Command.actor?, ReactiveApplication.resume] at endpoint
-    cases FinDist.mem_support_pure.mp endpoint
+      PMF.pure_map, ReactiveApplication.Command.actor?, ReactiveApplication.resume] at endpoint
+    cases (PMF.mem_support_pure_iff _ _).mp endpoint
     have found := facts.audit.lookup_of_mem app ReactivePlayerView.publicView middle message
       retained
     obtain ⟨state, handled, output⟩ := realizes middle facts.resources middleReady middleTimely

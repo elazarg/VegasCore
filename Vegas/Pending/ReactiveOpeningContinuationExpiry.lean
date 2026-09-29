@@ -32,7 +32,7 @@ theorem openingWindowMixture_continuation_expiry (runtime : EventGraphRuntime gr
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (candidate : Handle graph) (value : L.Val payload)
-    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots))) (visits : Nat)
+    (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots))) (visits : Nat)
     (initial current : (runtime.reactiveApplication leaks).Execution)
     (ready : initial.application.config.cut.Ready event)
     (serials : initial.network.SerialsBeforeNext)
@@ -49,13 +49,13 @@ theorem openingWindowMixture_continuation_expiry (runtime : EventGraphRuntime gr
     (network : runtime.NetworkPolicy leaks) :
     let app := runtime.reactiveApplication leaks
     let family := fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure (runtime.windowOpening leaks event candidate ⟨payload, value⟩))
+      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate ⟨payload, value⟩))
         app.replayPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ selected ∈ posterior.support,
       runtime.OpeningWindowFrame leaks owner event candidate ⟨payload, value⟩
         offset selected visits initial current) →
-    ∃ coupling : FinDist (Option (Fin slots) × app.Execution),
+    ∃ coupling : PMF (Option (Fin slots) × app.Execution),
       coupling.map Prod.fst = posterior ∧
       coupling.map Prod.snd = runtime.runInteractionPlan leaks
         (runtime.openingWindowMixturePlayers leaks owner event candidate ⟨payload, value⟩
@@ -90,23 +90,23 @@ theorem openingWindowMixture_continuation_expiry (runtime : EventGraphRuntime gr
   let coupling := posterior.bind fun selected =>
     (finish selected).map fun final => (selected, final)
   refine ⟨coupling, ?_, ?_, ?_⟩
-  · simp only [coupling, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-      FinDist.map_const, FinDist.bind_pure]
-  · simp only [coupling, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
+  · simp only [coupling, PMF.map_bind, PMF.map_comp, Function.comp_def,
+      FinDist.map_const, PMF.bind_pure]
+  · simp only [coupling, PMF.map_bind, PMF.map_comp, Function.comp_def]
     change (posterior.bind fun selected => (finish selected).map id) = _
-    simp only [FinDist.map_id]
+    simp only [PMF.map_id]
     exact (runtime.openingWindowMixture_continuation leaks owner event candidate ⟨payload, value⟩
       offset choices network plan current).symm
   · intro pair supported
-    obtain ⟨selected, possible, mapped⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-    obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ mapped
+    obtain ⟨selected, possible, mapped⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+    obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ mapped
     change final ∈ (runtime.runInteractionPlan leaks
       (runtime.openingWindowPlayers leaks owner event candidate ⟨payload, value⟩ offset selected)
         network plan current).support at reached
     rw [show plan = remaining.map ServiceInstruction.player ++
       (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]) from rfl,
       runtime.runInteractionPlan_append] at reached
-    obtain ⟨before, prior, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    obtain ⟨before, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
     have frame := (frames selected possible).run runtime leaks owner event candidate
       ⟨payload, value⟩ offset selected visits initial current network remaining before prior
         owned (fun _ => valid)

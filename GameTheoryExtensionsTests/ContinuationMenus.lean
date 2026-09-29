@@ -21,13 +21,13 @@ inductive Outcome where
   deriving DecidableEq
 
 abbrev source : GameForm Unit where
-  sig := { Strategy := fun _ => FinDist Outcome, Outcome := Outcome }
+  sig := { Strategy := fun _ => PMF Outcome, Outcome := Outcome }
   play profile := profile ()
 
 def remainingOutcome (choice : Bool) : Outcome := if choice then .b else .c
 
 abbrev continuation : GameForm Unit where
-  sig := { Strategy := fun _ => FinDist Bool, Outcome := Outcome }
+  sig := { Strategy := fun _ => PMF Bool, Outcome := Outcome }
   play profile := (profile ()).map remainingOutcome
 
 def utilityB : Outcome → Unit → ℝ
@@ -40,53 +40,53 @@ def utilityC : Outcome → Unit → ℝ
   | .b, _ => 1
   | .c, _ => 2
 
-def sourcePlan : Profile source.sig := fun _ => FinDist.pure .a
+def sourcePlan : Profile source.sig := fun _ => PMF.pure .a
 
 theorem sourcePlan_optimal_for_both :
     IsεNash source utilityB 0 sourcePlan ∧ IsεNash source utilityC 0 sourcePlan := by
   constructor <;> rw [isεNash_iff] <;> intro who replacement <;> cases who
   all_goals
-    simp only [expectedUtility, source, Profile.update_same, sourcePlan, FinDist.expect_pure,
+    simp only [expectedUtility, source, Profile.update_same, sourcePlan, expect_pure,
       utilityB, utilityC, add_zero]
     apply FinDist.expect_le_of_forall
     intro result _
     cases result <;> norm_num [utilityB, utilityC]
 
 theorem continuation_utility_sum (profile : Profile continuation.sig) :
-    (continuation.play profile).expect (fun outcome => utilityB outcome ()) +
-      (continuation.play profile).expect (fun outcome => utilityC outcome ()) = 3 := by
-  simp only [continuation, FinDist.expect_map]
+    expect (continuation.play profile) (fun outcome => utilityB outcome ()) +
+      expect (continuation.play profile) (fun outcome => utilityC outcome ()) = 3 := by
+  simp only [continuation, expect_map]
   rw [← FinDist.expect_add]
   have values : (fun choice =>
       utilityB (remainingOutcome choice) () + utilityC (remainingOutcome choice) ()) =
       fun _ => (3 : ℝ) := by
     funext choice
     cases choice <;> norm_num [remainingOutcome, utilityB, utilityC]
-  rw [values, FinDist.expect_const]
+  rw [values, expect_constant]
 
 theorem no_common_optimal_continuation :
     ¬ ∃ profile : Profile continuation.sig,
       IsεNash continuation utilityB 0 profile ∧ IsεNash continuation utilityC 0 profile := by
   rintro ⟨profile, bestB, bestC⟩
   rw [isεNash_iff] at bestB bestC
-  have prefersB := bestB () (FinDist.pure true)
-  have prefersC := bestC () (FinDist.pure false)
-  simp only [expectedUtility, continuation, Profile.update_same, FinDist.map_pure,
-    FinDist.expect_pure, remainingOutcome, ite_true, utilityB, utilityC,
+  have prefersB := bestB () (PMF.pure true)
+  have prefersC := bestC () (PMF.pure false)
+  simp only [expectedUtility, continuation, Profile.update_same, PMF.pure_map,
+    expect_pure, remainingOutcome, ite_true, utilityB, utilityC,
     add_zero] at prefersB prefersC
   have total := continuation_utility_sum profile
-  simp only [continuation, FinDist.expect_map] at total
-  simp only [FinDist.expect_map] at prefersB prefersC
-  change (2 : ℝ) ≤ (profile ()).expect
+  simp only [continuation, expect_map] at total
+  simp only [expect_map] at prefersB prefersC
+  change (2 : ℝ) ≤ expect (profile ())
     (fun choice => utilityB (remainingOutcome choice) ()) at prefersB
-  change (2 : ℝ) ≤ (profile ()).expect
+  change (2 : ℝ) ≤ expect (profile ())
     (fun choice => utilityC (remainingOutcome choice) ()) at prefersC
   linarith
 
 /-- Even randomized completion cannot preserve optimality for every utility
 when it receives only the source plan and the restricted menu. -/
 theorem no_utility_independent_completion :
-    ¬ ∃ complete : FinDist Outcome → FinDist Bool,
+    ¬ ∃ complete : PMF Outcome → PMF Bool,
       ∀ utility : Outcome → Unit → ℝ,
         IsεNash source utility 0 sourcePlan →
           IsεNash continuation utility 0 (fun _ => complete (sourcePlan ())) := by

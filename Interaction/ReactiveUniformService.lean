@@ -31,7 +31,7 @@ def authorizedEligibility
 def authorizedUniform
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
     (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
-    (eligible : Message Principal app.Payload → Bool) : FinDist (Option (MessageId Principal)) :=
+    (eligible : Message Principal app.Payload → Bool) : PMF (Option (MessageId Principal)) :=
   MessageNetwork.uniformPending (fun message =>
     app.authorizedEligibility condition history eligible message &&
       !(view.network.ledger.any fun prior => prior.id = message.id)) view.network.pending
@@ -65,12 +65,12 @@ inductive UniformInstruction where
 def uniformInstruction
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
     (history : List app.EnvironmentEntry) (view : app.EnvironmentView) :
-    app.UniformInstruction → FinDist app.Command
-  | .activate who => FinDist.pure (.activate who)
+    app.UniformInstruction → PMF app.Command
+  | .activate who => PMF.pure (.activate who)
   | .select eligible => (app.authorizedUniform condition history view eligible).map
       (fun selected => selected.elim .wait .include)
-  | .application command => FinDist.pure (.application command)
-  | .wait => FinDist.pure .wait
+  | .application command => PMF.pure (.application command)
+  | .wait => PMF.pure .wait
 
 def uniformScheduler
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
@@ -86,17 +86,17 @@ theorem uniformInstruction_actor
     (active : command.actor? app = some who) : instruction = .activate who := by
   cases instruction with
   | activate actor =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       cases Option.some.inj active
       rfl
   | application operation =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       cases active
   | wait =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       cases active
   | select eligible =>
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       cases selected <;> cases active
 
 theorem uniformInstruction_include
@@ -107,11 +107,11 @@ theorem uniformInstruction_include
     ∃ message ∈ view.network.pending, message.id = id ∧
       app.SubmissionPermitted condition history message ∧ view.Unpublished app id := by
   cases instruction with
-  | activate who => cases FinDist.mem_support_pure.mp included
-  | application command => cases FinDist.mem_support_pure.mp included
-  | wait => cases FinDist.mem_support_pure.mp included
+  | activate who => cases (PMF.mem_support_pure_iff _ _).mp included
+  | application command => cases (PMF.mem_support_pure_iff _ _).mp included
+  | wait => cases (PMF.mem_support_pure_iff _ _).mp included
   | select eligible =>
-      obtain ⟨selected, supported, same⟩ := FinDist.support_map .. ▸ included
+      obtain ⟨selected, supported, same⟩ := PMF.support_map .. ▸ included
       cases selected with
       | none => cases same
       | some candidate =>
@@ -133,7 +133,7 @@ theorem uniformScheduler_requiresAuthorization
     (project : app.LocalObservation → app.PublicObservation)
     (agrees : ∀ state who, project (app.observePlayer state who) = app.observePublic state)
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
-    (initial : FinDist app.State) (horizon : Nat) (calendar : Nat → app.UniformInstruction) :
+    (initial : PMF app.State) (horizon : Nat) (calendar : Nat → app.UniformInstruction) :
     app.RequiresSubmissionAuthorization
       (fun view message => condition (project view.application) message) initial horizon
       (app.uniformScheduler condition calendar) := by

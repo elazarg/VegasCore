@@ -38,7 +38,7 @@ theorem run_roster_source_prefix_noise
       (refs : ContextRefs (graphLayout setup.program) Γ)
       (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
       (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
-      {Seed : Type} (prior : FinDist Seed) (initial : Seed → State L setup.context)
+      {Seed : Type} (prior : PMF Seed) (initial : Seed → State L setup.context)
       (source : Seed → Config Player L Γ)
       (execution : Seed → (application setup leaks).Execution),
       (∀ seed, CompiledPolicySuffix setup.program wholeProfile program profile refs
@@ -53,7 +53,7 @@ theorem run_roster_source_prefix_noise
       (∀ seed, (execution seed).InputRecall (application setup leaks)) →
       ∀ (grant : Option (graph setup).EventId),
       (∀ seed, (execution seed).application.serviceGrant = grant) →
-      ∀ (noise : DecisionView focal Γ → FinDist ((application setup leaks).MessageReadout ×
+      ∀ (noise : DecisionView focal Γ → PMF ((application setup leaks).MessageReadout ×
         List (application setup leaks).PlayerEntry)),
       prior.map (fun seed => (source seed,
         ((application setup leaks).messageView (execution seed), (execution seed).recall focal))) =
@@ -61,7 +61,7 @@ theorem run_roster_source_prefix_noise
           (config, extra)) →
       ∀ count, count ≤ eventCount program →
       ∃ nextNoise : Option (ProtocolView focal program) →
-          FinDist ((application setup leaks).MessageReadout ×
+          PMF ((application setup leaks).MessageReadout ×
             List (application setup leaks).PlayerEntry),
         let law := prior.bind fun seed =>
           ((runtime setup).runInteractionPlan leaks
@@ -99,7 +99,7 @@ theorem run_roster_source_prefix_noise
         exact decodePrefix?_zero_of_agrees _ refs embedding.ref (source seed)
           (checkpoint seed).emptyRegistry _ (checkpoint seed).agrees
       simpa only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-        FinDist.map_pure, decoded, ← FinDist.map_eq_bind] using law
+        PMF.pure_map, decoded, ← ← PMF.bind_pure_comp, Function.comp_def] using law
   | sample name fresh distribution next ih =>
       intro impossible
       exact impossible.elim
@@ -127,7 +127,7 @@ theorem run_roster_source_prefix_noise
             exact decodePrefix?_zero_of_agrees _ refs embedding.ref (source seed)
               (checkpoint seed).emptyRegistry _ (checkpoint seed).agrees
           simpa only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-            FinDist.map_pure, decoded, ← FinDist.map_eq_bind] using law
+            PMF.pure_map, decoded, ← ← PMF.bind_pure_comp, Function.comp_def] using law
       | succ count =>
           let index : Fin (eventCount
             (.reveal published owner name fresh selected unresolved next)) :=
@@ -156,7 +156,7 @@ theorem run_roster_source_prefix_noise
             ((checkpoint seed).grant players network event).choose_spec
           have grantLaw (seed : Seed) :
               (runtime setup).runInteractionPlan leaks players network [.grant event]
-                (execution seed) = FinDist.pure (opportunity seed) :=
+                (execution seed) = PMF.pure (opportunity seed) :=
             (opportunityFacts seed).2.2.2.2
           have opportunityNetwork (seed : Seed) :
               (opportunity seed).network = (execution seed).network :=
@@ -179,13 +179,13 @@ theorem run_roster_source_prefix_noise
           obtain ⟨grantNoise, grantFactor⟩ := roster_grant_observation_kernel setup leaks refs
             offset prior initial source execution (fun seed _ => checkpoint seed) event focal
               players network grant (fun seed _ => granted seed) noise factor
-          simp only [grantLaw, FinDist.map_pure, ← FinDist.map_eq_bind] at grantFactor
+          simp only [grantLaw, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
           have opportunityRecall (seed : Seed) :
               (opportunity seed).InputRecall (application setup leaks) :=
             (runtime setup).runInteractionPlan_inputRecall leaks players network [.grant event]
               (execution seed)
               (opportunity seed) (recalls seed) (by
-                rw [(opportunityFacts seed).2.2.2.2]; exact FinDist.mem_support_pure.mpr rfl)
+                rw [(opportunityFacts seed).2.2.2.2]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
           obtain ⟨nextNoise, nextFactor⟩ := roster_successor_observation_kernel setup leaks
             published selected refs offset event eventRank actor outputEq codeEq node prior initial
             source opportunity (fun seed _ => (opportunityFacts seed).1) value
@@ -213,7 +213,7 @@ theorem run_roster_source_prefix_noise
               (conditional seed disclose).map fun after => (seed, disclose, after)
           let NextSeed := {point : Seed × Bool × (application setup leaks).Execution //
             point ∈ advanced.support}
-          let nextPrior : FinDist NextSeed := advanced.toSubtype (fun _ member => member)
+          let nextPrior : PMF NextSeed := pmfToSubtype advanced (fun _ member => member)
           let nextInitial := fun point : NextSeed => initial point.val.1
           let nextSource := fun point : NextSeed =>
             revealSuccessor published selected (source point.val.1) point.val.2.1
@@ -245,10 +245,10 @@ theorem run_roster_source_prefix_noise
               (revealKernel profile ((source seed).view owner)).bind fun disclose =>
                 (conditional seed disclose).map fun after => (seed, disclose, after)).support
               at member
-            rw [FinDist.support_bind] at member
+            rw [PMF.support_bind] at member
             obtain ⟨seed, _, moved⟩ := Set.mem_iUnion₂.mp member
-            obtain ⟨disclose, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
-            obtain ⟨after, moved, equal⟩ := FinDist.support_map .. ▸ moved
+            obtain ⟨disclose, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
+            obtain ⟨after, moved, equal⟩ := PMF.support_map .. ▸ moved
             have equal' : (seed, disclose, after) = point := equal
             cases disclose with
             | false => exact ⟨none, congrArg (fun value => value.2.1) equal', by
@@ -256,7 +256,7 @@ theorem run_roster_source_prefix_noise
             | true =>
                 simp only [conditional, ↓reduceIte] at moved
                 obtain ⟨slot, _, moved⟩ :=
-                  Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+                  Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
                 exact ⟨some slot, congrArg (fun value => value.2.1) equal', by
                   simpa only [← equal'] using moved⟩
           have nextFacts (point : NextSeed) : PublicCheckpoint setup leaks
@@ -318,7 +318,7 @@ theorem run_roster_source_prefix_noise
                 ⟨payload, value seed⟩ (rosters event) (timing event owner actor) network focal
                   (opportunity seed) disclose := by
             cases disclose <;> simp only [conditional, rosterDisclosureTranscript,
-              Bool.false_eq_true, ↓reduceIte, FinDist.map_bind, branch, ownerOffset, phase,
+              Bool.false_eq_true, ↓reduceIte, PMF.map_bind, branch, ownerOffset, phase,
               List.append_assoc]
           have advancedFactor : nextPrior.map (fun point => (nextSource point,
               ((application setup leaks).messageView (nextExecution point),
@@ -326,29 +326,29 @@ theorem run_roster_source_prefix_noise
               (nextPrior.map nextSource).bind fun config =>
                 (nextNoise (config.view focal)).map fun extra => (config, extra) := by
             simp only [nextPrior, nextSource, nextExecution]
-            rw [FinDist.map_toSubtype advanced (fun _ member => member)
+            rw [map_pmfToSubtype advanced (fun _ member => member)
               (fun point => (revealSuccessor published selected (source point.1) point.2.1,
                 ((application setup leaks).messageView point.2.2, point.2.2.recall focal))),
-              FinDist.map_toSubtype advanced (fun _ member => member)
+              map_pmfToSubtype advanced (fun _ member => member)
                 (fun point => revealSuccessor published selected (source point.1) point.2.1)]
             have sourceLaw : advanced.map (fun point =>
                 revealSuccessor published selected (source point.1) point.2.1) =
                 (prior.map source).bind (fun config =>
                   (revealKernel profile (config.view owner)).map
                     (revealSuccessor published selected config)) := by
-              simp only [advanced, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
-                FinDist.map_const, ← FinDist.map_eq_bind, FinDist.bind_map]
+              simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def,
+                FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
             rw [sourceLaw]
             rw [← nextFactor]
-            simp only [advanced, FinDist.map_bind, FinDist.map_comp, Function.comp_def]
-            apply FinDist.bind_congr
+            simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def]
+            apply bind_congr_on_support _
             intro seed _
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro disclose _
             have mapped := congrArg (fun law => law.map fun extra =>
               (revealSuccessor published selected (source seed) disclose, extra))
                 (conditionalRead seed disclose)
-            simpa only [FinDist.map_comp, Function.comp_def] using mapped
+            simpa only [PMF.map_comp, Function.comp_def] using mapped
           obtain ⟨tailNoise, tailLaw⟩ := ih reveals (afterReveal profile) tailRefs tailEmbedding
             tailBefore (offset + 1) nextPrior nextInitial nextSource nextExecution nextAligned
             (fun point => (nextFacts point).1) nextCounts (fun point => (nextFacts point).2.1)
@@ -378,7 +378,7 @@ theorem run_roster_source_prefix_noise
                 (.reveal published owner name fresh selected unresolved next))) =
                 state.map (ProtocolState.observe focal next) := by
             cases state <;> rfl
-          have lifted := FinDist.map_observation_factor tailJoint
+          have lifted := PMF.map_observation_factor tailJoint
             (Option.map (ProtocolState.observe focal next))
             tailNoise tailFactor embed (Option.map (ProtocolState.observe focal
               (.reveal published owner name fresh selected unresolved next))) recover recovered
@@ -402,7 +402,7 @@ theorem run_roster_source_prefix_noise
                         (setup.eventGraph.fromModeCompletion .sequential))),
                     ((application setup leaks).messageView final, final.recall focal))) =
               tailJoint.map (fun pair => (embed pair.1, pair.2)) := by
-            simp only [tailJoint, FinDist.map_bind, FinDist.map_comp, Function.comp_def,
+            simp only [tailJoint, PMF.map_bind, PMF.map_comp, Function.comp_def,
               nextExecution, nextSource]
             let continuePoint := fun point : Seed × Bool × (application setup leaks).Execution =>
               ((runtime setup).runInteractionPlan leaks players network remaining point.2.2).map
@@ -413,11 +413,11 @@ theorem run_roster_source_prefix_noise
                     (setup.eventGraph.fromModeCompletion .sequential)))),
                   ((application setup leaks).messageView final, final.recall focal))
             change _ = nextPrior.bind (fun point => continuePoint point.val)
-            rw [← FinDist.bind_map Subtype.val nextPrior continuePoint]
-            change _ = ((advanced.toSubtype _).map Subtype.val).bind continuePoint
-            rw [FinDist.map_val_toSubtype]
-            simp only [advanced, FinDist.bind_bind, FinDist.bind_map, continuePoint]
-            apply FinDist.bind_congr
+            rw [← PMF.bind_map Subtype.val nextPrior continuePoint]
+            change _ = ((pmfToSubtype advanced _).map Subtype.val).bind continuePoint
+            rw [map_val_pmfToSubtype]
+            simp only [advanced, PMF.bind_bind, PMF.bind_map, continuePoint]
+            apply bind_congr_on_support _
             intro seed _
             have phaseLaw := rosterPolicy_phase_law setup leaks rosters timing wholeProfile
               (opportunity seed) event owner (opportunityFacts seed).2.1 actor (candidate seed)
@@ -427,20 +427,20 @@ theorem run_roster_source_prefix_noise
               wholeProfile profile refs (source seed) embedding refsBefore offset (aligned seed)
               (opportunity seed) (opportunityFacts seed).1.agrees
                 (opportunityFacts seed).1.history (opportunityFacts seed).2.1
-            rw [runInteractionPlan_append, grantLaw, FinDist.pure_bind, runInteractionPlan_append]
+            rw [runInteractionPlan_append, grantLaw, PMF.pure_bind, runInteractionPlan_append]
             change (((runtime setup).runInteractionPlan leaks players network phase
               (opportunity seed)).bind _).map _ = _
             have branchLaw : (runtime setup).runInteractionPlan leaks players network phase
                 (opportunity seed) =
                 (revealKernel profile ((source seed).view owner)).bind (conditional seed) := by
               simpa only [List.append_assoc, phase, conditional, branch, choiceLaw] using phaseLaw
-            rw [branchLaw, FinDist.bind_bind, FinDist.map_bind]
-            apply FinDist.bind_congr
+            rw [branchLaw, PMF.bind_bind, PMF.map_bind]
+            apply bind_congr_on_support _
             intro disclose _
-            rw [FinDist.map_bind]
-            apply FinDist.bind_congr
+            rw [PMF.map_bind]
+            apply bind_congr_on_support _
             intro after _
-            apply FinDist.map_congr_of_eq_on_support
+            apply map_congr_on_support _
             intro final _
             simp only [decodePrefix?_reveal, embed, tailRefs, resultRef, tailEmbedding,
               revealSuccessor, OutputEmbedding.ref]
@@ -464,7 +464,7 @@ theorem roster_compiled_prefix_noise
     (profile : BehavioralProfile setup.program) (focal : Player)
     (count : Nat) (within : count ≤ eventCount setup.program) :
     ∃ noise : Option (ProtocolView focal setup.program) →
-        FinDist ((application setup leaks).MessageReadout ×
+        PMF ((application setup leaks).MessageReadout ×
           List (application setup leaks).PlayerEntry),
       let executions := (initialLaw setup).bind fun state =>
         (runtime setup).runInteractionPlan leaks (rosterPolicy setup leaks rosters timing profile)
@@ -476,7 +476,7 @@ theorem roster_compiled_prefix_noise
           fun state => (noise (state.map (ProtocolState.observe focal setup.program))).map
             fun extra => (state, extra) := by
   let Seed := {initial // initial ∈ setup.initialLaw.support}
-  let prior : FinDist Seed := setup.initialLaw.toSubtype (fun _ member => member)
+  let prior : PMF Seed := pmfToSubtype setup.initialLaw (fun _ member => member)
   let source := fun seed : Seed => setup.initialConfig seed.val
   let execution := fun seed : Seed => ReactiveApplication.Execution.initial
     (application setup leaks) (EventGraphRuntime.State.initial (graph := graph setup)
@@ -486,9 +486,9 @@ theorem roster_compiled_prefix_noise
       (execution prior.support_nonempty.choose).recall focal)
   have initialFactor : prior.map (fun seed => (source seed,
       ((application setup leaks).messageView (execution seed), (execution seed).recall focal))) =
-      (prior.map source).bind fun config => (FinDist.pure emptyExtra).map fun extra =>
+      (prior.map source).bind fun config => (PMF.pure emptyExtra).map fun extra =>
         (config, extra) := by
-    simp only [FinDist.map_pure, ← FinDist.map_eq_bind, FinDist.map_comp, Function.comp_def]
+    simp only [PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp, Function.comp_def]
     rfl
   obtain ⟨noise, factor⟩ := run_roster_source_prefix_noise setup leaks rosters timing network
     profile focal setup.program reveals profile
@@ -499,7 +499,7 @@ theorem roster_compiled_prefix_noise
       (openable seed.val seed.property)).toPublicCheckpoint) (fun _ _ => rfl)
     (fun _ => MessageNetwork.Satisfies.empty) (fun _ => MessageNetwork.SerialsBeforeNext.empty)
     (fun _ => (application setup leaks).initial_inputRecall _) none (fun _ => rfl)
-    (fun _ => FinDist.pure emptyExtra) initialFactor count within
+    (fun _ => PMF.pure emptyExtra) initialFactor count within
   refine ⟨noise, ?_⟩
   let combined := fun initial : State L setup.context =>
     ((runtime setup).runInteractionPlan leaks (rosterPolicy setup leaks rosters timing profile)
@@ -509,15 +509,15 @@ theorem roster_compiled_prefix_noise
       fun final => (sourcePrefix? setup count final.application.config,
         ((application setup leaks).messageView final, final.recall focal))
   have joint : prior.bind (fun seed => combined seed.val) = setup.initialLaw.bind combined := by
-    rw [← FinDist.bind_map Subtype.val prior combined]
-    exact congrArg (fun law => law.bind combined) (FinDist.map_val_toSubtype _ _)
+    rw [← PMF.bind_map Subtype.val prior combined]
+    exact congrArg (fun law => law.bind combined) (map_val_pmfToSubtype _ _)
   change (prior.bind fun seed => combined seed.val) =
     ((prior.bind fun seed => combined seed.val).map Prod.fst).bind fun state =>
       (noise (state.map (ProtocolState.observe focal setup.program))).map fun extra =>
         (state, extra) at factor
   rw [joint] at factor
   dsimp only
-  simpa only [initialLaw, FinDist.bind_map, FinDist.map_bind, FinDist.map_comp,
+  simpa only [initialLaw, PMF.bind_map, PMF.map_bind, PMF.map_comp,
     Function.comp_def, combined] using factor
 
 end Vegas

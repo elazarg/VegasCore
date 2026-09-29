@@ -2,7 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.Game
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.StateKernel
 import Mathlib.Tactic.DeriveFintype
 
 /-! # Complete histories of the actual two-reveal source protocol -/
@@ -77,7 +77,7 @@ theorem source_opening_legal (bit guess disclose : Bool) :
 
 theorem source_guess_step (bit guess : Bool) :
     sourceArena.step (SourcePath.drawn bit).state ⟨_, source_guess_legal bit guess⟩ =
-      FinDist.pure (SourcePath.guessed bit guess).state := by
+      PMF.pure (SourcePath.guessed bit guess).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, guessConfig,
     OwnAction.disclosure, ProtocolState.entry]
@@ -85,7 +85,7 @@ theorem source_guess_step (bit guess : Bool) :
 theorem source_opening_step (bit guess disclose : Bool) :
     sourceArena.step (SourcePath.guessed bit guess).state
       ⟨_, source_opening_legal bit guess disclose⟩ =
-      FinDist.pure (SourcePath.done bit guess disclose).state := by
+      PMF.pure (SourcePath.done bit guess disclose).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, finalConfig,
     OwnAction.disclosure, ProtocolState.entry]
@@ -100,17 +100,17 @@ def SourcePath.trace : (path : SourcePath) → sourceArena.Trace path.state
   | .root => .start
   | .drawn bit => Trace.extend .start (fun _ => none) source_draw_legal (by
       change (SourcePath.drawn bit).state ∈ (sourceSetup.initialLaw.map _).support
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       refine ⟨initialState bit, ?_, rfl⟩
-      rw [show sourceSetup.initialLaw = (FinDist.uniformOfFintype (α := Bool)).map initialState
-        from rfl, FinDist.support_map]
-      exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)
+      rw [show sourceSetup.initialLaw = (PMF.uniformOfFintype (α := Bool)).map initialState
+        from rfl, PMF.support_map]
+      exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
   | .guessed bit guess => Trace.extend (SourcePath.drawn bit).trace _
       (source_guess_legal bit guess)
-      (by rw [source_guess_step]; exact FinDist.mem_support_pure.mpr rfl)
+      (by rw [source_guess_step]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   | .done bit guess disclose => Trace.extend (SourcePath.guessed bit guess).trace _
       (source_opening_legal bit guess disclose)
-      (by rw [source_opening_step]; exact FinDist.mem_support_pure.mpr rfl)
+      (by rw [source_opening_step]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 termination_by path => path.depth
 decreasing_by all_goals simp [depth]
 
@@ -150,9 +150,9 @@ theorem SourcePath.step_complete (path : SourcePath)
           (sourceArena.legalOption_of_legal legal who) (by change ¬ False; exact id)
       subst joint
       change target ∈ (sourceSetup.initialLaw.map _).support at supported
-      obtain ⟨initial, member, rfl⟩ := FinDist.support_map .. ▸ supported
-      change initial ∈ ((FinDist.uniformOfFintype (α := Bool)).map initialState).support at member
-      obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨initial, member, rfl⟩ := PMF.support_map .. ▸ supported
+      change initial ∈ ((PMF.uniformOfFintype (α := Bool)).map initialState).support at member
+      obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ member
       refine ⟨.drawn bit, ?_⟩
       simp only [history, trace, History.extend]
       rfl
@@ -163,7 +163,7 @@ theorem SourcePath.step_complete (path : SourcePath)
       subst joint
       change target ∈ (sourceArena.step (drawn bit).state ⟨_, legal⟩).support at supported
       rw [source_guess_step] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       refine ⟨.guessed bit guess, ?_⟩
       simp only [history, trace, History.extend]
   | guessed bit guess =>
@@ -173,7 +173,7 @@ theorem SourcePath.step_complete (path : SourcePath)
       subst joint
       change target ∈ (sourceArena.step (guessed bit guess).state ⟨_, legal⟩).support at supported
       rw [source_opening_step] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       refine ⟨.done bit guess disclose, ?_⟩
       simp only [history, trace, History.extend]
   | done bit guess disclose => exact (legal.1 trivial).elim

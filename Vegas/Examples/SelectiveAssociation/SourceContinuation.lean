@@ -24,8 +24,8 @@ private theorem visit_player_response {Claim : Type}
           (fun response => runInstructions players rest
             ((effect execution (.activate who)).respond (application Claim) who response)) := by
   simp only [runInstructions, instruction, ReactiveApplication.dispatch, effect_law,
-    FinDist.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-    ReactiveApplication.invoke, FinDist.bind_map]
+    PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
+    ReactiveApplication.invoke, PMF.bind_map]
 
 theorem runInstructions_visit {Claim : Type} (players : Player → (application Claim).Policy)
     (event : Event) (rest : List Instruction) (execution : (application Claim).Execution) :
@@ -37,7 +37,7 @@ theorem runInstructions_visit {Claim : Type} (players : Player → (application 
               (application Claim) (eventOwner event) response))) := by
   simp only [visit, List.append_assoc, List.cons_append, List.nil_append]
   rw [runInstructions_application, visit_player_response]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro response _
   rw [runInstructions_record, runInstructions_ticks, runInstructions_application]
   rfl
@@ -144,7 +144,7 @@ theorem policy_discloses (Claim : Type) (defaultClaim : Claim) (event : Event)
     (supported : response ∈ (policy Claim defaultClaim (eventOwner event) past view).support) :
     selectedDisclosure event response = true := by
   have nonzero : event.val ≠ 0 := by omega
-  simp only [policy, visited, ↓reduceIte, nonzero, FinDist.mem_support_pure] at supported
+  simp only [policy, visited, ↓reduceIte, nonzero, PMF.mem_support_pure_iff _ _] at supported
   subst response
   simp [selectedDisclosure, playing, Nat.not_lt.mpr opening]
 
@@ -171,8 +171,8 @@ theorem opening_visit_core {Claim : Type} (players : Player → (application Cla
       (OpensAt players event → disclose = true) := by
   rw [← List.append_nil (visit event), runInstructions_visit] at supported
   obtain ⟨response, responseMem, resultMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  cases FinDist.mem_support_pure.mp resultMem
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  cases (PMF.mem_support_pure_iff _ _).mp resultMem
   exact ⟨selectedDisclosure event response,
     opening_response_core event (visitInput event execution) response
       rfl stage opening next advances nextStage,
@@ -193,14 +193,14 @@ theorem opening_results {Claim : Type} (players : Player → (application Claim)
       (OpensAt players 5 → third = true) := by
   rw [List.append_assoc, runInstructions_append] at supported
   obtain ⟨firstState, firstMem, afterFirst⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨first, firstCore, firstOpens⟩ := opening_visit_core players 3 execution firstState
     (by rw [core]; rfl) (by decide) (CorePath.openedAlice a c b)
     (by intro unused disclose; rw [core, CorePath.bob_advance])
     (by intro disclose; change (4 : Nat) ≠ 3; decide) firstMem
   rw [runInstructions_append] at afterFirst
   obtain ⟨secondState, secondMem, afterSecond⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ afterFirst)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ afterFirst)
   obtain ⟨second, secondCore, secondOpens⟩ := opening_visit_core players 4 firstState secondState
     (by rw [firstCore]; rfl) (by decide) (CorePath.openedCarol a c b first)
     (by intro unused disclose; rw [firstCore, CorePath.aliceOpening_advance])
@@ -228,10 +228,10 @@ theorem prescribed_opening_law (Claim : Type) (defaultClaim : Claim)
     (execution : (application Claim).Execution) (a c b : PublicationResult Bool)
     (core : execution.application.core = CorePath.bob a c b) :
     (runInstructions (policy Claim defaultClaim) (visit 3 ++ visit 4 ++ visit 5) execution).map
-      (fun final => results final.application) = FinDist.pure ⟨a, b, c⟩ := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+      (fun final => results final.application) = PMF.pure ⟨a, b, c⟩ := by
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   exact prescribed_opening_results Claim defaultClaim execution final a c b core finalMem
 
 /-- An arbitrary whole continuation policy can only withhold its owner's
@@ -271,7 +271,7 @@ theorem opening_deviation_expect_le {Claim : Type}
     (others : ∀ event : Event, 3 ≤ event.val → eventOwner event ≠ who → OpensAt players event)
     (execution : (application Claim).Execution) (a c b : PublicationResult Bool)
     (core : execution.application.core = CorePath.bob a c b) :
-    (runInstructions players (visit 3 ++ visit 4 ++ visit 5) execution).expect
+    expect (runInstructions players (visit 3 ++ visit 4 ++ visit 5) execution)
         (fun final => utility (results final.application) who) ≤ utility ⟨a, b, c⟩ who := by
   apply FinDist.expect_le_of_forall
   intro final supported

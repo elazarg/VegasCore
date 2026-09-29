@@ -36,7 +36,7 @@ private def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
 private def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket graph) :=
-  fun _ _ => FinDist.pure ∅
+  fun _ _ => PMF.pure ∅
 
 private abbrev app := runtime.reactiveApplication leaks
 
@@ -257,13 +257,13 @@ theorem unknown_forward_retains_call (id : MessageId Bool) :
       ⟨.malformed ⟨.bool, true⟩, none⟩ id unknown
 
 theorem complete_menu_finite_histories (horizon : Nat) (scheduler : app.Scheduler) :
-    Finite (menu.protocol (FinDist.pure initial.application) horizon scheduler).History :=
+    Finite (menu.protocol (PMF.pure initial.application) horizon scheduler).History :=
   inferInstance
 
 theorem complete_menu_consistent_assessment (horizon : Nat) (scheduler : app.Scheduler) :
     GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent
-      (menu.bayesAssessment (FinDist.pure initial.application) horizon scheduler)
-      (menu.decisionInformationAntichain (FinDist.pure initial.application)
+      (menu.bayesAssessment (PMF.pure initial.application) horizon scheduler)
+      (menu.decisionInformationAntichain (PMF.pure initial.application)
         horizon scheduler) :=
   menu.bayesAssessment_consistent _ _ _
 
@@ -279,10 +279,10 @@ earlier deviations. The certificate is not restricted to first or honest play. -
 theorem all_compilers_admissible (scheduler : app.Scheduler) (horizon : Nat)
     (capacity : horizon ≤ 2) (who : Bool) (policy : graph.BehavioralPolicy who) :
     (bounds.rawMenu runtime leaks).Admissible
-      (FinDist.pure initial.application) horizon scheduler who
+      (PMF.pure initial.application) horizon scheduler who
       (runtime.compileReactivePolicy leaks who policy) := by
-  simpa only [FinDist.map_pure, initial, ReactiveApplication.Execution.initial, app] using
-    bounds.compiledPolicy_admissible runtime leaks (FinDist.pure (fun input => nomatch input))
+  simpa only [PMF.pure_map, initial, ReactiveApplication.Execution.initial, app] using
+    bounds.compiledPolicy_admissible runtime leaks (PMF.pure (fun input => nomatch input))
       horizon scheduler values_covered capacity who policy
 
 /-- Uniform trembles can be applied to the actual compiled profile in the
@@ -292,9 +292,9 @@ theorem compiled_perturbation_fullyMixed (scheduler : app.Scheduler)
     (atMostOne : weight ≤ 1) :
     GameTheory.Protocol.InformationModel.BehavioralAssessment.IsFullyMixed
       ((bounds.rawMenu runtime leaks).perturbedAssessment
-        (FinDist.pure initial.application) 2 scheduler
+        (PMF.pure initial.application) 2 scheduler
         (fun who => (bounds.rawMenu runtime leaks).restrictPolicy
-          (FinDist.pure initial.application) 2 scheduler who
+          (PMF.pure initial.application) 2 scheduler who
           (runtime.compileReactivePolicy leaks who (profile who)))
         weight positive atMostOne) :=
   (bounds.rawMenu runtime leaks).perturbedAssessment_fullyMixed _ _ _ _ _ _ _
@@ -303,14 +303,14 @@ theorem compiled_perturbation_fullyMixed (scheduler : app.Scheduler)
 The menu still contains all of the malformed and unopenable choices above. -/
 theorem compiled_consistent_assessment (scheduler : app.Scheduler)
     (profile : graph.BehavioralProfile) :
-    ∃ assessment : ((bounds.rawMenu runtime leaks).information (FinDist.pure initial.application)
+    ∃ assessment : ((bounds.rawMenu runtime leaks).information (PMF.pure initial.application)
         2 scheduler).BehavioralAssessment,
       assessment.strategy = (fun who => (bounds.rawMenu runtime leaks).restrictPolicy
-        (FinDist.pure initial.application)
+        (PMF.pure initial.application)
         2 scheduler who (runtime.compileReactivePolicy leaks who (profile who))) ∧
       assessment.IsSequentiallyConsistent
         ((bounds.rawMenu runtime leaks).decisionInformationAntichain
-          (FinDist.pure initial.application) 2 scheduler) :=
+          (PMF.pure initial.application) 2 scheduler) :=
   (bounds.rawMenu runtime leaks).exists_consistent_assessment _ _ _ _
 
 private def usedZero : app.Execution :=

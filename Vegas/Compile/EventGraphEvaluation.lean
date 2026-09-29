@@ -214,7 +214,7 @@ theorem compileResolve_eval? {Field : Type} [DecidableEq Field]
     (Vegas.EventGraph.EventCode.resolve owner payload (refs.get selected)
         (compileChecks (published := published) refs registry revelations selected)).eval?
         disclose store =
-      some (FinDist.pure
+      some (PMF.pure
         (if (registry.completedBy (published := published) revelations selected).all
             (·.accepts (revelations.reveal (published := published) selected)
               (Env.cons (Val := CellVal (Player := Player) L) (τ := .publication payload)

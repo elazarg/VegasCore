@@ -26,12 +26,12 @@ private theorem policy_subsequence (reference : M.BehavioralAssessment)
     (policies : ℕ → M.BehavioralPolicy who) :
     ∃ policy : M.BehavioralPolicy who, ∃ index : ℕ → ℕ, StrictMono index ∧
       ∀ site : M.InformationSite who,
-        FinDistConvergesPointwise (fun n => policies (index n) site.1) (policy site.1) := by
+        PMFConvergesPointwise (fun n => policies (index n) site.1) (policy site.1) := by
   classical
   let _ (site : M.InformationSite who) : Finite (M.Choice who site.1) :=
     (mixed who site).finite
   obtain ⟨laws, index, increasing, converges⟩ :=
-    FinDist.exists_common_subsequence (fun n (site : M.InformationSite who) => policies n site.1)
+    exists_subseq_pmfConvergesPointwise_pi (fun n (site : M.InformationSite who) => policies n site.1)
   let policy : M.BehavioralPolicy who := fun info =>
     if decision : ∃ history : M.InformationHistory who info,
         ¬ E.terminal history.1.state ∧ ∃ action : E.Action who, some action ∈ M.menu who info
@@ -64,13 +64,13 @@ private theorem uniform_gain_at_site (reference : M.BehavioralAssessment)
     refine ⟨upper - lower, ?_⟩
     rintro value ⟨alternative, rfl⟩
     apply sub_le_sub
-    · change (((sequence n).continuationContext site payoff fuel).outcome alternative).expect
+    · change expect (((sequence n).continuationContext site payoff fuel).outcome alternative)
         payoff ≤ upper
-      rw [← FinDist.expect_const _ upper]
+      rw [← expect_constant _ upper]
       exact FinDist.expect_mono fun history _ => above (Set.mem_range_self history)
-    · change lower ≤ (((sequence n).continuationContext site payoff fuel).outcome
-        ((sequence n).strategy who)).expect payoff
-      rw [← FinDist.expect_const _ lower]
+    · change lower ≤ expect (((sequence n).continuationContext site payoff fuel).outcome
+        ((sequence n).strategy who)) payoff
+      rw [← expect_constant _ lower]
       exact FinDist.expect_mono fun history _ => below (Set.mem_range_self history)
   let error (n : ℕ) := max 0 (sSup (Set.range (gain n)))
   have nonnegative (n : ℕ) : 0 ≤ error n := le_max_left _ _

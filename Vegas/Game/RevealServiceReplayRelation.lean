@@ -457,7 +457,7 @@ theorem environment_bind_eq {Outcome : Type}
     (fresh : ∀ id, command = .include id → id ∉ first.network.ledger.map Message.id)
     (published : ∀ who, command = .activate who → ∀ message ∈ first.network.pending,
       message.id ∈ first.network.ledger.map Message.id)
-    (leftValue rightValue : (application setup leaks).Execution → FinDist Outcome)
+    (leftValue rightValue : (application setup leaks).Execution → PMF Outcome)
     (continued : ∀ left ∈ (first.environmentStep (application setup leaks) command).support,
       ∀ right, ReplayAgreement setup leaks watcher left right → leftValue left = rightValue right) :
     (first.environmentStep (application setup leaks) command).bind leftValue =
@@ -465,21 +465,21 @@ theorem environment_bind_eq {Outcome : Type}
   let app := application setup leaks
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.pure_bind] at continued ⊢
-      exact continued _ (FinDist.mem_support_pure.mpr rfl) _
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.pure_bind] at continued ⊢
+      exact continued _ ((PMF.mem_support_pure_iff _ _).mpr rfl) _
         (same.append_environment _ _)
   | activate who =>
       have clean := published who rfl
       rw [first.activate_of_pending_published app who clean] at continued ⊢
       rw [second.activate_of_pending_published app who (same.pending_published clean),
-        FinDist.pure_bind, FinDist.pure_bind]
-      exact continued _ (FinDist.mem_support_pure.mpr rfl) _
+        PMF.pure_bind, PMF.pure_bind]
+      exact continued _ ((PMF.mem_support_pure_iff _ _).mpr rfl) _
         (same.append_environment _ _)
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.pure_bind] at continued ⊢
-      apply continued _ (FinDist.mem_support_pure.mpr rfl)
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.pure_bind] at continued ⊢
+      apply continued _ ((PMF.mem_support_pure_iff _ _).mpr rfl)
       have unchanged (execution : (application setup leaks).Execution) :
           (execution.includePending (application setup leaks) id).environmentRecall =
             execution.environmentRecall := by
@@ -490,12 +490,12 @@ theorem environment_bind_eq {Outcome : Type}
         ⟨first.observeEnvironment app, .include id⟩
         ⟨second.observeEnvironment app, .include id⟩
   | application command =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.bind_map]
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.bind_map]
       rw [same.applicationEq]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro state supported
       apply continued
-      · simp only [ReactiveApplication.Execution.environmentStep, FinDist.support_map]
+      · simp only [ReactiveApplication.Execution.environmentStep, PMF.support_map]
         refine ⟨{ first with application := state }, ?_, rfl⟩
         refine ⟨state, ?_, rfl⟩
         rw [same.applicationEq]

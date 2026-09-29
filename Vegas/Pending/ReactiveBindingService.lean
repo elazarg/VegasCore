@@ -204,7 +204,7 @@ theorem reactiveDecision_binding_service (runtime : EventGraphRuntime graph)
       execution owner response audit (app.submissionOrigin_next_none execution owner recall serials)
         activated)
     (app.respond_inputRecall execution owner response recall)
-    ((app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+    ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
       execution owner response serials) output afterReady afterTimely retained newlyIssued reached
 
 end Vegas.EventGraphRuntime

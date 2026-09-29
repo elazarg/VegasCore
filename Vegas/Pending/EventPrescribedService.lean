@@ -357,11 +357,11 @@ theorem runServicePlan_bindingProtection
       BindingProtectionState runtime inputs after owner event := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact Or.inr holds
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, first, tail⟩ := member
       have zero := clockFree instruction List.mem_cons_self
       have restFree : ∀ current ∈ rest, current.ticks = 0 := fun current currentMem =>
@@ -400,11 +400,11 @@ theorem runServicePlan_resolutionProtection
       ResolutionProtectionState runtime inputs after owner event := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact Or.inr holds
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, first, tail⟩ := member
       have zero := clockFree instruction List.mem_cons_self
       have restFree : ∀ current ∈ rest, current.ticks = 0 := fun current currentMem =>
@@ -437,7 +437,7 @@ theorem runServicePlan_bindingProtection_includeLatest
     (member : after ∈ (runtime.runServicePlan players wire
       (reactions ++ [.includeLatest event owner]) before).support) :
     event ∈ after.native.application.config.cut.completed := by
-  rw [runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨middle, reactionMem, inclusionMem⟩ := member
   have middleInvariant :=
@@ -449,8 +449,8 @@ theorem runServicePlan_bindingProtection_includeLatest
   · have inclusionProgress := runtime.runServicePlan_facts inputs players wire
       [.includeLatest event owner] middle after middleInvariant inclusionMem
     exact inclusionProgress.completed completed
-  · simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion,
-      FinDist.mem_support_pure] at inclusionMem
+  · simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion,
+      PMF.mem_support_pure_iff _ _] at inclusionMem
     obtain ⟨included, includeMem, rfl⟩ := inclusionMem
     apply runtime.serviceStep_includeLatest_completes players wire event owner middle after
       middleHolds.authorship middleHolds.pending
@@ -480,7 +480,7 @@ theorem runServicePlan_resolutionProtection_includeLatest
     (member : after ∈ (runtime.runServicePlan players wire
       (reactions ++ [.includeLatest event owner]) before).support) :
     event ∈ after.native.application.config.cut.completed := by
-  rw [runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨middle, reactionMem, inclusionMem⟩ := member
   have middleInvariant :=
@@ -492,8 +492,8 @@ theorem runServicePlan_resolutionProtection_includeLatest
   · have inclusionProgress := runtime.runServicePlan_facts inputs players wire
       [.includeLatest event owner] middle after middleInvariant inclusionMem
     exact inclusionProgress.completed completed
-  · simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion,
-      FinDist.mem_support_pure] at inclusionMem
+  · simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion,
+      PMF.mem_support_pure_iff _ _] at inclusionMem
     obtain ⟨included, includeMem, rfl⟩ := inclusionMem
     apply runtime.serviceStep_includeLatest_completes players wire event owner middle after
       middleHolds.authorship middleHolds.pending
@@ -533,7 +533,7 @@ theorem runServicePlan_bind_partial_reactions_complete
       (List.replicate 3 (.player owner) ++ reactions ++ [.includeLatest event owner])
       before).support) :
     event ∈ after.native.application.config.cut.completed := by
-  rw [List.append_assoc, runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [List.append_assoc, runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨submitted, blockMem, tailMem⟩ := member
   have actualSubmission := runtime.runServicePlan_compiled_bind_partial_submitted owner policy
@@ -600,7 +600,7 @@ theorem runServicePlan_resolve_partial_reactions_complete
       (List.replicate 3 (.player owner) ++ reactions ++ [.includeLatest event owner])
       before).support) :
     event ∈ after.native.application.config.cut.completed := by
-  rw [List.append_assoc, runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [List.append_assoc, runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨submitted, blockMem, tailMem⟩ := member
   have actualSubmission := runtime.runServicePlan_compiled_resolve_partial_submitted owner policy
@@ -675,7 +675,7 @@ theorem runServicePlan_bind_partial_reactions_sample_complete
       [.includeLatest event owner, .sample event] =
       (List.replicate 3 (.player owner) ++ reactions ++ [.includeLatest event owner]) ++
         [.sample event] := by simp
-  rw [split, runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [split, runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨included, prefixMem, sampleMem⟩ := member
   have completed := runtime.runServicePlan_bind_partial_reactions_complete inputs owner policy
@@ -721,7 +721,7 @@ theorem runServicePlan_resolve_partial_reactions_sample_complete
       [.includeLatest event owner, .sample event] =
       (List.replicate 3 (.player owner) ++ reactions ++ [.includeLatest event owner]) ++
         [.sample event] := by simp
-  rw [split, runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [split, runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨included, prefixMem, sampleMem⟩ := member
   have completed := runtime.runServicePlan_resolve_partial_reactions_complete inputs ordered owner

@@ -34,7 +34,7 @@ def sourceServiceAudit
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks))) :=
+      PMF (List (EnvelopeEvidence setup leaks))) :=
   (runtime setup).serviceAudit leaks
     ((application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
       (fun evidence => evidence.2.2.sender)
@@ -53,7 +53,7 @@ theorem sourceService_history_audit_clear
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History)
@@ -85,14 +85,14 @@ theorem sourceService_history_settlement
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History) :
     TerminalAudit.settlement base ((runtime setup).serviceAuditObservation leaks)
       (sourceServiceAudit setup leaks sample) deposit history.state =
-        FinDist.pure (base history.state) :=
+        PMF.pure (base history.state) :=
   TerminalAudit.settlement_clean base _ _ deposit history.state
     (sourceService_history_audit_clear setup leaks bounds values capacity rosters opportunities
       network sample authentic history)
@@ -113,7 +113,7 @@ theorem sourceServiceCompiledProfile_settlement_law
     (permitted : ∀ who, (original who).Admitted setup.program
       (CommitmentInterface.values setup.program))
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
     let model := (sourceServiceMenu setup leaks bounds rosters).information (initialLaw setup)
@@ -132,7 +132,7 @@ theorem sourceServiceCompiledProfile_settlement_law
       (2 * (rosterPlan setup rosters).length + 1)
   have clean (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History) :
-      settle history.state = FinDist.pure (baseUtility setup leaks utility history.state) :=
+      settle history.state = PMF.pure (baseUtility setup leaks utility history.state) :=
     sourceService_history_settlement setup leaks bounds values capacity rosters
       bindingOpportunities network sample authentic _ deposit history
   change executions.bind _ = _
@@ -140,16 +140,16 @@ theorem sourceServiceCompiledProfile_settlement_law
         (fun payoffs => (sourceReadout setup leaks final.state, payoffs))) =
       executions.map (fun final =>
         (sourceReadout setup leaks final.state, baseUtility setup leaks utility final.state)) := by
-    simp only [clean, FinDist.map_pure, ← FinDist.map_eq_bind]
+    simp only [clean, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def]
   rw [settled]
   have terminal := sourceServiceCompiledProfile_readout_law setup leaks bounds values initialValues
     capacity rosters opportunities network original permitted
-  have joint := congrArg (FinDist.map (fun state : Option (State L setup.program.terminalCtx) =>
+  have joint := congrArg (PMF.map (fun state : Option (State L setup.program.terminalCtx) =>
     (state, fun who => state.elim 0 (fun final => utility final who)))) terminal
   change executions.map (fun final => (sourceReadout setup leaks final.state,
     fun who => (sourceReadout setup leaks final.state).elim 0
       (fun state => utility state who))) = _
-  simpa only [FinDist.map_comp, Function.comp_def, Option.elim_some,
+  simpa only [PMF.map_comp, Function.comp_def, Option.elim_some,
     baseUtility, executions, model] using joint
 
 end Vegas

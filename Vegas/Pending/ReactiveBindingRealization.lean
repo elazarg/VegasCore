@@ -29,7 +29,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 unchanged target opponents. Neither the policy nor its initial private seed
 depends on the hidden execution. No payoff comparison is assumed here. -/
 theorem retainedPolicy_runFrom
-    (initial : FinDist (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (source : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (target : ∀ who, (larger.information initial horizon scheduler).BehavioralPolicy who)
@@ -70,7 +70,7 @@ theorem retainedPolicy_runFrom
     at realized
   simp only [players, Function.update_idem] at realized
   rw [← realized]
-  simp only [ReactiveApplication.Implementation.run, FinDist.map_bind, FinDist.map_comp]
+  simp only [ReactiveApplication.Implementation.run, PMF.map_bind, PMF.map_comp]
   rfl
 
 end Vegas.EventGraphRuntime.BindingMemory

@@ -66,7 +66,7 @@ theorem final_binding_history_coupling
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let plan := (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
       (List.replicate ((runtime setup).deadline event) .tick ++ [.expire event])
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (app.invoke players owner original).bind
         ((runtime setup).runInteractionPlan leaks players network plan) ∧
       coupling.map Prod.snd =
@@ -161,14 +161,14 @@ theorem final_binding_history_coupling
       (required_binding_sourceService setup leaks bounds rosters owner _ _) available
   refine ⟨coupling, first, ?_, related⟩
   rw [second]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro next supported
   symm
   refine roster_segment_runJoint setup leaks rosters network strategy owner players before plan
     after (by simpa only [plan, List.append_assoc] using split) ?_ next.1 next.2 ?_
   · simpa [plan] using absent
   · simp only [ReactiveApplication.Implementation.resume, ↓reduceIte,
-      FinDist.support_map] at supported
+      PMF.support_map] at supported
     obtain ⟨response, _, same⟩ := supported
     rw [← same, app.respond_environmentRecall, ← frame.service]
     exact position

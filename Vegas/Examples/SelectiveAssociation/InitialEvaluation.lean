@@ -14,7 +14,7 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open GameTheory GameTheory.Protocol ReactiveAssociationEvidence
 
 theorem native_initial_finish (players : Player → nativeApp.Policy) :
-    nativeApp.finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler players
+    nativeApp.finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler players
       (some ⟨88, some alice, activatedInitial⟩) =
         (nativeApp.runRounds nativeScheduler players nativeHorizon nativeRoot).map
           nativeApp.finished := by
@@ -24,58 +24,58 @@ theorem native_initial_finish (players : Player → nativeApp.Policy) :
       ([.player alice] : List (ServiceInstruction nativeGraph)).length nativeRoot = _
     rw [native_prefix_rounds players [.player alice] nativePlan.tail rfl]
     simp only [runInteractionPlan, interactionStep, interactionInstruction,
-      FinDist.pure_bind, FinDist.bind_pure, ReactiveApplication.dispatch]
+      PMF.pure_bind, PMF.bind_pure, ReactiveApplication.dispatch]
     rw [show nativeRoot.environmentStep nativeApp (.activate alice) =
-      FinDist.pure activatedInitial from initial_activation, FinDist.pure_bind]
+      PMF.pure activatedInitial from initial_activation, PMF.pure_bind]
     rfl
   change _ = (nativeApp.runRounds nativeScheduler players (1 + 88) nativeRoot).map _
-  rw [ReactiveApplication.runRounds_add, firstRound, FinDist.map_bind]
-  simp only [ReactiveApplication.finish, ReactiveApplication.resume, FinDist.map_bind]
+  rw [ReactiveApplication.runRounds_add, firstRound, PMF.map_bind]
+  simp only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.map_bind]
 
 theorem native_initial_finish_value (players : Player → nativeApp.Policy) :
-    (nativeApp.finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler players
-      (some ⟨88, some alice, activatedInitial⟩)).expect (nativeUtility alice) =
-        (nativeApp.runRounds nativeScheduler players nativeHorizon nativeRoot).expect
+    expect (nativeApp.finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler players
+      (some ⟨88, some alice, activatedInitial⟩)) (nativeUtility alice) =
+        expect (nativeApp.runRounds nativeScheduler players nativeHorizon nativeRoot)
           (fun final => utility (nativeResults final.application.config) alice) := by
-  rw [native_initial_finish, FinDist.expect_map]
+  rw [native_initial_finish, expect_map]
   rfl
 
 theorem native_initial_value
     {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
     (profile : Profile (serviceModel observation).behavioralSignature) :
-    ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1)).expect
+    expect ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1))
       (fun history => nativeUtility alice history.state) =
-        ((serviceApp observation).runRounds (serviceScheduler observation)
-          ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+        expect ((serviceApp observation).runRounds (serviceScheduler observation)
+          ((serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation)
-            profile) nativeHorizon nativeRoot).expect
+            profile) nativeHorizon nativeRoot)
               (fun final => utility (nativeResults final.application.config) alice) := by
-  have law := (serviceMenu observation).run_eq_finish (FinDist.pure nativeInitial) nativeHorizon
+  have law := (serviceMenu observation).run_eq_finish (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation)
     profile (2 * nativeHorizon + 1) (serviceArena observation).initHistory (by exact le_rfl)
-  have value := congrArg (fun law : FinDist (serviceApp observation).ProtocolState =>
-    law.expect (nativeUtility alice)) law
-  rw [FinDist.expect_map] at value
-  change ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1)).expect
+  have value := congrArg (fun law : PMF (serviceApp observation).ProtocolState =>
+    expect law (nativeUtility alice)) law
+  rw [expect_map] at value
+  change expect ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1))
     (fun history => nativeUtility alice history.state) = _ at value
   rw [value]
-  change ((serviceApp observation).finish (FinDist.pure nativeInitial) nativeHorizon
+  change expect ((serviceApp observation).finish (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation)
-    ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    ((serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation) profile)
-      none).expect (nativeUtility alice) = _
-  simp only [ReactiveApplication.finish, FinDist.pure_bind, FinDist.expect_map]
+      none) (nativeUtility alice) = _
+  simp only [ReactiveApplication.finish, PMF.pure_bind, expect_map]
   rfl
 
 theorem native_decode_alice_deviation (profile : Profile nativeModel.behavioralSignature) :
-    nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+    nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon nativeScheduler
         (Profile.update (sig := nativeModel.behavioralSignature)
           profile alice nativeAliceBehavior) =
-      nativeAliceProfile (nativeMenu.decodeProfile (FinDist.pure nativeInitial)
+      nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
         nativeHorizon nativeScheduler profile) := by
   rw [nativeMenu.decodeProfile_update]
   apply congrArg (Function.update _ alice)
-  exact nativeMenu.decode_restrictPolicy_of_covered (FinDist.pure nativeInitial)
+  exact nativeMenu.decode_restrictPolicy_of_covered (PMF.pure nativeInitial)
     nativeHorizon nativeScheduler alice nativeAlicePolicy
       native_alice_available
 
@@ -84,22 +84,22 @@ theorem native_initial_result_law (profile : Profile nativeModel.behavioralSigna
         (fun history => history.state.elim (⟨.failure, .failure, .failure⟩ : Results)
           (fun control => nativeResults control.execution.application.config)) =
       (nativeApp.runRounds nativeScheduler
-        (nativeMenu.decodeProfile (FinDist.pure nativeInitial)
+        (nativeMenu.decodeProfile (PMF.pure nativeInitial)
           nativeHorizon nativeScheduler profile)
           nativeHorizon nativeRoot).map
             (fun final => nativeResults final.application.config) := by
-  have law := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+  have law := nativeMenu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler
     profile (2 * nativeHorizon + 1) nativeArena.initHistory (by exact le_rfl)
-  have projected := congrArg (fun law : FinDist nativeApp.ProtocolState => law.map
+  have projected := congrArg (fun law : PMF nativeApp.ProtocolState => law.map
     (fun state => state.elim (⟨.failure, .failure, .failure⟩ : Results)
       (fun control => nativeResults control.execution.application.config))) law
-  rw [FinDist.map_comp] at projected
+  rw [PMF.map_comp] at projected
   change (nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map _ =
-    (nativeApp.finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
-      (nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler profile)
+    (nativeApp.finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler
+      (nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon nativeScheduler profile)
         none).map _ at projected
   erw [projected]
-  simp only [ReactiveApplication.finish, FinDist.pure_bind, FinDist.map_comp]
+  simp only [ReactiveApplication.finish, PMF.pure_bind, PMF.map_comp]
   rfl
 
 end Vegas.Examples.SelectiveAssociation

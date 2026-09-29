@@ -70,12 +70,12 @@ theorem final_reserved_bob_audit (players : Player → nativeApp.Policy)
   rcases nativeRuntime.reactiveLatest_wait_or_owned nativeLeaks alicePublication alice
       (execution.observeEnvironment nativeApp) with wait | ⟨id, authored, selected⟩
   · rw [wait] at supported
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at supported
-    cases FinDist.mem_support_pure.mp supported
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
+    cases (PMF.mem_support_pure_iff _ _).mp supported
     rfl
   · rw [selected] at supported
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at supported
-    cases FinDist.mem_support_pure.mp supported
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
+    cases (PMF.mem_support_pure_iff _ _).mp supported
     change ledgerViolation bob Conformance.bobPacketPermitted
       (execution.includePending nativeApp id).network.ledger = _
     rw [nativeApp.includePending_network]
@@ -100,7 +100,7 @@ theorem final_response_bob_audit (players : Player → nativeApp.Policy)
       resolutionTail (execution.respond nativeApp alice response)).support) :
     Conformance.bobLedgerViolation final = Conformance.bobLedgerViolation execution := by
   obtain ⟨included, includedMem, tailMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   exact (Enforcement.clock_tail_bob_audit players included final tailMem).trans
     ((final_reserved_bob_audit players (execution.respond nativeApp alice response)
       included includedMem).trans (response_bob_audit execution alice response))
@@ -120,7 +120,7 @@ theorem wrong_address_final_bob_clear (players : Player → nativeApp.Policy) (b
     exact Enforcement.before_alice_bob_clear bit false
   apply (final_response_bob_audit players next response _ ?_).trans clear
   rw [final_response_law]
-  exact FinDist.mem_support_pure.mpr rfl
+  exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem wrong_address_final_payoff_law (table : PayoffTable)
     (players : Player → nativeApp.Policy) (bit : Bool)
@@ -134,18 +134,18 @@ theorem wrong_address_final_payoff_law (table : PayoffTable)
       (next.respond nativeApp alice (choiceAction alicePublication aliceHandle bit disclose))).map
         (fun final => (nativeResults final.application.config,
           Enforcement.executionUtility table final bob)) =
-      FinDist.pure (sourceResults (finalConfig bit false disclose).state,
+      PMF.pure (sourceResults (finalConfig bit false disclose).state,
         (table (sourceResults (finalConfig bit false disclose).state) bob : ℝ)) := by
   let response := choiceAction alicePublication aliceHandle bit disclose
   have canonical := Enforcement.alice_service_payoff_law table players bit false disclose
-  rw [final_response_law, FinDist.map_pure] at canonical
-  have canonicalPair := FinDist.mem_support_pure.mp
-    (canonical ▸ FinDist.mem_support_pure.mpr rfl)
+  rw [final_response_law, PMF.pure_map] at canonical
+  have canonicalPair := (PMF.mem_support_pure_iff _ _).mp
+    (canonical ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   have result := (wrong_address_final_results players bit submission available wrong next supported
     response).trans (congrArg Prod.fst canonicalPair)
   have clear := wrong_address_final_bob_clear players bit submission wrong next supported response
-  rw [final_response_law, FinDist.map_pure]
-  change FinDist.pure (_, _) = FinDist.pure (_, _)
+  rw [final_response_law, PMF.pure_map]
+  change PMF.pure (_, _) = PMF.pure (_, _)
   congr 1
   apply Prod.ext result
   rw [Enforcement.bob_utility]
@@ -176,13 +176,13 @@ theorem bob_continuation_evaluation (players : Player → nativeApp.Policy) (bit
         (execution.environmentStep nativeApp (.activate alice)).bind (fun next =>
           (players alice (next.recall alice) (next.observe nativeApp alice)).map
             (next.respond nativeApp alice)) := by
-    rw [interactionStep, interactionInstruction, FinDist.pure_bind]
+    rw [interactionStep, interactionInstruction, PMF.pure_bind]
     rfl
-  simp only [bobToAlice, FinDist.bind_bind]
-  apply FinDist.bind_congr
+  simp only [bobToAlice, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro execution _
   rw [runInteractionPlan]
-  simp only [runInteractionPlan, FinDist.bind_pure, step, FinDist.bind_bind, FinDist.bind_map]
+  simp only [runInteractionPlan, PMF.bind_pure, step, PMF.bind_bind, PMF.bind_map]
 
 /-- Wrong-address traffic has exactly the silent source continuation's game
 results and receiver payoff for every mixed legal Alice response. -/
@@ -192,7 +192,7 @@ theorem wrong_address_continuation_payoff_law (table : PayoffTable)
     (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
       nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication)
-    (choices : FinDist Bool)
+    (choices : PMF Bool)
     (aliceChoice : players alice ((beforeAlice bit false).recall alice)
       ((beforeAlice bit false).observe nativeApp alice) =
         choices.map (choiceAction alicePublication aliceHandle bit)) :
@@ -204,27 +204,27 @@ theorem wrong_address_continuation_payoff_law (table : PayoffTable)
           Enforcement.executionUtility table final bob)) =
       choices.map (fun disclose => (sourceResults (finalConfig bit false disclose).state,
         (table (sourceResults (finalConfig bit false disclose).state) bob : ℝ))) := by
-  rw [bob_continuation_evaluation, FinDist.map_bind]
+  rw [bob_continuation_evaluation, PMF.map_bind]
   trans (bobToAlice players bit submission).bind (fun _ =>
     choices.map (fun disclose => (sourceResults (finalConfig bit false disclose).state,
       (table (sourceResults (finalConfig bit false disclose).state) bob : ℝ))))
-  · apply FinDist.bind_congr
+  · apply bind_congr_on_support _
     intro next supported
     have input := wrong_address_alice_input players bit submission wrong next supported
     have recall : next.recall alice = (beforeAlice bit false).recall alice :=
       congrArg Prod.fst input
     have observation : next.observe nativeApp alice =
         (beforeAlice bit false).observe nativeApp alice := congrArg Prod.snd input
-    rw [recall, observation, aliceChoice, FinDist.bind_map, FinDist.map_bind]
-    rw [FinDist.map_eq_bind]
-    apply FinDist.bind_congr
+    rw [recall, observation, aliceChoice, PMF.bind_map, PMF.map_bind]
+    rw [← PMF.bind_pure_comp, Function.comp_def]
+    apply bind_congr_on_support _
     intro disclose _
     exact wrong_address_final_payoff_law table players bit submission available wrong next supported
       disclose
-  · exact FinDist.bind_const _ _
+  · exact PMF.bind_const _ _
 
 theorem silence_continuation_payoff_law (table : PayoffTable)
-    (players : Player → nativeApp.Policy) (bit : Bool) (choices : FinDist Bool)
+    (players : Player → nativeApp.Policy) (bit : Bool) (choices : PMF Bool)
     (aliceChoice : players alice ((beforeAlice bit false).recall alice)
       ((beforeAlice bit false).observe nativeApp alice) =
         choices.map (choiceAction alicePublication aliceHandle bit)) :
@@ -239,14 +239,14 @@ theorem silence_continuation_payoff_law (table : PayoffTable)
   change (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork _
     ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true false))).map
       _ = _
-  rw [runInteractionPlan_append, bob_to_alice, aliceChoice, FinDist.map_comp,
-    FinDist.bind_map, FinDist.map_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [runInteractionPlan_append, bob_to_alice, aliceChoice, PMF.map_comp,
+    PMF.bind_map, PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro disclose _
   have law := Enforcement.alice_service_payoff_law table players bit false disclose
-  have observed := congrArg (fun law : FinDist (Results × (Player → ℝ)) =>
+  have observed := congrArg (fun law : PMF (Results × (Player → ℝ)) =>
     law.map (fun result => (result.1, result.2 bob))) law
-  simpa only [FinDist.map_comp, Function.comp_def, FinDist.map_pure] using observed
+  simpa only [PMF.map_comp, Function.comp_def, PMF.pure_map] using observed
 
 /-- A fixed legal silence action compares with every ignored submission.
 The two arbitrary continuations need agree only on the mixed legal action at
@@ -257,7 +257,7 @@ theorem wrong_address_compared_with_silence (table : PayoffTable)
     (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
       nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication)
-    (choices : FinDist Bool)
+    (choices : PMF Bool)
     (rawChoice : rawPlayers alice ((beforeAlice bit false).recall alice)
       ((beforeAlice bit false).observe nativeApp alice) =
         choices.map (choiceAction alicePublication aliceHandle bit))

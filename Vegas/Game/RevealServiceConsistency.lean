@@ -44,7 +44,7 @@ theorem exists_compiled_consistent
     let model := information setup leaks extended watcher
     let responses := menu setup leaks extended watcher
     let antichain := (responses.decisionRecall (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher)).antichain
+      (scheduler setup leaks watcher)).decisionInformationAntichain
     ∃ target : model.BehavioralAssessment,
       target.strategy = compiledProfile setup leaks extended watcher
         (setup.decodeBehavioralProfile admission source.strategy) 0 le_rfl (by norm_num) ∧
@@ -84,7 +84,7 @@ theorem exists_compiled_consistent
   let compiled := compiledProfile setup leaks extended watcher
     (setup.decodeBehavioralProfile admission source.strategy) 0 le_rfl (by norm_num)
   have strategies (who : Player) (site : model.InformationSite who) :
-      FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1)
+      PMFConvergesPointwise (fun n => (sequence n).strategy who site.1)
         (compiled who site.1) :=
     compiledProfile_converges setup leaks bounds watcher reveals observer openable admission
       (fun n => (sourceSequence n).strategy) source.strategy converges.strategy weight
@@ -105,7 +105,7 @@ theorem exists_compiled_consistent
     have belief : ((sourceSequence n).bayes (approximates n).1
         (setup.decision_antichain admission)).belief who sourceSite =
           (sourceSequence n).belief who sourceSite := by
-      apply FinDist.ext_of_prob
+      apply pmf_ext_toReal
       intro current
       rw [InformationModel.BehavioralAssessment.bayes,
         (setup.informationModel admission).bayesBelief_prob]

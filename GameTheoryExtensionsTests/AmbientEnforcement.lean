@@ -2,7 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Protocol.BehavioralContinuation
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.StateKernel
 
 /-! # Optional communication before an unchanged guessing game
 
@@ -39,12 +39,12 @@ def terminal : State → Prop
   | .done _ _ _ => True
   | _ => False
 
-def transition (ambient : Bool) (state : State) (joint : Bool → Option Bool) : FinDist State :=
+def transition (ambient : Bool) (state : State) (joint : Bool → Option Bool) : PMF State :=
   match state with
-  | .initial => (FinDist.uniformOfFintype (α := Bool)).map State.alice
-  | .alice bit => FinDist.pure (.bob bit (ambient && (joint false).getD false))
-  | .bob bit disclosed => FinDist.pure (.done bit disclosed ((joint true).getD false))
-  | .done bit disclosed guess => FinDist.pure (.done bit disclosed guess)
+  | .initial => (PMF.uniformOfFintype (α := Bool)).map State.alice
+  | .alice bit => PMF.pure (.bob bit (ambient && (joint false).getD false))
+  | .bob bit disclosed => PMF.pure (.done bit disclosed ((joint true).getD false))
+  | .done bit disclosed guess => PMF.pure (.done bit disclosed guess)
 
 @[reducible] def arena (ambient : Bool) : ExecutionProtocol Bool where
   State := State
@@ -72,13 +72,13 @@ theorem history_length (ambient : Bool) : ∀ {state} (trace : (arena ambient).T
       have earlier := history_length ambient prior
       cases before with
       | initial =>
-          obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | alice bit =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | bob bit disclosed =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | done bit disclosed guess => exact (legal.1 trivial).elim
 
@@ -147,17 +147,17 @@ theorem bob_legal (ambient bit disclosed guess : Bool) :
 
 def aliceHistory (ambient bit : Bool) : (arena ambient).History :=
   (arena ambient).initHistory.extend (target := .alice bit) (initial_legal ambient) (by
-    change State.alice bit ∈ ((FinDist.uniformOfFintype (α := Bool)).map State.alice).support
-    rw [FinDist.support_map]
-    exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)
+    change State.alice bit ∈ ((PMF.uniformOfFintype (α := Bool)).map State.alice).support
+    rw [PMF.support_map]
+    exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
 
 def bobHistory (ambient bit disclose : Bool) : (arena ambient).History :=
   (aliceHistory ambient bit).extend (alice_legal ambient bit disclose)
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def guessHistory (ambient bit disclose guess : Bool) : (arena ambient).History :=
   (bobHistory ambient bit disclose).extend
-    (bob_legal ambient bit (ambient && disclose) guess) (FinDist.mem_support_pure.mpr rfl)
+    (bob_legal ambient bit (ambient && disclose) guess) ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem initial_joint (ambient : Bool) (joint : Bool → Option Bool)
     (legal : (arena ambient).Legal .initial joint) : joint = fun _ => none := by
@@ -204,18 +204,18 @@ theorem classified_step (ambient : Bool) (history : (arena ambient).History)
   rcases known with rfl | ⟨bit, rfl⟩ | ⟨bit, disclose, rfl⟩ | ⟨bit, disclose, guess, rfl⟩
   · have same := initial_joint ambient joint legal
     subst joint
-    obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ reached
+    obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ reached
     exact Or.inr (Or.inl ⟨bit, rfl⟩)
   · have same := alice_joint ambient bit joint legal
     obtain ⟨disclose, same⟩ : ∃ disclose, joint = aliceJoint ambient disclose :=
       ⟨_, same⟩
     subst joint
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     exact Or.inr (Or.inr (Or.inl ⟨bit, disclose, rfl⟩))
   · have same := bob_joint ambient bit (ambient && disclose) joint legal
     obtain ⟨guess, same⟩ : ∃ guess, joint = bobJoint guess := ⟨_, same⟩
     subst joint
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     exact Or.inr (Or.inr (Or.inr ⟨bit, disclose, guess, rfl⟩))
   · exact (legal.1 trivial).elim
 
@@ -268,23 +268,23 @@ theorem antichain (ambient : Bool) : (model ambient).DecisionInformationAntichai
   omega
 
 def choose (ambient who value : Bool) : (model ambient).BehavioralPolicy who :=
-  fun info => FinDist.pure ⟨if decisionInfo ambient who info then some value else none, by
+  fun info => PMF.pure ⟨if decisionInfo ambient who info then some value else none, by
     change (if decisionInfo ambient who info then some value else none).isSome =
       decisionInfo ambient who info
     cases decisionInfo ambient who info <;> rfl⟩
 
 def choiceLaw {ambient : Bool} (profile : Profile (model ambient).behavioralSignature)
-    (who : Bool) (info : Option (Option Bool)) : FinDist Bool :=
+    (who : Bool) (info : Option (Option Bool)) : PMF Bool :=
   (profile who info).map (fun choice => choice.val.getD false)
 
 def kernel {ambient : Bool} (profile : Profile (model ambient).behavioralSignature) :
-    State → FinDist State
-  | .initial => (FinDist.uniformOfFintype (α := Bool)).map State.alice
+    State → PMF State
+  | .initial => (PMF.uniformOfFintype (α := Bool)).map State.alice
   | .alice bit => (choiceLaw profile false (some (some bit))).map
       (fun disclose => .bob bit (ambient && disclose))
   | .bob bit disclosed => (choiceLaw profile true (some (if disclosed then some bit else none))).map
       (fun guess => .done bit disclosed guess)
-  | .done bit disclosed guess => FinDist.pure (.done bit disclosed guess)
+  | .done bit disclosed guess => PMF.pure (.done bit disclosed guess)
 
 theorem chooser_kernel {ambient : Bool} (profile : Profile (model ambient).behavioralSignature)
     (history : (arena ambient).History) (running : ¬ (arena ambient).terminal history.state) :
@@ -303,8 +303,8 @@ theorem chooser_kernel {ambient : Bool} (profile : Profile (model ambient).behav
       have mapped := congrArg (fun law => law.map
         (fun choice : Option Bool => State.bob bit (ambient && choice.getD false))) marginal
       simpa only [InformationModel.singleMoverChooser, arena, transition,
-        kernel, choiceLaw, observation, ↓reduceIte, FinDist.map_comp,
-        Function.comp_def, FinDist.map_eq_bind, FinDist.bind_bind, FinDist.pure_bind,
+        kernel, choiceLaw, observation, ↓reduceIte, PMF.map_comp,
+        Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
         ite_true] using mapped
   | bob bit disclosed =>
       have marginal := (model ambient).singleMoverJoint_marginal (single ambient)
@@ -316,8 +316,8 @@ theorem chooser_kernel {ambient : Bool} (profile : Profile (model ambient).behav
       have mapped := congrArg (fun law => law.map
         (fun choice : Option Bool => State.done bit disclosed (choice.getD false))) marginal
       simpa only [InformationModel.singleMoverChooser, arena, transition,
-        kernel, choiceLaw, observation, ↓reduceIte, FinDist.map_comp,
-        Function.comp_def, FinDist.map_eq_bind, FinDist.bind_bind, FinDist.pure_bind,
+        kernel, choiceLaw, observation, ↓reduceIte, PMF.map_comp,
+        Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
         ite_true] using mapped
   | done bit disclosed guess => exact (running trivial).elim
 
@@ -325,7 +325,7 @@ theorem run_states {ambient : Bool} (profile : Profile (model ambient).behaviora
     (fuel : Nat) (history : (arena ambient).History) :
     ((model ambient).runSingleMoverBehavioralFrom (single ambient) profile fuel history).map
       History.state = (fun law => law.bind (kernel profile))^[fuel]
-        (FinDist.pure history.state) := by
+        (PMF.pure history.state) := by
   apply runRandomizedFor_map_state
   · intro state stopped
     cases state <;> try contradiction
@@ -333,7 +333,7 @@ theorem run_states {ambient : Bool} (profile : Profile (model ambient).behaviora
   · exact chooser_kernel profile
 
 def resultLaw {ambient : Bool} (profile : Profile (model ambient).behavioralSignature)
-    (bit disclosed : Bool) : FinDist State :=
+    (bit disclosed : Bool) : PMF State :=
   (choiceLaw profile true (some (if disclosed then some bit else none))).map
     (fun guess => .done bit disclosed guess)
 
@@ -345,7 +345,7 @@ theorem run_bob {ambient : Bool} (profile : Profile (model ambient).behavioralSi
   rw [run_states]
   cases ambient <;>
     simp [Function.iterate_succ_apply', kernel, resultLaw, bobHistory, aliceHistory,
-      History.extend, aliceJoint, FinDist.map_eq_bind]
+      History.extend, aliceJoint, ← PMF.bind_pure_comp, Function.comp_def]
 
 theorem run_alice {ambient : Bool} (profile : Profile (model ambient).behavioralSignature)
     (bit : Bool) :
@@ -355,17 +355,17 @@ theorem run_alice {ambient : Bool} (profile : Profile (model ambient).behavioral
           (fun disclose => resultLaw profile bit (ambient && disclose)) := by
   rw [run_states]
   simp [Function.iterate_succ_apply', kernel, resultLaw, aliceHistory,
-    History.extend, FinDist.map_eq_bind, FinDist.bind_bind]
+    History.extend, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind]
 
 theorem run_initial {ambient : Bool} (profile : Profile (model ambient).behavioralSignature) :
     ((model ambient).runSingleMoverBehavioralFrom (single ambient) profile 3
       (arena ambient).initHistory).map History.state =
-        (FinDist.uniformOfFintype (α := Bool)).bind fun bit =>
+        (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
           (choiceLaw profile false (some (some bit))).bind fun disclose =>
             resultLaw profile bit (ambient && disclose) := by
   rw [run_states]
   simp [Function.iterate_succ_apply', kernel, resultLaw, initHistory,
-    FinDist.map_eq_bind, FinDist.bind_bind]
+    ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind]
 
 def payoff (deposit : ℝ) : State → Bool → ℝ
   | .done bit disclosed guess, who =>

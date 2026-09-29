@@ -82,7 +82,7 @@ theorem repeated_binding_block_coupling
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let ending : List (ServiceInstruction (graph setup)) :=
       .includeLatest event owner :: List.replicate ticks .tick ++ [.expire event]
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player ++ ending) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -107,23 +107,23 @@ theorem repeated_binding_block_coupling
   have leftReach (next) (supported : next ∈ window.support) :
       next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original).support := by
-    rw [← first, FinDist.support_map]
+    rw [← first, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   have includeLaw (execution : app.Execution)
       (selected : (runtime setup).reactiveLatest leaks event owner
         (execution.observeEnvironment app) = .include message.id) :
       (runtime setup).interactionStep leaks players network (.includeLatest event owner)
-        execution = FinDist.pure (finish execution) := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
+        execution = PMF.pure (finish execution) := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind]
     change app.dispatch players ((runtime setup).reactiveLatest leaks event owner
       (execution.observeEnvironment app)) execution = _
     rw [selected]
-    change (execution.environmentStep app (.include message.id)).bind FinDist.pure = _
-    rw [FinDist.bind_pure]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    change (execution.environmentStep app (.include message.id)).bind PMF.pure = _
+    rw [PMF.bind_pure]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
     rfl
   have existsTail (next) (supported : next ∈ window.support) :
-      ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         coupling.map Prod.fst =
           (runtime setup).runInteractionPlan leaks players network ending next.1 ∧
         coupling.map Prod.snd =
@@ -140,14 +140,14 @@ theorem repeated_binding_block_coupling
     · let leftLaw := (runtime setup).runInteractionPlan leaks players network ending next.1
       let rightLaw := ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
         fun final => (final, next.2.2)
-      refine ⟨FinDist.product leftLaw rightLaw, FinDist.map_fst_product ..,
+      refine ⟨bindPairLaw leftLaw (fun _ => rightLaw), bindPairLaw_map_fst ..,
         FinDist.map_snd_product .., ?_⟩
       intro final member
       left
       obtain ⟨record, present, authored, rejected⟩ := bad
       refine ⟨record, ?_, authored, rejected⟩
       have reached : final.1 ∈ leftLaw.support := by
-        rw [← FinDist.map_fst_product leftLaw rightLaw, FinDist.support_map]
+        rw [← bindPairLaw_map_fst leftLaw rightLaw, PMF.support_map]
         exact ⟨final, member, rfl⟩
       exact ((runtime setup).executionTraffic_runInteractionPlan leaks players network ending
         next.1 final.1 reached).subset present
@@ -230,58 +230,58 @@ theorem repeated_binding_block_coupling
       obtain ⟨left, right, leftClock, rightClock, connected⟩ :=
         included.completed_clock_tail players network event completed ticks
       have leftLaw : (runtime setup).runInteractionPlan leaks players network ending next.1 =
-          FinDist.pure left := by
+          PMF.pure left := by
         change ((runtime setup).interactionStep leaks players network (.includeLatest event owner)
           next.1).bind _ = _
-        rw [includeLaw next.1 selection.1, FinDist.pure_bind]
+        rw [includeLaw next.1 selection.1, PMF.pure_bind]
         exact leftClock
       have rightLaw : (runtime setup).runInteractionPlan leaks players network ending next.2.1 =
-          FinDist.pure right := by
+          PMF.pure right := by
         change ((runtime setup).interactionStep leaks players network (.includeLatest event owner)
           next.2.1).bind _ = _
         have selected : (runtime setup).reactiveLatest leaks event owner
             (next.2.1.observeEnvironment app) = .include message.id := by
           rw [← paired.environment]
           exact selection.1
-        rw [includeLaw next.2.1 selected, FinDist.pure_bind]
+        rw [includeLaw next.2.1 selected, PMF.pure_bind]
         exact rightClock
-      refine ⟨FinDist.pure (left, right, next.2.2), ?_, ?_, ?_⟩
-      · rw [FinDist.map_pure, leftLaw]
-      · rw [FinDist.map_pure, rightLaw, FinDist.map_pure]
+      refine ⟨PMF.pure (left, right, next.2.2), ?_, ?_, ?_⟩
+      · rw [PMF.pure_map, leftLaw]
+      · rw [PMF.pure_map, rightLaw, PMF.pure_map]
       · intro final member
-        cases FinDist.mem_support_pure.mp member
+        cases (PMF.mem_support_pure_iff _ _).mp member
         exact Or.inr connected
   let tail := fun next supported => (existsTail next supported).choose
   refine ⟨window.bindOnSupport tail, ?_, ?_, ?_⟩
-  · rw [FinDist.map_bindOnSupport]
+  · rw [map_bindOnSupport]
     calc
       _ = window.bind (fun next =>
           (runtime setup).runInteractionPlan leaks players network ending next.1) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next supported
         exact (existsTail next supported).choose_spec.1
       _ = (window.map Prod.fst).bind
           ((runtime setup).runInteractionPlan leaks players network ending) :=
-        (FinDist.bind_map ..).symm
+        (PMF.bind_map ..).symm
       _ = _ := by rw [first, ← (runtime setup).runInteractionPlan_append]
   · rw [roster_runJoint_append_reserved setup leaks rosters network strategy owner players
       before (visits.map ServiceInstruction.player) ending after split
       (by simp [ending]) repaired memory (by rw [← frame.service]; exact position),
-      List.length_map, FinDist.map_bindOnSupport]
+      List.length_map, map_bindOnSupport]
     calc
       _ = window.bind (fun next =>
           ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
             fun final => (final, next.2.2)) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next supported
         exact (existsTail next supported).choose_spec.2.1
       _ = (window.map Prod.snd).bind (fun next =>
           ((runtime setup).runInteractionPlan leaks players network ending next.1).map
-            fun final => (final, next.2)) := by rw [FinDist.bind_map]
+            fun final => (final, next.2)) := by rw [PMF.bind_map]
       _ = _ := by rw [second]
   · intro final member
     obtain ⟨next, supported, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ member)
+      Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ member)
     exact (existsTail next supported).choose_spec.2.2 final reached
 
 end Vegas

@@ -45,20 +45,18 @@ theorem hasAliceBit_bob {Claim : Type} (sample : GuessSample Claim) (bit : Bool)
 theorem history_observe (Claim : Type) [Fintype Claim] (who : Player)
     (history : (arena Claim).History) :
     (model Claim).infoOf who history.trace = (application Claim).observe who history.state :=
-  (menu Claim).info (FinDist.pure initial) horizon (scheduler Claim) who history.trace
+  (menu Claim).info (PMF.pure initial) horizon (scheduler Claim) who history.trace
 
 theorem carol_history_joint (Claim : Type) [Fintype Claim]
     (strategy : ∀ who, (model Claim).BehavioralPolicy who)
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView) (bit : Bool) :
-    ((model Claim).runBehavioral strategy 13).probOf
-        {history | (model Claim).infoOf carol history.trace = some info ∧
-          hasAliceBit bit history.state} =
-      (bindingLaw ((menu Claim).decodeProfile (FinDist.pure initial)
-        horizon (scheduler Claim) strategy)).probOf
-          {sample | sample.carolInformation = info ∧ sample.value = .success bit} := by
-  have mapped := congrArg (fun law : FinDist (application Claim).ProtocolState =>
-    law.probOf {state | (application Claim).observe carol state = some info ∧
-      hasAliceBit bit state})
+    (((model Claim).runBehavioral strategy 13).toOuterMeasure {history | (model Claim).infoOf carol history.trace = some info ∧
+          hasAliceBit bit history.state}).toReal =
+      ((bindingLaw ((menu Claim).decodeProfile (PMF.pure initial)
+        horizon (scheduler Claim) strategy)).toOuterMeasure {sample | sample.carolInformation = info ∧ sample.value = .success bit}).toReal := by
+  have mapped := congrArg (fun law : PMF (application Claim).ProtocolState =>
+    (law.toOuterMeasure {state | (application Claim).observe carol state = some info ∧
+      hasAliceBit bit state}).toReal)
     (model_run_state Claim strategy 13)
   rw [FinDist.probOf_map, controlLaw_carol, FinDist.probOf_map] at mapped
   simpa only [Set.preimage_ofPred_eq, history_observe, ReactiveApplication.observe,
@@ -68,14 +66,12 @@ theorem carol_history_joint (Claim : Type) [Fintype Claim]
 theorem bob_history_joint (Claim : Type) [Fintype Claim]
     (strategy : ∀ who, (model Claim).BehavioralPolicy who)
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView) (bit : Bool) :
-    ((model Claim).runBehavioral strategy 20).probOf
-        {history | (model Claim).infoOf bob history.trace = some info ∧
-          hasAliceBit bit history.state} =
-      (guessLaw ((menu Claim).decodeProfile (FinDist.pure initial)
-        horizon (scheduler Claim) strategy)).probOf
-          {sample | bobInformation sample = info ∧ sample.1.value = .success bit} := by
-  have mapped := congrArg (fun law : FinDist (application Claim).ProtocolState =>
-    law.probOf {state | (application Claim).observe bob state = some info ∧ hasAliceBit bit state})
+    (((model Claim).runBehavioral strategy 20).toOuterMeasure {history | (model Claim).infoOf bob history.trace = some info ∧
+          hasAliceBit bit history.state}).toReal =
+      ((guessLaw ((menu Claim).decodeProfile (PMF.pure initial)
+        horizon (scheduler Claim) strategy)).toOuterMeasure {sample | bobInformation sample = info ∧ sample.1.value = .success bit}).toReal := by
+  have mapped := congrArg (fun law : PMF (application Claim).ProtocolState =>
+    (law.toOuterMeasure {state | (application Claim).observe bob state = some info ∧ hasAliceBit bit state}).toReal)
     (model_run_state Claim strategy 20)
   rw [FinDist.probOf_map, controlLaw_bob, FinDist.probOf_map] at mapped
   simpa only [Set.preimage_ofPred_eq, history_observe, ReactiveApplication.observe,
@@ -87,7 +83,7 @@ theorem tremble_belief_eq (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (tremble Claim defaultClaim weight positive atMostOne).belief who site =
       (model Claim).bayesBelief
         (tremble Claim defaultClaim weight positive atMostOne).strategy who site
-        ((menu Claim).decisionInformationAntichain (FinDist.pure initial)
+        ((menu Claim).decisionInformationAntichain (PMF.pure initial)
           horizon (scheduler Claim) who site)
         ((tremble_fullyMixed Claim defaultClaim weight positive atMostOne).informationMass_pos
           who site) := rfl
@@ -97,15 +93,12 @@ theorem tremble_bit_belief_eq (Claim : Type) [Fintype Claim] (defaultClaim : Cla
     (who : Player) (site : (model Claim).InformationSite who) (depth : Nat)
     (sameDepth : ∀ history : (model Claim).InformationHistory who site.1,
       history.1.trace.length = depth) (bit : Bool) :
-    ((tremble Claim defaultClaim weight positive atMostOne).belief who site).probOf
-        {history | hasAliceBit bit history.1.state} =
-      ((model Claim).runBehavioral
-        (tremble Claim defaultClaim weight positive atMostOne).strategy depth).probOf
-          {history | (model Claim).infoOf who history.trace = site.1 ∧
-            hasAliceBit bit history.state} /
-      ((model Claim).runBehavioral
-        (tremble Claim defaultClaim weight positive atMostOne).strategy depth).probOf
-          {history | (model Claim).infoOf who history.trace = site.1} := by
+    (((tremble Claim defaultClaim weight positive atMostOne).belief who site).toOuterMeasure {history | hasAliceBit bit history.1.state}).toReal =
+      (((model Claim).runBehavioral
+        (tremble Claim defaultClaim weight positive atMostOne).strategy depth).toOuterMeasure {history | (model Claim).infoOf who history.trace = site.1 ∧
+            hasAliceBit bit history.state}).toReal /
+      (((model Claim).runBehavioral
+        (tremble Claim defaultClaim weight positive atMostOne).strategy depth).toOuterMeasure {history | (model Claim).infoOf who history.trace = site.1}).toReal := by
   have meet : ∃ history ∈ {history | (model Claim).infoOf who history.trace = site.1},
       history ∈ ((model Claim).runBehavioral
         (tremble Claim defaultClaim weight positive atMostOne).strategy depth).support := by
@@ -116,14 +109,14 @@ theorem tremble_bit_belief_eq (Claim : Type) [Fintype Claim] (defaultClaim : Cla
     rwa [sameDepth history] at reached
   have conditioned := (model Claim).bayesBelief_map_eq_condOn
     (tremble Claim defaultClaim weight positive atMostOne).strategy who site depth sameDepth
-    ((menu Claim).decisionInformationAntichain (FinDist.pure initial)
+    ((menu Claim).decisionInformationAntichain (PMF.pure initial)
       horizon (scheduler Claim) who site)
     ((tremble_fullyMixed Claim defaultClaim weight positive atMostOne).informationMass_pos
       who site) meet
   rw [← tremble_belief_eq] at conditioned
   have events := congrArg
-    (fun law : FinDist (arena Claim).History =>
-      law.probOf {history | hasAliceBit bit history.state})
+    (fun law : PMF (arena Claim).History =>
+      (law.toOuterMeasure {history | hasAliceBit bit history.state}).toReal)
     conditioned
   rw [FinDist.probOf_map, FinDist.probOf_condOn_eq_inter] at events
   exact events
@@ -134,10 +127,8 @@ theorem carol_tremble_fair (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (observed : site.1 = some (past, view)) (granted : view.application.visit = some 1)
     (hidden : NoPublicAlice view) :
-    ((tremble Claim defaultClaim weight positive atMostOne).belief carol site).probOf
-        {history | hasAliceBit false history.1.state} =
-      ((tremble Claim defaultClaim weight positive atMostOne).belief carol site).probOf
-        {history | hasAliceBit true history.1.state} := by
+    (((tremble Claim defaultClaim weight positive atMostOne).belief carol site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal =
+      (((tremble Claim defaultClaim weight positive atMostOne).belief carol site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal := by
   have sameDepth (history : (model Claim).InformationHistory carol site.1) :
       history.1.trace.length = 13 :=
     carol_information_depth Claim past view granted ⟨history.1, history.2.trans observed⟩
@@ -154,10 +145,8 @@ theorem bob_tremble_fair (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (observed : site.1 = some (past, view)) (granted : view.application.visit = some 2)
     (hidden : NoPublicAlice view) :
-    ((tremble Claim defaultClaim weight positive atMostOne).belief bob site).probOf
-        {history | hasAliceBit false history.1.state} =
-      ((tremble Claim defaultClaim weight positive atMostOne).belief bob site).probOf
-        {history | hasAliceBit true history.1.state} := by
+    (((tremble Claim defaultClaim weight positive atMostOne).belief bob site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal =
+      (((tremble Claim defaultClaim weight positive atMostOne).belief bob site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal := by
   have sameDepth (history : (model Claim).InformationHistory bob site.1) :
       history.1.trace.length = 20 :=
     bob_information_depth Claim past view granted ⟨history.1, history.2.trans observed⟩

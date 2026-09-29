@@ -20,14 +20,14 @@ variable {Player : Type} [DecidableEq Player]
 
 def encodeNativePolicy
     (policy : NativePolicy graph) (info : NativeInfo graph) :
-    FinDist {choice : Option (PlayerAction graph) // choice.isSome = info.isSome} :=
+    PMF {choice : Option (PlayerAction graph) // choice.isSome = info.isSome} :=
   match info with
-  | none => FinDist.pure ⟨none, rfl⟩
+  | none => PMF.pure ⟨none, rfl⟩
   | some (history, view) => (policy history view).map fun native => ⟨some native, rfl⟩
 
 def decodeNativePolicy
     (policy : (info : NativeInfo graph) →
-      FinDist {choice : Option (PlayerAction graph) // choice.isSome = info.isSome}) :
+      PMF {choice : Option (PlayerAction graph) // choice.isSome = info.isSome}) :
     NativePolicy graph :=
   fun history view => (policy (some (history, view))).map
     (fun selected => selected.1.getD PlayerAction.wait)
@@ -37,14 +37,14 @@ theorem decode_encodeNativePolicy
     (policy : NativePolicy graph) :
     decodeNativePolicy (encodeNativePolicy policy) = policy := by
   funext history view
-  simp only [decodeNativePolicy, encodeNativePolicy, FinDist.map_comp,
+  simp only [decodeNativePolicy, encodeNativePolicy, PMF.map_comp,
     Function.comp_def, Option.getD_some]
-  exact FinDist.map_id _
+  exact PMF.map_id _
 
 omit [DecidableEq Player] in
 theorem encode_decodeNativePolicy
     (policy : (info : NativeInfo graph) →
-      FinDist {choice : Option (PlayerAction graph) // choice.isSome = info.isSome}) :
+      PMF {choice : Option (PlayerAction graph) // choice.isSome = info.isSome}) :
     encodeNativePolicy (decodeNativePolicy policy) = policy := by
   funext info
   cases info with
@@ -56,31 +56,31 @@ theorem encode_decodeNativePolicy
         cases selected : choice.1 with
         | none => rfl
         | some native => simp [selected] at valid
-      change FinDist.pure _ = policy none
+      change PMF.pure _ = policy none
       symm
       calc
-        _ = (policy none).map id := (FinDist.map_id _).symm
+        _ = (policy none).map id := (PMF.map_id _).symm
         _ = (policy none).map (fun _ => ⟨none, rfl⟩) :=
-          FinDist.map_congr_of_eq_on_support (fun choice _ => unique choice)
-        _ = _ := by simp [FinDist.map_eq_bind]
+          map_congr_on_support _ (fun choice _ => unique choice)
+        _ = _ := by simp [← PMF.bind_pure_comp, Function.comp_def]
   | some arguments =>
       rcases arguments with ⟨history, view⟩
-      rw [encodeNativePolicy, decodeNativePolicy, FinDist.map_comp]
+      rw [encodeNativePolicy, decodeNativePolicy, PMF.map_comp]
       calc
         _ = (policy (some (history, view))).map id := by
-          apply FinDist.map_congr_of_eq_on_support
+          apply map_congr_on_support _
           intro selected _
           apply Subtype.ext
           have present := selected.2
           cases chosen : selected.1 with
           | none => simp [chosen] at present
           | some native => simp [chosen]
-        _ = _ := FinDist.map_id _
+        _ = _ := PMF.map_id _
 
 /-- One fixed playerwise equivalence, uniform across all prefixes and all
 private setup draws. Every protocol deviation has a native policy. -/
 def nativePolicyEquiv (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) (who : Player) :
     NativePolicy graph ≃
       (runtime.nativeInformation inputs roster reactionRounds wire order).BehavioralPolicy who
@@ -96,7 +96,7 @@ theorem encodeNativePolicy_some
     (history : List (NativeEntry graph)) (view : NativeView graph) :
     (encodeNativePolicy policy (some (history, view))).map Subtype.val =
       (policy history view).map some := by
-  rw [encodeNativePolicy, FinDist.map_comp]
+  rw [encodeNativePolicy, PMF.map_comp]
   rfl
 
 /-- Changing a hidden service suffix or epoch counter does not change the

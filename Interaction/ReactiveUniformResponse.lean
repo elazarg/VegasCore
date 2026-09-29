@@ -94,12 +94,12 @@ theorem authorizedUniform_response_regular
   rw [app.authorizedUniform_response_eq condition eligible execution retained who action]
   split
   · exact MessageNetwork.chooseUniform_regular_insert _ _ (serials.next_not_eligible _ who)
-  · exact FinDist.RegularAt.refl _ _
+  · exact PMF.RegularAt.refl _ _
 
 theorem authorizedUniform_history_regular
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)
     (eligible : Message Principal app.Payload → Bool)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (who : Principal) (action : app.Action) :

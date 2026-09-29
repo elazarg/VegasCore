@@ -63,19 +63,19 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   induction visits using List.reverseRecOn generalizing final with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rw [unsent] at recorded
       cases recorded
   | append_singleton visits actor ih =>
       rw [List.map_append, runtime.runInteractionPlan_append] at reached
-      obtain ⟨middle, leading, last⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨middle, leading, last⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       cases priorRecorded : runtime.eventRecorded leaks (middle.recall owner) event with
       | true =>
           obtain ⟨before, value, admitted, remaining, application, ledger, receipts, counters,
               priorSerials, packets, tail⟩ := ih middle leading priorRecorded
           refine ⟨before, value, admitted, remaining ++ [actor], application, ledger, receipts,
             counters, priorSerials, packets, ?_⟩
-          rw [List.map_append, runtime.runInteractionPlan_append, FinDist.support_bind]
+          rw [List.map_append, runtime.runInteractionPlan_append, PMF.support_bind]
           exact Set.mem_iUnion₂.mpr ⟨middle, tail, last⟩
       | false =>
           obtain ⟨application, ledger, receipts, counters, packets⟩ :=
@@ -84,13 +84,13 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
                 granted ready selected fresh published leading priorRecorded
           have currentSerials := runtime.runInteractionPlan_serials leaks players network
             (visits.map ServiceInstruction.player) initial middle serials leading
-          simp only [List.map_cons, List.map_nil, runInteractionPlan, FinDist.bind_pure,
-            interactionStep, interactionInstruction, FinDist.pure_bind] at last
+          simp only [List.map_cons, List.map_nil, runInteractionPlan, PMF.bind_pure,
+            interactionStep, interactionInstruction, PMF.pure_bind] at last
           change final ∈ ((middle.environmentStep app (.activate actor)).bind
             (app.invoke players actor)).support at last
-          rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at last
-          obtain ⟨sample, _, last⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ last)
-          obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ last
+          rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at last
+          obtain ⟨sample, _, last⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ last)
+          obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ last
           let activated := middle.sampledActivation app actor sample
           have currentGrant : activated.application.serviceGrant = some event := by
             change middle.application.serviceGrant = some event
@@ -140,6 +140,6 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
             refine ⟨activated, value, admitted, [], application, ledger, receipts, counters,
               currentSerials.learn owner sample, packets.learn owner sample, ?_⟩
             rw [physical]
-            exact FinDist.mem_support_pure.mpr rfl
+            exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 end Vegas.EventGraphRuntime

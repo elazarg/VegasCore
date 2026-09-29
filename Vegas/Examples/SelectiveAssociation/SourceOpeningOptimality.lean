@@ -61,9 +61,9 @@ theorem bob_response_results {Claim : Type} (players : Player → (application C
     results final.application = ⟨if first then a else .failure,
       if selectedDisclosure 5 response then b else .failure, if second then c else .failure⟩ := by
   rw [runInstructions_afterResponse] at supported
-  change final ∈ (FinDist.pure
+  change final ∈ (PMF.pure
     (remainingVisit 5 (execution.respond (application Claim) bob response))).support at supported
-  cases FinDist.mem_support_pure.mp supported
+  cases (PMF.mem_support_pure_iff _ _).mp supported
   exact final_results _ a c b first second (selectedDisclosure 5 response)
     (bob_opening_response execution response visited a c b first second core)
 
@@ -75,19 +75,19 @@ theorem finish_alice_results {Claim : Type} (players : Player → (application C
     (remaining : control.remaining = (afterResponse 3).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 3).length + 1)
     (carolOpens : OpensAt players 4) (bobOpens : OpensAt players 5) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
+    ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)).map protocolResults =
         (players alice (control.execution.recall alice)
           (control.execution.observe (application Claim) alice)).map
             (fun response => (⟨if selectedDisclosure 3 response then a else .failure,
               b, c⟩ : Results)) := by
   rw [finish_response_law players 3 control active remaining position,
-    FinDist.map_comp, FinDist.map_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+    PMF.map_comp, PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro response _
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   exact alice_response_results players control.execution final response a c b core
     visited carolOpens bobOpens finalMem
 
@@ -99,19 +99,19 @@ theorem finish_carol_results {Claim : Type} (players : Player → (application C
     (remaining : control.remaining = (afterResponse 4).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 4).length + 1)
     (bobOpens : OpensAt players 5) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
+    ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)).map protocolResults =
         (players carol (control.execution.recall carol)
           (control.execution.observe (application Claim) carol)).map
             (fun response => (⟨if first then a else .failure, b,
               if selectedDisclosure 4 response then c else .failure⟩ : Results)) := by
   rw [finish_response_law players 4 control active remaining position,
-    FinDist.map_comp, FinDist.map_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+    PMF.map_comp, PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro response _
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   exact carol_response_results players control.execution final response a c b first core
     visited bobOpens finalMem
 
@@ -122,7 +122,7 @@ theorem finish_bob_results {Claim : Type} (players : Player → (application Cla
     (active : control.actor = some bob)
     (remaining : control.remaining = (afterResponse 5).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 5).length + 1) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
+    ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)).map protocolResults =
         (players bob (control.execution.recall bob)
           (control.execution.observe (application Claim) bob)).map
@@ -130,12 +130,12 @@ theorem finish_bob_results {Claim : Type} (players : Player → (application Cla
               if selectedDisclosure 5 response then b else .failure,
               if second then c else .failure⟩ : Results)) := by
   rw [finish_response_law players 5 control active remaining position,
-    FinDist.map_comp, FinDist.map_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+    PMF.map_comp, PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro response _
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   exact bob_response_results players control.execution final response a c b first second core
     visited finalMem
 

@@ -36,7 +36,7 @@ variable (setup : Setup (Player := Player) (L := L))
   (source : (setup.informationModel admission).BehavioralAssessment)
   (mixed : source.IsFullyMixed)
   (timing : TimingLaw setup rosters)
-  (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+  (timingFull : ∀ event who owned, FullSupport (timing event who owned))
 
 open Classical in
 include reveals openable mixed timingFull in
@@ -70,7 +70,7 @@ theorem roster_owner_comparison_of_posterior
     (posterior : (assessment.stateBelief who site).map (fun state => state.bind fun current =>
       sourcePrefix? setup event.val current.execution.application.config) =
         source.stateBelief who sourceSite)
-    (law : FinDist (((rosterMenu setup leaks
+    (law : PMF (((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network)).Choice who site.1))
@@ -79,9 +79,9 @@ theorem roster_owner_comparison_of_posterior
     (timingBound : (timing event who owned).timingPrefix
       (past.length - rosterOffset setup rosters who event) ≤ weight)
     (valueRange :
-      let value := fun disclose => (source.stateBelief who sourceSite).expect (fun state =>
-        ((setup.protocolStep state (fun _ => some (.reveal who 0 disclose))).bind
-          (setup.continuationLaw (setup.decodeBehavioralProfile admission source.strategy))).expect
+      let value := fun disclose => expect (source.stateBelief who sourceSite) (fun state =>
+        expect ((setup.protocolStep state (fun _ => some (.reveal who 0 disclose))).bind
+          (setup.continuationLaw (setup.decodeBehavioralProfile admission source.strategy)))
             utility)
       |value true - value false| ≤ range) :
     let model := (rosterMenu setup leaks
@@ -95,43 +95,43 @@ theorem roster_owner_comparison_of_posterior
       let original := (setup.informationModel admission).assessmentComparison
         (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
           source who deviation
-      comparison.alternative.expect (fun value => value.elim 0 utility) -
-          comparison.prescribed.expect (fun value => value.elim 0 utility) ≤
-        original.alternative.expect (fun value => value.elim 0 utility) -
-          original.prescribed.expect (fun value => value.elim 0 utility) + weight * range := by
+      expect comparison.alternative (fun value => value.elim 0 utility) -
+          expect comparison.prescribed (fun value => value.elim 0 utility) ≤
+        expect original.alternative (fun value => value.elim 0 utility) -
+          expect original.prescribed (fun value => value.elim 0 utility) + weight * range := by
   intro model comparison
   let joint : Bool → Player → Option (OwnAction Player L) :=
     fun disclose _ => some (.reveal who 0 disclose)
-  let values := fun disclose => (source.stateBelief who sourceSite).expect (fun state =>
-    ((setup.protocolStep state (joint disclose)).bind
-      (setup.continuationLaw (setup.decodeBehavioralProfile admission source.strategy))).expect
+  let values := fun disclose => expect (source.stateBelief who sourceSite) (fun state =>
+    expect ((setup.protocolStep state (joint disclose)).bind
+      (setup.continuationLaw (setup.decodeBehavioralProfile admission source.strategy)))
         utility)
   let choice := sourceChoiceLaw setup leaks
     (setup.decodeBehavioralProfile admission source.strategy) who view
-  let q := choice.prob true
+  let q := (choice true).toReal
   let count := past.length - rosterOffset setup rosters who event
-  let remaining := FinDist.deferredRemaining q (timing event who owned) (count + 1)
+  let remaining := PMF.deferredRemaining q (timing event who owned) (count + 1)
   let predicate := {option : model.Choice who site.1 | option.1.getD ⟨none⟩ =
     (runtime setup).windowOpening leaks event candidate raw}
-  let immediate := law.probOf predicate
+  let immediate := (law.toOuterMeasure predicate).toReal
   have aNonnegative : 0 ≤ immediate := ENNReal.toReal_nonneg
   have aBounded : immediate ≤ 1 := by
-    change law.probOf predicate ≤ 1
-    rw [← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_const law (1 : ℝ)]
+    change (law.toOuterMeasure predicate).toReal ≤ 1
+    rw [← expect_indicator, ← expect_constant law (1 : ℝ)]
     apply FinDist.expect_mono
     intro option _
     split <;> norm_num
-  have full : choice.FullSupport := by
+  have full : FullSupport choice := by
     dsimp only [choice]
     rw [choiceLaw]
     exact setup.reveal_choice_fullSupport reveals admission source mixed who sourceSite
   have qSmall : q < 1 := by
-    have total := choice.sum_prob
+    have total := pmf_sum_toReal_eq_one choice
     simp only [Fintype.sum_bool] at total
-    have positive := FinDist.prob_pos_iff.mpr (full false)
+    have positive := pmf_toReal_pos_iff.mpr (full false)
     dsimp only [q]
     linarith
-  have scalar := FinDist.deferredRemaining_local_comparison q (choice.prob_nonneg true) qSmall
+  have scalar := PMF.deferredRemaining_local_comparison q (ENNReal.toReal_nonneg) qSmall
     (timing event who owned) count immediate aNonnegative aBounded (values true) (values false)
   let replacement := immediate + (1 - immediate) * remaining
   have lower : 0 ≤ replacement := scalar.1
@@ -140,17 +140,17 @@ theorem roster_owner_comparison_of_posterior
       ∃ action : (setup.informationModel admission).Choice who sourceSite.1,
         OwnAction.disclosure action.1 = disclose := by
     have fullSource := setup.reveal_choice_fullSupport reveals admission source mixed who sourceSite
-    obtain ⟨action, _, same⟩ := FinDist.support_map .. ▸ fullSource disclose
+    obtain ⟨action, _, same⟩ := PMF.support_map .. ▸ fullSource disclose
     exact ⟨action, same⟩
   let representative := fun disclose => (representatives disclose).choose
   have represents (disclose : Bool) : OwnAction.disclosure (representative disclose).1 = disclose :=
     (representatives disclose).choose_spec
-  let sourceLaw := FinDist.mix replacement lower upper
-    (FinDist.pure (representative true)) (FinDist.pure (representative false))
+  let sourceLaw := mix replacement lower upper
+    (PMF.pure (representative true)) (PMF.pure (representative false))
   have sourceProbability :
-      (sourceLaw.map (fun action => OwnAction.disclosure action.1)).prob true = replacement := by
-    simp only [sourceLaw, FinDist.map_mix, FinDist.map_pure, represents, FinDist.prob_mix]
-    norm_num [FinDist.prob_pure_eq_ite]
+      ((sourceLaw.map (fun action => OwnAction.disclosure action.1)) true).toReal = replacement := by
+    simp only [sourceLaw, mix_map, PMF.pure_map, represents, mix_apply_toReal]
+    norm_num [toReal_pure_apply]
   let sourceContext := source.continuationContext sourceSite
     (fun final => (setup.protocolReadout final.state).elim 0 utility)
     (instructionCount setup.program + 1)
@@ -191,17 +191,17 @@ theorem roster_owner_comparison_of_posterior
   rw [← strategy] at hazard
   rw [hazard] at targetPrescribed
   change targetContext.value (assessment.strategy who) =
-    FinDist.deferredHazard q (timing event who owned) count * values true +
-      (1 - FinDist.deferredHazard q (timing event who owned) count) *
+    PMF.deferredHazard q (timing event who owned) count * values true +
+      (1 - PMF.deferredHazard q (timing event who owned) count) *
         (remaining * values true + (1 - remaining) * values false) at targetPrescribed
-  rw [FinDist.deferredRemaining_hazard_value q (choice.prob_nonneg true) qSmall
+  rw [PMF.deferredRemaining_hazard_value q (ENNReal.toReal_nonneg) qSmall
     (timing event who owned) ⟨count, inside⟩] at targetPrescribed
   have errorBound : (timing event who owned).timingPrefix count *
       |values true - values false| ≤ weight * range :=
-    (mul_le_mul_of_nonneg_left valueRange (FinDist.timingPrefix_nonnegative _ _)).trans
+    (mul_le_mul_of_nonneg_left valueRange (PMF.timingPrefix_nonnegative _ _)).trans
       (mul_le_mul_of_nonneg_right timingBound rangeNonnegative)
   refine ⟨⟨sourceSite, (source.strategy who).withLaw sourceSite.1 sourceLaw⟩, ?_⟩
-  simp only [comparison, InformationModel.assessmentComparison, FinDist.expect_map]
+  simp only [comparison, InformationModel.assessmentComparison, expect_map]
   change targetContext.value ((assessment.strategy who).withLaw site.1 law) -
     targetContext.value (assessment.strategy who) ≤
       sourceContext.value ((source.strategy who).withLaw sourceSite.1 sourceLaw) -

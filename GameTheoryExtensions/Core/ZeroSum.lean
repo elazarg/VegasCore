@@ -44,7 +44,7 @@ theorem IsNash.zeroSum_security
 /-- Coarse correlation cannot change the expected equilibrium payoff of a
 two-player zero-sum game that has a Nash equilibrium in this strategy carrier. -/
 theorem IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum
-    {law : FinDist (Profile F.sig)} {profile : Profile F.sig}
+    {law : PMF (Profile F.sig)} {profile : Profile F.sig}
     (correlated : IsCoarseCorrelatedEq F (euPreference utility) law)
     (nash : IsNash F (euPreference utility) profile) (zeroSum : IsZeroSum utility)
     (who : Fin 2) :
@@ -59,8 +59,8 @@ theorem IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum
     apply le_trans _ first
     rw [expectedUtility_bind]
     calc
-      _ = law.expect (fun _ => expectedUtility utility 0 (F.play profile)) :=
-        (FinDist.expect_const _ _).symm
+      _ = expect law (fun _ => expectedUtility utility 0 (F.play profile)) :=
+        (expect_constant _ _).symm
       _ ≤ _ := FinDist.expect_mono fun other _ =>
         (nash.zeroSum_security zeroSum other).1
   have upper : expectedUtility utility 0 (F.outcomeLaw law) ≤

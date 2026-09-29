@@ -108,9 +108,9 @@ theorem native_observed_alice_binding (past : List nativeApp.PlayerEntry)
     ReactiveApplication.stateInvariant (fun state : EventGraphRuntime.State nativeGraph =>
       aliceBindingRef.get? state.config.store = some (.success bit)) history.1.state := by
   have known := nativeRuntime.knows_bindingEvidence_menu nativeLeaks nativeMenu
-    (FinDist.pure nativeInputs) nativeHorizon nativeScheduler bob past view
+    (PMF.pure nativeInputs) nativeHorizon nativeScheduler bob past view
     (aliceBindingEvidence bit) observed
-  rw [FinDist.map_pure] at known
+  rw [PMF.pure_map] at known
   exact known history
 
 /-- A wrong or failed fixed guess cannot earn positive Bob utility, regardless
@@ -186,10 +186,10 @@ theorem native_bob_corrective_binding
   rw [← observed] at middleMem
   obtain ⟨next, stored, realized⟩ := bob_corrective_response_realizes _ control trace active
     grant incomplete bit
-  have mapped : middle.application ∈ (FinDist.pure next).support := by
-    rw [← realized, FinDist.support_map]
+  have mapped : middle.application ∈ (PMF.pure next).support := by
+    rw [← realized, PMF.support_map]
     exact ⟨middle, middleMem, rfl⟩
-  rw [result, FinDist.mem_support_pure.mp mapped]
+  rw [result, (PMF.mem_support_pure_iff _ _).mp mapped]
   change some ((bobBindingRef.get? next.config.store).getD .failure) = _
   rw [stored]
   rfl

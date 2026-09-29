@@ -28,24 +28,24 @@ theorem encoded_prefix_state (setup : Setup (Player := Player) (L := L))
       (count + 1)).map History.state =
     setup.initialLaw.bind fun initial =>
       ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[count]
-        (FinDist.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map
+        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map
           some := by
   rw [InformationModel.runBehavioral, setup.runBehavioralFrom_state]
   change (fun law => law.bind (setup.behavioralStateStep admission
     (fun who => setup.toProtocolBehavioralPolicy admission who (profile who)
-      (permitted who))))^[count + 1] (FinDist.pure none) = _
+      (permitted who))))^[count + 1] (PMF.pure none) = _
   induction count with
   | zero =>
-      simp only [Nat.zero_add, Function.iterate_one, FinDist.pure_bind,
-        setup.behavioralStateStep_none, Function.iterate_zero_apply, FinDist.map_pure,
-        ← FinDist.map_eq_bind]
+      simp only [Nat.zero_add, Function.iterate_one, PMF.pure_bind,
+        setup.behavioralStateStep_none, Function.iterate_zero_apply, PMF.pure_map,
+        ← ← PMF.bind_pure_comp, Function.comp_def]
   | succ count ih =>
       rw [show count + 1 + 1 = (count + 1) + 1 from rfl,
-        Function.iterate_succ_apply', ih, FinDist.bind_bind]
-      apply FinDist.bind_congr
+        Function.iterate_succ_apply', ih, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro initial _supported
-      rw [Function.iterate_succ_apply', FinDist.bind_map, FinDist.map_bind]
-      exact FinDist.bind_congr fun state _ =>
+      rw [Function.iterate_succ_apply', PMF.bind_map, PMF.map_bind]
+      exact bind_congr_on_support _ fun state _ =>
         setup.behavioralStateStep_encoded_some admission profile permitted state
 
 /-- A source-kernel support witness gives an actual source history at the
@@ -59,7 +59,7 @@ theorem exists_history_of_prefix_support
     (count : Nat) (state : SourceProgram.ProtocolState setup.program)
     (supported : state ∈ ((fun law => law.bind
       (ProtocolState.behavioralStateStep setup.program profile))^[count]
-        (FinDist.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support) :
+        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support) :
     ∃ history : (setup.executionProtocol admission).History,
       history ∈ ((setup.informationModel admission).runBehavioral
         (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who))
@@ -67,12 +67,12 @@ theorem exists_history_of_prefix_support
   have member : some state ∈ (((setup.informationModel admission).runBehavioral
       (fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who))
       (count + 1)).map History.state).support := by
-    rw [setup.encoded_prefix_state, FinDist.support_bind]
+    rw [setup.encoded_prefix_state, PMF.support_bind]
     apply Set.mem_iUnion₂.mpr
     refine ⟨initial, initialSupport, ?_⟩
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨state, supported, rfl⟩
-  obtain ⟨history, supported, same⟩ := FinDist.support_map .. ▸ member
+  obtain ⟨history, supported, same⟩ := PMF.support_map .. ▸ member
   exact ⟨history, supported, same⟩
 
 end Vegas.SourceProgram.Setup

@@ -269,8 +269,8 @@ theorem reactiveBinding_reserved_state (runtime : EventGraphRuntime graph)
   rw [binding] at handled
   rw [runtime.reactiveBinding_reserved_selection leaks execution owner event payload result serial
     serials players network] at supported
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-    FinDist.mem_support_pure] at supported
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+    PMF.mem_support_pure_iff _ _] at supported
   subst next
   have application : (submitted.includePending app
       (owner, execution.network.nextSerial owner)).application =

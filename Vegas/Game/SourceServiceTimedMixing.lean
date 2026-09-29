@@ -106,7 +106,7 @@ private theorem opportunity_source
     (supported : response ∈ (sourceServicePolicy setup leaks profile who past view).support) :
     response ∈ (sourceServiceOpportunity setup leaks profile who event past view).support := by
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte,
-    FinDist.support_bind]
+    PMF.support_bind]
   refine Set.mem_iUnion₂.mpr ⟨response, supported, ?_⟩
   split
   · rename_i silent
@@ -114,7 +114,7 @@ private theorem opportunity_source
     rw [same]
     exact (application setup leaks).replayPolicy_support past view none
       (Finset.mem_insert_self _ _)
-  · exact FinDist.mem_support_pure.mpr rfl
+  · exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 omit [Fintype Player] in
 private theorem opportunity_replay
@@ -130,7 +130,7 @@ private theorem opportunity_replay
     (supported : response ∈ ((application setup leaks).replayPolicy past view).support) :
     response ∈ (sourceServiceOpportunity setup leaks profile who event past view).support := by
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte,
-    FinDist.support_bind]
+    PMF.support_bind]
   exact Set.mem_iUnion₂.mpr ⟨⟨none⟩, silence, by simpa only [↓reduceIte] using supported⟩
 
 private theorem required_choices
@@ -225,7 +225,7 @@ theorem sourceServiceTimedPolicy_supported
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
       (CommitmentInterface.values setup.program))
@@ -349,10 +349,10 @@ theorem sourceServiceTimedProfile_fullyMixed
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (source : Profile (setup.informationModel
       (CommitmentInterface.values setup.program)).behavioralSignature)
-    (full : ∀ who info, (source who info).FullSupport) :
+    (full : ∀ who info, FullSupport (source who info)) :
     (InformationModel.BehavioralAssessment.ofStrategy
       (sourceServiceTimedProfile setup leaks bounds rosters network timing
         (setup.decodeBehavioralProfile

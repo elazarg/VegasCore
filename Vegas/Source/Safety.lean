@@ -163,13 +163,13 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
   induction program with
   | ret payoffs =>
       intro profile state registry revelations history _ _ consistent outcome supported
-      have same := FinDist.mem_support_pure.mp supported
+      have same := (PMF.mem_support_pure_iff _ _).mp supported
       subst outcome
       exact consistent
   | sample name fresh law next ih =>
       intro profile state registry revelations history unique accounted consistent
         outcome supported
-      simp only [runWith, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runWith, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported
       exact ih (afterSample profile) (Env.cons value state) registry.weaken revelations.weaken
         history (by simp [fresh, unique])
@@ -179,7 +179,7 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
   | commit name owner fresh guard next ih =>
       intro profile state registry revelations history unique accounted consistent
         outcome supported
-      simp only [runWith, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runWith, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨binding, _, supported⟩ := supported
       apply ih (afterCommit profile) (Env.cons binding state) _ revelations.weaken _
         (by simp [fresh, unique]) (Accounted.commit fresh accounted) _ outcome supported
@@ -192,7 +192,7 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
   | reveal published owner name fresh source unresolved next ih =>
       intro profile state registry revelations history unique accounted consistent
         outcome supported
-      simp only [runWith, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runWith, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨disclose, _, supported⟩ := supported
       apply ih (afterReveal profile) _ registry.weaken
         (revelations.reveal (published := published) source) _ (by simp [fresh, unique])

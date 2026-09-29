@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Protocol.BehavioralContinuation
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.StateKernel
 
 /-! # A private type disclosed only after an earlier deviation
 
@@ -37,12 +37,12 @@ def terminal : State → Prop
   | .done _ _ => True
   | _ => False
 
-def transition (state : State) (joint : Bool → Option Bool) : FinDist State :=
+def transition (state : State) (joint : Bool → Option Bool) : PMF State :=
   match state with
-  | .initial => (FinDist.uniformOfFintype (α := Bool)).map State.alice
-  | .alice bit => FinDist.pure (if (joint false).getD false then .bob bit else .done bit none)
-  | .bob bit => FinDist.pure (.done bit (some ((joint true).getD false)))
-  | .done bit guess => FinDist.pure (.done bit guess)
+  | .initial => (PMF.uniformOfFintype (α := Bool)).map State.alice
+  | .alice bit => PMF.pure (if (joint false).getD false then .bob bit else .done bit none)
+  | .bob bit => PMF.pure (.done bit (some ((joint true).getD false)))
+  | .done bit guess => PMF.pure (.done bit guess)
 
 @[reducible] def arena : ExecutionProtocol Bool where
   State := State
@@ -70,14 +70,14 @@ theorem history_length : ∀ {state} (trace : arena.Trace state), trace.length =
       have earlier := history_length prior
       cases before with
       | initial =>
-          obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | alice bit =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           change prior.length + 1 = depth (if (joint false).getD false then _ else _)
           split <;> simpa only [depth] using congrArg (· + 1) earlier
       | bob bit =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | done bit guess => exact (legal.1 trivial).elim
 
@@ -137,18 +137,18 @@ theorem bob_legal (bit guess : Bool) : arena.Legal (.bob bit) (bobJoint guess) :
 
 def aliceHistory (bit : Bool) : arena.History :=
   arena.initHistory.extend (target := .alice bit) initial_legal (by
-    change State.alice bit ∈ ((FinDist.uniformOfFintype (α := Bool)).map State.alice).support
-    rw [FinDist.support_map]
-    exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)
+    change State.alice bit ∈ ((PMF.uniformOfFintype (α := Bool)).map State.alice).support
+    rw [PMF.support_map]
+    exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
 
 def bobHistory (bit : Bool) : arena.History :=
-  (aliceHistory bit).extend (alice_legal bit true) (FinDist.mem_support_pure.mpr rfl)
+  (aliceHistory bit).extend (alice_legal bit true) ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def stopHistory (bit : Bool) : arena.History :=
-  (aliceHistory bit).extend (alice_legal bit false) (FinDist.mem_support_pure.mpr rfl)
+  (aliceHistory bit).extend (alice_legal bit false) ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def guessHistory (bit guess : Bool) : arena.History :=
-  (bobHistory bit).extend (bob_legal bit guess) (FinDist.mem_support_pure.mpr rfl)
+  (bobHistory bit).extend (bob_legal bit guess) ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem initial_joint (joint : Bool → Option Bool) (legal : arena.Legal .initial joint) :
     joint = fun _ => none := by
@@ -188,14 +188,14 @@ theorem classified_step (history : arena.History) (known : Classified history)
   rcases known with rfl | ⟨bit, rfl⟩ | ⟨bit, rfl⟩ | ⟨bit, rfl⟩ | ⟨bit, guess, rfl⟩
   · have same := initial_joint joint legal
     subst joint
-    obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ reached
+    obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ reached
     exact Or.inr (Or.inl ⟨bit, rfl⟩)
   · obtain ⟨ask, chosen⟩ := LegalOption.exists_eq_some_of_active (E := arena) (joint false)
       (arena.legalOption_of_legal legal false) rfl
     have same : joint = aliceJoint ask := by
       simpa only [chosen, Option.getD_some] using alice_joint bit joint legal
     subst joint
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     cases ask
     · exact Or.inr (Or.inr (Or.inr (Or.inl ⟨bit, rfl⟩)))
     · exact Or.inr (Or.inr (Or.inl ⟨bit, rfl⟩))
@@ -204,7 +204,7 @@ theorem classified_step (history : arena.History) (known : Classified history)
     have same : joint = bobJoint guess := by
       simpa only [chosen, Option.getD_some] using bob_joint bit joint legal
     subst joint
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     exact Or.inr (Or.inr (Or.inr (Or.inr ⟨bit, guess, rfl⟩)))
   · exact (legal.1 trivial).elim
   · exact (legal.1 trivial).elim
@@ -224,7 +224,7 @@ theorem reached_terminal_eq {fuel : Nat} {start finish : arena.History}
 theorem alice_not_proper (bit : Bool) : ¬ (model false).IsSubgameRoot (aliceHistory bit) := by
   intro proper
   have reached := proper true (bobHistory bit) (bobHistory (!bit))
-    (HistoryReaches.step arena (alice_legal bit true) (FinDist.mem_support_pure.mpr rfl)
+    (HistoryReaches.step arena (alice_legal bit true) ((PMF.mem_support_pure_iff _ _).mpr rfl)
       (HistoryReaches.refl _ _)) (by exact id) rfl (by exact id) rfl rfl
   obtain ⟨fuel, path⟩ := reached
   cases path with
@@ -235,11 +235,11 @@ theorem alice_not_proper (bit : Bool) : ¬ (model false).IsSubgameRoot (aliceHis
         simpa only [chosen, Option.getD_some] using alice_joint bit joint legal
       subst joint
       cases ask
-      · cases FinDist.mem_support_pure.mp selected
+      · cases (PMF.mem_support_pure_iff _ _).mp selected
         have impossible := reached_terminal_eq suffix (by trivial)
         have states := congrArg ExecutionProtocol.History.state impossible
         cases states
-      · cases FinDist.mem_support_pure.mp selected
+      · cases (PMF.mem_support_pure_iff _ _).mp selected
         have equal := suffix.eq_of_trace_length_eq rfl
         have states := congrArg ExecutionProtocol.History.state equal
         cases bit <;> cases states
@@ -272,7 +272,7 @@ theorem bob_proper (bit : Bool) : (model true).IsSubgameRoot (bobHistory bit) :=
     cases path with
     | refl => rfl
     | @step _ _ _ joint legal target selected suffix =>
-        cases FinDist.mem_support_pure.mp selected
+        cases (PMF.mem_support_pure_iff _ _).mp selected
         have same := reached_terminal_eq suffix (by trivial)
         cases same
         exact (running trivial).elim

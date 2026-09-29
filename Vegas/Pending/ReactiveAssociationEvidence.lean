@@ -61,21 +61,21 @@ theorem observed_bindingEvidence_valid (runtime : EventGraphRuntime graph)
 
 theorem reactiveBindingInvariant_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
     (trace : ((runtime.reactiveApplication leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant State.BindingInvariant state :=
   (runtime.reactiveBindingInvariant leaks).history (inputs.map State.initial) horizon scheduler
     (fun state member => by
-      obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant input) trace
 
 /-- Retrospective certification: every compatible history has this named
 binding value, whether the opening was observed before or after association. -/
 theorem knows_bindingEvidence (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
@@ -109,7 +109,7 @@ theorem knows_bindingEvidence (runtime : EventGraphRuntime graph)
 theorem knows_bindingEvidence_menu (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)

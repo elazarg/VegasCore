@@ -39,14 +39,14 @@ theorem native_context_value (assessment : nativeModel.BehavioralAssessment)
     (assessment.continuationContext site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)).value
         alternative =
-      ((assessment.belief who site).map (fun history => history.1.state)).expect (fun state =>
-        (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
+      expect ((assessment.belief who site).map (fun history => history.1.state)) (fun state =>
+        expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
           (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy who
-              alternative)) state).expect (payoff)) := by
+              alternative)) state) (payoff)) := by
   simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind,
-    FinDist.expect_map]
-  apply FinDist.expect_congr
+    expect_map]
+  apply expect_congr_on_support
   intro history _
   have bound := nativeApp.trace_bound nativeInitialLaw nativeHorizon nativeScheduler
     (nativeMenu.toRawTrace nativeInitialLaw nativeHorizon nativeScheduler history.1.trace)
@@ -55,9 +55,9 @@ theorem native_context_value (assessment : nativeModel.BehavioralAssessment)
     (2 * nativeHorizon + 1) history.1 (by
       change nativeApp.rank nativeHorizon history.1.state ≤ 2 * nativeHorizon + 1
       omega)
-  have value := congrArg (fun outcomes : FinDist nativeApp.ProtocolState =>
-    outcomes.expect (payoff)) law
-  simpa only [FinDist.expect_map] using value
+  have value := congrArg (fun outcomes : PMF nativeApp.ProtocolState =>
+    expect outcomes (payoff)) law
+  simpa only [expect_map] using value
 
 private def weight (n : ℕ) : ℝ := (1 / ((n : ℝ) + 1)) / 2
 
@@ -98,7 +98,7 @@ private def response (baseline : Profile nativeModel.behavioralSignature)
 private def responseLaw (baseline : Profile nativeModel.behavioralSignature)
     (quiet : nativeModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ) (n : ℕ) :
     nativeModel.BehavioralPolicy bob := fun info =>
-  FinDist.mix (weight n) (weight_positive n).le (weight_below_one n).le
+  mix (weight n) (weight_positive n).le (weight_below_one n).le
     (nativeReference.strategy bob info) (response baseline quiet payoff n info)
 
 private def responseProfile (baseline : Profile nativeModel.behavioralSignature)
@@ -114,7 +114,7 @@ private theorem responseProfile_mixed (baseline : Profile nativeModel.behavioral
   by_cases own : who = bob
   · subst who
     change choice ∈ (responseLaw baseline quiet payoff n site.1).support
-    exact FinDist.mem_support_mix_left _ _ _ (weight_positive n)
+    exact mem_support_mix_left _ _ _ (weight_positive n)
       (nativeReference_mixed bob site choice)
   · change choice ∈ (Profile.update (sig := nativeModel.behavioralSignature)
       (baseTremble baseline n).strategy bob
@@ -134,7 +134,7 @@ private theorem bob_belief (baseline : Profile nativeModel.behavioralSignature)
     (sequence baseline quiet payoff n).belief bob site =
       ((baseTremble baseline n).bayes (baseTremble_mixed baseline n)
         nativeAntichain).belief bob site := by
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
   have mass : nativeModel.informationMass (responseProfile baseline quiet payoff n) bob site =
       nativeModel.informationMass (baseTremble baseline n).strategy bob site := by
@@ -227,7 +227,7 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
     ⟨Profile.update (sig := nativeModel.behavioralSignature) baseline bob completedBob,
       original.belief⟩
   have baselineConverges (who : Player) (info : nativeApp.Info) :
-      FinDistConvergesPointwise (fun n => (baseTremble baseline (index n)).strategy who info)
+      PMFConvergesPointwise (fun n => (baseTremble baseline (index n)).strategy who info)
         (baseline who info) :=
     (nativeReference.perturb_strategy_converges baseline weight
       (fun n => (weight_positive n).le) (fun n => (weight_below_one n).le)
@@ -240,24 +240,24 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
       · subst who
         by_cases same : site = quiet
         · subst site
-          change FinDistConvergesPointwise
+          change PMFConvergesPointwise
             (fun n => responseLaw baseline quiet payoff (index n) quiet.1)
             (completedBob quiet.1)
           have limit := baselineConverges bob quiet.1
-          change FinDistConvergesPointwise (fun n => FinDist.mix (weight (index n))
+          change PMFConvergesPointwise (fun n => mix (weight (index n))
             (weight_positive (index n)).le (weight_below_one (index n)).le
             (nativeReference.strategy bob quiet.1) (baseline bob quiet.1))
             (baseline bob quiet.1) at limit
           simpa only [responseLaw, response, completedBob, ite_true] using
             limit
         · have different : site.1 ≠ quiet.1 := fun equal => same (Subtype.ext equal)
-          change FinDistConvergesPointwise
+          change PMFConvergesPointwise
             (fun n => responseLaw baseline quiet payoff (index n) site.1)
             (completedBob site.1)
           rw [show completedBob site.1 = original.strategy bob site.1 by
             simp only [completedBob, ite_eq_right different]]
           exact originalConverges.strategy bob site
-      · change FinDistConvergesPointwise
+      · change PMFConvergesPointwise
           (fun n => Profile.update (sig := nativeModel.behavioralSignature)
             (baseTremble baseline (index n)).strategy bob
               (responseLaw baseline quiet payoff (index n)) who site.1)
@@ -267,10 +267,10 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
         exact baselineConverges who site.1
     · exact originalConverges.belief
   have responsesConverge (site : nativeModel.InformationSite bob) :
-      FinDistConvergesPointwise
+      PMFConvergesPointwise
         (fun n => response baseline quiet payoff (index n) site.1)
         (completed.strategy bob site.1) := by
-    apply FinDistConvergesPointwise.of_mix_vanishing
+    apply PMFConvergesPointwise.of_mix_vanishing
       (nativeReference.strategy bob site.1) _ _ (fun n => weight (index n))
       (fun n => (weight_positive (index n)).le) (fun n => weight_below_one (index n))
       (weight_vanishes.comp increasing.tendsto_atTop)

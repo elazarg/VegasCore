@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.StateKernel
 import GameTheory.Core.Equilibrium
 import GameTheory.Core.Utility
 
@@ -50,7 +50,7 @@ def next (state : State) (joint : Bool → Option Bool) : State :=
   active state who := active sequential state who
   available _ _ := Set.univ
   terminal state := ¬ running sequential state
-  step state joint := FinDist.pure (next state joint.1)
+  step state joint := PMF.pure (next state joint.1)
   progress state _ := by
     classical
     refine ⟨fun who => if active sequential state who then some false else none, ?_⟩
@@ -87,7 +87,7 @@ theorem history_length (sequential : Bool) : ∀ {state : State}
     (trace : (arena sequential).Trace state), trace.length = state.length
   | _, .start => rfl
   | _, .extend prior _ _ realized => by
-      cases FinDist.mem_support_pure.mp realized
+      cases (PMF.mem_support_pure_iff _ _).mp realized
       simpa only [Trace.length, next, List.length_cons] using
         congrArg (· + 1) (history_length sequential prior)
 
@@ -103,7 +103,7 @@ def choose (sequential : Bool) (action who : Bool) (state : State) :
 
 def canonical (sequential : Bool) (actions : Bool → Bool) :
     Profile (model sequential).behavioralSignature := fun who state =>
-  FinDist.pure (choose sequential (actions who) who state)
+  PMF.pure (choose sequential (actions who) who state)
 
 instance (sequential who : Bool) (state : State) :
     Fintype ((model sequential).Choice who state) := by
@@ -115,11 +115,11 @@ instance (sequential who : Bool) (state : State) :
   ⟨((canonical sequential fun _ => false) who state).support_nonempty.choose⟩
 
 def reference (sequential : Bool) : (model sequential).BehavioralAssessment :=
-  .ofStrategy (fun _ _ => FinDist.uniformOfFintype)
+  .ofStrategy (fun _ _ => PMF.uniformOfFintype)
 
 theorem reference_mixed (sequential : Bool) : (reference sequential).IsFullyMixed := by
   intro who site choice
-  exact FinDist.mem_support_uniformOfFintype choice
+  exact PMF.mem_support_uniformOfFintype choice
 
 instance (sequential : Bool) : Finite (arena sequential).History :=
   (reference_mixed sequential).finite_history (bounded sequential)
@@ -141,11 +141,11 @@ theorem antichain (sequential : Bool) : (model sequential).DecisionInformationAn
   omega
 
 def kernel {sequential : Bool} (profile : Profile (model sequential).behavioralSignature)
-    (state : State) : FinDist State :=
+    (state : State) : PMF State :=
   if running sequential state then
-    (FinDist.pi (fun who => profile who state)).map
+    (independentProduct (fun who => profile who state)).map
       (fun joint => next state (fun who => (joint who).val))
-  else FinDist.pure state
+  else PMF.pure state
 
 theorem chooser_kernel {sequential : Bool}
     (profile : Profile (model sequential).behavioralSignature)
@@ -156,21 +156,21 @@ theorem chooser_kernel {sequential : Bool}
   rcases history with ⟨state, trace⟩
   cases trace <;>
     simp [InformationModel.randomizedChooser, InformationModel.behavioralJoint,
-      arena, kernel, runs, FinDist.map_eq_bind, InfoSignals.infoOf, signals]
+      arena, kernel, runs, ← PMF.bind_pure_comp, Function.comp_def, InfoSignals.infoOf, signals]
 
 theorem run_states {sequential : Bool}
     (profile : Profile (model sequential).behavioralSignature) (fuel : Nat)
     (history : (arena sequential).History) :
     ((model sequential).runBehavioralFrom profile fuel history).map History.state =
-      (fun law => law.bind (kernel profile))^[fuel] (FinDist.pure history.state) := by
+      (fun law => law.bind (kernel profile))^[fuel] (PMF.pure history.state) := by
   apply runRandomizedFor_map_state
   · intro state stopped
     exact ite_eq_right stopped
   · exact chooser_kernel profile
 
 def stateLaw {sequential : Bool} (profile : Profile (model sequential).behavioralSignature)
-    (state : State) : FinDist State :=
-  (fun law => law.bind (kernel profile))^[2] (FinDist.pure state)
+    (state : State) : PMF State :=
+  (fun law => law.bind (kernel profile))^[2] (PMF.pure state)
 
 def outcome (state : State) : Outcome :=
   if (state.headD (false, false)).1 then some (state.headD (false, false)).2 else none
@@ -187,51 +187,51 @@ theorem context_value {sequential : Bool}
     (site : (model sequential).InformationSite who)
     (alternative : (model sequential).BehavioralPolicy who) :
     (assessment.continuationContext site (reward who ·.state) 2).value alternative =
-      (stateLaw (Profile.update assessment.strategy who alternative) site.1).expect
+      expect (stateLaw (Profile.update assessment.strategy who alternative) site.1)
         (reward who) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief who site).expect (fun _ =>
-        (stateLaw (Profile.update assessment.strategy who alternative) site.1).expect
+    _ = expect (assessment.belief who site) (fun _ =>
+        expect (stateLaw (Profile.update assessment.strategy who alternative) site.1)
           (reward who)) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro history _
       have same : history.1.state = site.1 := by simpa using history.2
-      have laws := congrArg (fun law => law.expect (reward who))
+      have laws := congrArg (fun law => expect law (reward who))
         (run_states (Profile.update assessment.strategy who alternative) 2 history.1)
-      simpa only [FinDist.expect_map, same, stateLaw] using laws
-    _ = _ := FinDist.expect_const _ _
+      simpa only [expect_map, same, stateLaw] using laws
+    _ = _ := expect_constant _ _
 
 theorem canonical_root_outcome (sequential : Bool) (actions : Bool → Bool) :
     (stateLaw (canonical sequential actions) []).map outcome =
-      FinDist.pure (if actions false then some (actions true) else none) := by
+      PMF.pure (if actions false then some (actions true) else none) := by
   cases entrant : actions false <;> cases incumbent : actions true <;> cases sequential <;>
     simp [stateLaw, Function.iterate_succ_apply', kernel, canonical, choose,
       running, active, next, entrant, incumbent, outcome]
 
 theorem source_root_law (profile : Profile (model false).behavioralSignature) :
     stateLaw profile [] =
-      (FinDist.pi (fun who => profile who [])).map
+      (independentProduct (fun who => profile who [])).map
         (fun joint => [((joint false).val.getD false, (joint true).val.getD false)]) := by
   simp [stateLaw, Function.iterate_succ_apply', kernel, running, next,
-    FinDist.map_eq_bind, FinDist.bind_bind]
+    ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind]
 
 def prescribed (sequential : Bool) : Profile (model sequential).behavioralSignature :=
   canonical sequential (fun _ => false)
 
 theorem prescribed_root_value (sequential who : Bool) :
-    (stateLaw (prescribed sequential) []).expect (reward who) = if who then 2 else 1 := by
-  have law := congrArg (fun law => law.expect (utility who))
+    expect (stateLaw (prescribed sequential) []) (reward who) = if who then 2 else 1 := by
+  have law := congrArg (fun law => expect law (utility who))
     (canonical_root_outcome sequential (fun _ => false))
-  change (stateLaw (canonical sequential fun _ => false) []).expect
+  change expect (stateLaw (canonical sequential fun _ => false) [])
     (fun state => utility who (outcome state)) = _
-  simpa only [FinDist.expect_map, Bool.false_eq_true, ↓reduceIte, FinDist.expect_pure,
+  simpa only [expect_map, Bool.false_eq_true, ↓reduceIte, expect_pure,
     utility] using law
 
 theorem source_deviation_bound (who : Bool) (alternative : (model false).BehavioralPolicy who) :
-    (stateLaw (Profile.update (prescribed false) who alternative) []).expect (reward who) ≤
+    expect (stateLaw (Profile.update (prescribed false) who alternative) []) (reward who) ≤
       if who then 2 else 1 := by
-  rw [source_root_law, FinDist.expect_map]
+  rw [source_root_law, expect_map]
   apply FinDist.expect_le_of_forall
   intro joint supported
   have opponent := (FinDist.mem_support_pi.mp supported) (!who)
@@ -277,7 +277,7 @@ theorem exists_source_equilibrium :
   exact ⟨assessment, strategy, source_rational assessment strategy, consistent⟩
 
 def actionLaw {sequential : Bool} (profile : Profile (model sequential).behavioralSignature)
-    (who : Bool) (state : State) : FinDist Bool :=
+    (who : Bool) (state : State) : PMF Bool :=
   (profile who state).map (fun choice => choice.val.getD false)
 
 theorem branch_kernel (profile : Profile (model true).behavioralSignature) :
@@ -289,7 +289,7 @@ theorem branch_kernel (profile : Profile (model true).behavioralSignature) :
     (fun choice : (model true).Choice true [(true, false)] =>
       [(true, choice.val.getD false), (true, false)])) marginal
   simpa only [kernel, running, or_true, and_self, ite_true, next,
-    List.cons_ne_nil, ↓reduceIte, FinDist.map_comp, Function.comp_def, actionLaw] using mapped
+    List.cons_ne_nil, ↓reduceIte, PMF.map_comp, Function.comp_def, actionLaw] using mapped
 
 theorem root_kernel (profile : Profile (model true).behavioralSignature) :
     kernel profile [] = (actionLaw profile false []).map
@@ -301,27 +301,27 @@ theorem root_kernel (profile : Profile (model true).behavioralSignature) :
   have mapped := congrArg (fun law => law.map
     (fun choice : (model true).Choice false [] => [(choice.val.getD false, false)])) marginal
   simpa only [kernel, running, true_or, ite_true, next, ↓reduceIte,
-    idle, Option.getD_none, FinDist.map_comp, Function.comp_def, actionLaw] using mapped
+    idle, Option.getD_none, PMF.map_comp, Function.comp_def, actionLaw] using mapped
 
 theorem branch_law (profile : Profile (model true).behavioralSignature) :
     stateLaw profile [(true, false)] =
       (actionLaw profile true [(true, false)]).map
         (fun action => [(true, action), (true, false)]) := by
   simp only [stateLaw, Function.iterate_succ_apply', Function.iterate_zero_apply,
-    FinDist.pure_bind, branch_kernel, FinDist.bind_map]
-  simp [kernel, running, FinDist.map_eq_bind]
+    PMF.pure_bind, branch_kernel, PMF.bind_map]
+  simp [kernel, running, ← PMF.bind_pure_comp, Function.comp_def]
 
 theorem target_root_law (profile : Profile (model true).behavioralSignature) :
     stateLaw profile [] = (actionLaw profile false []).bind (fun action =>
-      if action then stateLaw profile [(true, false)] else FinDist.pure [(false, false)]) := by
+      if action then stateLaw profile [(true, false)] else PMF.pure [(false, false)]) := by
   simp only [stateLaw, Function.iterate_succ_apply', Function.iterate_zero_apply,
-    FinDist.pure_bind, root_kernel, FinDist.bind_map]
-  apply FinDist.bind_congr
+    PMF.pure_bind, root_kernel, PMF.bind_map]
+  apply bind_congr_on_support _
   intro action _
   cases action
   · simp [kernel, running]
-  · rw [branch_kernel, FinDist.bind_map]
-    simp [kernel, running, FinDist.map_eq_bind]
+  · rw [branch_kernel, PMF.bind_map]
+    simp [kernel, running, ← PMF.bind_pure_comp, Function.comp_def]
 
 def branchHistory : (arena true).History :=
   (arena true).initHistory.extend (joint := fun who => if who then none else some true)
@@ -330,7 +330,7 @@ def branchHistory : (arena true).History :=
       refine ⟨?_, fun who => ?_⟩
       · simp [arena, running]
       · cases who <;> simp [arena, active])
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def branchSite : (model true).InformationSite true :=
   (model true).informationSite true branchHistory true
@@ -343,57 +343,57 @@ def rootSite : (model true).InformationSite false :=
     (by exact Or.inl ⟨rfl, Or.inr rfl⟩)
 
 theorem branch_deviation_value (profile : Profile (model true).behavioralSignature) :
-    (stateLaw (Profile.update profile true ((canonical true (fun _ => true)) true))
-      [(true, false)]).expect (reward true) = 1 := by
+    expect (stateLaw (Profile.update profile true ((canonical true (fun _ => true)) true))
+      [(true, false)]) (reward true) = 1 := by
   rw [branch_law]
   simp [actionLaw, canonical, choose, active, reward, outcome, utility]
 
 theorem rational_branch_value (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2) :
-    1 ≤ (stateLaw assessment.strategy [(true, false)]).expect (reward true) := by
+    1 ≤ expect (stateLaw assessment.strategy [(true, false)]) (reward true) := by
   have improves := rational true branchSite ((canonical true fun _ => true) true) (Set.mem_univ _)
   rw [context_value, context_value, Profile.update_eq_self] at improves
-  change (stateLaw _ [(true, false)]).expect _ ≤ _ at improves
+  change expect (stateLaw _ [(true, false)]) _ ≤ _ at improves
   rw [branch_deviation_value] at improves
   exact improves
 
 theorem branch_payoff_relation (profile : Profile (model true).behavioralSignature) :
-    (stateLaw profile [(true, false)]).expect (reward false) =
-      (3 / 2 : ℝ) * (stateLaw profile [(true, false)]).expect (reward true) + 1 / 2 := by
-  rw [branch_law, FinDist.expect_map, FinDist.expect_map]
+    expect (stateLaw profile [(true, false)]) (reward false) =
+      (3 / 2 : ℝ) * expect (stateLaw profile [(true, false)]) (reward true) + 1 / 2 := by
+  rw [branch_law, expect_map, expect_map]
   calc
-    _ = (actionLaw profile true [(true, false)]).expect
+    _ = expect (actionLaw profile true [(true, false)])
         (fun action => (3 / 2 : ℝ) * reward true [(true, action), (true, false)] + 1 / 2) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro action _
       cases action <;> norm_num [reward, outcome, utility]
-    _ = _ := by rw [FinDist.expect_add, FinDist.expect_const, FinDist.expect_smul]
+    _ = _ := by rw [FinDist.expect_add, expect_constant, FinDist.expect_smul]
 
 theorem enter_deviation_value (profile : Profile (model true).behavioralSignature) :
-    (stateLaw (Profile.update profile false ((canonical true (fun _ => true)) false)) []).expect
-      (reward false) = (stateLaw profile [(true, false)]).expect (reward false) := by
+    expect (stateLaw (Profile.update profile false ((canonical true (fun _ => true)) false)) [])
+      (reward false) = expect (stateLaw profile [(true, false)]) (reward false) := by
   rw [target_root_law]
   simp only [actionLaw, Profile.update_same, canonical, choose,
     show active true [] false from Or.inl ⟨rfl, Or.inr rfl⟩, dite_true,
-    FinDist.map_pure, Option.getD_some, FinDist.pure_bind, ite_true]
+    PMF.pure_map, Option.getD_some, PMF.pure_bind, ite_true]
   rw [branch_law, branch_law]
   simp [actionLaw, Profile.update]
 
 theorem rational_root_value (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2) :
-    2 ≤ (stateLaw assessment.strategy []).expect (reward false) := by
+    2 ≤ expect (stateLaw assessment.strategy []) (reward false) := by
   have incumbent := rational_branch_value assessment rational
   have relation := branch_payoff_relation assessment.strategy
   have improves := rational false rootSite ((canonical true fun _ => true) false) (Set.mem_univ _)
   rw [context_value, context_value, Profile.update_eq_self] at improves
-  change (stateLaw _ []).expect _ ≤ _ at improves
+  change expect (stateLaw _ []) _ ≤ _ at improves
   rw [enter_deviation_value] at improves
-  change (stateLaw assessment.strategy [(true, false)]).expect (reward false) ≤
-    (stateLaw assessment.strategy []).expect (reward false) at improves
+  change expect (stateLaw assessment.strategy [(true, false)]) (reward false) ≤
+    expect (stateLaw assessment.strategy []) (reward false) at improves
   linarith
 
 def outcomeLaw {sequential : Bool} (assessment : (model sequential).BehavioralAssessment) :
-    FinDist Outcome :=
+    PMF Outcome :=
   ((model sequential).runBehavioral assessment.strategy 2).map
     (fun history => outcome history.state)
 
@@ -402,18 +402,18 @@ theorem outcomeLaw_state {sequential : Bool}
     outcomeLaw assessment = (stateLaw assessment.strategy []).map outcome := by
   have law := congrArg (fun law => law.map outcome)
     (run_states assessment.strategy 2 (arena sequential).initHistory)
-  simpa only [outcomeLaw, InformationModel.runBehavioral, FinDist.map_comp,
+  simpa only [outcomeLaw, InformationModel.runBehavioral, PMF.map_comp,
     Function.comp_def, stateLaw, initHistory] using law
 
 /-- Even changing the entire target strategy and all off-path beliefs cannot
 recover the Out outcome as a sequential equilibrium. -/
 theorem no_target_equilibrium_out (assessment : (model true).BehavioralAssessment)
-    (equilibrium : isEquilibrium true assessment) : outcomeLaw assessment ≠ FinDist.pure none := by
+    (equilibrium : isEquilibrium true assessment) : outcomeLaw assessment ≠ PMF.pure none := by
   intro same
   have value := rational_root_value assessment equilibrium.1
-  have observed := congrArg (fun law => law.expect (utility false)) same
-  rw [outcomeLaw_state, FinDist.expect_map, FinDist.expect_pure] at observed
-  change (stateLaw assessment.strategy []).expect (reward false) = 1 at observed
+  have observed := congrArg (fun law => expect law (utility false)) same
+  rw [outcomeLaw_state, expect_map, expect_pure] at observed
+  change expect (stateLaw assessment.strategy []) (reward false) = 1 at observed
   linarith
 
 @[reducible] def signature : GameSignature Bool where
@@ -429,7 +429,7 @@ def normalForm (sequential : Bool) : GameForm Bool where
 
 theorem normalForm_play (sequential : Bool) (actions : Profile signature) :
     (normalForm sequential).play actions =
-      FinDist.pure (if actions false then some (actions true) else none) := by
+      PMF.pure (if actions false then some (actions true) else none) := by
   have law := outcomeLaw_state
     (InformationModel.BehavioralAssessment.ofStrategy (canonical sequential actions))
   change (normalForm sequential).play actions =
@@ -446,7 +446,7 @@ theorem normalForm_equal : normalForm true = normalForm false := by
 /-- Hence the complete CE correspondence agrees, for every preference, not only
 for the utility witnessing the credibility failure below. -/
 theorem correlated_equilibrium_iff (preference : WeakPreference Bool Outcome)
-    (law : FinDist (Profile signature)) :
+    (law : PMF (Profile signature)) :
     IsCorrelatedEq (normalForm true) preference law ↔
       IsCorrelatedEq (normalForm false) preference law := by
   simp only [isCorrelatedEq_iff, GameForm.outcomeLaw, normalForm_play]
@@ -467,7 +467,7 @@ theorem threat_nash (sequential : Bool) :
 
 theorem threat_correlated (sequential : Bool) :
     IsCorrelatedEq (normalForm sequential) (euPreference (fun result who => utility who result))
-      (FinDist.pure (fun _ => false)) := (threat_nash sequential).isCorrelatedEq
+      (PMF.pure (fun _ => false)) := (threat_nash sequential).isCorrelatedEq
 
 /-- Preserving all normal-form CE laws, even for every utility, does not imply
 preserving sequential-equilibrium outcome laws for this fixed utility. -/
@@ -481,7 +481,7 @@ theorem correlated_preservation_without_sequential_outcome_preservation :
   refine ⟨correlated_equilibrium_iff, ?_⟩
   obtain ⟨source, strategy, equilibrium⟩ := exists_source_equilibrium
   refine ⟨source, equilibrium, ?_⟩
-  have sourceLaw : outcomeLaw source = FinDist.pure none := by
+  have sourceLaw : outcomeLaw source = PMF.pure none := by
     rw [outcomeLaw_state, strategy]
     exact canonical_root_outcome false (fun _ => false)
   rintro ⟨target, targetEquilibrium, same⟩

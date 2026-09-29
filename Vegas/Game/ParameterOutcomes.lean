@@ -31,11 +31,11 @@ theorem bindValues_parameterRun_eq {who : Player}
         (PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program policy))) =
       setup.parameterRun parameter (Function.update profile who
         (PurePolicy.toBehavioral setup.program policy)) := by
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro initial _
-  have h := congrArg (FinDist.map fun result => (parameter initial, result))
+  have h := congrArg (PMF.map fun result => (parameter initial, result))
     (bindValues_run_publicOutcome_eq setup.program profile policy initial)
-  simpa only [FinDist.map_comp, Function.comp_def] using h
+  simpa only [PMF.map_comp, Function.comp_def] using h
 
 namespace Setup
 
@@ -62,15 +62,15 @@ def valueBindingParameterSimulationOn {Observation : Type}
   deviation_mixture profile who replacement _ := by
     obtain ⟨mixture, hmixture⟩ :=
       exists_pureMixture_run setup (valueBindingProfile profile) replacement
-    have joint := congrArg (FinDist.map (setup.parameterOutcome parameter)) hmixture
-    simp only [FinDist.map_bind, setup.run_map_parameterOutcome] at joint
+    have joint := congrArg (PMF.map (setup.parameterOutcome parameter)) hmixture
+    simp only [PMF.map_bind, setup.run_map_parameterOutcome] at joint
     refine ⟨mixture.map fun choice =>
       ⟨PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program choice),
         valueBinding_bindValues setup.program choice⟩, ?_⟩
     change (setup.parameterRun parameter
       (Function.update (valueBindingProfile profile) who replacement)).map observe = _
-    rw [joint, FinDist.map_bind, FinDist.bind_map]
-    refine FinDist.bind_congr fun choice _ => ?_
+    rw [joint, PMF.map_bind, PMF.bind_map]
+    refine bind_congr_on_support _ fun choice _ => ?_
     change (setup.parameterRun parameter _).map observe =
       (setup.parameterRun parameter
         (valueBindingProfile (Profile.update profile who _))).map observe
@@ -108,23 +108,23 @@ def parameterPendingSimulation (setup : Setup (Player := Player) (L := L))
   compiled_considered _ _ := trivial
   honest_law profile := by
     unfold eventPendingParameterOutcome
-    have h := congrArg (FinDist.map (Option.map (setup.parameterOutcome parameter)))
+    have h := congrArg (PMF.map (Option.map (setup.parameterOutcome parameter)))
       (setup.eventPendingGame_honest_law mode runtime feasible roster reactionRounds wire order
         profile)
     change _ = (setup.parameterRun parameter profile).map some
     rw [← setup.run_map_parameterOutcome parameter profile]
-    simpa only [Profile.update, eventPendingParameterOutcome, FinDist.map_comp, Function.comp_def,
+    simpa only [Profile.update, eventPendingParameterOutcome, PMF.map_comp, Function.comp_def,
       Option.map_some] using h
   deviation_mixture profile who replacement _ := by
     unfold eventPendingParameterOutcome
     obtain ⟨mixture, hmixture⟩ := setup.eventPendingGame_deviation_law mode runtime feasible
       roster reactionRounds wire order profile who replacement
     refine ⟨mixture, ?_⟩
-    have h := congrArg (FinDist.map (Option.map (setup.parameterOutcome parameter))) hmixture
-    simp only [FinDist.map_bind] at h
+    have h := congrArg (PMF.map (Option.map (setup.parameterOutcome parameter))) hmixture
+    simp only [PMF.map_bind] at h
     simp only [parameterGame]
     simp_rw [← setup.run_map_parameterOutcome parameter]
-    simpa only [Profile.update, eventPendingParameterOutcome, FinDist.map_comp, Function.comp_def,
+    simpa only [Profile.update, eventPendingParameterOutcome, PMF.map_comp, Function.comp_def,
       Option.map_some] using h
 
 /-- Complete value-only source-to-native certificate for type-dependent results. -/

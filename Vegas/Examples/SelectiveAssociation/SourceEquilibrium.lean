@@ -78,28 +78,28 @@ theorem alice_binding_decision_core (Claim : Type) [Fintype Claim]
   change prior ∈ (runInstructions (menu Claim).uniformResponses
     [.player alice, .player bob, .application (.grant 0)] (root Claim)).support at priorMem
   simp only [runInstructions_player, runInstructions_application, runInstructions_nil] at priorMem
-  obtain ⟨first, _, afterFirst⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ priorMem)
-  obtain ⟨second, _, afterSecond⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ afterFirst)
-  cases FinDist.mem_support_pure.mp afterSecond
+  obtain ⟨first, _, afterFirst⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ priorMem)
+  obtain ⟨second, _, afterSecond⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ afterFirst)
+  cases (PMF.mem_support_pure_iff _ _).mp afterSecond
   rw [same]
   exact aliceInput_core first second
 
 theorem control_serials (Claim : Type) [Fintype Claim]
     (control : (application Claim).Control) (trace : (arena Claim).Trace (some control)) :
     control.execution.network.SerialsBeforeNext :=
-  (application Claim).serialsBeforeNext_history (scheduler Claim) (FinDist.pure initial) horizon
-    ((menu Claim).toRawTrace (FinDist.pure initial) horizon (scheduler Claim) trace)
+  (application Claim).serialsBeforeNext_history (scheduler Claim) (PMF.pure initial) horizon
+    ((menu Claim).toRawTrace (PMF.pure initial) horizon (scheduler Claim) trace)
 
 theorem alice_early_information_optimal (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (early : view.application.visit = none ∨ view.application.visit = some 0)
     (alternative : (application Claim).Policy)
     (history : (model Claim).InformationHistory alice (some (past, view))) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-      (Function.update (policy Claim defaultClaim) alice alternative) history.1.state).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+      (Function.update (policy Claim defaultClaim) alice alternative) history.1.state)
         (fun state => utility (protocolResults state) alice) ≤
-      ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-        (policy Claim defaultClaim) history.1.state).expect
+      expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+        (policy Claim defaultClaim) history.1.state)
           (fun state => utility (protocolResults state) alice) := by
   obtain ⟨control, same, active, _, viewed⟩ := information_control Claim alice past view history
   rcases history with ⟨⟨state, trace⟩, observed⟩
@@ -187,12 +187,12 @@ theorem exists_sequentialEquilibrium (Claim : Type) [Fintype Claim] (defaultClai
     ∃ assessment : (model Claim).BehavioralAssessment,
       assessment.strategy = profile Claim defaultClaim ∧
       assessment.IsSequentialEquilibriumFor
-        ((menu Claim).decisionInformationAntichain (FinDist.pure initial)
+        ((menu Claim).decisionInformationAntichain (PMF.pure initial)
           horizon (scheduler Claim))
         (fun who site => assessment.continuationContext site (payoff who) (2 * horizon + 1)) ∧
       (((model Claim).runBehavioral assessment.strategy (2 * horizon + 1)).map
         (fun history => protocolResults history.state)) =
-        (FinDist.uniformOfFintype (α := Bool)).map (fun bit =>
+        (PMF.uniformOfFintype (α := Bool)).map (fun bit =>
           (⟨.success bit, .success false, .success false⟩ : Results)) := by
   obtain ⟨assessment, strategy, consistent, fair⟩ :=
     exists_consistent_fair_assessment Claim defaultClaim

@@ -38,7 +38,7 @@ def sourceServiceOpportunity
     (application setup leaks).replayPolicy past view
   else (sourceServicePolicy setup leaks profile who past view).bind fun response =>
     if response.transmission = none then (application setup leaks).replayPolicy past view
-    else FinDist.pure response
+    else PMF.pure response
 
 def sourceServiceTimedFamily
     (setup : Setup (Player := Player) (L := L))
@@ -88,7 +88,7 @@ theorem sourceServiceTimedPolicy_recorded
       intro slot
       simp only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
         sourceServiceOpportunity, recorded, ↓reduceIte, ite_self]
-    simp only [same, FinDist.bind_const]
+    simp only [same, PMF.bind_const]
   · rfl
 
 /-- The phase's behavioral timing mixture equals the actual finite mixture
@@ -99,7 +99,7 @@ theorem sourceServiceTimedFamily_execution
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId)
-    (timing : FinDist (Fin ((rosters event).count who)))
+    (timing : PMF (Fin ((rosters event).count who)))
     (players : Player → (application setup leaks).Policy)
     (network : (runtime setup).NetworkPolicy leaks) (plan : List (ServiceInstruction (graph setup)))
     (execution : (application setup leaks).Execution)
@@ -148,10 +148,10 @@ theorem sourceServiceTimedPolicy_window_eq
   | nil => rfl
   | cons actor rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
-      apply FinDist.bind_congr
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro sample _
       let activated := execution.sampledActivation app actor sample
       have currentGrant : (activated.observe app actor).application.publicView.serviceGrant =
@@ -173,7 +173,7 @@ theorem sourceServiceTimedPolicy_window_eq
       change (sourceServiceTimedPolicy setup leaks rosters timing profile actor
         (activated.recall actor) (activated.observe app actor)).bind _ = _
       rw [law]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro response _
       apply ih
       have unchanged := (runtime setup).reactive_respond_application leaks activated actor response
@@ -211,7 +211,7 @@ theorem sourceServiceTimedPolicy_phase_law
     rw [runInteractionPlan_append, runInteractionPlan_append,
       sourceServiceTimedPolicy_window_eq setup leaks rosters timing profile event owner owned
         network (rosters event) execution granted]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
   · exact sourceServiceTimedFamily_execution setup leaks rosters profile owner event
@@ -246,7 +246,7 @@ theorem sourceServiceTimedPolicy_active_phase_law
   let mixed := Function.update (fun _ => app.replayPolicy) owner mixture.policy
   trans (app.invoke mixed owner execution).bind
     ((runtime setup).runInteractionPlan leaks mixed network phase)
-  · simp only [ReactiveApplication.invoke, FinDist.bind_map]
+  · simp only [ReactiveApplication.invoke, PMF.bind_map]
     have responseLaw : players owner (execution.recall owner) (execution.observe app owner) =
         mixed owner (execution.recall owner) (execution.observe app owner) := by
       simp only [players, sourceServiceTimedPolicy, mixed, Function.update_self]
@@ -255,7 +255,7 @@ theorem sourceServiceTimedPolicy_active_phase_law
       simp only [grant, dite_eq_left owned]
       rfl
     rw [responseLaw]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro response _
     have currentGrant : (execution.respond app owner response).application.serviceGrant =
         some event := (congrArg PublicView.serviceGrant
@@ -265,7 +265,7 @@ theorem sourceServiceTimedPolicy_active_phase_law
     rw [runInteractionPlan_append, runInteractionPlan_append,
       sourceServiceTimedPolicy_window_eq setup leaks rosters timing profile event owner owned
         network remaining _ currentGrant]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
   · exact ((runtime setup).invoke_runInteractionPlan_policyMixture leaks
@@ -281,7 +281,7 @@ theorem sourceServiceTimedPolicy_final
     (coverage : ActorOpportunities setup rosters)
     (profile : BehavioralProfile setup.program) :
     sourceServiceTimedPolicy setup leaks rosters
-      (fun event who owned => FinDist.pure (rosterLastSlot setup rosters coverage event who owned))
+      (fun event who owned => PMF.pure (rosterLastSlot setup rosters coverage event who owned))
       profile = sourceServiceLastPolicy setup leaks rosters profile := by
   funext who past view
   unfold sourceServiceTimedPolicy sourceServiceLastPolicy
@@ -294,10 +294,10 @@ theorem sourceServiceTimedPolicy_final
         let app := application setup leaks
         let slot := rosterLastSlot setup rosters coverage event who owned
         let family := sourceServiceTimedFamily setup leaks rosters profile who event
-        have fixed := app.policyMixture_posterior_pure_append (FinDist.pure slot) family []
+        have fixed := app.policyMixture_posterior_pure_append (PMF.pure slot) family []
           past slot rfl
         simp only [List.nil_append] at fixed
-        rw [app.policyMixture_policy, fixed, FinDist.pure_bind]
+        rw [app.policyMixture_policy, fixed, PMF.pure_bind]
         have last := rosterLastSlot_final setup rosters coverage event who owned
         change slot.val + 1 = _ at last
         simp only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,

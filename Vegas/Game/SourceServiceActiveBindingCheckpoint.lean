@@ -53,7 +53,7 @@ theorem scheduledBindingActive_config
     let app := application setup leaks
     let players := Function.update (fun _ => app.replayPolicy) owner
       (app.scheduledPolicy offset (some slot)
-        (fun _ _ => FinDist.pure
+        (fun _ _ => PMF.pure
           ((runtime setup).reactiveBinding leaks owner event payload choice serial))
         app.replayPolicy)
     final ∈ ((app.invoke players owner execution).bind
@@ -74,8 +74,8 @@ theorem scheduledBindingActive_config
       (((app.invoke players owner execution).bind
         ((runtime setup).runInteractionPlan leaks players network first)).bind
           ((runtime setup).runInteractionPlan leaks players network maintenance)) := by
-    rw [FinDist.bind_bind]
-    apply FinDist.bind_congr
+    rw [PMF.bind_bind]
+    apply bind_congr_on_support _
     intro current _
     exact (runtime setup).runInteractionPlan_append leaks players network first maintenance current
   have reached : final ∈ ((app.invoke players owner execution).bind
@@ -84,7 +84,7 @@ theorem scheduledBindingActive_config
     simpa only [first, maintenance, List.append_assoc] using reached
   rw [split] at reached
   obtain ⟨included, includedSupport, continued⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have config : included.application.config = execution.application.config.complete event ready
       (cast (congrArg EventField.Action outputEq.symm) choice)
       (cast (congrArg EventField.Value outputEq.symm) choice) := by
@@ -93,14 +93,14 @@ theorem scheduledBindingActive_config
         congrArg some now
       simp only [players, ReactiveApplication.invoke, Function.update_self,
         ReactiveApplication.scheduledPolicy, Option.map_some, ite_eq_left scheduled,
-        FinDist.bind_map, FinDist.pure_bind] at includedSupport
+        PMF.bind_map, PMF.pure_bind] at includedSupport
       have after : offset + slot.val <
           ((execution.respond app owner response).recall owner).length := by
         rw [app.respond_recall_length]
         simp only [↓reduceIte, now]
         omega
       rw [scheduled_tail_waiting setup leaks network owner event offset slot
-        (fun _ _ => FinDist.pure response) remaining
+        (fun _ _ => PMF.pure response) remaining
         (execution.respond app owner response) after] at includedSupport
       let transport : Player → app.Policy := fun _ => app.replayPolicy
       let readout := fun current : app.Execution =>
@@ -119,27 +119,27 @@ theorem scheduledBindingActive_config
         | success value => exact delayed (some ⟨payload, value⟩)
       have member : readout included ∈ (((runtime setup).runInteractionPlan leaks transport
           network first (execution.respond app owner response)).map readout).support :=
-        FinDist.support_map .. ▸ ⟨included, includedSupport, rfl⟩
+        PMF.support_map .. ▸ ⟨included, includedSupport, rfl⟩
       rw [delay] at member
-      obtain ⟨immediate, immediateSupport, equal⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨immediate, immediateSupport, equal⟩ := PMF.support_map .. ▸ member
       have actual : (immediate.application.config, immediate.receipts) ∈
           (((runtime setup).interactionStep leaks transport network (.includeLatest event owner)
             (execution.respond app owner response)).map
               (fun current => (current.application.config, current.receipts))).support :=
-        FinDist.support_map .. ▸ ⟨immediate, immediateSupport, rfl⟩
+        PMF.support_map .. ▸ ⟨immediate, immediateSupport, rfl⟩
       rw [(runtime setup).reactiveBinding_reserved_config leaks execution owner event payload
         outputEq codeEq node choice serial ready timely fresh vacant unused serials
         transport network]
         at actual
-      have same := congrArg Prod.fst (FinDist.mem_support_pure.mp actual)
+      have same := congrArg Prod.fst ((PMF.mem_support_pure_iff _ _).mp actual)
       exact (congrArg (fun value => value.1.config) equal).symm.trans same
     · have scheduled : some (offset + slot.val) ≠ some (execution.recall owner).length :=
         fun equal => now (Option.some.inj equal)
       simp only [players, ReactiveApplication.invoke, Function.update_self,
         ReactiveApplication.scheduledPolicy, Option.map_some, ite_eq_right scheduled,
-        FinDist.bind_map] at includedSupport
+        PMF.bind_map] at includedSupport
       obtain ⟨action, chosen, later⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ includedSupport)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ includedSupport)
       let current := execution.respond app owner action
       have preserved := (runtime setup).replay_response_preserves leaks
         (fun message => message.id ∈ execution.network.ledger.map Message.id) execution
@@ -155,7 +155,7 @@ theorem scheduledBindingActive_config
         outputEq codeEq node owned current (by rw [same]; exact granted)
         (by rw [same]; exact ready) (by rw [same]; exact timely) serial
         (by rw [same]; exact fresh) (by rw [same]; exact vacant) (by rw [same]; exact unused)
-        ((app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+        ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
           execution owner action serials) currentPublished remaining
         slot offset (by rw [currentCount]; omega) (by rw [currentCount]; exact within)
         choice included later
@@ -167,7 +167,7 @@ theorem scheduledBindingActive_config
   obtain ⟨endpoint, law, state, _, _, _⟩ := (runtime setup).settled_reveal_expiry leaks
     players network included event settled ticks
   rw [law] at continued
-  cases FinDist.mem_support_pure.mp continued
+  cases (PMF.mem_support_pure_iff _ _).mp continued
   rw [state]
   exact config
 

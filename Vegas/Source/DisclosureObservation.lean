@@ -101,40 +101,40 @@ theorem bindingRecall_own_successor {payload : L.Ty} (name : VarId)
         (config.withOwnHistory who (recall (config.view who))) binding := by
   rw [bindingRecall_successor, ite_eq_left rfl, commitSuccessor_withOwnHistory]
 
-private theorem conditional_fst_support {A B : Type*} (law : FinDist (A × B)) (value : A)
+private theorem conditional_fst_support {A B : Type*} (law : PMF (A × B)) (value : A)
     (reached : value ∈ (law.map Prod.fst).support) (pair : A × B)
-    (member : pair ∈ (law.condOnFibre Prod.fst value).support) :
+    (member : pair ∈ (fiberConditional law Prod.fst value).support) :
     pair ∈ law.support ∧ pair.1 = value := by
   classical
-  obtain ⟨witness, supported, same⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨witness, supported, same⟩ := PMF.support_map .. ▸ reached
   have meets : ∃ pair ∈ Prod.fst ⁻¹' {value}, pair ∈ law.support := ⟨witness, same, supported⟩
-  rw [FinDist.condOnFibre, dite_eq_left meets] at member
-  exact ⟨(FinDist.support_condOn _ _ _ member).2,
-    (FinDist.support_condOn _ _ _ member).1⟩
+  rw [fiberConditional, dite_eq_left meets] at member
+  exact ⟨((PMF.mem_support_filter_iff _).mp member).2,
+    ((PMF.mem_support_filter_iff _).mp member).1⟩
 
 /-- Conditioning on an emitted binding preserves the information retraction:
 every original intention in the posterior has that same compressed recall. -/
 theorem bindingMemoryLaw_recall {payload : L.Ty} (name : VarId)
     (guard : SourceGuard L Γ who name payload) (config : Config Player L Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
     (recall : DecisionView who Γ → List (OwnAction Player L))
-    (choose : DecisionView who Γ → FinDist (PublicationResult (L.Val payload)))
+    (choose : DecisionView who Γ → PMF (PublicationResult (L.Val payload)))
     (coherent : ∀ past ∈ (remember (config.view who)).support,
       recall (sourceObserve who config.state, past) = config.history who)
     (binding : PublicationResult (L.Val payload))
     (reached : binding ∈ ((bindingMemoryLaw name payload remember choose
       (config.view who)).map Prod.fst).support)
     (past : List (OwnAction Player L))
-    (remembered : past ∈ (((bindingMemoryLaw name payload remember choose
-      (config.view who)).condOnFibre Prod.fst binding).map Prod.snd).support) :
+    (remembered : past ∈ ((fiberConditional (bindingMemoryLaw name payload remember choose
+      (config.view who)) Prod.fst binding).map Prod.snd).support) :
     bindingRecall name who payload recall
         (((commitSuccessor name guard config binding).withOwnHistory who past).view who) =
       (commitSuccessor name guard config binding).history who := by
-  obtain ⟨pair, conditional, rfl⟩ := FinDist.support_map .. ▸ remembered
+  obtain ⟨pair, conditional, rfl⟩ := PMF.support_map .. ▸ remembered
   obtain ⟨produced, emitted⟩ := conditional_fst_support _ binding reached pair conditional
   obtain ⟨original, prior, chosen⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ produced)
-  obtain ⟨value, _chosen, rfl⟩ := FinDist.support_map .. ▸ chosen
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ produced)
+  obtain ⟨value, _chosen, rfl⟩ := PMF.support_map .. ▸ chosen
   dsimp only at emitted
   subst binding
   rw [← commitSuccessor_withOwnHistory, bindingRecall_successor, ite_eq_left rfl,
@@ -146,26 +146,26 @@ information fiber. The posterior still retains which intention was chosen. -/
 theorem disclosureMemoryLaw_recall {payload : L.Ty} {name : VarId}
     (published : VarId) (selected : HasVar Γ name (.commitment who payload))
     (config : Config Player L Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
     (recall : DecisionView who Γ → List (OwnAction Player L))
-    (choose : DecisionView who Γ → FinDist Bool)
+    (choose : DecisionView who Γ → PMF Bool)
     (coherent : ∀ past ∈ (remember (config.view who)).support,
       recall (sourceObserve who config.state, past) = config.history who)
     (disclose : Bool)
     (reached : disclose ∈ ((disclosureMemoryLaw published selected config.registry
       config.revelations remember choose (config.view who)).map Prod.fst).support)
     (past : List (OwnAction Player L))
-    (remembered : past ∈ (((disclosureMemoryLaw published selected config.registry
-      config.revelations remember choose (config.view who)).condOnFibre Prod.fst disclose).map
+    (remembered : past ∈ ((fiberConditional (disclosureMemoryLaw published selected config.registry
+      config.revelations remember choose (config.view who)) Prod.fst disclose).map
         Prod.snd).support) :
     publicationRecall published name who payload recall
         (((revealSuccessor published selected config disclose).withOwnHistory who past).view who) =
       (revealSuccessor published selected config disclose).history who := by
-  obtain ⟨pair, conditional, rfl⟩ := FinDist.support_map .. ▸ remembered
+  obtain ⟨pair, conditional, rfl⟩ := PMF.support_map .. ▸ remembered
   obtain ⟨produced, emitted⟩ := conditional_fst_support _ disclose reached pair conditional
   obtain ⟨original, prior, chosen⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ produced)
-  obtain ⟨intended, _chosen, rfl⟩ := FinDist.support_map .. ▸ chosen
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ produced)
+  obtain ⟨intended, _chosen, rfl⟩ := PMF.support_map .. ▸ chosen
   have effective : effectiveDisclosure published selected config intended = disclose := by
     simpa only [Config.view, effectiveDisclosureView_observe] using emitted
   rw [← effective, revealSuccessor_effective_withOwnHistory,

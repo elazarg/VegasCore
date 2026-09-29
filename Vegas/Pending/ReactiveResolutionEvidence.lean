@@ -320,23 +320,23 @@ theorem resolutionEvidenceOrigins_environment
     (carried fact issued).environment runtime leaks valid command reached
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact prior
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact prior.learn who selected
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       have kept := prior.includePending id
       cases found : execution.network.lookup id <;>
         simpa only [ResolutionEvidenceOrigins, ReactiveApplication.Execution.includePending,
           MessageNetwork.includePending, found] using kept
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact prior
 
 /-- Every lawful execution of a service plan keeps the binding invariant, input
@@ -375,7 +375,7 @@ resolution origins. This ranges over all policies and scheduler behavior. -/
 theorem resolutionEvidenceOrigins_history (bounds : MessageBounds graph)
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (included : menu.IncludedIn (bounds.compiledMenu runtime leaks))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (setup : ∀ state ∈ initial.support, state.BindingInvariant)
     {state} (trace : (menu.protocol initial horizon scheduler).Trace state) :

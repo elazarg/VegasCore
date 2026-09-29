@@ -54,7 +54,7 @@ theorem repair_next_owner_opportunity
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original).bind
           (fun next => next.environmentStep app (.activate owner)) ∧
@@ -84,49 +84,49 @@ theorem repair_next_owner_opportunity
         pair.2.1.sampledActivation app owner selected, pair.2.2)
   have leftSample pair : (sampled pair).map Prod.fst =
       pair.1.environmentStep app (.activate owner) := by
-    rw [FinDist.map_comp, ReactiveApplication.Execution.activation_samples]
+    rw [PMF.map_comp, ReactiveApplication.Execution.activation_samples]
     rfl
   have rightSample pair (supported : pair ∈ segmentLaw.support) :
       (sampled pair).map Prod.snd =
         (pair.2.1.environmentStep app (.activate owner)).map
           (fun execution => (execution, pair.2.2)) := by
-    rw [FinDist.map_comp, ReactiveApplication.Execution.activation_samples, FinDist.map_comp]
+    rw [PMF.map_comp, ReactiveApplication.Execution.activation_samples, PMF.map_comp]
     change (leaks owner pair.1.network.pending).map _ =
       (leaks owner pair.2.1.network.pending).map _
     rw [(related pair supported).1.network]
     rfl
   refine ⟨segmentLaw.bind sampled, ?_, ?_, ?_⟩
-  · rw [FinDist.map_bind]
+  · rw [PMF.map_bind]
     calc
       _ = segmentLaw.bind (fun pair => pair.1.environmentStep app (.activate owner)) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         exact fun pair _ => leftSample pair
       _ = (segmentLaw.map Prod.fst).bind
           (fun execution => execution.environmentStep app (.activate owner)) := by
-        rw [FinDist.bind_map]
+        rw [PMF.bind_map]
       _ = _ := by rw [first]
-  · rw [FinDist.map_bind]
+  · rw [PMF.map_bind]
     calc
       _ = segmentLaw.bind (fun pair => (pair.2.1.environmentStep app (.activate owner)).map
           (fun execution => (execution, pair.2.2))) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         exact rightSample
       _ = (segmentLaw.map Prod.snd).bind
           (fun pair => (pair.1.environmentStep app (.activate owner)).map
-            (fun execution => (execution, pair.2))) := by rw [FinDist.bind_map]
+            (fun execution => (execution, pair.2))) := by rw [PMF.bind_map]
       _ = _ := by rw [second]
   · intro next supported
     obtain ⟨pair, chosen, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-    obtain ⟨selected, selectedSupport, rfl⟩ := FinDist.support_map .. ▸ reached
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+    obtain ⟨selected, selectedSupport, rfl⟩ := PMF.support_map .. ▸ reached
     obtain ⟨paired, memoryEq, ⟨prefixTrace⟩⟩ := related pair chosen
     have leftSupport : pair.1 ∈ ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original).support := by
-      rw [← first, FinDist.support_map]
+      rw [← first, PMF.support_map]
       exact ⟨pair, chosen, rfl⟩
     have leftMoved : pair.1.sampledActivation app owner selected ∈
         (pair.1.environmentStep app (.activate owner)).support := by
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map]
+      rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
       exact ⟨selected, selectedSupport, rfl⟩
     refine ⟨paired.activate owner selected, memoryEq, ?_, pair.1, leftSupport, leftMoved⟩
     apply menu.trace_environment (initialLaw setup) (rosterPlan setup rosters).length scheduler
@@ -145,8 +145,8 @@ theorem repair_next_owner_opportunity
         rw [← length, split, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
         rfl
       simp only [scheduler, rosterScheduler, currentPosition, command, interactionInstruction,
-        FinDist.mem_support_pure]
-    · rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map]
+        PMF.mem_support_pure_iff _ _]
+    · rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
       refine ⟨selected, ?_, rfl⟩
       rw [← paired.network]
       exact selectedSupport

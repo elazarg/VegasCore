@@ -1,8 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
-import GameTheoryExtensions.Math.Probability.Compactness
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Convergence
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Protocol.FiniteInformation
 import Mathlib.Analysis.SpecificLimits.Basic
 
@@ -33,13 +35,13 @@ theorem BehavioralAssessment.exists_consistent_completion_subsequence
     (mixed : ∀ n, (sequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n) antichain)
     (strategies : ∀ who (site : M.InformationSite who),
-      FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1)
+      PMFConvergesPointwise (fun n => (sequence n).strategy who site.1)
         (profile who site.1)) :
     ∃ assessment : M.BehavioralAssessment, assessment.strategy = profile ∧
       ∃ index : ℕ → ℕ, StrictMono index ∧
         BehavioralAssessmentConvergesPointwise (fun n => sequence (index n)) assessment ∧
         assessment.IsSequentiallyConsistent antichain := by
-  obtain ⟨beliefs, index, increasing, converges⟩ := FinDist.exists_common_subsequence
+  obtain ⟨beliefs, index, increasing, converges⟩ := exists_subseq_pmfConvergesPointwise_pi
     (fun n (site : Σ who, M.InformationSite who) => (sequence n).belief site.1 site.2)
   let assessment : M.BehavioralAssessment :=
     ⟨profile, fun who site => beliefs ⟨who, site⟩⟩
@@ -68,7 +70,7 @@ theorem BehavioralAssessment.exists_sequentiallyConsistent_subsequence
   let _ (entry : Σ who, M.InformationSite who) :
       Finite (M.Choice entry.1 entry.2.1) := (mixed 0 entry.1 entry.2).finite
   obtain ⟨laws, first, firstIncreasing, firstConverges⟩ :=
-    FinDist.exists_common_subsequence
+    exists_subseq_pmfConvergesPointwise_pi
       (fun n (entry : Σ who, M.InformationSite who) =>
         (sequence n).strategy entry.1 entry.2.1)
   let profile : ∀ who, M.BehavioralPolicy who := fun who info =>
@@ -77,7 +79,7 @@ theorem BehavioralAssessment.exists_sequentiallyConsistent_subsequence
     then laws ⟨who, ⟨info, decision⟩⟩
     else (sequence 0).strategy who info
   have strategies (who : ι) (site : M.InformationSite who) :
-      FinDistConvergesPointwise (fun n => (sequence (first n)).strategy who site.1)
+      PMFConvergesPointwise (fun n => (sequence (first n)).strategy who site.1)
         (profile who site.1) := by
     dsimp only [profile]
     rw [dite_eq_left site.2]
@@ -99,12 +101,12 @@ theorem BehavioralAssessment.exists_consistent_completion_preserving
     (mixed : ∀ n, (sequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent M (sequence n) antichain)
     (strategies : ∀ who (site : M.InformationSite who),
-      FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1)
+      PMFConvergesPointwise (fun n => (sequence n).strategy who site.1)
         (profile who site.1))
     {Observation : (who : ι) → M.InformationSite who → Type*}
     (project : ∀ who site, M.InformationHistory who site.1 → Observation who site)
-    (limit : ∀ who site, FinDist (Observation who site))
-    (projected : ∀ who site, FinDistConvergesPointwise
+    (limit : ∀ who site, PMF (Observation who site))
+    (projected : ∀ who site, PMFConvergesPointwise
       (fun n => ((sequence n).belief who site).map (project who site)) (limit who site)) :
     ∃ assessment : M.BehavioralAssessment,
       assessment.strategy = profile ∧ assessment.IsSequentiallyConsistent antichain ∧

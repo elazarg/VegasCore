@@ -36,7 +36,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (wholeProfile : BehavioralProfile setup.program)
     (permitted : ∀ who, (wholeProfile who).Admitted setup.program
@@ -115,7 +115,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     let branch := fun (choice : PublicationResult (L.Val payload))
       (slot : Fin ((rosters event).count owner)) => app.scheduledPolicy
       (rosterOffset setup rosters owner event) (some slot)
-        (fun _ _ => FinDist.pure
+        (fun _ _ => PMF.pure
           ((runtime setup).reactiveBinding leaks owner event payload choice serial))
         app.replayPolicy
     let tags := (commitKernel profile (source.view owner)).bind fun choice =>
@@ -125,7 +125,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     ((runtime setup).runInteractionPlan leaks players network (HAppend.hAppend phase later)
       (execution.respond app owner response)).map
         (fun final => sourceReadout setup leaks (some ⟨0, none, final⟩)) =
-      (tags.condOnFibre (fun tag => some tag.2.2) (some response)).bind
+      (fiberConditional tags (fun tag => some tag.2.2) (some response)).bind
         fun (tag : PublicationResult (L.Val payload) ×
           Fin ((rosters event).count owner) × app.Action) =>
         (setup.continuationLaw wholeProfile
@@ -165,7 +165,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
       capacity rosters opportunities timing full network fresh guard next wholeProfile permitted
       profile refs source embedding refsBefore rank aligned execution remainingFuel trace agree
       history serial freshSlot candidate remaining (event.val + 1) owned granted unsent counted
-    simpa only [ReactiveApplication.invoke, FinDist.bind_map, FinDist.bind_bind,
+    simpa only [ReactiveApplication.invoke, PMF.bind_map, PMF.bind_bind,
       Function.update_self, tags, kernel, scheduled, branch, responses, continued, posterior,
       phase, players] using law
   have chosen := roster_fullyMixed_response_support setup leaks rosters network menu players
@@ -173,18 +173,18 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
   have tagPresent : some response ∈ (tags.map (fun tag => some tag.2.2)).support := by
     obtain ⟨final, reached⟩ := (continued response).support_nonempty
     have possible : final ∈ (responses.bind continued).support :=
-      FinDist.support_bind .. ▸ Set.mem_iUnion₂.mpr ⟨response, chosen, reached⟩
-    rw [factor, FinDist.support_bind] at possible
+      PMF.support_bind .. ▸ Set.mem_iUnion₂.mpr ⟨response, chosen, reached⟩
+    rw [factor, PMF.support_bind] at possible
     obtain ⟨tag, member, realized⟩ := Set.mem_iUnion₂.mp possible
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨tag, member, (recorded _ _ _ realized).symm.trans (recorded _ _ _ reached)⟩
   have conditioned : continued response =
-      (tags.condOnFibre (fun tag => some tag.2.2) (some response)).bind kernel := by
+      (fiberConditional tags (fun tag => some tag.2.2) (some response)).bind kernel := by
     have physical := (runtime setup).runInteractionPlan_response_conditioning leaks players
       network phase execution owner responses response chosen
-    change (responses.bind continued).condOnFibre observed (some response) = continued response
+    change fiberConditional (responses.bind continued) observed (some response) = continued response
       at physical
-    rw [factor, FinDist.conditional_bind_of_observation tags kernel
+    rw [factor, PMF.conditional_bind_of_observation tags kernel
       (fun tag => some tag.2.2) observed (fun tag _ final member => recorded _ _ _ member)
       (some response) tagPresent] at physical
     exact physical.symm
@@ -193,9 +193,9 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
       tag.2.1 ∈ posterior.support ∧
       tag.2.2 ∈ (branch tag.1 tag.2.1 (execution.recall owner)
         (execution.observe app owner)).support := by
-    obtain ⟨choice, choiceSupport, member⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ member)
-    obtain ⟨slot, slotSupport, member⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ member)
-    obtain ⟨action, actionSupport, rfl⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨choice, choiceSupport, member⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
+    obtain ⟨slot, slotSupport, member⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
+    obtain ⟨action, actionSupport, rfl⟩ := PMF.support_map .. ▸ member
     exact ⟨choiceSupport, slotSupport, actionSupport⟩
   have future : ∀ slot ∈ posterior.support,
       (execution.recall owner).length ≤ rosterOffset setup rosters owner event + slot.val := by
@@ -214,15 +214,15 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     exact aligned.graphSuffix.nodeEq index
   have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
     EventGraphRuntime.nodeView_eq_bind _ _
-  rw [runInteractionPlan_append, FinDist.map_bind]
+  rw [runInteractionPlan_append, PMF.map_bind]
   change (continued response).bind _ = _
-  rw [conditioned, FinDist.bind_bind]
-  apply FinDist.bind_congr
+  rw [conditioned, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro tag conditionalMember
   have tagMember : tag ∈ tags.support := by
-    unfold FinDist.condOnFibre at conditionalMember
+    unfold fiberConditional at conditionalMember
     split at conditionalMember
-    · exact (FinDist.support_condOn _ _ _ conditionalMember).2
+    · exact ((PMF.mem_support_filter_iff _).mp conditionalMember).2
     · exact conditionalMember
   obtain ⟨choiceSupport, slotSupport, responseSupport⟩ := tagsSupport tag tagMember
   calc
@@ -231,10 +231,10 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
           (execution.application.config.complete event ready
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) tag.1)
             (cast (congrArg EventGraph.EventField.Value outputEq.symm) tag.1)))).map some) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro final reached
       have actual : final ∈ (continued response).support := by
-        rw [conditioned, FinDist.support_bind]
+        rw [conditioned, PMF.support_bind]
         exact Set.mem_iUnion₂.mpr ⟨tag, conditionalMember, reached⟩
       have baseline := roster_fullyMixed_response_prefix_support setup leaks rosters network menu
         players covered assessment strategy mixed owner remainingFuel execution trace
@@ -246,7 +246,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
           ((runtime setup).runInteractionPlan leaks (scheduled tag.1 tag.2.1) network
             ((remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
               List.replicate (event.val + 1) .tick ++ [.expire event]))).support := by
-        simp only [ReactiveApplication.invoke, FinDist.bind_map, FinDist.support_bind]
+        simp only [ReactiveApplication.invoke, PMF.bind_map, PMF.support_bind]
         refine Set.mem_iUnion₂.mpr ⟨tag.2.2, by
           simpa only [scheduled, Function.update_self] using responseSupport, ?_⟩
         simpa only [kernel, phase, List.append_assoc, List.cons_append, List.nil_append]
@@ -258,6 +258,6 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
         tag.1 (event.val + 1) final supported
       rw [completed] at suffix
       exact suffix
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 end Vegas

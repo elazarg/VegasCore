@@ -43,7 +43,7 @@ variable {Principal : Type uPrincipal}
 
 abbrev WirePolicy (app : MessageApplication Principal) :=
   List (MessageInterface.EnvironmentEntry app.toMessageInterface) →
-    app.EnvironmentObservation → FinDist (WireCommand Principal)
+    app.EnvironmentObservation → PMF (WireCommand Principal)
 
 noncomputable def wireEnvironment (app : MessageApplication Principal)
     (policy : app.WirePolicy) : app.EnvironmentPolicy :=

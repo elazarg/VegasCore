@@ -46,8 +46,8 @@ private theorem afterEnvironmentStep
   have environmentHistory : leftNext.environmentHistory = rightNext.environmentHistory := by
     have leftStep := leftSupported
     have rightStep := rightSupported
-    simp only [MessageApplication.environmentPolicyStep, FinDist.support_bind,
-      Set.mem_iUnion, FinDist.mem_support_pure] at leftStep rightStep
+    simp only [MessageApplication.environmentPolicyStep, PMF.support_bind,
+      Set.mem_iUnion, PMF.mem_support_pure_iff _ _] at leftStep rightStep
     obtain ⟨leftAdvanced, _, leftStep⟩ := leftStep
     obtain ⟨rightAdvanced, _, rightStep⟩ := rightStep
     subst leftNext
@@ -91,8 +91,8 @@ theorem environmentWait
     (rightSupported : rightNext ∈
       (runtime.application.environmentPolicyStep right .wait).support) :
     NativeReplay runtime focal leftNext rightNext := by
-  rw [runtime.application.environmentStep_wait, FinDist.mem_support_pure] at leftSupported
-  rw [runtime.application.environmentStep_wait, FinDist.mem_support_pure] at rightSupported
+  rw [runtime.application.environmentStep_wait, PMF.mem_support_pure_iff _ _] at leftSupported
+  rw [runtime.application.environmentStep_wait, PMF.mem_support_pure_iff _ _] at rightSupported
   subst leftNext
   subst rightNext
   apply afterEnvironmentStep runtime focal replay .wait
@@ -118,7 +118,7 @@ theorem environmentDeliver
   have rightMem := rightSupported
   simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
     MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.pure_bind, FinDist.mem_support_pure] at leftMem rightMem
+    PMF.pure_bind, PMF.mem_support_pure_iff _ _] at leftMem rightMem
   subst leftNext
   subst rightNext
   apply afterEnvironmentStep runtime focal replay (.deliver observer id)
@@ -143,8 +143,8 @@ theorem environmentGrant
   have rightMem := rightSupported
   simp only [application, MessageApplication.environmentPolicyStep,
     MessageApplication.advance, MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, environmentStep, FinDist.map_pure, FinDist.pure_bind,
-    FinDist.mem_support_pure] at leftMem rightMem
+    MessageApplication.step, environmentStep, PMF.pure_map, PMF.pure_bind,
+    PMF.mem_support_pure_iff _ _] at leftMem rightMem
   subst leftNext
   subst rightNext
   have applicationView :
@@ -179,8 +179,8 @@ theorem environmentAdvanceClock
   have rightMem := rightSupported
   simp only [application, MessageApplication.environmentPolicyStep,
     MessageApplication.advance, MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, environmentStep, FinDist.map_pure, FinDist.pure_bind,
-    FinDist.mem_support_pure] at leftMem rightMem
+    MessageApplication.step, environmentStep, PMF.pure_map, PMF.pure_bind,
+    PMF.mem_support_pure_iff _ _] at leftMem rightMem
   subst leftNext
   subst rightNext
   have applicationView :
@@ -228,17 +228,17 @@ theorem environmentExecuteSample
       ((runtime.application.environmentPolicyStep left
         (.application (.executeSample event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨leftNext, leftSupported, rfl⟩
   have rightNative : rightNext.native ∈
       ((runtime.application.environmentPolicyStep right
         (.application (.executeSample event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨rightNext, rightSupported, rfl⟩
   rw [runtime.application.environmentStep_native] at leftNative rightNative
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, FinDist.support_map, Set.mem_image] at leftNative rightNative
+    MessageApplication.step, PMF.support_map, Set.mem_image] at leftNative rightNative
   obtain ⟨leftApplication, leftApplicationMem, leftStateEq⟩ := leftNative
   obtain ⟨rightApplication, rightApplicationMem, rightStateEq⟩ := rightNative
   have leftApplicationEq : leftNext.native.application = leftApplication := by
@@ -299,17 +299,17 @@ theorem environmentExpire_of_result
       ((runtime.application.environmentPolicyStep left
         (.application (.expire event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨leftNext, leftSupported, rfl⟩
   have rightNative : rightNext.native ∈
       ((runtime.application.environmentPolicyStep right
         (.application (.expire event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨rightNext, rightSupported, rfl⟩
   rw [runtime.application.environmentStep_native] at leftNative rightNative
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, FinDist.support_map, Set.mem_image] at leftNative rightNative
+    MessageApplication.step, PMF.support_map, Set.mem_image] at leftNative rightNative
   obtain ⟨leftApplication, leftApplicationMem, leftStateEq⟩ := leftNative
   obtain ⟨rightApplication, rightApplicationMem, rightStateEq⟩ := rightNative
   have leftApplicationEq : leftNext.native.application = leftApplication := by
@@ -367,7 +367,7 @@ private theorem environmentInclude_of_present_handleView
   have rightMem := rightSupported
   simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
     MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.pure_bind, FinDist.mem_support_pure] at leftMem rightMem
+    PMF.pure_bind, PMF.mem_support_pure_iff _ _] at leftMem rightMem
   subst leftNext
   subst rightNext
   have rightLookup : right.native.pool.lookup id = some message := by
@@ -435,7 +435,7 @@ theorem environmentInclude_focal
   have rightMem := rightSupported
   simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
     MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.pure_bind, FinDist.mem_support_pure] at leftMem rightMem
+    PMF.pure_bind, PMF.mem_support_pure_iff _ _] at leftMem rightMem
   subst leftNext
   subst rightNext
   have lookupEq : left.native.pool.lookup id = right.native.pool.lookup id := by
@@ -527,7 +527,7 @@ theorem environmentInclude_commitment
   have rightMem := rightSupported
   simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
     MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.pure_bind, FinDist.mem_support_pure] at leftMem rightMem
+    PMF.pure_bind, PMF.mem_support_pure_iff _ _] at leftMem rightMem
   subst leftNext
   subst rightNext
   have rightLookup : right.native.pool.lookup id = some message := by
@@ -731,7 +731,7 @@ end ServiceReplay
 /-- Controls reachable through the actual adaptive service small-step
 semantics, starting from an input in the supplied initialization law. -/
 inductive ServiceReachable (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ServiceControl runtime → Prop
@@ -958,7 +958,7 @@ namespace ServiceReachable
 /-- Every reachable control retains a concrete supported path from one
 supported initialized input. -/
 theorem exists_initial_path (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     {control : ServiceControl runtime}
@@ -984,7 +984,7 @@ end ServiceReachable
 control transition.  The observed key is source-rank normalized, while the
 effective action is the dependent action retained by the graph completion. -/
 inductive ReachedFocalAction (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player) (event : graph.EventId)
@@ -1018,7 +1018,7 @@ def defaultEventAction (event : graph.EventId) : graph.Action event := by
 /-- Total graph policy extracted from the partial relation of actions reached
 by one fixed native response triple. -/
 def reachedFocalPolicy (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player) : graph.BehavioralPolicy focal := by
@@ -1027,14 +1027,14 @@ def reachedFocalPolicy (runtime : EventGraphRuntime graph)
   let relation := fun action : graph.Action event =>
     ReachedFocalAction runtime inputs roster reactionRounds players wire order focal event
       (graph.normalizeObservation event focal observation) action
-  exact FinDist.pure (if existsAction : ∃ action, relation action then
+  exact PMF.pure (if existsAction : ∃ action, relation action then
     Classical.choose existsAction else defaultEventAction event)
 
 /-- The extracted policy selects every reached effective action once the
 two-run locality relation is functional. -/
 theorem reachedFocalPolicy_eq_of_functional
     (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player)
@@ -1049,11 +1049,11 @@ theorem reachedFocalPolicy_eq_of_functional
     (reached : ReachedFocalAction runtime inputs roster reactionRounds players wire order focal
       event (graph.normalizeObservation event focal observation) action) :
     reachedFocalPolicy runtime inputs roster reactionRounds players wire order focal
-      event actor observation = FinDist.pure action := by
+      event actor observation = PMF.pure action := by
   unfold reachedFocalPolicy
   dsimp only
   rw [dite_eq_left ⟨action, reached⟩]
-  exact congrArg FinDist.pure
+  exact congrArg PMF.pure
     (functional event _ (Classical.choose _) action (Classical.choose_spec _) reached)
 
 end Vegas.EventGraphRuntime

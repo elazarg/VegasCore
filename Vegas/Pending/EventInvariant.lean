@@ -271,11 +271,11 @@ theorem environmentStep_clock (runtime : EventGraphRuntime graph)
     next.clock = state.clock + command.clockTicks := by
   cases command with
   | grant event =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       rfl
   | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       rfl
   | executeSample event =>
@@ -297,11 +297,11 @@ theorem environmentStep_invariant {inputs : graph.Inputs}
     next.Invariant inputs := by
   cases command with
   | grant event =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact invariant.copy rfl rfl rfl
   | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       refine ⟨invariant.reachable, invariant.activated_iff, ?_⟩
       intro event entered activated
@@ -341,7 +341,7 @@ theorem environmentStep_completed_subset (runtime : EventGraphRuntime graph)
     state.config.cut.completed ⊆ next.config.cut.completed := by
   cases command with
   | grant event | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact Finset.Subset.rfl
   | executeSample event =>
@@ -372,7 +372,7 @@ theorem environmentStep_activatedAt_of_not_completed {inputs : graph.Inputs}
     next.activatedAt query = some entered := by
   cases command with
   | grant event | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact activated
   | executeSample event =>
@@ -453,15 +453,15 @@ theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
       next.application.config.cut.completed := by
   cases action with
   | privateCommand who command =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact privateStep_completed_subset state.application who command
   | submit who payload | replay who id | deliver who id =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact Finset.Subset.rfl
   | «include» id =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       apply (application runtime).includePending_application_invariant
         (fun current => state.application.config.cut.completed ⊆
@@ -470,7 +470,7 @@ theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
         exact subset.trans (handle_completed_subset runtime current result message accepted)
       · exact Finset.Subset.rfl
   | environment command =>
-      simp only [MessageApplication.step, FinDist.support_map, Set.mem_image] at member
+      simp only [MessageApplication.step, PMF.support_map, Set.mem_image] at member
       obtain ⟨result, supported, rfl⟩ := member
       exact environmentStep_completed_subset runtime state.application result command supported
 

@@ -37,7 +37,7 @@ theorem roster_owner_choice_data
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state execution)
     (supported : state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
       (fun owner => RevealOnly.uniformPolicy owner setup.program reveals)))^[event.val]
-        (FinDist.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support)
+        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support)
     (granted : execution.application.serviceGrant = some event) :
     ∃ site : (setup.informationModel admission).InformationSite who,
       site.1 = setup.protocolObserve who (some state) ∧
@@ -69,7 +69,7 @@ theorem roster_owner_choice_data
   simp only [Option.elim_some] at sourceLaw
   rw [siteView]
   have choiceLaw := data.1
-  rw [← sourceLaw, FinDist.map_comp] at choiceLaw
+  rw [← sourceLaw, PMF.map_comp] at choiceLaw
   exact choiceLaw
 
 /-- The physical response law has exactly the retained support at every legal
@@ -85,7 +85,7 @@ theorem roster_policy_support_exact
     (source : (setup.informationModel admission).BehavioralAssessment)
     (mixed : source.IsFullyMixed)
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned))
     (who : Player) (control : (application setup leaks).Control)
     (trace : ((rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).protocol
@@ -268,7 +268,7 @@ variable (setup : Setup (Player := Player) (L := L))
   (source : (setup.informationModel admission).BehavioralAssessment)
   (mixed : source.IsFullyMixed)
   (timing : TimingLaw setup rosters)
-  (timingFull : ∀ event who owned, (timing event who owned).FullSupport)
+  (timingFull : ∀ event who owned, FullSupport (timing event who owned))
 
 include reveals openable mixed timingFull in
 theorem rosterPolicy_admissible (who : Player) :

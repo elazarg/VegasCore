@@ -78,7 +78,7 @@ theorem missedBinding_expire (runtime : EventGraphRuntime graph) (state next : S
   classical
   rw [environmentStep_expire_bind_eq runtime state event ready entered activated due owner payload
     outputEq codeEq node] at reached
-  cases FinDist.mem_support_pure.mp reached
+  cases (PMF.mem_support_pure_iff _ _).mp reached
   exact state.missedBinding_complete event ready _ _ owner payload outputEq absent
 
 /-- Native submissions, packet handling, public chance and service commands

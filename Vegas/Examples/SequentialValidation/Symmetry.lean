@@ -64,7 +64,7 @@ theorem source_belief_flip (site : sourceModel.InformationSite true)
     (sourceAssessment.belief true site).map (sourceFlip site failed) =
       sourceAssessment.belief true site := by
   classical
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
   obtain ⟨previous, rfl⟩ := (sourceFlip site failed).surjective history
   rw [FinDist.prob_map_of_injective _ (sourceFlip site failed).injective,

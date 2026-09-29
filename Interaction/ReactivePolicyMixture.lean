@@ -17,25 +17,25 @@ open GameTheory.Math.Probability
 
 variable {Principal : Type} (app : ReactiveApplication Principal) {Index : Type}
 
-def policyMixture (initial : FinDist Index) (policies : Index → app.Policy) :
+def policyMixture (initial : PMF Index) (policies : Index → app.Policy) :
     app.Implementation Index where
   initial := initial
   respond index input := (policies index input.1 input.2).map fun action => (action, index)
 
-theorem policyMixture_policy (initial : FinDist Index) (policies : Index → app.Policy)
+theorem policyMixture_policy (initial : PMF Index) (policies : Index → app.Policy)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
     (app.policyMixture initial policies).policy past view =
       ((app.policyMixture initial policies).posterior past).bind
         (fun index => policies index past view) := by
-  simp only [Implementation.policy_eq, policyMixture, FinDist.map_bind,
-    FinDist.map_comp, Function.comp_def]
-  apply FinDist.bind_congr
+  simp only [Implementation.policy_eq, policyMixture, PMF.map_bind,
+    PMF.map_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro index _
-  exact FinDist.map_id _
+  exact PMF.map_id _
 
 /-- A response whose law does not use the latent choice cannot update it. -/
-theorem policyMixture_posterior_snoc (initial : FinDist Index) (policies : Index → app.Policy)
-    (past : List app.PlayerEntry) (entry : app.PlayerEntry) (law : FinDist app.Action)
+theorem policyMixture_posterior_snoc (initial : PMF Index) (policies : Index → app.Policy)
+    (past : List app.PlayerEntry) (entry : app.PlayerEntry) (law : PMF app.Action)
     (same : ∀ index, policies index past entry.beforeView = law) :
     (app.policyMixture initial policies).posterior (past ++ [entry]) =
       (app.policyMixture initial policies).posterior past := by
@@ -45,15 +45,15 @@ theorem policyMixture_posterior_snoc (initial : FinDist Index) (policies : Index
       |>.condOnFibre Prod.fst entry.action).map Prod.snd = _
   have joint : ((app.policyMixture initial policies).posterior past).bind
       (fun index => (policies index past entry.beforeView).map fun action => (action, index)) =
-        FinDist.product law ((app.policyMixture initial policies).posterior past) := by
-    simp_rw [same, FinDist.map_eq_bind]
-    rw [FinDist.bind_comm]
+        bindPairLaw law (fun _ => ((app.policyMixture initial policies).posterior past)) := by
+    simp_rw [same, ← PMF.bind_pure_comp, Function.comp_def]
+    rw [PMF.bind_comm]
     rfl
-  rw [joint, FinDist.conditional_snd_product]
+  rw [joint, conditional_snd_bindPairLaw_const]
 
 /-- A policy family that is identical before a phase retains its initial
 mixing law at that phase, including at zero-probability own transcripts. -/
-theorem policyMixture_posterior_dormant (initial : FinDist Index)
+theorem policyMixture_posterior_dormant (initial : PMF Index)
     (policies : Index → app.Policy) (baseline : app.Policy) (offset : Nat)
     (same : ∀ index past view, past.length < offset →
       policies index past view = baseline past view)

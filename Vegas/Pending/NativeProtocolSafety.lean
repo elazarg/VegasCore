@@ -30,7 +30,7 @@ theorem nativeStep_progress (runtime : EventGraphRuntime graph) (inputs : graph.
     (invariant : execution.native.application.Invariant inputs)
     (reached : next ∈ (runtime.actionStep who execution action).support) :
     State.ServiceProgress inputs 0 execution.native.application next.native.application := by
-  have same := FinDist.mem_support_pure.mp reached
+  have same := (PMF.mem_support_pure_iff _ _).mp reached
   subst next
   have facts := runtime.transmit_application who execution.native action.transmission
   have configEq := facts.1
@@ -57,8 +57,8 @@ theorem nativeInstructionStep_progress (runtime : EventGraphRuntime graph) (inpu
   cases instruction with
   | player who => exact runtime.nativeStep_progress inputs who execution next _ invariant reached
   | wire | grant event | includeLatest event who | sample event | tick | expire event =>
-      obtain ⟨middle, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      exact runtime.serviceStep_facts inputs (fun _ _ _ => FinDist.pure .wait)
+      obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      exact runtime.serviceStep_facts inputs (fun _ _ _ => PMF.pure .wait)
         wire _ (execution.environmentExecution runtime) middle invariant supported
 
 theorem nativeInstructionStep_native (runtime : EventGraphRuntime graph)
@@ -70,16 +70,16 @@ theorem nativeInstructionStep_native (runtime : EventGraphRuntime graph)
   cases instruction with
   | player who => exact runtime.actionStep_native who execution next _ reached
   | wire | grant event | includeLatest event who | sample event | tick | expire event =>
-      obtain ⟨middle, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨actions, _, member⟩ := runtime.serviceStep_native_support
-        (fun _ _ _ => FinDist.pure .wait) wire _
+        (fun _ _ _ => PMF.pure .wait) wire _
           (execution.environmentExecution runtime) middle supported
       exact ⟨actions, member⟩
 
 /-- Every continuation step retains the execution, even at an order-selection
 boundary; it never reinitializes private inputs or the native state. -/
 theorem nativeTransition_native (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (before : NativeControl runtime) (after : NativeProtocolState runtime)
     (joint : Player → Option (PlayerAction graph))
@@ -94,13 +94,13 @@ theorem nativeTransition_native (runtime : EventGraphRuntime graph)
   | nil =>
       cases epochs with
       | zero =>
-          have same := FinDist.mem_support_pure.mp reached
-          exact ⟨_, same, [], FinDist.mem_support_pure.mpr rfl⟩
+          have same := (PMF.mem_support_pure_iff _ _).mp reached
+          exact ⟨_, same, [], (PMF.mem_support_pure_iff _ _).mpr rfl⟩
       | succ epochs =>
-          obtain ⟨chosen, _, rfl⟩ := FinDist.support_map .. ▸ reached
-          exact ⟨_, rfl, [], FinDist.mem_support_pure.mpr rfl⟩
+          obtain ⟨chosen, _, rfl⟩ := PMF.support_map .. ▸ reached
+          exact ⟨_, rfl, [], (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   | cons instruction rest =>
-      obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨actions, native⟩ := runtime.nativeInstructionStep_native wire instruction
         execution next joint supported
       exact ⟨_, rfl, actions, native⟩
@@ -108,7 +108,7 @@ theorem nativeTransition_native (runtime : EventGraphRuntime graph)
 /-- Fixed commitment meanings survive every legal service continuation step,
 including actions that submit or replay arbitrary other candidates. -/
 theorem nativeTransition_candidate_fixed (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (before after : NativeControl runtime)
     (joint : Player → Option (PlayerAction graph))
@@ -128,7 +128,7 @@ theorem nativeTransition_candidate_fixed (runtime : EventGraphRuntime graph)
 /-- Every finite continuation from an initialized native history expands to
 an existing native execution. It cannot return to the setup position. -/
 theorem native_reaches_native (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     {fuel : Nat}
     {history final : (runtime.nativeProtocol inputs roster reactionRounds wire order).History}
@@ -139,7 +139,7 @@ theorem native_reaches_native (runtime : EventGraphRuntime graph)
       ∃ actions, after.execution.native ∈
         (runtime.application.run actions before.execution.native).support := by
   induction path generalizing before with
-  | refl fuel history => exact ⟨before, initialized, [], FinDist.mem_support_pure.mpr rfl⟩
+  | refl fuel history => exact ⟨before, initialized, [], (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   | @step fuel history final joint legal target realized rest ih =>
       have first : target ∈
           (runtime.nativeTransition inputs roster reactionRounds wire order
@@ -149,13 +149,13 @@ theorem native_reaches_native (runtime : EventGraphRuntime graph)
         inputs roster reactionRounds wire order before target joint first
       obtain ⟨after, afterEq, suffix, suffixRun⟩ := ih middle middleEq
       refine ⟨after, afterEq, firstActions ++ suffix, ?_⟩
-      simp only [MessageApplication.run_append, FinDist.support_bind, Set.mem_iUnion]
+      simp only [MessageApplication.run_append, PMF.support_bind, Set.mem_iUnion]
       exact ⟨middle.execution.native, firstRun, suffixRun⟩
 
 /-- Submission-time binding holds across arbitrary native protocol paths,
 independently of the chosen policy and of whether the prefix is a proper root. -/
 theorem native_reaches_candidate_fixed (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     {fuel : Nat}
     {history final : (runtime.nativeProtocol inputs roster reactionRounds wire order).History}
@@ -176,7 +176,7 @@ theorem native_reaches_candidate_fixed (runtime : EventGraphRuntime graph)
 /-- Native continuations preserve every typed value already stored, including
 private bindings and public results. Later packets cannot replace a winner. -/
 theorem native_reaches_store_of_some (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     {fuel : Nat}
     {history final : (runtime.nativeProtocol inputs roster reactionRounds wire order).History}
@@ -196,7 +196,7 @@ theorem native_reaches_store_of_some (runtime : EventGraphRuntime graph)
 /-- Every native history retains one actual initial draw and a graph-reachable
 configuration. Setup is not resampled at a continuation. -/
 theorem native_history_invariant (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ∀ {state}
       (_trace : (runtime.nativeProtocol inputs roster reactionRounds wire order).Trace state)
@@ -212,7 +212,7 @@ theorem native_history_invariant (runtime : EventGraphRuntime graph)
         simpa only [nativeProtocol, initialized] using reached
       cases before with
       | none =>
-          simp only [nativeTransition, FinDist.support_map, Set.mem_image] at step
+          simp only [nativeTransition, PMF.support_map, Set.mem_image] at step
           obtain ⟨input, supported, same⟩ := step
           cases Option.some.inj same
           exact ⟨input, supported, State.initial_invariant input⟩
@@ -233,7 +233,7 @@ theorem nativeInstructionStep_history_prefix (runtime : EventGraphRuntime graph)
     execution.principalHistory who <+: next.principalHistory who := by
   cases instruction with
   | player actor =>
-      have same := FinDist.mem_support_pure.mp reached
+      have same := (PMF.mem_support_pure_iff _ _).mp reached
       subst next
       by_cases acts : who = actor
       · subst who
@@ -241,11 +241,11 @@ theorem nativeInstructionStep_history_prefix (runtime : EventGraphRuntime graph)
         exact List.prefix_append _ _
       · simp only [takeAction, ite_eq_right acts, List.prefix_refl]
   | wire | grant event | includeLatest event actor | sample event | tick | expire event =>
-      obtain ⟨middle, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨middle, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact List.prefix_refl _
 
 theorem nativeTransition_history_prefix (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (before after : NativeControl runtime) (joint : Player → Option (PlayerAction graph))
     (reached : some after ∈
@@ -256,13 +256,13 @@ theorem nativeTransition_history_prefix (runtime : EventGraphRuntime graph)
   cases plan with
   | nil =>
       cases epochs with
-      | zero => cases Option.some.inj (FinDist.mem_support_pure.mp reached); rfl
+      | zero => cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached); rfl
       | succ epochs =>
-          obtain ⟨chosen, _, equal⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨chosen, _, equal⟩ := PMF.support_map .. ▸ reached
           cases Option.some.inj equal
           rfl
   | cons instruction rest =>
-      obtain ⟨next, supported, equal⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨next, supported, equal⟩ := PMF.support_map .. ▸ reached
       cases Option.some.inj equal
       exact runtime.nativeInstructionStep_history_prefix wire instruction execution next
         joint supported who
@@ -270,7 +270,7 @@ theorem nativeTransition_history_prefix (runtime : EventGraphRuntime graph)
 /-- Own recall is monotone along arbitrary canonical continuations. This is a
 history law, independent of the compiled policy and of proper-root status. -/
 theorem native_reaches_history_prefix (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     {fuel : Nat}
     {history final : (runtime.nativeProtocol inputs roster reactionRounds wire order).History}
@@ -299,7 +299,7 @@ theorem native_reaches_history_prefix (runtime : EventGraphRuntime graph)
 including histories produced entirely by deviations. Setup is sampled once;
 the proof retains the actual catalogue rather than resetting it at a root. -/
 theorem native_history_freshCandidates (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ∀ {state}
       (_trace : (runtime.nativeProtocol inputs roster reactionRounds wire order).Trace state)
@@ -315,7 +315,7 @@ theorem native_history_freshCandidates (runtime : EventGraphRuntime graph)
         simpa only [nativeProtocol, initialized] using reached
       cases before with
       | none =>
-          simp only [nativeTransition, FinDist.support_map, Set.mem_image] at step
+          simp only [nativeTransition, PMF.support_map, Set.mem_image] at step
           obtain ⟨input, _, same⟩ := step
           cases Option.some.inj same
           exact State.initial_freshCandidates input
@@ -334,21 +334,21 @@ theorem nativeInstructionStep_remembered (runtime : EventGraphRuntime graph)
     next.native.application.remembered = execution.native.application.remembered := by
   cases instruction with
   | player who =>
-      have same := FinDist.mem_support_pure.mp reached
+      have same := (PMF.mem_support_pure_iff _ _).mp reached
       subst next
       exact (runtime.transmit_application who execution.native _).2.1
   | wire =>
-      obtain ⟨middle, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at supported
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, member⟩ := supported
       exact runtime.environmentPolicyStep_remembered _ middle _ member
   | grant event | includeLatest event who | sample event | tick | expire event =>
-      obtain ⟨middle, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact runtime.environmentPolicyStep_remembered _ middle _ supported
 
 theorem nativeTransition_remembered (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (before after : NativeControl runtime) (joint : Player → Option (PlayerAction graph))
     (reached : some after ∈
@@ -360,20 +360,20 @@ theorem nativeTransition_remembered (runtime : EventGraphRuntime graph)
   cases plan with
   | nil =>
       cases epochs with
-      | zero => cases Option.some.inj (FinDist.mem_support_pure.mp reached); rfl
+      | zero => cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached); rfl
       | succ epochs =>
-          obtain ⟨chosen, _, equal⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨chosen, _, equal⟩ := PMF.support_map .. ▸ reached
           cases Option.some.inj equal
           rfl
   | cons instruction rest =>
-      obtain ⟨next, supported, equal⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨next, supported, equal⟩ := PMF.support_map .. ▸ reached
       cases Option.some.inj equal
       exact runtime.nativeInstructionStep_remembered wire instruction execution next joint supported
 
 /-- The low-level cache is inert at every legal native history. It is absent
 from player actions and observations; even deviating players cannot fill it. -/
 theorem native_history_no_cache (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ∀ {state}
       (_trace : (runtime.nativeProtocol inputs roster reactionRounds wire order).Trace state)
@@ -389,7 +389,7 @@ theorem native_history_no_cache (runtime : EventGraphRuntime graph)
         simpa only [nativeProtocol, initialized] using reached
       cases before with
       | none =>
-          simp only [nativeTransition, FinDist.support_map, Set.mem_image] at step
+          simp only [nativeTransition, PMF.support_map, Set.mem_image] at step
           obtain ⟨input, _, same⟩ := step
           cases Option.some.inj same
           rfl

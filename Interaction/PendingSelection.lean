@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessageNetwork
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Regularity
 
 /-! # Inclusion proposals sampled over distinct pending identifiers
@@ -29,12 +31,12 @@ def eligibleIds (eligible : Message Principal Payload → Bool)
   ((pending.filter eligible).map Message.id).toFinset
 
 def chooseUniform (candidates : Finset (MessageId Principal)) :
-    FinDist (Option (MessageId Principal)) :=
-  if nonempty : candidates.Nonempty then (FinDist.uniformSet candidates nonempty).map some
-  else FinDist.pure none
+    PMF (Option (MessageId Principal)) :=
+  if nonempty : candidates.Nonempty then (PMF.uniformOfFinset candidates nonempty).map some
+  else PMF.pure none
 
 def uniformPending (eligible : Message Principal Payload → Bool)
-    (pending : List (Message Principal Payload)) : FinDist (Option (MessageId Principal)) :=
+    (pending : List (Message Principal Payload)) : PMF (Option (MessageId Principal)) :=
   chooseUniform (eligibleIds eligible pending)
 
 omit [DecidableEq Principal] in
@@ -44,10 +46,10 @@ theorem chooseUniform_supported (candidates : Finset (MessageId Principal))
   unfold chooseUniform at supported
   split at supported
   · rename_i nonempty
-    obtain ⟨selected, member, same⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨selected, member, same⟩ := PMF.support_map .. ▸ supported
     cases Option.some.inj same
-    exact (FinDist.mem_support_uniformSet_iff candidates nonempty id).mp member
-  · cases FinDist.mem_support_pure.mp supported
+    exact (PMF.mem_support_uniformOfFinset_iff candidates nonempty id).mp member
+  · cases (PMF.mem_support_pure_iff _ _).mp supported
 
 theorem uniformPending_supported (eligible : Message Principal Payload → Bool)
     (pending : List (Message Principal Payload)) (id : MessageId Principal)
@@ -59,37 +61,37 @@ theorem uniformPending_supported (eligible : Message Principal Payload → Bool)
 
 omit [DecidableEq Principal] in
 theorem chooseUniform_singleton (id : MessageId Principal) :
-    chooseUniform {id} = FinDist.pure (some id) := by
+    chooseUniform {id} = PMF.pure (some id) := by
   classical
-  have singletonLaw : FinDist.uniformSet {id} (Finset.singleton_nonempty id) =
-      FinDist.pure id := by
-    apply FinDist.ext_of_prob
+  have singletonLaw : PMF.uniformOfFinset {id} (Finset.singleton_nonempty id) =
+      PMF.pure id := by
+    apply pmf_ext_toReal
     intro value
     simp only [FinDist.prob_uniformSet, Finset.mem_singleton, Finset.card_singleton,
-      Nat.cast_one, inv_one, FinDist.prob_pure_eq_ite]
+      Nat.cast_one, inv_one, toReal_pure_apply]
   rw [chooseUniform, dite_eq_left (Finset.singleton_nonempty id), singletonLaw,
-    FinDist.map_pure]
+    PMF.pure_map]
 
 theorem chooseUniform_insert (candidates : Finset (MessageId Principal))
     (nonempty : candidates.Nonempty) (fresh : MessageId Principal) (absent : fresh ∉ candidates) :
     chooseUniform (insert fresh candidates) =
-      FinDist.mix (((candidates.card : ℝ) + 1)⁻¹)
+      mix (((candidates.card : ℝ) + 1)⁻¹)
         (inv_nonneg.mpr (by positivity))
         (by rw [inv_le_one₀ (by positivity)]
             have := Nat.cast_nonneg (α := ℝ) candidates.card
             linarith)
-        (FinDist.pure (some fresh)) (chooseUniform candidates) := by
+        (PMF.pure (some fresh)) (chooseUniform candidates) := by
   rw [chooseUniform, dite_eq_left (Finset.insert_nonempty _ _),
-    FinDist.uniformSet_insert candidates nonempty fresh absent, FinDist.map_mix, FinDist.map_pure]
+    uniformOfFinset_insert candidates nonempty fresh absent, mix_map, PMF.pure_map]
   rw [chooseUniform, dite_eq_left nonempty]
 
 theorem uniformPending_empty (eligible : Message Principal Payload → Bool) :
-    uniformPending eligible [] = FinDist.pure none := by
+    uniformPending eligible [] = PMF.pure none := by
   simp [uniformPending, eligibleIds, chooseUniform]
 
 theorem uniformPending_singleton (eligible : Message Principal Payload → Bool)
     (packet : Message Principal Payload) (accepted : eligible packet = true) :
-    uniformPending eligible [packet] = FinDist.pure (some packet.id) := by
+    uniformPending eligible [packet] = PMF.pure (some packet.id) := by
   simpa only [uniformPending, eligibleIds, List.filter_cons_of_pos accepted,
     List.filter_nil, List.map_cons, List.map_nil, List.toFinset_cons,
     List.toFinset_nil, Finset.insert_empty] using chooseUniform_singleton packet.id
@@ -190,15 +192,15 @@ theorem uniformPending_append_fresh (eligible : Message Principal Payload → Bo
     (nonempty : (eligibleIds eligible pending).Nonempty)
     (fresh : packet.id ∉ eligibleIds eligible pending) :
     uniformPending eligible (pending ++ [packet]) =
-      FinDist.mix (((eligibleIds eligible pending).card : ℝ) + 1)⁻¹
+      mix (((eligibleIds eligible pending).card : ℝ) + 1)⁻¹
         (inv_nonneg.mpr (by positivity))
         (by rw [inv_le_one₀ (by positivity)]
             have := Nat.cast_nonneg (α := ℝ) (eligibleIds eligible pending).card
             linarith)
-        (FinDist.pure (some packet.id)) (uniformPending eligible pending) := by
+        (PMF.pure (some packet.id)) (uniformPending eligible pending) := by
   simp only [uniformPending, eligibleIds_append, accepted, ↓reduceIte]
   rw [chooseUniform, dite_eq_left (Finset.insert_nonempty _ _),
-    FinDist.uniformSet_insert _ nonempty _ fresh, FinDist.map_mix, FinDist.map_pure]
+    uniformOfFinset_insert _ nonempty _ fresh, mix_map, PMF.pure_map]
   rw [chooseUniform, dite_eq_left nonempty]
 
 /-- Uniform insertion is regular even when the retained menu is empty. -/
@@ -208,12 +210,12 @@ theorem chooseUniform_regular_insert (candidates : Finset (MessageId Principal))
       (some fresh) := by
   by_cases nonempty : candidates.Nonempty
   · rw [chooseUniform_insert candidates nonempty fresh absent]
-    apply FinDist.regularAt_mix
+    apply PMF.regularAt_mix
   · have empty : candidates = ∅ := Finset.not_nonempty_iff_eq_empty.mp nonempty
     rw [empty, Finset.insert_empty, chooseUniform_singleton]
     intro value different
     rw [FinDist.prob_pure_of_ne different]
-    exact FinDist.prob_nonneg _ _
+    exact ENNReal.toReal_nonneg
 
 /-- Uniform selection also satisfies the regularity contract. -/
 theorem uniformPending_append_regular
@@ -224,6 +226,6 @@ theorem uniformPending_append_regular
     (uniformPending eligible pending).RegularAt
       (uniformPending eligible (pending ++ [packet])) (some packet.id) := by
   rw [uniformPending_append_fresh eligible pending packet accepted nonempty fresh]
-  apply FinDist.regularAt_mix
+  apply PMF.regularAt_mix
 
 end Interaction.MessageNetwork

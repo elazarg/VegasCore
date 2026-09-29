@@ -184,9 +184,9 @@ private def mixedProfile (bound : PublicationResult (Option Bool))
     (discloseChoice : Bool) : mixedProgram.BehavioralProfile :=
   fun
     | .alice =>
-      (fun _ _ => FinDist.pure bound,
-        (fun _ _ => FinDist.pure discloseChoice,
-          (fun _ _ => FinDist.pure true, PUnit.unit)))
+      (fun _ _ => PMF.pure bound,
+        (fun _ _ => PMF.pure discloseChoice,
+          (fun _ _ => PMF.pure true, PUnit.unit)))
 
 private def successfulState (sample : Bool) : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := coin) sample <|
@@ -221,17 +221,17 @@ private def withheldState : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
 @[simp] private theorem point_law (value : Bool) :
-    (RationalLaw.pure value).denote = FinDist.pure value := by
-  apply FinDist.ext_of_prob
+    (RationalLaw.pure value).denote = PMF.pure value := by
+  apply pmf_ext_toReal
   intro other
-  simp [RationalLaw.prob_denote, RationalLaw.pure, FinDist.prob_pure_eq_ite]
+  simp [RationalLaw.prob_denote, RationalLaw.pure, toReal_pure_apply]
 
 macro "solve_mixed_run" : tactic =>
   `(tactic|
     simp only [SourceProgram.run, mixedProgram, mixedProfile, SourceProgram.runWith,
       SourceProgram.commitKernel, SourceProgram.revealKernel,
       SourceProgram.afterCommit, SourceProgram.afterReveal,
-      FinDist.pure_bind, FinDist.map_eq_bind])
+      PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def])
 
 private theorem successful_run :
     mixedProgram.run (mixedProfile (.success Option.none) true) initialState =
@@ -241,34 +241,34 @@ private theorem successful_run :
 
 private theorem invalid_run :
     mixedProgram.run (mixedProfile (.success (some false)) true) initialState =
-      FinDist.pure invalidState := by
+      PMF.pure invalidState := by
   solve_mixed_run
   change (RationalLaw.pure false).denote.bind _ = _
-  rw [point_law, FinDist.pure_bind]
+  rw [point_law, PMF.pure_bind]
   rfl
 
 private theorem unopenable_run :
     mixedProgram.run (mixedProfile .failure true) initialState =
-      FinDist.pure unopenableState := by
+      PMF.pure unopenableState := by
   solve_mixed_run
   change (RationalLaw.pure false).denote.bind _ = _
-  rw [point_law, FinDist.pure_bind]
+  rw [point_law, PMF.pure_bind]
   rfl
 
 private theorem withholding_run :
     mixedProgram.run (mixedProfile (.success Option.none) false) initialState =
-      FinDist.pure withheldState := by
+      PMF.pure withheldState := by
   solve_mixed_run
   change (RationalLaw.pure false).denote.bind _ = _
-  rw [point_law, FinDist.pure_bind]
+  rw [point_law, PMF.pure_bind]
   rfl
 
 example (value : Bool) :
-    ((mixedProgram.run (mixedProfile (.success Option.none) true) initialState).map
-      (fun state => state.get .here)).prob value = 1 / 2 := by
-  rw [successful_run, FinDist.map_comp]
-  change (fairBool.denote.map id).prob value = _
-  rw [FinDist.map_id]
+    (((mixedProgram.run (mixedProfile (.success Option.none) true) initialState).map
+      (fun state => state.get .here)) value).toReal = 1 / 2 := by
+  rw [successful_run, PMF.map_comp]
+  change ((fairBool.denote.map id) value).toReal = _
+  rw [PMF.map_id]
   rw [RationalLaw.prob_denote]
   change (∑ index : Fin 2, if value = (fairBool.entries.get index).1 then
     ((fairBool.entries.get index).2 : ℝ) else 0) = _
@@ -277,34 +277,34 @@ example (value : Bool) :
 
 example :
     (mixedProgram.run (mixedProfile (.success Option.none) true) initialState).map
-      mixedProgram.evaluatePayoffs = FinDist.pure [(.alice, 10)] := by
-  rw [successful_run, FinDist.map_comp]
+      mixedProgram.evaluatePayoffs = PMF.pure [(.alice, 10)] := by
+  rw [successful_run, PMF.map_comp]
   change fairBool.denote.map (fun _ => ([(Player.alice, 10)] : List (Player × Int))) = _
   exact FinDist.map_const _ _
 
 example :
     (mixedProgram.run (mixedProfile (.success (some false)) true) initialState).map
-      mixedProgram.evaluatePayoffs = FinDist.pure [(.alice, -5)] := by
-  rw [invalid_run, FinDist.map_pure]
+      mixedProgram.evaluatePayoffs = PMF.pure [(.alice, -5)] := by
+  rw [invalid_run, PMF.pure_map]
   rfl
 
 example :
     (mixedProgram.run (mixedProfile .failure true) initialState).map
-      mixedProgram.evaluatePayoffs = FinDist.pure [(.alice, -10)] := by
-  rw [unopenable_run, FinDist.map_pure]
+      mixedProgram.evaluatePayoffs = PMF.pure [(.alice, -10)] := by
+  rw [unopenable_run, PMF.pure_map]
   rfl
 
 example :
     (mixedProgram.run (mixedProfile (.success Option.none) false) initialState).map
-      mixedProgram.evaluatePayoffs = FinDist.pure [(.alice, -10)] := by
-  rw [withholding_run, FinDist.map_pure]
+      mixedProgram.evaluatePayoffs = PMF.pure [(.alice, -10)] := by
+  rw [withholding_run, PMF.pure_map]
   rfl
 
 private def falseProfile : falseGuardProgram.BehavioralProfile :=
   fun
     | .alice =>
-      (fun _ _ => FinDist.pure (.success true),
-        (fun _ _ => FinDist.pure true, PUnit.unit))
+      (fun _ _ => PMF.pure (.success true),
+        (fun _ _ => PMF.pure true, PUnit.unit))
 
 private def falseGuardState : State simpleExpr (falseGuardProgram.terminalCtx) :=
   Env.cons (x := doomedOut) PublicationResult.failure <|
@@ -312,19 +312,19 @@ private def falseGuardState : State simpleExpr (falseGuardProgram.terminalCtx) :
   Env.empty (CellVal simpleExpr)
 
 private theorem false_guard_run : falseGuardProgram.run falseProfile
-    (Env.empty (CellVal simpleExpr)) = FinDist.pure falseGuardState := by
+    (Env.empty (CellVal simpleExpr)) = PMF.pure falseGuardState := by
   unfold SourceProgram.run falseGuardProgram
   rw [SourceProgram.runWith]
   dsimp only [SourceProgram.commitKernel, falseProfile]
-  rw [FinDist.pure_bind]
+  rw [PMF.pure_bind]
   rw [SourceProgram.runWith]
   dsimp only [SourceProgram.revealKernel, SourceProgram.afterCommit, falseProfile]
-  rw [FinDist.pure_bind]
+  rw [PMF.pure_bind]
   rfl
 
 example : (falseGuardProgram.run falseProfile (Env.empty (CellVal simpleExpr))).map
-    falseGuardProgram.evaluatePayoffs = FinDist.pure [(.alice, -1)] := by
-  rw [false_guard_run, FinDist.map_pure]
+    falseGuardProgram.evaluatePayoffs = PMF.pure [(.alice, -1)] := by
+  rw [false_guard_run, PMF.pure_map]
   rfl
 
 end

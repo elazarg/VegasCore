@@ -141,9 +141,9 @@ theorem terminalOutcomes_map_decode
         Vegas.EventGraph.Config.store) ∘ Subtype.val := by
     funext result
     exact Option.some_get _
-  rw [FinDist.map_comp, decodeTerminal, ← FinDist.map_comp,
+  rw [PMF.map_comp, decodeTerminal, ← PMF.map_comp,
     (toEventGraph program).terminalOutcomes_map_val,
-    FinDist.map_comp]
+    PMF.map_comp]
 
 /-- Agreement identifies the no-default terminal decoder with the simulated
 source terminal state. -/

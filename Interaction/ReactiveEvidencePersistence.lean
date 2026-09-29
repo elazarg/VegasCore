@@ -38,12 +38,12 @@ theorem observed_environment (execution next : app.Execution) (who : Principal)
   refine List.mem_flatMap.mpr ⟨message, ?_, decoded⟩
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact member
   | activate actor =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       change message ∈ (execution.network.learn actor selected).leaked who ++
         (execution.network.learn actor selected).ledger
       change message ∈ execution.network.leaked who ++ execution.network.ledger at member
@@ -53,8 +53,8 @@ theorem observed_environment (execution next : app.Execution) (who : Principal)
         exact member.imp Or.inl id
       · simpa only [MessageNetwork.learn, ite_eq_right same] using member
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       cases found : execution.network.lookup id with
       | none =>
           simpa only [Execution.includePending, MessageNetwork.includePending, found,
@@ -67,8 +67,8 @@ theorem observed_environment (execution next : app.Execution) (who : Principal)
             List.mem_append] at member ⊢
           exact member.imp (fun h => h) Or.inl
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨_, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact member
 
 theorem observed_policyInvariant (players : Principal → app.Policy) (who : Principal)

@@ -78,20 +78,20 @@ theorem actsOnce_of_decisionInformationAntichain
 theorem BehavioralAssessment.continuationContext_value_withLaw
     (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (payoff : E.History → ℝ) (fuel : Nat) (law : FinDist (M.Choice who site.1)) :
+    (payoff : E.History → ℝ) (fuel : Nat) (law : PMF (M.Choice who site.1)) :
     (assessment.continuationContext site payoff (fuel + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
-      law.expect (fun choice =>
+      expect law (fun choice =>
         (assessment.continuationContext site payoff (fuel + 1)).value
           ((assessment.strategy who).commit site.1 choice)) := by
   simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief who site).expect (fun history =>
-          law.expect (fun choice =>
-            (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+    _ = expect (assessment.belief who site) (fun history =>
+          expect law (fun choice =>
+            expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
               assessment.strategy who ((assessment.strategy who).commit site.1 choice))
-                (fuel + 1) history.1).expect payoff)) := by
-      apply FinDist.expect_congr
+                (fuel + 1) history.1) payoff)) := by
+      apply expect_congr_on_support
       intro history _
       rw [M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
         (assessment.strategy who) site.1 law history.1 history.2 (nonterminal history)
@@ -106,17 +106,17 @@ theorem BehavioralAssessment.continuationContext_value_eq_expect_commit
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
     (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who) :
     (assessment.continuationContext site payoff (fuel + 1)).value alternative =
-      (alternative site.1).expect (fun choice =>
+      expect (alternative site.1) (fun choice =>
         (assessment.continuationContext site payoff (fuel + 1)).value
           (alternative.commit site.1 choice)) := by
   simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief who site).expect (fun history =>
-          (alternative site.1).expect (fun choice =>
-            (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+    _ = expect (assessment.belief who site) (fun history =>
+          expect (alternative site.1) (fun choice =>
+            expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
               assessment.strategy who (alternative.commit site.1 choice))
-                (fuel + 1) history.1).expect payoff)) := by
-      apply FinDist.expect_congr
+                (fuel + 1) history.1) payoff)) := by
+      apply expect_congr_on_support
       intro history _
       have split := M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
         alternative site.1 (alternative site.1) history.1 history.2 (nonterminal history)
@@ -175,12 +175,12 @@ theorem BehavioralAssessment.not_supported_choice_of_uniform_gap
     (choice : M.Choice who site.1) (alternative : M.BehavioralPolicy who)
     (upper lower : ℝ) (gap : upper < lower)
     (bad : ∀ history : M.InformationHistory who site.1,
-      (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+      expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
         assessment.strategy who ((assessment.strategy who).commit site.1 choice))
-          (fuel + 1) history.1).expect payoff ≤ upper)
+          (fuel + 1) history.1) payoff ≤ upper)
     (good : ∀ history : M.InformationHistory who site.1,
-      lower ≤ (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy who alternative) (fuel + 1) history.1).expect payoff) :
+      lower ≤ expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+        assessment.strategy who alternative) (fuel + 1) history.1) payoff) :
     choice ∉ (assessment.strategy who site.1).support := by
   intro supported
   have best := assessment.supported_choice_optimal once site nonterminal payoff fuel rational
@@ -188,12 +188,12 @@ theorem BehavioralAssessment.not_supported_choice_of_uniform_gap
   simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind] at best
   have badBound := FinDist.expect_le_of_forall (assessment.belief who site) _ upper
     (fun history _ => bad history)
-  have goodBound : lower ≤ (assessment.belief who site).expect (fun history =>
-      (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy who alternative) (fuel + 1) history.1).expect payoff) := by
+  have goodBound : lower ≤ expect (assessment.belief who site) (fun history =>
+      expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+        assessment.strategy who alternative) (fuel + 1) history.1) payoff) := by
     calc
-      lower = (assessment.belief who site).expect (fun _ => lower) :=
-        (FinDist.expect_const _ _).symm
+      lower = expect (assessment.belief who site) (fun _ => lower) :=
+        (expect_constant _ _).symm
       _ ≤ _ := FinDist.expect_mono (fun history _ => good history)
   exact (not_le_of_gt gap) (goodBound.trans (best.trans badBound))
 

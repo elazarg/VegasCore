@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessagePool
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # A message network with explicit input history
 
@@ -43,7 +46,7 @@ def publicView (network : MessageNetwork Principal Payload) : PublicView Princip
 identifiers. Its sample is private to the observer and is never scheduler recall. -/
 abbrev ObservationRule (Principal Payload : Type) :=
   Principal → List (Message Principal Payload) →
-    GameTheory.Math.Probability.FinDist (Finset (MessageId Principal))
+    GameTheory.Math.Probability.PMF (Finset (MessageId Principal))
 
 structure PlayerView (Principal Payload : Type) where
   leaked : List (Message Principal Payload)

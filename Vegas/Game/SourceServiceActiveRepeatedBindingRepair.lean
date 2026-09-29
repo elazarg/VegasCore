@@ -77,7 +77,7 @@ private theorem recorded_response_tail
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let tail := visits.map ServiceInstruction.player ++
       (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
-    ∃ joint : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ joint : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       joint.map Prod.fst = (runtime setup).runInteractionPlan leaks players network tail left ∧
       joint.map Prod.snd = strategy.runJoint owner players
         (rosterScheduler setup leaks rosters network) tail.length right memory ∧
@@ -129,7 +129,7 @@ private theorem recorded_response_tail
     exact app.respond_inputRecall execution owner response recalled
   have serialsNow : left.network.SerialsBeforeNext := by
     rw [frame.network, rightEq]
-    exact (app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+    exact (app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
       execution owner response serials
   have packetsNow : left.network.Satisfies fun packet => packet.sender = owner →
       packet.id ∈ left.network.ledger.map Message.id ∨ packet = message := by
@@ -166,7 +166,7 @@ private theorem resume_action {Principal Memory : Type} [DecidableEq Principal]
       (execution.recall owner, execution.observe app owner)).support,
       (execution.respond app owner chosen.1, chosen.2) = next := by
   simpa only [ReactiveApplication.Implementation.resume, ↓reduceIte,
-    FinDist.support_map, Set.mem_image] using reached
+    PMF.support_map, Set.mem_image] using reached
 
 private theorem recorded_resume_transport
     (setup : Setup (Player := Player) (L := L))
@@ -356,7 +356,7 @@ theorem recorded_binding_history_response_block_coupling
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let tail := visits.map ServiceInstruction.player ++
       (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (app.invoke players owner execution).bind
         ((runtime setup).runInteractionPlan leaks players network tail) ∧
       coupling.map Prod.snd = (strategy.resume owner players (some owner) execution memory).bind
@@ -408,7 +408,7 @@ theorem recorded_binding_history_response_block_coupling
       Nonempty ((menu.protocol (initialLaw setup) (rosterPlan setup rosters).length scheduler).Trace
         (some ⟨remaining, none, next.2.1⟩)) := by
     have reached : next.2 ∈ (strategy.resume owner players (some owner) execution memory).support :=
-      by rw [← firstRight, FinDist.support_map]; exact ⟨next, member, rfl⟩
+      by rw [← firstRight, PMF.support_map]; exact ⟨next, member, rfl⟩
     apply menu.trace_implementation_resume (initialLaw setup) (rosterPlan setup rosters).length
       scheduler strategy owner players _ _ remaining (some owner) execution memory trace next.2
         reached
@@ -425,13 +425,13 @@ theorem recorded_binding_history_response_block_coupling
         (some ⟨remaining, none, next.1⟩) = [record]) :
       record ∈ app.executionTraffic next.1 := by
     have reached : next.1 ∈ (app.invoke players owner execution).support := by
-      rw [← firstLeft, FinDist.support_map]
+      rw [← firstLeft, PMF.support_map]
       exact ⟨next, member, rfl⟩
-    obtain ⟨response, _, same⟩ := FinDist.support_map .. ▸ reached
+    obtain ⟨response, _, same⟩ := PMF.support_map .. ▸ reached
     rw [← same, app.executionTraffic_activated_response prior execution owner response
       remaining sampled]
     have publicSame : prior.observeEnvironment app = execution.observeEnvironment app := by
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map] at sampled
+      rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at sampled
       obtain ⟨observed, _, equal⟩ := sampled
       rw [← equal]
       rfl
@@ -441,7 +441,7 @@ theorem recorded_binding_history_response_block_coupling
     rw [same, trafficSame, step]
     exact List.mem_append_right _ (List.mem_singleton_self _)
   have tails (next) (member : next ∈ first.support) :
-      ∃ joint : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      ∃ joint : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         joint.map Prod.fst = (runtime setup).runInteractionPlan leaks players network tail next.1 ∧
         joint.map Prod.snd =
           strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2 ∧
@@ -453,11 +453,11 @@ theorem recorded_binding_history_response_block_coupling
     rcases firstRelated next member with ⟨record, step, authored, rejected⟩ | good
     · let left := (runtime setup).runInteractionPlan leaks players network tail next.1
       let right := strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2
-      refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+      refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
         FinDist.map_snd_product .., ?_⟩
       intro final supported
       have reached : final.1 ∈ left.support := by
-        rw [← FinDist.map_fst_product left right, FinDist.support_map]
+        rw [← bindPairLaw_map_fst left right, PMF.support_map]
         exact ⟨final, supported, rfl⟩
       exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
         network tail next.1 final.1 reached).subset (badRecord next member record step),
@@ -465,13 +465,13 @@ theorem recorded_binding_history_response_block_coupling
     · obtain ⟨paired, started, shadow, viewEq⟩ := good
       have rightSupport : next.2 ∈
           (strategy.resume owner players (some owner) execution memory).support := by
-        rw [← firstRight, FinDist.support_map]
+        rw [← firstRight, PMF.support_map]
         exact ⟨next, member, rfl⟩
       have leftRecall : next.1.InputRecall app := by
         have reached : next.1 ∈ (app.invoke players owner execution).support := by
-          rw [← firstLeft, FinDist.support_map]
+          rw [← firstLeft, PMF.support_map]
           exact ⟨next, member, rfl⟩
-        obtain ⟨response, _, same⟩ := FinDist.support_map .. ▸ reached
+        obtain ⟨response, _, same⟩ := PMF.support_map .. ▸ reached
         rw [← same]
         exact app.respond_inputRecall execution owner response recalled
       obtain ⟨response, replay, rightEq⟩ := recorded_resume_transport setup leaks bounds rosters
@@ -486,36 +486,36 @@ theorem recorded_binding_history_response_block_coupling
         split position
   let later := fun next member => (tails next member).choose
   refine ⟨first.bindOnSupport later, ?_, ?_, ?_⟩
-  · rw [FinDist.map_bindOnSupport]
+  · rw [map_bindOnSupport]
     calc
       _ = first.bind (fun next =>
           (runtime setup).runInteractionPlan leaks players network tail next.1) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (tails next member).choose_spec.1
       _ = (first.map Prod.fst).bind
           ((runtime setup).runInteractionPlan leaks players network tail) :=
-        (FinDist.bind_map ..).symm
+        (PMF.bind_map ..).symm
       _ = _ := by rw [firstLeft]
-  · rw [FinDist.map_bindOnSupport]
+  · rw [map_bindOnSupport]
     calc
       _ = first.bind (fun next =>
           strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (tails next member).choose_spec.2.1
       _ = (first.map Prod.snd).bind (fun next =>
           strategy.runJoint owner players scheduler tail.length next.1 next.2) := by
-        exact (FinDist.bind_map Prod.snd first (fun next =>
+        exact (PMF.bind_map Prod.snd first (fun next =>
           strategy.runJoint owner players scheduler tail.length next.1 next.2)).symm
       _ = _ := by rw [firstRight]
   · intro final supported
     obtain ⟨next, member, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+      Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
     refine ⟨?_, (tails next member).choose_spec.2.2 final reached⟩
     have rightSupport : final.2 ∈
         (strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2).support := by
-      rw [← (tails next member).choose_spec.2.1, FinDist.support_map]
+      rw [← (tails next member).choose_spec.2.1, PMF.support_map]
       exact ⟨final, reached, rfl⟩
     apply menu.trace_implementation_runJoint (initialLaw setup) (rosterPlan setup rosters).length
       scheduler strategy owner players _ _ (remaining - tail.length) tail.length next.2.1

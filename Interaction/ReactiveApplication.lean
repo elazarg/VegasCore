@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessageNetwork
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # One optional transmission per player activation
 
@@ -31,7 +34,7 @@ structure ReactiveApplication (Principal : Type) where
   packet : State → Principal → List (Message Principal Payload) → Submission → Payload
   submit : State → Principal → Submission → State
   handle : State → Message Principal Payload → Option State
-  environment : State → EnvironmentCommand → FinDist State
+  environment : State → EnvironmentCommand → PMF State
   observePlayer : State → Principal → LocalObservation
   observePublic : State → PublicObservation
   observePending : MessageNetwork.ObservationRule Principal Payload
@@ -88,8 +91,8 @@ def Execution.observe (execution : app.Execution) (who : Principal) : app.Player
 def Execution.observeEnvironment (execution : app.Execution) : app.EnvironmentView :=
   ⟨execution.network.publicView, app.observePublic execution.application, execution.receipts⟩
 
-abbrev Policy := List app.PlayerEntry → app.PlayerView → FinDist app.Action
-abbrev Scheduler := List app.EnvironmentEntry → app.EnvironmentView → FinDist app.Command
+abbrev Policy := List app.PlayerEntry → app.PlayerView → PMF app.Action
+abbrev Scheduler := List app.EnvironmentEntry → app.EnvironmentView → PMF app.Command
 
 variable [DecidableEq Principal]
 
@@ -126,12 +129,12 @@ def Execution.includePending (execution : app.Execution) (id : MessageId Princip
         receipts := execution.receipts ++ [(id, result.isSome)] }
 
 noncomputable def Execution.environmentStep (execution : app.Execution) (command : app.Command) :
-    FinDist app.Execution :=
+    PMF app.Execution :=
   let law := match command with
     | .activate who => (app.observePending who execution.network.pending).map fun selected =>
         { execution with network := execution.network.learn who selected }
-    | .wait => FinDist.pure execution
-    | .include id => FinDist.pure (execution.includePending app id)
+    | .wait => PMF.pure execution
+    | .include id => PMF.pure (execution.includePending app id)
     | .application command => (app.environment execution.application command).map fun state =>
         { execution with application := state }
   law.map fun next => { next with environmentRecall := execution.environmentRecall ++

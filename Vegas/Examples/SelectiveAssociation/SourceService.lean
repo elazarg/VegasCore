@@ -162,7 +162,7 @@ def command (state : State) : Command → State
 /-- The stateless leak rule reveals only Alice's first envelope to Bob. It
 never reports which packet was read to the recording scheduler. -/
 def leaks (Claim : Type) : MessageNetwork.ObservationRule Player (Packet Claim) :=
-  fun who _ => FinDist.pure (if who = bob then {(alice, 0)} else ∅)
+  fun who _ => PMF.pure (if who = bob then {(alice, 0)} else ∅)
 
 def application (Claim : Type) : ReactiveApplication Player where
   State := State
@@ -176,7 +176,7 @@ def application (Claim : Type) : ReactiveApplication Player where
   /- Recording acknowledges the envelope. The stage-local source action has
   already occurred at the protected response, or settlement will use its default. -/
   handle state _ := some state
-  environment state cmd := FinDist.pure (command state cmd)
+  environment state cmd := PMF.pure (command state cmd)
   observePlayer := observe
   observePublic := publicView
   observePending := leaks Claim

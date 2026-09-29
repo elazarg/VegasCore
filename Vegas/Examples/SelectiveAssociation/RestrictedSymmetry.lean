@@ -541,26 +541,26 @@ theorem uniform (selected : Handle nativeGraph) (who : Player)
   let choices := menu.actions who past view
   let : Nonempty choices :=
     ⟨⟨(menu.nonempty who past view).choose, (menu.nonempty who past view).choose_spec⟩⟩
-  have symmetric : (FinDist.uniformOfFintype : FinDist choices).map
-      (responseEquiv selected who past view) = FinDist.uniformOfFintype := by
-    apply FinDist.ext_of_prob
+  have symmetric : (PMF.uniformOfFintype choices).map
+      (responseEquiv selected who past view) = PMF.uniformOfFintype := by
+    apply pmf_ext_toReal
     intro response
     obtain ⟨before, rfl⟩ := (responseEquiv selected who past view).surjective response
     rw [FinDist.prob_map_of_injective _ (responseEquiv selected who past view).injective]
     simp only [FinDist.prob_uniformOfFintype]
-  change ((FinDist.uniformOfFintype : FinDist choices).map Subtype.val).map (action selected) = _
-  rw [FinDist.map_comp]
+  change ((PMF.uniformOfFintype choices).map Subtype.val).map (action selected) = _
+  rw [PMF.map_comp]
   calc
-    _ = ((FinDist.uniformOfFintype : FinDist choices).map
-        (responseEquiv selected who past view)).map Subtype.val := by rw [FinDist.map_comp]; rfl
+    _ = ((PMF.uniformOfFintype choices).map
+        (responseEquiv selected who past view)).map Subtype.val := by rw [PMF.map_comp]; rfl
     _ = _ := by rw [symmetric]; rfl
 
 theorem uniform_prob (selected : Handle nativeGraph) (who : Player)
     (past : List app.PlayerEntry) (view : app.PlayerView) (response : app.Action) :
-    (menu.uniformResponses who past view).prob (action selected response) =
-      (menu.uniformResponses who past view).prob response := by
+    ((menu.uniformResponses who past view) (action selected response)).toReal =
+      ((menu.uniformResponses who past view) response).toReal := by
   classical
-  have same := congrArg (fun law => law.prob (action selected response))
+  have same := congrArg (fun law => (law (action selected response)).toReal)
     (uniform selected who past view)
   rw [FinDist.prob_map_of_injective _ (action_involutive selected).injective] at same
   exact same.symm
@@ -613,9 +613,9 @@ theorem uniform_eq_of_known_ids (who : Player)
   classical
   have menus := menus_eq_of_known_ids who firstPast secondPast firstView secondView same
   let distribution (choices : {values : Finset app.Action // values.Nonempty}) :
-      FinDist app.Action := by
+      PMF app.Action := by
     let : Nonempty choices.1 := ⟨⟨choices.2.choose, choices.2.choose_spec⟩⟩
-    exact (FinDist.uniformOfFintype : FinDist choices.1).map Subtype.val
+    exact (PMF.uniformOfFintype choices.1).map Subtype.val
   change distribution ⟨menu.actions who firstPast firstView,
     menu.nonempty who firstPast firstView⟩ = distribution
       ⟨menu.actions who secondPast secondView, menu.nonempty who secondPast secondView⟩
@@ -626,8 +626,8 @@ theorem uniform_prob_of_known_ids (selected : Handle nativeGraph) (who : Player)
     (same : (ReactiveApplication.ResponseMenu.knownPackets firstPast firstView).map Message.id =
       (ReactiveApplication.ResponseMenu.knownPackets secondPast secondView).map Message.id)
     (response : app.Action) :
-    (menu.uniformResponses who secondPast secondView).prob (action selected response) =
-      (menu.uniformResponses who firstPast firstView).prob response := by
+    ((menu.uniformResponses who secondPast secondView) (action selected response)).toReal =
+      ((menu.uniformResponses who firstPast firstView) response).toReal := by
   rw [uniform_prob, uniform_eq_of_known_ids who firstPast secondPast firstView secondView same]
 
 end Vegas.Examples.SelectiveAssociation.Restricted.CandidateFlip

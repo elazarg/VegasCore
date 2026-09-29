@@ -109,21 +109,21 @@ theorem inputOrigin_environment (execution next : app.Execution) (command : app.
   have inputs : next.network.inputs = execution.network.inputs := by
     cases command with
     | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
     | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       rfl
     | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       cases found : execution.network.lookup id <;>
         simp [Execution.includePending, MessageNetwork.includePending, found]
     | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       rfl
   intro input retained fact carried
   rw [inputs] at retained
@@ -140,7 +140,7 @@ theorem inputOrigin_serviceInvariant (issued : evidence.OwnerIssued owner)
 /-- The acquisition constraint holds at every legal raw history, including
 off-path histories, under arbitrary public-history scheduling and leak rules. -/
 theorem history_inputOrigin (issued : evidence.OwnerIssued owner)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     {state} (trace : (app.protocol initial horizon scheduler).Trace state) :
     ReactiveApplication.serviceInvariant (evidence.InputOrigin owner) state :=
   (evidence.inputOrigin_serviceInvariant owner issued scheduler).history initial horizon
@@ -149,7 +149,7 @@ theorem history_inputOrigin (issued : evidence.OwnerIssued owner)
 /-- At any initialized history, a possessed foreign certificate has an actual
 observation witness. Owning a copy in private output recall does not bypass it. -/
 theorem foreign_known_observed (issued : evidence.OwnerIssued owner)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (control : app.Control) (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (who : Principal) (message : Message Principal app.Payload)
     (known : message ∈ control.execution.network.known who) (fact : evidence.Fact)
@@ -163,8 +163,8 @@ theorem foreign_known_observed (issued : evidence.OwnerIssued owner)
 must already occur in the public ledger. This covers every legal prefix and
 arbitrary forwarding chains; it concerns certificates, not arbitrary inference. -/
 theorem foreign_known_published (issued : evidence.OwnerIssued owner)
-    (emptyObservation : ∀ who pending, app.observePending who pending = FinDist.pure ∅)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (emptyObservation : ∀ who pending, app.observePending who pending = PMF.pure ∅)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (control : app.Control) (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (who : Principal) (message : Message Principal app.Payload)
     (known : message ∈ control.execution.network.known who) (fact : evidence.Fact)

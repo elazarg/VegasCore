@@ -21,17 +21,17 @@ variable {Player : Type}
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 theorem reactiveRecoveryLaw_regular_optimal (intentions : List (Option graph.Completion))
-    (event : graph.EventId) (law : FinDist (graph.Action event))
+    (event : graph.EventId) (law : PMF (graph.Action event))
     (selection : PendingChoice.RegularSelection (graph.Action event))
-    {Outcome : Type} (continuation : graph.Action event → FinDist Outcome)
+    {Outcome : Type} (continuation : graph.Action event → PMF Outcome)
     (utility : Outcome → ℝ)
-    (optimal : ∀ action, (continuation action).expect utility ≤
-      (law.bind continuation).expect utility)
-    (alternative : FinDist (Option (graph.Action event))) :
-    ((selection.responseLaw alternative).bind continuation).expect utility ≤
-      ((selection.responseLaw
+    (optimal : ∀ action, expect (continuation action) utility ≤
+      expect (law.bind continuation) utility)
+    (alternative : PMF (Option (graph.Action event))) :
+    expect ((selection.responseLaw alternative).bind continuation) utility ≤
+      expect ((selection.responseLaw
         ((reactiveRecoveryLaw intentions event law).map some)).bind
-          continuation).expect utility :=
+          continuation) utility :=
   selection.optimal_response_of_support law _ continuation utility optimal
     (fun _ supported => reactiveRecoveryLaw_support intentions event law _ supported)
     alternative

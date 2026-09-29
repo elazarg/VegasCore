@@ -39,11 +39,11 @@ theorem native_response_selected (event : nativeGraph.EventId) :
 theorem native_roundsFrom_prefix (players : Player → (serviceApp observation).Policy)
     (before after : List (ServiceInstruction nativeGraph))
     (split : nativePlan = before ++ after) :
-    (serviceApp observation).roundsFrom (FinDist.pure nativeInitial) (serviceScheduler
+    (serviceApp observation).roundsFrom (PMF.pure nativeInitial) (serviceScheduler
       observation) players before.length =
       nativeRuntime.runInteractionPlan observation players (serviceNetwork observation) before
         nativeRoot := by
-  rw [ReactiveApplication.roundsFrom, FinDist.pure_bind]
+  rw [ReactiveApplication.roundsFrom, PMF.pure_bind]
   exact native_prefix_rounds players before after split
 
 /-- A legal pending response has an actual predecessor under full-support
@@ -61,7 +61,7 @@ theorem native_decision_predecessor (event : nativeGraph.EventId) (control : (se
       control.execution ∈
         (prior.environmentStep (serviceApp observation) (.activate (nativeOwner event))).support
           := by
-  have valid := (serviceMenu observation).roundSupported_uniform (FinDist.pure nativeInitial)
+  have valid := (serviceMenu observation).roundSupported_uniform (PMF.pure nativeInitial)
     nativeHorizon
     (serviceScheduler observation) trace
   rcases valid with ⟨accounted, supported⟩
@@ -75,12 +75,12 @@ theorem native_decision_predecessor (event : nativeGraph.EventId) (control : (se
       (.player (nativeOwner event) :: nativeAfterResponse event) (native_response_split event)]
       at priorMem
     exact priorMem
-  · have cursor := (serviceApp observation).roundsFrom_recall (FinDist.pure nativeInitial)
+  · have cursor := (serviceApp observation).roundsFrom_recall (PMF.pure nativeInitial)
       (serviceScheduler observation)
       (serviceMenu observation).uniformResponses _ prior priorMem
     simp only [serviceScheduler, cursor, native_response_selected,
       interactionInstruction,
-      FinDist.mem_support_pure] at commandMem
+      PMF.mem_support_pure_iff _ _] at commandMem
     subst command
     exact observed
 
@@ -94,7 +94,7 @@ theorem native_response_prefix_facts (players : Player → (serviceApp observati
     (∀ earlier : nativeGraph.EventId, earlier.val < event.val →
       earlier ∈ execution.application.config.cut.completed) := by
   rw [nativeBeforeResponse, runInteractionPlan_append] at reached
-  obtain ⟨prior, priorMem, grantMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨prior, priorMem, grantMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have before := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
     (serviceNetwork observation) _ nativeRoot prior (State.initial_invariant nativeInputs) priorMem
   have grant := nativeRuntime.runInteractionPlan_facts observation nativeInputs players

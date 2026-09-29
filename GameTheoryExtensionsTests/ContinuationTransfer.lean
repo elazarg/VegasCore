@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Protocol.Continuation
+import GameTheory.Protocol.Continuation
 import GameTheoryExtensionsTests.IrreversibleFailure
 
 /-! # Continuation transfer: identity and the irreversible-failure boundary
@@ -28,8 +28,8 @@ example (source : Bool) (profile : Profile (model source).strategicSignature)
   intro root proper
   refine ⟨root, proper, rfl, ?_⟩
   intro who alternative
-  refine ⟨FinDist.pure alternative, ?_⟩
-  rw [FinDist.pure_bind]
+  refine ⟨PMF.pure alternative, ?_⟩
+  rw [PMF.pure_bind]
   rfl
 
 /-- Continuation laws are stronger than the initial public-outcome simulation.
@@ -45,7 +45,7 @@ theorem no_uniform_failure_continuation_laws
           ((model true).runFrom sourceProfile 4 sourceRoot).map
             (fun history => outcome history.state) ∧
         ∀ who (alternative : (model false).Policy who),
-          ∃ mixture : FinDist ((model true).Policy who),
+          ∃ mixture : PMF ((model true).Policy who),
             ((model false).runFrom (Profile.update
               (Profile.map (target := (model false).strategicSignature) compile sourceProfile)
               who alternative) 4 targetRoot).map (fun history => outcome history.state) =

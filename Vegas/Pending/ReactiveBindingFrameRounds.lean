@@ -63,7 +63,7 @@ theorem resume_transport_coupling
     (actor : Option Player) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.resume players actor original ∧
       coupling.map Prod.snd = strategy.resume owner players actor repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -73,9 +73,9 @@ theorem resume_transport_coupling
   let strategy := implementation runtime leaks owner reference (players owner)
   cases actor with
   | none =>
-      exact ⟨FinDist.pure (original, repaired, memory), FinDist.map_pure ..,
-        FinDist.map_pure .., fun next member => by
-          cases FinDist.mem_support_pure.mp member
+      exact ⟨PMF.pure (original, repaired, memory), PMF.pure_map ..,
+        PMF.pure_map .., fun next member => by
+          cases (PMF.mem_support_pure_iff _ _).mp member
           exact ⟨frame, started⟩⟩
   | some actor =>
       by_cases own : actor = owner
@@ -91,22 +91,22 @@ theorem resume_transport_coupling
           rw [implementation_respond runtime leaks owner reference (players owner) memory
             (repaired.recall owner) (repaired.observe app owner) started,
               frame.past, frame.observed]
-          apply FinDist.map_congr_of_eq_on_support
+          apply map_congr_on_support _
           intro response member
           rw [repairResponse_transport (repaired.observe app owner) response
             (transport _ _ response member)]
           simp only [updated, record, app, frame.observed]
         refine ⟨coupling, ?_, ?_, ?_⟩
-        · simp only [coupling, FinDist.map_comp]
+        · simp only [coupling, PMF.map_comp]
           rfl
-        · simp only [coupling, FinDist.map_comp, ReactiveApplication.Implementation.resume,
+        · simp only [coupling, PMF.map_comp, ReactiveApplication.Implementation.resume,
             ↓reduceIte]
           change law.map _ = (strategy.respond memory
             (repaired.recall owner, repaired.observe app owner)).map _
-          rw [responseLaw, FinDist.map_comp]
+          rw [responseLaw, PMF.map_comp]
           rfl
         · intro next member
-          obtain ⟨response, supported, rfl⟩ := FinDist.support_map .. ▸ member
+          obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member
           refine ⟨frame.transport_response response (transport _ _ response supported), ?_⟩
           rw [app.respond_recall_length]
           omega
@@ -116,16 +116,16 @@ theorem resume_transport_coupling
         have lawEq : players actor (repaired.recall actor) (repaired.observe app actor) = law := by
           rw [← frame.recall actor own, ← frame.foreign_observed actor own]
         refine ⟨coupling, ?_, ?_, ?_⟩
-        · simp only [coupling, FinDist.map_comp]
+        · simp only [coupling, PMF.map_comp]
           rfl
-        · simp only [coupling, FinDist.map_comp, ReactiveApplication.Implementation.resume,
-            own, ↓reduceIte, ReactiveApplication.invoke, FinDist.map_comp]
+        · simp only [coupling, PMF.map_comp, ReactiveApplication.Implementation.resume,
+            own, ↓reduceIte, ReactiveApplication.invoke, PMF.map_comp]
           change law.map _ =
             (players actor (repaired.recall actor) (repaired.observe app actor)).map _
           rw [lawEq]
           rfl
         · intro next member
-          obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ member
+          obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ member
           refine ⟨frame.foreign_response actor own response, ?_⟩
           rw [app.respond_recall_other repaired actor owner (Ne.symm own) response]
           exact started
@@ -143,7 +143,7 @@ theorem dispatch_transport_coupling
     (allowed : command = .wait ∨ ∃ actor, command = .activate actor) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.dispatch players command original ∧
       coupling.map Prod.snd = (repaired.environmentStep app command).bind
         (fun next => strategy.resume owner players (command.actor? app) next memory) ∧
@@ -161,17 +161,17 @@ theorem dispatch_transport_coupling
         service := by
           change original.environmentRecall ++ [_] = repaired.environmentRecall ++ [_]
           rw [frame.service, frame.environment] }
-    refine ⟨FinDist.pure (waited original, waited repaired, memory), ?_, ?_, ?_⟩
-    · simp only [FinDist.map_pure, ReactiveApplication.dispatch,
-        ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind,
+    refine ⟨PMF.pure (waited original, waited repaired, memory), ?_, ?_, ?_⟩
+    · simp only [PMF.pure_map, ReactiveApplication.dispatch,
+        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
         ReactiveApplication.Command.actor?, ReactiveApplication.resume]
       rfl
-    · simp only [FinDist.map_pure, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+    · simp only [PMF.pure_map, ReactiveApplication.Execution.environmentStep,
+        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
         ReactiveApplication.Implementation.resume]
       rfl
     · intro next member
-      cases FinDist.mem_support_pure.mp member
+      cases (PMF.mem_support_pure_iff _ _).mp member
       exact ⟨paired, started⟩
   · let activated (execution : app.Execution) (selected : Finset (MessageId Player)) :
         app.Execution :=
@@ -193,21 +193,21 @@ theorem dispatch_transport_coupling
             (some actor) (activated repaired selected) memory :=
       (existsStep selected).choose_spec.2.1
     refine ⟨sample.bind step, ?_, ?_, ?_⟩
-    · rw [FinDist.map_bind]
+    · rw [PMF.map_bind]
       simp only [left]
       simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_comp, FinDist.bind_map, ReactiveApplication.Command.actor?]
+        PMF.map_comp, PMF.bind_map, ReactiveApplication.Command.actor?]
       rfl
-    · rw [FinDist.map_bind]
+    · rw [PMF.map_bind]
       simp only [right]
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp,
-        FinDist.bind_map, ReactiveApplication.Command.actor?]
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp,
+        PMF.bind_map, ReactiveApplication.Command.actor?]
       change sample.bind _ = (leaks actor repaired.network.pending).bind _
       rw [show leaks actor repaired.network.pending = sample from
         congrArg (fun network => leaks actor network.pending) frame.network.symm]
       rfl
     · intro next member
-      obtain ⟨selected, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ member)
+      obtain ⟨selected, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
       exact (existsStep selected).choose_spec.2.2 next reached
 
 /-- A scheduler that selects activations and waits may use its complete
@@ -224,7 +224,7 @@ theorem round_transport_coupling
       command = .wait ∨ ∃ actor, command = .activate actor) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.round scheduler players original ∧
       coupling.map Prod.snd = strategy.round owner players scheduler repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -238,21 +238,21 @@ theorem round_transport_coupling
       (commands _ _ command member)
   let step := fun command member => (existsStep command member).choose
   refine ⟨law.bindOnSupport step, ?_, ?_, ?_⟩
-  · rw [FinDist.map_bindOnSupport]
-    apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+  · rw [map_bindOnSupport]
+    apply bindOnSupport_eq_bind_of_eq_on_support _
     intro command member
     exact (existsStep command member).choose_spec.1
-  · rw [FinDist.map_bindOnSupport]
+  · rw [map_bindOnSupport]
     have same : scheduler repaired.environmentRecall (repaired.observeEnvironment app) = law := by
       rw [← frame.service, ← frame.environment]
     change _ = (scheduler repaired.environmentRecall (repaired.observeEnvironment app)).bind _
     rw [same]
-    apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+    apply bindOnSupport_eq_bind_of_eq_on_support _
     intro command member
     exact (existsStep command member).choose_spec.2.1
   · intro next member
     obtain ⟨command, chosen, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ member)
+      Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ member)
     exact (existsStep command chosen).choose_spec.2.2 next reached
 
 /-- The complete finite response window is coupled in the existing round
@@ -272,7 +272,7 @@ theorem run_transport_coupling
     (count : Nat) :
     let app := runtime.reactiveApplication leaks
     let strategy := implementation runtime leaks owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution),
+    ∃ coupling : PMF (app.Execution × app.Execution),
       coupling.map Prod.fst = app.runRounds scheduler players count original ∧
       coupling.map Prod.snd = strategy.run owner players scheduler count repaired memory ∧
       ∀ next ∈ coupling.support, ∃ afterMemory,
@@ -282,9 +282,9 @@ theorem run_transport_coupling
   let strategy := implementation runtime leaks owner reference (players owner)
   induction count generalizing original repaired memory with
   | zero =>
-      refine ⟨FinDist.pure (original, repaired), FinDist.map_pure .., ?_,
-        fun next member => by cases FinDist.mem_support_pure.mp member; exact ⟨memory, frame⟩⟩
-      rw [ReactiveApplication.Implementation.run_zero, FinDist.map_pure]
+      refine ⟨PMF.pure (original, repaired), PMF.pure_map .., ?_,
+        fun next member => by cases (PMF.mem_support_pure_iff _ _).mp member; exact ⟨memory, frame⟩⟩
+      rw [ReactiveApplication.Implementation.run_zero, PMF.pure_map]
   | succ count ih =>
       obtain ⟨step, first, second, related⟩ := frame.round_transport_coupling
         players scheduler reference started transport commands
@@ -292,29 +292,29 @@ theorem run_transport_coupling
         ih (related next member).1 (related next member).2
       let tail := fun next member => (existsTail next member).choose
       refine ⟨step.bindOnSupport tail, ?_, ?_, ?_⟩
-      · rw [FinDist.map_bindOnSupport]
+      · rw [map_bindOnSupport]
         calc
           _ = step.bind (fun next => app.runRounds scheduler players count next.1) := by
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next member
             exact (existsTail next member).choose_spec.1
           _ = (step.map Prod.fst).bind (app.runRounds scheduler players count) :=
-            (FinDist.bind_map ..).symm
+            (PMF.bind_map ..).symm
           _ = _ := by rw [first]; rfl
-      · rw [FinDist.map_bindOnSupport]
+      · rw [map_bindOnSupport]
         calc
           _ = step.bind (fun next => strategy.run owner players scheduler
               count next.2.1 next.2.2) := by
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next member
             exact (existsTail next member).choose_spec.2.1
           _ = (step.map Prod.snd).bind (fun next =>
               strategy.run owner players scheduler count next.1 next.2) := by
-            rw [FinDist.bind_map]
+            rw [PMF.bind_map]
           _ = _ := by rw [second, ReactiveApplication.Implementation.run_succ]
       · intro final member
         obtain ⟨next, chosen, reached⟩ :=
-          Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ member)
+          Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ member)
         exact (existsTail next chosen).choose_spec.2.2 final reached
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

@@ -18,7 +18,7 @@ theorem Config.Reachable.inputs_eq {graph : Vegas.EventGraph Player L}
   induction reachable with
   | initial => rfl
   | step _ _ _ _ _ member ih =>
-      rw [Config.step, FinDist.support_map] at member
+      rw [Config.step, PMF.support_map] at member
       obtain ⟨_, _, rfl⟩ := member
       exact ih
 

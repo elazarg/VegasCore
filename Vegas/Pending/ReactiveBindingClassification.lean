@@ -192,7 +192,7 @@ theorem silent_or_spent_binding_omission
     ∃ next, runtime.runInteractionPlan leaks players scheduler
         (.includeLatest event who :: List.replicate ticks .tick ++ [.expire event])
           (execution.respond (runtime.reactiveApplication leaks) who response) =
-            FinDist.pure next ∧
+            PMF.pure next ∧
       next.application.publicView.missedBinding event = true := by
   have same := (runtime.reactiveApplication leaks).respond_published execution who response
     published quiet

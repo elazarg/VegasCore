@@ -2,7 +2,9 @@
 
 import Interaction.ReactiveRoundReachability
 import Interaction.ReactiveResponseEvaluation
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Exact protocol prefixes under a fixed activation schedule
 
@@ -19,49 +21,49 @@ open GameTheory.Math.Probability
 variable {Principal : Type} [DecidableEq Principal]
 
 theorem control_round (app : ReactiveApplication Principal)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (players : Principal → app.Policy) (remaining : Nat) (execution : app.Execution)
     (actor : Option Principal)
     (scheduled : ∀ command ∈
       (scheduler execution.environmentRecall (execution.observeEnvironment app)).support,
       command.actor? app = actor) :
     (fun law => law.bind (app.controlStep initial horizon scheduler players))^[
-        1 + actor.toList.length] (FinDist.pure (some ⟨remaining + 1, none, execution⟩)) =
+        1 + actor.toList.length] (PMF.pure (some ⟨remaining + 1, none, execution⟩)) =
       (app.round scheduler players execution).map
         (fun next => some ⟨remaining, none, next⟩) := by
   classical
   cases actor with
   | none =>
       simp only [Option.toList_none, List.length_nil, Nat.add_zero, Function.iterate_one,
-        FinDist.pure_bind, ReactiveApplication.controlStep, ReactiveApplication.actor,
+        PMF.pure_bind, ReactiveApplication.controlStep, ReactiveApplication.actor,
         Option.bind_some, ReactiveApplication.transition, ReactiveApplication.round,
-        FinDist.map_bind]
-      apply FinDist.bind_congr
+        PMF.map_bind]
+      apply bind_congr_on_support _
       intro command supported
       rw [scheduled command supported]
       simp only [ReactiveApplication.dispatch, scheduled command supported]
-      change _ = ((execution.environmentStep app command).bind FinDist.pure).map _
-      rw [FinDist.bind_pure]
+      change _ = ((execution.environmentStep app command).bind PMF.pure).map _
+      rw [PMF.bind_pure]
   | some who =>
       simp only [Option.toList_some, List.length_singleton]
       rw [show 1 + 1 = 1 + 1 from rfl, Function.iterate_add_apply,
-        Function.iterate_one, FinDist.pure_bind]
+        Function.iterate_one, PMF.pure_bind]
       simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
         Option.bind_some, ReactiveApplication.transition, ReactiveApplication.round,
-        FinDist.map_bind, FinDist.bind_bind, FinDist.bind_map]
-      apply FinDist.bind_congr
+        PMF.map_bind, PMF.bind_bind, PMF.bind_map]
+      apply bind_congr_on_support _
       intro command supported
       rw [scheduled command supported]
       simp only [ReactiveApplication.dispatch, scheduled command supported,
-        ReactiveApplication.resume, FinDist.map_bind]
-      apply FinDist.bind_congr
+        ReactiveApplication.resume, PMF.map_bind]
+      apply bind_congr_on_support _
       intro observed _
       simp only [↓reduceIte, Option.getD_some, ReactiveApplication.invoke,
-        FinDist.map_eq_bind, FinDist.bind_bind, FinDist.pure_bind]
+        ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
 
 
 theorem scheduled_segment_control_steps (app : ReactiveApplication Principal)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (schedule : List (Option Principal))
     (scheduled : ∀ past view command, command ∈ (scheduler past view).support →
       command.actor? app = (schedule[past.length]?).join)
@@ -71,12 +73,12 @@ theorem scheduled_segment_control_steps (app : ReactiveApplication Principal)
     (execution : app.Execution) (position : execution.environmentRecall.length = before.length) :
     (fun law => law.bind (app.controlStep initial horizon scheduler players))^[
         segment.length + (segment.filterMap id).length]
-        (FinDist.pure (some ⟨segment.length + rest.length, none, execution⟩)) =
+        (PMF.pure (some ⟨segment.length + rest.length, none, execution⟩)) =
       (app.runRounds scheduler players segment.length execution).map
         (fun next => some ⟨rest.length, none, next⟩) := by
   induction segment generalizing before execution with
   | nil => simp only [List.length_nil, List.filterMap_nil, Nat.zero_add,
-      Function.iterate_zero_apply, runRounds, FinDist.map_pure]
+      Function.iterate_zero_apply, runRounds, PMF.pure_map]
   | cons actor segment ih =>
       let first := 1 + actor.toList.length
       let later := segment.length + (segment.filterMap id).length
@@ -97,37 +99,37 @@ theorem scheduled_segment_control_steps (app : ReactiveApplication Principal)
       have start : (actor :: segment).length + rest.length =
           segment.length + rest.length + 1 := by simp only [List.length_cons]; omega
       rw [count, start, Function.iterate_add_apply, one,
-        FinDist.map_eq_bind, FinDist.iterate_bind]
+        ← PMF.bind_pure_comp, Function.comp_def, iterate_bind]
       change _ = ((app.round scheduler players execution).bind
         (app.runRounds scheduler players segment.length)).map _
-      rw [FinDist.map_bind]
-      apply FinDist.bind_congr
+      rw [PMF.map_bind]
+      apply bind_congr_on_support _
       intro next reached
       apply ih (before ++ [actor])
       · simpa only [List.append_assoc, List.singleton_append] using split
       · obtain ⟨command, _, dispatched⟩ :=
-          Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+          Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         rw [app.dispatch_environmentRecall players command execution next dispatched]
         simp only [List.length_append, List.length_singleton, position]
 
 /-- Initialization and any complete scheduler prefix have an exact protocol
 depth. This is independent of the response policy or observation samples. -/
 theorem scheduled_prefix_control_steps (app : ReactiveApplication Principal)
-    (initial : FinDist app.State) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (scheduler : app.Scheduler)
     (schedule : List (Option Principal))
     (scheduled : ∀ past view command, command ∈ (scheduler past view).support →
       command.actor? app = (schedule[past.length]?).join)
     (players : Principal → app.Policy) (count : Nat) (within : count ≤ schedule.length) :
     (fun law => law.bind (app.controlStep initial schedule.length scheduler players))^[
-      count + ((schedule.take count).filterMap id).length + 1] (FinDist.pure none) =
+      count + ((schedule.take count).filterMap id).length + 1] (PMF.pure none) =
       (app.roundsFrom initial scheduler players count).map
         (fun next => some ⟨schedule.length - count, none, next⟩) := by
-  rw [Function.iterate_succ_apply, FinDist.pure_bind]
+  rw [Function.iterate_succ_apply, PMF.pure_bind]
   change (fun law => law.bind (app.controlStep initial schedule.length scheduler players))^[
       count + ((schedule.take count).filterMap id).length]
       (initial.map (fun state => some ⟨schedule.length, none, Execution.initial app state⟩)) = _
-  rw [FinDist.map_eq_bind, FinDist.iterate_bind, roundsFrom, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [← PMF.bind_pure_comp, Function.comp_def, iterate_bind, roundsFrom, PMF.map_bind]
+  apply bind_congr_on_support _
   intro state _
   have result := app.scheduled_segment_control_steps initial schedule.length scheduler schedule
     scheduled players [] (schedule.take count) (schedule.drop count)
@@ -144,7 +146,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (scheduler : app.Scheduler)
   (schedule : List (Option Principal))
   (scheduled : ∀ past view command, command ∈ (scheduler past view).support →
     command.actor? app = (schedule[past.length]?).join)
@@ -181,9 +183,9 @@ theorem restrict_scheduled_prefix_support [Finite Principal]
         (fun who => menu.restrictPolicy initial schedule.length scheduler who
           (players who))
         (count + ((schedule.take count).filterMap id).length + 1)).map History.state).support := by
-    rw [law, FinDist.support_map]
+    rw [law, PMF.support_map]
     exact ⟨execution, supported, rfl⟩
-  obtain ⟨history, _, stateEq⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨history, _, stateEq⟩ := PMF.support_map .. ▸ reached
   have trace := menu.roundSupported_uniform initial schedule.length scheduler
     (stateEq ▸ history.trace)
   have length := app.roundsFrom_recall initial scheduler players count execution supported

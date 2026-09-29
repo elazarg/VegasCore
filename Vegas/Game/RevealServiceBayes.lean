@@ -99,7 +99,7 @@ theorem owner_bayes_state
       setup.protocolObserve who (prefixReadout setup leaks event.val history.1.state)) :
     let responses := menu setup leaks (bounds.withInitialValues (initialLaw setup)) watcher
     let antichain := (responses.decisionRecall (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher)).antichain
+      (scheduler setup leaks watcher)).decisionInformationAntichain
     let compiled := InformationModel.BehavioralAssessment.ofStrategy
       (compiledProfile setup leaks (bounds.withInitialValues (initialLaw setup)) watcher
         (setup.decodeBehavioralProfile admission source.strategy) weight nonnegative small)

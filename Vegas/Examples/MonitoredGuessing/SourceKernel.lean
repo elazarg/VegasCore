@@ -12,11 +12,11 @@ open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Pr
 open GameTheory.Protocol.ExecutionProtocol
 
 def sourceChoice (profile : Profile sourceModel.behavioralSignature) (who : Player)
-    (info : sourceModel.InfoState who) : FinDist (Option (sourceArena.Action who)) :=
+    (info : sourceModel.InfoState who) : PMF (Option (sourceArena.Action who)) :=
   (profile who info).map Subtype.val
 
 def sourceKernel (profile : Profile sourceModel.behavioralSignature) :
-    sourceArena.State → FinDist sourceArena.State
+    sourceArena.State → PMF sourceArena.State
   | none => sourceSetup.initialLaw.map (fun state => some (.inl (sourceSetup.initialConfig state)))
   | some (.inl config) =>
       (sourceChoice profile bob (some (.inl (config.view bob)))).map fun choice =>
@@ -26,7 +26,7 @@ def sourceKernel (profile : Profile sourceModel.behavioralSignature) :
       (sourceChoice profile alice (some (.inr (.inl (config.view alice))))).map fun choice =>
         some (.inr (.inr (revealSuccessor 3 (.there .here) config
           (OwnAction.disclosure choice))))
-  | some (.inr (.inr config)) => FinDist.pure (some (.inr (.inr config)))
+  | some (.inr (.inr config)) => PMF.pure (some (.inr (.inr config)))
 
 theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature)
     (history : sourceArena.History) (running : ¬ sourceArena.terminal history.state) :
@@ -44,14 +44,14 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
       (sourceModel.singleMoverChooser sourceSingle profile history running).map
         (fun joint => f (joint.1 who)) =
       (sourceChoice profile who (sourceSetup.protocolObserve who history.state)).map f := by
-    exact (FinDist.map_comp f (fun joint => joint.1 who)
+    exact (PMF.map_comp f (fun joint => joint.1 who)
       (sourceModel.singleMoverJoint sourceSingle profile history running)).symm.trans
-        (congrArg (FinDist.map f) (marginalState who))
+        (congrArg (PMF.map f) (marginalState who))
   rcases history with ⟨state, trace⟩
   rcases state with _ | state
   · change (sourceModel.singleMoverChooser sourceSingle profile _ running).bind
       (fun _ => sourceKernel profile none) = sourceKernel profile none
-    exact FinDist.bind_const _ _
+    exact PMF.bind_const _ _
   rcases state with config | config | config
   all_goals try exact (running trivial).elim
   all_goals
@@ -60,8 +60,8 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
       ext joint
       simp only [sourceArena, Setup.executionProtocol, Setup.protocolStep,
         sourceSetup, sourceProgram, ProtocolState.step, ProtocolState.entry,
-        Sum.elim_inl, Sum.elim_inr, FinDist.map_pure]
-  all_goals conv_lhs => rw [← FinDist.map_eq_bind]
+        Sum.elim_inl, Sum.elim_inr, PMF.pure_map]
+  all_goals conv_lhs => rw [← ← PMF.bind_pure_comp, Function.comp_def]
   all_goals dsimp only [sourceKernel]
   · exact project bob (fun choice => some (.inr (.inl
       (revealSuccessor 2 (.there .here) config (OwnAction.disclosure choice)))))
@@ -71,7 +71,7 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
 theorem source_run_states (profile : Profile sourceModel.behavioralSignature)
     (fuel : Nat) (history : sourceArena.History) :
     (sourceModel.runBehavioralFrom profile fuel history).map History.state =
-      (fun law => law.bind (sourceKernel profile))^[fuel] (FinDist.pure history.state) := by
+      (fun law => law.bind (sourceKernel profile))^[fuel] (PMF.pure history.state) := by
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     sourceModel sourceSingle]
   apply runRandomizedFor_map_state
@@ -81,31 +81,31 @@ theorem source_run_states (profile : Profile sourceModel.behavioralSignature)
     rfl
   · exact source_chooser_kernel profile
 
-def sourcePolicy (guess opening : FinDist Bool) (who : Player) :
+def sourcePolicy (guess opening : PMF Bool) (who : Player) :
     BehavioralPolicy who sourceProgram :=
   (fun _ _ => guess, (fun _ _ => opening, PUnit.unit))
 
-theorem sourcePolicy_admitted (guess opening : FinDist Bool) (who : Player) :
+theorem sourcePolicy_admitted (guess opening : PMF Bool) (who : Player) :
     (sourcePolicy guess opening who).Admitted sourceProgram sourceAdmission := trivial
 
-def sourceProfile (guess opening : FinDist Bool) : Profile sourceModel.behavioralSignature :=
+def sourceProfile (guess opening : PMF Bool) : Profile sourceModel.behavioralSignature :=
   fun who => sourceSetup.toProtocolBehavioralPolicy sourceAdmission who
     (sourcePolicy guess opening who) (sourcePolicy_admitted guess opening who)
 
 def uniformSourceProfile : Profile sourceModel.behavioralSignature :=
-  sourceProfile (FinDist.uniformOfFintype (α := Bool)) (FinDist.uniformOfFintype (α := Bool))
+  sourceProfile (PMF.uniformOfFintype (α := Bool)) (PMF.uniformOfFintype (α := Bool))
 
 theorem uniformSourceProfile_full (who : Player) (info : sourceModel.InfoState who) :
-    (uniformSourceProfile who info).FullSupport := by
+    FullSupport (uniformSourceProfile who info) := by
   intro choice
   suffices choice.val ∈ ((uniformSourceProfile who info).map Subtype.val).support by
-    obtain ⟨other, supported, same⟩ := FinDist.support_map .. ▸ this
+    obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
     exact (Subtype.ext same) ▸ supported
   rw [uniformSourceProfile, sourceProfile, Setup.toProtocolBehavioralPolicy_map_val]
   rcases choice with ⟨action, legal⟩
   change sourceSetup.protocolMenu sourceAdmission who info action at legal
   cases info with
-  | none => exact FinDist.mem_support_pure.mpr legal
+  | none => exact (PMF.mem_support_pure_iff _ _).mpr legal
   | some info =>
       rcases info with current | current | current
       all_goals fin_cases who <;> cases action
@@ -114,7 +114,7 @@ theorem uniformSourceProfile_full (who : Player) (info : sourceModel.InfoState w
         dsimp [Setup.protocolMenu, sourceSetup, sourceProgram, ProtocolView.menu,
           ProtocolView.actor, ProtocolView.available] at allowed
         simp_all [sourceSetup, sourceProgram, BehavioralPolicy.protocolAction,
-          sourcePolicy, FinDist.support_map, FinDist.mem_support_uniformOfFintype,
+          sourcePolicy, PMF.support_map, PMF.mem_support_uniformOfFintype,
           alice, bob, watcher, eq_comm]
 
 theorem uniformSourceProfile_fullyMixed :
@@ -122,27 +122,27 @@ theorem uniformSourceProfile_fullyMixed :
   fun who site => uniformSourceProfile_full who site.1
 
 def sourceDecisionLaw (profile : Profile sourceModel.behavioralSignature)
-    (who : Player) (info : sourceModel.InfoState who) : FinDist Bool :=
+    (who : Player) (info : sourceModel.InfoState who) : PMF Bool :=
   (sourceChoice profile who info).map OwnAction.disclosure
 
-theorem profile_guess_law (guess opening : FinDist Bool) (bit : Bool) :
+theorem profile_guess_law (guess opening : PMF Bool) (bit : Bool) :
     sourceDecisionLaw (sourceProfile guess opening) bob
       (sourceModel.infoOf bob (SourcePath.drawn bit).history.trace) = guess := by
   rw [source_info]
   unfold sourceDecisionLaw sourceChoice sourceProfile
   rw [Setup.toProtocolBehavioralPolicy_map_val]
   change (guess.map (fun value => some (.reveal bob 1 value))).map OwnAction.disclosure = _
-  rw [FinDist.map_comp]
-  exact FinDist.map_id _
+  rw [PMF.map_comp]
+  exact PMF.map_id _
 
-theorem profile_opening_law (guess opening : FinDist Bool) (bit decision : Bool) :
+theorem profile_opening_law (guess opening : PMF Bool) (bit decision : Bool) :
     sourceDecisionLaw (sourceProfile guess opening) alice
       (sourceModel.infoOf alice (SourcePath.guessed bit decision).history.trace) = opening := by
   rw [source_info]
   unfold sourceDecisionLaw sourceChoice sourceProfile
   rw [Setup.toProtocolBehavioralPolicy_map_val]
   change (opening.map (fun value => some (.reveal alice 0 value))).map OwnAction.disclosure = _
-  rw [FinDist.map_comp]
-  exact FinDist.map_id _
+  rw [PMF.map_comp]
+  exact PMF.map_id _
 
 end Vegas.Examples.MonitoredGuessing

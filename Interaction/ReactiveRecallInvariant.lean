@@ -71,7 +71,7 @@ theorem recallBoundInvariant (observed : app.LocalObservation → Value) (value 
 theorem recallBound_history (observed : app.LocalObservation → Value) (value : app.State → Value)
     (agrees : ∀ state who, observed (app.observePlayer state who) = value state)
     (monotone : ∀ lower, app.Invariant (fun state => lower ≤ value state))
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control)) :
     control.execution.RecallBound app observed value :=

@@ -91,8 +91,8 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
         message.id ∈ (execution.respond app owner ⟨none⟩).network.ledger.map Message.id := pending
     rw [(runtime setup).interaction_includeLatest_of_pending_published leaks players
       ((runtime setup).reportNetwork leaks watcher) _ owner event quietPending] at reached
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at reached
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at reached
     subst next
     exact ⟨pending, leaked, inputs⟩
   · obtain ⟨candidate, raw, evidence, rfl⟩ := opening_shape setup leaks owner _ _ event
@@ -115,8 +115,8 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     rw [(runtime setup).opening_inclusion leaks players
       ((runtime setup).reportNetwork leaks watcher) execution owner event candidate raw
       evidence (serials.next_unpublished owner)] at reached
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at reached
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at reached
     subst next
     change (∀ message ∈ (submitted.includePending app id).network.pending,
       message.id ∈ (submitted.includePending app id).network.ledger.map Message.id) ∧
@@ -135,8 +135,8 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     rw [(runtime setup).published_replay_inclusion leaks players
       ((runtime setup).reportNetwork leaks watcher) execution owner event message.id
       pending spent] at reached
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at reached
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at reached
     subst next
     refine ⟨execution.network.replay_pending_published owner message.id pending spent, ?_,
       execution.network.replay_inputs_published owner message.id inputs spent⟩
@@ -162,8 +162,8 @@ private theorem include_control_step
     simp only [scheduler, position, located]
   change (scheduler setup leaks watcher execution.environmentRecall
     (execution.observeEnvironment app)).bind _ = _
-  rw [scheduled, interactionStep, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [scheduled, interactionStep, PMF.map_bind]
+  apply bind_congr_on_support _
   intro command supported
   have noActor := instruction_actor setup leaks watcher execution.environmentRecall
     (execution.observeEnvironment app) (.includeLatest event owner) command supported
@@ -171,8 +171,8 @@ private theorem include_control_step
   dsimp only [app, application] at noActor ⊢
   simp only [ReactiveApplication.dispatch, noActor]
   change _ = ((execution.environmentStep (application setup leaks) command).bind
-    FinDist.pure).map _
-  rw [FinDist.bind_pure]
+    PMF.pure).map _
+  rw [PMF.bind_pure]
 
 private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
     (players : Player → (application setup leaks).Policy) (watcher owner : Player)
@@ -194,7 +194,7 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
     (state : (application setup leaks).ProtocolState)
     (reached : state ∈ ((fun law => law.bind ((application setup leaks).controlStep
       (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher) players))^[3]
-      (FinDist.pure (some ⟨remaining + 2, some owner, execution⟩))).support) :
+      (PMF.pure (some ⟨remaining + 2, some owner, execution⟩))).support) :
     ∃ next, state = some ⟨remaining, some watcher, next⟩ ∧
       next.network.leaked = (fun _ => []) ∧
       (∀ message ∈ next.network.pending,
@@ -207,22 +207,22 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
       (players owner (execution.recall owner) (execution.observe app owner)).map
         (fun response => some ⟨remaining + 2, none, execution.respond app owner response⟩) := by
     simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-      ReactiveApplication.transition, ↓reduceIte, Option.getD_some, FinDist.map_eq_bind]
+      ReactiveApplication.transition, ↓reduceIte, Option.getD_some, ← PMF.bind_pure_comp, Function.comp_def]
     rfl
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    FinDist.pure_bind] at reached
+    PMF.pure_bind] at reached
   obtain ⟨afterInclude, firstTwo, activated⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨afterResponse, responded, middleReached⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ firstTwo)
-  rw [first, FinDist.support_map] at responded
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ firstTwo)
+  rw [first, PMF.support_map] at responded
   obtain ⟨response, supported, rfl⟩ := responded
   have responsePosition : (execution.respond app owner response).environmentRecall.length =
       cursor := position
   rw [show remaining + 2 = (remaining + 1) + 1 by omega,
     include_control_step setup leaks players watcher owner event
       (execution.respond app owner response) (remaining + 1) cursor responsePosition includeAt,
-    FinDist.support_map] at middleReached
+    PMF.support_map] at middleReached
   obtain ⟨next, included, rfl⟩ := middleReached
   obtain ⟨published, quiet, inputPublished⟩ :=
     ordinary_inclusion_published setup leaks bounds players
@@ -234,13 +234,13 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
       (execution.respond app owner response) next included
     simpa only [responsePosition] using count
   have scheduled : scheduler setup leaks watcher next.environmentRecall
-      (next.observeEnvironment app) = FinDist.pure (.activate watcher) := by
+      (next.observeEnvironment app) = PMF.pure (.activate watcher) := by
     simp only [scheduler, nextPosition, watcherAt, interactionInstruction]
   change state ∈ ((scheduler setup leaks watcher next.environmentRecall
     (next.observeEnvironment app)).bind _).support at activated
-  rw [scheduled, FinDist.pure_bind,
+  rw [scheduled, PMF.pure_bind,
     next.activate_of_pending_published app watcher published,
-    FinDist.map_pure, FinDist.mem_support_pure] at activated
+    PMF.pure_map, PMF.mem_support_pure_iff _ _] at activated
   exact ⟨_, activated, quiet, published, inputPublished⟩
 
 /-- At the watcher's exact service depth, every retained execution has no
@@ -267,7 +267,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
   let ownerDepth := blockOffset event.val + 2 * event.val + 3
   change history ∈ (model.runBehavioral profile (ownerDepth + 3)).support at supported
   rw [InformationModel.runBehavioral, InformationModel.runBehavioralFrom_add,
-    FinDist.support_bind] at supported
+    PMF.support_bind] at supported
   obtain ⟨before, beforeSupport, continued⟩ := Set.mem_iUnion₂.mp supported
   obtain ⟨boundary, boundarySupport, current, initial, _initialSupport, source,
       _boundaryCheckpoint, related, _decoded⟩ :=
@@ -292,7 +292,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
       (fun _ _ _ _ checkpoint => checkpoint.serials) _ _ _ _ _ _ _ _ related
   have prefixLength := planPrefix_length setup watcher reveals event.val event.isLt.le
   obtain ⟨initialNative, _initialNativeSupport, prefixRun⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ boundarySupport)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ boundarySupport)
   have position : execution.environmentRecall.length = blockOffset event.val + 2 := by
     have counted := (runtime setup).runInteractionPlan_recall leaks players
       ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
@@ -321,7 +321,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
     omega
   have stateSupport : history.state ∈ ((model.runBehavioralFrom profile 3 before).map
       History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨history, continued, rfl⟩
   rw [menu_run_control_steps, current] at stateSupport
   have remaining : horizon setup watcher - blockOffset event.val - 2 =
@@ -392,7 +392,7 @@ theorem watcher_history_silent (bounds : MessageBounds (graph setup))
     (control : (application setup leaks).Control) (state : history.state = some control)
     (active : control.actor = some watcher) :
     (application setup leaks).reportFirstUnpublished (control.execution.recall watcher)
-      (control.execution.observe (application setup leaks) watcher) = FinDist.pure ⟨none⟩ := by
+      (control.execution.observe (application setup leaks) watcher) = PMF.pure ⟨none⟩ := by
   have quiet := (watcher_history_clean setup leaks bounds watcher reveals observer openable
     history control state active).1
   apply (application setup leaks).reportFirstUnpublished_silent

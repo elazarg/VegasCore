@@ -58,7 +58,7 @@ private theorem sample_replays_application
         (roster.map ServiceInstruction.player) initial).support) :
     final.application = initial.application := by
   cases roster with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons first rest =>
       exact ((runtime setup).replay_window_preserves leaks
         (fun _ => (application setup leaks).replayPolicy) network first initial
@@ -94,9 +94,9 @@ theorem source_sample_traffic
   let app := application setup leaks
   let replay := fun _ : Player => app.replayPolicy
   unfold samplePhaseTranscript
-  rw [FinDist.bind_comm]
-  rw [runInteractionPlan_append, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.bind_comm]
+  rw [runInteractionPlan_append, PMF.map_bind]
+  apply bind_congr_on_support _
   intro current reached
   have same := sample_replays_application setup leaks network roster execution current reached
   have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
@@ -107,9 +107,9 @@ theorem source_sample_traffic
       (List.replicate ticks .tick ++ [.expire event]))).map _ = _
   rw [(runtime setup).interactionStep_sample,
     source_sample_environment (runtime setup) current.application event currentReady outputEq refs
-      law codeEq node source.state currentAgree, FinDist.map_comp, FinDist.bind_map,
-    FinDist.map_bind]
-  apply FinDist.bind_congr
+      law codeEq node source.state currentAgree, PMF.map_comp, PMF.bind_map,
+    PMF.map_bind]
+  apply bind_congr_on_support _
   intro value _
   simp only [same]
   rfl
@@ -123,18 +123,18 @@ theorem sample_successor_memory_factorization
     {Γ : SourceCtx Player L} {payload : L.Ty}
     (name : VarId) (focal : Player) (event : (graph setup).EventId)
     (outputEq : (graph setup).outputLayout event = .publicData payload)
-    (prior : FinDist Seed) (source original : Seed → Config Player L Γ)
+    (prior : PMF Seed) (source original : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (ready : ∀ seed, (execution seed).application.config.cut.Ready event)
     (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall (application setup leaks))
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player) (ticks : Nat)
     (law : L.DistExpr (SourcePublicCtx L Γ) payload)
-    (noise : DecisionView focal Γ → FinDist _)
+    (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => ((source seed, original seed),
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map (fun seed => (source seed, original seed))).bind fun pair =>
         (noise (pair.1.view focal)).map fun extra => (pair, extra)) :
-    ∃ nextNoise : DecisionView focal ((name, .publicData payload) :: Γ) → FinDist _,
+    ∃ nextNoise : DecisionView focal ((name, .publicData payload) :: Γ) → PMF _,
       (prior.bind fun seed => (L.evalDist law (sourcePublicEnv (source seed).state)).bind
         fun value => (samplePhaseTranscript setup leaks network roster ticks focal
           (execution seed) event (ready seed) payload outputEq value).map fun extra =>
@@ -144,7 +144,7 @@ theorem sample_successor_memory_factorization
         (L.evalDist law (sourcePublicEnv pair.1.state)).map fun value =>
           (sampleSuccessor name pair.1 value, sampleSuccessor name pair.2 value)).bind fun pair =>
         (nextNoise (pair.1.view focal)).map fun extra => (pair, extra) := by
-  apply FinDist.exists_updated_observation_kernel_of_readout prior
+  apply PMF.exists_updated_observation_kernel_of_readout prior
     (fun seed => (source seed, original seed))
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun pair => pair.1.view focal) noise factor
@@ -162,7 +162,7 @@ theorem sample_successor_memory_factorization
       simpa only [Config.view, sampleSuccessor, sourceObserve, Env.get, Env.cons] using cell
     subst second
     simp only [samplePhaseTranscript]
-    apply FinDist.bind_eq_of_map_eq _ _ _ _
+    apply bind_eq_of_map_eq _ _ _ _
       ((runtime setup).replay_window_focal_law leaks network roster focal
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) traffic)

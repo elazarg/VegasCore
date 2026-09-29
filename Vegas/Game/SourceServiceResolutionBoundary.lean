@@ -77,10 +77,10 @@ theorem ServiceBoundary.reveal_block
   have phase := reached
   rw [rosterBlock_of_owner setup rosters event owner owned,
     (runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, FinDist.pure_bind] at phase
+  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at phase
   simp only [List.append_assoc] at phase
   rw [← List.append_assoc, (runtime setup).runInteractionPlan_append] at phase
-  obtain ⟨included, inclusion, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ phase)
+  obtain ⟨included, inclusion, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   have packets := bounds.compiled_resolution_inclusion_published (runtime setup) leaks
     players ordinary network owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
@@ -117,7 +117,7 @@ theorem ServiceBoundary.reveal_block
           outputEq codeEq node (by rw [silent]; exact ready) entered (event.val + 1)
           (by rw [silent]; exact activated) due
       rw [exactTail] at tail
-      have finalEq := FinDist.mem_support_pure.mp tail
+      have finalEq := (PMF.mem_support_pure_iff _ _).mp tail
       subst final
       refine ⟨false, effectiveDisclosure_false _ _ _, ?_, ?_, ?_, afterNetwork, afterRecall⟩
       · rw [afterApp]
@@ -141,7 +141,7 @@ theorem ServiceBoundary.reveal_block
         (runtime setup).settled_reveal_expiry leaks players network included event settled
           (event.val + 1)
       rw [exactTail] at tail
-      have finalEq := FinDist.mem_support_pure.mp tail
+      have finalEq := (PMF.mem_support_pure_iff _ _).mp tail
       subst final
       refine ⟨true, ?_, ?_, ?_, ?_, afterNetwork, afterRecall⟩
       · simp only [effectiveDisclosure, success]
@@ -221,7 +221,7 @@ theorem ServiceBoundary.reveal_block
   · intro observer other future
     rw [sameRecall]
     rw [(runtime setup).runInteractionPlan_append] at inclusion
-    obtain ⟨visited, window, inclusion⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ inclusion)
+    obtain ⟨visited, window, inclusion⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ inclusion)
     have includedRecall : included.recall observer = visited.recall observer := by
       have earlier := (runtime setup).runInteractionPlan_recall_prefix leaks players network
         [.includeLatest event owner] visited included inclusion observer
@@ -273,13 +273,13 @@ theorem ServiceBoundary.reveal_block_conformance
   obtain ⟨granted, grantBoundary, grant, _, _, grantLaw⟩ := boundary.grant players network event
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
     (.grant event) (by simp) (by simp) execution granted
-    (by rw [grantLaw]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   have phase := reached
   rw [rosterBlock_of_owner setup rosters event owner owned,
     (runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, FinDist.pure_bind, List.append_assoc] at phase
+  simp only [runInteractionPlan, grantLaw, PMF.pure_bind, List.append_assoc] at phase
   rw [(runtime setup).runInteractionPlan_append] at phase
-  obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ phase)
+  obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   have ordinary : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ bounds.compiledActions (runtime setup) leaks who past view :=
     fun who past view response member => sourceServiceMenu_in_compiled setup leaks bounds

@@ -95,18 +95,18 @@ theorem replay_window_preserves (runtime : EventGraphRuntime graph)
   induction roster with
   | nil =>
       intro current application ledger receipts counters recalled valid present supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact ⟨application, ledger, receipts, counters, valid, present⟩
   | cons who rest ih =>
       intro current application ledger receipts counters recalled valid present supported
       obtain ⟨middle, first, supported⟩ := Set.mem_iUnion₂.mp
-        (FinDist.support_bind .. ▸ supported)
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at first
+        (PMF.support_bind .. ▸ supported)
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at first
       change middle ∈ ((current.environmentStep app (.activate who)).bind
         (app.invoke players who)).support at first
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at first
-      obtain ⟨sample, _, first⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ first)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ first
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at first
+      obtain ⟨sample, _, first⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ first)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ first
       let activated := current.sampledActivation app who sample
       have data := replay_response_preserves runtime leaks safe activated (valid.learn who sample)
         who response (responses activated who response application recalled chosen)
@@ -223,7 +223,7 @@ theorem replay_window_settlement (runtime : EventGraphRuntime graph)
       (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) initial).map
         fun final => (final.application, final.network.ledger,
           final.receipts, final.network.nextSerial)) =
-      FinDist.pure
+      PMF.pure
         (((runtime.reactiveApplication leaks).handle initial.application message).getD
             initial.application,
           @List.append (Message Player (WitnessedPacket graph)) initial.network.ledger [message],
@@ -231,23 +231,23 @@ theorem replay_window_settlement (runtime : EventGraphRuntime graph)
             ((runtime.reactiveApplication leaks).handle initial.application message).isSome)],
           initial.network.nextSerial) := by
   let app := runtime.reactiveApplication leaks
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result mapped
-  obtain ⟨final, runSupport, rfl⟩ := FinDist.support_map .. ▸ mapped
+  obtain ⟨final, runSupport, rfl⟩ := PMF.support_map .. ▸ mapped
   rw [runtime.runInteractionPlan_append] at runSupport
-  obtain ⟨current, prior, included⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ runSupport)
+  obtain ⟨current, prior, included⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ runSupport)
   obtain ⟨application, ledger, receipts, counters, _, _⟩ :=
     runtime.replay_window_preserves leaks players network owner initial responses _ packets
       roster current prior
   obtain ⟨selected, found⟩ := runtime.replay_window_selection leaks players network owner initial
     responses event message authored addressed packets pending unpublished roster current prior
-  simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
-    selected, FinDist.pure_bind] at included
-  change final ∈ ((current.environmentStep app (.include message.id)).bind FinDist.pure).support
+  simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
+    selected, PMF.pure_bind] at included
+  change final ∈ ((current.environmentStep app (.include message.id)).bind PMF.pure).support
     at included
-  rw [FinDist.bind_pure] at included
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at included
-  cases FinDist.mem_support_pure.mp included
+  rw [PMF.bind_pure] at included
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at included
+  cases (PMF.mem_support_pure_iff _ _).mp included
   change (_, _, _, _) = _
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     found, application, ledger, receipts, counters]
@@ -281,18 +281,18 @@ theorem replay_window_settled_published (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   rw [runtime.runInteractionPlan_append] at reached
   obtain ⟨current, prior, included⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨_, ledger, _, _, valid, _⟩ := runtime.replay_window_preserves leaks players network
     owner initial responses _ packets roster current prior
   obtain ⟨selected, found⟩ := runtime.replay_window_selection leaks players network owner initial
     responses event message authored addressed packets pending unpublished roster current prior
-  simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
-    selected, FinDist.pure_bind] at included
-  change final ∈ ((current.environmentStep app (.include message.id)).bind FinDist.pure).support
+  simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
+    selected, PMF.pure_bind] at included
+  change final ∈ ((current.environmentStep app (.include message.id)).bind PMF.pure).support
     at included
-  rw [FinDist.bind_pure] at included
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at included
-  cases FinDist.mem_support_pure.mp included
+  rw [PMF.bind_pure] at included
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at included
+  cases (PMF.mem_support_pure_iff _ _).mp included
   change (current.includePending app message.id).network.Satisfies _
   rw [app.includePending_network]
   apply (valid.includePending message.id).mono

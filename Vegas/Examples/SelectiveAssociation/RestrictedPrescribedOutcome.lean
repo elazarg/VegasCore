@@ -40,7 +40,7 @@ theorem profile_alice_binding_results_full (control : app.Control)
         fin_cases who <;> decide
       have split := supported
       rw [← Nat.add_sub_of_le short, model.runBehavioralFrom_add] at split
-      obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ split)
+      obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ split)
       obtain ⟨atBinding, bindingEq, ownerActive, ownerGrant⟩ := future_decision profile aliceBinding
         (nativeBindingEvent who) ordered control trace active granted later laterMem
       rw [native_binding_owner] at ownerActive
@@ -114,7 +114,7 @@ theorem initialized_results (final : arena.History)
       ⟨.success false, .success false, .success false⟩ := by
   change final ∈ (model.runBehavioralFrom profile (7 + 172) arena.initHistory).support at supported
   rw [model.runBehavioralFrom_add] at supported
-  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have position := native_behavioral_position (observation := leaks) profile 7 arena.initHistory
     later laterMem
   have advance : nativeAdvancePosition^[7] (nativePosition arena.initHistory.state) =
@@ -143,10 +143,10 @@ source program. This execution theorem does not assert sequential equilibrium. -
 theorem initialized_payoff_law (who : Player) :
     (model.runBehavioral profile (2 * nativeHorizon + 1)).map
       (fun history => nativeUtility who history.state) =
-        FinDist.pure (if who = alice then 0 else 1) := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+        PMF.pure (if who = alice then 0 else 1) := by
+  apply pmf_eq_pure_of_support_subset_singleton
   intro value supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   obtain ⟨result, stateEq, outcomes⟩ := initialized_results final finalMem
   simp only [nativeUtility, stateEq, Option.elim_some, outcomes]
   fin_cases who <;> norm_num [utility, correctness, openingPenalty, alice, bob, carol]

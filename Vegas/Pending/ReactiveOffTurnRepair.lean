@@ -154,7 +154,7 @@ theorem off_turn_stopped_response_coupling
           (original.observe (runtime.reactiveApplication leaks) owner)) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.invoke players owner original ∧
       coupling.map Prod.snd = strategy.resume owner players (some owner) repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -189,19 +189,19 @@ theorem off_turn_stopped_response_coupling
       (repaired.recall owner, repaired.observe app owner)).map _ = _
     rw [implementation_respond runtime leaks owner reference (players owner) memory
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
-        FinDist.map_comp]
+        PMF.map_comp]
     simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
   refine ⟨coupling, ?_, ?_, ?_⟩
-  · rw [FinDist.map_comp]
+  · rw [PMF.map_comp]
     rfl
-  · rw [FinDist.map_comp]
+  · rw [PMF.map_comp]
     simp only [ReactiveApplication.Implementation.resume, ↓reduceIte]
     change law.map _ = (strategy.respond memory
       (repaired.recall owner, repaired.observe app owner)).map _
-    rw [responseLaw, FinDist.map_comp]
+    rw [responseLaw, PMF.map_comp]
     rfl
   · intro next supported
-    obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.off_turn_audit_response_cases leaks bounds original owner remaining
         leftRecall serials offTurn response (available response chosen) with replay | forbidden
     · have unchanged : memory.repairResponse runtime leaks owner

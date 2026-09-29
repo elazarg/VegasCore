@@ -78,7 +78,7 @@ theorem respond_recall_prefix (execution : app.Execution) (who observer : Princi
         cases transmission <;> simp only [Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
   · rw [app.respond_recall_other execution who observer same action]
 
-theorem transition_recall_prefix (initial : FinDist app.State) (horizon : Nat)
+theorem transition_recall_prefix (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before : app.Control) (after : app.ProtocolState)
     (joint : Principal → Option app.Action)
     (reached : after ∈ (app.transition initial horizon scheduler (some before) joint).support) :
@@ -87,18 +87,18 @@ theorem transition_recall_prefix (initial : FinDist app.State) (horizon : Nat)
   rcases before with ⟨remaining, actor, execution⟩
   cases actor with
   | some who =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨_, rfl, fun observer => app.respond_recall_prefix execution who observer _⟩
   | none =>
       cases remaining with
-      | zero => cases FinDist.mem_support_pure.mp reached; exact ⟨_, rfl, fun _ => by rfl⟩
+      | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact ⟨_, rfl, fun _ => by rfl⟩
       | succ remaining =>
-          obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-          obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+          obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+          obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
           refine ⟨_, rfl, fun who => ?_⟩
           rw [app.environmentStep_recall execution next command moved]
 
-theorem reaches_recall_prefix (initial : FinDist app.State) (horizon : Nat)
+theorem reaches_recall_prefix (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler)
     {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last)

@@ -29,18 +29,18 @@ private abbrev app : ReactiveApplication Bool where
   environment _ command := nomatch command
   observePlayer _ _ := ()
   observePublic _ := ()
-  observePending _ pending := FinDist.pure (pending.map Message.id).toFinset
+  observePending _ pending := PMF.pure (pending.map Message.id).toFinset
 
 private def send (value : Nat) : app.Action := ⟨some (.submit value)⟩
 
 private def players : Bool → app.Policy := fun who _ view =>
-  FinDist.pure (send (if who then
+  PMF.pure (send (if who then
     (view.messages.leaked.head?.map Message.payload).getD 0 + 1 else 7))
 
 /-- Later scheduling can depend on the actual incoming message, including
 the broadcaster. The second Alice activation is an explicit network choice. -/
 private def scheduler : app.Scheduler := fun history view =>
-  FinDist.pure (match history.length with
+  PMF.pure (match history.length with
     | 0 => .activate false
     | 1 => .activate true
     | _ => if view.network.inputs.any (fun input =>
@@ -57,63 +57,63 @@ private def e3 : app.Execution := { e2 with
     .activate true⟩] }
 private def e4 : app.Execution := e3.respond app true (send 8)
 
-private def kernel : app.ProtocolState → FinDist app.ProtocolState :=
-  app.controlStep (FinDist.pure ()) 3 scheduler players
+private def kernel : app.ProtocolState → PMF app.ProtocolState :=
+  app.controlStep (PMF.pure ()) 3 scheduler players
 
-private theorem setup_step : kernel none = FinDist.pure (some ⟨3, none, e0⟩) := by
+private theorem setup_step : kernel none = PMF.pure (some ⟨3, none, e0⟩) := by
   simp only [kernel, ReactiveApplication.controlStep, ReactiveApplication.actor,
-    Option.bind_none, ReactiveApplication.transition, FinDist.map_pure]
+    Option.bind_none, ReactiveApplication.transition, PMF.pure_map]
   rfl
 
 private theorem activate_alice :
-    kernel (some ⟨3, none, e0⟩) = FinDist.pure (some ⟨2, some false, e1⟩) := by
+    kernel (some ⟨3, none, e0⟩) = PMF.pure (some ⟨2, some false, e1⟩) := by
   simp only [kernel, ReactiveApplication.controlStep, ReactiveApplication.actor,
     Option.bind_some, ReactiveApplication.transition, scheduler, e0,
-    ReactiveApplication.Execution.initial, List.length_nil, FinDist.pure_bind,
-    ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    ReactiveApplication.Execution.initial, List.length_nil, PMF.pure_bind,
+    ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rw [show (MessageNetwork.empty.pending.map Message.id).toFinset =
     (∅ : Finset (MessageId Bool)) from rfl, MessageNetwork.learn_empty]
   rfl
 
 private theorem alice_sends :
-    kernel (some ⟨2, some false, e1⟩) = FinDist.pure (some ⟨2, none, e2⟩) := by
+    kernel (some ⟨2, some false, e1⟩) = PMF.pure (some ⟨2, none, e2⟩) := by
   simp only [kernel, ReactiveApplication.controlStep, ReactiveApplication.actor,
-    Option.bind_some, players, Bool.false_eq_true, ↓reduceIte, FinDist.pure_bind,
+    Option.bind_some, players, Bool.false_eq_true, ↓reduceIte, PMF.pure_bind,
     ReactiveApplication.transition, Option.getD_some]
   rfl
 
 private theorem activate_bob :
-    kernel (some ⟨2, none, e2⟩) = FinDist.pure (some ⟨1, some true, e3⟩) := by
-  change (FinDist.pure (.activate true : app.Command)).bind _ = _
-  simp only [FinDist.pure_bind, ReactiveApplication.Execution.environmentStep]
-  change (((FinDist.pure {(false, 0)}).map _).map _).map _ = _
-  simp only [FinDist.map_pure]
+    kernel (some ⟨2, none, e2⟩) = PMF.pure (some ⟨1, some true, e3⟩) := by
+  change (PMF.pure (.activate true : app.Command)).bind _ = _
+  simp only [PMF.pure_bind, ReactiveApplication.Execution.environmentStep]
+  change (((PMF.pure {(false, 0)}).map _).map _).map _ = _
+  simp only [PMF.pure_map]
   rfl
 
 private theorem bob_reacts :
-    kernel (some ⟨1, some true, e3⟩) = FinDist.pure (some ⟨1, none, e4⟩) := by
-  change (FinDist.pure (send 8)).bind _ = _
-  rw [FinDist.pure_bind]
+    kernel (some ⟨1, some true, e3⟩) = PMF.pure (some ⟨1, none, e4⟩) := by
+  change (PMF.pure (send 8)).bind _ = _
+  rw [PMF.pure_bind]
   rfl
 
 /-- Actual canonical play reaches the received-message reaction. All messages
 remain pending, and Alice is revisited only after the network sees Bob's reply. -/
 theorem canonical_in_flight :
-    ((app.information (FinDist.pure ()) 3 scheduler).runSingleMoverBehavioralFrom
-      (app.singleMover (FinDist.pure ()) 3 scheduler)
+    ((app.information (PMF.pure ()) 3 scheduler).runSingleMoverBehavioralFrom
+      (app.singleMover (PMF.pure ()) 3 scheduler)
       (fun who => app.encodePolicy (players who)) 5
-      (app.protocol (FinDist.pure ()) 3 scheduler).initHistory).map
-        ExecutionProtocol.History.state = FinDist.pure (some ⟨1, none, e4⟩) := by
+      (app.protocol (PMF.pure ()) 3 scheduler).initHistory).map
+        ExecutionProtocol.History.state = PMF.pure (some ⟨1, none, e4⟩) := by
   rw [app.run_map_state]
-  change (fun law => law.bind kernel)^[5] (FinDist.pure none) = _
-  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, FinDist.pure_bind,
+  change (fun law => law.bind kernel)^[5] (PMF.pure none) = _
+  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
     setup_step, activate_alice, alice_sends, activate_bob, bob_reacts]
 
 theorem reaction_before_inclusion :
     e4.network.pending = [⟨(false, 0), 7⟩, ⟨(true, 0), 8⟩] ∧
       e4.network.ledger = [] ∧ e4.receipts = [] ∧
       scheduler e4.environmentRecall (e4.observeEnvironment app) =
-        FinDist.pure (.activate false) := ⟨rfl, rfl, rfl, rfl⟩
+        PMF.pure (.activate false) := ⟨rfl, rfl, rfl, rfl⟩
 
 theorem replay_preserves_author_records_broadcaster :
     let next := e3.respond app true ⟨some (.replay (false, 0))⟩
@@ -132,7 +132,7 @@ theorem redundant_observation_is_inert :
 
 private abbrev partialApp : ReactiveApplication Bool :=
   { app with observePending := fun _ _ =>
-      (FinDist.uniformOfFintype (α := Bool)).map fun bit =>
+      (PMF.uniformOfFintype (α := Bool)).map fun bit =>
         if bit then {(false, 0)} else ∅ }
 
 private def beforePartial : partialApp.Execution :=
@@ -146,16 +146,16 @@ private def afterPartial (bit : Bool) : partialApp.Execution :=
 
 private theorem partial_activation :
     beforePartial.environmentStep partialApp (.activate true) =
-      (FinDist.uniformOfFintype (α := Bool)).map afterPartial := by
+      (PMF.uniformOfFintype (α := Bool)).map afterPartial := by
   simp only [ReactiveApplication.Execution.environmentStep]
-  rw [FinDist.map_comp, FinDist.map_comp]
+  rw [PMF.map_comp, PMF.map_comp]
   rfl
 
 /-- Both learning and missing the packet are supported private outcomes. -/
 theorem partial_outcomes (bit : Bool) :
     afterPartial bit ∈ (beforePartial.environmentStep partialApp (.activate true)).support := by
-  rw [partial_activation, FinDist.support_map]
-  exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩
+  rw [partial_activation, PMF.support_map]
+  exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩
 
 theorem partial_knowledge_differs :
     (afterPartial false).network.leaked true = [] ∧

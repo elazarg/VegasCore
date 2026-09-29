@@ -195,11 +195,11 @@ theorem reactiveBinding_activation_other_input
       owner observer different event payload second serial).symm
   change ((submitted first).environmentStep app (.activate observer)).map _ =
     ((submitted second).environmentStep app (.activate observer)).map _
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
   change (submitted first).network = (submitted second).network at network
   rw [show (submitted first).network.pending = (submitted second).network.pending from
     congrArg MessageNetwork.pending network]
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro selected _
   apply reactive_input_congr runtime leaks
   · rw [network]

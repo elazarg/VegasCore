@@ -20,7 +20,7 @@ expiry transitions are the concrete runtime transitions. -/
 theorem reachedFocalAction_eq
     (runtime : EventGraphRuntime graph)
     (feasible : runtime.ServiceFeasible) (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -28,13 +28,13 @@ theorem reachedFocalAction_eq
     (focalResponse : List runtime.application.PlayerEntry →
       runtime.application.View → runtime.application.PlayerCommand)
     (fixedFocal : players focal = fun history view =>
-      FinDist.pure (focalResponse history view))
+      PMF.pure (focalResponse history view))
     (wireResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → WireCommand Player)
-    (fixedWire : wire = fun history view => FinDist.pure (wireResponse history view))
+    (fixedWire : wire = fun history view => PMF.pure (wireResponse history view))
     (orderResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → ServiceOrder graph)
-    (fixedOrder : order = fun history view => FinDist.pure (orderResponse history view))
+    (fixedOrder : order = fun history view => PMF.pure (orderResponse history view))
     (opponentCompiled : ∀ owner, owner ≠ focal →
       players owner = runtime.compilePlayerPolicy owner (profile owner))
     (event : graph.EventId) (observation : graph.PlayerObservation focal)
@@ -74,7 +74,7 @@ by the actual service under the fixed pure response triple. -/
 theorem reachedFocalPolicy_eq
     (runtime : EventGraphRuntime graph)
     (feasible : runtime.ServiceFeasible) (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -82,13 +82,13 @@ theorem reachedFocalPolicy_eq
     (focalResponse : List runtime.application.PlayerEntry →
       runtime.application.View → runtime.application.PlayerCommand)
     (fixedFocal : players focal = fun history view =>
-      FinDist.pure (focalResponse history view))
+      PMF.pure (focalResponse history view))
     (wireResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → WireCommand Player)
-    (fixedWire : wire = fun history view => FinDist.pure (wireResponse history view))
+    (fixedWire : wire = fun history view => PMF.pure (wireResponse history view))
     (orderResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → ServiceOrder graph)
-    (fixedOrder : order = fun history view => FinDist.pure (orderResponse history view))
+    (fixedOrder : order = fun history view => PMF.pure (orderResponse history view))
     (opponentCompiled : ∀ owner, owner ≠ focal →
       players owner = runtime.compilePlayerPolicy owner (profile owner))
     (event : graph.EventId) (actor : graph.actor? event = some focal)
@@ -96,7 +96,7 @@ theorem reachedFocalPolicy_eq
     (reached : ReachedFocalAction runtime inputs roster reactionRounds players wire order focal
       event (graph.normalizeObservation event focal observation) action) :
     reachedFocalPolicy runtime inputs roster reactionRounds players wire order focal
-      event actor observation = FinDist.pure action := by
+      event actor observation = PMF.pure action := by
   apply reachedFocalPolicy_eq_of_functional runtime inputs roster reactionRounds players wire
     order focal _ event actor observation action reached
   intro query observed left right leftReached rightReached

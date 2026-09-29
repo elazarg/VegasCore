@@ -16,7 +16,7 @@ theorem native_player_step (players : Player → nativeApp.Policy) (who : Player
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork (.player who) execution =
       (execution.environmentStep nativeApp (.activate who)).bind (nativeApp.invoke players who) :=
     by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch]
   rfl
 
@@ -34,21 +34,21 @@ theorem native_prelude_config (bit : Bool) (players : Player → nativeApp.Polic
     (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       [.player alice, .player watcher, .wire] (nativeStart bit)).support) :
     execution.application.config = (nativeInitial bit).config := by
-  simp only [runInteractionPlan, FinDist.bind_pure, report_step, native_player_step,
-    initial_activation, FinDist.pure_bind, ReactiveApplication.invoke,
-    FinDist.bind_map, FinDist.bind_bind] at reached
-  obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  simp only [runInteractionPlan, PMF.bind_pure, report_step, native_player_step,
+    initial_activation, PMF.pure_bind, ReactiveApplication.invoke,
+    PMF.bind_map, PMF.bind_bind] at reached
+  obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   change execution ∈ ((ambientRespond bit action).environmentStep nativeApp (.activate watcher)
     |>.bind fun observed =>
       (players watcher (observed.recall watcher) (observed.observe nativeApp watcher)).bind
-        fun reply => FinDist.pure (reported
+        fun reply => PMF.pure (reported
           (observed.respond nativeApp watcher reply))).support at reached
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.bind_map] at reached
-  obtain ⟨selected, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  obtain ⟨reply, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  change execution ∈ (FinDist.pure
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.bind_map] at reached
+  obtain ⟨selected, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨reply, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  change execution ∈ (PMF.pure
     (reported (watcherRespond bit action selected reply))).support at reached
-  rw [FinDist.mem_support_pure] at reached
+  rw [PMF.mem_support_pure_iff _ _] at reached
   subst execution
   exact prelude_report_config bit action selected reply
 
@@ -93,12 +93,12 @@ theorem native_player_keeps_alice_unfinished (players : Player → nativeApp.Pol
     alicePublication ∉ after.application.config.cut.completed := by
   rw [native_player_step] at reached
   obtain ⟨observed, activated, responded⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ responded
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ responded
   rw [(nativeRuntime.reactive_respond_application nativeLeaks observed who action).1]
-  obtain ⟨next, support, same⟩ := FinDist.support_map .. ▸ activated
+  obtain ⟨next, support, same⟩ := PMF.support_map .. ▸ activated
   rw [← same]
-  obtain ⟨selected, _, sameNext⟩ := FinDist.support_map .. ▸ support
+  obtain ⟨selected, _, sameNext⟩ := PMF.support_map .. ▸ support
   rw [← sameNext]
   exact unfinished
 
@@ -108,22 +108,22 @@ theorem native_bob_include_unfinished (players : Player → nativeApp.Policy)
     (reached : after ∈ (nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       (.includeLatest bobPublication bob) before).support) :
     alicePublication ∉ after.application.config.cut.completed := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at reached
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind] at reached
   rcases nativeRuntime.reactiveLatest_wait_or_owned nativeLeaks bobPublication bob
       (before.observeEnvironment nativeApp) with silent | ⟨id, owner, selected⟩
   · rw [silent] at reached
-    change after ∈ (before.environmentStep nativeApp .wait |>.bind FinDist.pure).support at reached
-    rw [FinDist.bind_pure] at reached
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at reached
+    change after ∈ (before.environmentStep nativeApp .wait |>.bind PMF.pure).support at reached
+    rw [PMF.bind_pure] at reached
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at reached
     subst after
     exact unfinished
   · rw [selected] at reached
     change after ∈ ((before.environmentStep nativeApp (.include id)).bind
-      FinDist.pure).support at reached
-    rw [FinDist.bind_pure] at reached
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at reached
+      PMF.pure).support at reached
+    rw [PMF.bind_pure] at reached
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at reached
     subst after
     exact bob_include_keeps_alice_unfinished before id owner unfinished
 
@@ -138,12 +138,12 @@ theorem native_maintenance_unfinished (players : Player → nativeApp.Policy)
   rcases allowed with rfl | rfl | rfl | rfl
   all_goals
     have moved := nativeRuntime.reactive_application_support nativeLeaks players _ before after
-      (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using reached)
-  · rw [FinDist.mem_support_pure.mp moved]
+      (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using reached)
+  · rw [(PMF.mem_support_pure_iff _ _).mp moved]
     exact unfinished
-  · rw [FinDist.mem_support_pure.mp moved]
+  · rw [(PMF.mem_support_pure_iff _ _).mp moved]
     exact unfinished
-  · rw [FinDist.mem_support_pure.mp moved]
+  · rw [(PMF.mem_support_pure_iff _ _).mp moved]
     exact unfinished
   · rcases nativeRuntime.environmentStep_expire_config_eq_or_mem_step
       before.application after.application bobPublication moved with same | ⟨ready, action, step⟩
@@ -186,9 +186,9 @@ theorem native_bob_visit_unfinished (players : Player → nativeApp.Policy)
     by simpa only [← planEq] using preserve
   clear preserve planEq
   induction plan generalizing before with
-  | nil => cases FinDist.mem_support_pure.mp reached; exact unfinished
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; exact unfinished
   | cons instruction rest ih =>
-      obtain ⟨middle, first, restMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨middle, first, restMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact ih middle (all instruction (List.mem_cons_self) before middle unfinished first)
         restMem (fun next member => all next (List.mem_cons_of_mem instruction member))
 
@@ -198,7 +198,7 @@ theorem native_before_alice_unfinished (bit : Bool) (players : Player → native
       (nativeBefore 1) (nativeStart bit)).support) :
     alicePublication ∉ execution.application.config.cut.completed := by
   rw [nativeBefore_succ bobPublication, runInteractionPlan_append] at reached
-  obtain ⟨previous, prelude, later⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨previous, prelude, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   apply native_bob_visit_unfinished players previous execution _ later
   rw [native_prelude_config bit players previous prelude]
   exact Finset.notMem_empty _
@@ -209,8 +209,8 @@ theorem native_rounds_prefix_support (players : Player → nativeApp.Policy)
       players count).support) :
     ∃ bit, execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       (nativePlan.take count) (nativeStart bit)).support := by
-  obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ stateMem
+  obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ stateMem
   refine ⟨bit, ?_⟩
   have law := native_segment_rounds players [] (nativePlan.take count) (nativePlan.drop count)
     (by simp) (nativeStart bit) rfl
@@ -226,16 +226,16 @@ theorem native_grant_application (players : Player → nativeApp.Policy)
     after.application = { before.application with serviceGrant := some event } := by
   have moved := nativeRuntime.reactive_application_support nativeLeaks players (.grant event)
     before after (by
-      simpa only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
-        FinDist.pure_bind] using supported)
-  exact FinDist.mem_support_pure.mp moved
+      simpa only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
+        PMF.pure_bind] using supported)
+  exact (PMF.mem_support_pure_iff _ _).mp moved
 
 theorem native_activation_application (before after : nativeApp.Execution) (who : Player)
     (supported : after ∈ (before.environmentStep nativeApp (.activate who)).support) :
     after.application = before.application := by
-  obtain ⟨next, member, same⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨next, member, same⟩ := PMF.support_map .. ▸ supported
   rw [← same]
-  obtain ⟨selected, _, sameNext⟩ := FinDist.support_map .. ▸ member
+  obtain ⟨selected, _, sameNext⟩ := PMF.support_map .. ▸ member
   rw [← sameNext]
 
 theorem native_alice_final_calendar (control : nativeApp.Control)
@@ -268,7 +268,7 @@ theorem native_alice_final_service (control : nativeApp.Control)
   rw [show nativePlan.take 9 = nativeBefore 1 ++ [.grant alicePublication] from rfl,
     runInteractionPlan_append] at prefixMem
   obtain ⟨previous, beforeMem, grantMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ prefixMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ prefixMem)
   have unfinished := native_before_alice_unfinished bit nativeMenu.uniformResponses previous
     beforeMem
   have ready := (native_before_available bit nativeMenu.uniformResponses alicePublication previous

@@ -64,9 +64,9 @@ theorem transition_sound (roster : List Player) (state next : channel.State)
   unfold transition at reached
   split at reached
   next pending =>
-      simp only [gameTransition, FinDist.support_bindOnSupport, Set.mem_iUnion] at reached
+      simp only [gameTransition, PMF.support_bindOnSupport, Set.mem_iUnion] at reached
       obtain ⟨target, realized, same⟩ := reached
-      cases FinDist.mem_support_pure.mp same
+      cases (PMF.mem_support_pure_iff _ _).mp same
       exact channel.advance_sound roster state sound _ _ target realized
   next actor rest pending =>
       have own := legal actor
@@ -77,7 +77,7 @@ theorem transition_sound (roster : List Player) (state next : channel.State)
           | inl action => simp [chosen, available, pending] at own
           | inr outgoing =>
               simp only [chosen, Option.bind_some, Sum.elim_inr] at reached
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               apply channel.communicate_sound state sound actor rest outgoing
               simpa [chosen, active, available, pending] using own
 

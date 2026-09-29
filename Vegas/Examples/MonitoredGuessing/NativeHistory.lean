@@ -25,13 +25,13 @@ private theorem native_instruction_actor (history : List nativeApp.EnvironmentEn
     (active : command.actor? nativeApp = some bob) : instruction = .player bob := by
   cases instruction with
   | player who =>
-      simp only [interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       simpa only [ReactiveApplication.Command.actor?, Option.some.injEq] using
         congrArg ServiceInstruction.player (Option.some.inj active)
   | wire =>
-      simp only [interactionInstruction, nativeNetwork, FinDist.map_pure,
-        FinDist.mem_support_pure] at supported
+      simp only [interactionInstruction, nativeNetwork, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases last : view.network.inputs.getLast? with
       | none =>
@@ -50,12 +50,12 @@ private theorem native_instruction_actor (history : List nativeApp.EnvironmentEn
               ReactiveApplication.atMostOnceCommand, ReactiveApplication.Command.actor?,
               reduceCtorEq] at active
   | includeLatest event owner =>
-      simp only [interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       unfold reactiveLatest at active
       split at active <;> cases active
   | grant event | sample event | tick | expire event =>
-      simp only [interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases active
 
@@ -66,7 +66,7 @@ theorem native_unique_bob_activation (history : List nativeApp.EnvironmentEntry)
   unfold nativeScheduler at supported
   cases selected : nativePlan[history.length]? with
   | none =>
-      simp only [selected, FinDist.mem_support_pure] at supported
+      simp only [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases active
   | some instruction =>
@@ -99,7 +99,7 @@ private theorem environment_recall (execution next : nativeApp.Execution)
     (supported : next ∈ (execution.environmentStep nativeApp command).support) :
     next.environmentRecall = execution.environmentRecall ++
       [⟨execution.observeEnvironment nativeApp, command⟩] := by
-  obtain ⟨updated, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ supported
   rfl
 
 private theorem idle_step_probability
@@ -109,9 +109,8 @@ private theorem idle_step_probability
     (inactive : ¬ nativeArena.active state bob) :
     nativeModel.playerStepProb profile bob trace joint = 1 := by
   let := nativeModel.subsingleton_choice_of_not_active trace inactive
-  change (profile bob (nativeModel.infoOf bob trace)).prob
-    (nativeModel.choicesOfLegal trace joint bob) = 1
-  rw [FinDist.eq_pure_of_subsingleton (profile bob (nativeModel.infoOf bob trace))
+  change ((profile bob (nativeModel.infoOf bob trace)) (nativeModel.choicesOfLegal trace joint bob)).toReal = 1
+  rw [eq_pure_of_subsingleton (profile bob (nativeModel.infoOf bob trace))
     (nativeModel.choicesOfLegal trace joint bob)]
   exact FinDist.prob_pure_self _
 
@@ -135,7 +134,7 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
             have position := (native_bob_remaining control prior same).1
             change _ ∈ (nativeApp.transition nativeInitialLaw nativeHorizon nativeScheduler
               (some control) joint).support at reached
-            simp only [ReactiveApplication.transition, same, FinDist.mem_support_pure] at reached
+            simp only [ReactiveApplication.transition, same, PMF.mem_support_pure_iff _ _] at reached
             subst_vars
             simp only [beforeBob, nativeApp.respond_environmentRecall, position,
               Nat.reduceLeDiff, reduceCtorEq, and_false, or_self] at early
@@ -148,18 +147,18 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
               (some ⟨remaining, actor, execution⟩) joint).support at reached
             cases actor with
             | some who =>
-                cases FinDist.mem_support_pure.mp reached
+                cases (PMF.mem_support_pure_iff _ _).mp reached
                 have previous : execution.environmentRecall.length ≤ 4 := by
                   simpa only [beforeBob, nativeApp.respond_environmentRecall,
                     reduceCtorEq, and_false, or_false] using early
                 exact Or.inl previous
             | none =>
                 cases remaining with
-                | zero => cases FinDist.mem_support_pure.mp reached; exact early
+                | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact early
                 | succ remaining =>
                     obtain ⟨command, _, moved⟩ :=
-                      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-                    obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                    obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                     have length := environment_recall execution next command supported
                     change execution.environmentRecall.length ≤ 4 ∨ _
                     left
@@ -214,16 +213,16 @@ private theorem afterBob_transition (before after : nativeApp.ProtocolState)
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact ⟨by simpa only [nativeApp.respond_environmentRecall] using valid.1,
             fun _ => rfl⟩
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, _, moved⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               have length := environment_recall execution next command supported
               change 5 ≤ next.environmentRecall.length ∧ _
               have lower := valid.1
@@ -253,7 +252,7 @@ theorem native_bob_last_decision : InformationModel.LastDecision (E := nativeAre
       change target ∈ (nativeApp.transition nativeInitialLaw nativeHorizon nativeScheduler
         history.state joint).support at moved
       rw [state] at moved
-      simp only [ReactiveApplication.transition, actor, FinDist.mem_support_pure] at moved
+      simp only [ReactiveApplication.transition, actor, PMF.mem_support_pure_iff _ _] at moved
       have initial : afterBob (history.extend legal realized).state := by
         change afterBob target
         rw [moved]

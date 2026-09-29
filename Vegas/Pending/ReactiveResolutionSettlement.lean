@@ -61,20 +61,20 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      simp only [List.map_nil, List.nil_append, runInteractionPlan, FinDist.bind_pure] at reached
+      simp only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure] at reached
       rw [runtime.interaction_includeLatest_of_pending_published leaks players network
         initial owner event published.pending] at reached
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨Or.inl rfl, accounted⟩
   | cons who rest ih =>
-      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at step
+      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at step
       change middle ∈ ((initial.environmentStep app (.activate who)).bind
         (app.invoke players who)).support at step
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at step
-      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ step)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ step
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at step
+      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app who sample
       have activePublished : activated.network.Satisfies fun message =>
           message.id ∈ activated.network.ledger.map Message.id := published.learn who sample
@@ -102,7 +102,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
           (by rw [preserved.1]; exact valid) (by rw [preserved.1]; exact ready)
           (by rw [preserved.1]; exact timely) (by rw [preserved.1]; exact granted)
           (by rw [preserved.2.1]; exact preserved.2.2.2.2.1)
-          ((app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+          ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
             activated who response activeSerials) nextAccounted tail
         refine ⟨?_, counters⟩
         have same : (activated.respond app who response).application =
@@ -167,8 +167,8 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
               (rest.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted).map
               fun result => (result.application, result.network.ledger,
                 result.receipts, result.network.nextSerial)).support :=
-          FinDist.support_map .. ▸ ⟨final, tail, rfl⟩
-        rw [law, handled, Option.getD_some, Option.isSome_some, FinDist.mem_support_pure] at mapped
+          PMF.support_map .. ▸ ⟨final, tail, rfl⟩
+        rw [law, handled, Option.getD_some, Option.isSome_some, PMF.mem_support_pure_iff _ _] at mapped
         refine ⟨Or.inr ⟨value, resolved, congrArg Prod.fst mapped⟩, ?_⟩
         have ledger := congrArg (fun result => result.2.1) mapped
         have counters := congrArg (fun result => result.2.2.2) mapped

@@ -27,100 +27,100 @@ variable {Action : Type u} {Outcome : Type v}
 
 /-- The weight and retained law are fixed before choosing a response. -/
 def includeLaw (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (retained : FinDist Action) : Option Action → FinDist Action
+    (retained : PMF Action) : Option Action → PMF Action
   | none => retained
-  | some action => FinDist.mix weight nonnegative atMostOne (FinDist.pure action) retained
+  | some action => mix weight nonnegative atMostOne (PMF.pure action) retained
 
 def responseLaw (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (retained : FinDist Action) (response : FinDist (Option Action)) : FinDist Action :=
+    (retained : PMF Action) (response : PMF (Option Action)) : PMF Action :=
   response.bind (includeLaw weight nonnegative atMostOne retained)
 
 /-- Sampling a source action and submitting it has the expected mixture law. -/
 theorem submitted_law (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (retained prescribed : FinDist Action) :
+    (retained prescribed : PMF Action) :
     responseLaw weight nonnegative atMostOne retained (prescribed.map some) =
-      FinDist.mix weight nonnegative atMostOne prescribed retained := by
-  apply FinDist.ext_of_prob
+      mix weight nonnegative atMostOne prescribed retained := by
+  apply pmf_ext_toReal
   intro action
-  simp only [responseLaw, FinDist.prob_bind, FinDist.expect_map, includeLaw,
-    FinDist.prob_mix, FinDist.expect_add, FinDist.expect_smul,
-    FinDist.expect_const, FinDist.expect_prob_pure]
+  simp only [responseLaw, toReal_bind_apply, expect_map, includeLaw,
+    mix_apply_toReal, FinDist.expect_add, FinDist.expect_smul,
+    expect_constant, FinDist.expect_prob_pure]
 
 /-- A continuation-optimal source lottery remains optimal after unresolved
 inclusion. The deviation may randomize over silence and arbitrary proposals.
 No ranking of the retained proposals is required from the source strategy. -/
 theorem optimal_response (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (retained prescribed : FinDist Action) (continuation : Action → FinDist Outcome)
+    (retained prescribed : PMF Action) (continuation : Action → PMF Outcome)
     (utility : Outcome → ℝ)
-    (optimal : ∀ action, (continuation action).expect utility ≤
-      (prescribed.bind continuation).expect utility)
-    (alternative : FinDist (Option Action)) :
-    ((responseLaw weight nonnegative atMostOne retained alternative).bind continuation).expect
+    (optimal : ∀ action, expect (continuation action) utility ≤
+      expect (prescribed.bind continuation) utility)
+    (alternative : PMF (Option Action)) :
+    expect ((responseLaw weight nonnegative atMostOne retained alternative).bind continuation)
       utility ≤
-    ((responseLaw weight nonnegative atMostOne retained (prescribed.map some)).bind
-      continuation).expect utility := by
-  let value := fun action => (continuation action).expect utility
-  have best (action : Action) : value action ≤ prescribed.expect value := by
+    expect ((responseLaw weight nonnegative atMostOne retained (prescribed.map some)).bind
+      continuation) utility := by
+  let value := fun action => expect (continuation action) utility
+  have best (action : Action) : value action ≤ expect prescribed value := by
     simpa only [FinDist.expect_bind] using optimal action
-  have oldBound : retained.expect value ≤ prescribed.expect value :=
+  have oldBound : expect retained value ≤ expect prescribed value :=
     FinDist.expect_le_of_forall _ _ _ (fun action _ => best action)
   rw [submitted_law]
   simp only [FinDist.expect_bind, FinDist.expect_mix, responseLaw]
-  change alternative.expect (fun response =>
-      (includeLaw weight nonnegative atMostOne retained response).expect value) ≤
-    weight * prescribed.expect value + (1 - weight) * retained.expect value
+  change expect alternative (fun response =>
+      expect (includeLaw weight nonnegative atMostOne retained response) value) ≤
+    weight * expect prescribed value + (1 - weight) * expect retained value
   apply FinDist.expect_le_of_forall
   intro response _
   cases response with
   | none =>
-      change retained.expect value ≤ _
+      change expect retained value ≤ _
       nlinarith [mul_nonneg nonnegative (sub_nonneg.mpr oldBound)]
   | some action =>
-      simp only [includeLaw, FinDist.expect_mix, FinDist.expect_pure]
+      simp only [includeLaw, FinDist.expect_mix, expect_pure]
       exact add_le_add (mul_le_mul_of_nonneg_left (best action) nonnegative) le_rfl
 
 /-- Reusing any supported choice of an optimal lottery is also optimal. The
 recovery policy need not resample the lottery or rank its supported actions. -/
 theorem optimal_response_of_support (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (atMostOne : weight ≤ 1) (retained prescribed recovered : FinDist Action)
-    (continuation : Action → FinDist Outcome) (utility : Outcome → ℝ)
-    (optimal : ∀ action, (continuation action).expect utility ≤
-      (prescribed.bind continuation).expect utility)
+    (atMostOne : weight ≤ 1) (retained prescribed recovered : PMF Action)
+    (continuation : Action → PMF Outcome) (utility : Outcome → ℝ)
+    (optimal : ∀ action, expect (continuation action) utility ≤
+      expect (prescribed.bind continuation) utility)
     (supported : recovered.support ⊆ prescribed.support)
-    (alternative : FinDist (Option Action)) :
-    ((responseLaw weight nonnegative atMostOne retained alternative).bind continuation).expect
+    (alternative : PMF (Option Action)) :
+    expect ((responseLaw weight nonnegative atMostOne retained alternative).bind continuation)
       utility ≤
-    ((responseLaw weight nonnegative atMostOne retained (recovered.map some)).bind
-      continuation).expect utility := by
-  let value := fun action => (continuation action).expect utility
-  have best (action : Action) : value action ≤ prescribed.expect value := by
+    expect ((responseLaw weight nonnegative atMostOne retained (recovered.map some)).bind
+      continuation) utility := by
+  let value := fun action => expect (continuation action) utility
+  have best (action : Action) : value action ≤ expect prescribed value := by
     simpa only [FinDist.expect_bind] using optimal action
   have equal (action : Action) (member : action ∈ prescribed.support) :
-      value action = prescribed.expect value :=
+      value action = expect prescribed value :=
     prescribed.eq_of_expect_eq_of_le value _ (fun action _ => best action) rfl member
-  have sameValue : recovered.expect value = prescribed.expect value := by
+  have sameValue : expect recovered value = expect prescribed value := by
     calc
-      recovered.expect value = recovered.expect (fun _ => prescribed.expect value) :=
-        FinDist.expect_congr fun action member => equal action (supported member)
-      _ = _ := FinDist.expect_const ..
+      expect recovered value = expect recovered (fun _ => expect prescribed value) :=
+        expect_congr_on_support fun action member => equal action (supported member)
+      _ = _ := expect_constant ..
   apply optimal_response weight nonnegative atMostOne retained recovered continuation utility
     ?_ alternative
   intro action
   simpa only [FinDist.expect_bind, ← sameValue] using best action
 
 /-- The source and native continuation games share the same downstream law. -/
-def sourceGame (continuation : Action → FinDist Outcome) : GameForm Unit where
-  sig := { Strategy := fun _ => FinDist Action, Outcome := Outcome }
+def sourceGame (continuation : Action → PMF Outcome) : GameForm Unit where
+  sig := { Strategy := fun _ => PMF Action, Outcome := Outcome }
   play profile := (profile ()).bind continuation
 
 def responseGame (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (retained : FinDist Action) (continuation : Action → FinDist Outcome) : GameForm Unit where
-  sig := { Strategy := fun _ => FinDist (Option Action), Outcome := Outcome }
+    (retained : PMF Action) (continuation : Action → PMF Outcome) : GameForm Unit where
+  sig := { Strategy := fun _ => PMF (Option Action), Outcome := Outcome }
   play profile := (responseLaw weight nonnegative atMostOne retained (profile ())).bind continuation
 
 theorem nash_preserved (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
-    (retained : FinDist Action) (continuation : Action → FinDist Outcome)
-    (utility : Outcome → Unit → ℝ) (prescribed : FinDist Action)
+    (retained : PMF Action) (continuation : Action → PMF Outcome)
+    (utility : Outcome → Unit → ℝ) (prescribed : PMF Action)
     (optimal : IsNash (sourceGame continuation) (euPreference utility) (fun _ => prescribed)) :
     IsNash (responseGame weight nonnegative atMostOne retained continuation)
       (euPreference utility) (fun _ => prescribed.map some) := by
@@ -130,8 +130,8 @@ theorem nash_preserved (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : 
   apply optimal_response weight nonnegative atMostOne retained prescribed continuation
     (utility · ()) ?_ alternative
   intro action
-  have bound := optimal () (FinDist.pure action)
+  have bound := optimal () (PMF.pure action)
   simpa only [euPreference, expectedUtility, sourceGame, Profile.update_same,
-    FinDist.pure_bind] using bound
+    PMF.pure_bind] using bound
 
 end GameTheory.PendingChoice

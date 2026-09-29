@@ -137,8 +137,8 @@ decision site of the prescribed plan. -/
 def DecisionPlan.tremble (plan : M.DecisionPlan who) (epsilon : ℝ)
     (nonnegative : 0 ≤ epsilon)
     (small : ∀ site : M.InformationSite who,
-      epsilon * Fintype.card (M.Choice who site.1) ≤ 1) : FinDist (M.DecisionPlan who) :=
-  FinDist.pi fun site => (FinDist.pure (plan site)).tremble epsilon nonnegative (small site)
+      epsilon * Fintype.card (M.Choice who site.1) ≤ 1) : PMF (M.DecisionPlan who) :=
+  independentProduct fun site => (PMF.pure (plan site)).tremble epsilon nonnegative (small site)
 
 /-- The current local law is the prescribed choice with its own independent
 uniform tremble. This statement precedes any conditioning on past choices. -/
@@ -148,7 +148,7 @@ theorem DecisionPlan.tremble_marginal (plan : M.DecisionPlan who) (epsilon : ℝ
       epsilon * Fintype.card (M.Choice who site.1) ≤ 1)
     (site : M.InformationSite who) :
     (plan.tremble epsilon nonnegative small).map (fun realized => realized site) =
-      (FinDist.pure (plan site)).tremble epsilon nonnegative (small site) := by
+      (PMF.pure (plan site)).tremble epsilon nonnegative (small site) := by
   classical
   exact FinDist.map_apply_pi site _
 
@@ -160,13 +160,13 @@ theorem DecisionPlan.mem_support_tremble (plan : M.DecisionPlan who) (epsilon : 
     realized ∈ (plan.tremble epsilon positive.le small).support := by
   apply FinDist.mem_support_pi.mpr
   intro site
-  apply FinDist.prob_pos_iff.mp
+  apply pmf_toReal_pos_iff.mp
   exact positive.trans_le
-    (FinDist.le_prob_tremble _ epsilon positive.le (small site) (realized site))
+    (PMF.le_prob_tremble _ epsilon positive.le (small site) (realized site))
 
 /-- Mix prescribed finite plans, independently tremble their decision
 coordinates, and extend the realized table to the existing pure-policy carrier. -/
-def trembledMixedPolicy (plans : FinDist (M.DecisionPlan who)) (epsilon : ℝ)
+def trembledMixedPolicy (plans : PMF (M.DecisionPlan who)) (epsilon : ℝ)
     (nonnegative : 0 ≤ epsilon)
     (small : ∀ site : M.InformationSite who,
       epsilon * Fintype.card (M.Choice who site.1) ≤ 1)
@@ -177,7 +177,7 @@ def trembledMixedPolicy (plans : FinDist (M.DecisionPlan who)) (epsilon : ℝ)
 /-- Every legal decision record has positive compatible mass under positive
 local trembles, regardless of correlations in the prescribed-plan law. -/
 theorem trembledMixedPolicy_consistent (recall : M.PerfectRecall)
-    (plans : FinDist (M.DecisionPlan who)) (epsilon : ℝ) (positive : 0 < epsilon)
+    (plans : PMF (M.DecisionPlan who)) (epsilon : ℝ) (positive : 0 < epsilon)
     (small : ∀ site : M.InformationSite who,
       epsilon * Fintype.card (M.Choice who site.1) ≤ 1)
     (fallback : M.Policy who) (current : M.InformationSite who) :
@@ -191,9 +191,9 @@ theorem trembledMixedPolicy_consistent (recall : M.PerfectRecall)
   obtain ⟨prescribed, supported⟩ := plans.support_nonempty
   refine ⟨realized.extend fallback,
     (realized.consistentAt_extend_iff recall fallback current).mpr compatible, ?_⟩
-  rw [trembledMixedPolicy, FinDist.support_map]
+  rw [trembledMixedPolicy, PMF.support_map]
   refine ⟨realized, ?_, rfl⟩
-  rw [FinDist.support_bind]
+  rw [PMF.support_bind]
   exact Set.mem_iUnion₂.mpr
     ⟨prescribed, supported, prescribed.mem_support_tremble epsilon positive small realized⟩
 
@@ -201,13 +201,13 @@ theorem trembledMixedPolicy_consistent (recall : M.PerfectRecall)
 decision choice. Perfect recall supplies both record satisfiability and the
 fact that the current coordinate has not been conditioned on already. -/
 theorem le_prob_trembledMixedPolicy_toBehavioralWith (recall : M.PerfectRecall)
-    (plans : FinDist (M.DecisionPlan who)) (epsilon : ℝ) (positive : 0 < epsilon)
+    (plans : PMF (M.DecisionPlan who)) (epsilon : ℝ) (positive : 0 < epsilon)
     (small : ∀ site : M.InformationSite who,
       epsilon * Fintype.card (M.Choice who site.1) ≤ 1)
     (fallback : M.Policy who) (current : M.InformationSite who)
     (action : M.Choice who current.1) :
-    epsilon ≤ ((trembledMixedPolicy plans epsilon positive.le small fallback).toBehavioralWith
-      fallback current.1).prob action := by
+    epsilon ≤ (((trembledMixedPolicy plans epsilon positive.le small fallback).toBehavioralWith
+      fallback current.1) action).toReal := by
   classical
   let law := plans.bind fun plan => plan.tremble epsilon positive.le small
   let extend : M.DecisionPlan who → M.Policy who := fun plan => plan.extend fallback
@@ -224,19 +224,19 @@ theorem le_prob_trembledMixedPolicy_toBehavioralWith (recall : M.PerfectRecall)
     fallback current
   have table_positive : ∃ plan ∈ event, plan ∈ law.support := by
     obtain ⟨policy, compatible, present⟩ := supported
-    rw [trembledMixedPolicy, FinDist.support_map] at present
+    rw [trembledMixedPolicy, PMF.support_map] at present
     obtain ⟨plan, present, rfl⟩ := present
     refine ⟨plan, ?_, present⟩
     exact (plan.consistentAt_extend_iff recall fallback current).mp compatible
   have lower := FinDist.le_prob_condOn_mixture_pi plans
-    (fun plan site => (FinDist.pure (plan site)).tremble epsilon positive.le (small site))
+    (fun plan site => (PMF.pure (plan site)).tremble epsilon positive.le (small site))
     current.recordChoices current (current.recordChoices_self recall) action epsilon
-    (fun plan _ => FinDist.le_prob_tremble _ epsilon positive.le (small current) action)
+    (fun plan _ => PMF.le_prob_tremble _ epsilon positive.le (small current) action)
     table_positive
   rw [FinDist.prob_map_eq_probOf_preimage_singleton,
     FinDist.probOf_condOn_eq_inter] at lower
-  change epsilon ≤ (MixedPolicy.toBehavioralWith (M := M)
-    (law.map extend) fallback current.1).prob action
+  change epsilon ≤ ((MixedPolicy.toBehavioralWith (M := M)
+    (law.map extend) fallback current.1) action).toReal
   change ∃ policy ∈ M.ConsistentAt who current.1,
     policy ∈ (law.map extend).support at supported
   rw [MixedPolicy.toBehavioralWith, dite_eq_left supported,
@@ -250,9 +250,9 @@ def BehavioralDecisionPlan.residualPlans (policy : M.BehavioralDecisionPlan who)
     (epsilon : ℝ)
     (small : ∀ site : M.InformationSite who,
       epsilon * Fintype.card (M.Choice who site.1) < 1)
-    (floor : ∀ site (choice : M.Choice who site.1), epsilon ≤ (policy site).prob choice) :
-    FinDist (M.DecisionPlan who) :=
-  FinDist.pi fun site => (policy site).removeTremble epsilon (small site) (floor site)
+    (floor : ∀ site (choice : M.Choice who site.1), epsilon ≤ ((policy site) choice).toReal) :
+    PMF (M.DecisionPlan who) :=
+  independentProduct fun site => (policy site).removeTremble epsilon (small site) (floor site)
 
 /-- Independent residual plans followed by independent local trembles recover
 the exact product law of the original behavioral choices. -/
@@ -260,17 +260,17 @@ theorem BehavioralDecisionPlan.residualPlans_tremble (policy : M.BehavioralDecis
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon)
     (small : ∀ site : M.InformationSite who,
       epsilon * Fintype.card (M.Choice who site.1) < 1)
-    (floor : ∀ site (choice : M.Choice who site.1), epsilon ≤ (policy site).prob choice) :
+    (floor : ∀ site (choice : M.Choice who site.1), epsilon ≤ ((policy site) choice).toReal) :
     (policy.residualPlans epsilon small floor).bind
         (fun plan => plan.tremble epsilon nonnegative (fun site => (small site).le)) =
-      FinDist.pi policy := by
+      independentProduct policy := by
   exact (FinDist.pi_bind
     (fun site : M.InformationSite who =>
       (policy site).removeTremble epsilon (small site) (floor site))
     (fun (site : M.InformationSite who) (choice : M.Choice who site.1) =>
-      (FinDist.pure choice).tremble epsilon nonnegative (small site).le)).trans
-    (congrArg FinDist.pi (funext fun site =>
-      (FinDist.bind_tremble_pure _ epsilon nonnegative (small site).le).trans
-        (FinDist.tremble_removeTremble _ epsilon nonnegative (small site) (floor site))))
+      (PMF.pure choice).tremble epsilon nonnegative (small site).le)).trans
+    (congrArg independentProduct (funext fun site =>
+      (PMF.bind_tremble_pure _ epsilon nonnegative (small site).le).trans
+        (PMF.tremble_removeTremble _ epsilon nonnegative (small site) (floor site))))
 
 end GameTheory.Protocol.InformationModel

@@ -54,7 +54,7 @@ theorem sourceService_normalized_support
     (setup : Setup (Player := Player) (L := L))
     (profile : Profile (setup.informationModel
       (CommitmentInterface.values setup.program)).behavioralSignature)
-    (full : ∀ who info, (profile who info).FullSupport) (who : Player) :
+    (full : ∀ who info, FullSupport (profile who info)) (who : Player) :
     (normalizeDisclosureProfile setup.program [] (Revelations.initial setup.context)
       (setup.decodeBehavioralProfile (CommitmentInterface.values setup.program) profile)
         who).SupportsEffectiveChoices setup.program (CommitmentInterface.values setup.program)
@@ -82,7 +82,7 @@ theorem sourceService_consistent_supported_sequence [Fintype Player]
     (consistent : assessment.IsSequentiallyConsistent antichain) :
     ∃ sequence : Nat → (setup.informationModel
         (CommitmentInterface.values setup.program)).BehavioralAssessment,
-      (∀ n who info, ((sequence n).strategy who info).FullSupport) ∧
+      (∀ n who info, FullSupport ((sequence n).strategy who info)) ∧
       (∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent
         (setup.informationModel (CommitmentInterface.values setup.program))
         (sequence n) antichain) ∧

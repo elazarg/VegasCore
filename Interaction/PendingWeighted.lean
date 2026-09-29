@@ -19,14 +19,14 @@ open GameTheory.Math.Probability
 variable {Principal Payload : Type} [DecidableEq Principal]
 
 def chooseWeighted (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)
-    (candidates : Finset (MessageId Principal)) : FinDist (Option (MessageId Principal)) :=
+    (candidates : Finset (MessageId Principal)) : PMF (Option (MessageId Principal)) :=
   if nonempty : candidates.Nonempty then
-    (FinDist.weightedSet candidates nonempty weight positive).map some
-  else FinDist.pure none
+    (PMF.weightedSet candidates nonempty weight positive).map some
+  else PMF.pure none
 
 def weightedPending (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)
     (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload)) :
-    FinDist (Option (MessageId Principal)) :=
+    PMF (Option (MessageId Principal)) :=
   chooseWeighted weight positive (eligibleIds eligible pending)
 
 theorem weightedPending_one (eligible : Message Principal Payload → Bool)
@@ -35,7 +35,7 @@ theorem weightedPending_one (eligible : Message Principal Payload → Bool)
       uniformPending eligible pending := by
   unfold weightedPending uniformPending chooseWeighted chooseUniform
   split
-  · rw [FinDist.weightedSet_one]
+  · rw [PMF.weightedSet_one]
   · rfl
 
 theorem weightedPending_append_fresh
@@ -45,19 +45,19 @@ theorem weightedPending_append_fresh
     (nonempty : (eligibleIds eligible pending).Nonempty)
     (fresh : packet.id ∉ eligibleIds eligible pending) :
     weightedPending weight positive eligible (pending ++ [packet]) =
-      let total := FinDist.totalWeight (eligibleIds eligible pending) weight
-      let totalPositive := FinDist.totalWeight_pos _ nonempty weight positive
-      FinDist.mix (weight packet.id / (weight packet.id + total))
+      let total := PMF.totalWeight (eligibleIds eligible pending) weight
+      let totalPositive := PMF.totalWeight_pos _ nonempty weight positive
+      mix (weight packet.id / (weight packet.id + total))
         (div_nonneg (positive packet.id).le (add_pos (positive packet.id) totalPositive).le)
         ((div_le_one (add_pos (positive packet.id) totalPositive)).mpr
           (le_add_of_nonneg_right totalPositive.le))
-        (FinDist.pure (some packet.id)) (weightedPending weight positive eligible pending) := by
+        (PMF.pure (some packet.id)) (weightedPending weight positive eligible pending) := by
   unfold weightedPending
   rw [eligibleIds_append, ite_eq_left accepted]
   simp only [chooseWeighted, dite_eq_left nonempty,
     dite_eq_left (Finset.insert_nonempty packet.id _)]
-  rw [FinDist.weightedSet_insert _ nonempty weight positive packet.id fresh,
-    FinDist.map_mix, FinDist.map_pure]
+  rw [PMF.weightedSet_insert _ nonempty weight positive packet.id fresh,
+    mix_map, PMF.pure_map]
 
 theorem weightedPending_append_regular
     (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)
@@ -68,7 +68,7 @@ theorem weightedPending_append_regular
     (weightedPending weight positive eligible pending).RegularAt
       (weightedPending weight positive eligible (pending ++ [packet])) (some packet.id) := by
   rw [weightedPending_append_fresh weight positive eligible pending packet accepted nonempty fresh]
-  apply FinDist.regularAt_mix
+  apply PMF.regularAt_mix
 
 theorem weightedPending_replay
     (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)

@@ -46,7 +46,7 @@ theorem compilePlayerPolicy_binding_submission
       | none =>
           unfold compilePlayerPolicy at supported
           rw [grant] at supported
-          simp only [FinDist.mem_support_pure, reduceCtorEq] at supported
+          simp only [PMF.mem_support_pure_iff _ _, reduceCtorEq] at supported
       | some granted =>
           have atEvent := runtime.compilePlayerPolicy_commandAt owner policy history view
             granted grant (.submit packet) supported
@@ -65,10 +65,10 @@ theorem compilePlayerPolicy_binding_submission
             rw [viewNode] at supported
             repeat' first | split at supported
             all_goals subst_vars
-            all_goals try simp only [FinDist.mem_support_pure] at supported
+            all_goals try simp only [PMF.mem_support_pure_iff _ _] at supported
             all_goals try { cases supported }
             all_goals try {
-              rw [FinDist.support_map, Set.mem_image] at supported
+              rw [PMF.support_map, Set.mem_image] at supported
               obtain ⟨action, _, impossible⟩ := supported
               cases impossible }
             all_goals simp_all [Payload.event?]
@@ -465,7 +465,7 @@ theorem serviceStep_prescribedBindingSubmissions
     after.native.pool.Satisfies (PrescribedBindingSubmissions (graph := graph) owner) := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, commandMem, step⟩ := member
       apply runtime.application.playerStep_pool_satisfies _ who before after command safe _ step
@@ -480,7 +480,7 @@ theorem serviceStep_prescribedBindingSubmissions
         (MessageApplication.State.observe runtime.application before.native owner)
         event payloadTy outputEq packet commandMem addressed
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.application.environmentPolicyStep_pool_satisfies _ before after command safe
@@ -534,12 +534,12 @@ theorem serviceStep_authorship
     runtime.application.Authorship after := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.application.playerStep_authorship who before after command authorship step
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.application.environmentStep_authorship before after command authorship step

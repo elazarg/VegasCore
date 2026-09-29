@@ -43,8 +43,8 @@ theorem finish_owner_response (watcher owner : Player)
           (execution.respond (application setup leaks) owner response)).map
             (application setup leaks).finished) := by
   simp only [ReactiveApplication.finish, ReactiveApplication.resume,
-    ReactiveApplication.invoke, FinDist.bind_map, FinDist.map_bind]
-  apply FinDist.bind_congr
+    ReactiveApplication.invoke, PMF.bind_map, PMF.map_bind]
+  apply bind_congr_on_support _
   intro response _
   congr 1
   apply suffix_rounds setup leaks watcher players (before ++ [.player owner]) rest
@@ -75,7 +75,7 @@ theorem finish_owner_report (watcher owner : Player)
     (.includeLatest event owner :: .player watcher :: .wire :: rest) split execution position
   simp only [List.length_cons] at finish
   rw [show rest.length + 3 = rest.length + 1 + 1 + 1 by omega, finish]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro response _
   congr 1
   let segment : List (ServiceInstruction (graph setup)) :=
@@ -91,11 +91,11 @@ theorem finish_owner_report (watcher owner : Player)
           ((application setup leaks).reportInclusion players watcher) := by
     rw [show segment = .includeLatest event owner :: [.player watcher, .wire] from rfl,
       runInteractionPlan]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro next _
     exact (runtime setup).run_report_plan leaks players watcher next
   rw [← report]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro next reached
   symm
   apply suffix_rounds setup leaks watcher players (before ++ [.player owner] ++ segment) rest
@@ -204,12 +204,10 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
     let submitted := control.execution.respond (application setup leaks) owner
       ⟨some (.submit submission)⟩
-    (leaks watcher submitted.network.pending).probOf
-        {selected | (owner, control.execution.network.nextSerial owner) ∈ selected} ≤
-      ((watchedInformation setup leaks bounds watcher).runBehavioralFrom
+    ((leaks watcher submitted.network.pending).toOuterMeasure {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal ≤
+      (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
         (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
-          profile owner ((profile owner).commit site.1 action)) fuel history.1).probOf
-            {final | departureAtState setup leaks owner final.state} := by
+          profile owner ((profile owner).commit site.1 action)) fuel history.1).toOuterMeasure {final | departureAtState setup leaks owner final.state}).toReal := by
   classical
   let app := application setup leaks
   let responses := watchedMenu setup leaks bounds watcher
@@ -240,15 +238,15 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
           (scheduler setup leaks watcher) owner history.1.trace
       _ = _ := by rw [state]; simp only [ReactiveApplication.observe, active, ↓reduceIte]
   have response : players owner (control.execution.recall owner)
-      (control.execution.observe app owner) = FinDist.pure ⟨some (.submit submission)⟩ := by
+      (control.execution.observe app owner) = PMF.pure ⟨some (.submit submission)⟩ := by
     simp only [players, changed, ReactiveApplication.ResponseMenu.decodeProfile,
       ReactiveApplication.decodePolicy, ReactiveApplication.ResponseMenu.embedPolicy,
-      Profile.update_same, FinDist.map_comp, ReactiveApplication.ResponseMenu.rawChoice,
+      Profile.update_same, PMF.map_comp, ReactiveApplication.ResponseMenu.rawChoice,
       Function.comp_def]
     change (((profile owner).commit site.1 action)
       (some (control.execution.recall owner, control.execution.observe app owner))).map
         (fun selected => selected.1.getD ⟨none⟩) = _
-    rw [← observed, InformationModel.BehavioralPolicy.commit_self, FinDist.map_pure, chosen]
+    rw [← observed, InformationModel.BehavioralPolicy.commit_self, PMF.pure_map, chosen]
     rfl
   have reporter : players watcher = app.reportFirstUnpublished :=
     watched_decode_reports setup leaks bounds watcher changed
@@ -261,12 +259,12 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     cases control
     exact congrArg₂ (fun time who => ReactiveApplication.Control.mk time who _)
       remaining active
-  rw [state, controlEq, finish, response, FinDist.pure_bind] at exactLaw
+  rw [state, controlEq, finish, response, PMF.pure_bind] at exactLaw
   have monitored := reserved_report_departure_lower setup leaks owner watcher different players
     reporter control.execution event submission serials pendingPublished knownPublished departure
     (scheduler setup leaks watcher) rest.length
   have mapped := congrArg
-    (fun law : FinDist app.ProtocolState => law.probOf {s | departureAtState setup leaks owner s})
+    (fun law : PMF app.ProtocolState => (law.toOuterMeasure {s | departureAtState setup leaks owner s}).toReal)
     exactLaw
   rw [FinDist.probOf_map, FinDist.probOf_map] at mapped
   exact monitored.trans_eq mapped.symm

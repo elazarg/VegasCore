@@ -139,7 +139,7 @@ theorem RevealOnly.runFrom_bindingsOpenable {Γ : SourceCtx Player L} {O : Finse
   | sample name fresh law next ih => exact reveals.elim
   | commit name owner fresh guard next ih => exact reveals.elim
   | reveal published owner name fresh source unresolved next ih =>
-      rw [runFrom_reveal, FinDist.support_bind] at supported
+      rw [runFrom_reveal, PMF.support_bind] at supported
       obtain ⟨disclose, _chosen, continued⟩ := Set.mem_iUnion₂.mp supported
       exact ih reveals (afterReveal profile) (revealSuccessor published source config disclose)
         (revealSuccessor_bindingsOpenable published source config openable disclose)

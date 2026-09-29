@@ -14,6 +14,42 @@ namespace GameTheory.Math.Probability
 
 variable {α β γ δ : Type*}
 
+open Classical in
+/-- The real mass of a point law. -/
+theorem toReal_pure_apply (b a : α) : ((PMF.pure b) a).toReal = if a = b then 1 else 0 := by
+  rw [PMF.pure_apply]
+  split_ifs <;> simp
+
+/-- The real atom masses of a law on a finite carrier sum to one. -/
+theorem pmf_sum_toReal_eq_one [Fintype α] (μ : PMF α) : ∑ a, (μ a).toReal = 1 := by
+  have total := μ.tsum_coe
+  rw [tsum_fintype] at total
+  rw [← ENNReal.toReal_sum fun a _ => μ.apply_ne_top a, total, ENNReal.toReal_one]
+
+/-- A point has positive real mass exactly when it is supported. -/
+theorem pmf_toReal_pos_iff {μ : PMF α} {a : α} : 0 < (μ a).toReal ↔ a ∈ μ.support := by
+  rw [ENNReal.toReal_pos_iff, PMF.mem_support_iff, pos_iff_ne_zero]
+  exact and_iff_left (μ.apply_lt_top a)
+
+/-- Laws with the same real atom masses are equal. -/
+theorem pmf_ext_toReal {μ ν : PMF α} (same : ∀ a, (μ a).toReal = (ν a).toReal) : μ = ν :=
+  PMF.ext fun a => (ENNReal.toReal_eq_toReal_iff' (μ.apply_ne_top a) (ν.apply_ne_top a)).mp
+    (same a)
+
+/-- When only one supported branch can produce an outcome, the outcome's mass
+is that branch's mass times its conditional mass. -/
+theorem bind_apply_of_unique_branch (law : PMF α) (branch : α → PMF β)
+    (outcome : β) (selected : α)
+    (unique : ∀ value ∈ law.support, outcome ∈ (branch value).support → value = selected) :
+    (law.bind branch) outcome = law selected * branch selected outcome := by
+  rw [PMF.bind_apply, tsum_eq_single selected]
+  intro value different
+  by_cases supported : value ∈ law.support
+  · have absent : outcome ∉ (branch value).support := fun present =>
+      different (unique value supported present)
+    rw [(PMF.apply_eq_zero_iff _ _).mpr absent, mul_zero]
+  · rw [(PMF.apply_eq_zero_iff _ _).mpr supported, zero_mul]
+
 /-- Pushforwards agree when their functions agree everywhere the source law
 can actually draw. -/
 theorem map_congr_on_support (μ : PMF α) {f g : α → β}
@@ -58,5 +94,64 @@ theorem bind_eq_of_map_eq (μ : PMF α) (ν : PMF β)
     _ = ν.bind H := by
       rw [PMF.bind_map]
       exact bind_congr_on_support ν fun b hb => (hsecond b hb).symm
+
+/-- A finitely supported law can give every point positive probability only on
+a finite carrier. A finite time horizon alone does not provide this premise. -/
+theorem FullSupport.finite {law : PMF α} (finiteSupport : law.support.Finite)
+    (full : FullSupport law) : Finite α :=
+  Set.finite_univ_iff.mp (finiteSupport.subset fun value _ => full value)
+
+/-- Support-dependent binds transport across equality of their source laws
+when corresponding branches agree. -/
+theorem bindOnSupport_congr_measure {μ ν : PMF α} (same : μ = ν)
+    (f : ∀ a ∈ μ.support, PMF β) (g : ∀ a ∈ ν.support, PMF β)
+    (agree : ∀ a ha hb, f a ha = g a hb) :
+    μ.bindOnSupport f = ν.bindOnSupport g := by
+  subst ν
+  exact bindOnSupport_congr μ fun a ha => agree a ha ha
+
+/-- Retype a law whose entire support satisfies a predicate. This does not
+condition or renormalize the law. -/
+def pmfToSubtype (law : PMF α) {P : α → Prop}
+    (supported : ∀ value ∈ law.support, P value) : PMF {value // P value} :=
+  law.bindOnSupport fun value member => PMF.pure ⟨value, supported value member⟩
+
+@[simp] theorem map_val_pmfToSubtype (law : PMF α) {P : α → Prop}
+    (supported : ∀ value ∈ law.support, P value) :
+    (pmfToSubtype law supported).map Subtype.val = law := by
+  rw [pmfToSubtype, map_bindOnSupport,
+    bindOnSupport_eq_bind_of_eq_on_support _ (g := PMF.pure) fun _ _ => PMF.pure_map _ _,
+    PMF.bind_pure]
+
+theorem map_pmfToSubtype (law : PMF α) {P : α → Prop}
+    (supported : ∀ value ∈ law.support, P value) (f : α → β) :
+    (pmfToSubtype law supported).map (fun value => f value.1) = law.map f := by
+  change (pmfToSubtype law supported).map (f ∘ Subtype.val) = law.map f
+  rw [← PMF.map_comp, map_val_pmfToSubtype]
+
+/-- Iterating a kernel after an initial bind is the bind of the iterates. -/
+theorem iterate_bind (kernel : β → PMF β) (count : Nat) (law : PMF α)
+    (start : α → PMF β) :
+    (fun distribution => distribution.bind kernel)^[count] (law.bind start) =
+      law.bind (fun value => (fun distribution => distribution.bind kernel)^[count]
+        (start value)) := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+      simp only [Function.iterate_succ_apply', ih, PMF.bind_bind]
+
+/-- Transporting a law along a type equality maps it by the cast. -/
+theorem cast_eq_map_cast {A B : Type _} (same : A = B) (law : PMF A) :
+    cast (congrArg PMF same) law = law.map (cast same) := by
+  cases same
+  exact (PMF.map_id law).symm
+
+/-- A law whose transport is another law is that law mapped back by the cast. -/
+theorem eq_map_cast_of_cast_eq {A B : Type _} (same : A = B) (law : PMF A)
+    (transported : PMF B) (equal : cast (congrArg PMF same) law = transported) :
+    law = transported.map (cast same.symm) := by
+  cases same
+  cases equal
+  exact (PMF.map_id law).symm
 
 end GameTheory.Math.Probability

@@ -52,20 +52,20 @@ theorem disclosedBit_actual (bit : Bool) :
 /-- The translation receives a response function, not a utility or belief. -/
 def evidencePolicy (answer : Bool → Bool) : nativeModel.BehavioralPolicy true := fun info =>
   match info with
-  | none => FinDist.pure ⟨none, rfl⟩
+  | none => PMF.pure ⟨none, rfl⟩
   | some (past, view) =>
       let guess := answer (disclosedBit view)
-      FinDist.pure ⟨some ⟨some (.submit (nativeGuessSubmission guess))⟩,
+      PMF.pure ⟨some ⟨some (.submit (nativeGuessSubmission guess))⟩,
         ⟨_, native_guess_available guess past view, rfl⟩⟩
 
 theorem evidencePolicy_guess (profile : Profile nativeModel.behavioralSignature)
     (answer : Bool → Bool) (bit : Bool) :
     nativeGuessLaw (Profile.update (sig := nativeModel.behavioralSignature)
-      profile true (evidencePolicy answer)) bit = FinDist.pure (answer bit) := by
+      profile true (evidencePolicy answer)) bit = PMF.pure (answer bit) := by
   simp only [nativeGuessLaw, nativePlayers, ReactiveApplication.ResponseMenu.decodeProfile,
     ReactiveApplication.decodePolicy, ReactiveApplication.ResponseMenu.embedPolicy,
     Profile.update, Function.update_self, evidencePolicy, disclosedBit_actual,
-    FinDist.map_pure, FinDist.pure_bind]
+    PMF.pure_map, PMF.pure_bind]
   exact native_tail_guess bit (answer bit)
 
 def winningAnswer (matchBit bit : Bool) : Bool := if matchBit then bit else !bit
@@ -74,7 +74,7 @@ theorem evidencePolicy_value (assessment : nativeModel.BehavioralAssessment)
     (matchBit bit : Bool) :
     (assessment.continuationContext (nativeBobSite bit) (nativePayoff matchBit true) 113).value
       (evidencePolicy (winningAnswer matchBit)) = 1 := by
-  rw [native_continuation_value, evidencePolicy_guess, FinDist.expect_pure]
+  rw [native_continuation_value, evidencePolicy_guess, expect_pure]
   cases matchBit <;> cases bit <;> rfl
 
 /-- The policy is optimal against every legal continuation policy, not just

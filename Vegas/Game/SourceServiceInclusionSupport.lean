@@ -115,16 +115,16 @@ private theorem environment_openable_origin
     execution.application.candidates.lookup candidate = .openable raw := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact opened
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨sample, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact opened
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending at opened
       cases found : execution.network.lookup id with
       | none => simpa only [found] using opened
@@ -150,8 +150,8 @@ private theorem environment_openable_origin
                   simpa only [tables.2] using opened
               | malformed value => simp only [packet, handle] at accepted; contradiction
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       simpa only [(environmentStep_tables (runtime setup) _ state command changed).2] using opened
 
 variable [Fintype Player]
@@ -233,8 +233,8 @@ theorem sourceService_inclusion_boundary
           (runtime setup).runInteractionPlan leaks menu.uniformResponses network
             ((rosterPlan setup rosters).take control.execution.environmentRecall.length)
             (ReactiveApplication.Execution.initial (application setup leaks) state) := by
-      rw [FinDist.bind_bind]
-      apply FinDist.bind_congr
+      rw [PMF.bind_bind]
+      apply bind_congr_on_support _
       intro state _
       rw [planPrefix, List.append_assoc]
       exact ((runtime setup).runInteractionPlan_append leaks menu.uniformResponses network
@@ -244,7 +244,7 @@ theorem sourceService_inclusion_boundary
     rw [equal]
     exact reached
   obtain ⟨prior, before, afterGrant⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ factored)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ factored)
   obtain ⟨initial, initialSupport, _, _, _, Γ, names, remaining, remainingProfile, source,
       refs, embedding, refsBefore, _, _, _, _, _, _, _, _, checkpoint⟩ :=
     initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
@@ -258,7 +258,7 @@ theorem sourceService_inclusion_boundary
     opportunities menu.uniformResponses lawful network event.val event.isLt.le prior before
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks menu.uniformResponses
     network (.grant event) (by simp) (by simp) prior boundary
-    (by rw [grantLaw]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   have boundaryTraffic : ∀ record ∈ (application setup leaks).executionTraffic boundary,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
@@ -268,7 +268,7 @@ theorem sourceService_inclusion_boundary
     (.grant event) prior).bind fun middle =>
       (runtime setup).runInteractionPlan leaks menu.uniformResponses network
         ((rosters event).map ServiceInstruction.player) middle).support at afterGrant
-  rw [grantLaw, FinDist.pure_bind] at afterGrant
+  rw [grantLaw, PMF.pure_bind] at afterGrant
   obtain ⟨config, publicEq⟩ := (runtime setup).player_window_application leaks menu.uniformResponses
     network (rosters event) boundary control.execution afterGrant
   obtain ⟨validState, validBinding, recalled, serialRecall, serials⟩ := bounded.run_core
@@ -360,9 +360,9 @@ theorem sourceService_inclusion_binding_candidate
       ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner])
         boundary).support := by
     rw [(runtime setup).runInteractionPlan_append]
-    rw [FinDist.support_bind]
+    rw [PMF.support_bind]
     apply Set.mem_iUnion₂.mpr ⟨control.execution, reached, ?_⟩
-    simpa only [runInteractionPlan, FinDist.bind_pure] using included
+    simpa only [runInteractionPlan, PMF.bind_pure] using included
   obtain ⟨before, immediate, value, admitted, beforeApp, _, _, _, beforeSerials,
       immediateSupport, finalApp, _⟩ := sourceService_binding_roster_support setup leaks bounds
     rosters values menu.uniformResponses
@@ -392,7 +392,7 @@ theorem sourceService_inclusion_binding_candidate
     ((runtime setup).reactiveLatest leaks event owner (control.execution.observeEnvironment app))
     (owner, .prepared serial) ⟨payload, value⟩
     (by
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at included
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at included
       have noActor : ((runtime setup).reactiveLatest leaks event owner
           (control.execution.observeEnvironment app)).actor? app = none := by
         unfold reactiveLatest
@@ -400,9 +400,9 @@ theorem sourceService_inclusion_binding_candidate
       change final ∈ (app.dispatch menu.uniformResponses _ control.execution).support at included
       unfold ReactiveApplication.dispatch at included
       rw [noActor] at included
-      change final ∈ ((control.execution.environmentStep app _).bind FinDist.pure).support
+      change final ∈ ((control.execution.environmentStep app _).bind PMF.pure).support
         at included
-      simpa only [FinDist.bind_pure] using included)
+      simpa only [PMF.bind_pure] using included)
     finalOpen
   refine ⟨value, admitted, ?_⟩
   simpa only [serial, congrArg (fun view : PublicView (graph setup) => view.bindingCount owner)

@@ -96,7 +96,7 @@ private theorem rebaseRealizes_commit {Γ : SourceCtx Player L} {O : Finset VarI
       simp only [commitKernel, Function.update_self, BehavioralPolicy.rebaseHistory, focal]
     · simp only [commitKernel, Function.update_of_ne own, others owner own]
   simp only [runWith, kernels, afterCommit_update]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro binding _
   obtain ⟨otherStep, focalStep, lengthStep⟩ := rebase_update count replacement source target
     others focal longEnough owner (.commit owner name payload binding)
@@ -124,7 +124,7 @@ private theorem rebaseRealizes_reveal {Γ : SourceCtx Player L} {O : Finset VarI
       simp only [revealKernel, Function.update_self, BehavioralPolicy.rebaseHistory, focal]
     · simp only [revealKernel, Function.update_of_ne own, others owner own]
   simp only [runWith, kernels, afterReveal_update]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro disclose _
   obtain ⟨otherStep, focalStep, lengthStep⟩ := rebase_update count replacement source target
     others focal longEnough owner (.reveal owner name disclose)
@@ -151,7 +151,7 @@ theorem rebaseHistory_runWith {who : Player} :
   | _, _, .sample _ _ _ next, count, replacement, profile, policy, state, registry,
       revelations, source, target, others, focal, longEnough => by
       simp only [runWith, afterSample_update]
-      exact FinDist.bind_congr fun _ _ => rebaseHistory_runWith next count replacement
+      exact bind_congr_on_support _ fun _ _ => rebaseHistory_runWith next count replacement
         (afterSample profile) policy _ _ _ source target others focal longEnough
   | _, _, .commit name owner fresh guard next, count, replacement, profile, policy, state,
       registry, revelations, source, target, others, focal, longEnough =>
@@ -205,7 +205,7 @@ the complete terminal state, with a single policy over the entire fiber. -/
 theorem rebaseHistory_joint_law {Γ : SourceCtx Player L} {O : Finset VarId}
     {Parameter : Type} (program : SourceProgram Player L Γ O)
     (profile : BehavioralProfile program) (policy : BehavioralPolicy who program)
-    (original replacement : List (OwnAction Player L)) (belief : FinDist (Config Player L Γ))
+    (original replacement : List (OwnAction Player L)) (belief : PMF (Config Player L Γ))
     (past : ∀ config ∈ belief.support, config.history who = original)
     (parameter : Config Player L Γ → Parameter) :
     (belief.bind fun config =>
@@ -216,7 +216,7 @@ theorem rebaseHistory_joint_law {Γ : SourceCtx Player L} {O : Finset VarId}
         (runFrom program (Function.update profile who policy)
           (config.withOwnHistory who replacement)).map
             (fun result => (parameter config, result)) := by
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro config supported
   rw [rebaseHistory_runFrom program profile policy original replacement config
     (past config supported)]

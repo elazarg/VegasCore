@@ -12,37 +12,42 @@ be complete histories, so this bound does not assume a memoryless service.
 
 noncomputable section
 
-namespace GameTheory.Math.Probability.FinDist
+namespace PMF
+
+open GameTheory.Math.Probability
 
 variable {State : Type*}
 
 /-- Only behavior before the first departure needs a probability bound. -/
-theorem departure_bind_bound (law : FinDist State) (kernel : State → FinDist State)
+theorem departure_bind_bound (law : PMF State) (kernel : State → PMF State)
     (bad : Set State) (delta : ℝ) (nonnegative : 0 ≤ delta)
-    (first : ∀ state, state ∉ bad → (kernel state).probOf bad ≤ delta) :
-    (law.bind kernel).probOf bad ≤ law.probOf bad + delta := by
+    (first : ∀ state, state ∉ bad → ((kernel state).toOuterMeasure bad).toReal ≤ delta) :
+    ((law.bind kernel).toOuterMeasure bad).toReal ≤ (law.toOuterMeasure bad).toReal + delta := by
   classical
-  rw [probOf_bind, ← expect_indicator_eq_probOf law bad, ← expect_const law delta,
-    ← expect_add]
-  apply expect_mono
-  intro state _
+  have indicatorIntegrable : PayoffIntegrable law fun state => if state ∈ bad then (1 : ℝ) else 0 :=
+    payoffIntegrable_of_bounded _ _ (C := 1) fun state => by split_ifs <;> norm_num
+  rw [toReal_toOuterMeasure_bind, ← expect_indicator law bad, ← expect_constant law delta,
+    ← expect_add indicatorIntegrable (payoffIntegrable_constant _ _)]
+  refine expect_mono (fun state _ => ?_)
+    (payoffIntegrable_of_bounded _ _ (C := 1) fun state => by
+      rw [abs_of_nonneg ENNReal.toReal_nonneg]
+      exact ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using outerMeasure_le_one _ _))
+    (payoffIntegrable_add indicatorIntegrable (payoffIntegrable_constant _ _))
   by_cases departed : state ∈ bad
   · simp only [departed, ↓reduceIte]
-    have atMostOne : (kernel state).probOf bad ≤ 1 := by
-      rw [← expect_indicator_eq_probOf, ← expect_const (kernel state) (1 : ℝ)]
-      apply expect_mono
-      intro next _
-      split_ifs <;> norm_num
+    have atMostOne : ((kernel state).toOuterMeasure bad).toReal ≤ 1 :=
+      ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using outerMeasure_le_one _ _)
     linarith
   · simpa only [departed, ↓reduceIte, zero_add] using first state departed
 
 /-- Uniform one-step bounds control all finite prefixes, independently of
 which policies complete histories after a departure. -/
-theorem departure_iterate_bound (law : FinDist State) (kernel : State → FinDist State)
+theorem departure_iterate_bound (law : PMF State) (kernel : State → PMF State)
     (bad : Set State) (delta : ℝ) (nonnegative : 0 ≤ delta)
-    (first : ∀ state, state ∉ bad → (kernel state).probOf bad ≤ delta) (steps : Nat) :
-    ((fun distribution => distribution.bind kernel)^[steps] law).probOf bad ≤
-      law.probOf bad + steps * delta := by
+    (first : ∀ state,
+        state ∉ bad → ((kernel state).toOuterMeasure bad).toReal ≤ delta) (steps : Nat) :
+    (((fun distribution => distribution.bind kernel)^[steps] law).toOuterMeasure bad).toReal ≤
+      (law.toOuterMeasure bad).toReal + steps * delta := by
   induction steps with
   | zero => simp
   | succ steps ih =>
@@ -53,4 +58,4 @@ theorem departure_iterate_bound (law : FinDist State) (kernel : State → FinDis
       push_cast
       nlinarith
 
-end GameTheory.Math.Probability.FinDist
+end PMF

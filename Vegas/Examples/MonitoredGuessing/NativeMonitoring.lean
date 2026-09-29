@@ -36,10 +36,10 @@ def reported (execution : nativeApp.Execution) : nativeApp.Execution :=
 
 theorem report_command_law (execution : nativeApp.Execution) :
     nativeRuntime.interactionInstruction nativeLeaks nativeNetwork execution.environmentRecall
-      (execution.observeEnvironment nativeApp) .wire = FinDist.pure (reportCommand execution) := by
-  simp only [EventGraphRuntime.interactionInstruction, nativeNetwork, FinDist.map_pure]
+      (execution.observeEnvironment nativeApp) .wire = PMF.pure (reportCommand execution) := by
+  simp only [EventGraphRuntime.interactionInstruction, nativeNetwork, PMF.pure_map]
   unfold reportCommand
-  change FinDist.pure (nativeApp.atMostOnceCommand _
+  change PMF.pure (nativeApp.atMostOnceCommand _
     (NetworkChoice.command _ _ (match execution.network.inputs.getLast? with
       | none => .wait
       | some input => if input.broadcaster = watcher ∧ input.envelope.sender = alice then
@@ -54,7 +54,7 @@ def monitoredPrefix (bit : Bool) (action : nativeApp.Action)
   reported (observed.respond nativeApp watcher
     (nativeWatcherResponse (observed.observe nativeApp watcher)))
 
-def monitoredPrefixLaw (bit : Bool) (action : nativeApp.Action) : FinDist nativeApp.Execution :=
+def monitoredPrefixLaw (bit : Bool) (action : nativeApp.Action) : PMF nativeApp.Execution :=
   (nativeLeaks watcher (ambientRespond bit action).network.pending).map
     (monitoredPrefix bit action)
 
@@ -106,10 +106,10 @@ theorem unsampled_submission_no_report (bit : Bool)
 theorem submission_monitoring_law (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
     (monitoredPrefixLaw bit (submissionAction submission)).map
       (fun execution => rejectedAlice execution.receipts) =
-        FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-          (FinDist.pure true) (FinDist.pure false) := by
+        mix (1 / 2) (by norm_num) (by norm_num)
+          (PMF.pure true) (PMF.pure false) := by
   unfold monitoredPrefixLaw nativeLeaks
-  simp only [↓reduceIte, FinDist.map_mix, FinDist.map_pure]
+  simp only [↓reduceIte, mix_map, PMF.pure_map]
   have identifiers : pendingIds (ambientRespond bit (submissionAction submission)).network.pending =
       {(alice, 0)} := by
     rw [ambient_submission_pending]
@@ -119,21 +119,21 @@ theorem submission_monitoring_law (bit : Bool) (submission : WitnessedSubmission
 
 theorem submission_detection_probability (bit : Bool)
     (submission : WitnessedSubmission nativeGraph) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).map
-      (fun execution => rejectedAlice execution.receipts)).prob true = 1 / 2 := by
+    (((monitoredPrefixLaw bit (submissionAction submission)).map
+      (fun execution => rejectedAlice execution.receipts)) true).toReal = 1 / 2 := by
   rw [submission_monitoring_law]
-  simp [FinDist.prob_mix, FinDist.prob_pure_eq_ite]
+  simp [mix_apply_toReal, toReal_pure_apply]
 
 theorem report_step (players : Player → nativeApp.Policy) (execution : nativeApp.Execution) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork .wire execution =
-      FinDist.pure (reported execution) := by
-  rw [interactionStep, report_command_law, FinDist.pure_bind]
+      PMF.pure (reported execution) := by
+  rw [interactionStep, report_command_law, PMF.pure_bind]
   unfold reported reportCommand
   cases found : execution.network.inputs.getLast? with
   | none =>
       simp only [ReactiveApplication.atMostOnceCommand, ReactiveApplication.dispatch,
         ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind]
+        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
   | some input =>
       dsimp only
       split
@@ -141,10 +141,10 @@ theorem report_step (players : Player → nativeApp.Policy) (execution : nativeA
         split <;>
           simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
             ReactiveApplication.resume, ReactiveApplication.Execution.environmentStep,
-            FinDist.map_pure, FinDist.pure_bind]
+            PMF.pure_map, PMF.pure_bind]
       · simp only [ReactiveApplication.atMostOnceCommand, ReactiveApplication.dispatch,
           ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-          ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind]
+          ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
 
 theorem watcher_step (players : Player → nativeApp.Policy)
     (reports : players watcher = nativeWatcherPolicy) (bit : Bool) (action : nativeApp.Action) :
@@ -154,12 +154,12 @@ theorem watcher_step (players : Player → nativeApp.Policy)
         let observed := watcherActivated bit action selected
         observed.respond nativeApp watcher
           (nativeWatcherResponse (observed.observe nativeApp watcher))) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-    ReactiveApplication.Execution.environmentStep, FinDist.bind_map,
+    ReactiveApplication.Execution.environmentStep, PMF.bind_map,
     ReactiveApplication.resume, ReactiveApplication.invoke, reports, nativeWatcherPolicy,
-    FinDist.map_pure]
-  rw [← FinDist.map_eq_bind]
+    PMF.pure_map]
+  rw [← ← PMF.bind_pure_comp, Function.comp_def]
   rfl
 
 /-- This is the actual player-activation and wire suffix, with every later
@@ -168,10 +168,10 @@ theorem monitoring_plan (players : Player → nativeApp.Policy)
     (reports : players watcher = nativeWatcherPolicy) (bit : Bool) (action : nativeApp.Action) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork [.player watcher, .wire]
       (ambientRespond bit action) = monitoredPrefixLaw bit action := by
-  simp only [runInteractionPlan, FinDist.bind_pure]
-  rw [watcher_step players reports, FinDist.bind_map]
+  simp only [runInteractionPlan, PMF.bind_pure]
+  rw [watcher_step players reports, PMF.bind_map]
   simp only [report_step]
-  rw [← FinDist.map_eq_bind]
+  rw [← ← PMF.bind_pure_comp, Function.comp_def]
   rfl
 
 theorem initial_response_cases (bit : Bool) (action : nativeApp.Action)
@@ -194,11 +194,11 @@ theorem initial_response_cases (bit : Bool) (action : nativeApp.Action)
           cases member
 
 theorem silent_monitoring_law (bit : Bool) :
-    monitoredPrefixLaw bit nativeSilent = FinDist.pure (monitoredPrefix bit nativeSilent ∅) := by
+    monitoredPrefixLaw bit nativeSilent = PMF.pure (monitoredPrefix bit nativeSilent ∅) := by
   unfold monitoredPrefixLaw nativeLeaks
   simp only [↓reduceIte]
-  change (FinDist.mix (1 / 2) _ _ (FinDist.pure ∅) (FinDist.pure ∅)).map _ = _
-  rw [FinDist.mix_self, FinDist.map_pure]
+  change (mix (1 / 2) _ _ (PMF.pure ∅) (PMF.pure ∅)).map _ = _
+  rw [mix_self, PMF.pure_map]
 
 theorem silent_monitoring_no_report (bit : Bool) :
     (monitoredPrefix bit nativeSilent ∅).receipts = [] := rfl

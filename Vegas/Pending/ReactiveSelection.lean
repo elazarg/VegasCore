@@ -40,9 +40,9 @@ theorem bindingEligible_accepts (runtime : EventGraphRuntime graph) (state : Sta
 
 def bindingSelection (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (priorities : FinDist (LinearOrder (MessageId Player))) (event : graph.EventId)
+    (priorities : PMF (LinearOrder (MessageId Player))) (event : graph.EventId)
     (execution : (runtime.reactiveApplication leaks).Execution) :
-    FinDist (Option (MessageId Player)) :=
+    PMF (Option (MessageId Player)) :=
   (runtime.reactiveApplication leaks).prioritySelection priorities
     (fun message => runtime.bindingEligible execution.application.publicView event
       ⟨message.id, message.payload.call⟩) execution
@@ -51,7 +51,7 @@ def bindingSelection (runtime : EventGraphRuntime graph)
 test unchanged; the comparison uses the actual state after the response. -/
 theorem bindingSelection_response_regular (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (priorities : FinDist (LinearOrder (MessageId Player))) (event : graph.EventId)
+    (priorities : PMF (LinearOrder (MessageId Player))) (event : graph.EventId)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (retained : execution.network.PendingOrPublished) (who : Player)
     (action : (runtime.reactiveApplication leaks).Action) :
@@ -67,11 +67,11 @@ theorem bindingSelection_response_regular (runtime : EventGraphRuntime graph)
 theorem bindingSelection_history_regular (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       (some control))
-    (priorities : FinDist (LinearOrder (MessageId Player))) (event : graph.EventId)
+    (priorities : PMF (LinearOrder (MessageId Player))) (event : graph.EventId)
     (who : Player) (action : (runtime.reactiveApplication leaks).Action) :
     (runtime.bindingSelection leaks priorities event control.execution).RegularAt
       (runtime.bindingSelection leaks priorities event
@@ -85,7 +85,7 @@ theorem bindingSelection_history_regular (runtime : EventGraphRuntime graph)
 and fixed transport attributes, including when that binding is unopenable. -/
 theorem bindingSelection_value_independent (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (priorities : FinDist (LinearOrder (MessageId Player)))
+    (priorities : PMF (LinearOrder (MessageId Player)))
     (execution : (runtime.reactiveApplication leaks).Execution)
     (who : Player) (event selectedEvent : graph.EventId) (payload : L.Ty)
     (first second : PublicationResult (L.Val payload)) (serial : Nat) :

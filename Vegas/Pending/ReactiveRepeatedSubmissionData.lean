@@ -89,11 +89,11 @@ private theorem activation_clean_data
       next.network.nextSerial owner = execution.network.nextSerial owner ∧
       next.InputRecall (runtime.reactiveApplication leaks) ∧ next.network.SerialsBeforeNext := by
   let app := runtime.reactiveApplication leaks
-  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-  obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ resumed
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ resumed
   have activated := moved
   rw [ReactiveApplication.Execution.activation_samples] at activated
-  obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ activated
+  obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ activated
   let middle := execution.sampledActivation app actor selected
   have middleRecall : middle.InputRecall app := recalled
   have middleSerials : middle.network.SerialsBeforeNext := serials.learn actor selected
@@ -120,7 +120,7 @@ private theorem activation_clean_data
     (packets.learn actor selected) response transport
   exact ⟨data.1, data.2.1, data.2.2.1, data.2.2.2.1, data.2.2.2.2.1,
     data.2.2.2.2.2, app.respond_inputRecall middle actor response middleRecall,
-    (app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+    (app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
       middle actor response middleSerials⟩
 
 /-- Conditional on the actual final transcript being clean for this author,
@@ -154,12 +154,12 @@ theorem repeated_window_clean_data
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨rfl, rfl, rfl, packets, List.Subset.refl _, rfl⟩
   | cons actor rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind] at reached
-      obtain ⟨next, moved, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        PMF.pure_bind] at reached
+      obtain ⟨next, moved, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have nextClean : ∀ record ∈ app.executionTraffic next,
           record.input.envelope.sender = owner →
             runtime.permittedServiceEnvelope record.observation record.ledger
@@ -214,7 +214,7 @@ theorem repeated_window_clean_selection
       final packets recalled serials repeated available reached clean
   apply runtime.foreign_window_selection leaks players network owner final event message
     authored addressed ?_ (retained pending) (by rwa [ledger]) [] (by simp) final
-      (FinDist.mem_support_pure.mpr rfl)
+      ((PMF.mem_support_pure_iff _ _).mpr rfl)
   simpa only [ledger] using valid
 
 end Vegas.EventGraphRuntime

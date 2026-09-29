@@ -18,7 +18,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 theorem run_restrict_eq_finish (players : Principal → app.Policy)
     (covered : ∀ who, menu.Admissible initial horizon scheduler who (players who))
@@ -40,7 +40,7 @@ theorem run_local_law_restrict_finish (players : Principal → app.Policy)
     (history : (menu.protocol initial horizon scheduler).History)
     (who : Principal) (remaining : Nat) (execution : app.Execution)
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (law : FinDist ((menu.information initial horizon scheduler).Choice who
+    (law : PMF ((menu.information initial horizon scheduler).Choice who
       ((menu.information initial horizon scheduler).infoOf who history.trace)))
     (fuel : Nat) (enough : app.rank horizon history.state ≤ fuel + 1) :
     let baseline := fun player => menu.restrictPolicy initial horizon scheduler player
@@ -70,39 +70,39 @@ theorem run_local_law_restrict_finish (players : Principal → app.Policy)
       (execution.recall who) (execution.observe app who) =
         law.map (fun choice => choice.1.getD ⟨none⟩) := by
     simp only [decodeProfile, decodePolicy, embedPolicy, updated, Profile.update_same,
-      FinDist.map_comp]
+      PMF.map_comp]
     rw [← observed]
     simp only [alternative, InformationModel.BehavioralPolicy.withLaw_self]
     rfl
   have firstLaw := menu.run_one_response initial horizon scheduler updated history who
     remaining execution current
-  rw [decoded, FinDist.map_comp] at firstLaw
+  rw [decoded, PMF.map_comp] at firstLaw
   have split := model.one_step_then_baseline_eq_local_law
-    (menu.decisionRecall initial horizon scheduler).antichain
+    (menu.decisionRecall initial horizon scheduler).decisionInformationAntichain
     baseline who alternative history active fuel
   simp only [alternative, InformationModel.BehavioralPolicy.withLaw_self] at split
-  rw [← split, FinDist.map_bind]
+  rw [← split, PMF.map_bind]
   calc
     _ = (model.runBehavioralFrom updated 1 history).bind (fun next =>
         app.finish initial horizon scheduler players next.state) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next supported
       apply menu.run_restrict_eq_finish initial horizon scheduler players covered
       have stateMember : next.state ∈
           ((model.runBehavioralFrom updated 1 history).map History.state).support := by
-        rw [FinDist.support_map]
+        rw [PMF.support_map]
         exact ⟨next, supported, rfl⟩
       rw [firstLaw] at stateMember
-      obtain ⟨choice, _, stateEq⟩ := FinDist.support_map .. ▸ stateMember
+      obtain ⟨choice, _, stateEq⟩ := PMF.support_map .. ▸ stateMember
       rw [← stateEq]
       rw [current] at enough
       change 2 * remaining + 1 ≤ fuel + 1 at enough
       change 2 * remaining ≤ fuel
       omega
     _ = ((model.runBehavioralFrom updated 1 history).map History.state).bind
-        (app.finish initial horizon scheduler players) := by rw [FinDist.bind_map]
+        (app.finish initial horizon scheduler players) := by rw [PMF.bind_map]
     _ = _ := by
-      rw [firstLaw, FinDist.bind_map, FinDist.bind_map]
+      rw [firstLaw, PMF.bind_map, PMF.bind_map]
       rfl
 
 open Classical in
@@ -113,7 +113,7 @@ theorem run_local_law_restrict_remaining (players : Principal → app.Policy)
     (history : (menu.protocol initial horizon scheduler).History)
     (who : Principal) (remaining : Nat) (execution : app.Execution)
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (law : FinDist ((menu.information initial horizon scheduler).Choice who
+    (law : PMF ((menu.information initial horizon scheduler).Choice who
       ((menu.information initial horizon scheduler).infoOf who history.trace))) :
     let baseline := fun player => menu.restrictPolicy initial horizon scheduler player
       (players player)

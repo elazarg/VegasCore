@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.NativeLocality
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # One player response with a fixed number of packet opportunities
 
@@ -23,7 +25,7 @@ abbrev PlayerResponse (graph : Vegas.EventGraph Player L) (count : Nat) :=
   {actions : List (PlayerAction graph) // actions.length = count}
 
 abbrev NativeResponsePolicy (graph : Vegas.EventGraph Player L) (count : Nat) :=
-  NativeInput graph → FinDist (PlayerResponse graph count)
+  NativeInput graph → PMF (PlayerResponse graph count)
 
 def takeActions (runtime : EventGraphRuntime graph) (who : Player)
     (execution : NativeExecution runtime) (actions : List (PlayerAction graph)) :
@@ -80,19 +82,19 @@ theorem takeActions_history_length (runtime : EventGraphRuntime graph) (who : Pl
 /-- The kernel for successive invocations of the same policy. -/
 def invokeNativeFor (runtime : EventGraphRuntime graph) (who : Player)
     (policy : NativePolicy graph) :
-    Nat → NativeExecution runtime → FinDist (NativeExecution runtime)
-  | 0, execution => FinDist.pure execution
+    Nat → NativeExecution runtime → PMF (NativeExecution runtime)
+  | 0, execution => PMF.pure execution
   | count + 1, execution => (runtime.invokeNative who policy execution).bind
       (runtime.invokeNativeFor who policy count)
 
 def compileResponse (runtime : EventGraphRuntime graph) (who : Player)
     (policy : NativePolicy graph) (count : Nat) : NativeResponsePolicy graph count := fun input =>
-  ((runtime.nativeLocalResponse who).transcript (Function.uncurry policy) count input).toSubtype
+  pmfToSubtype ((runtime.nativeLocalResponse who).transcript (Function.uncurry policy) count input)
     ((runtime.nativeLocalResponse who).transcript_length (Function.uncurry policy) count input)
 
 def invokeResponse (runtime : EventGraphRuntime graph) (who : Player) {count : Nat}
     (policy : NativeResponsePolicy graph count) (execution : NativeExecution runtime) :
-    FinDist (NativeExecution runtime) :=
+    PMF (NativeExecution runtime) :=
   (policy (runtime.nativeInput who execution)).map
     (fun response => runtime.takeActions who execution response.1)
 
@@ -103,12 +105,12 @@ private theorem nativeTranscript_law (runtime : EventGraphRuntime graph) (who : 
       (runtime.nativeInput who execution)).map (runtime.takeActions who execution) =
         runtime.invokeNativeFor who policy count execution := by
   induction count generalizing execution with
-  | zero => simp only [LocalResponse.transcript, FinDist.map_pure, takeActions,
+  | zero => simp only [LocalResponse.transcript, PMF.pure_map, takeActions,
       List.foldl_nil, invokeNativeFor]
   | succ count ih =>
-      simp only [LocalResponse.transcript, FinDist.map_bind, FinDist.map_comp,
-        invokeNativeFor, invokeNative, actionStep, FinDist.bind_bind, FinDist.pure_bind]
-      apply FinDist.bind_congr
+      simp only [LocalResponse.transcript, PMF.map_bind, PMF.map_comp,
+        invokeNativeFor, invokeNative, actionStep, PMF.bind_bind, PMF.pure_bind]
+      apply bind_congr_on_support _
       intro action _
       change (((runtime.nativeLocalResponse who).transcript (Function.uncurry policy) count
         ((runtime.nativeInput who execution).afterAction action)).map
@@ -123,14 +125,14 @@ theorem compileResponse_law (runtime : EventGraphRuntime graph) (who : Player)
     (counters : execution.Counters runtime) :
     runtime.invokeResponse who (runtime.compileResponse who policy count) execution =
       runtime.invokeNativeFor who policy count execution := by
-  rw [invokeResponse, compileResponse, FinDist.map_toSubtype]
+  rw [invokeResponse, compileResponse, map_pmfToSubtype]
   exact runtime.nativeTranscript_law who policy count execution counters
 
 /-- Every subsequent wire, player, or service continuation has the same law. -/
 theorem compileResponse_continuation {Result : Type*} (runtime : EventGraphRuntime graph)
     (who : Player) (policy : NativePolicy graph) (count : Nat)
     (execution : NativeExecution runtime) (counters : execution.Counters runtime)
-    (continuation : NativeExecution runtime → FinDist Result) :
+    (continuation : NativeExecution runtime → PMF Result) :
     (runtime.invokeResponse who (runtime.compileResponse who policy count)
       execution).bind continuation =
       (runtime.invokeNativeFor who policy count execution).bind continuation := by

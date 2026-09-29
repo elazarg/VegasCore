@@ -78,7 +78,7 @@ theorem required_binding_final_block_coupling
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
     let plan := (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
       (List.replicate ticks .tick ++ [.expire event])
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = (app.invoke players owner original).bind
         (runtime.runInteractionPlan leaks players network plan) ∧
       coupling.map Prod.snd =
@@ -122,7 +122,7 @@ theorem required_binding_final_block_coupling
       (repaired.recall owner, repaired.observe app owner)).map _ = _
     rw [implementation_respond runtime leaks owner reference (players owner) memory
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
-        FinDist.map_comp]
+        PMF.map_comp]
     simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
   have owned : graph.actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
@@ -141,19 +141,19 @@ theorem required_binding_final_block_coupling
     exact fresh
   have badBranch (response : app.Action)
       (evidence : ∀ final ∈ (leftRun response).support, bad final) :
-      ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
         coupling.map Prod.fst = leftRun response ∧ coupling.map Prod.snd = rightRun response ∧
         ∀ next ∈ coupling.support,
           bad next.1 ∨ Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
-    refine ⟨FinDist.product (leftRun response) (rightRun response),
-      FinDist.map_fst_product .., FinDist.map_snd_product .., ?_⟩
+    refine ⟨bindPairLaw (leftRun response) (fun _ => (rightRun response)),
+      bindPairLaw_map_fst .., FinDist.map_snd_product .., ?_⟩
     intro next supported
     left
     apply evidence
-    rw [← FinDist.map_fst_product (leftRun response) (rightRun response), FinDist.support_map]
+    rw [← bindPairLaw_map_fst (leftRun response) (rightRun response), PMF.support_map]
     exact ⟨next, supported, rfl⟩
   have existsBranch (response : app.Action) (member : response ∈ law.support) :
-      ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
         coupling.map Prod.fst = leftRun response ∧ coupling.map Prod.snd = rightRun response ∧
         ∀ next ∈ coupling.support,
           bad next.1 ∨ Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
@@ -189,15 +189,15 @@ theorem required_binding_final_block_coupling
         players network event payload outputEq codeEq node serial opening fresh ready timely
           unbound unused serials published visits absent ticks
       refine ⟨coupling.map (fun pair => (pair.1, pair.2, (proposed response).2)), ?_, ?_, ?_⟩
-      · rw [FinDist.map_comp]
+      · rw [PMF.map_comp]
         exact first
       · change _ = rightRun response
         dsimp only [rightRun]
-        rw [adjustedEq, FinDist.map_comp]
-        rw [← second, FinDist.map_comp]
+        rw [adjustedEq, PMF.map_comp]
+        rw [← second, PMF.map_comp]
         rfl
       · intro next supported
-        obtain ⟨pair, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨pair, chosen, rfl⟩ := PMF.support_map .. ▸ supported
         right
         exact related pair chosen
     · obtain ⟨record, emitted, author, forbidden⟩ := departure
@@ -208,7 +208,7 @@ theorem required_binding_final_block_coupling
       apply runtime.trafficRecord_after_activation_plan leaks players network plan before original
         final owner response remaining sampled record _ supported
       rw [ReactiveApplication.Execution.activation_samples] at sampled
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ sampled
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ sampled
       rw [show app.trafficStep (some ⟨remaining + 1, none, before⟩)
           (some ⟨remaining, none, (before.sampledActivation app owner selected).respond
             app owner response⟩) = app.trafficStep
@@ -218,23 +218,23 @@ theorem required_binding_final_block_coupling
       exact List.mem_singleton_self _
   let branch := fun response member => (existsBranch response member).choose
   refine ⟨law.bindOnSupport branch, ?_, ?_, ?_⟩
-  · rw [FinDist.map_bindOnSupport]
+  · rw [map_bindOnSupport]
     change _ = (law.map (original.respond app owner)).bind _
-    rw [FinDist.bind_map]
-    apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+    rw [PMF.bind_map]
+    apply bindOnSupport_eq_bind_of_eq_on_support _
     intro response member
     exact (existsBranch response member).choose_spec.1
-  · rw [FinDist.map_bindOnSupport]
-    simp only [ReactiveApplication.Implementation.resume, ↓reduceIte, FinDist.bind_map]
+  · rw [map_bindOnSupport]
+    simp only [ReactiveApplication.Implementation.resume, ↓reduceIte, PMF.bind_map]
     change _ = (strategy.respond memory (repaired.recall owner,
       repaired.observe app owner)).bind _
-    rw [responseLaw, FinDist.bind_map]
-    apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+    rw [responseLaw, PMF.bind_map]
+    apply bindOnSupport_eq_bind_of_eq_on_support _
     intro response member
     exact (existsBranch response member).choose_spec.2.1
   · intro next supported
     obtain ⟨response, member, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+      Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
     rcases (existsBranch response member).choose_spec.2.2 next reached with bad | good
     · exact bad.elim Or.inl (fun omitted => Or.inr (Or.inl omitted))
     · exact Or.inr (Or.inr good)

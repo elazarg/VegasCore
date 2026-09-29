@@ -23,7 +23,7 @@ theorem executionTraffic_environment (execution next : app.Execution) (command :
     app.executionTraffic next = app.executionTraffic execution := by
   have recorded : next.environmentRecall = execution.environmentRecall ++
       [⟨execution.observeEnvironment app, command⟩] := by
-    obtain ⟨raw, _, rfl⟩ := FinDist.support_map .. ▸ reached
+    obtain ⟨raw, _, rfl⟩ := PMF.support_map .. ▸ reached
     rfl
   have sameInputs := app.environmentStep_inputs execution next command reached
   simp only [executionTraffic, recorded, List.map_append, List.map_cons, List.map_nil,
@@ -44,7 +44,7 @@ theorem executionTraffic_activated_response (execution activated : app.Execution
         (some ⟨remaining, none, activated.respond app who action⟩) := by
   have recorded : activated.environmentRecall = execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .activate who⟩] := by
-    obtain ⟨raw, _, rfl⟩ := FinDist.support_map .. ▸ reached
+    obtain ⟨raw, _, rfl⟩ := PMF.support_map .. ▸ reached
     rfl
   simp only [executionTraffic, app.respond_environmentRecall, recorded, List.map_append,
     List.map_cons, List.map_nil, trafficViews_append]
@@ -54,14 +54,14 @@ theorem executionTraffic_dispatch (players : Principal → app.Policy) (command 
     (execution next : app.Execution)
     (reached : next ∈ (app.dispatch players command execution).support) :
     app.executionTraffic execution <+: app.executionTraffic next := by
-  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   cases command with
   | activate who =>
-      obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+      obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ resumed
       rw [app.executionTraffic_activated_response execution middle who action 0 moved]
       exact List.prefix_append ..
   | wait | application operation | «include» id =>
-      cases FinDist.mem_support_pure.mp resumed
+      cases (PMF.mem_support_pure_iff _ _).mp resumed
       rw [app.executionTraffic_environment execution next _ moved]
 
 theorem executionTraffic_runRounds (scheduler : app.Scheduler) (players : Principal → app.Policy)
@@ -69,14 +69,14 @@ theorem executionTraffic_runRounds (scheduler : app.Scheduler) (players : Princi
     (reached : next ∈ (app.runRounds scheduler players count execution).support) :
     app.executionTraffic execution <+: app.executionTraffic next := by
   induction count generalizing execution with
-  | zero => cases FinDist.mem_support_pure.mp reached; rfl
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | succ count ih =>
-      obtain ⟨middle, stepped, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
+      obtain ⟨middle, stepped, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ stepped)
       exact (app.executionTraffic_dispatch players command execution middle dispatched).trans
         (ih middle rest)
 
-theorem stateTraffic_reaches (initial : FinDist app.State) (horizon : Nat)
+theorem stateTraffic_reaches (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler)
     {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last) :
@@ -87,7 +87,7 @@ theorem stateTraffic_reaches (initial : FinDist app.State) (horizon : Nat)
 
 /-- Completing the actual runtime from a legal prefix retains all evidence,
 including an unfinished activation's response and every subsequent round. -/
-theorem stateTraffic_finish (initial : FinDist app.State) (horizon : Nat)
+theorem stateTraffic_finish (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (players : Principal → app.Policy)
     (history : (app.protocol initial horizon scheduler).History) (next : app.ProtocolState)
     (reached : next ∈ (app.finish initial horizon scheduler players history.state).support) :
@@ -97,9 +97,9 @@ theorem stateTraffic_finish (initial : FinDist app.State) (horizon : Nat)
       (app.iterate_eq_finish initial horizon scheduler players
         (app.rank horizon history.state) history.state (by rfl))
   have supported := (congrArg
-    (fun distribution : FinDist app.ProtocolState => next ∈ distribution.support) law.symm).mp
+    (fun distribution : PMF app.ProtocolState => next ∈ distribution.support) law.symm).mp
       reached
-  obtain ⟨final, member, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, member, rfl⟩ := PMF.support_map .. ▸ supported
   exact app.stateTraffic_reaches initial horizon scheduler
     ((app.protocol initial horizon scheduler).runRandomizedFor_reachesWithin
       ((app.information initial horizon scheduler).singleMoverChooser

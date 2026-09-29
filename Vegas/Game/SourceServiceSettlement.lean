@@ -37,15 +37,15 @@ theorem interactionStep_sample (runtime : EventGraphRuntime graph)
           environmentRecall := execution.environmentRecall ++
             [⟨execution.observeEnvironment (runtime.reactiveApplication leaks),
               .application (.executeSample event)⟩] } := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
   change (execution.environmentStep (runtime.reactiveApplication leaks)
-    (.application (.executeSample event))).bind FinDist.pure = _
-  rw [FinDist.bind_pure]
+    (.application (.executeSample event))).bind PMF.pure = _
+  rw [PMF.bind_pure]
   change ((environmentStep runtime execution.application (.executeSample event)).map
     (fun state => ({ execution with application := state } :
       (runtime.reactiveApplication leaks).Execution))).map _ = _
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   rfl
 
 /-- An actual settled clock tail preserves the configuration and receipt law
@@ -54,21 +54,21 @@ theorem settled_tail_config_receipts (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
-    (law : FinDist (runtime.reactiveApplication leaks).Execution)
+    (law : PMF (runtime.reactiveApplication leaks).Execution)
     (event : graph.EventId) (ticks : Nat)
     (settled : ∀ execution ∈ law.support, ¬execution.application.config.cut.Ready event) :
     (law.bind (runtime.runInteractionPlan leaks players network
       (List.replicate ticks .tick ++ [.expire event]))).map
         (fun final => (final.application.config, final.receipts)) =
       law.map (fun final => (final.application.config, final.receipts)) := by
-  rw [FinDist.map_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro execution supported
   obtain ⟨final, exactLaw, state, _, receipts, _⟩ := runtime.settled_reveal_expiry leaks players
     network execution event (settled execution supported) ticks
-  exact (congrArg (FinDist.map (fun final : (runtime.reactiveApplication leaks).Execution =>
+  exact (congrArg (PMF.map (fun final : (runtime.reactiveApplication leaks).Execution =>
     (final.application.config, final.receipts))) exactLaw).trans (by
-      rw [FinDist.map_pure, state, receipts])
+      rw [PMF.pure_map, state, receipts])
 
 end Vegas.EventGraphRuntime
 
@@ -116,7 +116,7 @@ theorem source_sample_settlement
     rw [(runtime setup).interactionStep_sample]
     rw [source_sample_environment (runtime setup) execution.application event ready outputEq refs
       law codeEq node source.state agree]
-    simp only [FinDist.map_comp]
+    simp only [PMF.map_comp]
     rfl
   have settled : ∀ middle ∈ ((runtime setup).interactionStep leaks players network
       (.sample event) execution).support, ¬middle.application.config.cut.Ready event := by
@@ -124,8 +124,8 @@ theorem source_sample_settlement
     have mapped : (middle.application.config, middle.receipts) ∈
         (((runtime setup).interactionStep leaks players network (.sample event) execution).map
           (fun final => (final.application.config, final.receipts))).support :=
-      FinDist.support_map .. ▸ ⟨middle, supported, rfl⟩
-    rw [sampleLaw, FinDist.support_map] at mapped
+      PMF.support_map .. ▸ ⟨middle, supported, rfl⟩
+    rw [sampleLaw, PMF.support_map] at mapped
     obtain ⟨value, _, same⟩ := mapped
     have configEq := congrArg Prod.fst same
     dsimp only at configEq

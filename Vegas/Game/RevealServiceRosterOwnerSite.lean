@@ -37,7 +37,7 @@ theorem roster_owner_site
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (setup.informationModel admission) source (setup.decision_antichain admission))
     (timing : TimingLaw setup rosters)
-    (timingFull : ∀ event who owned, (timing event who owned).FullSupport) :
+    (timingFull : ∀ event who owned, FullSupport (timing event who owned)) :
     let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
     let scheduler := rosterScheduler setup leaks rosters network
     let horizon := (rosterPlan setup rosters).length

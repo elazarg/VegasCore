@@ -99,26 +99,26 @@ private theorem included_application (bit : Bool) : (included bit).application =
   rfl
 
 theorem activation_leaks_to_bob (bit : Bool) :
-    (first bit).environmentStep app (.activate 1) = FinDist.pure (observed bit) := by
+    (first bit).environmentStep app (.activate 1) = PMF.pure (observed bit) := by
   simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication, leaks,
     SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob, SelectiveAssociation.alice,
-    FinDist.map_pure]
+    PMF.pure_map]
   rfl
 
 theorem initial_activation : initial.environmentStep app (.activate 0) =
-    FinDist.pure activatedInitial := by
+    PMF.pure activatedInitial := by
   simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
     leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob, MessageNetwork.learn_empty,
-    FinDist.map_pure, activatedInitial, initial, ReactiveApplication.Execution.initial]
+    PMF.pure_map, activatedInitial, initial, ReactiveApplication.Execution.initial]
 
 theorem beforeOffer_law (execution : app.Execution) :
     ((execution.environmentStep app (.application (.grant 0))).bind
       fun next => next.environmentStep app (.activate 0)) =
-        FinDist.pure (beforeOffer execution) := by
+        PMF.pure (beforeOffer execution) := by
   simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
     environmentStep, leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
     MessageNetwork.learn_empty,
-    FinDist.map_pure, beforeOffer]
+    PMF.pure_map, beforeOffer]
 
 theorem proof_before_association (bit : Bool) :
     opening bit ∈ (runtime.packetEvidence leaks).observe ((observed bit).observe app 1) ∧
@@ -199,8 +199,8 @@ def includedAfter (bit : Bool) (response : app.Action) : app.Execution :=
 
 theorem inclusion_law (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).environmentStep app (.include (0, 1)) =
-      FinDist.pure (includedAfter bit response) := by
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+      PMF.pure (includedAfter bit response) := by
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
 theorem arbitrary_response_private (bit : Bool) (response : app.Action)
@@ -383,10 +383,10 @@ theorem later_envelope_selected (bit : Bool) (response : app.Action) :
 
 theorem carol_activation_leaks_nothing (execution : app.Execution) :
     ((execution.environmentStep app (.activate 2)).map fun next => next.observe app 2) =
-      FinDist.pure (execution.observe app 2) := by
+      PMF.pure (execution.observe app 2) := by
   simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
     leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
-    MessageNetwork.learn_empty, FinDist.map_pure,
+    MessageNetwork.learn_empty, PMF.pure_map,
     ReactiveApplication.Execution.observe]
 
 private theorem offeredAfter_carol (bit : Bool) (response : app.Action) :
@@ -542,9 +542,9 @@ theorem carol_activation_after_arbitrary_responses (left right : app.Action) :
       fun next => (next.recall 2, next.observe app 2)) := by
   simpa [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
     leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
-    SelectiveAssociation.alice, MessageNetwork.learn_empty, FinDist.map_pure,
+    SelectiveAssociation.alice, MessageNetwork.learn_empty, PMF.pure_map,
     ReactiveApplication.Execution.observe]
-      using congrArg FinDist.pure (carol_input_after_arbitrary_responses left right)
+      using congrArg PMF.pure (carol_input_after_arbitrary_responses left right)
 
 private def afterApplication (execution : app.Execution) (state : EventGraphRuntime.State graph)
     (command : EnvironmentCommand graph) : app.Execution :=
@@ -585,21 +585,21 @@ theorem carolSite_law (bit : Bool) (response : app.Action) :
       fun next => (next.environmentStep app (.application (.expire 0))).bind
         fun next => (next.environmentStep app (.application (.grant 1))).bind
           fun next => next.environmentStep app (.activate 2)) =
-      FinDist.pure (carolSite bit response) := by
+      PMF.pure (carolSite bit response) := by
   have tick : (includedAfter bit response).environmentStep app (.application .advanceClock) =
-      FinDist.pure (ticked bit response) := by
+      PMF.pure (ticked bit response) := by
     simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
-      environmentStep, FinDist.map_pure, ticked, afterApplication]
+      environmentStep, PMF.pure_map, ticked, afterApplication]
   have expiry : (ticked bit response).environmentStep app (.application (.expire 0)) =
-      FinDist.pure (expired bit response) := by
+      PMF.pure (expired bit response) := by
     simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication]
     rw [environmentStep_expire_of_not_ready runtime _ 0 (ticked_not_ready bit response)]
-    simp only [FinDist.map_pure]
+    simp only [PMF.pure_map]
     rfl
-  rw [tick, FinDist.pure_bind, expiry, FinDist.pure_bind]
+  rw [tick, PMF.pure_bind, expiry, PMF.pure_bind]
   simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
     environmentStep, leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
-    MessageNetwork.learn_empty, FinDist.map_pure, carolSite, carolGranted, afterApplication]
+    MessageNetwork.learn_empty, PMF.pure_map, carolSite, carolGranted, afterApplication]
 
 /-- Carol receives the same entire input at her scheduled choice, for either
 Alice value and any two earlier Bob responses. -/

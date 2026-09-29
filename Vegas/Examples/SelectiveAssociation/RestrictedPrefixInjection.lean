@@ -20,7 +20,7 @@ open GameTheory.Math.Probability
 
 theorem carol_related_of_accepted (players : Profile model.behavioralSignature)
     (responses : Prefix.CarolResponses)
-    (supported : responses ∈ (Prefix.carolLaw (menu.decodeProfile (FinDist.pure nativeInitial)
+    (supported : responses ∈ (Prefix.carolLaw (menu.decodeProfile (PMF.pure nativeInitial)
       nativeHorizon scheduler players)).support)
     (selected : Handle nativeGraph) (owner : selected.1 = alice)
     (associated : (Prefix.carolInput responses).application.accepted aliceBindingRef.field =
@@ -39,7 +39,7 @@ theorem carol_related_of_accepted (players : Profile model.behavioralSignature)
 
 theorem carol_flip_facts (players : Profile model.behavioralSignature)
     (responses : Prefix.CarolResponses)
-    (supported : responses ∈ (Prefix.carolLaw (menu.decodeProfile (FinDist.pure nativeInitial)
+    (supported : responses ∈ (Prefix.carolLaw (menu.decodeProfile (PMF.pure nativeInitial)
       nativeHorizon scheduler players)).support)
     (selected : Handle nativeGraph) (owner : selected.1 = alice)
     (associated : (Prefix.carolInput responses).application.accepted aliceBindingRef.field =
@@ -72,7 +72,7 @@ theorem carol_alice_present (responses : Prefix.CarolResponses)
 
 theorem bob_flip_facts (players : Profile model.behavioralSignature)
     (responses : Prefix.BobResponses)
-    (supported : responses ∈ (Prefix.bobLaw (menu.decodeProfile (FinDist.pure nativeInitial)
+    (supported : responses ∈ (Prefix.bobLaw (menu.decodeProfile (PMF.pure nativeInitial)
       nativeHorizon scheduler players)).support)
     (selected : Handle nativeGraph) (owner : selected.1 = alice)
     (associated : (Prefix.bobInput responses).application.accepted aliceBindingRef.field =

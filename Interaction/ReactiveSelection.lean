@@ -22,9 +22,9 @@ open GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
 
-def prioritySelection (priorities : FinDist (LinearOrder (MessageId Principal)))
+def prioritySelection (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution) :
-    FinDist (Option (MessageId Principal)) :=
+    PMF (Option (MessageId Principal)) :=
   MessageNetwork.priorityPending priorities (execution.network.unpublished eligible)
     execution.network.pending
 
@@ -38,7 +38,7 @@ def submitsEligible (eligible : Message Principal app.Payload → Bool)
   | _ => false
 
 theorem prioritySelection_replay
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (retained : execution.network.PendingOrPublished) (who : Principal)
     (id : MessageId Principal) :
@@ -53,7 +53,7 @@ theorem prioritySelection_replay
 sender's next identifier. Payload, memory, and transport multiplicity add no
 third case. Eligibility and the priority distribution are held fixed. -/
 theorem prioritySelection_response_eq
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (retained : execution.network.PendingOrPublished) (who : Principal)
     (action : app.Action) :
@@ -82,7 +82,7 @@ theorem prioritySelection_response_eq
 /-- The possible promoted identifier depends on the sender and existing
 serial counter, independently of the response's payload. -/
 theorem prioritySelection_response_regular
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (retained : execution.network.PendingOrPublished) (who : Principal)
     (action : app.Action) :
@@ -91,12 +91,12 @@ theorem prioritySelection_response_regular
       (some (who, execution.network.nextSerial who)) := by
   rcases action with ⟨transmission⟩
   cases transmission with
-  | none => exact FinDist.RegularAt.refl _ _
+  | none => exact PMF.RegularAt.refl _ _
   | some transmission =>
       cases transmission with
       | replay id =>
           rw [app.prioritySelection_replay priorities eligible execution retained who id]
-          exact FinDist.RegularAt.refl _ _
+          exact PMF.RegularAt.refl _ _
       | submit submission =>
           change (MessageNetwork.priorityPending priorities
               (execution.network.unpublished eligible) execution.network.pending).RegularAt
@@ -114,10 +114,10 @@ theorem prioritySelection_response_regular
           rw [MessageNetwork.eligibleIds_append]
           split
           · exact GameTheory.Math.Probability.PriorityChoice.law_regular_insert priorities _ _
-          · exact FinDist.RegularAt.refl _ _
+          · exact PMF.RegularAt.refl _ _
 
 theorem prioritySelection_next_absent
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (serials : execution.network.SerialsBeforeNext) (who : Principal) :
     some (who, execution.network.nextSerial who) ∉
@@ -129,7 +129,7 @@ theorem prioritySelection_next_absent
 /-- Decoding supplies an explicit meaning for an empty old menu. Agreement
 with the application's timeout behavior is a separate obligation. -/
 def priorityResponseRule {Value : Type*}
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (serials : execution.network.SerialsBeforeNext) (who : Principal)
     (decode : Option (MessageId Principal) → Value) :
@@ -146,7 +146,7 @@ def priorityResponseRule {Value : Type*}
 /-- Exact decoded law for every raw player response. The fresh candidate's
 meaning is supplied explicitly; the decoder of old candidates is fixed. -/
 theorem prioritySelection_response_decoded {Value : Type*}
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (retained : execution.network.PendingOrPublished)
     (serials : execution.network.SerialsBeforeNext) (who : Principal)
@@ -161,7 +161,7 @@ theorem prioritySelection_response_decoded {Value : Type*}
   · exact (GameTheory.PendingChoice.RegularSelection.ofInsertion_submit ..).symm
   · change (app.prioritySelection priorities eligible execution).map _ =
       (app.prioritySelection priorities eligible execution).map decode
-    apply FinDist.map_congr_of_eq_on_support
+    apply map_congr_on_support _
     intro selected supported
     have different : selected ≠ some (who, execution.network.nextSerial who) :=
       fun same => app.prioritySelection_next_absent priorities eligible execution serials who
@@ -172,12 +172,12 @@ theorem prioritySelection_response_decoded {Value : Type*}
 distribution at its fresh branch is obtained from the response distribution, without
 conditioning on future inclusion or using utilities. -/
 theorem prioritySelection_responses_factor {Value : Type*}
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (execution : app.Execution)
     (retained : execution.network.PendingOrPublished)
     (serials : execution.network.SerialsBeforeNext) (who : Principal)
     (decode : Option (MessageId Principal) → Value)
-    (responses : FinDist app.Action) (value : app.Action → Value) :
+    (responses : PMF app.Action) (value : app.Action → Value) :
     let rule := app.priorityResponseRule priorities eligible execution serials who decode
     (responses.bind fun action =>
       (app.prioritySelection priorities eligible (execution.respond app who action)).map
@@ -186,20 +186,20 @@ theorem prioritySelection_responses_factor {Value : Type*}
       rule.selection.bind (fun selected => selected.elim
         (rule.translateResponses (responses.map fun action =>
           if app.submitsEligible eligible execution who action then some (value action) else none))
-        FinDist.pure) := by
+        PMF.pure) := by
   dsimp only
   rw [← GameTheory.PendingChoice.RegularSelection.responseLaw_factor]
-  simp only [GameTheory.PendingChoice.RegularSelection.responseLaw, FinDist.bind_map]
-  apply FinDist.bind_congr
+  simp only [GameTheory.PendingChoice.RegularSelection.responseLaw, PMF.bind_map]
+  apply bind_congr_on_support _
   intro action _
   exact app.prioritySelection_response_decoded priorities eligible execution retained serials
     who decode action (value action)
 
 theorem prioritySelection_history_regular
-    (scheduler : app.Scheduler) (initial : FinDist app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) (initial : PMF app.State) (horizon : Nat)
     (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal app.Payload → Bool) (who : Principal) (action : app.Action) :
     (app.prioritySelection priorities eligible control.execution).RegularAt
       (app.prioritySelection priorities eligible (control.execution.respond app who action))

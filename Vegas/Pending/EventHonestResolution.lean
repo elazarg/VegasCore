@@ -85,9 +85,9 @@ private theorem resolution_reacted_action (runtime : EventGraphRuntime graph)
     cases MessageInterface.PlayerCommand.submit.inj selectedEq
     exact selectedAddress
   have block : runtime.resolutionBlockContinuation owner event payload binding checks outputEq
-      execution action = FinDist.pure submitted := by
+      execution action = PMF.pure submitted := by
     simp only [resolutionBlockContinuation, runtime.application.playerStep_private_eq,
-      FinDist.pure_bind]
+      PMF.pure_bind]
     rw [submission, runtime.application.playerStep_submit_eq]
   have grantBefore : second.native.application.serviceGrant = some event := by
     simpa only [secondState, firstState] using grant
@@ -112,14 +112,14 @@ private theorem resolution_reacted_action (runtime : EventGraphRuntime graph)
       submitted.native.application accepted message submittedHandled actor rfl addressed
       submittedGrant
       grantAccepted plan allowed submitted next reactionState member
-  rw [block, FinDist.pure_bind]
+  rw [block, PMF.pure_bind]
   constructor
   · have projected : (runtime.runServicePlan (runtime.compileProfile profile) wire
         (plan ++ [.includeLatest event owner]) submitted).map
-          (fun next => next.native.application.config) = FinDist.pure accepted.config := by
-      apply FinDist.eq_pure_of_support_subset_singleton
+          (fun next => next.native.application.config) = PMF.pure accepted.config := by
+      apply pmf_eq_pure_of_support_subset_singleton
       intro config supported
-      rw [FinDist.support_map] at supported
+      rw [PMF.support_map] at supported
       obtain ⟨next, member, rfl⟩ := supported
       change next.native.application.config = accepted.config
       rw [(reacted next member).1]
@@ -128,13 +128,13 @@ private theorem resolution_reacted_action (runtime : EventGraphRuntime graph)
       (runtime.compileProfile profile) wire owner event payload binding checks outputEq codeEq
       viewNode execution action ready timely boundary.bindingInvariant actor empty
       (boundary.lookup_eq_none (owner, execution.native.pool.nextSerial owner))
-    rw [block, FinDist.pure_bind] at immediate
+    rw [block, PMF.pure_bind] at immediate
     have includeLaw := runtime.serviceStep_includeLatest_afterSubmit_native
       (runtime.compileProfile profile) wire second event owner packet accepted addressed
       (boundary.lookup_eq_none (owner, execution.native.pool.nextSerial owner)) handled
-    have includeConfig := congrArg (fun law : FinDist runtime.application.State =>
+    have includeConfig := congrArg (fun law : PMF runtime.application.State =>
       law.map (fun native => native.application.config)) includeLaw
-    simp only [FinDist.map_comp, Function.comp_def, FinDist.map_pure] at includeConfig
+    simp only [PMF.map_comp, Function.comp_def, PMF.pure_map] at includeConfig
     rw [includeConfig] at immediate
     exact immediate
   · intro next member
@@ -212,9 +212,9 @@ theorem HonestBoundary.resolve_reacted_block (runtime : EventGraphRuntime graph)
       outputEq codeEq viewNode rfl grant ready actor
       (boundary.history_unfinished owner event ready.1).1
       (boundary.history_unfinished owner event ready.1).2
-      (boundary.remembered_unfinished event ready.1), FinDist.bind_bind]
+      (boundary.remembered_unfinished event ready.1), PMF.bind_bind]
   constructor
-  · rw [FinDist.map_bind]
+  · rw [PMF.map_bind]
     have perAction : ∀ action, _ := fun action =>
       (resolution_reacted_action runtime inputs profile wire execution boundary event owner
         payload binding checks outputEq codeEq viewNode grant ready timely actor action
@@ -223,7 +223,7 @@ theorem HonestBoundary.resolve_reacted_block (runtime : EventGraphRuntime graph)
       _ = (graph.normalizePolicy owner (profile owner) event actor
           (graph.playerObserve owner execution.native.application.config)).bind
             (execution.native.application.config.step event ready) :=
-        FinDist.bind_congr fun action _ => perAction action
+        bind_congr_on_support _ fun action _ => perAction action
       _ = _ := by
         unfold normalizedPolicyStep
         split
@@ -235,7 +235,7 @@ theorem HonestBoundary.resolve_reacted_block (runtime : EventGraphRuntime graph)
           rw [actor] at ownerless
           contradiction
   · intro next member
-    rw [FinDist.support_bind] at member
+    rw [PMF.support_bind] at member
     simp only [Set.mem_iUnion] at member
     obtain ⟨action, _, supported⟩ := member
     exact (resolution_reacted_action runtime inputs profile wire execution boundary event owner

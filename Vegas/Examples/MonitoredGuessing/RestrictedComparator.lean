@@ -73,8 +73,8 @@ theorem comparatorResponse_legal (who : Player)
 
 def ordinaryComparator (who : Player) (site : restrictedModel.InformationSite who)
     (action : watchedModel.Choice who (ordinaryRestriction.site who site).1) :
-    FinDist (restrictedModel.Choice who site.1) :=
-  FinDist.pure ⟨some (comparatorResponse who site.1 (action.1.getD nativeSilent)),
+    PMF (restrictedModel.Choice who site.1) :=
+  PMF.pure ⟨some (comparatorResponse who site.1 (action.1.getD nativeSilent)),
     comparatorResponse_legal who site _⟩
 
 theorem watcher_choice_surjective (info : nativeApp.Info) :
@@ -93,8 +93,8 @@ theorem watched_watcher_policy (profile : Profile watchedModel.behavioralSignatu
     watchedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile watcher =
       nativeWatcherPolicy := by
   funext past view
-  change _ = FinDist.pure (nativeWatcherResponse view)
-  apply FinDist.eq_pure_of_support_subset_singleton
+  change _ = PMF.pure (nativeWatcherResponse view)
+  apply pmf_eq_pure_of_support_subset_singleton
   intro response supported
   have member := watchedMenu.decode_embedPolicy_covered nativeInitialLaw nativeHorizon
     nativeScheduler watcher (profile watcher) past view response supported

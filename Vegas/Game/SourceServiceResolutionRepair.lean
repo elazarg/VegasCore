@@ -72,7 +72,7 @@ theorem resolution_history_activation_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.dispatch players (.activate owner) original ∧
       coupling.map Prod.snd = strategy.round owner players
         (rosterScheduler setup leaks rosters network) repaired memory ∧
@@ -90,16 +90,16 @@ theorem resolution_history_activation_coupling
   let menu := sourceServiceMenu setup leaks bounds rosters
   let scheduler := rosterScheduler setup leaks rosters network
   have command : scheduler repaired.environmentRecall (repaired.observeEnvironment app) =
-      FinDist.pure (.activate owner) := by
+      PMF.pure (.activate owner) := by
     simp only [scheduler, rosterScheduler, selected, interactionInstruction]
   obtain ⟨sample, supported⟩ := (leaks owner repaired.network.pending).support_nonempty
   let activated := repaired.sampledActivation app owner sample
   have sampled : activated ∈ (repaired.environmentStep app (.activate owner)).support := by
-    rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map]
+    rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
     exact ⟨sample, supported, rfl⟩
   obtain ⟨activeTrace⟩ := menu.trace_environment (initialLaw setup)
     (rosterPlan setup rosters).length scheduler remaining repaired activated (.activate owner)
-      trace (by rw [command]; exact FinDist.mem_support_pure.mpr rfl) sampled
+      trace (by rw [command]; exact (PMF.mem_support_pure_iff _ _).mpr rfl) sampled
   have owned : (graph setup).actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
     rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor
@@ -157,13 +157,13 @@ theorem resolution_history_activation_coupling
         (by intro observed _; simpa only [players, Function.update_self] using available _ _)
   have jointLaw : coupling.map Prod.snd = strategy.round owner players scheduler repaired memory :=
     by
-      rw [ReactiveApplication.Implementation.round, command, FinDist.pure_bind]
+      rw [ReactiveApplication.Implementation.round, command, PMF.pure_bind]
       exact rightLaw
   refine ⟨coupling, leftLaw, jointLaw, ?_⟩
   intro next member
   have rightSupport : next.2 ∈ (strategy.round owner players scheduler repaired memory).support :=
     by
-      rw [← jointLaw, FinDist.support_map]
+      rw [← jointLaw, PMF.support_map]
       exact ⟨next, member, rfl⟩
   refine ⟨?_, ?_⟩
   · apply menu.trace_implementation_round (initialLaw setup) (rosterPlan setup rosters).length
@@ -178,10 +178,10 @@ theorem resolution_history_activation_coupling
   · rcases related next member with bad | good
     · obtain ⟨record, step, authored, rejected⟩ := bad
       have reached : next.1 ∈ (app.dispatch players (.activate owner) original).support := by
-        rw [← leftLaw, FinDist.support_map]
+        rw [← leftLaw, PMF.support_map]
         exact ⟨next, member, rfl⟩
-      obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, _, same⟩ := FinDist.support_map .. ▸ resumed
+      obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, _, same⟩ := PMF.support_map .. ▸ resumed
       refine Or.inl ⟨record, ?_, authored, rejected⟩
       rw [← same, app.executionTraffic_activated_response original middle owner response
         remaining moved]

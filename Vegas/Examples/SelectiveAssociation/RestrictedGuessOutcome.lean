@@ -107,7 +107,7 @@ theorem guesser_continuation_bound (who : Player) (guesser : who ≠ alice)
         .failure) (some control) := by
   obtain ⟨value, stored⟩ := alice_binding_at_guess who guesser control trace active granted
   obtain ⟨result, stateEq, _⟩ := (binding_invariant alice value).behavioral_continuation menu
-    (FinDist.pure nativeInitial) nativeHorizon scheduler players _ control trace final stored
+    (PMF.pure nativeInitial) nativeHorizon scheduler players _ control trace final stored
       supported
   have published := publication_from_earlier_binding players (nativeBindingEvent who) alice
     (by fin_cases who <;> decide) control trace (by rwa [native_binding_owner]) granted value

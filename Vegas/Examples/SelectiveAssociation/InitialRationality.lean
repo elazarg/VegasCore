@@ -20,25 +20,25 @@ open Vegas Interaction GameTheory GameTheory.Protocol GameTheory.Math.Probabilit
 
 theorem native_initial_history_value (profile : Profile nativeModel.behavioralSignature)
     (history : nativeModel.InformationHistory alice nativeInitialSite.1) :
-    (nativeModel.runBehavioralFrom profile (2 * nativeHorizon + 1) history.1).expect
+    expect (nativeModel.runBehavioralFrom profile (2 * nativeHorizon + 1) history.1)
       (fun history => nativeUtility alice history.state) =
-    (nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).expect
+    expect (nativeModel.runBehavioral profile (2 * nativeHorizon + 1))
       (fun history => nativeUtility alice history.state) := by
   have enough : nativeApp.rank nativeHorizon history.1.state ≤ 2 * nativeHorizon + 1 := by
     rw [native_initial_information_control history]
     decide
-  have law := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+  have law := nativeMenu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler
     profile (2 * nativeHorizon + 1) history.1 enough
-  have value := congrArg (fun law : FinDist nativeApp.ProtocolState =>
-    law.expect (nativeUtility alice)) law
-  rw [FinDist.expect_map, native_initial_information_control history] at value
+  have value := congrArg (fun law : PMF nativeApp.ProtocolState =>
+    expect law (nativeUtility alice)) law
+  rw [expect_map, native_initial_information_control history] at value
   rw [value, native_initial_value]
   exact native_initial_finish_value _
 
 theorem native_sequential_initial_bound (assessment : nativeModel.BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)) :
-    1 / 2 ≤ (nativeModel.runBehavioral assessment.strategy (2 * nativeHorizon + 1)).expect
+    1 / 2 ≤ expect (nativeModel.runBehavioral assessment.strategy (2 * nativeHorizon + 1))
       (fun history => nativeUtility alice history.state) := by
   apply nativeModel.initial_value_ge_of_induced_deviation assessment
     (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)

@@ -71,7 +71,7 @@ def sourceProgram : SourceProgram Player simpleExpr [] ∅ :=
 def sourceSetup : Setup (Player := Player) (L := simpleExpr) where
   context := []
   namesNodup := by simp
-  initialLaw := FinDist.pure (Env.empty _)
+  initialLaw := PMF.pure (Env.empty _)
   obligations := ∅
   program := sourceProgram
   accounts := rfl

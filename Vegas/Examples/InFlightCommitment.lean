@@ -71,9 +71,9 @@ private def messages (bit : Bool) : List app.Action :=
     .deliver true (false, 0), .deliver false (true, 0)]
 
 /-- The states arise from actual submission and delivery transitions. -/
-theorem prefix_run (bit : Bool) : app.run (messages bit) initial = FinDist.pure (seen bit) := by
+theorem prefix_run (bit : Bool) : app.run (messages bit) initial = PMF.pure (seen bit) := by
   simp only [messages, MessageApplication.run, MessageApplication.step,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   rfl
 
 /-- Both packets have been delivered, but neither has been included. -/
@@ -93,20 +93,20 @@ private def readSignal (view : MessagePool.View Bool (Payload graph)) : Bool :=
   | _ => false
 
 private def respondToSignal : app.PlayerPolicy := fun _ view =>
-  FinDist.pure (.privateCommand (.prepare 0 ⟨.bool, readSignal view.messages⟩))
+  PMF.pure (.privateCommand (.prepare 0 ⟨.bool, readSignal view.messages⟩))
 
 /-- One information-local policy chooses its preparation from the received
 packet, rather than taking the hidden bit as an extra input. -/
 theorem preparation_reads_delivered_signal (bit : Bool) :
     respondToSignal [] (MessageApplication.State.observe app (seen bit) false) =
-      FinDist.pure (.privateCommand (.prepare 0 ⟨.bool, bit⟩)) := by
+      PMF.pure (.privateCommand (.prepare 0 ⟨.bool, bit⟩)) := by
   rfl
 
 /-- The response can actually execute after delivery, while the original
 commitment envelope stays pending. -/
 theorem prepare_after_delivery (bit : Bool) :
     app.step (seen bit) (.privateCommand false (.prepare 0 ⟨.bool, bit⟩)) =
-      FinDist.pure (prepared bit) ∧
+      PMF.pure (prepared bit) ∧
     (prepared bit).pool.lookup (false, 0) = some ⟨(false, 0), commitment⟩ := by
   exact ⟨rfl, rfl⟩
 
@@ -138,8 +138,8 @@ private def preparedSubmission (bit : Bool) : app.State :=
 /-- A prepared commitment is transmitted with its value already fixed. -/
 theorem prepared_submission_run (bit : Bool) :
     app.run [.privateCommand false (.prepare 0 ⟨.bool, bit⟩), .submit false commitment]
-      initial = FinDist.pure (preparedSubmission bit) := by
-  simp only [MessageApplication.run, MessageApplication.step, FinDist.pure_bind]
+      initial = PMF.pure (preparedSubmission bit) := by
+  simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind]
   rfl
 
 /-- Every later native continuation retains the prepared value, including
@@ -167,7 +167,7 @@ theorem fresh_commitment_after_delivery (bit : Bool) :
     app.run [.privateCommand false (.prepare 1 ⟨.bool,
         readSignal (MessageApplication.State.observe app (seen bit) false).messages⟩),
       .submit false (.commitment 0 (false, .prepared 1))] (seen bit) =
-        FinDist.pure (freshReaction bit) ∧
+        PMF.pure (freshReaction bit) ∧
     (freshReaction bit).pool.lookup (false, 0) = some ⟨(false, 0), commitment⟩ ∧
     (freshReaction bit).pool.lookup (false, 1) =
       some ⟨(false, 1), .commitment 0 (false, .prepared 1)⟩ ∧
@@ -175,22 +175,22 @@ theorem fresh_commitment_after_delivery (bit : Bool) :
     (freshReaction bit).application.candidates.lookup (false, .prepared 1) =
       .openable ⟨.bool, bit⟩ := by
   refine ⟨?_, rfl, rfl, rfl, rfl⟩
-  simp only [MessageApplication.run, MessageApplication.step, FinDist.pure_bind]
+  simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind]
   rfl
 
 private def reactToSignal : NativePolicy graph := fun _ view =>
-  FinDist.pure (bindingAction false 0 .bool (.success (readSignal view.messages)) 1)
+  PMF.pure (bindingAction false 0 .bool (.success (readSignal view.messages)) 1)
 
 /-- The player reads a delivered bit and sends a commitment in one action.
 Its private opening data does not enter the network. -/
 theorem action_after_delivery (bit : Bool) :
     (runtime.invokeNative false reactToSignal
       (NativeExecution.initial runtime (seen bit))).map
-        NativeExecution.native = FinDist.pure (freshReaction bit) ∧
+        NativeExecution.native = PMF.pure (freshReaction bit) ∧
       (freshReaction bit).application.clock = (seen bit).application.clock ∧
       (freshReaction bit).pool.ledger = [] ∧ (freshReaction bit).receipts = [] := by
   refine ⟨?_, rfl, rfl, rfl⟩
-  simp only [invokeNative, reactToSignal, FinDist.pure_bind, actionStep, FinDist.map_pure]
+  simp only [invokeNative, reactToSignal, PMF.pure_bind, actionStep, PMF.pure_map]
   rfl
 
 /-- Existing network-submission, wire, and reaction opportunities are retained. -/
@@ -201,7 +201,7 @@ example : eventServicePlan (graph := graph) [true, false] 2 0 =
 
 private def nativePlayers : Bool → NativePolicy graph
   | false => reactToSignal
-  | true => fun _ _ => FinDist.pure PlayerAction.wait
+  | true => fun _ _ => PMF.pure PlayerAction.wait
 
 private def remainingReaction (bit : Bool) : NativeControl runtime :=
   ⟨0, [.player false, .includeLatest 0 false, .sample 0, .tick, .expire 0],
@@ -210,14 +210,14 @@ private def remainingReaction (bit : Bool) : NativeControl runtime :=
 /-- The actual service kernel invokes this policy before reserved inclusion. -/
 theorem service_reaction_before_inclusion (bit : Bool) :
     (runtime.nativeControlStep
-      (FinDist.pure (fun input => nomatch input)) [true, false] 2 nativePlayers
-      (fun _ _ => FinDist.pure .wait)
-      (fun _ _ => FinDist.pure (ServiceOrder.increasing graph))
+      (PMF.pure (fun input => nomatch input)) [true, false] 2 nativePlayers
+      (fun _ _ => PMF.pure .wait)
+      (fun _ _ => PMF.pure (ServiceOrder.increasing graph))
       (some (remainingReaction bit))).map
         (fun state => state.map (fun control => control.execution.native)) =
-      FinDist.pure (some (freshReaction bit)) := by
+      PMF.pure (some (freshReaction bit)) := by
   simp only [nativeControlStep, remainingReaction, nativePlayers, invokeNative,
-    reactToSignal, FinDist.pure_bind, actionStep, FinDist.map_pure]
+    reactToSignal, PMF.pure_bind, actionStep, PMF.pure_map]
   rfl
 
 /-- The coalesced service still executes the received-bit reaction before
@@ -225,15 +225,15 @@ reserved inclusion. This slot is one action because inclusion is the next bounda
 theorem response_reaction_before_inclusion (bit : Bool) :
     ((reactToSignal ((remainingReaction bit).execution.principalHistory false)
         (runtime.nativeView (seen bit) false)).bind fun action =>
-      runtime.responseTransition (FinDist.pure (fun input => nomatch input)) [true, false] 2
-        (fun _ _ => FinDist.pure .wait)
-        (fun _ _ => FinDist.pure (ServiceOrder.increasing graph))
+      runtime.responseTransition (PMF.pure (fun input => nomatch input)) [true, false] 2
+        (fun _ _ => PMF.pure .wait)
+        (fun _ _ => PMF.pure (ServiceOrder.increasing graph))
         (some (remainingReaction bit))
         (fun who => if who = false then some [action] else none)).map
           (fun state => state.map (fun control => control.execution.native)) =
-      FinDist.pure (some (freshReaction bit)) := by
-  simp only [reactToSignal, FinDist.pure_bind, responseTransition, remainingReaction,
-    ↓reduceIte, Option.getD_some, FinDist.map_pure]
+      PMF.pure (some (freshReaction bit)) := by
+  simp only [reactToSignal, PMF.pure_bind, responseTransition, remainingReaction,
+    ↓reduceIte, Option.getD_some, PMF.pure_map]
   rfl
 
 example (bit : Bool) (firstEpochs secondEpochs : Nat)
@@ -261,14 +261,14 @@ private def sendRemembered : NativePolicy graph := fun history _ =>
       | [.inl 1] => true
       | _ => false
     | none => false
-  FinDist.pure (bindingAction false 0 .bool (.success bit) 0)
+  PMF.pure (bindingAction false 0 .bool (.success bit) 0)
 
 /-- Future behavior can depend on the retained private bit. No preparation
 catalogue or first-write cache is involved. -/
 theorem private_memory_recalled (bit : Bool) :
     sendRemembered ((rememberBit bit).principalHistory false)
         (runtime.nativeView (rememberBit bit).native false) =
-      FinDist.pure (bindingAction (graph := graph) false 0 .bool (.success bit) 0) := by
+      PMF.pure (bindingAction (graph := graph) false 0 .bool (.success bit) 0) := by
   cases bit <;> rfl
 
 /-- Another player's complete invocation input does not reveal the private bit. -/

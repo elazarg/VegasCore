@@ -26,7 +26,7 @@ theorem native_information_control
       control.execution.recall who = past ∧
         control.execution.observe (serviceApp observation) who = view := by
   rcases history with ⟨⟨state, trace⟩, information⟩
-  change ((serviceMenu observation).signals (FinDist.pure nativeInitial) nativeHorizon
+  change ((serviceMenu observation).signals (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation)).infoOf
     who trace = some (past, view) at information
   rw [(serviceMenu observation).info] at information
@@ -47,9 +47,9 @@ theorem native_opening_fiber_lower
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
-    (opens : profile who (some (past, view)) = FinDist.pure (nativeOpeningChoice who past view))
+    (opens : profile who (some (past, view)) = PMF.pure (nativeOpeningChoice who past view))
     (history : nativeModel.InformationHistory who (some (past, view))) :
-    -1 ≤ (nativeModel.runBehavioralFrom profile (2 * nativeHorizon + 1) history.1).expect
+    -1 ≤ expect (nativeModel.runBehavioralFrom profile (2 * nativeHorizon + 1) history.1)
       (fun final => nativeUtility who final.state) := by
   obtain ⟨control, stateEq, active, recall, observed⟩ :=
     native_information_control who past view history
@@ -122,9 +122,9 @@ theorem native_not_supported_failing_opening
   apply assessment.not_supported_choice_of_uniform_gap
     (nativeModel.actsOnceWhereItMatters_of_actsOnce
       (InformationModel.actsOnce_of_decisionInformationAntichain
-        (nativeMenu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon
+        (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon
           nativeScheduler))) site
-    (nativeMenu.informationSite_allNonterminal (FinDist.pure nativeInitial) nativeHorizon
+    (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler who site)
     (fun history => nativeUtility who history.state) (2 * nativeHorizon) rational choice
     alternative (-4) (-1) (by norm_num)

@@ -22,8 +22,8 @@ theorem beforeResponse_core {Claim : Type} (players : Player → (application Cl
       execution.application.core = earlier.application.core := by
   rw [beforeResponse, runInstructions_append] at supported
   obtain ⟨earlier, earlierMem, moved⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  rw [runInstructions_application, runInstructions_nil, FinDist.mem_support_pure] at moved
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  rw [runInstructions_application, runInstructions_nil, PMF.mem_support_pure_iff _ _] at moved
   cases moved
   exact ⟨earlier, earlierMem, rfl⟩
 
@@ -33,16 +33,16 @@ theorem before_bob_core {Claim : Type} (players : Player → (application Claim)
     ∃ a c, execution.application.core = CorePath.carol a c := by
   have granted : effect execution (.application (.grant 2)) ∈
       (runInstructions players (beforeResponse 2) (root Claim)).support := by
-    rw [beforeResponse, runInstructions_append, FinDist.support_bind]
+    rw [beforeResponse, runInstructions_append, PMF.support_bind]
     refine Set.mem_iUnion₂.mpr ⟨execution, supported, ?_⟩
     rw [runInstructions_application, runInstructions_nil]
-    exact FinDist.mem_support_pure.mpr rfl
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
   have activated : effect (effect execution (.application (.grant 2))) (.activate bob) ∈
       ((runInstructions players (beforeResponse 2) (root Claim)).map
         (fun current => effect current (.activate bob))).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨_, granted, rfl⟩
-  rw [bob_prefix_law, FinDist.support_map] at activated
+  rw [bob_prefix_law, PMF.support_map] at activated
   obtain ⟨sample, _, same⟩ := activated
   have core := congrArg (fun current : (application Claim).Execution =>
     current.application.core) same
@@ -55,7 +55,7 @@ theorem before_aliceOpening_core {Claim : Type} (players : Player → (applicati
     ∃ a c b, execution.application.core = CorePath.bob a c b := by
   rw [show before 3 = before 2 ++ visit 2 from rfl, runInstructions_append] at supported
   obtain ⟨earlier, earlierMem, moved⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨a, c, core⟩ := before_bob_core players earlier earlierMem
   obtain ⟨b, result⟩ := bob_binding_visit players earlier execution a c core moved
   exact ⟨a, c, b, result⟩
@@ -66,7 +66,7 @@ theorem before_carolOpening_core {Claim : Type} (players : Player → (applicati
     ∃ a c b first, execution.application.core = CorePath.openedAlice a c b first := by
   rw [show before 4 = before 3 ++ visit 3 from rfl, runInstructions_append] at supported
   obtain ⟨earlier, earlierMem, moved⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨a, c, b, core⟩ := before_aliceOpening_core players earlier earlierMem
   obtain ⟨first, result, _⟩ := opening_visit_core players 3 earlier execution
     (by rw [core]; rfl) (by decide) (CorePath.openedAlice a c b)
@@ -81,7 +81,7 @@ theorem before_bobOpening_core {Claim : Type} (players : Player → (application
       execution.application.core = CorePath.openedCarol a c b first second := by
   rw [show before 5 = before 4 ++ visit 4 from rfl, runInstructions_append] at supported
   obtain ⟨earlier, earlierMem, moved⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨a, c, b, first, core⟩ := before_carolOpening_core players earlier earlierMem
   obtain ⟨second, result, _⟩ := opening_visit_core players 4 earlier execution
     (by rw [core]; rfl) (by decide) (CorePath.openedCarol a c b first)

@@ -19,12 +19,12 @@ open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol
 open GameTheory.Protocol.InformationModel GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability
 
-private def completion (deposit : ℝ) (sufficient : 2 ≤ deposit) (guesses : FinDist Bool) :
+private def completion (deposit : ℝ) (sufficient : 2 ≤ deposit) (guesses : PMF Bool) :
     nativeModel.BehavioralAssessment :=
   (exists_native_sequential_equilibrium guesses deposit sufficient).choose
 
 private theorem completion_facts (deposit : ℝ) (sufficient : 2 ≤ deposit)
-    (guesses : FinDist Bool) :
+    (guesses : PMF Bool) :
     (completion deposit sufficient guesses).strategy alice = nativeAliceBehavior ∧
     (completion deposit sufficient guesses).strategy watcher = nativeWatcherBehavior ∧
     (completion deposit sufficient guesses).strategy bob quietBobSite.1 =
@@ -58,7 +58,7 @@ private theorem compiled_profile (deposit : ℝ) (sufficient : 2 ≤ deposit)
     have law : (profile bob sourceBobSite.1).map
         (fun choice => OwnAction.disclosure choice.1) =
         sourceDecisionLaw profile bob sourceBobSite.1 := by
-      simp only [sourceDecisionLaw, sourceChoice, FinDist.map_comp, Function.comp_def]
+      simp only [sourceDecisionLaw, sourceChoice, PMF.map_comp, Function.comp_def]
     rw [law]
     rfl
   · exact (completion_facts deposit sufficient _).2.1.symm

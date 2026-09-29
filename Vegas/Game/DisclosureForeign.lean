@@ -26,29 +26,29 @@ theorem normalized_disclosure_foreign_comparison {Γ : SourceCtx Player L} {O : 
     (profile : BehavioralProfile program) (policy : BehavioralPolicy owner program)
     (alternative : BehavioralPolicy who program)
     (registry : Registry Γ) (revelations : Revelations Γ)
-    (initial : FinDist (Config Player L Γ))
+    (initial : PMF (Config Player L Γ))
     (registryEq : ∀ config ∈ initial.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
     (count : Nat) :
     let original := initial.bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile owner policy)))^[count]
-          (FinDist.pure (ProtocolState.entry program config))
+          (PMF.pure (ProtocolState.entry program config))
     let normalizedPolicy := policy.normalizeDisclosures program registry revelations
     let normalized := initial.bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile owner normalizedPolicy)))^[count]
-          (FinDist.pure (ProtocolState.entry program config))
+          (PMF.pure (ProtocolState.entry program config))
     let observe := ProtocolState.observe who program
     ∀ view ∈ (normalized.map observe).support,
       view ∈ (original.map observe).support ∧
-      ((normalized.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+      ((fiberConditional normalized observe view).bind (ProtocolState.continuationLaw program
         (Function.update profile owner normalizedPolicy))) =
-        (original.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+        (fiberConditional original observe view).bind (ProtocolState.continuationLaw program
           (Function.update profile owner policy)) ∧
-      ((normalized.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+      ((fiberConditional normalized observe view).bind (ProtocolState.continuationLaw program
         (Function.update (Function.update profile owner normalizedPolicy) who alternative))) =
-        (original.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+        (fiberConditional original observe view).bind (ProtocolState.continuationLaw program
           (Function.update (Function.update profile owner policy) who alternative)) := by
   classical
   dsimp only
@@ -56,17 +56,17 @@ theorem normalized_disclosure_foreign_comparison {Γ : SourceCtx Player L} {O : 
   let original := initial.bind fun config =>
     (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
       (Function.update profile owner policy)))^[count]
-        (FinDist.pure (ProtocolState.entry program config))
+        (PMF.pure (ProtocolState.entry program config))
   let normalized := initial.bind fun config =>
     (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
       (Function.update profile owner (policy.normalizeDisclosures program registry revelations))))
-        ^[count] (FinDist.pure (ProtocolState.entry program config))
+        ^[count] (PMF.pure (ProtocolState.entry program config))
   let observe := ProtocolState.observe who program
   let kernel := policy.disclosureMemory program registry revelations
-    (fun view => FinDist.pure view.2)
+    (fun view => PMF.pure view.2)
   have expanded : original = normalized.bind kernel := by
-    rw [FinDist.bind_bind]
-    apply FinDist.bind_congr
+    rw [PMF.bind_bind]
+    apply bind_congr_on_support _
     intro config supported
     have equation := normalized_disclosure_prefix program profile policy config count
     rw [registryEq config supported, revelationsEq config supported] at equation
@@ -75,45 +75,45 @@ theorem normalized_disclosure_foreign_comparison {Γ : SourceCtx Player L} {O : 
       observe old = observe state := by
     intro state supported old member
     obtain ⟨config, supportedConfig, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
     have retained := disclosure_prefix_retracts program profile policy
-      (fun view => FinDist.pure view.2) (fun view => view.2) config
-      (fun past chosen => FinDist.mem_support_pure.mp chosen) count
+      (fun view => PMF.pure view.2) (fun view => view.2) config
+      (fun past chosen => (PMF.mem_support_pure_iff _ _).mp chosen) count
     rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at retained
     rw [← retained state reached old member]
     exact (ProtocolState.foreign_observe_normalizeDisclosureRecall who different program
       (fun view => view.2) old).symm
-  have conditional : original.condOnFibre observe view =
-      (normalized.condOnFibre observe view).bind kernel := by
+  have conditional : fiberConditional original observe view =
+      (fiberConditional normalized observe view).bind kernel := by
     rw [expanded]
-    exact FinDist.conditional_bind_of_observation normalized kernel observe observe
+    exact PMF.conditional_bind_of_observation normalized kernel observe observe
       observes view present
   have realization (continuation : BehavioralProfile program) :
-      ((normalized.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+      ((fiberConditional normalized observe view).bind (ProtocolState.continuationLaw program
         (Function.update continuation owner
           (policy.normalizeDisclosures program registry revelations)))) =
-      (original.condOnFibre observe view).bind (ProtocolState.continuationLaw program
+      (fiberConditional original observe view).bind (ProtocolState.continuationLaw program
         (Function.update continuation owner policy)) := by
-    rw [conditional, FinDist.bind_bind]
-    apply FinDist.bind_congr
+    rw [conditional, PMF.bind_bind]
+    apply bind_congr_on_support _
     intro state supported
-    obtain ⟨witness, member, equal⟩ := FinDist.support_map .. ▸ present
+    obtain ⟨witness, member, equal⟩ := PMF.support_map .. ▸ present
     have meets : ∃ state ∈ observe ⁻¹' {view}, state ∈ normalized.support :=
       ⟨witness, equal, member⟩
-    rw [FinDist.condOnFibre, dite_eq_left meets] at supported
+    rw [fiberConditional, dite_eq_left meets] at supported
     obtain ⟨config, configSupport, reached⟩ := Set.mem_iUnion₂.mp
-      (FinDist.support_bind .. ▸ (FinDist.support_condOn _ _ _ supported).2)
+      (PMF.support_bind .. ▸ ((PMF.mem_support_filter_iff _).mp supported).2)
     have realizes := disclosure_prefix_continuation_realizes program profile continuation policy
-      (fun view => FinDist.pure view.2) config count
+      (fun view => PMF.pure view.2) config count
     rw [registryEq config configSupport, revelationsEq config configSupport] at realizes
     exact (realizes state reached).symm
   refine ⟨?_, realization profile, ?_⟩
-  · obtain ⟨state, supported, observed⟩ := FinDist.support_map .. ▸ present
+  · obtain ⟨state, supported, observed⟩ := PMF.support_map .. ▸ present
     obtain ⟨old, member⟩ := (kernel state).support_nonempty
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     refine ⟨old, ?_, (observes state supported old member).trans observed⟩
     change old ∈ original.support
-    rw [expanded, FinDist.support_bind]
+    rw [expanded, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨state, supported, member⟩
   · have equation := realization (Function.update profile who alternative)
     rw [Function.update_comm different] at equation

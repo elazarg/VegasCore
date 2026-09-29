@@ -33,21 +33,21 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- Reuse the compiled source policy at the granted event. The checked identity
 only totalizes malformed local inputs; actual player observations carry it. -/
 def sourceChoiceLaw (profile : BehavioralProfile setup.program) (who : Player)
-    (view : (application setup leaks).PlayerView) : FinDist Bool :=
+    (view : (application setup leaks).PlayerView) : PMF Bool :=
   if identity : view.application.who = who then
     match view.application.publicView.serviceGrant with
-    | none => FinDist.pure false
+    | none => PMF.pure false
     | some event =>
         if owned : (graph setup).actor? event = some who then
           match nodeView (graph setup) event with
-          | .sample .. | .bind .. => FinDist.pure false
+          | .sample .. | .bind .. => PMF.pure false
           | .resolve _ _ _ _ outputEq _ =>
-              cast (congrArg FinDist (congrArg EventGraph.EventField.Action outputEq))
+              cast (congrArg PMF (congrArg EventGraph.EventField.Action outputEq))
                 ((compileEventProfile setup.program profile) who event owned
                   (setup.eventGraph.fromModeObservation .sequential who
                     (identity ▸ view.application.observation)))
-        else FinDist.pure false
-  else FinDist.pure false
+        else PMF.pure false
+  else PMF.pure false
 
 theorem sourceChoiceLaw_at_reveal (profile : BehavioralProfile setup.program)
     (who : Player) (execution : (application setup leaks).Execution)
@@ -63,7 +63,7 @@ theorem sourceChoiceLaw_at_reveal (profile : BehavioralProfile setup.program)
     (node : nodeView (graph setup) event =
       .resolve owner payload binding checks outputEq codeEq) :
     sourceChoiceLaw setup leaks profile who (execution.observe (application setup leaks) who) =
-      cast (congrArg FinDist (congrArg EventGraph.EventField.Action outputEq))
+      cast (congrArg PMF (congrArg EventGraph.EventField.Action outputEq))
         ((compileEventProfile setup.program profile) who event owned
           (setup.eventGraph.fromModeObservation .sequential who
             ((graph setup).playerObserve who execution.application.config))) := by
@@ -84,13 +84,13 @@ def ordinaryPolicy (profile : BehavioralProfile setup.program)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
     (who : Player) : (application setup leaks).Policy := fun past view =>
   match selected : opening? setup leaks who past view with
-  | none => FinDist.pure ⟨none⟩
+  | none => PMF.pure ⟨none⟩
   | some opening =>
       if covered : opening ∈ (bounds.menu (runtime setup) leaks).actions who past view then
         (splitChoiceLaw setup leaks bounds who past view opening selected covered
           (sourceChoiceLaw setup leaks profile who view) weight nonnegative atMostOne).map
             Subtype.val
-      else FinDist.pure ⟨none⟩
+      else PMF.pure ⟨none⟩
 
 theorem ordinaryPolicy_covered (profile : BehavioralProfile setup.program)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
@@ -102,14 +102,14 @@ theorem ordinaryPolicy_covered (profile : BehavioralProfile setup.program)
     response ∈ ordinaryActions setup leaks bounds who past view := by
   unfold ordinaryPolicy at supported
   split at supported
-  · rw [FinDist.mem_support_pure] at supported
+  · rw [PMF.mem_support_pure_iff _ _] at supported
     subst response
     exact silence_ordinary setup leaks bounds who past view
   · split at supported
-    · rw [FinDist.support_map] at supported
+    · rw [PMF.support_map] at supported
       obtain ⟨chosen, _present, same⟩ := supported
       exact same ▸ chosen.2
-    · rw [FinDist.mem_support_pure] at supported
+    · rw [PMF.mem_support_pure_iff _ _] at supported
       subst response
       exact silence_ordinary setup leaks bounds who past view
 
@@ -129,7 +129,7 @@ theorem ordinaryPolicy_projects (profile : BehavioralProfile setup.program)
   · rename_i chosen found
     have same : chosen = opening := Option.some.inj (found.symm.trans selected)
     subst chosen
-    rw [dite_eq_left covered, FinDist.map_comp]
+    rw [dite_eq_left covered, PMF.map_comp]
     exact splitChoiceLaw_project setup leaks bounds who past view opening selected covered
       (sourceChoiceLaw setup leaks profile who view) weight nonnegative atMostOne
 

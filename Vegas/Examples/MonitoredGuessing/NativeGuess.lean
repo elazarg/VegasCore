@@ -65,14 +65,14 @@ theorem quiet_reserved_local (bit : Bool) (response : nativeApp.Action)
   obtain ⟨next, pureStep⟩ := nativeRuntime.reactiveLatest_step_pure nativeLeaks bob
     bobPublication ((quietBob bit).respond nativeApp bob response)
   rw [pureStep] at leftMem
-  have leftEq := FinDist.mem_support_pure.mp leftMem
+  have leftEq := (PMF.mem_support_pure_iff _ _).mp leftMem
   subst left
-  rw [pureStep, FinDist.map_pure] at law
+  rw [pureStep, PMF.pure_map] at law
   have mapped : right.application.playerView bob ∈
-      (FinDist.pure (next.application.playerView bob)).support := by
-    rw [law, FinDist.support_map]
+      (PMF.pure (next.application.playerView bob)).support := by
+    rw [law, PMF.support_map]
     exact ⟨right, rightMem, rfl⟩
-  exact (FinDist.mem_support_pure.mp mapped).symm
+  exact ((PMF.mem_support_pure_iff _ _).mp mapped).symm
 
 private theorem maintenance_local (left right nextLeft nextRight : nativeApp.Execution)
     (command : EnvironmentCommand nativeGraph)
@@ -85,7 +85,7 @@ private theorem maintenance_local (left right nextLeft nextRight : nativeApp.Exe
     command maintenance views
   have pureStep (execution : nativeApp.Execution) :
       ∃ state, environmentStep nativeRuntime execution.application command =
-        FinDist.pure state := by
+        PMF.pure state := by
     cases command with
     | executeSample event => exact (maintenance event rfl).elim
     | grant event => exact ⟨_, rfl⟩
@@ -94,28 +94,28 @@ private theorem maintenance_local (left right nextLeft nextRight : nativeApp.Exe
   obtain ⟨leftState, leftPure⟩ := pureStep left
   obtain ⟨rightState, rightPure⟩ := pureStep right
   have step (execution : nativeApp.Execution) (state : EventGraphRuntime.State nativeGraph)
-      (pureLaw : environmentStep nativeRuntime execution.application command = FinDist.pure state)
+      (pureLaw : environmentStep nativeRuntime execution.application command = PMF.pure state)
       (next : nativeApp.Execution)
       (supported : next ∈ (execution.environmentStep nativeApp (.application command)).support) :
       next.application = state := by
-    obtain ⟨updated, moved, rfl⟩ := FinDist.support_map .. ▸ supported
-    obtain ⟨result, resultMem, rfl⟩ := FinDist.support_map .. ▸ moved
+    obtain ⟨updated, moved, rfl⟩ := PMF.support_map .. ▸ supported
+    obtain ⟨result, resultMem, rfl⟩ := PMF.support_map .. ▸ moved
     change result ∈ (environmentStep nativeRuntime execution.application command).support
       at resultMem
     rw [pureLaw] at resultMem
-    exact FinDist.mem_support_pure.mp resultMem
+    exact (PMF.mem_support_pure_iff _ _).mp resultMem
   rw [step left leftState leftPure nextLeft leftMem,
     step right rightState rightPure nextRight rightMem]
-  rw [leftPure, rightPure, FinDist.map_pure, FinDist.map_pure] at law
-  apply FinDist.mem_support_pure.mp
+  rw [leftPure, rightPure, PMF.pure_map, PMF.pure_map] at law
+  apply (PMF.mem_support_pure_iff _ _).mp
   rw [← law]
-  exact FinDist.mem_support_pure.mpr rfl
+  exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 def quietGuessPlan : List (ServiceInstruction nativeGraph) :=
   [.includeLatest bobPublication bob, .tick, .expire bobPublication]
 
 def quietGuessLaw (bit : Bool) (response : nativeApp.Action)
-    (players : Player → nativeApp.Policy) : FinDist nativeApp.Execution :=
+    (players : Player → nativeApp.Policy) : PMF nativeApp.Execution :=
   nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork quietGuessPlan
     ((quietBob bit).respond nativeApp bob response)
 
@@ -124,30 +124,30 @@ theorem quiet_guess_owner_local (bit : Bool) (response : nativeApp.Action)
     (leftMem : left ∈ (quietGuessLaw bit response players).support)
     (rightMem : right ∈ (quietGuessLaw false response players).support) :
     left.application.playerView bob = right.application.playerView bob := by
-  simp only [quietGuessLaw, quietGuessPlan, runInteractionPlan, FinDist.bind_pure]
+  simp only [quietGuessLaw, quietGuessPlan, runInteractionPlan, PMF.bind_pure]
     at leftMem rightMem
   obtain ⟨leftReserved, leftReservedMem, leftRest⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftMem)
   obtain ⟨rightReserved, rightReservedMem, rightRest⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightMem)
   have reserved := quiet_reserved_local bit response players leftReserved rightReserved
     leftReservedMem rightReservedMem
   obtain ⟨leftTick, leftTickMem, leftExpire⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftRest)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftRest)
   obtain ⟨rightTick, rightTickMem, rightExpire⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightRest)
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightRest)
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
     at leftTickMem rightTickMem leftExpire rightExpire
   change leftTick ∈ ((leftReserved.environmentStep nativeApp (.application .advanceClock)).bind
-    FinDist.pure).support at leftTickMem
+    PMF.pure).support at leftTickMem
   change rightTick ∈ ((rightReserved.environmentStep nativeApp (.application .advanceClock)).bind
-    FinDist.pure).support at rightTickMem
+    PMF.pure).support at rightTickMem
   change left ∈ ((leftTick.environmentStep nativeApp
-    (.application (.expire bobPublication))).bind FinDist.pure).support at leftExpire
+    (.application (.expire bobPublication))).bind PMF.pure).support at leftExpire
   change right ∈ ((rightTick.environmentStep nativeApp
-    (.application (.expire bobPublication))).bind FinDist.pure).support at rightExpire
-  rw [FinDist.bind_pure] at leftTickMem rightTickMem leftExpire rightExpire
+    (.application (.expire bobPublication))).bind PMF.pure).support at rightExpire
+  rw [PMF.bind_pure] at leftTickMem rightTickMem leftExpire rightExpire
   have ticked := maintenance_local leftReserved rightReserved leftTick rightTick .advanceClock
     (by intro event impossible; cases impossible) reserved leftTickMem rightTickMem
   exact maintenance_local leftTick rightTick left right (.expire bobPublication)

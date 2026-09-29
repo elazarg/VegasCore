@@ -60,11 +60,11 @@ theorem ReactiveApplication.Execution.activate_of_foreign_pending_published
     (published : ∀ message ∈ execution.network.pending, message.id.1 ≠ who →
       message.id ∈ execution.network.ledger.map Message.id) :
     execution.environmentStep app (.activate who) =
-      FinDist.pure { execution with environmentRecall := execution.environmentRecall ++
+      PMF.pure { execution with environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .activate who⟩] } := by
   simp only [ReactiveApplication.Execution.environmentStep,
     MessageNetwork.learn_of_foreign_pending_published _ _ _ published,
-    FinDist.map_const, FinDist.map_pure]
+    FinDist.map_const, PMF.pure_map]
 
 /-- A single inclusion publishes the identifier of every remaining replay.
 No pending-copy erasure or restriction on who rebroadcast it is assumed. -/

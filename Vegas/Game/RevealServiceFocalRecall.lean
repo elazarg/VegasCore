@@ -101,8 +101,8 @@ theorem run_source_prefix_focal_recall
       have zero : count = 0 := by simpa [eventCount] using countBound
       subst count
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan] at leftSupport rightSupport
-      cases FinDist.mem_support_pure.mp leftSupport
-      cases FinDist.mem_support_pure.mp rightSupport
+      cases (PMF.mem_support_pure_iff _ _).mp leftSupport
+      cases (PMF.mem_support_pure_iff _ _).mp rightSupport
       exact earlier
   | sample name fresh law next ih =>
       intro impossible
@@ -119,8 +119,8 @@ theorem run_source_prefix_focal_recall
       | zero =>
           simp only [List.take_zero, List.flatMap_nil, runInteractionPlan]
             at leftSupport rightSupport
-          cases FinDist.mem_support_pure.mp leftSupport
-          cases FinDist.mem_support_pure.mp rightSupport
+          cases (PMF.mem_support_pure_iff _ _).mp leftSupport
+          cases (PMF.mem_support_pure_iff _ _).mp rightSupport
           exact earlier
       | succ count =>
           cases leftState with
@@ -186,13 +186,13 @@ theorem run_source_prefix_focal_recall
                 rw [block_of_owner setup watcher owner event actor]
                 simp only [suffix, List.append_assoc, List.cons_append, List.nil_append]
               rw [planEq, runInteractionPlan_append, leftOpportunityLaw,
-                FinDist.bind_map] at leftSupport
+                PMF.bind_map] at leftSupport
               rw [planEq, runInteractionPlan_append, rightOpportunityLaw,
-                FinDist.bind_map] at rightSupport
+                PMF.bind_map] at rightSupport
               obtain ⟨leftResponse, leftChosen, leftContinued⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ leftSupport)
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ leftSupport)
               obtain ⟨rightResponse, rightChosen, rightContinued⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ rightSupport)
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rightSupport)
               have leftMember := leftOrdinary owner different _ _ leftResponse leftChosen
               have rightMember := rightOrdinary owner different _ _ rightResponse rightChosen
               have decoded (disclose : Bool) : decodeEventAction setup.program event
@@ -209,8 +209,8 @@ theorem run_source_prefix_focal_recall
                 rightActive.reveal_response bounds rightPlayers watcher rightWatcher published
                   selected event eventRank actor outputEq codeEq node
                   (fun ref => refsBefore ref index) decoded rightGrant rightResponse rightMember
-              rw [runInteractionPlan_append, leftAfterLaw, FinDist.pure_bind] at leftContinued
-              rw [runInteractionPlan_append, rightAfterLaw, FinDist.pure_bind] at rightContinued
+              rw [runInteractionPlan_append, leftAfterLaw, PMF.pure_bind] at leftContinued
+              rw [runInteractionPlan_append, rightAfterLaw, PMF.pure_bind] at rightContinued
               have leftTailAligned : CompiledPolicySuffix setup.program wholeProfile next
                   (afterReveal profile) tailRefs
                   (revealSuccessor published selected leftSource
@@ -345,7 +345,7 @@ theorem initialized_focal_recall
     (same : setup.protocolObserve who (sourcePrefix? setup count leftEnd.application.config) =
       setup.protocolObserve who (sourcePrefix? setup count rightEnd.application.config)) :
     leftEnd.recall who = rightEnd.recall who := by
-  rw [initialLaw, FinDist.bind_map, FinDist.support_bind] at leftSupport rightSupport
+  rw [initialLaw, PMF.bind_map, PMF.support_bind] at leftSupport rightSupport
   obtain ⟨leftInitial, leftInitialSupport, leftRun⟩ := Set.mem_iUnion₂.mp leftSupport
   obtain ⟨rightInitial, rightInitialSupport, rightRun⟩ := Set.mem_iUnion₂.mp rightSupport
   let refs := ContextRefs.initial setup.context (outputLayout setup.program)

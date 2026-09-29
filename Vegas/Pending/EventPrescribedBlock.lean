@@ -48,7 +48,7 @@ theorem compilePlayerPolicy_wait_of_submitted
     (event : graph.EventId)
     (grant : view.application.publicView.serviceGrant = some event)
     (submitted : submittedAt history event = true) :
-    runtime.compilePlayerPolicy owner policy history view = FinDist.pure .wait := by
+    runtime.compilePlayerPolicy owner policy history view = PMF.pure .wait := by
   unfold compilePlayerPolicy
   rw [grant]
   simp [submitted]
@@ -96,12 +96,12 @@ theorem runServicePlan_compiled_bind_partial_submitted
             (runtime.bindingBlockContinuation owner event payload outputEq execution) := by
       simpa using block
     rw [block'] at supported
-    simp only [FinDist.support_bind, Set.mem_iUnion] at supported
+    simp only [PMF.support_bind, Set.mem_iUnion] at supported
     obtain ⟨action, _, continuation⟩ := supported
     obtain ⟨command, commandEq⟩ :=
       runtime.bindingStageCommand_is_private event payload outputEq action
     rw [runtime.bindingBlockContinuation_eq_pure owner event payload outputEq execution action
-      command commandEq, FinDist.mem_support_pure] at continuation
+      command commandEq, PMF.mem_support_pure_iff _ _] at continuation
     subst next
     constructor
     · simp [MessageApplication.afterSubmit, submittedAt, Payload.event?]
@@ -151,8 +151,8 @@ theorem runServicePlan_compiled_bind_partial_submitted
           change first.native.application.serviceGrant = some event
           exact firstGrant) firstNotSubmitted rfl firstReady actor firstStage
       simp only [runServicePlan, serviceStep, MessageApplication.invoke, ownerCompiled] at supported
-      rw [firstPolicy, FinDist.pure_bind, commandEq,
-        runtime.application.playerStep_private_eq, FinDist.pure_bind] at supported
+      rw [firstPolicy, PMF.pure_bind, commandEq,
+        runtime.application.playerStep_private_eq, PMF.pure_bind] at supported
       change next ∈
         (((runtime.compilePlayerPolicy owner policy (first.principalHistory owner)
           (MessageApplication.State.observe runtime.application first.native owner)).bind
@@ -160,9 +160,9 @@ theorem runServicePlan_compiled_bind_partial_submitted
               ((runtime.compilePlayerPolicy owner policy (middle.principalHistory owner)
                 (MessageApplication.State.observe runtime.application middle.native owner)).bind
                   (runtime.application.playerStep owner middle)).bind fun final =>
-                    FinDist.pure final).support at supported
-      rw [secondPolicy, FinDist.pure_bind, runtime.application.playerStep_submit_eq,
-        FinDist.pure_bind] at supported
+                    PMF.pure final).support at supported
+      rw [secondPolicy, PMF.pure_bind, runtime.application.playerStep_submit_eq,
+        PMF.pure_bind] at supported
       let second := runtime.application.afterSubmit first owner
         (.commitment event (owner, eventSlot event))
       have secondSubmitted : submittedAt (second.principalHistory owner) event = true := by
@@ -176,8 +176,8 @@ theorem runServicePlan_compiled_bind_partial_submitted
         (second.principalHistory owner)
         (MessageApplication.State.observe runtime.application second.native owner)
         event secondGrant secondSubmitted,
-        FinDist.pure_bind, runtime.application.playerStep_wait,
-        FinDist.pure_bind, FinDist.mem_support_pure] at supported
+        PMF.pure_bind, runtime.application.playerStep_wait,
+        PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next
       constructor
       · simp [second, first, MessageApplication.afterSubmit, submittedAt,
@@ -196,8 +196,8 @@ theorem runServicePlan_compiled_bind_partial_submitted
           change execution.native.application.serviceGrant = some event
           exact grant) notSubmitted rfl publicReady actor (by omega)
       simp only [runServicePlan, serviceStep, MessageApplication.invoke, ownerCompiled] at supported
-      rw [firstPolicy, FinDist.pure_bind, runtime.application.playerStep_submit_eq,
-        FinDist.pure_bind] at supported
+      rw [firstPolicy, PMF.pure_bind, runtime.application.playerStep_submit_eq,
+        PMF.pure_bind] at supported
       let first := runtime.application.afterSubmit execution owner
         (.commitment event (owner, eventSlot event))
       have firstSubmitted : submittedAt (first.principalHistory owner) event = true := by
@@ -211,7 +211,7 @@ theorem runServicePlan_compiled_bind_partial_submitted
         (first.principalHistory owner)
         (MessageApplication.State.observe runtime.application first.native owner)
         event firstGrant firstSubmitted,
-        FinDist.pure_bind, runtime.application.playerStep_wait, FinDist.pure_bind] at supported
+        PMF.pure_bind, runtime.application.playerStep_wait, PMF.pure_bind] at supported
       let second : runtime.application.PolicyExecution :=
         { first with principalHistory := fun other =>
             if other = owner then first.principalHistory owner ++
@@ -228,8 +228,8 @@ theorem runServicePlan_compiled_bind_partial_submitted
         (second.principalHistory owner)
         (MessageApplication.State.observe runtime.application second.native owner)
         event secondGrant secondSubmitted,
-        FinDist.pure_bind, runtime.application.playerStep_wait,
-        FinDist.pure_bind, FinDist.mem_support_pure] at supported
+        PMF.pure_bind, runtime.application.playerStep_wait,
+        PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next
       constructor
       · simp [second, first, MessageApplication.afterSubmit, submittedAt,
@@ -287,7 +287,7 @@ theorem runServicePlan_compiled_resolve_partial_submitted
               execution) := by
       simpa using block
     rw [block'] at supported
-    simp only [FinDist.support_bind, Set.mem_iUnion] at supported
+    simp only [PMF.support_bind, Set.mem_iUnion] at supported
     obtain ⟨action, _, continuation⟩ := supported
     let first := runtime.application.afterPrivate execution who (.remember event action)
     let second := runtime.application.afterPrivate first who (.remember event action)
@@ -302,11 +302,11 @@ theorem runServicePlan_compiled_resolve_partial_submitted
       simp [privateStep, actor, firstRemembered]
     have continuationEq :
         runtime.resolutionBlockContinuation who event payload binding checks outputEq execution
-            action = FinDist.pure (runtime.application.afterSubmit second who packet) := by
+            action = PMF.pure (runtime.application.afterSubmit second who packet) := by
       simp only [resolutionBlockContinuation, runtime.application.playerStep_private_eq,
-        FinDist.pure_bind]
+        PMF.pure_bind]
       rw [submission, runtime.application.playerStep_submit_eq]
-    rw [continuationEq, FinDist.mem_support_pure] at continuation
+    rw [continuationEq, PMF.mem_support_pure_iff _ _] at continuation
     subst next
     constructor
     · simp [second, first, MessageApplication.afterSubmit, submittedAt, addressed]
@@ -365,8 +365,8 @@ theorem runServicePlan_compiled_resolve_partial_submitted
         payload binding checks outputEq action
         (MessageApplication.State.observe runtime.application first.native who)
       simp only [runServicePlan, serviceStep, MessageApplication.invoke, whoCompiled] at supported
-      rw [firstPolicy, FinDist.pure_bind, runtime.application.playerStep_private_eq,
-        FinDist.pure_bind] at supported
+      rw [firstPolicy, PMF.pure_bind, runtime.application.playerStep_private_eq,
+        PMF.pure_bind] at supported
       change next ∈
         (((runtime.compilePlayerPolicy who policy (first.principalHistory who)
           (MessageApplication.State.observe runtime.application first.native who)).bind
@@ -374,9 +374,9 @@ theorem runServicePlan_compiled_resolve_partial_submitted
               ((runtime.compilePlayerPolicy who policy (middle.principalHistory who)
                 (MessageApplication.State.observe runtime.application middle.native who)).bind
                   (runtime.application.playerStep who middle)).bind fun final =>
-                    FinDist.pure final).support at supported
-      rw [secondPolicy, FinDist.pure_bind, submission,
-        runtime.application.playerStep_submit_eq, FinDist.pure_bind] at supported
+                    PMF.pure final).support at supported
+      rw [secondPolicy, PMF.pure_bind, submission,
+        runtime.application.playerStep_submit_eq, PMF.pure_bind] at supported
       let second := runtime.application.afterSubmit first who packet
       have secondSubmitted : submittedAt (second.principalHistory who) event = true := by
         simp [second, first, MessageApplication.afterSubmit, submittedAt, addressed]
@@ -389,8 +389,8 @@ theorem runServicePlan_compiled_resolve_partial_submitted
         (second.principalHistory who)
         (MessageApplication.State.observe runtime.application second.native who)
         event secondGrant secondSubmitted,
-        FinDist.pure_bind, runtime.application.playerStep_wait,
-        FinDist.pure_bind, FinDist.mem_support_pure] at supported
+        PMF.pure_bind, runtime.application.playerStep_wait,
+        PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next
       constructor
       · simp [first, MessageApplication.afterSubmit, submittedAt, addressed]
@@ -414,8 +414,8 @@ theorem runServicePlan_compiled_resolve_partial_submitted
         payload binding checks outputEq action
         (MessageApplication.State.observe runtime.application execution.native who)
       simp only [runServicePlan, serviceStep, MessageApplication.invoke, whoCompiled] at supported
-      rw [firstPolicy, FinDist.pure_bind, submission,
-        runtime.application.playerStep_submit_eq, FinDist.pure_bind] at supported
+      rw [firstPolicy, PMF.pure_bind, submission,
+        runtime.application.playerStep_submit_eq, PMF.pure_bind] at supported
       let first := runtime.application.afterSubmit execution who packet
       have firstSubmitted : submittedAt (first.principalHistory who) event = true := by
         simp [first, MessageApplication.afterSubmit, submittedAt, addressed]
@@ -428,7 +428,7 @@ theorem runServicePlan_compiled_resolve_partial_submitted
         (first.principalHistory who)
         (MessageApplication.State.observe runtime.application first.native who)
         event firstGrant firstSubmitted,
-        FinDist.pure_bind, runtime.application.playerStep_wait, FinDist.pure_bind] at supported
+        PMF.pure_bind, runtime.application.playerStep_wait, PMF.pure_bind] at supported
       let second : runtime.application.PolicyExecution :=
         { first with principalHistory := fun other =>
             if other = who then first.principalHistory who ++
@@ -445,8 +445,8 @@ theorem runServicePlan_compiled_resolve_partial_submitted
         (second.principalHistory who)
         (MessageApplication.State.observe runtime.application second.native who)
         event secondGrant secondSubmitted,
-        FinDist.pure_bind, runtime.application.playerStep_wait,
-        FinDist.pure_bind, FinDist.mem_support_pure] at supported
+        PMF.pure_bind, runtime.application.playerStep_wait,
+        PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next
       constructor
       · simp [MessageApplication.afterSubmit, submittedAt, addressed]

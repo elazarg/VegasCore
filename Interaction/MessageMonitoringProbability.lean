@@ -23,7 +23,7 @@ variable {Principal Payload : Type} [DecidableEq Principal]
 def reportLaw (network : MessageNetwork Principal Payload)
     (rule : ObservationRule Principal Payload) (who : Principal)
     (violation : Message Principal Payload → Bool) :
-    FinDist (List (Message Principal Payload)) :=
+    PMF (List (Message Principal Payload)) :=
   (rule who network.pending).map fun selected =>
     ((network.learn who selected).observe who).reports violation
 
@@ -36,11 +36,11 @@ theorem sampling_le_report (network : MessageNetwork Principal Payload)
     (found : network.lookup id = some message) (foreign : id.1 ≠ who)
     (unknown : (network.known who).any (fun packet => packet.id = id) = false)
     (offending : violation message = true) :
-    (rule who network.pending).probOf {selected | id ∈ selected} ≤
-      (network.reportLaw rule who violation).probOf {reports | message ∈ reports} := by
+    ((rule who network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+      ((network.reportLaw rule who violation).toOuterMeasure {reports | message ∈ reports}).toReal := by
   classical
-  rw [reportLaw, FinDist.probOf_map, ← FinDist.expect_indicator_eq_probOf,
-    ← FinDist.expect_indicator_eq_probOf]
+  rw [reportLaw, FinDist.probOf_map, ← expect_indicator,
+    ← expect_indicator]
   apply FinDist.expect_mono
   intro selected _
   simp only [Set.mem_preimage, Set.mem_ofPred_eq]
@@ -59,7 +59,7 @@ theorem reportLaw_eq_pure_nil_of_compliant (network : MessageNetwork Principal P
     (leaked : ∀ message ∈ network.leaked who, violation message = false)
     (ledger : ∀ message ∈ network.ledger, violation message = false)
     (pending : ∀ message ∈ network.pending, violation message = false) :
-    network.reportLaw rule who violation = FinDist.pure [] := by
+    network.reportLaw rule who violation = PMF.pure [] := by
   have quiet : ∀ selected,
       ((network.learn who selected).observe who).reports violation = [] := by
     intro selected
@@ -84,10 +84,10 @@ theorem reportLaw_prob_nonempty_of_compliant (network : MessageNetwork Principal
     (leaked : ∀ message ∈ network.leaked who, violation message = false)
     (ledger : ∀ message ∈ network.ledger, violation message = false)
     (pending : ∀ message ∈ network.pending, violation message = false) :
-    (network.reportLaw rule who violation).probOf {reports | reports ≠ []} = 0 := by
+    ((network.reportLaw rule who violation).toOuterMeasure {reports | reports ≠ []}).toReal = 0 := by
   classical
   rw [network.reportLaw_eq_pure_nil_of_compliant rule who violation leaked ledger pending,
-    ← FinDist.expect_indicator_eq_probOf, FinDist.expect_pure]
+    ← expect_indicator, expect_pure]
   simp
 
 /-- Sampling and a conditional reporting guarantee compose at this fixed
@@ -100,21 +100,21 @@ theorem sampling_delivery_lower (network : MessageNetwork Principal Payload)
     (found : network.lookup id = some message) (foreign : id.1 ≠ who)
     (unknown : (network.known who).any (fun packet => packet.id = id) = false)
     (offending : violation message = true)
-    (deliver : List (Message Principal Payload) → FinDist Bool) (p q : ℝ)
+    (deliver : List (Message Principal Payload) → PMF Bool) (p q : ℝ)
     (nonnegative : 0 ≤ q)
-    (sampling : p ≤ (rule who network.pending).probOf {selected | id ∈ selected})
+    (sampling : p ≤ ((rule who network.pending).toOuterMeasure {selected | id ∈ selected}).toReal)
     (delivery : ∀ reports ∈ (network.reportLaw rule who violation).support,
-      reports ≠ [] → q ≤ (deliver reports).prob true) :
-    p * q ≤ ((network.reportLaw rule who violation).bind deliver).prob true := by
+      reports ≠ [] → q ≤ ((deliver reports) true).toReal) :
+    p * q ≤ (((network.reportLaw rule who violation).bind deliver) true).toReal := by
   classical
   calc
-    p * q ≤ (rule who network.pending).probOf {selected | id ∈ selected} * q :=
+    p * q ≤ ((rule who network.pending).toOuterMeasure {selected | id ∈ selected}).toReal * q :=
       mul_le_mul_of_nonneg_right sampling nonnegative
-    _ = (rule who network.pending).expect
+    _ = expect (rule who network.pending)
         (fun selected => q * if selected ∈ {selected | id ∈ selected} then 1 else 0) := by
-      rw [FinDist.expect_smul, FinDist.expect_indicator_eq_probOf, mul_comm]
-    _ ≤ (rule who network.pending).expect (fun selected =>
-        (deliver (((network.learn who selected).observe who).reports violation)).prob true) := by
+      rw [FinDist.expect_smul, expect_indicator, mul_comm]
+    _ ≤ expect (rule who network.pending) (fun selected =>
+        ((deliver (((network.learn who selected).observe who).reports violation)) true).toReal) := by
       apply FinDist.expect_mono
       intro selected supported
       by_cases chosen : id ∈ selected
@@ -122,7 +122,7 @@ theorem sampling_delivery_lower (network : MessageNetwork Principal Payload)
           found foreign chosen unknown offending
         have reportSupported : ((network.learn who selected).observe who).reports violation ∈
             (network.reportLaw rule who violation).support := by
-          rw [reportLaw, FinDist.support_map]
+          rw [reportLaw, PMF.support_map]
           exact ⟨selected, supported, rfl⟩
         have nonempty : ((network.learn who selected).observe who).reports violation ≠ [] := by
           intro empty
@@ -131,8 +131,8 @@ theorem sampling_delivery_lower (network : MessageNetwork Principal Payload)
         simpa only [Set.mem_ofPred_eq, chosen, ↓reduceIte, mul_one] using
           delivery _ reportSupported nonempty
       · simpa only [Set.mem_ofPred_eq, chosen, ↓reduceIte, mul_zero] using
-          (deliver (((network.learn who selected).observe who).reports violation)).prob_nonneg true
-    _ = ((network.reportLaw rule who violation).bind deliver).prob true := by
-      rw [reportLaw, FinDist.bind_map, FinDist.prob_bind]
+          ENNReal.toReal_nonneg
+    _ = (((network.reportLaw rule who violation).bind deliver) true).toReal := by
+      rw [reportLaw, PMF.bind_map, toReal_bind_apply]
 
 end Interaction.MessageNetwork

@@ -21,9 +21,9 @@ theorem guess_information_finish_le (Claim : Type) [Fintype Claim]
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (granted : view.application.visit = some event)
     (history : (model Claim).InformationHistory (eventOwner event) (some (past, view))) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
-      history.1.state).expect (fun state => utility (protocolResults state) (eventOwner event)) ≤
-        (players (eventOwner event) past view).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
+      history.1.state) (fun state => utility (protocolResults state) (eventOwner event)) ≤
+        expect (players (eventOwner event) past view)
           (fun response => bindingReward (selectedBinding event response) history.1.state) := by
   obtain ⟨control, same, active, recalled, viewed⟩ :=
     information_control Claim (eventOwner event) past view history
@@ -45,7 +45,7 @@ theorem guess_information_finish_le (Claim : Type) [Fintype Claim]
     change control.execution.recall carol = past at recalled
     change control.execution.observe (application Claim) carol = view at viewed
     rw [recalled, viewed] at bound
-    exact bound.trans_eq (FinDist.expect_congr (fun response _ =>
+    exact bound.trans_eq (expect_congr_on_support (fun response _ =>
       (bindingReward_of_alice control _ core (selectedBinding 1 response)).symm))
   · obtain ⟨sample, _, execution⟩ :=
       bob_decision_representation Claim control trace active visited
@@ -57,7 +57,7 @@ theorem guess_information_finish_le (Claim : Type) [Fintype Claim]
     change control.execution.recall bob = past at recalled
     change control.execution.observe (application Claim) bob = view at viewed
     rw [recalled, viewed] at bound
-    exact bound.trans_eq (FinDist.expect_congr (fun response _ =>
+    exact bound.trans_eq (expect_congr_on_support (fun response _ =>
       (bindingReward_of_carol control _ _ core (selectedBinding 2 response)).symm))
 
 theorem guess_information_baseline (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
@@ -65,8 +65,8 @@ theorem guess_information_baseline (Claim : Type) [Fintype Claim] (defaultClaim 
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (granted : view.application.visit = some event)
     (history : (model Claim).InformationHistory (eventOwner event) (some (past, view))) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-      (policy Claim defaultClaim) history.1.state).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+      (policy Claim defaultClaim) history.1.state)
         (fun state => utility (protocolResults state) (eventOwner event)) =
       bindingReward (.success (publicGuess view)) history.1.state := by
   obtain ⟨control, same, active, recalled, viewed⟩ :=
@@ -118,8 +118,8 @@ theorem guess_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClaim 
     prescribed_context_baseline Claim defaultClaim assessment strategy]
   let responses := decodedAlternative Claim (eventOwner event) alternative past view
   calc
-    _ ≤ (assessment.belief (eventOwner event) site).expect (fun history =>
-        responses.expect (fun response =>
+    _ ≤ expect (assessment.belief (eventOwner event) site) (fun history =>
+        expect responses (fun response =>
           bindingReward (selectedBinding event response) history.1.state)) := by
       apply FinDist.expect_mono
       intro history _
@@ -128,11 +128,11 @@ theorem guess_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClaim 
           (decodedAlternative Claim (eventOwner event) alternative)) event guessSite past view
             granted ⟨history.1, history.2.trans observed⟩
       simpa only [Function.update_self] using bound
-    _ = (assessment.belief (eventOwner event) site).expect (fun history =>
-        (responses.map (selectedBinding event)).expect (fun guess =>
+    _ = expect (assessment.belief (eventOwner event) site) (fun history =>
+        expect (responses.map (selectedBinding event)) (fun guess =>
           bindingReward guess history.1.state)) := by
-      simp only [FinDist.expect_map]
-    _ ≤ (assessment.belief (eventOwner event) site).expect (fun history =>
+      simp only [expect_map]
+    _ ≤ expect (assessment.belief (eventOwner event) site) (fun history =>
         bindingReward (.success (publicGuess view)) history.1.state) :=
       prescribed_mixed_guess_optimal Claim assessment fair (eventOwner event) site
         past view observed (by
@@ -140,7 +140,7 @@ theorem guess_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClaim 
           · exact Or.inl ⟨rfl, granted⟩
           · exact Or.inr ⟨rfl, granted⟩) _
     _ = _ := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro history _
       exact (guess_information_baseline Claim defaultClaim event guessSite past view granted
         ⟨history.1, history.2.trans observed⟩).symm

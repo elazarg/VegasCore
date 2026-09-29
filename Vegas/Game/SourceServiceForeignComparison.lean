@@ -56,13 +56,13 @@ theorem transport_phase_application_law (setup : Setup (Player := Player) (L := 
         execution).map ReactiveApplication.Execution.application =
       ((runtime setup).runInteractionPlan leaks players network rest execution).map
         ReactiveApplication.Execution.application := by
-  rw [runInteractionPlan_append, FinDist.map_bind]
+  rw [runInteractionPlan_append, PMF.map_bind]
   calc
     _ = ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) execution).bind (fun _ =>
           ((runtime setup).runInteractionPlan leaks players network rest
             execution).map ReactiveApplication.Execution.application) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro current reached
       obtain ⟨sameApp, ledger, _, _, valid, _⟩ := (runtime setup).replay_window_preserves leaks
         players network owner execution responses _ published visits current reached
@@ -74,12 +74,12 @@ theorem transport_phase_application_law (setup : Setup (Player := Player) (L := 
         rw [← ledger] at spent
         exact spent
       simp only [runInteractionPlan, interactionStep, interactionInstruction, waiting,
-        FinDist.pure_bind, ReactiveApplication.dispatch,
-        ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
+        PMF.pure_bind, ReactiveApplication.dispatch,
+        ReactiveApplication.Execution.environmentStep, PMF.pure_map,
         ReactiveApplication.Command.actor?, ReactiveApplication.resume]
       exact (runtime setup).application_service_law leaks _ network rest passive _ execution
         sameApp
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 /-- With all traffic published, a replay-only roster window and protected
 inclusion leave the application unchanged, so a phase has the application law
@@ -145,7 +145,7 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
         (.includeLatest event site.owner :: List.replicate ticks .tick ++ [.expire event]))
       execution).map (fun final => final.application.config) =
       (commitKernel site.residual (site.source.view site.owner)).bind fun choice =>
-        FinDist.pure (config.complete event ready
+        PMF.pure (config.complete event ready
           (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
           (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice)) := by
   subst sameConfig
@@ -173,25 +173,25 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
         [.includeLatest (embedding.event ⟨0, by simp [eventCount]⟩) owner]) ++
         (List.replicate ticks .tick ++ [.expire (embedding.event ⟨0, by simp [eventCount]⟩)]) := by
     simp only [List.append_assoc, List.cons_append, List.nil_append]
-  rw [splitPlan, runInteractionPlan_append, law, FinDist.bind_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [splitPlan, runInteractionPlan_append, law, PMF.bind_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro choice _
   let raw := Function.update (fun _ => (application setup leaks).replayPolicy) owner
     ((application setup leaks).scheduledPolicy
       (rosterOffset setup rosters owner (embedding.event ⟨0, by simp [eventCount]⟩))
-      (some slot) (fun _ _ => FinDist.pure ((runtime setup).reactiveBinding leaks owner
+      (some slot) (fun _ _ => PMF.pure ((runtime setup).reactiveBinding leaks owner
         (embedding.event ⟨0, by simp [eventCount]⟩) payload choice serial))
       (application setup leaks).replayPolicy)
-  refine (FinDist.map_congr_of_eq_on_support (g := fun _ => _) ?_).trans (FinDist.map_const _ _)
+  refine (map_congr_on_support _ (g := fun _ => _) ?_).trans (FinDist.map_const _ _)
   intro final reached
-  obtain ⟨current, prior, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨current, prior, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   rw [servicePlan_players_eq setup leaks _ raw network _ (by simp) (by intro who; simp) current]
     at rest
   apply scheduledBindingPhase_config setup leaks bounds network owner _ payload outputEq codeEq
     node owned execution granted ready timely serial candidate vacant unused serials published
     visits slot _ (by omega) (by omega) choice ticks final
   rw [List.append_assoc (visits.map ServiceInstruction.player ++ [_]),
-    runInteractionPlan_append, FinDist.support_bind]
+    runInteractionPlan_append, PMF.support_bind]
   exact Set.mem_iUnion₂.mpr ⟨current, prior, rest⟩
 
 end
@@ -274,7 +274,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
     if (execution.recall site.owner).length ≤ offset + slot.val ∧
         offset + slot.val < (execution.recall site.owner).length + phase.visits.count site.owner
     then (commitKernel site.residual (site.source.view site.owner)).bind fun choice =>
-      FinDist.pure (execution.application.config.complete phase.event ready
+      PMF.pure (execution.application.config.complete phase.event ready
         (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) choice)
         (cast (congrArg EventGraph.EventField.Value site.outputEq.symm) choice))
     else ((runtime service.setup).runInteractionPlan service.leaks
@@ -325,7 +325,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
         sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
           approx.timing approx.profile phase.event site.owner owned service.network phase.visits
           after afterGrant]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro current _
       exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
         (by simp [rest]) (by intro actor; simp [rest]) current
@@ -339,8 +339,8 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
     dsimp only at mixture
     rw [sameRecall] at mixture
     unfold phaseConfigLaw phaseLaw DecisionPhase.tail
-    rw [ending, mixed, ← mixture, FinDist.map_bind]
-    apply FinDist.bind_congr
+    rw [ending, mixed, ← mixture, PMF.map_bind]
+    apply bind_congr_on_support _
     intro slot _
     by_cases inside : (execution.recall site.owner).length ≤ offset + slot.val ∧
         offset + slot.val < (execution.recall site.owner).length + phase.visits.count site.owner
@@ -377,7 +377,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
         unfold sourceServiceTimedFamily
         rw [scheduled_window_waiting service.setup service.leaks service.network site.owner offset
           slot _ phase.visits after separated]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro current _
         exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
           (by simp [rest]) (by intro actor; simp [rest]) current
@@ -386,8 +386,8 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
           afterPublished).trans ((runtime service.setup).application_service_law service.leaks _
             service.network rest passive after execution sameApp)
       rw [replayed]
-      simpa only [FinDist.map_comp, Function.comp_def] using
-        congrArg (FinDist.map EventGraphRuntime.State.config) applications
+      simpa only [PMF.map_comp, Function.comp_def] using
+        congrArg (PMF.map EventGraphRuntime.State.config) applications
   rw [law first firstAllowed, law second secondAllowed]
 
 open Classical in
@@ -401,7 +401,7 @@ theorem foreign_binding_comparison_eq (who : Player) (site : service.model.Infor
     (foreign : who ≠ owner)
     (outputEq : (graph service.setup).outputLayout event = .binding owner payload)
     (granted : view.application.publicView.serviceGrant = some event)
-    (law : FinDist (service.model.Choice who site.1)) :
+    (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparison service.readout service.fuel
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by

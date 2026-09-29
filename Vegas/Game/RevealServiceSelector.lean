@@ -58,7 +58,7 @@ theorem focalPolicy_projects (profile : BehavioralProfile setup.program)
   split
   · rfl
   · split
-    · rw [FinDist.map_comp]
+    · rw [PMF.map_comp]
       congr 1
       funext response
       dsimp only [Function.comp_def]
@@ -82,7 +82,7 @@ theorem focalPolicy_covered (profile : BehavioralProfile setup.program)
       who past view response supported
   · split at supported
     · rename_i compatible
-      obtain ⟨original, present, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨original, present, rfl⟩ := PMF.support_map .. ▸ supported
       dsimp only
       split
       · exact compatible.2.2
@@ -111,7 +111,7 @@ theorem focalPolicy_selects (profile : BehavioralProfile setup.program)
   rw [recorded] at supported
   dsimp only at supported
   rw [ite_eq_left ⟨earlier, observed, allowed⟩] at supported
-  obtain ⟨original, _present, same⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨original, _present, same⟩ := PMF.support_map .. ▸ supported
   dsimp only at same
   split at same
   · exact same.symm

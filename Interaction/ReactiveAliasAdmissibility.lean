@@ -37,7 +37,7 @@ theorem aliasImplementation_respond_admissible
   by_cases usable : names.length = past.length ∧
       normal.recall who (restoreActions past names) = past
   · dsimp only [aliasImplementation] at supported
-    rw [ite_eq_left usable, FinDist.support_map] at supported
+    rw [ite_eq_left usable, PMF.support_map] at supported
     obtain ⟨response, supported, rfl⟩ := supported
     apply (normal.menu_mem raw who past view _).mpr
     refine ⟨response, ?_, ?_⟩
@@ -51,7 +51,7 @@ theorem aliasImplementation_respond_admissible
           congrArg (fun remembered => normal.action who remembered view response) usable.2.symm
         _ = _ := normal.action_recall who (restoreActions past names) view response
   · dsimp only [aliasImplementation] at supported
-    rw [ite_eq_right usable, FinDist.support_map] at supported
+    rw [ite_eq_right usable, PMF.support_map] at supported
     obtain ⟨response, supported, rfl⟩ := supported
     exact (normal.menu_mem raw who past view _).mpr
       ⟨response, admitted _ _ response supported, rfl⟩
@@ -67,15 +67,15 @@ theorem aliasImplementation_policy_admissible
     (supported : response ∈
       ((normal.aliasImplementation who reference policy).policy past view).support) :
     response ∈ (normal.menu raw).actions who past view := by
-  rw [Implementation.policy_eq, FinDist.support_map] at supported
+  rw [Implementation.policy_eq, PMF.support_map] at supported
   obtain ⟨result, reached, rfl⟩ := supported
-  obtain ⟨names, _remembered, supported⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨names, _remembered, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   exact normal.aliasImplementation_respond_admissible raw stable who reference policy admitted
     names past view result supported
 
 include stable in
 theorem aliasImplementation_admissible [DecidableEq Principal]
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) (reference : List app.PlayerEntry) (policy : app.Policy)
     (admitted : ∀ past view response, response ∈ (policy past view).support →
       response ∈ raw.actions who past view) :
@@ -86,7 +86,7 @@ theorem aliasImplementation_admissible [DecidableEq Principal]
     _ _ response supported
 
 variable [DecidableEq Principal]
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 /-- Simulate a whole raw continuation deviation, retaining its private action
 names inside the strategy and choosing only normalized finite-menu responses. -/

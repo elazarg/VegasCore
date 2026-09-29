@@ -67,7 +67,7 @@ structure NativeEntry (graph : Vegas.EventGraph Player L) where
   action : PlayerAction graph
 
 abbrev NativePolicy (graph : Vegas.EventGraph Player L) :=
-  List (NativeEntry graph) → NativeView graph → FinDist (PlayerAction graph)
+  List (NativeEntry graph) → NativeView graph → PMF (PlayerAction graph)
 
 structure NativeExecution (runtime : EventGraphRuntime graph) where
   native : runtime.application.State
@@ -162,7 +162,7 @@ def takeAction (runtime : EventGraphRuntime graph) (who : Player)
 
 def actionStep (runtime : EventGraphRuntime graph) (who : Player)
     (execution : NativeExecution runtime) (action : PlayerAction graph) :
-    FinDist (NativeExecution runtime) := FinDist.pure (runtime.takeAction who execution action)
+    PMF (NativeExecution runtime) := PMF.pure (runtime.takeAction who execution action)
 
 /-- Sending, replaying, and waiting cannot cancel or replace a pending envelope.
 In particular, a fresh commitment does not supersede an earlier submission. -/
@@ -187,7 +187,7 @@ theorem transmit_lookup (runtime : EventGraphRuntime graph) (who : Player)
 
 def invokeNative (runtime : EventGraphRuntime graph) (who : Player)
     (policy : NativePolicy graph) (execution : NativeExecution runtime) :
-    FinDist (NativeExecution runtime) :=
+    PMF (NativeExecution runtime) :=
   (policy (execution.principalHistory who) (runtime.nativeView execution.native who)).bind
     (runtime.actionStep who execution)
 
@@ -319,23 +319,23 @@ intermediate implementation states are absent from the strategic history. -/
 theorem transmit_native (runtime : EventGraphRuntime graph) (who : Player)
     (state : runtime.application.State) (transmission : Option (Transmission graph)) :
     ∃ actions, runtime.application.run actions state =
-      FinDist.pure (runtime.transmit who state transmission) := by
+      PMF.pure (runtime.transmit who state transmission) := by
   cases transmission with
   | none => exact ⟨[], rfl⟩
   | some transmission =>
       cases transmission with
       | replay id => exact ⟨[.replay who id], by simp only [MessageApplication.run,
-          MessageApplication.step, FinDist.pure_bind]; rfl⟩
+          MessageApplication.step, PMF.pure_bind]; rfl⟩
       | submit submission =>
           cases registration : submission.registrationCommand who with
           | none =>
               refine ⟨[.submit who submission.packet], ?_⟩
-              simp only [MessageApplication.run, MessageApplication.step, FinDist.pure_bind,
+              simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind,
                 transmit, submission.register_eq, registration]
               rfl
           | some command =>
               refine ⟨[.privateCommand who command, .submit who submission.packet], ?_⟩
-              simp only [MessageApplication.run, MessageApplication.step, FinDist.pure_bind,
+              simp only [MessageApplication.run, MessageApplication.step, PMF.pure_bind,
                 transmit, submission.register_eq, registration]
               rfl
 
@@ -343,9 +343,9 @@ theorem actionStep_native (runtime : EventGraphRuntime graph) (who : Player)
     (execution next : NativeExecution runtime) (action : PlayerAction graph)
     (reached : next ∈ (runtime.actionStep who execution action).support) :
     ∃ actions, next.native ∈ (runtime.application.run actions execution.native).support := by
-  have same := FinDist.mem_support_pure.mp reached
+  have same := (PMF.mem_support_pure_iff _ _).mp reached
   subst next
   obtain ⟨actions, law⟩ := runtime.transmit_native who execution.native action.transmission
-  exact ⟨actions, by rw [law]; exact FinDist.mem_support_pure.mpr rfl⟩
+  exact ⟨actions, by rw [law]; exact (PMF.mem_support_pure_iff _ _).mpr rfl⟩
 
 end Vegas.EventGraphRuntime

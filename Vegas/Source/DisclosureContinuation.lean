@@ -27,7 +27,7 @@ theorem BehavioralPolicy.normalizeDisclosureFrom_admitted {who : Player} :
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
     (policy : BehavioralPolicy who program) → policy.Admitted program admission →
     (registry : Registry Γ) → (revelations : Revelations Γ) →
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L))) →
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) →
     (policy.normalizeDisclosureFrom program registry revelations remember).Admitted
       program admission
   | _, _, .ret _, _, _, _, _, _, _ => trivial
@@ -37,10 +37,10 @@ theorem BehavioralPolicy.normalizeDisclosureFrom_admitted {who : Player} :
       refine ⟨?_, policy.2.normalizeDisclosureFrom_admitted next
         (fun site => admission (some site)) permitted.2 _ _ _⟩
       intro own view choice supported
-      obtain ⟨pair, pairSupported, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨pair, pairSupported, rfl⟩ := PMF.support_map .. ▸ supported
       obtain ⟨past, _remembered, selected⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ pairSupported)
-      obtain ⟨binding, chosen, rfl⟩ := FinDist.support_map .. ▸ selected
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ pairSupported)
+      obtain ⟨binding, chosen, rfl⟩ := PMF.support_map .. ▸ selected
       exact permitted.1 own (view.1, past) binding chosen
   | _, _, .reveal _ _ _ _ _ _ next, admission, policy, permitted, registry,
       revelations, remember =>
@@ -52,8 +52,8 @@ theorem disclosure_prescribed_continuation_law
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (policy : BehavioralPolicy who program) (registry : Registry Γ)
     (revelations : Revelations Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (belief : FinDist (Config Player L Γ)) (view : DecisionView who Γ)
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (belief : PMF (Config Player L Γ)) (view : DecisionView who Γ)
     (sameView : ∀ config ∈ belief.support, config.view who = view)
     (registryEq : ∀ config ∈ belief.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ belief.support, @config.revelations = @revelations) :
@@ -62,9 +62,9 @@ theorem disclosure_prescribed_continuation_law
       (remember view).bind fun past =>
         (belief.map (fun config => config.withOwnHistory who past)).bind
           (runFrom program (Function.update profile who policy)) := by
-  simp only [FinDist.bind_map]
-  rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+  simp only [PMF.bind_map]
+  rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro config supported
   have realized := normalizeDisclosureFrom_realize program profile policy config.registry
     config.revelations remember config.state config.history
@@ -83,9 +83,9 @@ the weights can therefore be exactly those of the prescribed continuation. -/
 theorem disclosure_alternative_continuation_law
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (alternative : BehavioralPolicy who program)
-    (belief : FinDist (Config Player L Γ)) (view : DecisionView who Γ)
+    (belief : PMF (Config Player L Γ)) (view : DecisionView who Γ)
     (sameView : ∀ config ∈ belief.support, config.view who = view)
-    (intentions : FinDist (List (OwnAction Player L))) :
+    (intentions : PMF (List (OwnAction Player L))) :
     (belief.bind (runFrom program (Function.update profile who alternative))) =
       intentions.bind fun past =>
         (belief.map (fun config => config.withOwnHistory who past)).bind
@@ -93,11 +93,11 @@ theorem disclosure_alternative_continuation_law
             (alternative.rebaseHistory past.length view.2 program))) := by
   trans intentions.bind fun _ =>
     belief.bind (runFrom program (Function.update profile who alternative))
-  · exact (FinDist.bind_const ..).symm
-  · apply FinDist.bind_congr
+  · exact (PMF.bind_const ..).symm
+  · apply bind_congr_on_support _
     intro past _
-    rw [FinDist.bind_map]
-    apply FinDist.bind_congr
+    rw [PMF.bind_map]
+    apply bind_congr_on_support _
     intro config supported
     rw [rebaseHistory_runFrom program profile alternative past view.2
       (config.withOwnHistory who past) (by simp only [Config.withOwnHistory, Function.update_self]),
@@ -114,27 +114,27 @@ theorem disclosure_continuation_gain_le
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (policy alternative : BehavioralPolicy who program)
     (registry : Registry Γ) (revelations : Revelations Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (belief : FinDist (Config Player L Γ)) (view : DecisionView who Γ)
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (belief : PMF (Config Player L Γ)) (view : DecisionView who Γ)
     (sameView : ∀ config ∈ belief.support, config.view who = view)
     (registryEq : ∀ config ∈ belief.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ belief.support, @config.revelations = @revelations)
     (utility : State L program.terminalCtx → ℝ) (error : ℝ)
     (sourceBound : ∀ past ∈ (remember view).support,
-      ((belief.map (fun config => config.withOwnHistory who past)).bind
+      expect ((belief.map (fun config => config.withOwnHistory who past)).bind
         (runFrom program (Function.update profile who
-          (alternative.rebaseHistory past.length view.2 program)))).expect utility -
-        ((belief.map (fun config => config.withOwnHistory who past)).bind
-          (runFrom program (Function.update profile who policy))).expect utility ≤ error) :
-    (belief.bind (runFrom program (Function.update profile who alternative))).expect utility -
-      (belief.bind (runFrom program (Function.update profile who
-        (policy.normalizeDisclosureFrom program registry revelations remember)))).expect utility ≤
+          (alternative.rebaseHistory past.length view.2 program)))) utility -
+        expect ((belief.map (fun config => config.withOwnHistory who past)).bind
+          (runFrom program (Function.update profile who policy))) utility ≤ error) :
+    expect (belief.bind (runFrom program (Function.update profile who alternative))) utility -
+      expect (belief.bind (runFrom program (Function.update profile who
+        (policy.normalizeDisclosureFrom program registry revelations remember)))) utility ≤
       error := by
   rw [disclosure_alternative_continuation_law program profile alternative belief view sameView
       (remember view),
     disclosure_prescribed_continuation_law program profile policy registry revelations remember
       belief view sameView registryEq revelationsEq,
     FinDist.expect_bind, FinDist.expect_bind, ← FinDist.expect_sub]
-  exact (FinDist.expect_mono sourceBound).trans_eq (FinDist.expect_const _ _)
+  exact (FinDist.expect_mono sourceBound).trans_eq (expect_constant _ _)
 
 end Vegas.SourceProgram

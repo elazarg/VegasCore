@@ -58,7 +58,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
-    ∀ (timing : FinDist (Fin ((rosters event).count owner))) (count : Nat)
+    ∀ (timing : PMF (Fin ((rosters event).count owner))) (count : Nat)
       (candidate : Handle (graph setup)) (raw : Raw L)
       (_opening : rosterOpening? setup leaks owner event
         (execution.observe (application setup leaks) owner) = some (candidate, raw))
@@ -67,23 +67,23 @@ theorem sourceServiceTimedMixture_replay_window_posterior
       (_counted : (execution.recall owner).length =
         rosterOffset setup rosters owner event + count)
       (_within : count + visits.count owner ≤ (rosters event).count owner)
-      (_small : (revealKernel profile (source.view owner)).prob true < 1)
-      (_old : ∀ slot, (((application setup leaks).policyMixture timing
+      (_small : ((revealKernel profile (source.view owner)) true).toReal < 1)
+      (_old : ∀ slot, ((((application setup leaks).policyMixture timing
         (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
-          (execution.recall owner)).prob slot =
-        timing.prob slot * (if slot.val < count then
-          1 - (revealKernel profile (source.view owner)).prob true else 1) /
-            FinDist.deferredSurvival ((revealKernel profile (source.view owner)).prob true)
+          (execution.recall owner)) slot).toReal =
+        (timing slot).toReal * (if slot.val < count then
+          1 - ((revealKernel profile (source.view owner)) true).toReal else 1) /
+            PMF.deferredSurvival (((revealKernel profile (source.view owner)) true).toReal)
               timing count)
       (_reached : final ∈ ((runtime setup).runInteractionPlan leaks
         (fun _ => (application setup leaks).replayPolicy) network
           (visits.map ServiceInstruction.player) execution).support),
-    ∀ slot, (((application setup leaks).policyMixture timing
+    ∀ slot, ((((application setup leaks).policyMixture timing
       (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
-        (final.recall owner)).prob slot =
-      timing.prob slot * (if slot.val < count + visits.count owner then
-        1 - (revealKernel profile (source.view owner)).prob true else 1) /
-          FinDist.deferredSurvival ((revealKernel profile (source.view owner)).prob true)
+        (final.recall owner)) slot).toReal =
+      (timing slot).toReal * (if slot.val < count + visits.count owner then
+        1 - ((revealKernel profile (source.view owner)) true).toReal else 1) /
+          PMF.deferredSurvival (((revealKernel profile (source.view owner)) true).toReal)
             timing (count + visits.count owner) := by
   intro index event timing count candidate raw opening granted unsent counted within small old
     reached
@@ -93,17 +93,17 @@ theorem sourceServiceTimedMixture_replay_window_posterior
   let offset := rosterOffset setup rosters owner event
   induction visits generalizing execution count with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simpa only [List.count_nil, Nat.add_zero] using old
   | cons actor rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
         at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       let activated := execution.sampledActivation app actor sample
       let current := activated.respond app actor response
       have casesResponse := app.replayPolicy_cases (activated.recall actor)
@@ -157,35 +157,35 @@ theorem sourceServiceTimedMixture_replay_window_posterior
               event (activated.observe app owner) else none) with
               | none => app.replayPolicy (activated.recall owner) (activated.observe app owner)
               | some (candidate, raw) =>
-                  FinDist.pure ((runtime setup).windowOpening leaks event candidate raw)) :=
+                  PMF.pure ((runtime setup).windowOpening leaks event candidate raw)) :=
           selectedLaw
         have actionLaw : sourceServiceOpportunity setup leaks wholeProfile owner event
             (execution.recall owner) entry.beforeView = choice.bind (fun disclose =>
-              if disclose then FinDist.pure ((runtime setup).windowOpening leaks event candidate
+              if disclose then PMF.pure ((runtime setup).windowOpening leaks event candidate
                 raw)
               else app.replayPolicy (execution.recall owner) entry.beforeView) := by
           rw [entryView]
           refine selectedLaw.trans ?_
-          apply FinDist.bind_congr
+          apply bind_congr_on_support _
           intro disclose _
           cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, activatedOpening]
           rfl
         have different : response ≠ (runtime setup).windowOpening leaks event candidate raw := by
           rcases casesResponse with rfl | ⟨id, rfl⟩ <;> simp [windowOpening]
-        have responseProbability : (sourceServiceOpportunity setup leaks wholeProfile owner event
-            (execution.recall owner) entry.beforeView).prob entry.action =
-              (1 - choice.prob true) *
-                (app.replayPolicy (execution.recall owner) entry.beforeView).prob entry.action := by
-          rw [actionLaw, FinDist.bind_bool_mix, FinDist.prob_mix,
+        have responseProbability : ((sourceServiceOpportunity setup leaks wholeProfile owner event
+            (execution.recall owner) entry.beforeView) entry.action).toReal =
+              (1 - (choice true).toReal) *
+                ((app.replayPolicy (execution.recall owner) entry.beforeView) entry.action).toReal := by
+          rw [actionLaw, PMF.bind_bool_mix, mix_apply_toReal,
             entryAction, FinDist.prob_pure_of_ne different, mul_zero, zero_add]
         have likelihood (selected : Fin ((rosters event).count owner)) :
-            (family selected (execution.recall owner) entry.beforeView).prob entry.action =
-              (if selected = slot then 1 - choice.prob true else 1) *
-                (app.replayPolicy (execution.recall owner) entry.beforeView).prob entry.action := by
-          change ((if some (offset + selected.val) = some (execution.recall owner).length then
+            ((family selected (execution.recall owner) entry.beforeView) entry.action).toReal =
+              (if selected = slot then 1 - (choice true).toReal else 1) *
+                ((app.replayPolicy (execution.recall owner) entry.beforeView) entry.action).toReal := by
+          change (((if some (offset + selected.val) = some (execution.recall owner).length then
             sourceServiceOpportunity setup leaks wholeProfile owner event
               (execution.recall owner) entry.beforeView else
-                app.replayPolicy (execution.recall owner) entry.beforeView)).prob entry.action = _
+                app.replayPolicy (execution.recall owner) entry.beforeView)) entry.action).toReal = _
           by_cases equal : selected = slot
           · subst selected
             simp only [counted, slot, offset, ↓reduceIte]
@@ -201,8 +201,8 @@ theorem sourceServiceTimedMixture_replay_window_posterior
             (app.replayPolicy (execution.recall owner) entry.beforeView).support := by
           rw [entryAction, entryView]
           exact supported
-        have update := app.scheduledChoice_posterior_step timing family (choice.prob true)
-          (choice.prob_nonneg true) small (execution.recall owner) entry slot
+        have update := app.scheduledChoice_posterior_step timing family ((choice true).toReal)
+          (ENNReal.toReal_nonneg) small (execution.recall owner) entry slot
             (app.replayPolicy (execution.recall owner) entry.beforeView) possible likelihood old
         have currentCount : (current.recall owner).length = offset + (count + 1) := by
           rw [app.respond_recall_length]
@@ -210,10 +210,10 @@ theorem sourceServiceTimedMixture_replay_window_posterior
           change (execution.recall owner).length + 1 = _
           rw [counted]
           omega
-        have updated : ∀ selected, ((app.policyMixture timing family).posterior
-            (current.recall owner)).prob selected = timing.prob selected *
-              (if selected.val < count + 1 then 1 - choice.prob true else 1) /
-                FinDist.deferredSurvival (choice.prob true) timing (count + 1) := by
+        have updated : ∀ selected, (((app.policyMixture timing family).posterior
+            (current.recall owner)) selected).toReal = (timing selected).toReal *
+              (if selected.val < count + 1 then 1 - (choice true).toReal else 1) /
+                PMF.deferredSurvival ((choice true).toReal) timing (count + 1) := by
           rw [entryRecall]
           exact update
         have tail := ih current currentAgree currentHistory currentValid currentRecall
@@ -269,7 +269,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
-    ∀ (timing : FinDist (Fin ((rosters event).count owner)))
+    ∀ (timing : PMF (Fin ((rosters event).count owner)))
       (candidate : Handle (graph setup)) (raw : Raw L)
       (_opening : rosterOpening? setup leaks owner event
         (execution.observe (application setup leaks) owner) = some (candidate, raw))
@@ -277,16 +277,16 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event)
       (_within : visits.count owner ≤ (rosters event).count owner)
-      (_small : (revealKernel profile (source.view owner)).prob true < 1)
+      (_small : ((revealKernel profile (source.view owner)) true).toReal < 1)
       (_reached : final ∈ ((runtime setup).runInteractionPlan leaks
         (fun _ => (application setup leaks).replayPolicy) network
           (visits.map ServiceInstruction.player) execution).support),
-    ∀ slot, (((application setup leaks).policyMixture timing
+    ∀ slot, ((((application setup leaks).policyMixture timing
       (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event)).posterior
-        (final.recall owner)).prob slot =
-      timing.prob slot * (if slot.val < visits.count owner then
-        1 - (revealKernel profile (source.view owner)).prob true else 1) /
-          FinDist.deferredSurvival ((revealKernel profile (source.view owner)).prob true)
+        (final.recall owner)) slot).toReal =
+      (timing slot).toReal * (if slot.val < visits.count owner then
+        1 - ((revealKernel profile (source.view owner)) true).toReal else 1) /
+          PMF.deferredSurvival (((revealKernel profile (source.view owner)) true).toReal)
             timing (visits.count owner) := by
   intro index event timing candidate raw opening granted unsent counted within small reached
   let app := application setup leaks
@@ -296,14 +296,14 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
     (fun slot past view earlier => app.scheduledPolicy_before _ _ _ _ past view earlier)
     (execution.recall owner) counted.le
   have old (slot : Fin ((rosters event).count owner)) :
-      ((app.policyMixture timing family).posterior (execution.recall owner)).prob slot =
-        timing.prob slot * (if slot.val < 0 then
-          1 - (revealKernel profile (source.view owner)).prob true else 1) /
-            FinDist.deferredSurvival ((revealKernel profile (source.view owner)).prob true)
+      (((app.policyMixture timing family).posterior (execution.recall owner)) slot).toReal =
+        (timing slot).toReal * (if slot.val < 0 then
+          1 - ((revealKernel profile (source.view owner)) true).toReal else 1) /
+            PMF.deferredSurvival (((revealKernel profile (source.view owner)) true).toReal)
               timing 0 := by
     rw [dormant]
-    simp only [Nat.not_lt_zero, ↓reduceIte, mul_one, FinDist.deferredSurvival,
-      FinDist.timingPrefix_zero, mul_zero, sub_zero, div_one]
+    simp only [Nat.not_lt_zero, ↓reduceIte, mul_one, PMF.deferredSurvival,
+      PMF.timingPrefix_zero, mul_zero, sub_zero, div_one]
   have result := sourceServiceTimedMixture_replay_window_posterior setup leaks rosters fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
     agree history valid recalled origins effective network visits final timing 0 candidate raw

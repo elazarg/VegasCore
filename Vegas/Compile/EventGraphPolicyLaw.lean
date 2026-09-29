@@ -44,7 +44,7 @@ structure CompiledPolicySuffix
   policyEq : ∀ (who : Player) (index : Fin (eventCount program))
       (actor : (toEventGraph whole).actor? (embedding.event index) = some who)
       (observation : (toEventGraph whole).PlayerObservation who),
-    cast (congrArg FinDist
+    cast (congrArg PMF
       (congrArg Vegas.EventGraph.EventField.Action (embedding.layout_eq index)))
       ((compileEventProfile whole wholeProfile) who
         (embedding.event index) actor observation) =

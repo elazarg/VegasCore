@@ -20,15 +20,15 @@ theorem history_invariants (control : app.Control) (trace : arena.Trace (some co
     control.execution.application.BindingInvariant ∧
       nativeBounds.AcceptedHandles control.execution.application ∧
       control.execution.network.SerialsBeforeNext := by
-  have raw := menu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon scheduler trace
-  refine ⟨?_, ?_, app.serialsBeforeNext_history scheduler (FinDist.pure nativeInitial)
+  have raw := menu.toRawTrace (PMF.pure nativeInitial) nativeHorizon scheduler trace
+  refine ⟨?_, ?_, app.serialsBeforeNext_history scheduler (PMF.pure nativeInitial)
     nativeHorizon raw⟩
-  · exact nativeRuntime.reactiveBindingInvariant_history leaks (FinDist.pure nativeInputs)
-      nativeHorizon scheduler (by rw [FinDist.map_pure]; exact raw)
+  · exact nativeRuntime.reactiveBindingInvariant_history leaks (PMF.pure nativeInputs)
+      nativeHorizon scheduler (by rw [PMF.pure_map]; exact raw)
   · exact (nativeBounds.executionHandles_raw_history nativeRuntime leaks
-      (FinDist.pure nativeInputs) nativeHorizon scheduler
+      (PMF.pure nativeInputs) nativeHorizon scheduler
         (state := some control)
-        (by rw [FinDist.map_pure]; exact trace)).1
+        (by rw [PMF.pure_map]; exact trace)).1
 
 /-- The two declared candidates suffice at every legal binding history,
 including histories created by arbitrary earlier raw responses. -/
@@ -43,10 +43,10 @@ theorem binding_fresh (control : app.Control) (trace : arena.Trace (some control
   have bounded : (control.execution.recall who).length ≤ 1 := by
     rw [count]
     fin_cases who <;> decide
-  have raw := menu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon scheduler trace
-  have recorded := nativeRuntime.candidateRecall_history leaks (FinDist.pure nativeInputs)
+  have raw := menu.toRawTrace (PMF.pure nativeInitial) nativeHorizon scheduler trace
+  have recorded := nativeRuntime.candidateRecall_history leaks (PMF.pure nativeInputs)
     nativeHorizon scheduler (state := some control)
-      (by rw [FinDist.map_pure]; exact raw)
+      (by rw [PMF.pure_map]; exact raw)
   obtain ⟨serial, serialBound, selected⟩ :=
     nativeRuntime.reactiveFreshSlot_le_recall leaks control.execution who recorded
   have available : ∃ slot : Fin 2,
@@ -75,7 +75,7 @@ theorem binding_realizes (players : Player → app.Policy) (execution : app.Exec
       (nativeRuntime.interactionStep leaks players network
         (.includeLatest (nativeBindingEvent who) who)
         (execution.respond app who (bindingResponse who (nativeBindingEvent who) slot bit))).map
-          (fun result => result.application) = FinDist.pure next := by
+          (fun result => result.application) = PMF.pure next := by
   let submitted := execution.respond app who (bindingResponse who (nativeBindingEvent who) slot bit)
   have facts := nativeRuntime.reactive_respond_application leaks execution who
     (bindingResponse who (nativeBindingEvent who) slot bit)
@@ -127,10 +127,10 @@ theorem binding_realizes (players : Player → app.Policy) (execution : app.Exec
           ⟨.commitment (nativeBindingEvent who) (who, .prepared slot.val), none⟩⟩ :=
       serials.lookup_submit who _
     simp only [interactionStep, interactionInstruction, binding_selected execution who slot bit
-      serials, FinDist.pure_bind, ReactiveApplication.dispatch,
-      ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind,
-      ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.map_pure]
-    change FinDist.pure (submitted.includePending app
+      serials, PMF.pure_bind, ReactiveApplication.dispatch,
+      ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
+      ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_map]
+    change PMF.pure (submitted.includePending app
       (who, execution.network.nextSerial who)).application = _
     unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
     rw [found]
@@ -150,7 +150,7 @@ theorem correctiveBinding_realizes (players : Player → app.Policy)
         (control.execution.respond app who
           (correctiveBinding who (nativeBindingEvent who) bit (control.execution.observe app
             who)))).map
-          (fun result => result.application) = FinDist.pure next := by
+          (fun result => result.application) = PMF.pure next := by
   have position := (native_decision_cursor (observation := leaks) (nativeBindingEvent who)
     control trace who active granted).2
   obtain ⟨_, service⟩ := native_decision_service (observation := leaks) (nativeBindingEvent who)

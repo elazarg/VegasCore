@@ -17,7 +17,7 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 variable (runtime : EventGraphRuntime graph)
-variable (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+variable (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
 variable (players : Player → runtime.application.PlayerPolicy)
 variable (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
 

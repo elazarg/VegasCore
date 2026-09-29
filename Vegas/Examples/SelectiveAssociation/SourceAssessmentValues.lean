@@ -46,7 +46,7 @@ theorem decision_remaining (Claim : Type) [Fintype Claim] (event : Event)
       control.execution.environmentRecall.length = (beforeResponse event).length + 1 := by
   have position := (decision_cursor Claim event control trace (eventOwner event) active granted).2
   have counted := ((menu Claim).roundSupported_uniform
-    (FinDist.pure initial) horizon (scheduler Claim) trace).1
+    (PMF.pure initial) horizon (scheduler Claim) trace).1
   have lengths := congrArg List.length (response_split event)
   simp only [List.length_append, List.length_cons] at lengths
   change _ + _ = calendar.length at counted
@@ -55,11 +55,11 @@ theorem decision_remaining (Claim : Type) [Fintype Claim] (event : Event)
 def decodedAlternative (Claim : Type) [Fintype Claim] (who : Player)
     (alternative : (model Claim).BehavioralPolicy who) : (application Claim).Policy :=
   (application Claim).decodePolicy
-    ((menu Claim).embedPolicy (FinDist.pure initial) horizon (scheduler Claim) who alternative)
+    ((menu Claim).embedPolicy (PMF.pure initial) horizon (scheduler Claim) who alternative)
 
 theorem decoded_update_profile (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (who : Player) (alternative : (model Claim).BehavioralPolicy who) :
-    (menu Claim).decodeProfile (FinDist.pure initial) horizon (scheduler Claim)
+    (menu Claim).decodeProfile (PMF.pure initial) horizon (scheduler Claim)
         (Profile.update (sig := (model Claim).behavioralSignature)
           (profile Claim defaultClaim) who alternative) =
       Function.update (policy Claim defaultClaim) who
@@ -78,13 +78,13 @@ theorem context_value_finish (Claim : Type) [Fintype Claim]
     (assessment : (model Claim).BehavioralAssessment) (who : Player)
     (site : (model Claim).InformationSite who) (alternative : (model Claim).BehavioralPolicy who) :
     (assessment.continuationContext site (payoff who) (2 * horizon + 1)).value alternative =
-      (assessment.belief who site).expect (fun history =>
-        ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-          ((menu Claim).decodeProfile (FinDist.pure initial) horizon (scheduler Claim)
+      expect (assessment.belief who site) (fun history =>
+        expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+          ((menu Claim).decodeProfile (PMF.pure initial) horizon (scheduler Claim)
             (Profile.update (sig := (model Claim).behavioralSignature)
-              assessment.strategy who alternative)) history.1.state).expect
+              assessment.strategy who alternative)) history.1.state)
                 (fun state => utility (protocolResults state) who)) := by
-  exact (menu Claim).context_value_finish (FinDist.pure initial) horizon (scheduler Claim)
+  exact (menu Claim).context_value_finish (PMF.pure initial) horizon (scheduler Claim)
     assessment who site (fun state => utility (protocolResults state) who) alternative
 
 theorem prescribed_context_value_finish (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
@@ -92,10 +92,10 @@ theorem prescribed_context_value_finish (Claim : Type) [Fintype Claim] (defaultC
     (strategy : assessment.strategy = profile Claim defaultClaim) (who : Player)
     (site : (model Claim).InformationSite who) (alternative : (model Claim).BehavioralPolicy who) :
     (assessment.continuationContext site (payoff who) (2 * horizon + 1)).value alternative =
-      (assessment.belief who site).expect (fun history =>
-        ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
+      expect (assessment.belief who site) (fun history =>
+        expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
           (Function.update (policy Claim defaultClaim) who
-            (decodedAlternative Claim who alternative)) history.1.state).expect
+            (decodedAlternative Claim who alternative)) history.1.state)
               (fun state => utility (protocolResults state) who)) := by
   rw [context_value_finish, strategy, decoded_update_profile]
 
@@ -105,12 +105,12 @@ theorem prescribed_context_baseline (Claim : Type) [Fintype Claim] (defaultClaim
     (site : (model Claim).InformationSite who) :
     (assessment.continuationContext site (payoff who) (2 * horizon + 1)).value
         (assessment.strategy who) =
-      (assessment.belief who site).expect (fun history =>
-        ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-          (policy Claim defaultClaim) history.1.state).expect
+      expect (assessment.belief who site) (fun history =>
+        expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+          (policy Claim defaultClaim) history.1.state)
             (fun state => utility (protocolResults state) who)) := by
   rw [context_value_finish, Profile.update_eq_self, strategy]
-  have decoded : (menu Claim).decodeProfile (FinDist.pure initial) horizon (scheduler Claim)
+  have decoded : (menu Claim).decodeProfile (PMF.pure initial) horizon (scheduler Claim)
       (profile Claim defaultClaim) = policy Claim defaultClaim := by
     funext other past view
     exact decode_profile Claim defaultClaim other past view

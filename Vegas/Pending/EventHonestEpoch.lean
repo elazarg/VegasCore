@@ -41,7 +41,7 @@ theorem HonestBoundary.ready_block_continuationLaw
     (boundary : HonestBoundary runtime inputs execution)
     (event : graph.EventId)
     (ready : execution.native.application.config.cut.Ready event)
-    (law : FinDist runtime.application.PolicyExecution)
+    (law : PMF runtime.application.PolicyExecution)
     (configLaw : law.map (fun next => next.native.application.config) =
       graph.normalizedPolicyStep profile execution.native.application.config event ready)
     (boundaryLaw : ∀ next ∈ law.support, HonestBoundary runtime inputs next) :
@@ -52,11 +52,11 @@ theorem HonestBoundary.ready_block_continuationLaw
     law.bind (fun next => next.native.application.continuationLaw profile) =
         law.bind (fun next =>
           graph.canonicalContinuation profile next.native.application.config) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next member
       exact (boundaryLaw next member).continuationLaw_eq runtime inputs profile next
     _ = (law.map (fun next => next.native.application.config)).bind
-          (graph.canonicalContinuation profile) := by rw [FinDist.bind_map]
+          (graph.canonicalContinuation profile) := by rw [PMF.bind_map]
     _ = (graph.normalizedPolicyStep profile execution.native.application.config event ready).bind
           (graph.canonicalContinuation profile) := by rw [configLaw]
     _ = graph.canonicalContinuation profile execution.native.application.config :=
@@ -83,14 +83,14 @@ theorem HonestBoundary.unready_block_continuationLaw
           (eventServicePlan roster reactionRounds event) execution).bind
         (fun next => graph.canonicalContinuation profile
           next.native.application.config) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next member
       exact (block.2 next member).continuationLaw_eq runtime inputs profile next
     _ = ((runtime.runServicePlan (runtime.compileProfile profile) wire
           (eventServicePlan roster reactionRounds event) execution).map
             (fun next => next.native.application.config)).bind
-          (graph.canonicalContinuation profile) := by rw [FinDist.bind_map]
-    _ = _ := by rw [block.1, FinDist.pure_bind]
+          (graph.canonicalContinuation profile) := by rw [PMF.bind_map]
+    _ = _ := by rw [block.1, PMF.pure_bind]
 
 theorem runEventSweep
     (runtime : EventGraphRuntime graph) (inputs : graph.Inputs)
@@ -128,16 +128,16 @@ theorem runEventSweep
         event ∈ next.native.application.config.cut.completed := by
   induction events generalizing execution with
   | nil =>
-      simp only [List.flatMap_nil, runServicePlan, FinDist.pure_bind]
+      simp only [List.flatMap_nil, runServicePlan, PMF.pure_bind]
       constructor
       · trivial
       · intro next member
-        rw [FinDist.mem_support_pure] at member
+        rw [PMF.mem_support_pure_iff _ _] at member
         subst next
         exact ⟨boundary, age, by simp⟩
   | cons event rest ih =>
       simp only [List.flatMap_cons]
-      rw [runtime.runServicePlan_append, FinDist.bind_bind]
+      rw [runtime.runServicePlan_append, PMF.bind_bind]
       have headProgress (middle) (member : middle ∈
           (runtime.runServicePlan (runtime.compileProfile profile) wire
             (eventServicePlan roster reactionRounds event) execution).support) :=
@@ -156,13 +156,13 @@ theorem runEventSweep
           _ = (runtime.runServicePlan (runtime.compileProfile profile) wire
               (eventServicePlan roster reactionRounds event) execution).bind
                 (fun middle => middle.native.application.continuationLaw profile) := by
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro middle member
             exact (ih middle (blockBoundary execution event boundary age middle member)
               (headAge middle member)).1
           _ = _ := blockPotential execution event boundary age
       · intro next member
-        rw [FinDist.support_bind] at member
+        rw [PMF.support_bind] at member
         simp only [Set.mem_iUnion] at member
         obtain ⟨middle, headMem, tailMem⟩ := member
         have middleBoundary := blockBoundary execution event boundary age middle headMem
@@ -194,10 +194,10 @@ theorem expirySweep_honestBoundary
     HonestBoundary runtime inputs next := by
   induction events generalizing execution with
   | nil =>
-      simp only [List.map_nil, runServicePlan, FinDist.mem_support_pure] at member
+      simp only [List.map_nil, runServicePlan, PMF.mem_support_pure_iff _ _] at member
       simpa [member] using boundary
   | cons event rest ih =>
-      simp only [List.map_cons, runServicePlan, FinDist.support_bind,
+      simp only [List.map_cons, runServicePlan, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨middle, head, tail⟩ := member
       have middleBoundary := environmentPolicyStep_honestBoundary runtime inputs execution middle
@@ -219,16 +219,16 @@ theorem serviceStep_tick_facts
   have native : next.native ∈
       ((runtime.application.environmentPolicyStep execution
         (.application .advanceClock)).map MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [MessageApplication.environmentStep_native] at native
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, FinDist.support_map, Set.mem_image] at native
+    MessageApplication.step, PMF.support_map, Set.mem_image] at native
   obtain ⟨state, supported, same⟩ := native
   change state ∈ (Vegas.EventGraphRuntime.environmentStep runtime
     execution.native.application .advanceClock).support at supported
   rw [Vegas.EventGraphRuntime.environmentStep.eq_def] at supported
-  simp only [FinDist.mem_support_pure] at supported
+  simp only [PMF.mem_support_pure_iff _ _] at supported
   subst state
   have appEq := congrArg (fun result : runtime.application.State => result.application) same.symm
   refine ⟨nextBoundary, ?_, ?_⟩
@@ -305,30 +305,30 @@ theorem serviceEpoch_honest_of_block
       HonestBoundary runtime inputs next ∧ next.native.application.ActivationAgeOne := by
   unfold serviceEpoch
   constructor
-  · rw [FinDist.bind_bind]
-    apply Eq.trans (FinDist.bind_congr fun chosen _ => ?_)
-    · exact FinDist.bind_const _ _
+  · rw [PMF.bind_bind]
+    apply Eq.trans (bind_congr_on_support _ fun chosen _ => ?_)
+    · exact PMF.bind_const _ _
     let sweep := chosen.val.flatMap (eventServicePlan roster reactionRounds)
     let expires := (List.finRange graph.order.eventCount).map ServiceInstruction.expire
     have epochEq : epochPlan chosen roster reactionRounds = sweep ++ [.tick] ++ expires := by
       rfl
     rw [epochEq, runtime.runServicePlan_append]
-    rw [runtime.runServicePlan_append, FinDist.bind_bind, FinDist.bind_bind]
+    rw [runtime.runServicePlan_append, PMF.bind_bind, PMF.bind_bind]
     have sweepLaw := runtime.runEventSweep inputs profile wire roster reactionRounds chosen.val
       execution boundary age blockPotential blockBoundary blockComplete
     calc
       _ = (runtime.runServicePlan (runtime.compileProfile profile) wire sweep execution).bind
           (fun middle => middle.native.application.continuationLaw profile) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro middle middleMem
-        rw [← FinDist.bind_const
+        rw [← PMF.bind_const
           (runtime.runServicePlan (runtime.compileProfile profile) wire [.tick] middle)
           (middle.native.application.continuationLaw profile)]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro ticked tickMem
         have combinedMem : ticked ∈ (runtime.runServicePlan
             (runtime.compileProfile profile) wire (sweep ++ [.tick]) execution).support := by
-          rw [runtime.runServicePlan_append, FinDist.support_bind]
+          rw [runtime.runServicePlan_append, PMF.support_bind]
           simp only [Set.mem_iUnion]
           exact ⟨middle, middleMem, by simpa [runServicePlan] using tickMem⟩
         have progress := runtime.runServicePlan_facts inputs (runtime.compileProfile profile)
@@ -366,10 +366,10 @@ theorem serviceEpoch_honest_of_block
             tickBoundary tickAge nextMem
         calc
           _ = ticked.native.application.continuationLaw profile := by
-            rw [← FinDist.bind_const
+            rw [← PMF.bind_const
               (runtime.runServicePlan (runtime.compileProfile profile) wire expires ticked)
               (ticked.native.application.continuationLaw profile)]
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro next nextMem
             exact (expiryLaw next nextMem).2
           _ = middle.native.application.continuationLaw profile :=
@@ -377,13 +377,13 @@ theorem serviceEpoch_honest_of_block
               (sweepLaw.2 middle middleMem).1 (by simpa [runServicePlan] using tickMem)
       _ = _ := sweepLaw.1
   · intro next member
-    simp only [FinDist.support_bind, Set.mem_iUnion] at member
+    simp only [PMF.support_bind, Set.mem_iUnion] at member
     obtain ⟨chosen, _, member⟩ := member
     let sweep := chosen.val.flatMap (eventServicePlan roster reactionRounds)
     let expires := (List.finRange graph.order.eventCount).map ServiceInstruction.expire
     have epochEq : epochPlan chosen roster reactionRounds = sweep ++ [.tick] ++ expires := by rfl
     rw [epochEq, runtime.runServicePlan_append] at member
-    simp only [FinDist.support_bind, Set.mem_iUnion] at member
+    simp only [PMF.support_bind, Set.mem_iUnion] at member
     obtain ⟨ticked, tickedMem, expiryMem⟩ := member
     obtain ⟨swept, sweepMem, tickMem⟩ :=
       runtime.runServicePlan_support_append (runtime.compileProfile profile) wire
@@ -395,7 +395,7 @@ theorem serviceEpoch_honest_of_block
       middleFacts.1 (by simpa [runServicePlan] using tickMem)).1
     have combinedMem : ticked ∈ (runtime.runServicePlan (runtime.compileProfile profile) wire
         (sweep ++ [.tick]) execution).support := by
-      rw [runtime.runServicePlan_append, FinDist.support_bind]
+      rw [runtime.runServicePlan_append, PMF.support_bind]
       simp only [Set.mem_iUnion]
       exact ⟨swept, sweepMem, by simpa [runServicePlan] using tickMem⟩
     have progress := runtime.runServicePlan_facts inputs (runtime.compileProfile profile) wire
@@ -473,7 +473,7 @@ theorem serviceEpoch_honest
     have supported : next.native.application.config ∈
         (graph.normalizedPolicyStep profile before.native.application.config event
           ready).support := by
-      rw [← block.1, FinDist.support_map]
+      rw [← block.1, PMF.support_map]
       exact ⟨next, member, rfl⟩
     rw [graph.normalizedPolicyStep_cut profile _ event ready _ supported]
     exact Finset.mem_insert_self _ _

@@ -70,7 +70,7 @@ theorem first_binding_block_coupling
         [(memory.shadow.inputView (runtime setup) leaks view, response)]⟩
     let plan := visits.map ServiceInstruction.player ++
       (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network plan
         (original.respond app owner response) ∧
       coupling.map Prod.snd = strategy.runJoint owner players

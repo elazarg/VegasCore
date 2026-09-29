@@ -38,11 +38,11 @@ theorem expectedReward_of_known
     (known : M.Knows decision.player decision.site.1 (fun history => read history = state))
     (assessment : M.BehavioralAssessment) (action : Action) :
     decision.expectedReward assessment action = decision.reward state action := by
-  have posterior : decision.posterior assessment = FinDist.pure state := by
+  have posterior : decision.posterior assessment = PMF.pure state := by
     unfold posterior
     rw [show decision.state = (fun history => read history.1) from funext reads]
     exact known.belief_map_eq_pure read state _
-  simp only [expectedReward, posterior, FinDist.expect_pure]
+  simp only [expectedReward, posterior, expect_pure]
 
 /-- Every observation fiber of actual decisions has a common maximizing
 action if the assessment is rational and its executed response depends only
@@ -51,7 +51,7 @@ No finiteness of the index or action carrier is needed. -/
 theorem observation_fiber_has_common_maximizer
     (decisions : Index → M.ContinuationDecision utility fuel State Action)
     (observe : Index → Observation)
-    (respond : Observation → FinDist Action)
+    (respond : Observation → PMF Action)
     (assessment : M.BehavioralAssessment)
     (factors : ∀ index, (decisions index).response assessment.strategy = respond (observe index))
     (rational : assessment.IsSequentiallyRationalWithin utility fuel) (index : Index) :
@@ -68,7 +68,7 @@ continuations have disjoint posterior maximizers for the fixed utility. -/
 theorem observation_separates_incompatible
     (decisions : Index → M.ContinuationDecision utility fuel State Action)
     (observe : Index → Observation)
-    (respond : Observation → FinDist Action)
+    (respond : Observation → PMF Action)
     (assessment : M.BehavioralAssessment)
     (factors : ∀ index, (decisions index).response assessment.strategy = respond (observe index))
     (rational : assessment.IsSequentiallyRationalWithin utility fuel)
@@ -90,7 +90,7 @@ This quantifies over arbitrary observation alphabets and decoders. -/
 theorem not_rational_of_coarsening_collision
     (decisions : Index → M.ContinuationDecision utility fuel State Action)
     (observe : Index → Observation) (coarsen : Observation → Coarse)
-    (respond : Coarse → FinDist Action)
+    (respond : Coarse → PMF Action)
     (assessment : M.BehavioralAssessment)
     (factors : ∀ index, (decisions index).response assessment.strategy =
       respond (coarsen (observe index)))

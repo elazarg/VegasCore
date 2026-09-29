@@ -98,9 +98,9 @@ theorem resolution_finish_retains (players : Player → nativeApp.Policy)
       exact ⟨(native_fixed_invariant bit).environmentStep execution next command fixed reached,
         storeInvariant.environmentStep execution next command bound reached,
         prior.trans (nativeApp.environmentStep_receipts_prefix execution next command reached)⟩ }
-  obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
   obtain ⟨resumed, resumedMem, finalMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   exact ⟨_, rfl, invariant.runRounds nativeScheduler control.remaining resumed final
     (invariant.resume control.actor control.execution resumed ⟨valid, stored, by rfl⟩ resumedMem)
     finalMem⟩
@@ -113,7 +113,7 @@ theorem resolution_finish_payoff_upper (deposit : ℝ) (nonnegative : 0 ≤ depo
     (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit control.execution.application)
     (stored : bobPublicationRef.get? control.execution.application.config.store = some guess) :
-    (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players (some control)).expect
+    expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players (some control))
       (nativeUtility deposit alice) ≤ correctness (.success bit) guess -
         if rejectedAlice control.execution.receipts then deposit else 0 := by
   apply FinDist.expect_le_of_forall

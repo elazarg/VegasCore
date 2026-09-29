@@ -36,15 +36,15 @@ private theorem foreign_roster_recall
     final.recall owner = initial.recall owner := by
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons who rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have different : owner ≠ who := fun same => absent (same ▸ List.mem_cons_self)
       rw [ih (fun member => absent (List.mem_cons_of_mem _ member)) _ reached,
         app.respond_recall_other _ who owner different response]
@@ -95,7 +95,7 @@ theorem binding_waiting_opportunity
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let remembered := memory.record (runtime setup) leaks
       (memory.shadow.inputView (runtime setup) leaks (repaired.observe app owner)) response
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) (original.respond app owner response)).bind
           (fun next => next.environmentStep app (.activate owner)) ∧
@@ -149,7 +149,7 @@ theorem binding_waiting_opportunity
   have service := (runtime setup).player_window_application leaks players network visits
     (original.respond app owner response) prior priorSupport
   have currentApplication : next.1.application.publicView = original.application.publicView := by
-    rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map] at sampled
+    rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at sampled
     obtain ⟨selected, _, same⟩ := sampled
     rw [← same]
     exact service.2.trans ((runtime setup).reactive_respond_application leaks original owner

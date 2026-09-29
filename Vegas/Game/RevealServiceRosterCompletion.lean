@@ -96,7 +96,7 @@ theorem roster_menu_reveal_source_step (setup : Setup (Player := Player) (L := L
       final.network.nextSerial = fun who => initial.network.nextSerial who +
         if who = owner ∧ selected.isSome then 1 else 0 := by
   rw [List.append_assoc, List.append_assoc, (runtime setup).runInteractionPlan_append] at reached
-  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨selected, frame, _, _⟩ := roster_window_support setup leaks bounds rosters
     initial event owner granted ownedEvent candidate ⟨payload, value⟩ opening owned valid
       offset serials clean players covered network (rosters event) (Nat.le_refl _) current prior

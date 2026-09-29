@@ -119,7 +119,7 @@ theorem replay_response_traffic
     have clean := replay_active_clean setup leaks bounds watcher reveals observer openable
       history control state watcher active
     have quiet : (application setup leaks).reportFirstUnpublished (control.execution.recall watcher)
-        (control.execution.observe (application setup leaks) watcher) = FinDist.pure ⟨none⟩ := by
+        (control.execution.observe (application setup leaks) watcher) = PMF.pure ⟨none⟩ := by
       apply ReactiveApplication.reportFirstUnpublished_silent
       intro message observed
       change message ∈ control.execution.network.leaked watcher at observed
@@ -127,7 +127,7 @@ theorem replay_response_traffic
       exact (List.not_mem_nil observed).elim
     rw [replay_menu_watcher] at allowed
     rcases Finset.mem_union.mp allowed with silence | replayed
-    · rw [quiet, FinDist.mem_supportFinset, FinDist.mem_support_pure] at silence
+    · rw [quiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _] at silence
       subst response
       cases control with
       | mk remaining actor execution =>
@@ -195,7 +195,7 @@ theorem replay_step_traffic
         change response ∈ (replayMenu setup leaks bounds watcher).actions who
           (control.execution.recall who) (control.execution.observe app who) at allowed
         simp only [ReactiveApplication.transition, actor, selected,
-          Option.getD_some, FinDist.mem_support_pure] at reached
+          Option.getD_some, PMF.mem_support_pure_iff _ _] at reached
         subst next
         exact replay_response_traffic setup leaks bounds watcher reveals observer openable
           history control state who actor response allowed
@@ -207,9 +207,9 @@ theorem replay_step_traffic
         exact ⟨countEq, actor⟩
       | succ remaining =>
         simp only [ReactiveApplication.transition, actor, countEq,
-          FinDist.support_bind] at reached
+          PMF.support_bind] at reached
         obtain ⟨command, _selected, moved⟩ := Set.mem_iUnion₂.mp reached
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
         have noneTraffic := app.trafficStep_environment control.execution updated command
           supported remaining
         cases control with

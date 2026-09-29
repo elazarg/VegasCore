@@ -16,41 +16,41 @@ namespace GameTheory.Math.Probability
 
 open Filter
 
-theorem FinDistConvergesPointwise.expect_varying {α : Type*} [Finite α]
-    {sequence : ℕ → FinDist α} {target : FinDist α}
-    (converges : FinDistConvergesPointwise sequence target)
+theorem PMFConvergesPointwise.expect_varying {α : Type*} [Finite α]
+    {sequence : ℕ → PMF α} {target : PMF α}
+    (converges : PMFConvergesPointwise sequence target)
     (values : ℕ → α → ℝ) (value : α → ℝ)
     (valuesConverge : ∀ entry, Tendsto (fun n => values n entry) atTop (nhds (value entry))) :
-    Tendsto (fun n => (sequence n).expect (values n)) atTop (nhds (target.expect value)) := by
+    Tendsto (fun n => expect (sequence n) (values n)) atTop (nhds (expect target value)) := by
   let _ := Fintype.ofFinite α
-  simp_rw [FinDist.expect_eq_sum]
+  simp_rw [expect_eq_sum]
   exact tendsto_finsetSum Finset.univ fun entry _ =>
     (converges entry).mul (valuesConverge entry)
 
-theorem FinDist.expect_tendsto {α : Type*} (law : FinDist α)
+theorem FinDist.expect_tendsto {α : Type*} (law : PMF α)
     (values : ℕ → α → ℝ) (value : α → ℝ)
     (converges : ∀ entry ∈ law.support,
       Tendsto (fun n => values n entry) atTop (nhds (value entry))) :
-    Tendsto (fun n => law.expect (values n)) atTop (nhds (law.expect value)) := by
+    Tendsto (fun n => expect law (values n)) atTop (nhds (expect law value)) := by
   simp_rw [FinDist.expect_eq_sum_support]
   exact tendsto_finsetSum law.supportFinset fun entry supported =>
-    (converges entry (FinDist.mem_supportFinset.mp supported)).const_mul (law.prob entry)
+    (converges entry (FinDist.mem_supportFinset.mp supported)).const_mul ((law entry).toReal)
 
-theorem FinDist.expect_bindOnSupport_tendsto {α β : Type*} (law : FinDist α)
-    (kernels : ℕ → ∀ entry ∈ law.support, FinDist β)
-    (kernel : ∀ entry ∈ law.support, FinDist β) (payoff : β → ℝ)
+theorem FinDist.expect_bindOnSupport_tendsto {α β : Type*} (law : PMF α)
+    (kernels : ℕ → ∀ entry ∈ law.support, PMF β)
+    (kernel : ∀ entry ∈ law.support, PMF β) (payoff : β → ℝ)
     (converges : ∀ entry (supported : entry ∈ law.support),
-      Tendsto (fun n => (kernels n entry supported).expect payoff) atTop
-        (nhds ((kernel entry supported).expect payoff))) :
-    Tendsto (fun n => (law.bindOnSupport (kernels n)).expect payoff) atTop
-      (nhds ((law.bindOnSupport kernel).expect payoff)) := by
+      Tendsto (fun n => expect (kernels n entry supported) payoff) atTop
+        (nhds (expect (kernel entry supported) payoff))) :
+    Tendsto (fun n => expect (law.bindOnSupport (kernels n)) payoff) atTop
+      (nhds (expect (law.bindOnSupport kernel) payoff)) := by
   classical
   obtain ⟨fallback, supported⟩ := law.support_nonempty
-  let extend (next : ∀ entry ∈ law.support, FinDist β) (entry : α) : FinDist β :=
+  let extend (next : ∀ entry ∈ law.support, PMF β) (entry : α) : PMF β :=
     if member : entry ∈ law.support then next entry member else kernel fallback supported
-  have same (next : ∀ entry ∈ law.support, FinDist β) :
+  have same (next : ∀ entry ∈ law.support, PMF β) :
       law.bindOnSupport next = law.bind (extend next) := by
-    apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+    apply bindOnSupport_eq_bind_of_eq_on_support _
     intro entry member
     simp only [extend, dite_eq_left member]
   simp_rw [same, FinDist.expect_bind]
@@ -60,22 +60,21 @@ theorem FinDist.expect_bindOnSupport_tendsto {α β : Type*} (law : FinDist α)
 
 /-- Removing a vanishing full-support perturbation retains the same law
 limit, even when the unperturbed response varies along the sequence. -/
-theorem FinDistConvergesPointwise.of_mix_vanishing {α : Type*}
-    (reference : FinDist α) (responses : ℕ → FinDist α) (limit : FinDist α)
+theorem PMFConvergesPointwise.of_mix_vanishing {α : Type*}
+    (reference : PMF α) (responses : ℕ → PMF α) (limit : PMF α)
     (weight : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ weight n)
     (belowOne : ∀ n, weight n < 1) (vanishes : Tendsto weight atTop (nhds 0))
-    (converges : FinDistConvergesPointwise
-      (fun n => FinDist.mix (weight n) (nonnegative n) (belowOne n).le reference (responses n))
-      limit) : FinDistConvergesPointwise responses limit := by
+    (converges : PMFConvergesPointwise
+      (fun n => mix (weight n) (nonnegative n) (belowOne n).le reference (responses n))
+      limit) : PMFConvergesPointwise responses limit := by
   intro value
-  have numerator := (converges value).sub (vanishes.mul_const (reference.prob value))
+  have numerator := (converges value).sub (vanishes.mul_const ((reference value).toReal))
   have denominator := (tendsto_const_nhds (x := (1 : ℝ))).sub vanishes
   have quotient := numerator.div denominator (by norm_num : (1 : ℝ) - 0 ≠ 0)
   have same (n : ℕ) :
-      ((FinDist.mix (weight n) (nonnegative n) (belowOne n).le reference (responses n)).prob
-        value - weight n * reference.prob value) / (1 - weight n) =
-          (responses n).prob value := by
-    rw [FinDist.prob_mix]
+      (((mix (weight n) (nonnegative n) (belowOne n).le reference (responses n)) value).toReal - weight n * (reference value).toReal) / (1 - weight n) =
+          ((responses n) value).toReal := by
+    rw [mix_apply_toReal]
     have nonzero : 1 - weight n ≠ 0 := (sub_pos.mpr (belowOne n)).ne'
     field_simp
     ring
@@ -95,10 +94,10 @@ theorem runBehavioralFrom_expect_tendsto
     (sequence : ℕ → ∀ who, M.BehavioralPolicy who)
     (profile : ∀ who, M.BehavioralPolicy who)
     (converges : ∀ who (site : M.InformationSite who),
-      FinDistConvergesPointwise (fun n => sequence n who site.1) (profile who site.1))
+      PMFConvergesPointwise (fun n => sequence n who site.1) (profile who site.1))
     (payoff : E.History → ℝ) (fuel : ℕ) (history : E.History) :
-    Tendsto (fun n => (M.runBehavioralFrom (sequence n) fuel history).expect payoff) atTop
-      (nhds ((M.runBehavioralFrom profile fuel history).expect payoff)) := by
+    Tendsto (fun n => expect (M.runBehavioralFrom (sequence n) fuel history) payoff) atTop
+      (nhds (expect (M.runBehavioralFrom profile fuel history) payoff)) := by
   classical
   induction fuel generalizing history with
   | zero => exact tendsto_const_nhds
@@ -114,7 +113,7 @@ theorem runBehavioralFrom_expect_tendsto
           · let _ := M.subsingleton_choice_of_not_active history.trace active
             infer_instance
         let _ (who : ι) : Finite (M.Choice who (M.infoOf who history.trace)) := finiteChoices who
-        have current (who : ι) : FinDistConvergesPointwise
+        have current (who : ι) : PMFConvergesPointwise
             (fun n => sequence n who (M.infoOf who history.trace))
             (profile who (M.infoOf who history.trace)) := by
           by_cases active : E.active history.state who
@@ -124,10 +123,10 @@ theorem runBehavioralFrom_expect_tendsto
           · have equal (n : ℕ) := M.behavioral_eq_of_not_active (sequence n who)
               (profile who) history.trace active
             simp_rw [equal]
-            exact finDistConvergesPointwise_const _
+            exact pmfConvergesPointwise_const _
         simp_rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal,
-          behavioralJoint, FinDist.bind_map, FinDist.expect_bind]
-        apply (FinDistConvergesPointwise.pi current).expect_varying
+          behavioralJoint, PMF.bind_map, FinDist.expect_bind]
+        apply (PMFConvergesPointwise.pi current).expect_varying
         intro choices
         apply FinDist.expect_bindOnSupport_tendsto
         intro target realized
@@ -144,7 +143,7 @@ theorem BehavioralAssessmentConvergesPointwise.historyReachProbability
     InformationModel.historyReachProbability, InformationModel.runBehavioral] using
     runBehavioralFrom_expect_tendsto reference mixed (fun n => (sequence n).strategy)
       assessment.strategy converges.strategy
-      (fun outcome => (FinDist.pure outcome).prob history) history.trace.length E.initHistory
+      (fun outcome => ((PMF.pure outcome) history).toReal) history.trace.length E.initHistory
 
 theorem BehavioralAssessmentConvergesPointwise.informationMass
     (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
@@ -172,11 +171,11 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.isBayesConsistent
   have ratios :=
     (converges.historyReachProbability (sequence 0) (approximates 0).1 history.1).div
       (converges.informationMass (sequence 0) (approximates 0).1 who site) positive.ne'
-  have equality (n : ℕ) : ((sequence n).belief who site).prob history =
+  have equality (n : ℕ) : (((sequence n).belief who site) history).toReal =
       M.historyReachProbability (sequence n).strategy history.1 /
         M.informationMass (sequence n).strategy who site :=
     (approximates n).2 who site ((approximates n).1.informationMass_pos who site) history
-  have beliefs : Tendsto (fun n => ((sequence n).belief who site).prob history) atTop
+  have beliefs : Tendsto (fun n => (((sequence n).belief who site) history).toReal) atTop
       (nhds (M.historyReachProbability assessment.strategy history.1 /
         M.informationMass assessment.strategy who site)) :=
     ratios.congr' (Filter.Eventually.of_forall fun n => (equality n).symm)
@@ -193,7 +192,7 @@ theorem BehavioralAssessmentConvergesPointwise.context_value
     (payoff : E.History → ℝ) (fuel : ℕ)
     (alternatives : ℕ → M.BehavioralPolicy who) (alternative : M.BehavioralPolicy who)
     (alternativesConverge : ∀ decision : M.InformationSite who,
-      FinDistConvergesPointwise (fun n => alternatives n decision.1) (alternative decision.1)) :
+      PMFConvergesPointwise (fun n => alternatives n decision.1) (alternative decision.1)) :
     Tendsto (fun n => ((sequence n).continuationContext site payoff fuel).value
       (alternatives n)) atTop
       (nhds ((assessment.continuationContext site payoff fuel).value alternative)) := by
@@ -220,7 +219,7 @@ theorem BehavioralAssessmentConvergesPointwise.rationalAt_of_optimal_responses
     (payoff : E.History → ℝ) (fuel : ℕ)
     (responses : ℕ → M.BehavioralPolicy who)
     (responsesConverge : ∀ decision : M.InformationSite who,
-      FinDistConvergesPointwise (fun n => responses n decision.1)
+      PMFConvergesPointwise (fun n => responses n decision.1)
         (assessment.strategy who decision.1))
     (optimal : ∀ n alternative,
       ((sequence n).continuationContext site payoff fuel).value alternative ≤
@@ -229,7 +228,7 @@ theorem BehavioralAssessmentConvergesPointwise.rationalAt_of_optimal_responses
   intro alternative _
   exact le_of_tendsto_of_tendsto
     (converges.context_value reference mixed site payoff fuel (fun _ => alternative) alternative
-      (fun _ => finDistConvergesPointwise_const _))
+      (fun _ => pmfConvergesPointwise_const _))
     (converges.context_value reference mixed site payoff fuel responses (assessment.strategy who)
       responsesConverge)
     (Filter.Eventually.of_forall (fun n => optimal n alternative))

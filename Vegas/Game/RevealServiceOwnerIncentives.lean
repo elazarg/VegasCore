@@ -70,7 +70,7 @@ theorem owner_compiled_choice_law
     small who past view
   have projected := congrArg (fun distribution => distribution.map
     (fun response => sourceChoice setup leaks (response.getD ⟨none⟩))) physical
-  simp only [FinDist.map_comp, Function.comp_def, Option.getD_some] at projected
+  simp only [PMF.map_comp, Function.comp_def, Option.getD_some] at projected
   rw [policy, ite_eq_right ordinary,
     ordinaryPolicy_projects setup leaks extended decoded weight nonnegative small
       who past view opening selected covered, sourceLaw] at projected
@@ -117,9 +117,9 @@ theorem owner_context_eq_source_local
     (belief : (target.belief who site).map
         (fun current => prefixReadout setup leaks event.val current.1.state) =
       source.stateBelief who sourceSite)
-    (law : FinDist ((information setup leaks (bounds.withInitialValues (initialLaw setup))
+    (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who site.1))
-    (sourceLaw : FinDist ((setup.informationModel admission).Choice who sourceSite.1))
+    (sourceLaw : PMF ((setup.informationModel admission).Choice who sourceSite.1))
     (choices : law.map (fun choice => sourceChoice setup leaks (choice.1.getD ⟨none⟩)) =
       sourceLaw.map (fun choice => OwnAction.disclosure choice.1))
     (utility : State L setup.program.terminalCtx → ℝ) :
@@ -138,7 +138,7 @@ theorem owner_context_eq_source_local
     have present := setup.reveal_choice_fullSupport reveals admission
       (setup.revealReference reveals admission) (setup.revealReference_fullyMixed reveals admission)
       who sourceSite disclose
-    obtain ⟨choice, _supported, same⟩ := FinDist.support_map .. ▸ present
+    obtain ⟨choice, _supported, same⟩ := PMF.support_map .. ▸ present
     exact ⟨choice, same⟩
   choose represent representativeLaw using sectionExists
   let joint (disclose : Bool) (actor : Player) :=
@@ -155,16 +155,16 @@ theorem owner_context_eq_source_local
     setup.continuationContext_local_value_stateBelief admission source who sourceSite
       (source_site_nonterminal setup admission who sourceSite) sourceLaw utility
       (instructionCount setup.program) enough]
-  simp only [InformationModel.BehavioralAssessment.stateBelief, FinDist.expect_map]
-  apply FinDist.expect_congr
+  simp only [InformationModel.BehavioralAssessment.stateBelief, expect_map]
+  apply expect_congr_on_support
   intro history _supported
-  have projected := congrArg (fun distribution => distribution.expect (fun disclose =>
-    ((setup.protocolStep history.1.state (joint disclose)).bind
+  have projected := congrArg (fun distribution => expect distribution (fun disclose =>
+    expect ((setup.protocolStep history.1.state (joint disclose)).bind
       (setup.continuationLaw
-        (setup.decodeBehavioralProfile admission source.strategy))).expect utility)) choices
-  simp only [FinDist.expect_map] at projected
+        (setup.decodeBehavioralProfile admission source.strategy))) utility)) choices
+  simp only [expect_map] at projected
   rw [projected]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro choice _supported
   have sameStep : setup.protocolStep history.1.state (joint (OwnAction.disclosure choice.1)) =
       setup.protocolStep history.1.state (fun actor => if actor = who then choice.1 else none) := by
@@ -220,7 +220,7 @@ theorem owner_local_optimal
       (source.continuationContext sourceSite
         (fun final => (setup.protocolReadout final.state).elim 0 utility)
           (instructionCount setup.program + 1)))
-    (law : FinDist ((information setup leaks (bounds.withInitialValues (initialLaw setup))
+    (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who site.1)) :
     (target.continuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
@@ -236,14 +236,14 @@ theorem owner_local_optimal
     have present := setup.reveal_choice_fullSupport reveals admission
       (setup.revealReference reveals admission) (setup.revealReference_fullyMixed reveals admission)
       who sourceSite disclose
-    obtain ⟨choice, _supported, same⟩ := FinDist.support_map .. ▸ present
+    obtain ⟨choice, _supported, same⟩ := PMF.support_map .. ▸ present
     exact ⟨choice, same⟩
   choose represent representativeLaw using represented
   let sourceLaw := law.map fun choice =>
     represent (sourceChoice setup leaks (choice.1.getD ⟨none⟩))
   have choices : law.map (fun choice => sourceChoice setup leaks (choice.1.getD ⟨none⟩)) =
       sourceLaw.map (fun choice => OwnAction.disclosure choice.1) := by
-    simp only [sourceLaw, FinDist.map_comp, Function.comp_def, representativeLaw]
+    simp only [sourceLaw, PMF.map_comp, Function.comp_def, representativeLaw]
   have changed := owner_context_eq_source_local setup leaks bounds watcher reveals observer
     openable admission source target strategy who event owned site clock sourceSite belief law
       sourceLaw choices utility

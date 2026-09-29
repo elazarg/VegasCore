@@ -97,14 +97,14 @@ theorem finish_bob_guess_payoff_le {Claim : Type}
     (active : control.actor = some bob)
     (remaining : control.remaining = (afterResponse 2).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 2).length + 1) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
-      (some control)).expect (fun state => utility (protocolResults state) bob) ≤
-        (players bob (control.execution.recall bob)
-          (control.execution.observe (application Claim) bob)).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
+      (some control)) (fun state => utility (protocolResults state) bob) ≤
+        expect (players bob (control.execution.recall bob)
+          (control.execution.observe (application Claim) bob))
             (fun response => correctness a (selectedBinding 2 response) -
               openingPenalty (selectedBinding 2 response)) := by
   rw [finish_response_law players 2 control active remaining position,
-    FinDist.expect_map, FinDist.expect_bind]
+    expect_map, FinDist.expect_bind]
   apply FinDist.expect_mono
   intro response _
   apply FinDist.expect_le_of_forall
@@ -120,14 +120,14 @@ theorem finish_carol_guess_payoff_le {Claim : Type}
     (active : control.actor = some carol)
     (remaining : control.remaining = (afterResponse 1).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 1).length + 1) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
-      (some control)).expect (fun state => utility (protocolResults state) carol) ≤
-        (players carol (control.execution.recall carol)
-          (control.execution.observe (application Claim) carol)).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
+      (some control)) (fun state => utility (protocolResults state) carol) ≤
+        expect (players carol (control.execution.recall carol)
+          (control.execution.observe (application Claim) carol))
             (fun response => correctness a (selectedBinding 1 response) -
               openingPenalty (selectedBinding 1 response)) := by
   rw [finish_response_law players 1 control active remaining position,
-    FinDist.expect_map, FinDist.expect_bind]
+    expect_map, FinDist.expect_bind]
   apply FinDist.expect_mono
   intro response _
   apply FinDist.expect_le_of_forall
@@ -143,7 +143,7 @@ theorem policy_selected_guess (Claim : Type) (defaultClaim : Claim) (event : Eve
     selectedBinding event response = .success (publicGuess view) := by
   have nonzero : event.val ≠ 0 := by rcases guessSite with rfl | rfl <;> decide
   have early : event.val < 3 := by rcases guessSite with rfl | rfl <;> decide
-  simp only [policy, visited, ↓reduceIte, nonzero, FinDist.mem_support_pure] at supported
+  simp only [policy, visited, ↓reduceIte, nonzero, PMF.mem_support_pure_iff _ _] at supported
   subst response
   simp [selectedBinding, playing, early]
 
@@ -154,33 +154,33 @@ theorem finish_bob_prescribed_guess (Claim : Type) (defaultClaim : Claim)
     (active : control.actor = some bob)
     (remaining : control.remaining = (afterResponse 2).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 2).length + 1) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-      (policy Claim defaultClaim) (some control)).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+      (policy Claim defaultClaim) (some control))
         (fun state => utility (protocolResults state) bob) =
           correctness a (.success
             (publicGuess (control.execution.observe (application Claim) bob))) := by
   rw [finish_response_law (policy Claim defaultClaim) 2 control active remaining position,
-    FinDist.expect_map, FinDist.expect_bind]
+    expect_map, FinDist.expect_bind]
   calc
-    _ = (policy Claim defaultClaim bob (control.execution.recall bob)
-        (control.execution.observe (application Claim) bob)).expect (fun _ =>
+    _ = expect (policy Claim defaultClaim bob (control.execution.recall bob)
+        (control.execution.observe (application Claim) bob)) (fun _ =>
           correctness a (.success
             (publicGuess (control.execution.observe (application Claim) bob)))) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro response responseMem
       calc
-        _ = (runInstructions (policy Claim defaultClaim) (afterResponse 2)
-            (control.execution.respond (application Claim) bob response)).expect (fun _ =>
+        _ = expect (runInstructions (policy Claim defaultClaim) (afterResponse 2)
+            (control.execution.respond (application Claim) bob response)) (fun _ =>
               correctness a (.success
                 (publicGuess (control.execution.observe (application Claim) bob)))) := by
-          apply FinDist.expect_congr
+          apply expect_congr_on_support
           intro final supported
           exact bob_guess_response_payoff_eq _ control.execution final response a c _ core visited
             (policy_selected_guess Claim defaultClaim 2 (Or.inr rfl) _ _ visited _ responseMem)
             (policy_opensAt Claim defaultClaim 3 (by decide))
             (policy_opensAt Claim defaultClaim 5 (by decide)) supported
-        _ = _ := FinDist.expect_const ..
-    _ = _ := FinDist.expect_const ..
+        _ = _ := expect_constant ..
+    _ = _ := expect_constant ..
 
 theorem finish_carol_prescribed_guess (Claim : Type) (defaultClaim : Claim)
     (control : (application Claim).Control) (a : PublicationResult Bool)
@@ -189,32 +189,32 @@ theorem finish_carol_prescribed_guess (Claim : Type) (defaultClaim : Claim)
     (active : control.actor = some carol)
     (remaining : control.remaining = (afterResponse 1).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 1).length + 1) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-      (policy Claim defaultClaim) (some control)).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+      (policy Claim defaultClaim) (some control))
         (fun state => utility (protocolResults state) carol) =
           correctness a (.success
             (publicGuess (control.execution.observe (application Claim) carol))) := by
   rw [finish_response_law (policy Claim defaultClaim) 1 control active remaining position,
-    FinDist.expect_map, FinDist.expect_bind]
+    expect_map, FinDist.expect_bind]
   calc
-    _ = (policy Claim defaultClaim carol (control.execution.recall carol)
-        (control.execution.observe (application Claim) carol)).expect (fun _ =>
+    _ = expect (policy Claim defaultClaim carol (control.execution.recall carol)
+        (control.execution.observe (application Claim) carol)) (fun _ =>
           correctness a (.success
             (publicGuess (control.execution.observe (application Claim) carol)))) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro response responseMem
       calc
-        _ = (runInstructions (policy Claim defaultClaim) (afterResponse 1)
-            (control.execution.respond (application Claim) carol response)).expect (fun _ =>
+        _ = expect (runInstructions (policy Claim defaultClaim) (afterResponse 1)
+            (control.execution.respond (application Claim) carol response)) (fun _ =>
               correctness a (.success
                 (publicGuess (control.execution.observe (application Claim) carol)))) := by
-          apply FinDist.expect_congr
+          apply expect_congr_on_support
           intro final supported
           exact carol_guess_response_payoff_eq _ control.execution final response a _ core visited
             (policy_selected_guess Claim defaultClaim 1 (Or.inl rfl) _ _ visited _ responseMem)
             (policy_opensAt Claim defaultClaim 3 (by decide))
             (policy_opensAt Claim defaultClaim 4 (by decide)) supported
-        _ = _ := FinDist.expect_const ..
-    _ = _ := FinDist.expect_const ..
+        _ = _ := expect_constant ..
+    _ = _ := expect_constant ..
 
 end Vegas.Examples.SelectiveAssociation.NamedSource

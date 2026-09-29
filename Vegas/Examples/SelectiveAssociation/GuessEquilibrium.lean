@@ -40,10 +40,10 @@ theorem native_supported_certified_guess
   by_contra wrong
   have once := nativeModel.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
-      (nativeMenu.decisionInformationAntichain (FinDist.pure nativeInitial)
+      (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial)
         nativeHorizon nativeScheduler))
   apply (assessment.not_supported_choice_of_uniform_gap once ⟨some (past, view), isSite⟩
-    (nativeMenu.informationSite_allNonterminal (FinDist.pure nativeInitial) nativeHorizon
+    (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler bob ⟨some (past, view), isSite⟩)
     (fun outcome => nativeUtility bob outcome.state) (2 * nativeHorizon)
     (rational bob ⟨some (past, view), isSite⟩) choice
@@ -69,11 +69,11 @@ theorem native_supported_certified_guess
     exact wrong (same.trans correct)
   · intro other
     calc
-      1 = (nativeModel.runBehavioralFrom
+      1 = expect (nativeModel.runBehavioralFrom
           (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy bob
             ((assessment.strategy bob).commit (some (past, view))
-              (bobCorrectiveChoice bit past view))) (2 * nativeHorizon + 1) other.1).expect
-            (fun _ => 1) := (FinDist.expect_const _ _).symm
+              (bobCorrectiveChoice bit past view))) (2 * nativeHorizon + 1) other.1)
+            (fun _ => 1) := (expect_constant _ _).symm
       _ ≤ _ := FinDist.expect_mono fun outcome member =>
         le_of_eq (native_bob_corrective_utility assessment rational past view bit granted unfinished
           observed other outcome member).symm
@@ -121,18 +121,18 @@ theorem native_sequentially_rational_certified_guess
   have unfinished := native_bob_view_unfinished past view granted history
   have once := nativeModel.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
-      (nativeMenu.decisionInformationAntichain (FinDist.pure nativeInitial)
+      (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial)
         nativeHorizon nativeScheduler))
   have law := nativeModel.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy bob
     (assessment.strategy bob) (some (past, view)) (assessment.strategy bob (some (past, view)))
     history.1 history.2
-    (nativeMenu.informationSite_allNonterminal (FinDist.pure nativeInitial) nativeHorizon
+    (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler bob ⟨some (past, view), isSite⟩ history)
     (InformationModel.InformationSite.active nativeModel ⟨some (past, view), isSite⟩ history)
     (2 * nativeHorizon)
   rw [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self] at law
   rw [law] at supported
-  obtain ⟨choice, chosen, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨choice, chosen, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have correct := native_supported_certified_guess assessment rational ⟨some (past, view), isSite⟩
     past view rfl bit granted unfinished observed choice chosen history final finalMem
   have aliceOpens := native_bob_committed_alice_opens assessment rational past view bit granted

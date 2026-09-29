@@ -21,7 +21,7 @@ abbrev graph := PendingMenus.graph
 abbrev runtime := PendingMenus.runtime
 
 def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) :=
-  fun _ _ => FinDist.pure ∅
+  fun _ _ => PMF.pure ∅
 
 abbrev app := runtime.reactiveApplication leaks
 abbrev candidate : Handle graph := ((), .prepared 0)
@@ -253,16 +253,16 @@ theorem auditTrace_eq (first second : PublicationResult Int) :
 /-- Even randomized auditing of complete public snapshots cannot charge the
 unusable binding while remaining silent on this lawful valid-and-withhold run. -/
 theorem no_sound_detection (value : Int)
-    (audit : List app.EnvironmentView → FinDist Bool)
-    (sound : (audit (auditTrace (.success value))).prob true = 0) :
-    (audit (auditTrace .failure)).prob true = 0 := by
+    (audit : List app.EnvironmentView → PMF Bool)
+    (sound : ((audit (auditTrace (.success value))) true).toReal = 0) :
+    ((audit (auditTrace .failure)) true).toReal = 0 := by
   rw [auditTrace_eq .failure (.success value)]
   exact sound
 
 /-- Subsequent random sampling or other public postprocessing cannot separate
 the two executions either. -/
 theorem audit_law_eq {Observation : Type}
-    (audit : List app.EnvironmentView → FinDist Observation) (value : Int) :
+    (audit : List app.EnvironmentView → PMF Observation) (value : Int) :
     audit (auditTrace .failure) = audit (auditTrace (.success value)) :=
   congrArg audit (auditTrace_eq .failure (.success value))
 
@@ -270,14 +270,14 @@ theorem audit_law_eq {Observation : Type}
 commitment interface, including the value-only interface. -/
 def lawfulSourcePolicy (value : Int) (who : Unit) :
     SourceProgram.BehavioralPolicy who PendingMenus.sourceProgram :=
-  (fun _ _ => FinDist.pure (.success value), (fun _ _ => FinDist.pure false, PUnit.unit))
+  (fun _ _ => PMF.pure (.success value), (fun _ _ => PMF.pure false, PUnit.unit))
 
 theorem lawful_source_admitted (value : Int)
     (admission : SourceProgram.CommitmentInterface PendingMenus.sourceProgram) (who : Unit) :
     (lawfulSourcePolicy value who).Admitted PendingMenus.sourceProgram admission := by
   refine ⟨?_, trivial⟩
   intro _ _ choice reached
-  have same := FinDist.mem_support_pure.mp reached
+  have same := (PMF.mem_support_pure_iff _ _).mp reached
   subst choice
   trivial
 

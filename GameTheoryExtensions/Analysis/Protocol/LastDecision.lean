@@ -63,9 +63,9 @@ theorem LastDecision.run_eq_of_current_law {who : ι} (last : LastDecision (E :=
           · rw [Profile.update_of_ne _ _ own, Profile.update_of_ne _ _ own]
         rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel stopped,
           M.runBehavioralFrom_succ_of_not_terminal _ fuel stopped, current]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro draw _
-        apply FinDist.bindOnSupport_congr
+        apply bindOnSupport_congr _
         intro target realized
         apply M.runBehavioralFrom_congr
         intro later reached _ player
@@ -95,13 +95,13 @@ theorem LastDecision.run_eq_bind_choices {who : ι} (last : LastDecision (E := E
     history active (by simp [info, law])]
   rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel running,
     M.behavioralJoint_update_withLaw_eq_bind profile who (profile who) info law
-      history.trace running rfl, FinDist.bind_bind]
-  apply FinDist.bind_congr
+      history.trace running rfl, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro choice _
   rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel running]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro draw _
-  apply FinDist.bindOnSupport_congr
+  apply bindOnSupport_congr _
   intro target realized
   apply M.runBehavioralFrom_congr
   intro later reached _ player
@@ -117,17 +117,17 @@ theorem LastDecision.context_value_eq_expect {who : ι} (last : LastDecision (E 
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
     (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who) :
     (assessment.continuationContext site payoff (fuel + 1)).value alternative =
-      (alternative site.1).expect (fun choice =>
+      expect (alternative site.1) (fun choice =>
         (assessment.continuationContext site payoff (fuel + 1)).value
           ((assessment.strategy who).commit site.1 choice)) := by
   simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief who site).expect (fun history =>
-          (alternative site.1).expect (fun choice =>
-            (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
+    _ = expect (assessment.belief who site) (fun history =>
+          expect (alternative site.1) (fun choice =>
+            expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
               assessment.strategy who ((assessment.strategy who).commit site.1 choice))
-                (fuel + 1) history.1).expect payoff)) := by
-      apply FinDist.expect_congr
+                (fuel + 1) history.1) payoff)) := by
+      apply expect_congr_on_support
       intro history _
       rw [last.run_eq_bind_choices assessment.strategy alternative history.1
         site.1 history.2
@@ -169,12 +169,12 @@ def bestLastPolicy : M.BehavioralPolicy who := by
   exact fun info =>
     if decision : ∃ history : M.InformationHistory who info,
         ¬ E.terminal history.1.state ∧ ∃ action : E.Action who, some action ∈ M.menu who info
-    then FinDist.pure (bestLastChoice reference mixed antichain who payoff fuel ⟨info, decision⟩)
+    then PMF.pure (bestLastChoice reference mixed antichain who payoff fuel ⟨info, decision⟩)
     else reference.strategy who info
 
 theorem bestLastPolicy_at (site : M.InformationSite who) :
     bestLastPolicy reference mixed antichain who payoff fuel site.1 =
-      FinDist.pure (bestLastChoice reference mixed antichain who payoff fuel site) := by
+      PMF.pure (bestLastChoice reference mixed antichain who payoff fuel site) := by
   classical
   simp only [bestLastPolicy, dite_eq_left site.2]; rfl
 
@@ -189,7 +189,7 @@ theorem bestLastPolicy_optimal (last : LastDecision (E := E) who)
   rw [last.context_value_eq_expect _ site nonterminal payoff fuel alternative,
     last.context_value_eq_expect _ site nonterminal payoff fuel
       (bestLastPolicy reference mixed antichain who payoff fuel),
-    bestLastPolicy_at, FinDist.expect_pure]
+    bestLastPolicy_at, expect_pure]
   apply FinDist.expect_le_of_forall
   intro choice _
   exact lastChoiceValue_le_best reference mixed antichain who payoff fuel site choice
@@ -226,7 +226,7 @@ theorem consistent_update_of_reach_invariant
   have vanishes : Tendsto weight atTop (nhds 0) :=
     tendsto_one_div_add_atTop_nhds_zero_nat
   let response (n : Nat) : M.BehavioralPolicy who := fun info =>
-    FinDist.mix (weight n) (positive n).le (atMostOne n)
+    mix (weight n) (positive n).le (atMostOne n)
       (reference.strategy who info) (policy info)
   let sequence (n : Nat) : M.BehavioralAssessment :=
     ⟨Profile.update (sig := M.behavioralSignature) reference.strategy who (response n),
@@ -240,7 +240,7 @@ theorem consistent_update_of_reach_invariant
         change choice ∈ (Profile.update (sig := M.behavioralSignature)
           reference.strategy who (response n) who site.1).support
         rw [Profile.update_same]
-        exact FinDist.mem_support_mix_left _ _ _ (positive n) (mixed who site choice)
+        exact mem_support_mix_left _ _ _ (positive n) (mixed who site choice)
       · change choice ∈ (Profile.update (sig := M.behavioralSignature)
           reference.strategy who (response n) player site.1).support
         rw [Profile.update_of_ne _ _ own]
@@ -252,7 +252,7 @@ theorem consistent_update_of_reach_invariant
         apply Finset.sum_congr rfl
         intro next _
         exact reach (response n) player site next
-      change ((reference.bayes mixed antichain).belief player site).prob history = _
+      change (((reference.bayes mixed antichain).belief player site) history).toReal = _
       rw [BehavioralAssessment.bayes, bayesBelief_prob, mass]
       exact congrArg (fun value => value / M.informationMass reference.strategy player site)
         (reach (response n) player site history).symm
@@ -262,25 +262,25 @@ theorem consistent_update_of_reach_invariant
       · subst player
         intro choice
         change Tendsto (fun n =>
-          (Profile.update (sig := M.behavioralSignature)
-            reference.strategy who (response n) who site.1).prob choice) atTop
-          (nhds ((Profile.update (sig := M.behavioralSignature)
-            reference.strategy who policy who site.1).prob choice))
+          ((Profile.update (sig := M.behavioralSignature)
+            reference.strategy who (response n) who site.1) choice).toReal) atTop
+          (nhds (((Profile.update (sig := M.behavioralSignature)
+            reference.strategy who policy who site.1) choice).toReal))
         simp only [Profile.update_same]
-        simp only [response, FinDist.prob_mix]
-        have first := vanishes.mul_const ((reference.strategy who site.1).prob choice)
+        simp only [response, mix_apply_toReal]
+        have first := vanishes.mul_const (((reference.strategy who site.1) choice).toReal)
         have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-        have second := (one.sub vanishes).mul_const ((policy site.1).prob choice)
+        have second := (one.sub vanishes).mul_const (((policy site.1) choice).toReal)
         simpa only [zero_mul, sub_zero, one_mul, zero_add] using first.add second
-      · change FinDistConvergesPointwise
+      · change PMFConvergesPointwise
           (fun n => Profile.update (sig := M.behavioralSignature)
             reference.strategy who (response n) player site.1)
           (Profile.update (sig := M.behavioralSignature)
             reference.strategy who policy player site.1)
         simp only [Profile.update_of_ne _ _ own]
-        exact finDistConvergesPointwise_const _
+        exact pmfConvergesPointwise_const _
     · intro player site
-      exact finDistConvergesPointwise_const _
+      exact pmfConvergesPointwise_const _
 
 /-- One final decision maker, with indifferent other participants, has a
 sequential equilibrium whenever its policy does not change the reach law of

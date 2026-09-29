@@ -20,10 +20,10 @@ theorem ambient_decision_representation (Claim : Type) [Fintype Claim]
       ∃ first : (application Claim).Action,
         control.execution = effect (firstResponse first) (.activate bob)) := by
   obtain ⟨accounted, supported⟩ := (menu Claim).roundSupported_uniform
-    (FinDist.pure initial) horizon (scheduler Claim) trace
+    (PMF.pure initial) horizon (scheduler Claim) trace
   rw [active] at supported
   obtain ⟨count, prior, command, position, priorMem, commandMem, actor, observed⟩ := supported
-  have cursor := (application Claim).roundsFrom_recall (FinDist.pure initial) (scheduler Claim)
+  have cursor := (application Claim).roundsFrom_recall (PMF.pure initial) (scheduler Claim)
     (menu Claim).uniformResponses count prior priorMem
   have bounded : count < calendar.length := by
     change _ + _ = calendar.length at accounted
@@ -32,11 +32,11 @@ theorem ambient_decision_representation (Claim : Type) [Fintype Claim]
     simp only [scheduler, cursor] at commandMem
     cases found : calendar[count]? with
     | none =>
-        simp only [found, FinDist.mem_support_pure] at commandMem
+        simp only [found, PMF.mem_support_pure_iff _ _] at commandMem
         subst command
         cases actor
     | some next =>
-        simp only [found, Option.elim_some, FinDist.mem_support_pure] at commandMem
+        simp only [found, Option.elim_some, PMF.mem_support_pure_iff _ _] at commandMem
         subst command
         simp only [Option.bind_some]
         exact (instruction_actor next _).symm.trans actor
@@ -52,32 +52,32 @@ theorem ambient_decision_representation (Claim : Type) [Fintype Claim]
     have aliceEq : who = alice := (Option.some.inj selected).symm
     subst who
     have priorEq : prior = root Claim := by
-      simpa only [ReactiveApplication.roundsFrom, FinDist.pure_bind,
-        ReactiveApplication.runRounds, FinDist.mem_support_pure, root] using priorMem
+      simpa only [ReactiveApplication.roundsFrom, PMF.pure_bind,
+        ReactiveApplication.runRounds, PMF.mem_support_pure_iff _ _, root] using priorMem
     subst prior
     have commandEq : command = .activate alice := by
-      change command ∈ (FinDist.pure (.activate alice)).support at commandMem
-      exact FinDist.mem_support_pure.mp commandMem
+      change command ∈ (PMF.pure (.activate alice)).support at commandMem
+      exact (PMF.mem_support_pure_iff _ _).mp commandMem
     subst command
-    rw [effect_law, FinDist.mem_support_pure] at observed
+    rw [effect_law, PMF.mem_support_pure_iff _ _] at observed
     exact Or.inl ⟨rfl, by omega, observed⟩
   · rw [early] at selected priorMem cursor position
     have bobEq : who = bob := (Option.some.inj selected).symm
     subst who
     have firstLaw := priorMem
-    change prior ∈ ((application Claim).roundsFrom (FinDist.pure initial)
+    change prior ∈ ((application Claim).roundsFrom (PMF.pure initial)
       (scheduler Claim) (menu Claim).uniformResponses
         ([.player alice] : List Instruction).length).support at firstLaw
     rw [roundsFrom_prefix (menu Claim).uniformResponses [.player alice] calendar.tail rfl]
       at firstLaw
     simp only [runInstructions_player, runInstructions_nil] at firstLaw
-    rw [← FinDist.map_eq_bind, FinDist.support_map] at firstLaw
+    rw [← ← PMF.bind_pure_comp, Function.comp_def, PMF.support_map] at firstLaw
     obtain ⟨first, _, firstEq⟩ := firstLaw
     have commandEq : command = .activate bob := by
       simpa only [scheduler, cursor, show calendar[1]? = some (.player bob) from rfl,
-        Option.elim_some, instruction, FinDist.mem_support_pure] using commandMem
+        Option.elim_some, instruction, PMF.mem_support_pure_iff _ _] using commandMem
     subst command
-    rw [effect_law, FinDist.mem_support_pure] at observed
+    rw [effect_law, PMF.mem_support_pure_iff _ _] at observed
     exact Or.inr ⟨rfl, by omega, first, observed.trans (congrArg
       (fun execution => effect execution (.activate bob)) firstEq.symm)⟩
   · have evaluated := priorMem
@@ -114,7 +114,7 @@ theorem finish_ambient_law {Claim : Type} (players : Player → (application Cla
     (control : (application Claim).Control) (active : control.actor = some who)
     (remaining : control.remaining = horizon - count)
     (position : control.execution.environmentRecall.length = count) :
-    (application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
+    (application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
         (some control) =
       ((players who (control.execution.recall who)
         (control.execution.observe (application Claim) who)).bind
@@ -122,9 +122,9 @@ theorem finish_ambient_law {Claim : Type} (players : Player → (application Cla
             (control.execution.respond (application Claim) who response))).map
               (application Claim).finished := by
   simp only [ReactiveApplication.finish, active, ReactiveApplication.resume,
-    ReactiveApplication.invoke, FinDist.bind_map, remaining]
+    ReactiveApplication.invoke, PMF.bind_map, remaining]
   congr 1
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro response _
   rw [show horizon - count = (calendar.drop count).length by simp [horizon]]
   apply segment_rounds players (calendar.take count) (calendar.drop count) []

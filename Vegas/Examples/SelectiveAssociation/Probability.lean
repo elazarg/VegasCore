@@ -23,36 +23,36 @@ theorem correctness_pair (guess : PublicationResult Bool) :
   | failure => norm_num [correctness, PublicationResult.isSuccess]
   | success value => cases value <;> norm_num [correctness, PublicationResult.isSuccess]
 
-theorem fair_guess_le_half (guesses : FinDist (PublicationResult Bool)) :
-    (FinDist.uniformOfFintype (α := Bool)).expect
-        (fun bit => guesses.expect (correctness (.success bit))) ≤ 1 / 2 := by
-  have bound : guesses.expect (correctness (.success false)) +
-      guesses.expect (correctness (.success true)) ≤ 1 := by
+theorem fair_guess_le_half (guesses : PMF (PublicationResult Bool)) :
+    expect (PMF.uniformOfFintype (α := Bool))
+        (fun bit => expect guesses (correctness (.success bit))) ≤ 1 / 2 := by
+  have bound : expect guesses (correctness (.success false)) +
+      expect guesses (correctness (.success true)) ≤ 1 := by
     rw [← FinDist.expect_add]
     apply FinDist.expect_le_of_forall
     intro guess _
     rw [correctness_pair]
     split <;> norm_num
-  rw [FinDist.expect_eq_sum]
+  rw [expect_eq_sum]
   simp only [FinDist.prob_uniformOfFintype, Fintype.card_bool, Nat.cast_ofNat,
     Fintype.sum_bool]
   linarith
 
 theorem fair_guess_reference_value :
-    value (FinDist.uniformOfFintype (α := Bool)) (fun _ => ())
+    value (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
       (fun bit guess => correctness (.success bit) guess)
-      (fun _ => FinDist.pure (.success false)) = 1 / 2 := by
-  rw [value_eq_expect, FinDist.expect_eq_sum]
-  simp only [FinDist.expect_pure, FinDist.prob_uniformOfFintype, Fintype.card_bool,
+      (fun _ => PMF.pure (.success false)) = 1 / 2 := by
+  rw [value_eq_expect, expect_eq_sum]
+  simp only [expect_pure, FinDist.prob_uniformOfFintype, Fintype.card_bool,
     Nat.cast_ofNat, Fintype.sum_bool, correctness]
   norm_num
 
 /-- A constant correct-or-incorrect report is optimal for the observer with
 no signal. Failed reports remain in the observer's action menu. -/
 theorem fair_guess_reference_optimal :
-    IsBayesOptimal (FinDist.uniformOfFintype (α := Bool)) (fun _ => ())
+    IsBayesOptimal (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
       (fun bit guess => correctness (.success bit) guess)
-      (fun _ => FinDist.pure (.success false)) := by
+      (fun _ => PMF.pure (.success false)) := by
   intro signal alternative
   cases signal
   have reference := fair_guess_reference_value
@@ -63,20 +63,20 @@ theorem fair_guess_reference_optimal :
 /-- Operational secrecy for Carol and sequentially forced success for Bob give
 Alice a strictly positive gain. This lemma is only the finite expectation
 calculation: it does not assume or establish an equilibrium correspondence. -/
-theorem selective_advantage (outcomes : Bool → FinDist Results)
-    (guesses : FinDist (PublicationResult Bool))
+theorem selective_advantage (outcomes : Bool → PMF Results)
+    (guesses : PMF (PublicationResult Bool))
     (alice_success : ∀ bit result, result ∈ (outcomes bit).support →
       result.alice = .success bit)
     (bob_correct : ∀ bit result, result ∈ (outcomes bit).support →
       result.bob = .success bit)
     (carol_bound : ∀ bit,
-      (outcomes bit).expect (fun result => correctness (.success bit) result.carol) ≤
-        guesses.expect (correctness (.success bit))) :
-    1 / 2 ≤ ((FinDist.uniformOfFintype (α := Bool)).bind outcomes).expect
+      expect (outcomes bit) (fun result => correctness (.success bit) result.carol) ≤
+        expect guesses (correctness (.success bit))) :
+    1 / 2 ≤ expect ((PMF.uniformOfFintype (α := Bool)).bind outcomes)
       (fun result => utility result alice) := by
-  have bound := induced_advantage (FinDist.uniformOfFintype (α := Bool)) (fun _ => ())
+  have bound := induced_advantage (PMF.uniformOfFintype (α := Bool)) (fun _ => ())
     (fun bit guess => correctness (.success bit) guess)
-    (fun _ => FinDist.pure (.success false)) (fun _ => guesses)
+    (fun _ => PMF.pure (.success false)) (fun _ => guesses)
     fair_guess_reference_optimal outcomes (fun result => utility result alice)
     (fun bit result => correctness (.success bit) result.carol) 1
     (fun bit _ result supported => by

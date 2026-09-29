@@ -10,8 +10,8 @@ namespace GameTheory.GameForm.MixtureSimulationOn.Tests
 
 open GameTheory.Math.Probability
 
-def coin : FinDist Bool :=
-  FinDist.mix (1 / 2) (by norm_num) (by norm_num) (FinDist.pure false) (FinDist.pure true)
+def coin : PMF Bool :=
+  mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure false) (PMF.pure true)
 
 inductive SourceOutcome where | observed (value : Bool)
 inductive MiddleOutcome where | visible (value : Bool)
@@ -31,20 +31,20 @@ abbrev targetSignature : GameSignature Unit where
 
 abbrev source : GameForm Unit where
   sig := sourceSignature
-  play profile := FinDist.pure (.observed (profile ()))
+  play profile := PMF.pure (.observed (profile ()))
 
 abbrev middle : GameForm Unit where
   sig := middleSignature
   play profile :=
-    if profile () = 0 then FinDist.pure (.visible false)
-    else if profile () = 1 then FinDist.pure (.visible true)
+    if profile () = 0 then PMF.pure (.visible false)
+    else if profile () = 1 then PMF.pure (.visible true)
     else coin.map .visible
 
 abbrev target : GameForm Unit where
   sig := targetSignature
   play profile :=
-    if profile () = 0 then FinDist.pure (.published false)
-    else if profile () = 1 then FinDist.pure (.published true)
+    if profile () = 0 then PMF.pure (.published false)
+    else if profile () = 1 then PMF.pure (.published true)
     else coin.map .published
 
 def sourceObserve : SourceOutcome → Bool := fun | .observed value => value
@@ -59,26 +59,26 @@ def first : MixtureSimulationOn source middle sourceObserve middleObserve (fun _
   deviation_mixture profile who replacement _ := by
     cases who
     fin_cases replacement
-    · exact ⟨FinDist.pure false, by simp [source, middle, sourceObserve, middleObserve]⟩
-    · exact ⟨FinDist.pure true, by simp [source, middle, sourceObserve, middleObserve]⟩
+    · exact ⟨PMF.pure false, by simp [source, middle, sourceObserve, middleObserve]⟩
+    · exact ⟨PMF.pure true, by simp [source, middle, sourceObserve, middleObserve]⟩
     · exact ⟨coin, by
         simp only [Fin.reduceFinMk, Profile.update_same, Fin.isValue, Fin.reduceEq,
-          ↓reduceIte, FinDist.map_comp, FinDist.map_pure]
-        change coin.map id = coin.bind FinDist.pure
-        rw [FinDist.map_id, FinDist.bind_pure]⟩
+          ↓reduceIte, PMF.map_comp, PMF.pure_map]
+        change coin.map id = coin.bind PMF.pure
+        rw [PMF.map_id, PMF.bind_pure]⟩
 
 def second : MixtureSimulationOn middle target middleObserve targetObserve (fun _ _ => True) where
   compileStrategy _ strategy := strategy
   honest_law profile := by
     simp only [middle, target]
-    split_ifs <;> simp only [FinDist.map_pure, FinDist.map_comp, Function.comp_def,
+    split_ifs <;> simp only [PMF.pure_map, PMF.map_comp, Function.comp_def,
       middleObserve, targetObserve]
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
     cases who
-    refine ⟨FinDist.pure replacement, ?_⟩
-    simp only [middle, target, FinDist.pure_bind, Profile.update_same]
-    split_ifs <;> simp only [FinDist.map_pure, FinDist.map_comp, Function.comp_def,
+    refine ⟨PMF.pure replacement, ?_⟩
+    simp only [middle, target, PMF.pure_bind, Profile.update_same]
+    split_ifs <;> simp only [PMF.pure_map, PMF.map_comp, Function.comp_def,
       middleObserve, targetObserve]
 
 def composed : MixtureSimulationOn source target sourceObserve targetObserve (fun _ _ => True) :=
@@ -93,22 +93,22 @@ theorem mixed_target_not_single_source :
         (source.play (fun _ => true)).map sourceObserve := by
   have htarget : (target.play (fun _ => (2 : Fin 3))).map targetObserve = coin := by
     change (coin.map TargetOutcome.published).map targetObserve = coin
-    rw [FinDist.map_comp]
+    rw [PMF.map_comp]
     change coin.map id = coin
-    exact FinDist.map_id coin
+    exact PMF.map_id coin
   constructor <;> intro h
   · rw [htarget] at h
-    simp only [FinDist.map_pure, sourceObserve] at h
-    have := congrArg (fun law => law.prob true) h
-    norm_num [coin, FinDist.prob_mix, FinDist.prob_pure_eq_ite] at this
+    simp only [PMF.pure_map, sourceObserve] at h
+    have := congrArg (fun law => (law true).toReal) h
+    norm_num [coin, mix_apply_toReal, toReal_pure_apply] at this
   · rw [htarget] at h
-    simp only [FinDist.map_pure, sourceObserve] at h
-    have := congrArg (fun law => law.prob false) h
-    norm_num [coin, FinDist.prob_mix, FinDist.prob_pure_eq_ite] at this
+    simp only [PMF.pure_map, sourceObserve] at h
+    have := congrArg (fun law => (law false).toReal) h
+    norm_num [coin, mix_apply_toReal, toReal_pure_apply] at this
 
 /-- Composition expands the third game's mixed deviation into the source
 mixture rather than strengthening it to one source strategy. -/
-example : ∃ alternatives : FinDist (source.sig.Strategy ()),
+example : ∃ alternatives : PMF (source.sig.Strategy ()),
     (target.play (Profile.update (composed.compileProfile (fun _ => false)) () (2 : Fin 3))).map
         targetObserve =
       alternatives.bind fun alternative =>

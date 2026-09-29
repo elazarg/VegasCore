@@ -27,11 +27,11 @@ theorem opening_information_optimal (Claim : Type) [Fintype Claim] (defaultClaim
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (granted : view.application.visit = some event) (alternative : (application Claim).Policy)
     (history : (model Claim).InformationHistory (eventOwner event) (some (past, view))) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
       (Function.update (policy Claim defaultClaim) (eventOwner event) alternative)
-        history.1.state).expect (fun state => utility (protocolResults state) (eventOwner event)) ≤
-      ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-        (policy Claim defaultClaim) history.1.state).expect
+        history.1.state) (fun state => utility (protocolResults state) (eventOwner event)) ≤
+      expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+        (policy Claim defaultClaim) history.1.state)
           (fun state => utility (protocolResults state) (eventOwner event)) := by
   obtain ⟨control, same, active, recalled, viewed⟩ :=
     information_control Claim (eventOwner event) past view history
@@ -51,37 +51,37 @@ theorem opening_information_optimal (Claim : Type) [Fintype Claim] (defaultClaim
       visited active remaining position
       (opensAt_update_other Claim defaultClaim alice alternative 4 (by decide) (by decide))
       (opensAt_update_other Claim defaultClaim alice alternative 5 (by decide) (by decide))
-    have baseline := congrArg (fun law : FinDist Results => law.expect (fun result =>
+    have baseline := congrArg (fun law : PMF Results => expect law (fun result =>
       utility result alice)) (finish_alice_opening_law (policy Claim defaultClaim) control a c b
         core visited active remaining position
         (policy_opensAt Claim defaultClaim 3 (by decide))
         (policy_opensAt Claim defaultClaim 4 (by decide))
         (policy_opensAt Claim defaultClaim 5 (by decide)))
-    rw [FinDist.expect_map, FinDist.expect_pure] at baseline
+    rw [expect_map, expect_pure] at baseline
     exact bound.trans_eq baseline.symm
   · obtain ⟨a, c, b, first, core⟩ := carol_opening_decision_core Claim control trace active visited
     have bound := finish_carol_payoff_le
       (Function.update (policy Claim defaultClaim) carol alternative) control a c b first core
       visited active remaining position
       (opensAt_update_other Claim defaultClaim carol alternative 5 (by decide) (by decide))
-    have baseline := congrArg (fun law : FinDist Results => law.expect (fun result =>
+    have baseline := congrArg (fun law : PMF Results => expect law (fun result =>
       utility result carol)) (finish_carol_opening_law (policy Claim defaultClaim)
         control a c b first
         core visited active remaining position
         (policy_opensAt Claim defaultClaim 4 (by decide))
         (policy_opensAt Claim defaultClaim 5 (by decide)))
-    rw [FinDist.expect_map, FinDist.expect_pure] at baseline
+    rw [expect_map, expect_pure] at baseline
     exact bound.trans_eq baseline.symm
   · obtain ⟨a, c, b, first, second, core⟩ :=
       bob_opening_decision_core Claim control trace active visited
     have bound := finish_bob_payoff_le
       (Function.update (policy Claim defaultClaim) bob alternative) control a c b first second core
       visited active remaining position
-    have baseline := congrArg (fun law : FinDist Results => law.expect (fun result =>
+    have baseline := congrArg (fun law : PMF Results => expect law (fun result =>
       utility result bob)) (finish_bob_opening_law (policy Claim defaultClaim) control a c b first
         second core visited active remaining position
         (policy_opensAt Claim defaultClaim 5 (by decide)))
-    rw [FinDist.expect_map, FinDist.expect_pure] at baseline
+    rw [expect_map, expect_pure] at baseline
     exact bound.trans_eq baseline.symm
 
 theorem opening_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClaim : Claim)

@@ -50,7 +50,7 @@ theorem viewAtDepth_step (who : Player) (before after : setup.ProtocolState)
       cases before with
       | none => change depth + 1 ≤ 0 at earlier; omega
       | some before =>
-          obtain ⟨after, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+          obtain ⟨after, reached, rfl⟩ := PMF.support_map .. ▸ supported
           change (SourceProgram.ProtocolView.atRank who setup.program depth
             (SourceProgram.ProtocolState.observe who setup.program after)).map some =
             (SourceProgram.ProtocolView.atRank who setup.program depth

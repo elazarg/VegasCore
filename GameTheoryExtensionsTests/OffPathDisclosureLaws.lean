@@ -31,7 +31,7 @@ theorem compiled_choice (profile : Profile (model false).behavioralSignature)
     (who : Bool) (info : Option Bool) :
     choiceLaw (Profile.map (target := (model true).behavioralSignature) compile profile) who info =
       choiceLaw profile who (forgetInfo who info) := by
-  simp only [choiceLaw, Profile.map, compile, FinDist.map_comp, Function.comp_def]
+  simp only [choiceLaw, Profile.map, compile, PMF.map_comp, Function.comp_def]
 
 theorem compiled_prescribed :
     Profile.map (target := (model true).behavioralSignature) compile (prescribed false) =

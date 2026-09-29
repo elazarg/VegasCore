@@ -36,7 +36,7 @@ def rosterOffset (setup : Setup (Player := Player) (L := L))
 visits in that event's roster. -/
 abbrev TimingLaw (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) : Type :=
-  ∀ event who, (graph setup).actor? event = some who → FinDist (Fin ((rosters event).count who))
+  ∀ event who, (graph setup).actor? event = some who → PMF (Fin ((rosters event).count who))
 
 /-- The immutable local opening data, before choosing an evidence-request
 representation. It reads only the owner's current application observation. -/
@@ -54,30 +54,30 @@ def rosterOpening? (setup : Setup (Player := Player) (L := L))
           let candidate ← view.application.publicView.accepted binding.field
           if candidate.1 ≠ who then none else some (candidate, ⟨payload, value⟩)
 
-def rosterSelection {slots : Nat} (choice : FinDist Bool) (timing : FinDist (Fin slots)) :
-    FinDist (Option (Fin slots)) :=
-  choice.bind fun disclose => if disclose then timing.map some else FinDist.pure none
+def rosterSelection {slots : Nat} (choice : PMF Bool) (timing : PMF (Fin slots)) :
+    PMF (Option (Fin slots)) :=
+  choice.bind fun disclose => if disclose then timing.map some else PMF.pure none
 
-theorem rosterSelection_projects {slots : Nat} (choice : FinDist Bool)
-    (timing : FinDist (Fin slots)) :
+theorem rosterSelection_projects {slots : Nat} (choice : PMF Bool)
+    (timing : PMF (Fin slots)) :
     (rosterSelection choice timing).map Option.isSome = choice := by
-  rw [rosterSelection, FinDist.map_bind]
-  conv_rhs => rw [← FinDist.bind_pure choice]
-  apply FinDist.bind_congr
+  rw [rosterSelection, PMF.map_bind]
+  conv_rhs => rw [← PMF.bind_pure choice]
+  apply bind_congr_on_support _
   intro disclose _
-  cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, FinDist.map_pure,
-    Option.isSome_none, FinDist.map_comp, Function.comp_def, Option.isSome_some, FinDist.map_const]
+  cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, PMF.pure_map,
+    Option.isSome_none, PMF.map_comp, Function.comp_def, Option.isSome_some, FinDist.map_const]
 
-theorem rosterSelection_fullSupport {slots : Nat} (choice : FinDist Bool)
-    (timing : FinDist (Fin slots)) (choiceFull : choice.FullSupport)
-    (timingFull : timing.FullSupport) : (rosterSelection choice timing).FullSupport := by
+theorem rosterSelection_fullSupport {slots : Nat} (choice : PMF Bool)
+    (timing : PMF (Fin slots)) (choiceFull : FullSupport choice)
+    (timingFull : FullSupport timing) : FullSupport (rosterSelection choice timing) := by
   intro selected
-  simp only [rosterSelection, FinDist.support_bind, Set.mem_iUnion]
+  simp only [rosterSelection, PMF.support_bind, Set.mem_iUnion]
   cases selected with
   | none => exact ⟨false, choiceFull false, by simp⟩
   | some slot =>
       refine ⟨true, choiceFull true, ?_⟩
-      simp only [↓reduceIte, FinDist.support_map]
+      simp only [↓reduceIte, PMF.support_map]
       exact ⟨slot, timingFull slot, rfl⟩
 
 /-- One total native policy for every event and visit. On actual phase
@@ -87,7 +87,7 @@ def rosterPolicy (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+      PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   match view.application.publicView.serviceGrant with
@@ -102,7 +102,7 @@ def rosterPolicy (setup : Setup (Player := Player) (L := L))
                 (timing event who owned))
               (fun selected => (application setup leaks).scheduledPolicy
                 (rosterOffset setup rosters who event) selected
-                (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+                (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
                 (application setup leaks).replayPolicy)).policy past view
       else (application setup leaks).replayPolicy past view
 
@@ -127,7 +127,7 @@ def rosterLimitPolicy (setup : Setup (Player := Player) (L := L))
                 decide (past.length + 1 ≠ offset + (rosters event).count who) then
               (application setup leaks).replayPolicy past view
             else (sourceChoiceLaw setup leaks profile who view).bind fun disclose =>
-              if disclose then FinDist.pure opening
+              if disclose then PMF.pure opening
               else (application setup leaks).replayPolicy past view
       else (application setup leaks).replayPolicy past view
 
@@ -164,7 +164,7 @@ theorem rosterPolicy_application (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+      PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program) (who : Player)
     (execution : (application setup leaks).Execution)
     (action : (application setup leaks).Action)
@@ -186,10 +186,10 @@ theorem rosterPolicy_application (setup : Setup (Player := Player) (L := L))
     · split at supported
       · exact waiting supported
       · rw [ReactiveApplication.policyMixture_policy] at supported
-        obtain ⟨selected, _, supported⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        obtain ⟨selected, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
         unfold ReactiveApplication.scheduledPolicy at supported
         split at supported
-        · cases FinDist.mem_support_pure.mp supported
+        · cases (PMF.mem_support_pure_iff _ _).mp supported
           rfl
         · exact waiting supported
     · exact waiting supported
@@ -200,7 +200,7 @@ theorem rosterPolicy_sourceChoice_unchanged (setup : Setup (Player := Player) (L
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+      PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program) (who observer : Player)
     (execution : (application setup leaks).Execution)
     (action : (application setup leaks).Action)
@@ -221,7 +221,7 @@ theorem rosterPolicy_run_application (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+      PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program)
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
     (initial final : (application setup leaks).Execution)
@@ -232,18 +232,18 @@ theorem rosterPolicy_run_application (setup : Setup (Player := Player) (L := L))
   let app := application setup leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | cons who rest ih =>
       simp only [List.map_cons, EventGraphRuntime.runInteractionPlan,
         EventGraphRuntime.interactionStep, EventGraphRuntime.interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact (ih _ reached).trans
         (rosterPolicy_application setup leaks rosters timing profile who
           (initial.sampledActivation app who sample) action supported)
@@ -252,7 +252,7 @@ theorem rosterPolicy_phase_data (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+      PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program)
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
     (initial final : (application setup leaks).Execution)
@@ -276,7 +276,7 @@ theorem rosterPolicy_at_phase (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+      PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program)
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
@@ -318,7 +318,7 @@ theorem rosterPolicy_window_eq (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (timing : ∀ event who, (graph setup).actor? event = some who →
-      FinDist (Fin ((rosters event).count who)))
+      PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program)
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
@@ -345,11 +345,11 @@ theorem rosterPolicy_window_eq (setup : Setup (Player := Player) (L := L))
   | cons who rest ih =>
       simp only [List.map_cons, EventGraphRuntime.runInteractionPlan,
         EventGraphRuntime.interactionStep, EventGraphRuntime.interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind]
-      apply FinDist.bind_congr
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind]
+      apply bind_congr_on_support _
       intro sample _
       let activated := current.sampledActivation app who sample
       have law := rosterPolicy_at_phase setup leaks rosters timing profile initial activated
@@ -357,7 +357,7 @@ theorem rosterPolicy_window_eq (setup : Setup (Player := Player) (L := L))
       change (rosterPolicy setup leaks rosters timing profile who (activated.recall who)
         (activated.observe app who)).bind _ = _
       rw [law]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro action supported
       have original : action ∈ (rosterPolicy setup leaks rosters timing profile who
           (activated.recall who) (activated.observe app who)).support := by

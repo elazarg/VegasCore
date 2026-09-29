@@ -183,8 +183,8 @@ theorem reactive_invoke_hidden_congr
   dsimp only
   have input := observed_eq runtime leaks left right actor network receipts (views actor foreign)
   have past := recall actor foreign
-  simp only [ReactiveApplication.invoke, FinDist.map_comp, input, past]
-  apply FinDist.map_congr_of_eq_on_support
+  simp only [ReactiveApplication.invoke, PMF.map_comp, input, past]
+  apply map_congr_on_support _
   intro response _
   obtain ⟨networks, charges, observed, recalled⟩ := reactive_respond_hidden_congr runtime leaks
     left right hidden actor foreign network receipts views recall response

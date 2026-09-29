@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRecall
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # A fully supported policy for silence and known-envelope replay
 
@@ -38,13 +40,13 @@ def replayOptions (past : List app.PlayerEntry) (view : app.PlayerView) :
     Message.id).toFinset.image some)
 
 def replayPolicy : app.Policy := fun past view =>
-  (FinDist.uniformSet (app.replayOptions past view) (Finset.insert_nonempty ..)).map
+  (PMF.uniformOfFinset (app.replayOptions past view) (Finset.insert_nonempty ..)).map
     (fun selected => ⟨selected.map Transmission.replay⟩)
 
 theorem replayPolicy_cases (past : List app.PlayerEntry) (view : app.PlayerView)
     (action : app.Action) (supported : action ∈ (app.replayPolicy past view).support) :
     action = ⟨none⟩ ∨ ∃ id, action = ⟨some (.replay id)⟩ := by
-  obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
   cases selected with
   | none => exact Or.inl rfl
   | some id => exact Or.inr ⟨id, rfl⟩
@@ -54,8 +56,8 @@ theorem replayPolicy_support (past : List app.PlayerEntry) (view : app.PlayerVie
     (eligible : selected ∈ app.replayOptions past view) :
     (⟨selected.map Transmission.replay⟩ : app.Action) ∈
       (app.replayPolicy past view).support := by
-  rw [replayPolicy, FinDist.support_map]
-  exact ⟨selected, (FinDist.mem_support_uniformSet_iff _ _ _).mpr eligible, rfl⟩
+  rw [replayPolicy, PMF.support_map]
+  exact ⟨selected, (PMF.mem_support_uniformOfFinset_iff _ _ _).mpr eligible, rfl⟩
 
 omit [DecidableEq Principal] in
 theorem messageRecall_length (past : List app.PlayerEntry) :
@@ -206,7 +208,7 @@ theorem Execution.activation_samples (execution : app.Execution) (who : Principa
     execution.environmentStep app (.activate who) =
       (app.observePending who execution.network.pending).map
         (execution.sampledActivation app who) := by
-  simp only [Execution.environmentStep, FinDist.map_comp]
+  simp only [Execution.environmentStep, PMF.map_comp]
   rfl
 
 theorem sampledActivation_messageView_eq (left right : app.Execution) (who : Principal)

@@ -62,16 +62,16 @@ theorem resolutionOrigins_replay_window
     (runtime setup).ResolutionEvidenceOrigins leaks final := by
   let app := application setup leaks
   induction visits generalizing initial with
-  | nil => cases FinDist.mem_support_pure.mp reached; exact origin
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; exact origin
   | cons actor rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       apply ih _ ?_ reached
       exact origins_replayed setup leaks _ (origins_sampled setup leaks initial origin actor sample)
         actor response (app.replayPolicy_cases _ _ response supported)
@@ -175,7 +175,7 @@ theorem sourceServiceOpportunity_reveal
         | none => (application setup leaks).replayPolicy (execution.recall owner)
             (execution.observe (application setup leaks) owner)
         | some (candidate, raw) =>
-            FinDist.pure ((runtime setup).windowOpening leaks event candidate raw) := by
+            PMF.pure ((runtime setup).windowOpening leaks event candidate raw) := by
   intro index event granted unsent
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .publication payload := by
@@ -194,8 +194,8 @@ theorem sourceServiceOpportunity_reveal
     EventGraphRuntime.nodeView_eq_resolve _ _
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte]
   rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
-    refs source embedding refsBefore rank aligned execution agree history granted, FinDist.bind_map]
-  apply FinDist.bind_congr
+    refs source embedding refsBefore rank aligned execution agree history granted, PMF.bind_map]
+  apply bind_congr_on_support _
   intro disclose supported
   rcases effective_reveal_supported fresh binding unresolved next profile source effective
     disclose supported with rfl | ⟨value, rfl, success⟩
@@ -276,7 +276,7 @@ theorem sourceServiceTimedFamily_reveal_law
                 (execution.observe (application setup leaks) owner) else none) with
                 | none => (application setup leaks).replayPolicy past view
                 | some (candidate, raw) =>
-                    FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+                    PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
               (application setup leaks).replayPolicy)) network
           (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution := by
@@ -291,7 +291,7 @@ theorem sourceServiceTimedFamily_reveal_law
       (execution.observe app owner) else none) with
     | none => app.replayPolicy past view
     | some (candidate, raw) =>
-        FinDist.pure ((runtime setup).windowOpening leaks event candidate raw)
+        PMF.pure ((runtime setup).windowOpening leaks event candidate raw)
   let branchPlayers := fun disclose => Function.update (fun _ => app.replayPolicy) owner
     (app.scheduledPolicy offset (some slot) (branch disclose) app.replayPolicy)
   let transport : Player → app.Policy := fun _ => app.replayPolicy
@@ -314,8 +314,8 @@ theorem sourceServiceTimedFamily_reveal_law
     arg 2
     ext disclose
     rw [branchPrefix disclose]
-  conv_rhs => rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+  conv_rhs => rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro current reached
   have preserved := (runtime setup).replay_window_preserves leaks transport network owner execution
     (fun current who response _ _ member => app.replayPolicy_cases _ _ response member)
@@ -342,11 +342,11 @@ theorem sourceServiceTimedFamily_reveal_law
     rw [currentCount]
     exact selected.symm
   simp only [List.cons_append, runInteractionPlan, interactionStep, interactionInstruction,
-    FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+    PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke,
-    ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
-  conv_rhs => rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+    ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+  conv_rhs => rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro sample _
   let activated := current.sampledActivation app owner sample
   have activatedUnsent : (runtime setup).eventRecorded leaks (activated.recall owner) event =
@@ -361,13 +361,13 @@ theorem sourceServiceTimedFamily_reveal_law
       (revealKernel profile (source.view owner)).bind fun disclose =>
         branch disclose (activated.recall owner) (activated.observe app owner) := by
     refine sourceLaw.trans ?_
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro disclose _
     change (match (if disclose then rosterOpening? setup leaks owner event
       (activated.observe app owner) else none) with
       | none => app.replayPolicy (activated.recall owner) (activated.observe app owner)
       | some (candidate, raw) =>
-          FinDist.pure ((runtime setup).windowOpening leaks event candidate raw)) = _
+          PMF.pure ((runtime setup).windowOpening leaks event candidate raw)) = _
     rw [openingEq]
   have scheduled : (some slot).map (fun selected => offset + selected.val) =
       some (activated.recall owner).length := by
@@ -376,15 +376,15 @@ theorem sourceServiceTimedFamily_reveal_law
   change (sourcePlayers owner (activated.recall owner) (activated.observe app owner)).bind _ = _
   simp only [sourcePlayers, Function.update_self, ReactiveApplication.scheduledPolicy,
     ite_eq_left scheduled]
-  rw [actionLaw, FinDist.bind_bind]
-  apply FinDist.bind_congr
+  rw [actionLaw, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro disclose _
   change _ = (if (some slot).map (fun selected => offset + selected.val) =
       some (activated.recall owner).length then
         branch disclose (activated.recall owner) (activated.observe app owner)
     else app.replayPolicy (activated.recall owner) (activated.observe app owner)).bind _
   rw [ite_eq_left scheduled]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro response _
   have after : offset + slot.val <
       ((activated.respond app owner response).recall owner).length := by
@@ -407,7 +407,7 @@ private theorem scheduled_optional_opening
         (fun past view => match selected with
           | none => (application setup leaks).replayPolicy past view
           | some (candidate, raw) =>
-              FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+              PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         (application setup leaks).replayPolicy) =
       match selected with
       | none => fun _ => (application setup leaks).replayPolicy
@@ -486,8 +486,8 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
   intro index event owned granted unsent counted phase
   rw [sourceServiceTimedPolicy_phase_law setup leaks rosters timing wholeProfile event owner owned
     network ticks execution granted counted.le]
-  conv_rhs => rw [FinDist.bind_comm]
-  apply FinDist.bind_congr
+  conv_rhs => rw [PMF.bind_comm]
+  apply bind_congr_on_support _
   intro slot _
   obtain ⟨visited, remaining, position, selected⟩ :=
     split_owner_visit owner (rosters event) slot.val slot.isLt
@@ -506,7 +506,7 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
       (execution.observe app owner) else none) with
     | none => app.replayPolicy past view
     | some (candidate, raw) =>
-        FinDist.pure ((runtime setup).windowOpening leaks event candidate raw)
+        PMF.pure ((runtime setup).windowOpening leaks event candidate raw)
   let leftPlayers := Function.update (fun _ => app.replayPolicy) owner
     (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event slot)
   let rightPlayers := fun disclose => Function.update (fun _ => app.replayPolicy) owner
@@ -515,14 +515,14 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
   trans (revealKernel profile (source.view owner)).bind fun disclose =>
     (runtime setup).runInteractionPlan leaks (rightPlayers disclose) network phase execution
   · change (runtime setup).runInteractionPlan leaks leftPlayers network phase execution = _
-    rw [splitPlan, runInteractionPlan_append, prefixLaw, FinDist.bind_bind]
-    apply FinDist.bind_congr
+    rw [splitPlan, runInteractionPlan_append, prefixLaw, PMF.bind_bind]
+    apply bind_congr_on_support _
     intro disclose _
     conv_rhs => rw [runInteractionPlan_append]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
-  · apply FinDist.bind_congr
+  · apply bind_congr_on_support _
     intro disclose _
     have players := scheduled_optional_opening setup leaks owner event
       (rosterOffset setup rosters owner event) slot
@@ -587,24 +587,24 @@ theorem sourceServiceTimedPolicy_reveal_traffic
   rw [sourceServiceTimedPolicy_reveal_phase_law setup leaks rosters timing fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
     agree history valid recalled origins effective network ticks owned granted unsent counted,
-    FinDist.map_bind]
-  apply FinDist.bind_congr
+    PMF.map_bind]
+  apply bind_congr_on_support _
   intro disclose _
   cases disclose with
   | false =>
-      simp only [Bool.false_eq_true, ↓reduceIte, FinDist.bind_const,
+      simp only [Bool.false_eq_true, ↓reduceIte, PMF.bind_const,
         guardedDisclosureTranscript, List.append_assoc, List.cons_append, List.nil_append]
       rfl
   | true =>
       cases openingEq : rosterOpening? setup leaks owner event
           (execution.observe (application setup leaks) owner) with
       | none =>
-          simp only [↓reduceIte, openingEq, FinDist.bind_const, guardedDisclosureTranscript,
+          simp only [↓reduceIte, openingEq, PMF.bind_const, guardedDisclosureTranscript,
             List.append_assoc, List.cons_append, List.nil_append]
           rfl
       | some packet =>
           rcases packet with ⟨candidate, raw⟩
-          simp only [↓reduceIte, openingEq, FinDist.map_bind, guardedDisclosureTranscript,
+          simp only [↓reduceIte, openingEq, PMF.map_bind, guardedDisclosureTranscript,
             List.append_assoc, List.cons_append, List.nil_append]
           rfl
 

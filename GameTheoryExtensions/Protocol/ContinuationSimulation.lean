@@ -33,7 +33,7 @@ structure ContinuationSimulation {ι : Type uι} {Outcome : Type uo}
     {Source : ι → Type us} {Target : ι → Type ut}
     (source : ∀ who, Source who → IncentiveComparison Outcome)
     (target : ∀ who, Target who → IncentiveComparison Outcome) where
-  alternatives : ∀ who, Target who → FinDist (Source who)
+  alternatives : ∀ who, Target who → PMF (Source who)
   prescribed : ∀ who deviation, (target who deviation).prescribed =
     (alternatives who deviation).bind fun original => (source who original).prescribed
   alternative : ∀ who deviation, (target who deviation).alternative =
@@ -54,28 +54,28 @@ def ofMap (decode : ∀ who, Target who → Source who)
     (alternative : ∀ who deviation, (target who deviation).alternative =
       (source who (decode who deviation)).alternative) :
     ContinuationSimulation source target where
-  alternatives who deviation := FinDist.pure (decode who deviation)
-  prescribed who deviation := by simpa only [FinDist.pure_bind] using prescribed who deviation
-  alternative who deviation := by simpa only [FinDist.pure_bind] using alternative who deviation
+  alternatives who deviation := PMF.pure (decode who deviation)
+  prescribed who deviation := by simpa only [PMF.pure_bind] using prescribed who deviation
+  alternative who deviation := by simpa only [PMF.pure_bind] using alternative who deviation
 
 /-- Equality of every continuation expectation supplies the same certificate
 as equality of laws. Indicator payoffs suffice to recover each point mass. -/
 def ofMap_expect (decode : ∀ who, Target who → Source who)
     (prescribed : ∀ who deviation utility,
-      (target who deviation).prescribed.expect utility =
-        (source who (decode who deviation)).prescribed.expect utility)
+      expect ((target who deviation).prescribed) utility =
+        expect ((source who (decode who deviation)).prescribed) utility)
     (alternative : ∀ who deviation utility,
-      (target who deviation).alternative.expect utility =
-        (source who (decode who deviation)).alternative.expect utility) :
+      expect ((target who deviation).alternative) utility =
+        expect ((source who (decode who deviation)).alternative) utility) :
     ContinuationSimulation source target := by
   refine ofMap decode ?_ ?_
   · intro who deviation
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro outcome
     exact (FinDist.expect_prob_pure _ outcome).symm.trans
       ((prescribed who deviation _).trans (FinDist.expect_prob_pure _ outcome))
   · intro who deviation
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro outcome
     exact (FinDist.expect_prob_pure _ outcome).symm.trans
       ((alternative who deviation _).trans (FinDist.expect_prob_pure _ outcome))
@@ -92,11 +92,11 @@ def trans (first : ContinuationSimulation source target)
   alternatives who deviation :=
     (second.alternatives who deviation).bind (first.alternatives who)
   prescribed who deviation := by
-    rw [second.prescribed, FinDist.bind_bind]
-    exact FinDist.bind_congr (fun original _ => first.prescribed who original)
+    rw [second.prescribed, PMF.bind_bind]
+    exact bind_congr_on_support _ (fun original _ => first.prescribed who original)
   alternative who deviation := by
-    rw [second.alternative, FinDist.bind_bind]
-    exact FinDist.bind_congr (fun original _ => first.alternative who original)
+    rw [second.alternative, PMF.bind_bind]
+    exact bind_congr_on_support _ (fun original _ => first.alternative who original)
 
 /-- A common outcome decoder preserves a law-pair certificate. This changes
 the observation on which utility depends; it does not change what players
@@ -111,8 +111,8 @@ def map {Observed : Type*} (simulation : ContinuationSimulation source target)
         ⟨(target who deviation).prescribed.map observe,
           (target who deviation).alternative.map observe⟩) where
   alternatives := simulation.alternatives
-  prescribed who deviation := by rw [simulation.prescribed, FinDist.map_bind]
-  alternative who deviation := by rw [simulation.alternative, FinDist.map_bind]
+  prescribed who deviation := by rw [simulation.prescribed, PMF.map_bind]
+  alternative who deviation := by rw [simulation.alternative, PMF.map_bind]
 
 /-- Every source incentive inequality implies the simulated target inequality.
 The source comparisons may involve different information sites and deviations. -/

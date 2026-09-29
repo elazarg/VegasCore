@@ -146,10 +146,10 @@ theorem publicGuess_true_known (who : Player) (past : List app.PlayerEntry)
     (history : model.InformationHistory who (some (past, view))) :
     ReactiveApplication.stateInvariant (fun state : EventGraphRuntime.State nativeGraph =>
       aliceBindingRef.get? state.config.store = some (.success true)) history.1.state := by
-  have known := nativeRuntime.knows_bindingEvidence_menu leaks menu (FinDist.pure nativeInputs)
+  have known := nativeRuntime.knows_bindingEvidence_menu leaks menu (PMF.pure nativeInputs)
     nativeHorizon scheduler who past view ⟨alice, .bool, aliceBindingRef, true⟩
       (publicGuess_true_evidence view selected)
-  rw [FinDist.map_pure] at known
+  rw [PMF.pure_map] at known
   exact known history
 
 def openingResponse (who : Player) (view : app.PlayerView) : app.Action := by
@@ -190,7 +190,7 @@ def response (who : Player) (view : app.PlayerView) : app.Action :=
         else openingResponse who view
       else ⟨none⟩
 
-def policy (who : Player) : app.Policy := fun _ view => FinDist.pure (response who view)
+def policy (who : Player) : app.Policy := fun _ view => PMF.pure (response who view)
 
 theorem response_available (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView) :
     response who view ∈ menu.actions who past view := by
@@ -206,21 +206,21 @@ theorem response_available (who : Player) (past : List app.PlayerEntry) (view : 
 theorem policy_available (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
     (action : app.Action) (supported : action ∈ (policy who past view).support) :
     action ∈ menu.actions who past view := by
-  cases FinDist.mem_support_pure.mp supported
+  cases (PMF.mem_support_pure_iff _ _).mp supported
   exact response_available who past view
 
 def profile : Profile model.behavioralSignature := fun who =>
-  menu.restrictPolicy (FinDist.pure nativeInitial) nativeHorizon scheduler who (policy who)
+  menu.restrictPolicy (PMF.pure nativeInitial) nativeHorizon scheduler who (policy who)
 
 /-- Finite native histories admit one consistent completion of this exact
 profile. This theorem asserts neither posterior fairness nor optimality. -/
 theorem exists_consistent_assessment :
     ∃ assessment : model.BehavioralAssessment, assessment.strategy = profile ∧
       assessment.IsSequentiallyConsistent
-        (menu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon scheduler) :=
+        (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler) :=
   InformationModel.BehavioralAssessment.exists_consistent_completion
-    (menu.uniformAssessment (FinDist.pure nativeInitial) nativeHorizon scheduler)
-    (menu.uniform_fullyMixed (FinDist.pure nativeInitial) nativeHorizon scheduler)
-    (menu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon scheduler) profile
+    (menu.uniformAssessment (PMF.pure nativeInitial) nativeHorizon scheduler)
+    (menu.uniform_fullyMixed (PMF.pure nativeInitial) nativeHorizon scheduler)
+    (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler) profile
 
 end Vegas.Examples.SelectiveAssociation.Restricted

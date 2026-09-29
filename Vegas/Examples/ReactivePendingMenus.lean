@@ -24,7 +24,7 @@ abbrev graph := PendingMenus.graph
 abbrev runtime := PendingMenus.runtime
 abbrev input := PendingMenus.input
 
-def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) := fun _ _ => FinDist.pure ∅
+def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) := fun _ _ => PMF.pure ∅
 abbrev app := runtime.reactiveApplication leaks
 
 def initialState : EventGraphRuntime.State graph :=
@@ -37,7 +37,7 @@ def second : app.Action := runtime.reactiveBinding leaks () 0 .int (.success 2) 
 /-- The inclusion decision consults public traffic only. All candidate
 meanings were fixed before this decision. -/
 def scheduler : app.Scheduler := fun history view =>
-  FinDist.pure (match history.length with
+  PMF.pure (match history.length with
     | 0 | 1 | 2 => .activate ()
     | 3 => .include ((), if
         (view.network.pending.find? (fun message => message.id = ((), 2))).isSome then 0 else 1)
@@ -45,8 +45,8 @@ def scheduler : app.Scheduler := fun history view =>
     | 5 => .activate ()
     | _ => runtime.reactiveLatest leaks 1 () view)
 
-abbrev arena := app.protocol (FinDist.pure initialState) 7 scheduler
-abbrev model := app.information (FinDist.pure initialState) 7 scheduler
+abbrev arena := app.protocol (PMF.pure initialState) 7 scheduler
+abbrev model := app.information (PMF.pure initialState) 7 scheduler
 
 /-- Only the initial two scheduling decisions constrain the subgame-root proof. -/
 def responsePrefix : app.TwoResponsePrefix where
@@ -60,7 +60,7 @@ def responsePrefix : app.TwoResponsePrefix where
     · simp only [scheduler, one]
   activation execution := by
     simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication, leaks,
-      FinDist.map_pure, MessageNetwork.learn_empty]
+      PMF.pure_map, MessageNetwork.learn_empty]
 
 abbrev activated := responsePrefix.activated
 abbrev afterFirst := responsePrefix.afterFirst
@@ -70,7 +70,7 @@ abbrev secondHistory := responsePrefix.secondHistory
 def contested : app.Execution := afterSecond first second
 
 theorem activation (execution : app.Execution) :
-    execution.environmentStep app (.activate ()) = FinDist.pure (activated execution) :=
+    execution.environmentStep app (.activate ()) = PMF.pure (activated execution) :=
   responsePrefix.activation execution
 
 /-- Recall identifies this prefix inside every future decision information set. -/

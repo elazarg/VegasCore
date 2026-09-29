@@ -28,17 +28,17 @@ private theorem owner_window_factorization
     {Seed Source View : Type}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (owner : Player) (prior : FinDist Seed) (source : Seed → Source)
+    (owner : Player) (prior : PMF Seed) (source : Seed → Source)
     (observe : Source → View) (execution : Seed → (application setup leaks).Execution)
     (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall (application setup leaks))
-    (noise : View → FinDist _)
+    (noise : View → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks owner (execution seed))) =
       (prior.map source).bind fun state =>
         (noise (observe state)).map fun extra => (state, extra))
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
     (policy : (application setup leaks).Policy) :
-    ∃ nextNoise : View → FinDist _,
+    ∃ nextNoise : View → PMF _,
       (prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
           (Function.update (fun _ => (application setup leaks).replayPolicy) owner policy)
@@ -46,9 +46,9 @@ private theorem owner_window_factorization
             (source seed, (runtime setup).bindingTraffic leaks owner final)) =
       (prior.map source).bind fun state =>
         (nextNoise (observe state)).map fun extra => (state, extra) := by
-  obtain ⟨nextNoise, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨nextNoise, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks owner (execution seed))
-    observe noise factor (fun _ => FinDist.pure Unit.unit) (fun state _ => state) observe
+    observe noise factor (fun _ => PMF.pure Unit.unit) (fun state _ => state) observe
     (fun seed _ => ((runtime setup).runInteractionPlan leaks
       (Function.update (fun _ => (application setup leaks).replayPolicy) owner policy)
       network (visits.map ServiceInstruction.player) (execution seed)).map
@@ -58,8 +58,8 @@ private theorem owner_window_factorization
       (runtime setup).owner_window_focal_law leaks network visits owner policy
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) same)
-  exact ⟨nextNoise, by simpa only [FinDist.pure_bind, FinDist.map_pure,
-    FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
+  exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
+    PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
 
 /-- Every supported timed prefix is an actual semantic source checkpoint.
 Legality at all native histories transfers support to the retained finite game. -/
@@ -108,7 +108,7 @@ theorem sourceService_owner_information_law [Fintype Player]
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -127,7 +127,7 @@ theorem sourceService_owner_information_law [Fintype Player]
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun before => before.environmentStep (application setup leaks) (.activate owner)
-    ∃ channel : setup.ProtocolView owner → FinDist
+    ∃ channel : setup.ProtocolView owner → PMF
         (List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView),
       executions.map (fun final =>
         (sourceServicePrefix? setup event.val final.application.config,
@@ -152,12 +152,12 @@ theorem sourceService_owner_information_law [Fintype Player]
       prior.bind (fun state => (noise (setup.protocolObserve owner state)).map
         fun extra => (state, extra)) at factor
   have marginal : prefixLaw.map read = prior := by
-    have result := congrArg (FinDist.map Prod.fst) factor
-    simpa only [FinDist.map_comp, FinDist.map_bind, Function.comp_def,
-      FinDist.map_const, FinDist.bind_pure] using result
+    have result := congrArg (PMF.map Prod.fst) factor
+    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
+      FinDist.map_const, PMF.bind_pure] using result
   have recalls (execution : app.Execution) (supported : execution ∈ prefixLaw.support) :
       execution.InputRecall app := by
-    obtain ⟨initial, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    obtain ⟨initial, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
     exact (runtime setup).runInteractionPlan_inputRecall leaks players network
       (rosterPlanPrefix setup rosters event.val) (ReactiveApplication.Execution.initial app initial)
         execution (app.initial_inputRecall initial) reached
@@ -168,16 +168,16 @@ theorem sourceService_owner_information_law [Fintype Player]
         [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
   have grantLaw (execution : app.Execution) :
       execution.environmentStep app (.application (.grant event)) =
-        FinDist.pure (granted execution) := by
+        PMF.pure (granted execution) := by
     simp only [ReactiveApplication.Execution.environmentStep, app, application,
-      reactiveApplication, environmentStep, FinDist.map_pure]
+      reactiveApplication, environmentStep, PMF.pure_map]
     rfl
   have grantPlan (execution : app.Execution) :
       (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        FinDist.pure (granted execution) := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+        PMF.pure (granted execution) := by
+    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, FinDist.map_pure,
+      reactiveApplication, environmentStep, PMF.pure_map,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume]
     rfl
   obtain ⟨grantNoise, grantFactor⟩ := source_maintenance_factorization setup leaks owner
@@ -186,7 +186,7 @@ theorem sourceService_owner_information_law [Fintype Player]
       (.grant event) (by intro other; simp)
   let afterGrant := prefixLaw.map granted
   have grantMarginal : afterGrant.map read = prior := by
-    rw [FinDist.map_comp]
+    rw [PMF.map_comp]
     exact marginal
   have grantedFactor : afterGrant.map (fun execution =>
       (read execution, (runtime setup).bindingTraffic leaks owner execution)) =
@@ -195,14 +195,14 @@ theorem sourceService_owner_information_law [Fintype Player]
     change prefixLaw.bind (fun execution =>
       (execution.environmentStep app (.application (.grant event))).map fun final =>
         (read execution, (runtime setup).bindingTraffic leaks owner final)) = _ at grantFactor
-    simp only [grantLaw, FinDist.map_pure, ← FinDist.map_eq_bind] at grantFactor
+    simp only [grantLaw, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
     rw [grantMarginal]
-    simpa only [afterGrant, FinDist.map_comp, Function.comp_def, marginal] using grantFactor
+    simpa only [afterGrant, PMF.map_comp, Function.comp_def, marginal] using grantFactor
   let policy := (app.policyMixture (timing event owner owned)
     (sourceServiceTimedFamily setup leaks rosters normalized owner event)).policy
   have grantedRecall (execution : app.Execution) (supported : execution ∈ afterGrant.support) :
       execution.InputRecall app := by
-    obtain ⟨before, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨before, reached, rfl⟩ := PMF.support_map .. ▸ supported
     exact recalls before reached
   obtain ⟨windowNoise, windowFactor⟩ := owner_window_factorization setup leaks owner afterGrant
     read (setup.protocolObserve owner) (fun execution => execution) grantedRecall grantNoise
@@ -216,7 +216,7 @@ theorem sourceService_owner_information_law [Fintype Player]
         (runtime setup).runInteractionPlan leaks
           (Function.update (fun _ => app.replayPolicy) owner policy) network
           (visits.map ServiceInstruction.player) execution := by
-    obtain ⟨before, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨before, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact sourceServiceTimedPolicy_window_eq setup leaks rosters timing normalized event owner
       owned network visits (granted before) rfl
   have kept (execution final : app.Execution)
@@ -231,17 +231,17 @@ theorem sourceService_owner_information_law [Fintype Player]
           (windowNoise (setup.protocolObserve owner state)).map fun extra => (state, extra)) := by
     rw [grantMarginal] at windowFactor
     refine Eq.trans ?_ windowFactor
-    simp only [window, FinDist.map_bind]
-    apply FinDist.bind_congr
+    simp only [window, PMF.map_bind]
+    apply bind_congr_on_support _
     intro execution supported
     rw [← windowLaw execution supported]
-    apply FinDist.map_congr_of_eq_on_support
+    apply map_congr_on_support _
     intro final reached
     exact Prod.ext (kept execution final reached) rfl
   have windowMarginal : window.map read = prior := by
-    have result := congrArg (FinDist.map Prod.fst) windowFactor'
-    simpa only [FinDist.map_comp, FinDist.map_bind, Function.comp_def,
-      FinDist.map_const, FinDist.bind_pure] using result
+    have result := congrArg (PMF.map Prod.fst) windowFactor'
+    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
+      FinDist.map_const, PMF.bind_pure] using result
   obtain ⟨channel, inputFactor⟩ := source_activation_input_factorization setup leaks owner
     window read (setup.protocolObserve owner) (fun execution => execution) windowNoise
       (by rw [windowMarginal]; exact windowFactor')
@@ -249,14 +249,14 @@ theorem sourceService_owner_information_law [Fintype Player]
   have executionsEq : executions = window.bind fun before =>
       before.environmentStep app (.activate owner) := by
     simp only [executions, window, afterGrant, prefixLaw, runInteractionPlan_append,
-      FinDist.bind_bind, FinDist.bind_map, grantPlan, FinDist.pure_bind]
+      PMF.bind_bind, PMF.bind_map, grantPlan, PMF.pure_bind]
     rfl
-  rw [executionsEq, FinDist.map_bind]
+  rw [executionsEq, PMF.map_bind]
   rw [windowMarginal] at inputFactor
   refine Eq.trans ?_ inputFactor
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro execution _
-  simp only [ReactiveApplication.Execution.activation_samples, FinDist.map_comp]
+  simp only [ReactiveApplication.Execution.activation_samples, PMF.map_comp]
   rfl
 
 private theorem grant_window_config
@@ -277,15 +277,15 @@ private theorem grant_window_config
       environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
   have grantLaw : (runtime setup).runInteractionPlan leaks players network [.grant event]
-      execution = FinDist.pure granted := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+      execution = PMF.pure granted := by
+    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, FinDist.map_pure,
+      reactiveApplication, environmentStep, PMF.pure_map,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume]
     rfl
-  rw [runInteractionPlan_append, grantLaw, FinDist.pure_bind, FinDist.support_bind] at reached
+  rw [runInteractionPlan_append, grantLaw, PMF.pure_bind, PMF.support_bind] at reached
   obtain ⟨before, beforeSupport, active⟩ := Set.mem_iUnion₂.mp reached
-  rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map] at active
+  rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at active
   obtain ⟨sample, _, rfl⟩ := active
   exact ((runtime setup).player_window_application leaks players network visits
     granted before beforeSupport).1
@@ -325,8 +325,8 @@ theorem sourceService_owner_checkpoint [Fintype Player]
         ([.grant event] ++ visits.map ServiceInstruction.player) execution).bind
           fun before => before.environmentStep
             (application setup leaks) (.activate owner)).support :=
-    by simpa only [prefixLaw, runInteractionPlan_append, FinDist.bind_bind] using reached
-  rw [FinDist.support_bind] at combined
+    by simpa only [prefixLaw, runInteractionPlan_append, PMF.bind_bind] using reached
+  rw [PMF.support_bind] at combined
   obtain ⟨before, beforeSupport, tailSupport⟩ := Set.mem_iUnion₂.mp combined
   obtain ⟨state, checkpoint⟩ := sourceService_timed_prefix_checkpoint setup leaks bounds values
     capacity rosters opportunities network players covered event.val event.isLt.le
@@ -347,7 +347,7 @@ theorem sourceService_owner_posterior [Fintype Player]
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -368,12 +368,12 @@ theorem sourceService_owner_posterior [Fintype Player]
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun before => before.environmentStep (application setup leaks) (.activate owner)
     reference ∈ executions.support →
-      (executions.condOnFibre (fun execution =>
+      (fiberConditional executions (fun execution =>
           (execution.recall owner, execution.observe (application setup leaks) owner))
         (reference.recall owner, reference.observe (application setup leaks) owner)).map
           (fun execution => sourceServicePrefix? setup event.val execution.application.config) =
-        ((((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
-          GameTheory.Protocol.ExecutionProtocol.History.state).condOnFibre
+        (fiberConditional (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
+          GameTheory.Protocol.ExecutionProtocol.History.state)
             (setup.protocolObserve owner) (setup.protocolObserve owner
               (sourceServicePrefix? setup event.val reference.application.config))) := by
   intro normalized admission encoded players executions referenceSupport

@@ -24,7 +24,7 @@ abbrev graph := PendingMenus.graph
 abbrev runtime := PendingMenus.runtime
 abbrev input := PendingMenus.input
 
-def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) := fun _ _ => FinDist.pure ∅
+def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) := fun _ _ => PMF.pure ∅
 abbrev app := runtime.reactiveApplication leaks
 
 def initialState : EventGraphRuntime.State graph :=
@@ -35,7 +35,7 @@ def first : app.Action := runtime.reactiveBinding leaks () 0 .int (.success 1) 0
 def second : app.Action := ⟨some (.submit ⟨⟨.withhold 1, none⟩, .none⟩)⟩
 
 /-- Uniform choice among distinct, unpublished identifiers for this event. -/
-def select (event : graph.EventId) (view : app.EnvironmentView) : FinDist app.Command :=
+def select (event : graph.EventId) (view : app.EnvironmentView) : PMF app.Command :=
   ((MessageNetwork.uniformPending (fun packet =>
     decide (packet.payload.call.event? graph = some event) &&
       !(view.network.ledger.any fun prior => prior.id = packet.id))
@@ -45,15 +45,15 @@ def select (event : graph.EventId) (view : app.EnvironmentView) : FinDist app.Co
 /-- All activation and inclusion times are fixed before any player response. -/
 def scheduler : app.Scheduler := fun history view =>
   match history.length with
-  | 0 | 1 | 2 => FinDist.pure (.activate ())
+  | 0 | 1 | 2 => PMF.pure (.activate ())
   | 3 => select 0 view
-  | 4 => FinDist.pure (.application (.grant 1))
-  | 5 => FinDist.pure (.activate ())
+  | 4 => PMF.pure (.application (.grant 1))
+  | 5 => PMF.pure (.activate ())
   | 6 => select 1 view
-  | _ => FinDist.pure .wait
+  | _ => PMF.pure .wait
 
-abbrev arena := app.protocol (FinDist.pure initialState) 7 scheduler
-abbrev model := app.information (FinDist.pure initialState) 7 scheduler
+abbrev arena := app.protocol (PMF.pure initialState) 7 scheduler
+abbrev model := app.information (PMF.pure initialState) 7 scheduler
 
 /-- Only the initial two scheduling decisions constrain the subgame-root proof. -/
 def responsePrefix : app.TwoResponsePrefix where
@@ -67,7 +67,7 @@ def responsePrefix : app.TwoResponsePrefix where
     · simp only [scheduler, one]
   activation execution := by
     simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication, leaks,
-      FinDist.map_pure, MessageNetwork.learn_empty]
+      PMF.pure_map, MessageNetwork.learn_empty]
 
 abbrev activated := responsePrefix.activated
 abbrev afterFirst := responsePrefix.afterFirst
@@ -77,7 +77,7 @@ abbrev secondHistory := responsePrefix.secondHistory
 def contested : app.Execution := afterSecond first second
 
 theorem activation (execution : app.Execution) :
-    execution.environmentStep app (.activate ()) = FinDist.pure (activated execution) :=
+    execution.environmentStep app (.activate ()) = PMF.pure (activated execution) :=
   responsePrefix.activation execution
 
 /-- Recall identifies this prefix inside every future decision information set. -/

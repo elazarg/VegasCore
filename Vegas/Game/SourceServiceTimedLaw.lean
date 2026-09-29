@@ -34,7 +34,7 @@ theorem sourceServiceTimedProfile_readout_law [Fintype Player]
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -66,15 +66,15 @@ theorem sourceServiceTimedProfile_readout_law [Fintype Player]
         (sourceServiceMenu setup leaks bounds rosters) players
         (sourceServiceTimedPolicy_admissible setup leaks bounds values initialValues capacity
           rosters opportunities network timing full normalized admitted)
-      have observed := congrArg (FinDist.map (sourceReadout setup leaks)) physical
-      simp only [FinDist.map_comp, Function.comp_def] at observed
+      have observed := congrArg (PMF.map (sourceReadout setup leaks)) physical
+      simp only [PMF.map_comp, Function.comp_def] at observed
       refine observed.trans ?_
       obtain ⟨noise, joint⟩ := sourceServiceTimedProfile_prefix_factorization setup leaks bounds
         values initialValues capacity rosters opportunities timing full network original
         permitted focal (eventCount setup.program) le_rfl
-      have projected := congrArg (FinDist.map (fun pair => setup.protocolReadout pair.1)) joint
-      simp only [FinDist.map_comp, Function.comp_def, FinDist.map_bind, FinDist.map_const,
-        ← FinDist.map_eq_bind] at projected
+      have projected := congrArg (PMF.map (fun pair => setup.protocolReadout pair.1)) joint
+      simp only [PMF.map_comp, Function.comp_def, PMF.map_bind, FinDist.map_const,
+        ← ← PMF.bind_pure_comp, Function.comp_def] at projected
       have completed : rosterPlanPrefix setup rosters (eventCount setup.program) =
           rosterPlan setup rosters := by
         unfold rosterPlanPrefix rosterPlan
@@ -87,12 +87,12 @@ theorem sourceServiceTimedProfile_readout_law [Fintype Player]
         simpa only [eventCount_eq_instructionCount, InformationModel.runBehavioral] using sourceLaw)
       have same : setup.run normalized = setup.run original := by
         unfold Setup.run
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro initial _
         exact normalizeDisclosureProfile_runFrom setup.program original
           (setup.initialConfig initial)
       rw [same] at terminal
-      simpa only [sourceReadout_eq_decode, FinDist.map_bind] using terminal
+      simpa only [sourceReadout_eq_decode, PMF.map_bind] using terminal
 
 /-- The timed native approximant and its original finite source strategy
 have identical initialized typed readouts. This is the initialized-law premise
@@ -106,7 +106,7 @@ theorem sourceServiceTimedProfile_protocol_law [Fintype Player]
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (source : ∀ who, (setup.informationModel
       (CommitmentInterface.values setup.program)).BehavioralPolicy who) :

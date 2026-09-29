@@ -106,7 +106,7 @@ theorem source_secret_info (bit : Bool) (dummy : PublicationResult Bool) (first 
 
 theorem source_belief_prob (site : sourceModel.InformationSite true)
     (history : sourceModel.InformationHistory true site.1) :
-    (sourceAssessment.belief true site).prob history =
+    ((sourceAssessment.belief true site) history).toReal =
       (1 / 24) / sourceModel.informationMass uniformSourceProfile true site := by
   rw [sourceAssessment, InformationModel.BehavioralAssessment.bayes,
     InformationModel.bayesBelief_prob]

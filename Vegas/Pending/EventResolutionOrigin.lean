@@ -162,7 +162,7 @@ theorem compilePlayerPolicy_resolution_submission
       exact grant) notSubmitted rfl publicReady coherent.actor (by omega) (by
       change (State.playerView execution.native.application owner).remembered event = some action
       simpa [State.playerView, coherent.actor] using cached)
-  rw [policyEq, FinDist.mem_support_pure] at member
+  rw [policyEq, PMF.mem_support_pure_iff _ _] at member
   exact ⟨action, cached, member.symm⟩
 
 /-- The address of every supported compiled submission is exactly its current
@@ -209,7 +209,7 @@ theorem compilePlayerPolicy_submit_ready_notSubmitted
   rw [grant] at member
   repeat' first | split at member
   all_goals subst_vars
-  all_goals simp_all only [FinDist.mem_support_pure, FinDist.support_map,
+  all_goals simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map,
     Set.mem_image, reduceCtorEq, MessageInterface.PlayerCommand.submit.injEq,
     Option.some.injEq, submit_ne_bindingStageCommand]
   all_goals try { rcases member with ⟨_, _, impossible⟩; contradiction }
@@ -290,7 +290,7 @@ theorem serviceStep_resolutionOrigins
     ResolutionOrigins runtime after owner := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, commandMem, step⟩ := member
       cases command with
@@ -298,7 +298,7 @@ theorem serviceStep_resolutionOrigins
           apply ResolutionOrigins.of_retained runtime inputs ordered players wire (.player who)
             before after owner invariant origins
             (by
-              simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+              simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
                 Set.mem_iUnion]
               exact ⟨_, commandMem, step⟩)
           intro message retained
@@ -326,7 +326,7 @@ theorem serviceStep_resolutionOrigins
           rcases satisfies_retained_elim afterSafe retained with old | rfl
           · exact (origins message old).serviceStep runtime inputs ordered players wire
               (.player who) before after owner message invariant (by
-                simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+                simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
                   Set.mem_iUnion]
                 exact ⟨_, commandMem, step⟩)
           · intro event payload bindingOwner binding checks outputEq codeEq viewNode sender
@@ -358,7 +358,7 @@ theorem serviceStep_resolutionOrigins
             obtain ⟨action, cached, submission⟩ := origin
             have stepEq : after = runtime.application.afterSubmit before owner packet := by
               simpa only [runtime.application.playerStep_submit_eq,
-                FinDist.mem_support_pure] using step
+                PMF.mem_support_pure_iff _ _] using step
             subst after
             right
             refine ⟨action, ready, cached, ?_⟩
@@ -367,12 +367,12 @@ theorem serviceStep_resolutionOrigins
               State.playerView]
               using submission
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       apply ResolutionOrigins.of_retained runtime inputs ordered players wire .wire before after
         owner invariant origins (by
-          simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+          simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
             Set.mem_iUnion]
           exact ⟨_, by assumption, step⟩)
       intro message retained

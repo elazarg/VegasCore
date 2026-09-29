@@ -25,7 +25,7 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open MonitoredGuessing
 
 private def pendingObservation : MessageNetwork.ObservationRule Player
-    (WitnessedPacket nativeGraph) := fun _ pending => FinDist.pure (pendingIds pending)
+    (WitnessedPacket nativeGraph) := fun _ pending => PMF.pure (pendingIds pending)
 
 private abbrev app := nativeRuntime.reactiveApplication pendingObservation
 
@@ -51,9 +51,9 @@ private def activated (execution : app.Execution) (who : Player) : app.Execution
       [⟨execution.observeEnvironment app, .activate who⟩] }
 
 theorem activation_law (execution : app.Execution) (who : Player) :
-    execution.environmentStep app (.activate who) = FinDist.pure (activated execution who) := by
+    execution.environmentStep app (.activate who) = PMF.pure (activated execution who) := by
   simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
-    pendingObservation, FinDist.map_pure]
+    pendingObservation, PMF.pure_map]
   rfl
 
 private def firstOwner (early : Bool) : app.Execution :=
@@ -166,7 +166,7 @@ terminal traffic readout does not record silent activation boundaries. -/
 theorem same_traffic_records : records true = records false := rfl
 
 theorem every_traffic_audit_agrees {Verdict : Type}
-    (audit : List app.TrafficRecord → FinDist Verdict) :
+    (audit : List app.TrafficRecord → PMF Verdict) :
     audit (records true) = audit (records false) := congrArg audit same_traffic_records
 
 end Vegas.Examples.OpeningTimingChannel

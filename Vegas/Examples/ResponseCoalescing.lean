@@ -19,18 +19,18 @@ namespace Vegas.Examples.ResponseCoalescing
 open GameTheory.Protocol GameTheory.Math.Probability Interaction Vegas Vegas.EventGraphRuntime
 open PendingMenus
 
-private abbrev arena := runtime.responseProtocol (FinDist.pure input) [] 1 wire ordering
+private abbrev arena := runtime.responseProtocol (PMF.pure input) [] 1 wire ordering
 
 /-- A concrete canonical information model using exactly the original native view. -/
 def model : InformationModel arena :=
-  runtime.responseInformation (FinDist.pure input) [] 1 wire ordering (fun _ _ => 3)
-    (runtime.responseBudget_empty_roster (FinDist.pure input) 1 wire ordering)
+  runtime.responseInformation (PMF.pure input) [] 1 wire ordering (fun _ _ => 3)
+    (runtime.responseBudget_empty_roster (PMF.pure input) 1 wire ordering)
 
 example : arena.WellFoundedPlay :=
-  runtime.response_terminates (FinDist.pure input) [] 1 wire ordering
+  runtime.response_terminates (PMF.pure input) [] 1 wire ordering
 
 example : arena.BoundedHorizon (runtime.nativeRemaining [] 1 none) :=
-  runtime.response_bounded (FinDist.pure input) [] 1 wire ordering
+  runtime.response_bounded (PMF.pure input) [] 1 wire ordering
 
 example : responseLength () (graph := graph) [.player (), .wire, .player ()] = 1 := rfl
 
@@ -40,9 +40,9 @@ private def response : PlayerResponse graph 3 :=
 /-- The whole batch precedes the same wire slot; all three packet identities
 and all private records survive the coalescing. -/
 theorem response_before_wire :
-    runtime.responseTransition (FinDist.pure input) [] 1 wire ordering
+    runtime.responseTransition (PMF.pure input) [] 1 wire ordering
       (some ⟨5, orderedControl.plan.drop 1, initial⟩) (fun _ => some response.1) =
-      FinDist.pure (some ⟨5, orderedControl.plan.drop 4,
+      PMF.pure (some ⟨5, orderedControl.plan.drop 4,
         runtime.takeActions () initial response.1⟩) := rfl
 
 theorem response_keeps_competing_packets :
@@ -65,16 +65,16 @@ theorem response_records_multiple : ∀ {state} (_trace : arena.Trace state), re
       have earlier := response_records_multiple prior
       cases before with
       | none =>
-          obtain ⟨draw, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨draw, _, rfl⟩ := PMF.support_map .. ▸ reached
           rfl
       | some control =>
           rcases control with ⟨epochs, plan, execution⟩
           cases plan with
           | nil =>
               cases epochs with
-              | zero => cases FinDist.mem_support_pure.mp reached; exact earlier
+              | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact earlier
               | succ epochs =>
-                  obtain ⟨chosen, _, rfl⟩ := FinDist.support_map .. ▸ reached
+                  obtain ⟨chosen, _, rfl⟩ := PMF.support_map .. ▸ reached
                   exact earlier
           | cons instruction rest =>
               cases instruction with
@@ -84,13 +84,13 @@ theorem response_records_multiple : ∀ {state} (_trace : arena.Trace state), re
                     (ExecutionProtocol.legalOption_of_legal legal ()) rfl
                   have available := legal.2 ()
                   rw [selected] at available
-                  have count := runtime.responseBudget_empty_roster (FinDist.pure input) 1
+                  have count := runtime.responseBudget_empty_roster (PMF.pure input) 1
                     wire ordering ⟨_, prior⟩ () (runtime.nativeInput () execution)
                     (by simp [nativeObserve, nativeActor, nativeInput])
                   have length : actions.length = 3 := available.2.trans count.symm
                   change _ ∈ (runtime.responseTransition _ _ _ _ _ _ joint).support at reached
                   simp only [responseTransition, selected, Option.getD_some,
-                    FinDist.mem_support_pure] at reached
+                    PMF.mem_support_pure_iff _ _] at reached
                   subst_vars
                   change ((runtime.takeActions () execution actions).principalHistory ()).length %
                     3 = 0
@@ -99,8 +99,8 @@ theorem response_records_multiple : ∀ {state} (_trace : arena.Trace state), re
                   omega
               | wire | grant event | includeLatest event owner
               | sample event | tick | expire event =>
-                  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-                  obtain ⟨middle, _, rfl⟩ := FinDist.support_map .. ▸ supported
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ reached
+                  obtain ⟨middle, _, rfl⟩ := PMF.support_map .. ▸ supported
                   exact earlier
 
 /-- The internal two-action cut is absent from the coalesced history tree. -/
@@ -123,14 +123,14 @@ theorem policy_realization (history : arena.History) (control : NativeControl ru
     runtime.invokeNativeFor () (expandResponsePolicy (fun _ => 3) policy) 3 control.execution =
       (policy (runtime.nativeInput () control.execution)).map
         (fun response => runtime.takeActions () control.execution response.1) := by
-  have count := runtime.responseBudget_empty_roster (FinDist.pure input) 1 wire ordering
+  have count := runtime.responseBudget_empty_roster (PMF.pure input) 1 wire ordering
     history () (runtime.nativeInput () control.execution) (by
       rw [stateEq] at active ⊢
       simp only [nativeObserve, active, ↓reduceIte, nativeInput])
   change 3 = runtime.responseCount history.state at count
   simpa only [← count] using runtime.expandResponsePolicy_history_law
-    (FinDist.pure input) [] 1 wire ordering
-    (fun _ _ => 3) (runtime.responseBudget_empty_roster (FinDist.pure input) 1 wire ordering)
+    (PMF.pure input) [] 1 wire ordering
+    (fun _ _ => 3) (runtime.responseBudget_empty_roster (PMF.pure input) 1 wire ordering)
     history control stateEq () active policy
 
 end Vegas.Examples.ResponseCoalescing

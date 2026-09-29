@@ -32,11 +32,11 @@ theorem roster_instruction_actor (setup : Setup (Player := Player) (L := L))
     command.actor? (application setup leaks) = instructionActor instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
-      simp only [interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       rfl
   | includeLatest event owner =>
-      simp only [interactionInstruction, FinDist.mem_support_pure] at supported
+      simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       unfold reactiveLatest
       split <;> rfl
@@ -54,14 +54,14 @@ theorem fixed_plan_response_counts (setup : Setup (Player := Player) (L := L))
       (plan.filterMap instructionActor).count who := by
   induction plan generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simp only [List.filterMap_nil, List.count_nil, Nat.add_zero]
   | cons instruction rest ih =>
-      obtain ⟨middle, moved, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨middle, moved, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have restFixed : ServiceInstruction.wire ∉ rest := fun member =>
         fixed (List.mem_cons_of_mem _ member)
       rw [ih restFixed middle reached]
-      obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+      obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
       have actor := roster_instruction_actor setup leaks network initial.environmentRecall
         (initial.observeEnvironment (application setup leaks)) instruction
           (fun equal => fixed (List.mem_cons.mpr (Or.inl equal.symm))) command selected

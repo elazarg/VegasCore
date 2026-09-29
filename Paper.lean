@@ -261,7 +261,7 @@ at normalized canonical profiles for every utility of the terminal typed
 store. The compiler supplies the public-barrier certificate. -/
 theorem event_graph_scheduling_approximate_nash_iff [IExpr.ResultTypes L]
     (graph : Vegas.EventGraph Player L) (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (scheduler : graph.PublicScheduler)
+    (inputs : PMF graph.Inputs) (scheduler : graph.PublicScheduler)
     (utility : EventGraph.Store graph.layout → Player → ℝ)
     (ε : ℝ) (profile : graph.BehavioralProfile) :
     IsεNash (graph.gameForm inputs scheduler)
@@ -302,7 +302,7 @@ theorem source_event_graph_deviation_law [IExpr.ResultTypes L]
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
-    ∃ mixture : FinDist (SourceProgram.BehavioralPolicy who setup.program),
+    ∃ mixture : PMF (SourceProgram.BehavioralPolicy who setup.program),
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
@@ -347,7 +347,7 @@ arbitrary player policies, adaptive wire delivery, and public service ordering.
 This completion guarantee does not require prescribed player behavior. -/
 theorem event_pending_completion [IExpr.ResultTypes L]
     {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy)
     (next : runtime.application.PolicyExecution)
@@ -366,7 +366,7 @@ theorem event_pending_completion [IExpr.ResultTypes L]
 same native runtime, including under arbitrary player and service policies. -/
 theorem sequential_pending_completion_order [IExpr.ResultTypes L]
     {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph.sequentialize)
-    (inputs : FinDist graph.sequentialize.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.sequentialize.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy)
     (next : runtime.application.PolicyExecution)
@@ -425,7 +425,7 @@ theorem source_event_pending_deviation_law [IExpr.ResultTypes L]
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
     (replacement : runtime.application.PlayerPolicy) :
-    ∃ mixture : FinDist (SourceProgram.BehavioralPolicy who setup.program),
+    ∃ mixture : PMF (SourceProgram.BehavioralPolicy who setup.program),
       ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
         (Profile.update (sig := (setup.eventPendingGame mode runtime
           roster reactionRounds wire order).sig)
@@ -485,14 +485,14 @@ theorem source_event_pending_deviation_guarantee [IExpr.ResultTypes L]
     (profile : SourceProgram.BehavioralProfile setup.program) (who : Player)
     (value : SourceProgram.PublicOutcome setup.program → ℝ) (missing bound : ℝ)
     (sourceBound : ∀ alternative : SourceProgram.BehavioralPolicy who setup.program,
-      bound ≤ (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
-        profile who alternative)).expect value)
+      bound ≤ expect (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who alternative)) value)
     (replacement : runtime.application.PlayerPolicy) :
-    bound ≤ ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
+    bound ≤ expect ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
       (Profile.update (sig := (setup.eventPendingGame mode runtime
         roster reactionRounds wire order).sig)
         (fun actor => setup.compileEventPendingStrategy mode runtime actor (profile actor))
-        who replacement)).expect
+        who replacement))
           (fun outcome =>
             (setup.eventPendingPublicOutcome mode runtime outcome).elim missing value) :=
   setup.eventPendingGame_deviation_guarantee mode runtime feasible roster reactionRounds wire order
@@ -603,7 +603,7 @@ theorem private_type_event_pending_deviation_law [IExpr.ResultTypes L] {Paramete
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (profile : Profile (setup.valueBindingParameterGame parameter).sig) (who : Player)
     (replacement : runtime.application.PlayerPolicy) :
-    ∃ mixture : FinDist (SourceProgram.ValueBindingPolicy who setup.program),
+    ∃ mixture : PMF (SourceProgram.ValueBindingPolicy who setup.program),
       ((setup.eventPendingGame mode runtime roster reactionRounds wire order).play
         (Profile.update (sig := (setup.eventPendingGame mode runtime
           roster reactionRounds wire order).sig)
@@ -724,10 +724,10 @@ may depend on the utility; the necessity claim is stronger than failure of a
 particular compiler. This is a decision-experiment theorem. -/
 theorem terminal_observation_classification {State Signal Fact : Type*}
     [Finite Fact] [Nonempty Fact]
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact) :
-    (∀ utility : Fact → Fact → ℝ, ∀ source : Signal → FinDist Fact,
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact) :
+    (∀ utility : Fact → Fact → ℝ, ∀ source : Signal → PMF Fact,
       DecisionExperiment.IsBayesOptimal prior observe (fun state => utility (fact state)) source →
-        ∃ target : State → FinDist Fact,
+        ∃ target : State → PMF Fact,
           DecisionExperiment.IsBayesOptimal prior id (fun state => utility (fact state)) target ∧
             DecisionExperiment.resultLaw prior id fact target =
               DecisionExperiment.resultLaw prior observe fact source) ↔
@@ -742,13 +742,13 @@ theorem terminal_observation_classification {State Signal Fact : Type*}
 /-- Retaining the payoff-relevant fact preserves the entire set of optimal
 fact/action outcome laws, for arbitrary public actions and utilities. -/
 theorem terminal_observation_optimal_laws {State Signal Fact Action : Type*}
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
     (determines : DecisionExperiment.Determines prior observe fact)
-    (utility : Fact → Action → ℝ) (law : FinDist (Fact × Action)) :
-    (∃ policy : Signal → FinDist Action,
+    (utility : Fact → Action → ℝ) (law : PMF (Fact × Action)) :
+    (∃ policy : Signal → PMF Action,
       DecisionExperiment.IsBayesOptimal prior observe (fun state => utility (fact state)) policy ∧
         DecisionExperiment.resultLaw prior observe fact policy = law) ↔
-    (∃ policy : State → FinDist Action,
+    (∃ policy : State → PMF Action,
       DecisionExperiment.IsBayesOptimal prior id (fun state => utility (fact state)) policy ∧
         DecisionExperiment.resultLaw prior id fact policy = law) :=
   DecisionExperiment.optimal_result_law_iff prior observe fact determines utility law
@@ -764,7 +764,7 @@ standard sequential-equilibrium outcome of the terminal decision protocol.
 The conclusion allows target strategies and beliefs to depend on the utility. -/
 theorem terminal_sequential_observation_classification {State Signal Fact : Type}
     [Finite State] [Finite Fact] [Nonempty Fact]
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact) :
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact) :
     (∀ utility : Fact → Fact → ℝ,
       ∀ source : (model (Action := Fact) prior observe).BehavioralAssessment,
         source.IsSequentialEquilibriumFor (antichain prior observe)
@@ -791,7 +791,7 @@ assessments. It is a one-player terminal classification, not a native compiler
 preservation theorem. -/
 theorem terminal_fixed_payoff_sequential_classification {State Signal Fact Action : Type}
     [Finite State] [Finite Action] [Nonempty Action]
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
     (utility : Fact → Action → ℝ) :
     (∀ source : (model (Action := Action) prior observe).BehavioralAssessment,
       source.IsSequentialEquilibriumFor (antichain prior observe)
@@ -821,11 +821,11 @@ theorem declared_payoff_sequential_separation (Claim : Type) [Fintype Claim]
     (defaultClaim : Claim) :
     ∃ source : (NamedSource.model Claim).BehavioralAssessment,
       source.IsSequentialEquilibriumFor
-        ((NamedSource.menu Claim).decisionInformationAntichain (FinDist.pure NamedSource.initial)
+        ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
         (fun who site => source.continuationContext site (NamedSource.payoff who)
           (2 * NamedSource.horizon + 1)) ∧
-      (sourcePayoutLaw source.strategy).expect id = 0 ∧
+      expect (sourcePayoutLaw source.strategy) id = 0 ∧
       ∀ target : nativeModel.BehavioralAssessment,
         target.IsSequentiallyRationalWithin
           (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1) →
@@ -858,12 +858,12 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence service.setup service.leaks) →
-      FinDist (List (EnvelopeEvidence service.setup service.leaks)))
+      PMF (List (EnvelopeEvidence service.setup service.leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : service.sourceModel.BehavioralAssessment)
     [∀ who (site : service.sourceModel.InformationSite who),
       Fintype (service.sourceModel.InformationHistory who site.1)]
@@ -1012,15 +1012,15 @@ The restricted native equilibrium is a separate, open proof obligation.
 #print axioms
   GameTheory.Protocol.InformationModel.ContinuationDecision.rationalAt_of_omitted_dominated
 
-/-- info: 'GameTheory.Math.Probability.FinDist.condOn_observation_probOf_le' depends on axioms:
+/-- info: 'GameTheory.Math.Probability.PMF.condOn_observation_probOf_le' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDist.condOn_observation_probOf_le
+#print axioms GameTheory.Math.Probability.PMF.condOn_observation_probOf_le
 
-/-- info: 'GameTheory.Math.Probability.FinDistConvergesPointwise.probOf_le' depends on axioms:
+/-- info: 'GameTheory.Math.Probability.PMFConvergesPointwise.probOf_le' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.FinDistConvergesPointwise.probOf_le
+#print axioms GameTheory.Math.Probability.PMFConvergesPointwise.probOf_le
 
 /-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.continuationContext_value_eq_expect_commit' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

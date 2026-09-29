@@ -37,19 +37,19 @@ theorem initialState_runFrom {Γ : SourceCtx Player L} {O : Finset VarId}
   | ret payoffs =>
       simpa [runFrom, runWith, initialState] using supported
   | sample name fresh law k ih =>
-      simp only [runFrom_sample, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runFrom_sample, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported
       have h := ih (afterSample profile) (sampleSuccessor name config value) outcome supported
       funext x cell member
       exact congrArg (fun env => env.get (.there member)) h
   | commit name owner fresh guard k ih =>
-      simp only [runFrom_commit, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runFrom_commit, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported
       have h := ih (afterCommit profile) (commitSuccessor name guard config value) outcome supported
       funext x cell member
       exact congrArg (fun env => env.get (.there member)) h
   | reveal published owner name fresh source unresolved k ih =>
-      simp only [runFrom_reveal, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runFrom_reveal, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨disclose, _, supported⟩ := supported
       have h := ih (afterReveal profile) (revealSuccessor published source config disclose)
         outcome supported
@@ -70,7 +70,7 @@ def parameterOutcome {Parameter : Type} (setup : Setup (Player := Player) (L := 
 def parameterRun {Parameter : Type} (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
     (profile : BehavioralProfile setup.program) :
-    FinDist (Parameter × PublicOutcome setup.program) :=
+    PMF (Parameter × PublicOutcome setup.program) :=
   setup.initialLaw.bind fun initial =>
     (SourceProgram.run setup.program profile initial).map fun terminal =>
       (parameter initial, publicOutcome setup.program terminal)
@@ -81,7 +81,7 @@ theorem parameterRun_map_snd {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (profile : BehavioralProfile setup.program) :
     (setup.parameterRun parameter profile).map Prod.snd = setup.publicRun profile := by
-  simp only [parameterRun, publicRun, run, FinDist.map_bind, FinDist.map_comp,
+  simp only [parameterRun, publicRun, run, PMF.map_bind, PMF.map_comp,
     Function.comp_def]
 
 /-- The joint law is a semantic projection of the full-store law. -/
@@ -91,10 +91,10 @@ theorem run_map_parameterOutcome {Parameter : Type}
     (profile : BehavioralProfile setup.program) :
     (setup.run profile).map (setup.parameterOutcome parameter) =
       setup.parameterRun parameter profile := by
-  simp only [run, parameterRun, FinDist.map_bind]
-  apply FinDist.bind_congr
+  simp only [run, parameterRun, PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial _
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro terminal supported
   unfold parameterOutcome
   rw [initialState_runFrom setup.program profile

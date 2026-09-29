@@ -35,28 +35,28 @@ theorem not_retained : ¬pending.RetainsEligible eligible := by
   exact absent member
 
 theorem old_selection :
-    MessageNetwork.priorityPending (FinDist.pure priority) eligible pending.pending =
-      FinDist.pure (some ((), 1)) := by
+    MessageNetwork.priorityPending (PMF.pure priority) eligible pending.pending =
+      PMF.pure (some ((), 1)) := by
   have chosen : PriorityChoice.choose priority
       (MessageNetwork.eligibleIds eligible pending.pending) = some ((), 1) := by decide
-  simp only [MessageNetwork.priorityPending, PriorityChoice.law, FinDist.map_pure, chosen]
+  simp only [MessageNetwork.priorityPending, PriorityChoice.law, PMF.pure_map, chosen]
 
 theorem fresh_selection (value : Nat) :
-    MessageNetwork.priorityPending (FinDist.pure priority) eligible
-      (pending.submit () value).2.pending = FinDist.pure (some ((), 1)) := by
+    MessageNetwork.priorityPending (PMF.pure priority) eligible
+      (pending.submit () value).2.pending = PMF.pure (some ((), 1)) := by
   have chosen : PriorityChoice.choose priority
       (MessageNetwork.eligibleIds eligible (pending.submit () value).2.pending) =
         some ((), 1) := by
     change PriorityChoice.choose priority {((), 1), ((), 2)} = some ((), 1)
     decide
-  simp only [MessageNetwork.priorityPending, PriorityChoice.law, FinDist.map_pure, chosen]
+  simp only [MessageNetwork.priorityPending, PriorityChoice.law, PMF.pure_map, chosen]
 
 theorem replay_selection :
-    MessageNetwork.priorityPending (FinDist.pure priority) eligible
-      (pending.replay () ((), 0)).2.pending = FinDist.pure (some ((), 0)) := by
+    MessageNetwork.priorityPending (PMF.pure priority) eligible
+      (pending.replay () ((), 0)).2.pending = PMF.pure (some ((), 0)) := by
   have chosen : PriorityChoice.choose priority
       (MessageNetwork.eligibleIds eligible (pending.replay () ((), 0)).2.pending) =
         some ((), 0) := by decide
-  simp only [MessageNetwork.priorityPending, PriorityChoice.law, FinDist.map_pure, chosen]
+  simp only [MessageNetwork.priorityPending, PriorityChoice.law, PMF.pure_map, chosen]
 
 end InteractionTests.PendingPriority

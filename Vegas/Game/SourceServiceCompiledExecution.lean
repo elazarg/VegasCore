@@ -138,10 +138,10 @@ theorem sourceServiceOpportunity_at_history
       have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler trace
       have boundedTrace := (sourceServiceMenu_in_raw setup leaks bounds rosters).trace
         (initialLaw setup) horizon scheduler trace
-      let inputs : FinDist (graph setup).Inputs := setup.initialLaw.map setup.eventInputs
+      let inputs : PMF (graph setup).Inputs := setup.initialLaw.map setup.eventInputs
       have initialEq : inputs.map
           (EventGraphRuntime.State.initial (graph := graph setup)) = initialLaw setup := by
-        rw [FinDist.map_comp]
+        rw [PMF.map_comp]
         rfl
       have valid := (runtime setup).reactiveBindingInvariant_history leaks inputs horizon
         scheduler
@@ -228,7 +228,7 @@ theorem normalized_sourceService_admitted
         (CommitmentInterface.values setup.program) :=
   (original who).normalizeDisclosureFrom_admitted setup.program
     (CommitmentInterface.values setup.program) (permitted who) []
-    (Revelations.initial setup.context) (fun view => FinDist.pure view.2)
+    (Revelations.initial setup.context) (fun view => PMF.pure view.2)
 
 /-- The total finite compiler has the complete physical execution law of the
 original source policy's disclosure normalization. Every retained sample,

@@ -153,10 +153,10 @@ theorem runServicePlan_honestReaction_includeLatest_config
     (state : runtime.HonestReactionState event owner before accepted message execution) :
     (runtime.runServicePlan (runtime.compileProfile profile) wire
       (plan ++ [.includeLatest event owner]) execution).map
-        (fun next => next.native.application.config) = FinDist.pure accepted.config := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+        (fun next => next.native.application.config) = PMF.pure accepted.config := by
+  apply pmf_eq_pure_of_support_subset_singleton
   intro config configMem
-  rw [FinDist.support_map, Set.mem_image] at configMem
+  rw [PMF.support_map, Set.mem_image] at configMem
   obtain ⟨next, nextMem, rfl⟩ := configMem
   have final := runtime.runServicePlan_honestReaction_includeLatest profile wire event owner
     before accepted message handled actor authored addressed grantBefore grantAccepted plan allowed
@@ -302,9 +302,9 @@ theorem HonestBoundary.bind_ownerBlock_reactions_law
     (boundary.history_unfinished owner event unfinished).1
     (boundary.history_unfinished owner event unfinished).2
     (boundary.remembered_unfinished event unfinished)]
-  rw [FinDist.bind_bind, FinDist.map_bind]
+  rw [PMF.bind_bind, PMF.map_bind]
   rw [normalizedPolicyStep_of_actor profile _ event ready owner actor]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro action actionMem
   obtain ⟨command, stage⟩ :=
     runtime.bindingStageCommand_is_private event payload outputEq action
@@ -313,16 +313,16 @@ theorem HonestBoundary.bind_ownerBlock_reactions_law
   let submitted := runtime.application.afterSubmit staged owner
     (.commitment event (owner, eventSlot event))
   have block : runtime.bindingBlockContinuation owner event payload outputEq execution action =
-      FinDist.pure submitted :=
+      PMF.pure submitted :=
     runtime.bindingBlockContinuation_eq_pure owner event payload outputEq execution action
       command stage
-  rw [block, FinDist.pure_bind]
+  rw [block, PMF.pure_bind]
   have acceptedProjection := runtime.bindingBlockContinuation_handle owner event payload
     outputEq codeEq viewNode execution submitted action ready timely
     (boundary.canonical_fresh_unfinished event owner unfinished actor)
     (boundary.accepted_unfinished event unfinished)
     (boundary.canonical_unused_unfinished event owner unfinished actor)
-    (by rw [block]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [block]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
     (execution.native.pool.nextSerial owner)
   change (handle runtime (submitStep staged.native.application owner
       (.commitment event (owner, eventSlot event)))
@@ -410,8 +410,8 @@ theorem HonestBoundary.bind_ownerBlock_reactions_law
       have graphLaw := execution.native.application.config.step_eq_map_of_code event ready
         outputEq (.bind owner payload) codeEq
         (cast (congrArg EventField.Action outputEq) action)
-        (FinDist.pure (cast (congrArg EventField.Action outputEq) action)) rfl
-      simpa only [cast_cast, cast_eq, FinDist.map_pure] using graphLaw.symm
+        (PMF.pure (cast (congrArg EventField.Action outputEq) action)) rfl
+      simpa only [cast_cast, cast_eq, PMF.pure_map] using graphLaw.symm
 
 /-- Every execution supported by the reacted binding owner block restores the
 clean honest boundary. -/
@@ -448,8 +448,8 @@ theorem HonestBoundary.bind_ownerBlock_reactions_boundary
       viewNode rfl grant ready actor
       (boundary.history_unfinished owner event unfinished).1
       (boundary.history_unfinished owner event unfinished).2
-      (boundary.remembered_unfinished event unfinished), FinDist.bind_bind,
-    FinDist.support_bind] at member
+      (boundary.remembered_unfinished event unfinished), PMF.bind_bind,
+    PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨action, actionMem, supported⟩ := member
   obtain ⟨command, stage⟩ :=
@@ -459,16 +459,16 @@ theorem HonestBoundary.bind_ownerBlock_reactions_boundary
   let submitted := runtime.application.afterSubmit staged owner
     (.commitment event (owner, eventSlot event))
   have block : runtime.bindingBlockContinuation owner event payload outputEq execution action =
-      FinDist.pure submitted :=
+      PMF.pure submitted :=
     runtime.bindingBlockContinuation_eq_pure owner event payload outputEq execution action
       command stage
-  rw [block, FinDist.pure_bind] at supported
+  rw [block, PMF.pure_bind] at supported
   have acceptedProjection := runtime.bindingBlockContinuation_handle owner event payload
     outputEq codeEq viewNode execution submitted action ready timely
     (boundary.canonical_fresh_unfinished event owner unfinished actor)
     (boundary.accepted_unfinished event unfinished)
     (boundary.canonical_unused_unfinished event owner unfinished actor)
-    (by rw [block]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [block]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
     (execution.native.pool.nextSerial owner)
   change (handle runtime (submitStep staged.native.application owner
       (.commitment event (owner, eventSlot event)))

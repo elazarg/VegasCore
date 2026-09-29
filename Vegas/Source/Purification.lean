@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.Setup
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Every policy is a mixture of pure ones
 
@@ -43,12 +46,12 @@ theorem exists_pureMixture {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
     (profile : BehavioralProfile p) → (policy : BehavioralPolicy who p) →
     (configs : List (Config Player L Γ)) →
-    ∃ mixture : FinDist (PurePolicy who p), ∀ config ∈ configs,
+    ∃ mixture : PMF (PurePolicy who p), ∀ config ∈ configs,
       runFrom p (Function.update profile who policy) config =
         mixture.bind fun choice =>
           runFrom p (Function.update profile who (PurePolicy.toBehavioral p choice)) config
   | _, _, .ret _, _, _, _ =>
-      ⟨FinDist.pure PUnit.unit, fun config _ => by simp [runFrom, runWith]⟩
+      ⟨PMF.pure PUnit.unit, fun config _ => by simp [runFrom, runWith]⟩
   | Γ, _, .sample name (payload := payload) fresh law k, profile, policy, configs => by
       obtain ⟨mixture, hmixture⟩ := exists_pureMixture k (afterSample profile) policy
         (configs.flatMap fun config =>
@@ -63,8 +66,8 @@ theorem exists_pureMixture {who : Player} :
           List.mem_map.mpr ⟨value, Finset.mem_toList.mpr
             (FinDist.mem_supportFinset.mpr hvalue), rfl⟩⟩
       simp only [runFrom_sample, afterSample_update]
-      rw [FinDist.bind_congr fun value hvalue => hmixture _ (member value hvalue),
-        FinDist.bind_comm]
+      rw [bind_congr_on_support _ fun value hvalue => hmixture _ (member value hvalue),
+        PMF.bind_comm]
       rfl
   | Γ, _, .commit (payload := payload) name owner fresh guard k, profile, policy, configs => by
       classical
@@ -77,7 +80,7 @@ theorem exists_pureMixture {who : Player} :
         refine ⟨(FinDist.runDependent (policy.1 rfl)
             (configs.map (Config.view owner)).toFinset.toList
             (fun _ => .failure)).bind fun assigned =>
-          tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
+          tail.bind fun rest => PMF.pure (fun _ => assigned, rest),
           fun config hconfig => ?_⟩
         have hview : Config.view owner config ∈ configs.map (Config.view owner) :=
           List.mem_map.mpr ⟨config, hconfig, rfl⟩
@@ -91,26 +94,26 @@ theorem exists_pureMixture {who : Player} :
           simp [commitKernel]
         have hpure : ∀ choice : PurePolicy owner (.commit name owner fresh guard k),
             commitKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
-              fun view => FinDist.pure (choice.1 rfl view) := by
+              fun view => PMF.pure (choice.1 rfl view) := by
           intro choice
           simp [commitKernel, PurePolicy.toBehavioral, Function.update_self]
         have hsnd : ∀ choice : PurePolicy owner (.commit name owner fresh guard k),
             (PurePolicy.toBehavioral (.commit name owner fresh guard k) choice).2 =
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, FinDist.bind_bind,
-          FinDist.pure_bind]
+        simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, PMF.bind_bind,
+          PMF.pure_bind]
         rw [FinDist.runDependent_bind_apply (policy.1 rfl)
           (configs.map (Config.view owner)).toFinset (fun _ => PublicationResult.failure)
           (Config.view owner config) (List.mem_toFinset.mpr hview)
           (fun choice => tail.bind fun rest =>
             runFrom k (Function.update (afterCommit profile) owner
               (PurePolicy.toBehavioral k rest)) (commitSuccessor name guard config choice))]
-        exact FinDist.bind_congr fun choice hchoice => htail _ (hmember choice hchoice)
+        exact bind_congr_on_support _ fun choice hchoice => htail _ (hmember choice hchoice)
       · obtain ⟨tail, htail⟩ := exists_pureMixture k (afterCommit profile) policy.2
           (configs.flatMap fun config =>
             ((commitKernel profile (Config.view owner config)).supportFinset.toList).map
               (commitSuccessor name guard config))
-        refine ⟨tail.bind fun rest => FinDist.pure (fun own => absurd own hown, rest),
+        refine ⟨tail.bind fun rest => PMF.pure (fun own => absurd own hown, rest),
           fun config hconfig => ?_⟩
         have hmember : ∀ choice ∈ (commitKernel profile (Config.view owner config)).support,
             commitSuccessor name guard config choice ∈ configs.flatMap fun other =>
@@ -125,10 +128,10 @@ theorem exists_pureMixture {who : Player} :
         have hsnd : ∀ choice : PurePolicy who (.commit name owner fresh guard k),
             (PurePolicy.toBehavioral (.commit name owner fresh guard k) choice).2 =
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_commit, hkernel, hsnd, afterCommit_update, FinDist.bind_bind,
-          FinDist.pure_bind]
-        rw [FinDist.bind_congr fun choice hchoice => htail _ (hmember choice hchoice),
-          FinDist.bind_comm]
+        simp only [runFrom_commit, hkernel, hsnd, afterCommit_update, PMF.bind_bind,
+          PMF.pure_bind]
+        rw [bind_congr_on_support _ fun choice hchoice => htail _ (hmember choice hchoice),
+          PMF.bind_comm]
   | Γ, _, .reveal (payload := payload) published owner name fresh source unresolved k,
       profile, policy, configs => by
       classical
@@ -141,7 +144,7 @@ theorem exists_pureMixture {who : Player} :
         refine ⟨(FinDist.runDependent (policy.1 rfl)
             (configs.map (Config.view owner)).toFinset.toList
             (fun _ => false)).bind fun assigned =>
-          tail.bind fun rest => FinDist.pure (fun _ => assigned, rest),
+          tail.bind fun rest => PMF.pure (fun _ => assigned, rest),
           fun config hconfig => ?_⟩
         have hview : Config.view owner config ∈ configs.map (Config.view owner) :=
           List.mem_map.mpr ⟨config, hconfig, rfl⟩
@@ -156,7 +159,7 @@ theorem exists_pureMixture {who : Player} :
         have hpure : ∀ choice :
             PurePolicy owner (.reveal published owner name fresh source unresolved k),
             revealKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
-              fun view => FinDist.pure (choice.1 rfl view) := by
+              fun view => PMF.pure (choice.1 rfl view) := by
           intro choice
           simp [revealKernel, PurePolicy.toBehavioral, Function.update_self]
         have hsnd : ∀ choice :
@@ -164,8 +167,8 @@ theorem exists_pureMixture {who : Player} :
             (PurePolicy.toBehavioral
               (.reveal published owner name fresh source unresolved k) choice).2 =
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, FinDist.bind_bind,
-          FinDist.pure_bind]
+        simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, PMF.bind_bind,
+          PMF.pure_bind]
         rw [FinDist.runDependent_bind_apply (policy.1 rfl)
           (configs.map (Config.view owner)).toFinset (fun _ => false)
           (Config.view owner config) (List.mem_toFinset.mpr hview)
@@ -173,12 +176,12 @@ theorem exists_pureMixture {who : Player} :
             runFrom k (Function.update (afterReveal profile) owner
               (PurePolicy.toBehavioral k rest))
               (revealSuccessor published source config disclose))]
-        exact FinDist.bind_congr fun disclose hdisclose => htail _ (hmember disclose hdisclose)
+        exact bind_congr_on_support _ fun disclose hdisclose => htail _ (hmember disclose hdisclose)
       · obtain ⟨tail, htail⟩ := exists_pureMixture k (afterReveal profile) policy.2
           (configs.flatMap fun config =>
             ((revealKernel profile (Config.view owner config)).supportFinset.toList).map
               (revealSuccessor published source config))
-        refine ⟨tail.bind fun rest => FinDist.pure (fun own => absurd own hown, rest),
+        refine ⟨tail.bind fun rest => PMF.pure (fun own => absurd own hown, rest),
           fun config hconfig => ?_⟩
         have hmember : ∀ disclose ∈
             (revealKernel profile (Config.view owner config)).support,
@@ -197,17 +200,17 @@ theorem exists_pureMixture {who : Player} :
             (PurePolicy.toBehavioral
               (.reveal published owner name fresh source unresolved k) choice).2 =
               PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_reveal, hkernel, hsnd, afterReveal_update, FinDist.bind_bind,
-          FinDist.pure_bind]
-        rw [FinDist.bind_congr fun disclose hdisclose => htail _ (hmember disclose hdisclose),
-          FinDist.bind_comm]
+        simp only [runFrom_reveal, hkernel, hsnd, afterReveal_update, PMF.bind_bind,
+          PMF.pure_bind]
+        rw [bind_congr_on_support _ fun disclose hdisclose => htail _ (hmember disclose hdisclose),
+          PMF.bind_comm]
 
 /-- One mixture of pure policies reproduces a behavioral policy's terminal state
 law across a whole setup, against unchanged opponents. The draw precedes the
 private initial law, which is what a deviation certificate needs. -/
 theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
-    ∃ mixture : FinDist (PurePolicy who setup.program),
+    ∃ mixture : PMF (PurePolicy who setup.program),
       setup.run (Function.update profile who policy) =
         mixture.bind fun choice =>
           setup.run (Function.update profile who
@@ -225,19 +228,19 @@ theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) 
     hmixture _ (List.mem_map.mpr ⟨initial,
       Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr hinitial), rfl⟩)
   simp only [Setup.run]
-  rw [FinDist.bind_congr hrun, FinDist.bind_comm]
+  rw [bind_congr_on_support _ hrun, PMF.bind_comm]
 
 /-- The public result law is a pushforward of that one, so the same mixture
 serves it. -/
 theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
-    ∃ mixture : FinDist (PurePolicy who setup.program),
+    ∃ mixture : PMF (PurePolicy who setup.program),
       setup.publicRun (Function.update profile who policy) =
         mixture.bind fun choice =>
           setup.publicRun (Function.update profile who
             (PurePolicy.toBehavioral setup.program choice)) := by
   obtain ⟨mixture, hmixture⟩ := exists_pureMixture_run setup profile policy
-  exact ⟨mixture, by simp only [Setup.publicRun, hmixture, FinDist.map_bind]⟩
+  exact ⟨mixture, by simp only [Setup.publicRun, hmixture, PMF.map_bind]⟩
 
 /-! ## The pure-strategy game
 

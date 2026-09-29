@@ -27,7 +27,7 @@ def State.opponentMemory (state : State graph) (focal : Player) : RememberedActi
 /-- The graph profile contains the proposed backtranslation at the focal
 coordinate; arbitrary native focal caches cannot override that coordinate. -/
 def State.deviationContinuation (state : State graph)
-    (profile : graph.BehavioralProfile) (focal : Player) : FinDist graph.SemanticKey :=
+    (profile : graph.BehavioralProfile) (focal : Player) : PMF graph.SemanticKey :=
   graph.canonicalContinuation (graph.memoizedProfile profile (state.opponentMemory focal))
     state.config
 
@@ -44,7 +44,7 @@ theorem State.deviationContinuation_initial (inputs : graph.Inputs)
 theorem State.deviationContinuation_terminal (state : State graph)
     (profile : graph.BehavioralProfile) (focal : Player)
     (terminal : state.config.cut.Terminal) :
-    state.deviationContinuation profile focal = FinDist.pure (graph.semanticKey state.config) :=
+    state.deviationContinuation profile focal = PMF.pure (graph.semanticKey state.config) :=
   (graph.canonicalContinuation_terminal _ state.config terminal).symm
 
 /-- Only graph state and unfinished prescribed caches enter the continuation;
@@ -105,18 +105,18 @@ theorem playerStep_focal_deviationContinuation (runtime : EventGraphRuntime grap
       execution.native.application.deviationContinuation profile focal := by
   cases command with
   | privateCommand command =>
-      rw [runtime.application.playerStep_private_eq, FinDist.pure_bind]
+      rw [runtime.application.playerStep_private_eq, PMF.pure_bind]
       exact privateStep_focal_deviationContinuation execution.native.application profile
         focal command
   | submit payload =>
-      rw [runtime.application.playerStep_submit_eq, FinDist.pure_bind]
+      rw [runtime.application.playerStep_submit_eq, PMF.pure_bind]
       rfl
   | replay id =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, FinDist.pure_bind]
+        MessageApplication.advance, MessageApplication.step, PMF.pure_bind]
   | wait =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, FinDist.pure_bind]
+        MessageApplication.advance, PMF.pure_bind]
 
 /-- Sampling an unchanged opponent's previously unremembered ready action
 preserves the deviation continuation in expectation. Partial staging can
@@ -145,9 +145,9 @@ theorem playerStep_opponent_remember_deviationContinuation
   rw [ordered.canonicalContinuation_remember profile
     (execution.native.application.opponentMemory focal) execution.native.application.config
     event ready owner actor emptyOther]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro action _
-  rw [runtime.application.playerStep_private_eq, FinDist.pure_bind]
+  rw [runtime.application.playerStep_private_eq, PMF.pure_bind]
   change (privateStep execution.native.application owner
     (.remember event action)).deviationContinuation profile focal = _
   simp only [privateStep, dite_eq_left actor, empty, State.deviationContinuation]
@@ -182,7 +182,7 @@ theorem State.deviationContinuation_focal_step (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (actor : graph.actor? event = some focal) (action : graph.Action event)
     (selected : graph.normalizePolicy focal (profile focal) event actor
-      (graph.playerObserve focal state.config) = FinDist.pure action) :
+      (graph.playerObserve focal state.config) = PMF.pure action) :
     state.deviationContinuation profile focal =
       (state.config.step event ready action).bind fun config =>
         ({ state with config } : State graph).deviationContinuation profile focal := by
@@ -195,7 +195,7 @@ theorem State.deviationContinuation_focal_step (state : State graph)
     subst who
     rw [normalizePolicy_memoizedProfile]
     simp only [memoizedProfile, State.opponentMemory, actor, ↓reduceIte, selected,
-      FinDist.pure_bind]
+      PMF.pure_bind]
     rfl
   · rename_i ownerless
     simp [actor] at ownerless
@@ -213,7 +213,7 @@ theorem State.deviationContinuation_eq_of_effective_step (before after : State g
     (focalAction : owner = focal →
       ∀ (owned : graph.actor? event = some focal),
         graph.normalizePolicy focal (profile focal) event owned
-          (graph.playerObserve focal before.config) = FinDist.pure action)
+          (graph.playerObserve focal before.config) = PMF.pure action)
     (opponentAction : owner ≠ focal → before.remembered event = some action) :
     after.deviationContinuation profile focal = before.deviationContinuation profile focal := by
   have law : before.deviationContinuation profile focal =
@@ -226,7 +226,7 @@ theorem State.deviationContinuation_eq_of_effective_step (before after : State g
     · exact before.deviationContinuation_opponent_step ordered profile focal owner same event
         ready actor action (opponentAction same)
   rw [before.config.step_eq_pure_of_actor event ready action owner actor after.config member,
-    FinDist.pure_bind] at law
+    PMF.pure_bind] at law
   rw [law]
   exact after.deviationContinuation_congr { before with config := after.config }
     profile focal rfl (fun _ _ _ => congrFun memory _)
@@ -243,14 +243,14 @@ theorem environmentStep_sample_deviationContinuation (runtime : EventGraphRuntim
   · cases view : nodeView graph event with
     | bind owner payload outputEq codeEq | resolve owner payload binding checks outputEq codeEq =>
         rw [environmentStep_executeSample_of_nonsample runtime state event ready
-          (by intro ty law outputEq' codeEq'; simp [view]), FinDist.pure_bind]
+          (by intro ty law outputEq' codeEq'; simp [view]), PMF.pure_bind]
     | sample payload law outputEq codeEq =>
         have actor : graph.actor? event = none := by
           have castActor := EventCode.actor_cast outputEq (graph.nodes event)
           rw [codeEq] at castActor
           exact castActor.symm
         rw [environmentStep_executeSample_eq runtime state event ready payload law
-          outputEq codeEq view, FinDist.bind_map]
+          outputEq codeEq view, PMF.bind_map]
         change (state.config.step event ready
           (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)).bind
             (graph.canonicalContinuation
@@ -270,7 +270,7 @@ theorem environmentStep_sample_deviationContinuation (runtime : EventGraphRuntim
         · rename_i who owned
           simp [actor] at owned
         · exact law
-  · rw [environmentStep_executeSample_of_not_ready runtime state event ready, FinDist.pure_bind]
+  · rw [environmentStep_executeSample_of_not_ready runtime state event ready, PMF.pure_bind]
 
 /-- Service announcements and clock increments have no semantic effect before
 the separate expiry instructions run. -/
@@ -279,7 +279,7 @@ theorem environmentStep_tick_deviationContinuation (runtime : EventGraphRuntime 
     (environmentStep runtime state .advanceClock).bind
       (fun next => next.deviationContinuation profile focal) =
         state.deviationContinuation profile focal := by
-  rw [environmentStep, FinDist.pure_bind]
+  rw [environmentStep, PMF.pure_bind]
   rfl
 
 theorem environmentStep_grant_deviationContinuation (runtime : EventGraphRuntime graph)
@@ -288,7 +288,7 @@ theorem environmentStep_grant_deviationContinuation (runtime : EventGraphRuntime
     (environmentStep runtime state (.grant event)).bind
       (fun next => next.deviationContinuation profile focal) =
         state.deviationContinuation profile focal := by
-  rw [environmentStep, FinDist.pure_bind]
+  rw [environmentStep, PMF.pure_bind]
   rfl
 
 end Vegas.EventGraphRuntime

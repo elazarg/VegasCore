@@ -47,7 +47,7 @@ theorem reveal_local_value
     (reveals : setup.program.RevealOnly)
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
-    (law : FinDist ((setup.informationModel admission).Choice who site.1))
+    (law : PMF ((setup.informationModel admission).Choice who site.1))
     (joint : Bool → Player → Option (OwnAction Player L))
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose who) = disclose)
     (utility : State L setup.program.terminalCtx → ℝ) :
@@ -55,11 +55,11 @@ theorem reveal_local_value
       (fun final => (setup.protocolReadout final.state).elim 0 utility)
       (instructionCount setup.program + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
-      (assessment.stateBelief who site).expect (fun state =>
-        (law.map (fun choice => OwnAction.disclosure choice.1)).expect (fun disclose =>
-          ((setup.protocolStep state (joint disclose)).bind
+      expect (assessment.stateBelief who site) (fun state =>
+        expect (law.map (fun choice => OwnAction.disclosure choice.1)) (fun disclose =>
+          expect ((setup.protocolStep state (joint disclose)).bind
             (setup.continuationLaw (setup.decodeBehavioralProfile admission
-              assessment.strategy))).expect utility)) := by
+              assessment.strategy))) utility)) := by
   have enough (history : (setup.informationModel admission).InformationHistory who site.1) :
       setup.protocolRemaining history.1.state ≤ instructionCount setup.program + 1 := by
     have counted := setup.protocol_history_length admission history.1.trace
@@ -67,10 +67,10 @@ theorem reveal_local_value
   rw [setup.continuationContext_local_value_stateBelief admission assessment who site
     (setup.informationSite_nonterminal admission who site) law utility
     (instructionCount setup.program) enough]
-  simp only [InformationModel.BehavioralAssessment.stateBelief, FinDist.expect_map]
-  apply FinDist.expect_congr
+  simp only [InformationModel.BehavioralAssessment.stateBelief, expect_map]
+  apply expect_congr_on_support
   intro history _supported
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro choice _chosen
   have active := InformationModel.InformationSite.active _ site history
   have same : setup.protocolStep history.1.state
@@ -96,29 +96,29 @@ theorem reveal_local_value_binary
     (reveals : setup.program.RevealOnly)
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
-    (law : FinDist ((setup.informationModel admission).Choice who site.1))
+    (law : PMF ((setup.informationModel admission).Choice who site.1))
     (joint : Bool → Player → Option (OwnAction Player L))
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose who) = disclose)
     (utility : State L setup.program.terminalCtx → ℝ) :
     let choice := law.map (fun action => OwnAction.disclosure action.1)
-    let values := fun disclose => (assessment.stateBelief who site).expect (fun state =>
-      ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
-        (setup.decodeBehavioralProfile admission assessment.strategy))).expect utility)
+    let values := fun disclose => expect (assessment.stateBelief who site) (fun state =>
+      expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
+        (setup.decodeBehavioralProfile admission assessment.strategy))) utility)
     (assessment.continuationContext site
       (fun final => (setup.protocolReadout final.state).elim 0 utility)
       (instructionCount setup.program + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
-      choice.prob true * values true + (1 - choice.prob true) * values false := by
+      (choice true).toReal * values true + (1 - (choice true).toReal) * values false := by
   intro choice values
   rw [setup.reveal_local_value admission reveals assessment who site law joint chosen utility]
-  have total := choice.sum_prob
+  have total := pmf_sum_toReal_eq_one choice
   simp only [Fintype.sum_bool] at total
-  have complement : choice.prob false = 1 - choice.prob true := by linarith
-  change (assessment.stateBelief who site).expect
-    (fun state => choice.expect (fun disclose =>
-      ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
-        (setup.decodeBehavioralProfile admission assessment.strategy))).expect utility)) = _
-  simp only [FinDist.expect_eq_sum choice, Fintype.sum_bool, complement,
+  have complement : (choice false).toReal = 1 - (choice true).toReal := by linarith
+  change expect (assessment.stateBelief who site)
+    (fun state => expect choice (fun disclose =>
+      expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
+        (setup.decodeBehavioralProfile admission assessment.strategy))) utility)) = _
+  simp only [expect_eq_sum choice, Fintype.sum_bool, complement,
     FinDist.expect_add, FinDist.expect_smul]
   rfl
 

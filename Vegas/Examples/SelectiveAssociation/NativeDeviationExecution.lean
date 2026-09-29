@@ -17,7 +17,7 @@ theorem native_alice_profile_covered (profile : ∀ who, nativeModel.BehavioralP
     (who : Player) (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (response : nativeApp.Action)
     (supported : response ∈ (nativeAliceProfile (nativeMenu.decodeProfile
-      (FinDist.pure nativeInitial) nativeHorizon nativeScheduler profile) who past view).support) :
+      (PMF.pure nativeInitial) nativeHorizon nativeScheduler profile) who past view).support) :
     response ∈ nativeMenu.actions who past view := by
   by_cases same : who = alice
   · subst who
@@ -31,13 +31,13 @@ theorem native_carol_settlement_evidence (players : Player → nativeApp.Policy)
     final.application.BindingInvariant ∧ nativeRuntime.bindingEvidenceObserved nativeLeaks
       (final.observe nativeApp bob) (aliceBindingEvidence bit) := by
   obtain ⟨response, chosen, finished⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨trace⟩ := native_carol_raw_trace bit prior
   have valid : (carolSite bit prior).application.BindingInvariant :=
-    (nativeRuntime.reactiveBindingInvariant nativeLeaks).history (FinDist.pure nativeInitial)
+    (nativeRuntime.reactiveBindingInvariant nativeLeaks).history (PMF.pure nativeInitial)
       nativeHorizon nativeScheduler (by
         intro state member
-        cases FinDist.mem_support_pure.mp member
+        cases (PMF.mem_support_pure_iff _ _).mp member
         exact State.initial_bindingInvariant nativeInputs) trace
   have invariant := nativeRuntime.observedBinding_policyInvariant nativeLeaks players bob
     (aliceBindingEvidence bit)
@@ -52,7 +52,7 @@ theorem native_carol_settlement_alice (players : Player → nativeApp.Policy)
     (supported : final ∈ (nativeCarolPlay players bit prior).support) :
     aliceBindingRef.get? final.application.config.store = some (.success bit) := by
   obtain ⟨response, chosen, finished⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have invariant := ReactiveApplication.Invariant.policyInvariant nativeApp
     (native_binding_invariant alice (.success bit)) players
   have start := invariant.respond (carolSite bit prior) carol response
@@ -69,11 +69,11 @@ theorem native_deviation_settled_global (players : Player → nativeApp.Policy)
     (settledMem : settled ∈ (nativeCarolPlay (nativeAliceProfile players) bit prior).support) :
     settled ∈ (nativeApp.runRounds nativeScheduler (nativeAliceProfile players)
       13 nativeRoot).support := by
-  rw [native_alice_thirteen_rounds, FinDist.support_bind]
+  rw [native_alice_thirteen_rounds, PMF.support_bind]
   apply Set.mem_iUnion₂.mpr
   refine ⟨bit, ?_, ?_⟩
-  · exact FinDist.mem_support_uniformOfFintype bit
-  · rw [FinDist.support_bind]
+  · exact PMF.mem_support_uniformOfFintype bit
+  · rw [PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨prior, priorMem, settledMem⟩
 
 theorem native_run_support_append (players : Player → nativeApp.Policy)
@@ -81,7 +81,7 @@ theorem native_run_support_append (players : Player → nativeApp.Policy)
     (beforeMem : before ∈ (nativeApp.runRounds nativeScheduler players count nativeRoot).support)
     (afterMem : after ∈ (nativeApp.runRounds nativeScheduler players rest before).support) :
     after ∈ (nativeApp.runRounds nativeScheduler players (count + rest) nativeRoot).support := by
-  rw [ReactiveApplication.runRounds_add, FinDist.support_bind]
+  rw [ReactiveApplication.runRounds_add, PMF.support_bind]
   exact Set.mem_iUnion₂.mpr ⟨before, beforeMem, afterMem⟩
 
 end Vegas.Examples.SelectiveAssociation

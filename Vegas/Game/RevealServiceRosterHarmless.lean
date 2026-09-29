@@ -66,10 +66,10 @@ theorem roster_harmless_response_disclosure
     (harmless : who ≠ owner ∨ ∃ entry ∈
       (current.recall owner).drop (rosterOffset setup rosters owner event),
         entry.action = (runtime setup).windowOpening leaks event candidate raw)
-    (choices : FinDist (Option (Fin ((rosters event).count owner)))) (full : choices.FullSupport) :
+    (choices : PMF (Option (Fin ((rosters event).count owner)))) (full : FullSupport choices) :
     let app := application setup leaks
     let family := fun mode => app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-      (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+      (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         app.replayPolicy
     let activated := current.sampledActivation app who sample
     (((app.policyMixture choices family).posterior
@@ -97,7 +97,7 @@ theorem roster_harmless_response_disclosure
         cases secondMode with
         | none => cases secondSome
         | some second =>
-            simp only [FinDist.map_pure, Option.isSome_some]
+            simp only [PMF.pure_map, Option.isSome_some]
 
 /-- The harmless alternatives have identical final source-state laws under
 the actual global roster policy. They may change traffic and recall, but these
@@ -144,9 +144,9 @@ theorem roster_harmless_response_source_law
     (harmless : who ≠ owner ∨ ∃ entry ∈
       (current.recall owner).drop (rosterOffset setup rosters owner event),
         entry.action = (runtime setup).windowOpening leaks event candidate raw)
-    (choiceFull : (sourceChoiceLaw setup leaks profile owner
-      (boundary.observe (application setup leaks) owner)).FullSupport)
-    (timingFull : (timing event owner ownedEvent).FullSupport)
+    (choiceFull : FullSupport (sourceChoiceLaw setup leaks profile owner
+      (boundary.observe (application setup leaks) owner)))
+    (timingFull : FullSupport (timing event owner ownedEvent))
     (joint : Bool → Player → Option (OwnAction Player L))
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose owner) = disclose) :
     let app := application setup leaks
@@ -164,10 +164,10 @@ theorem roster_harmless_response_source_law
   intro app rest output
   let choices := rosterSelection (sourceChoiceLaw setup leaks profile owner
     (boundary.observe app owner)) (timing event owner ownedEvent)
-  have full : choices.FullSupport := rosterSelection_fullSupport _ _ choiceFull timingFull
+  have full : FullSupport choices := rosterSelection_fullSupport _ _ choiceFull timingFull
   let family := fun mode : Option (Fin ((rosters event).count owner)) =>
     app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-    (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+    (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
       app.replayPolicy
   let after := fun response => (current.sampledActivation app who sample).respond app who response
   let posterior := fun response =>
@@ -208,9 +208,9 @@ theorem roster_harmless_response_source_law
     owner granted ownedEvent candidate raw opening owned valid (offset owner) serials published
     players covered network visited current reached who sample action alternative member
     alternativeMember within harmless choices full
-  have mapped := congrArg (fun law : FinDist Bool =>
+  have mapped := congrArg (fun law : PMF Bool =>
     (law.bind fun disclose => (ProtocolState.step setup.program source (joint disclose)).bind
       (ProtocolState.continuationLaw setup.program profile)).map some) same
-  simpa only [FinDist.bind_map] using mapped
+  simpa only [PMF.bind_map] using mapped
 
 end Vegas

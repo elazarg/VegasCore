@@ -35,22 +35,22 @@ theorem executionTraffic_passive_step
     (runtime.reactiveApplication leaks).executionTraffic after =
       (runtime.reactiveApplication leaks).executionTraffic before := by
   let app := runtime.reactiveApplication leaks
-  obtain ⟨command, selected, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨command, selected, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have inactive : command.actor? app = none := by
     cases instruction with
     | wire => exact (notWire rfl).elim
     | player who => exact (notPlayer who rfl).elim
     | grant event | sample event | tick | expire event =>
-        cases FinDist.mem_support_pure.mp selected
+        cases (PMF.mem_support_pure_iff _ _).mp selected
         rfl
     | includeLatest event owner =>
-        cases FinDist.mem_support_pure.mp selected
+        cases (PMF.mem_support_pure_iff _ _).mp selected
         unfold reactiveLatest
         split <;> rfl
-  obtain ⟨middle, environment, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+  obtain ⟨middle, environment, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
   change after ∈ (app.resume players (command.actor? app) middle).support at resumed
   rw [inactive] at resumed
-  cases FinDist.mem_support_pure.mp resumed
+  cases (PMF.mem_support_pure_iff _ _).mp resumed
   exact app.executionTraffic_environment before after command environment
 
 /-- A passive settlement suffix preserves all authentic traffic records
@@ -65,10 +65,10 @@ theorem executionTraffic_passive_plan
     (runtime.reactiveApplication leaks).executionTraffic after =
       (runtime.reactiveApplication leaks).executionTraffic before := by
   induction plan generalizing before with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons instruction rest ih =>
       obtain ⟨middle, stepped, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have first := passive instruction (List.mem_cons_self ..)
       exact (ih (fun other member => passive other (List.mem_cons_of_mem _ member))
         middle continued).trans
@@ -83,12 +83,12 @@ theorem executionTraffic_runInteractionPlan
     (runtime.reactiveApplication leaks).executionTraffic before <+:
       (runtime.reactiveApplication leaks).executionTraffic after := by
   induction plan generalizing before with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons instruction rest ih =>
       obtain ⟨middle, stepped, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨command, _, dispatched⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ stepped)
       exact ((runtime.reactiveApplication leaks).executionTraffic_dispatch
         players command before middle dispatched).trans (ih middle continued)
 
@@ -120,21 +120,21 @@ transcript; no independence from later transmissions or reactions is assumed. -/
 theorem trafficAudit_collection_after_plan {Evidence : Type}
     (project : (runtime.reactiveApplication leaks).TrafficRecord → Evidence)
     (attribution : Evidence → Player) (permitted : Evidence → Bool)
-    (sample : List Evidence → FinDist (List Evidence))
+    (sample : List Evidence → PMF (List Evidence))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
     (before : (runtime.reactiveApplication leaks).Execution) (who : Player) (rate : ℝ)
     (coverage : ∀ actual record, record ∈ actual →
       attribution record = who → permitted record = false →
-      rate ≤ (sample actual).probOf {observed | record ∈ observed})
+      rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (record : (runtime.reactiveApplication leaks).TrafficRecord)
     (present : record ∈ (runtime.reactiveApplication leaks).executionTraffic before)
     (owner : attribution (project record) = who)
     (forbidden : permitted (project record) = false) :
     let app := runtime.reactiveApplication leaks
-    rate ≤ (((((runtime.runInteractionPlan leaks players network plan before).map
+    rate ≤ ((((((runtime.runInteractionPlan leaks players network plan before).map
       app.executionTraffic).bind (app.sampledTrafficAudit project attribution permitted sample)).map
-        (fun verdict => verdict who)).prob true) := by
+        (fun verdict => verdict who)) true).toReal) := by
   apply (runtime.reactiveApplication leaks).sampledTrafficAudit_collection_from_record
     project attribution permitted sample _ _ who rate coverage record _ owner forbidden
   intro final supported

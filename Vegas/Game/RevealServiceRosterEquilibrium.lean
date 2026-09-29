@@ -81,13 +81,13 @@ theorem roster_source_sequential_equilibrium_preserved
   let timing (n : Nat) := rosterTiming setup rosters coverage
     (weight n) (positive n).le (small n)
   have timingFull (n : Nat) (event : (graph setup).EventId) (who : Player)
-      (owned : (graph setup).actor? event = some who) : (timing n event who owned).FullSupport :=
+      (owned : (graph setup).actor? event = some who) : FullSupport (timing n event who owned) :=
     rosterTiming_fullSupport setup rosters coverage (weight n) (positive n).le (small n)
       (positive n) event who owned
   have timingConverges (event : (graph setup).EventId) (who : Player)
       (owned : (graph setup).actor? event = some who) :
       ∃ last : Fin ((rosters event).count who), last.val + 1 = (rosters event).count who ∧
-        FinDistConvergesPointwise (fun n => timing n event who owned) (FinDist.pure last) :=
+        PMFConvergesPointwise (fun n => timing n event who owned) (PMF.pure last) :=
     ⟨rosterLastSlot setup rosters coverage event who owned,
       rosterLastSlot_final setup rosters coverage event who owned,
       rosterTiming_converges setup rosters coverage (fun n => (positive n).le) small
@@ -102,7 +102,7 @@ theorem roster_source_sequential_equilibrium_preserved
   let compiled := rosterCompiledProfile setup leaks bounds rosters network
     (setup.decodeBehavioralProfile admission source.strategy)
   have strategies (who : Player) (site : model.InformationSite who) :
-      FinDistConvergesPointwise (fun n => (sequence n).strategy who site.1)
+      PMFConvergesPointwise (fun n => (sequence n).strategy who site.1)
         (compiled who site.1) :=
     rosterPerturbedProfile_converges setup leaks bounds rosters network reveals openable admission
       sourceSequence (fun n => (approximates n).1) source.strategy converges.strategy
@@ -118,19 +118,19 @@ theorem roster_source_sequential_equilibrium_preserved
   let payoff := fun output : Option (State L setup.program.terminalCtx) =>
     fun who => output.elim 0 (fun state => utility state who)
   have localComparisons (n : Nat) (who : Player) (site : model.InformationSite who)
-      (law : FinDist (model.Choice who site.1)) :
+      (law : PMF (model.Choice who site.1)) :
       let comparison := model.assessmentComparison targetObserve (2 * horizon + 1)
         (sequence n) who (site, ((sequence n).strategy who).withLaw site.1 law)
-      comparison.alternative.expect (payoff · who) -
-          comparison.prescribed.expect (payoff · who) ≤ weight n * range ∨
-        ∃ mixture : FinDist ((setup.informationModel admission).AssessmentDeviation who),
-          comparison.alternative.expect (payoff · who) -
-              comparison.prescribed.expect (payoff · who) ≤
-            mixture.expect (fun deviation =>
+      expect comparison.alternative (payoff · who) -
+          expect comparison.prescribed (payoff · who) ≤ weight n * range ∨
+        ∃ mixture : PMF ((setup.informationModel admission).AssessmentDeviation who),
+          expect comparison.alternative (payoff · who) -
+              expect comparison.prescribed (payoff · who) ≤
+            expect mixture (fun deviation =>
               let originalComparison := (setup.informationModel admission).assessmentComparison
                 sourceObserve (instructionCount setup.program + 1) (sourceSequence n) who deviation
-              originalComparison.alternative.expect (payoff · who) -
-                originalComparison.prescribed.expect (payoff · who)) + weight n * range := by
+              expect originalComparison.alternative (payoff · who) -
+                expect originalComparison.prescribed (payoff · who)) + weight n * range := by
     intro comparison
     obtain ⟨past, view, observed⟩ : ∃ past view, site.1 = some (past, view) := by
       obtain ⟨history, _, _⟩ := site.2
@@ -151,8 +151,8 @@ theorem roster_source_sequential_equilibrium_preserved
         have harmless := roster_harmless_comparison_gain setup leaks bounds rosters network reveals
           openable admission (sourceSequence n) (approximates n).1 (timing n) (timingFull n)
           (sequence n) rfl who site past view observed fresh law (payoff · who)
-        change comparison.alternative.expect (payoff · who) -
-          comparison.prescribed.expect (payoff · who) = 0 at harmless
+        change expect comparison.alternative (payoff · who) -
+          expect comparison.prescribed (payoff · who) = 0 at harmless
         rw [harmless]
         exact mul_nonneg (positive n).le rangeNonnegative
     | some packet =>
@@ -172,7 +172,7 @@ theorem roster_source_sequential_equilibrium_preserved
             event who owned _ inside)
           (sourceRange (sourceSequence n) who sourceSite
             (fun disclose _ => some (.reveal who 0 disclose)) (fun _ => rfl))
-        exact ⟨FinDist.pure deviation, by simpa only [FinDist.expect_pure] using bound⟩
+        exact ⟨PMF.pure deviation, by simpa only [expect_pure] using bound⟩
   have result := ContinuationSimulation.sequentialEquilibrium_of_local_comparisons_limit
     sourceObserve targetObserve (instructionCount setup.program + 1) (2 * horizon + 1)
     (menu.bounded (initialLaw setup) horizon scheduler)

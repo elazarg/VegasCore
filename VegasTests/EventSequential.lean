@@ -48,7 +48,7 @@ private def runtime : EventGraphRuntime sequentialGraph where
 private def inputValues : sequentialGraph.Inputs := fun input => nomatch input
 
 private def decreasingOrder : runtime.ServiceOrderPolicy :=
-  fun _ _ => FinDist.pure (EventGraphRuntime.ServiceOrder.decreasing sequentialGraph)
+  fun _ _ => PMF.pure (EventGraphRuntime.ServiceOrder.decreasing sequentialGraph)
 
 private theorem feasible : runtime.ServiceFeasible := by
   intro event
@@ -61,11 +61,11 @@ example (players : Bool → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (roster : List Bool)
     (reactionRounds : Nat) (next : runtime.application.PolicyExecution)
     (supported : next ∈
-      ((runtime.servicedEventGame (FinDist.pure inputValues) roster reactionRounds
+      ((runtime.servicedEventGame (PMF.pure inputValues) roster reactionRounds
         wire decreasingOrder).play players).support) :
     next.native.application.config.history.map Completion.event = List.finRange 2 := by
   exact runtime.servicedSequentialGame_history
-    (FinDist.pure inputValues) roster reactionRounds wire decreasingOrder
+    (PMF.pure inputValues) roster reactionRounds wire decreasingOrder
       players next supported
 
 /-- Sequential mode consumes the common asynchronous exact-deviation theorem;
@@ -74,8 +74,8 @@ example (profile : sequentialGraph.BehavioralProfile)
     (roster : List Bool) (reactionRounds : Nat) (focal : Bool)
     (replacement : runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) :
-    ∃ mixture : FinDist (sequentialGraph.BehavioralPolicy focal),
-      ((runtime.servicedEventGame (FinDist.pure inputValues) roster reactionRounds
+    ∃ mixture : PMF (sequentialGraph.BehavioralPolicy focal),
+      ((runtime.servicedEventGame (PMF.pure inputValues) roster reactionRounds
         wire decreasingOrder).play
           (Profile.update
             (sig := MessageApplication.policySignature Bool runtime.application)
@@ -88,7 +88,7 @@ example (profile : sequentialGraph.BehavioralProfile)
                 profile focal alternative)) inputValues).map
                   (fun config => config.store) := by
   simpa using runtime.exists_deviation_mixture_store_law feasible
-    pairGraph.sequentialize_barrierOrdered (FinDist.pure inputValues) profile
+    pairGraph.sequentialize_barrierOrdered (PMF.pure inputValues) profile
       roster reactionRounds focal replacement wire decreasingOrder
 
 end

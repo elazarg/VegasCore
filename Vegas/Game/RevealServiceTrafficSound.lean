@@ -148,14 +148,14 @@ theorem retained_step_traffic (bounds : MessageBounds (graph setup))
               change response ∈ (menu setup leaks bounds watcher).actions who
                 (control.execution.recall who) (control.execution.observe app who) at allowed
               simp only [ReactiveApplication.transition, actor, selected,
-                Option.getD_some, FinDist.mem_support_pure] at reached
+                Option.getD_some, PMF.mem_support_pure_iff _ _] at reached
               subst next
               by_cases same : who = watcher
               · subst who
                 have quiet := watcher_history_silent setup leaks bounds watcher reveals
                   observer openable history control state actor
                 simp only [menu, ↓reduceIte] at allowed
-                rw [quiet, FinDist.mem_supportFinset, FinDist.mem_support_pure] at allowed
+                rw [quiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _] at allowed
                 subst response
                 cases control with
                 | mk remaining owner execution =>
@@ -178,9 +178,9 @@ theorem retained_step_traffic (bounds : MessageBounds (graph setup))
               exact ⟨countEq, actor⟩
           | succ remaining =>
               simp only [ReactiveApplication.transition, actor, countEq,
-                FinDist.support_bind] at reached
+                PMF.support_bind] at reached
               obtain ⟨command, _selected, moved⟩ := Set.mem_iUnion₂.mp reached
-              obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+              obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
               have noneTraffic := app.trafficStep_environment control.execution updated command
                 supported remaining
               cases control with

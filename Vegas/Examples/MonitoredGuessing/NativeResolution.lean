@@ -69,7 +69,7 @@ theorem native_history_fixed (control : nativeApp.Control)
       exact ⟨bit, (native_fixed_invariant bit).environment state command next valid reached⟩ }
   exact invariant.history nativeInitialLaw nativeHorizon nativeScheduler (by
     intro state member
-    obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ member
+    obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ member
     exact ⟨bit, native_initial_fixed bit⟩)
     (nativeMenu.toRawTrace nativeInitialLaw nativeHorizon nativeScheduler trace)
 

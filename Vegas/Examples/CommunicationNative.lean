@@ -95,7 +95,7 @@ theorem failed_publication (bit : Bool) :
 binding fact; the theorem is independent of beliefs, utility and prior play. -/
 theorem all_compatible_bindings
     (menu : (nativeRuntime.reactiveApplication leaks).ResponseMenu)
-    (initial : FinDist (EventGraphRuntime.State nativeGraph)) (horizon : Nat)
+    (initial : PMF (EventGraphRuntime.State nativeGraph)) (horizon : Nat)
     (scheduler : (nativeRuntime.reactiveApplication leaks).Scheduler) (who bit : Bool)
     (past : List (nativeRuntime.reactiveApplication leaks).PlayerEntry)
     (view : (nativeRuntime.reactiveApplication leaks).PlayerView)

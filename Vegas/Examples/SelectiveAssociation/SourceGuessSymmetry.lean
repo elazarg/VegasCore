@@ -21,7 +21,7 @@ open Vegas Vegas.SourceProgram Interaction GameTheory.Math.Probability
 
 def chooseAt {Claim : Type} (players : Player → (application Claim).Policy)
     (who : Player) (execution : (application Claim).Execution) :
-    FinDist (application Claim).Action :=
+    PMF (application Claim).Action :=
   players who (execution.recall who) (execution.observe (application Claim) who)
 
 structure BindingSample (Claim : Type) where
@@ -65,7 +65,7 @@ theorem BindingSample.uncertified_swapHidden {Claim : Type} (sample : BindingSam
   · rfl
 
 def bindingLaw {Claim : Type} (players : Player → (application Claim).Policy) :
-    FinDist (BindingSample Claim) :=
+    PMF (BindingSample Claim) :=
   (chooseAt players alice (effect (root Claim) (.activate alice))).bind fun first =>
     (chooseAt players bob (effect (firstResponse first) (.activate bob))).bind fun second =>
       (chooseAt players alice (aliceInput first second)).map fun binding =>
@@ -76,16 +76,16 @@ theorem bindingLaw_flip {Claim : Type} (players : Player → (application Claim)
       (chooseAt players alice (aliceInput first second)).map flipResponse =
         chooseAt players alice (aliceInput first second)) :
     (bindingLaw players).map BindingSample.flip = bindingLaw players := by
-  simp only [bindingLaw, FinDist.map_bind]
-  apply FinDist.bind_congr
+  simp only [bindingLaw, PMF.map_bind]
+  apply bind_congr_on_support _
   intro first _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro second _
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   calc
     _ = ((chooseAt players alice (aliceInput first second)).map flipResponse).map
         (fun binding => BindingSample.mk first second binding) := by
-      rw [FinDist.map_comp]
+      rw [PMF.map_comp]
       rfl
     _ = _ := by rw [symmetric]
 
@@ -95,7 +95,7 @@ theorem bindingLaw_swapHidden {Claim : Type} (players : Player → (application 
         chooseAt players alice (aliceInput first second)) :
     (bindingLaw players).map BindingSample.swapHidden = bindingLaw players := by
   classical
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro sample
   have mapped := FinDist.prob_map_of_injective BindingSample.swapHidden
     BindingSample.swapHidden_involutive.injective (bindingLaw players) sample.swapHidden
@@ -103,7 +103,7 @@ theorem bindingLaw_swapHidden {Claim : Type} (players : Player → (application 
   rw [mapped]
   by_cases clean : sample.Uncertified
   · rw [BindingSample.swapHidden, ite_eq_left clean]
-    exact FinDist.prob_involution (bindingLaw players) BindingSample.flip
+    exact PMF.apply_involution (bindingLaw players) BindingSample.flip
       BindingSample.flip_involutive (bindingLaw_flip players symmetric) sample
   · rw [BindingSample.swapHidden, ite_eq_right clean]
 
@@ -145,13 +145,11 @@ theorem carol_conditional_fair {Claim : Type} (players : Player → (application
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView)
     (positive : ∃ sample ∈ {sample | BindingSample.hiddenCarolInformation sample = some info},
       sample ∈ (bindingLaw players).support) :
-    ((bindingLaw players).condOn
-      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).probOf
-        {sample | sample.Uncertified ∧ sample.value = .success false} =
-    ((bindingLaw players).condOn
-      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).probOf
-        {sample | sample.Uncertified ∧ sample.value = .success true} := by
-  apply FinDist.condOn_observation_probOf_eq _ BindingSample.swapHidden
+    (((bindingLaw players).filter
+      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).toOuterMeasure {sample | sample.Uncertified ∧ sample.value = .success false}).toReal =
+    (((bindingLaw players).filter
+      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).toOuterMeasure {sample | sample.Uncertified ∧ sample.value = .success true}).toReal := by
+  apply PMF.filter_observation_toOuterMeasure_eq _ BindingSample.swapHidden
     BindingSample.swapHidden_involutive (bindingLaw_swapHidden players symmetric)
     BindingSample.hiddenCarolInformation BindingSample.hiddenCarolInformation_swapHidden
   intro sample _
@@ -175,7 +173,7 @@ theorem swapGuess_involutive {Claim : Type} :
   rw [BindingSample.swapHidden_involutive sample]
 
 def guessLaw {Claim : Type} (players : Player → (application Claim).Policy) :
-    FinDist (GuessSample Claim) :=
+    PMF (GuessSample Claim) :=
   (bindingLaw players).bind fun sample =>
     (players carol sample.carolInformation.1 sample.carolInformation.2).map fun guess =>
       (sample, guess)
@@ -185,15 +183,15 @@ theorem guessLaw_swap {Claim : Type} (players : Player → (application Claim).P
       (chooseAt players alice (aliceInput first second)).map flipResponse =
         chooseAt players alice (aliceInput first second)) :
     (guessLaw players).map swapGuess = guessLaw players := by
-  rw [guessLaw, FinDist.map_bind]
+  rw [guessLaw, PMF.map_bind]
   calc
     _ = ((bindingLaw players).map BindingSample.swapHidden).bind (fun sample =>
         (players carol sample.carolInformation.1 sample.carolInformation.2).map fun guess =>
           (sample, guess)) := by
-      rw [FinDist.bind_map]
-      apply FinDist.bind_congr
+      rw [PMF.bind_map]
+      apply bind_congr_on_support _
       intro sample _
-      rw [sample.carolInformation_swapHidden, FinDist.map_comp]
+      rw [sample.carolInformation_swapHidden, PMF.map_comp]
       rfl
     _ = _ := by rw [bindingLaw_swapHidden players symmetric]
 
@@ -231,11 +229,9 @@ theorem bob_conditional_fair {Claim : Type} (players : Player → (application C
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView)
     (positive : ∃ sample ∈ {sample | hiddenBobInformation sample = some info},
       sample ∈ (guessLaw players).support) :
-    ((guessLaw players).condOn {sample | hiddenBobInformation sample = some info} positive).probOf
-        {sample | sample.1.Uncertified ∧ sample.1.value = .success false} =
-    ((guessLaw players).condOn {sample | hiddenBobInformation sample = some info} positive).probOf
-        {sample | sample.1.Uncertified ∧ sample.1.value = .success true} := by
-  apply FinDist.condOn_observation_probOf_eq _ swapGuess swapGuess_involutive
+    (((guessLaw players).filter {sample | hiddenBobInformation sample = some info} positive).toOuterMeasure {sample | sample.1.Uncertified ∧ sample.1.value = .success false}).toReal =
+    (((guessLaw players).filter {sample | hiddenBobInformation sample = some info} positive).toOuterMeasure {sample | sample.1.Uncertified ∧ sample.1.value = .success true}).toReal := by
+  apply PMF.filter_observation_toOuterMeasure_eq _ swapGuess swapGuess_involutive
     (guessLaw_swap players symmetric) hiddenBobInformation hiddenBobInformation_swap
   intro sample _
   change sample.1.swapHidden.Uncertified ∧ sample.1.swapHidden.value = .success false ↔
@@ -248,12 +244,12 @@ theorem bob_conditional_fair {Claim : Type} (players : Player → (application C
 
 theorem decode_profile (Claim : Type) [Fintype Claim] (defaultClaim : Claim) (who : Player)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView) :
-    (menu Claim).decodeProfile (FinDist.pure initial) horizon (scheduler Claim)
+    (menu Claim).decodeProfile (PMF.pure initial) horizon (scheduler Claim)
       (profile Claim defaultClaim) who past view = policy Claim defaultClaim who past view := by
-  change ((menu Claim).embedPolicy (FinDist.pure initial) horizon (scheduler Claim) who
-    ((menu Claim).restrictPolicy (FinDist.pure initial) horizon (scheduler Claim) who
+  change ((menu Claim).embedPolicy (PMF.pure initial) horizon (scheduler Claim) who
+    ((menu Claim).restrictPolicy (PMF.pure initial) horizon (scheduler Claim) who
       (policy Claim defaultClaim who)) (some (past, view))).map _ = _
-  rw [(menu Claim).embed_restrictPolicy (FinDist.pure initial) horizon (scheduler Claim) who
+  rw [(menu Claim).embed_restrictPolicy (PMF.pure initial) horizon (scheduler Claim) who
     (policy Claim defaultClaim who) past view (policy_covered Claim defaultClaim who past view)]
   change (application Claim).decodePolicy
     ((application Claim).encodePolicy (policy Claim defaultClaim who)) past view = _
@@ -262,14 +258,14 @@ theorem decode_profile (Claim : Type) [Fintype Claim] (defaultClaim : Claim) (wh
 def tremblePlayers (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
     Player → (application Claim).Policy :=
-  (menu Claim).decodeProfile (FinDist.pure initial) horizon (scheduler Claim)
+  (menu Claim).decodeProfile (PMF.pure initial) horizon (scheduler Claim)
     (tremble Claim defaultClaim weight positive atMostOne).strategy
 
 theorem tremblePlayers_mixture (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) (who : Player)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView) :
     tremblePlayers Claim defaultClaim weight positive atMostOne who past view =
-      FinDist.mix weight positive.le atMostOne ((menu Claim).uniformResponses who past view)
+      mix weight positive.le atMostOne ((menu Claim).uniformResponses who past view)
         (policy Claim defaultClaim who past view) := by
   rw [tremblePlayers, tremble, ReactiveApplication.ResponseMenu.decode_perturbedAssessment,
     decode_profile]
@@ -282,7 +278,7 @@ theorem tremble_alice_symmetric (Claim : Type) [Fintype Claim] (defaultClaim : C
     chooseAt (tremblePlayers Claim defaultClaim weight positive atMostOne) alice
       (aliceInput first second) := by
   unfold chooseAt
-  rw [tremblePlayers_mixture, FinDist.map_mix, uniform_flip,
+  rw [tremblePlayers_mixture, mix_map, uniform_flip,
     alice_policy_flip Claim defaultClaim _ _ (aliceInput_visit first second)]
 
 theorem carol_joint_fair {Claim : Type} (players : Player → (application Claim).Policy)
@@ -291,11 +287,9 @@ theorem carol_joint_fair {Claim : Type} (players : Player → (application Claim
         chooseAt players alice (aliceInput first second))
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView)
     (hidden : NoPublicAlice info.2) :
-    (bindingLaw players).probOf
-        {sample | sample.carolInformation = info ∧ sample.value = .success false} =
-      (bindingLaw players).probOf
-        {sample | sample.carolInformation = info ∧ sample.value = .success true} := by
-  apply FinDist.probOf_eq_of_involution _ BindingSample.swapHidden
+    ((bindingLaw players).toOuterMeasure {sample | sample.carolInformation = info ∧ sample.value = .success false}).toReal =
+      ((bindingLaw players).toOuterMeasure {sample | sample.carolInformation = info ∧ sample.value = .success true}).toReal := by
+  apply PMF.toOuterMeasure_eq_of_involution _ BindingSample.swapHidden
     (bindingLaw_swapHidden players symmetric)
   intro sample _
   change sample.swapHidden.carolInformation = info ∧ sample.swapHidden.value = .success false ↔
@@ -317,11 +311,9 @@ theorem bob_joint_fair {Claim : Type} (players : Player → (application Claim).
         chooseAt players alice (aliceInput first second))
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView)
     (hidden : NoPublicAlice info.2) :
-    (guessLaw players).probOf
-        {sample | bobInformation sample = info ∧ sample.1.value = .success false} =
-      (guessLaw players).probOf
-        {sample | bobInformation sample = info ∧ sample.1.value = .success true} := by
-  apply FinDist.probOf_eq_of_involution _ swapGuess (guessLaw_swap players symmetric)
+    ((guessLaw players).toOuterMeasure {sample | bobInformation sample = info ∧ sample.1.value = .success false}).toReal =
+      ((guessLaw players).toOuterMeasure {sample | bobInformation sample = info ∧ sample.1.value = .success true}).toReal := by
+  apply PMF.toOuterMeasure_eq_of_involution _ swapGuess (guessLaw_swap players symmetric)
   intro sample _
   change bobInformation (swapGuess sample) = info ∧ sample.1.swapHidden.value = .success false ↔
     bobInformation sample = info ∧ sample.1.value = .success true

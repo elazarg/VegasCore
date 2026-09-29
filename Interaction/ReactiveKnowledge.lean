@@ -34,12 +34,12 @@ theorem environment_foreignLeaks (execution next : app.Execution) (command : app
     next.ForeignLeaks app := by
   cases command with
   | wait =>
-      cases FinDist.mem_support_pure.mp (by
-        simpa only [Execution.environmentStep, FinDist.map_pure] using reached)
+      cases (PMF.mem_support_pure_iff _ _).mp (by
+        simpa only [Execution.environmentStep, PMF.pure_map] using reached)
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       intro observer message member
       by_cases same : observer = who
       · subst observer
@@ -49,47 +49,47 @@ theorem environment_foreignLeaks (execution next : app.Execution) (command : app
       · rw [MessageNetwork.learn_other _ who observer selected same] at member
         exact valid observer message member
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       cases found : execution.network.lookup id <;>
         simpa only [Execution.ForeignLeaks, Execution.includePending,
           MessageNetwork.includePending, found] using valid
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
 
 def foreignLeaks : app.ProtocolState → Prop
   | none => True
   | some control => control.execution.ForeignLeaks app
 
-theorem transition_foreignLeaks (initial : FinDist app.State) (horizon : Nat)
+theorem transition_foreignLeaks (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)
     (joint : Principal → Option app.Action) (valid : app.foreignLeaks before)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     app.foreignLeaks after := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       intro who message member
       exact (List.not_mem_nil member).elim
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact app.respond_foreignLeaks execution who _ valid
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
-              obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+              obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               exact app.environment_foreignLeaks execution next command valid supported
 
 /-- All legal initialized histories, with arbitrary strategies, schedulers,
 and observation laws, exclude self-authored messages from passive knowledge. -/
-theorem history_foreignLeaks (initial : FinDist app.State) (horizon : Nat)
+theorem history_foreignLeaks (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) :
     ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
       app.foreignLeaks state

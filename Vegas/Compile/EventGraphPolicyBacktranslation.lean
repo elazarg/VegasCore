@@ -286,7 +286,7 @@ def backtranslatePolicyTable
           have actor : (toEventGraph whole).actor? event = some who := by
             simpa [event, headIndex, eventOwner?, same] using actorEq headIndex
           match encodeDecisionView? whole refs who event view with
-          | none => FinDist.pure .failure
+          | none => PMF.pure .failure
           | some observation =>
               (policy event actor observation).map embedding.commitHeadAction,
         backtranslatePolicyTable whole who policy next
@@ -308,7 +308,7 @@ def backtranslatePolicyTable
           have actor : (toEventGraph whole).actor? event = some who := by
             simpa [event, headIndex, eventOwner?, same] using actorEq headIndex
           match encodeDecisionView? whole refs who event view with
-          | none => FinDist.pure false
+          | none => PMF.pure false
           | some observation =>
               (policy event actor observation).map embedding.revealHeadAction,
         backtranslatePolicyTable whole who policy next

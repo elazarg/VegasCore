@@ -35,7 +35,7 @@ theorem nativeRemaining_zero (runtime : EventGraphRuntime graph)
       simp [nativeRemaining, nativeTerminal, NativeControl.Terminal, and_comm]
 
 theorem nativeRemaining_step (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (before after : NativeProtocolState runtime)
     (joint : Player → Option (PlayerAction graph))
@@ -46,7 +46,7 @@ theorem nativeRemaining_step (runtime : EventGraphRuntime graph)
       runtime.nativeRemaining roster reactionRounds before := by
   cases before with
   | none =>
-      obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ reached
       simp [nativeRemaining]
   | some control =>
       rcases control with ⟨epochs, plan, execution⟩
@@ -55,16 +55,16 @@ theorem nativeRemaining_step (runtime : EventGraphRuntime graph)
           cases epochs with
           | zero => exact (running ⟨rfl, rfl⟩).elim
           | succ epochs =>
-              obtain ⟨chosen, _, rfl⟩ := FinDist.support_map .. ▸ reached
+              obtain ⟨chosen, _, rfl⟩ := PMF.support_map .. ▸ reached
               simp only [nativeRemaining, runtime.epochPlan_length_eq_epochInstructionCount,
                 List.length_nil, zero_add, Nat.succ_mul]
               omega
       | cons instruction rest =>
-          obtain ⟨next, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨next, _, rfl⟩ := PMF.support_map .. ▸ reached
           simp [nativeRemaining, Nat.add_assoc, Nat.add_comm]
 
 theorem native_terminates (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     (runtime.nativeProtocol inputs roster reactionRounds wire order).WellFoundedPlay := by
   apply wellFoundedPlay_of_rank (runtime.nativeRemaining roster reactionRounds)
@@ -75,7 +75,7 @@ theorem native_terminates (runtime : EventGraphRuntime graph)
   omega
 
 theorem native_history_length (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ∀ {state}
       (trace : (runtime.nativeProtocol inputs roster reactionRounds wire order).Trace state),
@@ -90,7 +90,7 @@ theorem native_history_length (runtime : EventGraphRuntime graph)
       omega
 
 theorem native_bounded (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     (runtime.nativeProtocol inputs roster reactionRounds wire order).BoundedHorizon
       (runtime.nativeRemaining roster reactionRounds none) := by

@@ -59,13 +59,13 @@ theorem sourceService_sample_response_application_law
       List.not_mem_nil, or_false] at member
     rcases member with (rfl | ⟨_, rfl⟩) | rfl <;> simp
   rw [runInteractionPlan_append, sourceServiceTimedPolicy_sample_window setup leaks rosters
-    timing profile event chance network visits after grant, FinDist.map_bind]
+    timing profile event chance network visits after grant, PMF.map_bind]
   calc
     _ = ((runtime setup).runInteractionPlan leaks (fun _ => app.replayPolicy) network
         (visits.map ServiceInstruction.player) after).bind (fun _ =>
           ((runtime setup).runInteractionPlan leaks players network ending execution).map
             ReactiveApplication.Execution.application) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro current reached
       have unchanged := ((runtime setup).replay_window_preserves leaks
         (fun _ => app.replayPolicy) network who after
@@ -73,6 +73,6 @@ theorem sourceService_sample_response_application_law
         (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visits current reached).1
       exact (runtime setup).application_service_law leaks players network ending passive
         current execution (unchanged.trans same)
-    _ = _ := FinDist.bind_const _ _
+    _ = _ := PMF.bind_const _ _
 
 end Vegas

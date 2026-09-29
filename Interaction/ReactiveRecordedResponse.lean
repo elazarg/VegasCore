@@ -44,7 +44,7 @@ theorem recallOwnPlay_getElem (past : List app.PlayerEntry) (index : Nat)
 namespace ResponseMenu
 
 variable {app} [DecidableEq Principal] (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 /-- A raw recall entry is witnessed by an earlier legal decision in the same
 menu game, with the exact recorded local input and selected physical response. -/

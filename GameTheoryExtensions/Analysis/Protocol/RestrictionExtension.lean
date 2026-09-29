@@ -53,24 +53,24 @@ theorem sequential_equilibrium_extends_of_continuation
       ∀ who (site : M.InformationSite who)
         (action : N.Choice who (restriction.site who site).1),
         action ∉ Set.range (restriction.choice who site.1) →
-        ∀ belief : FinDist (M.InformationHistory who site.1),
+        ∀ belief : PMF (M.InformationHistory who site.1),
           ∃ alternative : M.BehavioralPolicy who,
-            belief.expect (fun history => (N.runBehavioralFrom
+            expect belief (fun history => expect (N.runBehavioralFrom
               (Profile.update (sig := N.behavioralSignature) targetProfile who
                 ((targetProfile who).commit (restriction.site who site).1 action))
               (horizon - depth who (restriction.site who site))
-              (restriction.history history.1)).expect (fun final => targetPayoff final who)) ≤
-            belief.expect (fun history => (M.runBehavioralFrom
+              (restriction.history history.1)) (fun final => targetPayoff final who)) ≤
+            expect belief (fun history => expect (M.runBehavioralFrom
               (Profile.update (sig := M.behavioralSignature) sourceProfile who alternative)
               (horizon - depth who (restriction.site who site))
-              history.1).expect (fun final => sourcePayoff final who)))
+              history.1) (fun final => sourcePayoff final who)))
     (source : M.BehavioralAssessment)
     (sourceEquilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.continuationContext site (fun history => sourcePayoff history who)
         (horizon - depth who (restriction.site who site)))) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
-        decisionRecall.antichain
+        decisionRecall.decisionInformationAntichain
         (fun who site => target.continuationContext site
           (fun history => targetPayoff history who) (horizon - depth who site)) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
@@ -115,20 +115,20 @@ theorem sequential_equilibrium_extends_of_continuation
         action extra (source.belief who original)
       refine ⟨alternative, ?_⟩
       simpa only [BehavioralAssessment.continuationContext_value, beliefs,
-        FinDist.expect_bind, FinDist.expect_map, informationHistory_val] using bound
+        FinDist.expect_bind, expect_map, informationHistory_val] using bound
     · exact newOptimal who site retained law
   have historyLaw := restriction.initialized_law source.strategy target.strategy agrees horizon
   refine ⟨target, ⟨rational, consistent⟩, agrees, beliefs, historyLaw, ?_, ?_⟩
   · calc
       _ = ((M.runBehavioral source.strategy horizon).map restriction.history).map
           (fun history => (history, targetPayoff history)) := by
-        rw [FinDist.map_comp]
+        rw [PMF.map_comp]
         congr 1
         funext history
         have samePayoff : sourcePayoff history = targetPayoff (restriction.history history) :=
           funext fun who => (matching history who).symm
         exact congrArg (fun values : Player → ℝ => (restriction.history history, values)) samePayoff
-      _ = _ := congrArg (FinDist.map _) historyLaw
+      _ = _ := congrArg (PMF.map _) historyLaw
   · intro history supported
     exact N.runBehavioralFrom_terminal_of_bound target.strategy bounded
       T.initHistory history supported
@@ -149,7 +149,7 @@ theorem sequential_equilibrium_extends_of_comparator
     (matching : ∀ history who,
       targetPayoff (restriction.history history) who = sourcePayoff history who)
     (comparator : ∀ who (site : M.InformationSite who),
-      N.Choice who (restriction.site who site).1 → FinDist (M.Choice who site.1))
+      N.Choice who (restriction.site who site).1 → PMF (M.Choice who site.1))
     (comparison : ∀ (sourceProfile : ∀ who, M.BehavioralPolicy who)
       (targetProfile : ∀ who, N.BehavioralPolicy who),
       restriction.ExtendsProfile sourceProfile targetProfile →
@@ -157,23 +157,23 @@ theorem sequential_equilibrium_extends_of_comparator
         (action : N.Choice who (restriction.site who site).1),
         action ∉ Set.range (restriction.choice who site.1) →
         ∀ history : M.InformationHistory who site.1,
-          (N.runBehavioralFrom
+          expect (N.runBehavioralFrom
             (Profile.update (sig := N.behavioralSignature) targetProfile who
               ((targetProfile who).commit (restriction.site who site).1 action))
             (horizon - depth who (restriction.site who site))
-            (restriction.history history.1)).expect (fun final => targetPayoff final who) ≤
-          (M.runBehavioralFrom
+            (restriction.history history.1)) (fun final => targetPayoff final who) ≤
+          expect (M.runBehavioralFrom
             (Profile.update (sig := M.behavioralSignature) sourceProfile who
               ((sourceProfile who).withLaw site.1 (comparator who site action)))
             (horizon - depth who (restriction.site who site))
-            history.1).expect (fun final => sourcePayoff final who))
+            history.1) (fun final => sourcePayoff final who))
     (source : M.BehavioralAssessment)
     (sourceEquilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.continuationContext site (fun history => sourcePayoff history who)
         (horizon - depth who (restriction.site who site)))) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
-        decisionRecall.antichain
+        decisionRecall.decisionInformationAntichain
         (fun who site => target.continuationContext site
           (fun history => targetPayoff history who) (horizon - depth who site)) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
@@ -220,7 +220,7 @@ theorem sequential_equilibrium_extends_of_indifference
       source.continuationContext site (fun history => sourcePayoff history who)
         (horizon - depth who (restriction.site who site)))) :
     ∃ target : N.BehavioralAssessment,
-      target.IsSequentialEquilibriumFor decisionRecall.antichain
+      target.IsSequentialEquilibriumFor decisionRecall.decisionInformationAntichain
         (fun who site => target.continuationContext site
           (fun history => targetPayoff history who) (horizon - depth who site)) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
@@ -236,8 +236,8 @@ theorem sequential_equilibrium_extends_of_indifference
         T.terminal history.state := by
   classical
   let comparator (who : Player) (site : M.InformationSite who)
-      (_ : N.Choice who (restriction.site who site).1) : FinDist (M.Choice who site.1) :=
-    FinDist.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
+      (_ : N.Choice who (restriction.site who site).1) : PMF (M.Choice who site.1) :=
+    PMF.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
   apply restriction.sequential_equilibrium_extends_of_comparator sourceAntichain
     reference referenceMixed decisionRecall horizon bounded depth clock
     sourcePayoff targetPayoff matching comparator _ source sourceEquilibrium
@@ -247,7 +247,7 @@ theorem sequential_equilibrium_extends_of_indifference
   · have sourceConstant (final : E.History) : sourcePayoff final who = constant := by
       rw [← matching]
       exact indifferent _
-    simp only [indifferent, sourceConstant, FinDist.expect_const, le_refl]
+    simp only [indifferent, sourceConstant, expect_constant, le_refl]
 
 /-- Every source sequential equilibrium extends to the same fixed target
 game under finite, sound, sufficiently costly first-departure collection.
@@ -273,18 +273,18 @@ theorem sequential_equilibrium_extends
       (action : N.Choice who (restriction.site who site).1),
       action ∉ Set.range (restriction.choice who site.1) →
       ∀ history : M.InformationHistory who site.1,
-        detection who ≤ (N.runBehavioralFrom
+        detection who ≤ expect (N.runBehavioralFrom
           (Profile.update (sig := N.behavioralSignature) profile who
             ((profile who).commit (restriction.site who site).1 action))
           (horizon - depth who (restriction.site who site))
-          (restriction.history history.1)).expect (fun final => charge final who))
+          (restriction.history history.1)) (fun final => charge final who))
     (source : M.BehavioralAssessment)
     (sourceEquilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.continuationContext site (fun history => sourcePayoff history who)
         (horizon - depth who (restriction.site who site)))) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
-        decisionRecall.antichain
+        decisionRecall.decisionInformationAntichain
         (fun who site => target.continuationContext site
           (fun history => base history who - charge history who * deposit who)
           (horizon - depth who site)) ∧
@@ -302,8 +302,8 @@ theorem sequential_equilibrium_extends
   classical
   let utility := fun history who => base history who - charge history who * deposit who
   let comparator (who : Player) (site : M.InformationSite who)
-      (_ : N.Choice who (restriction.site who site).1) : FinDist (M.Choice who site.1) :=
-    FinDist.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
+      (_ : N.Choice who (restriction.site who site).1) : PMF (M.Choice who site.1) :=
+    PMF.pure ⟨some site.2.choose_spec.2.choose, site.2.choose_spec.2.choose_spec⟩
   apply restriction.sequential_equilibrium_extends_of_comparator sourceAntichain
     reference referenceMixed decisionRecall horizon bounded depth clock sourcePayoff utility
     (fun history who => by simp only [utility, matching, clean, zero_mul, sub_zero])
@@ -312,18 +312,18 @@ theorem sequential_equilibrium_extends
   rw [show (fun final => utility final who) =
       (fun final => base final who - charge final who * deposit who) from rfl,
     FinDist.expect_sub, FinDist.expect_mul_const]
-  have upperBound : (N.runBehavioralFrom
+  have upperBound : expect (N.runBehavioralFrom
       (Profile.update (sig := N.behavioralSignature) targetProfile who
         ((targetProfile who).commit (restriction.site who site).1 action))
       (horizon - depth who (restriction.site who site))
-      (restriction.history history.1)).expect (fun final => base final who) ≤ upper who := by
+      (restriction.history history.1)) (fun final => base final who) ≤ upper who := by
     exact (FinDist.expect_mono (fun final _ => target_upper final who)).trans_eq
-      (FinDist.expect_const _ _)
+      (expect_constant _ _)
   have netBound := sub_le_sub upperBound
     (mul_le_mul_of_nonneg_right (collection targetProfile who site action forbidden history)
       (deposit_nonnegative who))
   apply (netBound.trans (sufficient who)).trans
-  exact (FinDist.expect_const _ (lower who)).symm.trans_le
+  exact (expect_constant _ (lower who)).symm.trans_le
     (FinDist.expect_mono (fun final _ => source_lower final who))
 
 end GameTheory.Protocol.InformationModel.ActionRestriction

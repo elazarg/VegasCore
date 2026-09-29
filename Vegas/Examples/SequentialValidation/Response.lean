@@ -68,35 +68,35 @@ theorem native_bob_round (bit : Bool) (control : nativeApp.Control)
     (nativeApp.round nativeScheduler players
       (control.execution.respond nativeApp true action)).map
         ReactiveApplication.Execution.application =
-          FinDist.pure (nativeChosenState control.execution action) := by
+          PMF.pure (nativeChosenState control.execution action) := by
   rw [ReactiveApplication.round, native_bob_selection bit control trace active empty views,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   rcases action with ⟨transmission⟩
   cases transmission with
   | none =>
       simp only [nativeFinalCommand, ReactiveApplication.dispatch,
-        ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.pure_bind]
+        ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
       rfl
   | some transmission =>
       cases transmission with
       | replay id =>
           simp only [nativeFinalCommand, ReactiveApplication.dispatch,
-            ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-            ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.pure_bind]
+            ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+            ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
           rfl
       | submit submission =>
           by_cases address : submission.call.packet.event? nativeGraph = some guessEvent
           · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,
-              ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-              ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.pure_bind]
+              ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+              ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
             simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
               native_bob_fresh_lookup control trace empty submission]
             simp only [nativeChosenState, address, ↓reduceIte]
             rfl
           · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,
-              ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-              ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.pure_bind,
+              ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+              ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind,
               nativeChosenState]
             rfl
 
@@ -104,7 +104,7 @@ theorem native_round_length (players : Bool → nativeApp.Policy)
     (execution next : nativeApp.Execution)
     (reached : next ∈ (nativeApp.round nativeScheduler players execution).support) :
     next.environmentRecall.length = execution.environmentRecall.length + 1 := by
-  obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   rw [nativeApp.dispatch_environmentRecall players command execution next supported,
     List.length_append, List.length_singleton]
 
@@ -118,19 +118,19 @@ theorem native_bob_response_tail (bit : Bool) (control : nativeApp.Control)
       (control.execution.respond nativeApp true action)).map
         ReactiveApplication.Execution.application =
           nativeTail 12 44 (nativeChosenState control.execution action) := by
-  rw [show 45 = 44 + 1 from rfl, ReactiveApplication.runRounds, FinDist.map_bind]
+  rw [show 45 = 44 + 1 from rfl, ReactiveApplication.runRounds, PMF.map_bind]
   have position := (native_bob_remaining control trace active).1
   calc
     _ = (nativeApp.round nativeScheduler players
           (control.execution.respond nativeApp true action)).bind
             (fun next => nativeTail 12 44 next.application) := by
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next reached
       apply native_run_tail players 44 12 next _ (by omega) (by omega)
       rw [native_round_length players _ next reached, nativeApp.respond_environmentRecall, position]
     _ = _ := by
-      rw [← FinDist.bind_map, native_bob_round bit control trace active empty views,
-        FinDist.pure_bind]
+      rw [← PMF.bind_map, native_bob_round bit control trace active empty views,
+        PMF.pure_bind]
 
 theorem native_chosen_guess (bit guess : Bool) :
     nativeChosenState (nativeBobExecution bit) ⟨some (.submit (nativeGuessSubmission guess))⟩ =
@@ -171,12 +171,12 @@ theorem native_chosen_store (execution : nativeApp.Execution) (action : nativeAp
 theorem native_tail_guess (bit guess : Bool) :
     (nativeTail 12 44
       (nativeChosenState (nativeBobExecution bit)
-        ⟨some (.submit (nativeGuessSubmission guess))⟩)).map nativeGuess = FinDist.pure guess := by
+        ⟨some (.submit (nativeGuessSubmission guess))⟩)).map nativeGuess = PMF.pure guess := by
   rw [native_chosen_guess]
   calc
     _ = (nativeTail 12 44 { nativeGuessState bit guess with
           serviceGrant := some guessEvent }).map (fun _ => guess) := by
-      apply FinDist.map_congr_of_eq_on_support
+      apply map_congr_on_support _
       intro next reached
       have stored := native_tail_store 12 44 _ next (.inr guessEvent)
         (if guess then .success true else .failure) rfl reached

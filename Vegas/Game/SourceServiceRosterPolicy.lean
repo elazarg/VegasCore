@@ -42,7 +42,7 @@ def sourceServiceLastPolicy (setup : Setup (Player := Player) (L := L))
         (sourceServicePolicy setup leaks profile who past view).bind fun response =>
           if response.transmission = none then
             (application setup leaks).replayPolicy past view
-          else FinDist.pure response
+          else PMF.pure response
       else (application setup leaks).replayPolicy past view
 
 /-- A response count outside the final owner opportunity uses the original
@@ -87,7 +87,7 @@ theorem sourceServiceLastPolicy_at_last
     sourceServiceLastPolicy setup leaks rosters profile who past view =
       (sourceServicePolicy setup leaks profile who past view).bind (fun response =>
         if response.transmission = none then
-          (application setup leaks).replayPolicy past view else FinDist.pure response) := by
+          (application setup leaks).replayPolicy past view else PMF.pure response) := by
   classical
   unfold sourceServiceLastPolicy
   rw [granted]
@@ -114,8 +114,8 @@ theorem sourceServiceLastPolicy_submissions
   classical
   rw [sourceServiceLastPolicy_at_last setup leaks rosters profile who past view event
     granted owned unsent last]
-  conv_rhs => rw [← FinDist.bind_pure (sourceServicePolicy setup leaks profile who past view)]
-  apply FinDist.bind_congr
+  conv_rhs => rw [← PMF.bind_pure (sourceServicePolicy setup leaks profile who past view)]
+  apply bind_congr_on_support _
   intro response supported
   exact ite_eq_right (submits response supported)
 

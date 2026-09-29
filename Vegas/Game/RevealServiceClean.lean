@@ -49,12 +49,12 @@ theorem terminal_history_clean
       (2 * horizon setup watcher + 1) (by omega)
   have stateSupport : history.state ∈ (((information setup leaks bounds watcher).runBehavioral
       profile (2 * horizon setup watcher + 1)).map History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨history, supported, rfl⟩
   rw [menu_execution_law setup leaks responses watcher profile,
-    FinDist.support_bind] at stateSupport
+    PMF.support_bind] at stateSupport
   obtain ⟨initial, initially, continued⟩ := Set.mem_iUnion₂.mp stateSupport
-  rw [FinDist.support_map] at continued
+  rw [PMF.support_map] at continued
   obtain ⟨execution, reached, same⟩ := continued
   let players := responses.decodeProfile (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) profile
@@ -67,7 +67,7 @@ theorem terminal_history_clean
       (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
         (planPrefix setup watcher (eventCount setup.program))
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
-    rw [completePlan, FinDist.support_bind]
+    rw [completePlan, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨initial, initially, reached⟩
   obtain ⟨sourceInitial, _, source, related, _decoded, _priorView, _sourceReach⟩ :=
     initialized_prefix_support setup leaks bounds watcher reveals observer openable players
@@ -117,9 +117,9 @@ theorem continuationContext_net_value
       (assessment.continuationContext site (fun final => base final.state who) fuel).value
         alternative := by
   simp only [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro history _supported
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro final supported
   exact netUtility_clean setup leaks watcher who base deposit final.state
     (continuation_clean setup leaks bounds watcher reveals observer openable _ history.1 final

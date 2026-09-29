@@ -29,7 +29,7 @@ theorem activation_info_congr (left right : app.Execution) (who : Principal)
         (fun next => (next.recall who, next.observe app who)) =
       (right.environmentStep app (.activate who)).map
         (fun next => (next.recall who, next.observe app who)) := by
-  simp only [Execution.environmentStep, FinDist.map_comp, Function.comp_def,
+  simp only [Execution.environmentStep, PMF.map_comp, Function.comp_def,
     Execution.observe]
   rw [network, receipts, localView, recall]
 
@@ -38,18 +38,18 @@ theorem activation_visible (execution next : app.Execution) (who : Principal)
     next.observeEnvironment app = execution.observeEnvironment app ∧
       next.environmentRecall = execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .activate who⟩] := by
-  obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-  obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+  obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
   exact ⟨rfl, rfl⟩
 
 /-- The complete law visible to a scheduler is independent of the sampled leaks. -/
 theorem activation_visible_law (execution : app.Execution) (who : Principal) :
     (execution.environmentStep app (.activate who)).map
       (fun next => (next.environmentRecall, next.observeEnvironment app)) =
-        FinDist.pure (execution.environmentRecall ++
+        PMF.pure (execution.environmentRecall ++
           [⟨execution.observeEnvironment app, .activate who⟩],
           execution.observeEnvironment app) := by
-  simp only [Execution.environmentStep, FinDist.map_comp]
+  simp only [Execution.environmentStep, PMF.map_comp]
   simp only [Function.comp_def, Execution.observeEnvironment, MessageNetwork.learn,
     MessageNetwork.publicView, FinDist.map_const]
 

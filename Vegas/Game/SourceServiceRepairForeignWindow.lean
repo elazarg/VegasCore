@@ -57,7 +57,7 @@ theorem repair_foreign_roster_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -76,7 +76,7 @@ theorem repair_foreign_roster_coupling
   let coupling := physical.map fun pair => (pair.1, pair.2, memory)
   have leftLaw : coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) original := by
-    rw [FinDist.map_comp]
+    rw [PMF.map_comp]
     exact first
   have rightLaw : coupling.map Prod.snd =
       strategy.runJoint owner players scheduler visits.length repaired memory := by
@@ -84,15 +84,15 @@ theorem repair_foreign_roster_coupling
       before (visits.map ServiceInstruction.player) after split
       (by simpa using absent) repaired memory (by rw [← frame.service]; exact position)
     rw [List.length_map] at law
-    rw [law, ← second, FinDist.map_comp, FinDist.map_comp]
+    rw [law, ← second, PMF.map_comp, PMF.map_comp]
     rfl
   refine ⟨coupling, leftLaw, rightLaw, ?_⟩
   intro next supported
   have rightSupport : next.2 ∈
       (strategy.runJoint owner players scheduler visits.length repaired memory).support := by
-    rw [← rightLaw, FinDist.support_map]
+    rw [← rightLaw, PMF.support_map]
     exact ⟨next, supported, rfl⟩
-  obtain ⟨pair, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨pair, chosen, rfl⟩ := PMF.support_map .. ▸ supported
   refine ⟨related pair chosen, rfl, ?_⟩
   apply menu.trace_implementation_runJoint (initialLaw setup) (rosterPlan setup rosters).length
     scheduler strategy owner players _ _ remaining visits.length repaired memory trace

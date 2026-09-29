@@ -36,16 +36,16 @@ theorem player_window_application (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨rfl, rfl⟩
   | cons who rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have remaining := ih _ reached
       have unchanged := runtime.reactive_respond_application leaks
         (initial.sampledActivation app who sample) who action
@@ -64,16 +64,16 @@ theorem player_window_ledger (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | cons who rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact (ih _ reached).trans (app.respond_ledger (initial.sampledActivation app who sample)
         who action)
 
@@ -89,26 +89,26 @@ theorem interactionPlan_recall_mono (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   induction plan generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact List.Subset.refl _
   | cons instruction rest ih =>
       obtain ⟨middle, first, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       apply List.Subset.trans ?_ (ih middle reached)
-      obtain ⟨command, _, first⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ first)
+      obtain ⟨command, _, first⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ first)
       unfold ReactiveApplication.dispatch at first
       obtain ⟨activated, environment, response⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ first)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ first)
       have recall := app.environmentStep_recall initial activated command environment
       change middle ∈ (app.resume players (command.actor? app) activated).support at response
       cases actor : command.actor? app with
       | none =>
           rw [actor] at response
-          cases FinDist.mem_support_pure.mp response
+          cases (PMF.mem_support_pure_iff _ _).mp response
           rw [recall]
       | some active =>
           rw [actor] at response
-          obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ response
+          obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ response
           rw [← recall]
           exact app.respond_recall_mono activated active who action
 

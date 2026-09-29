@@ -18,7 +18,7 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
 private theorem sample_inert (state : EventGraphRuntime.State nativeGraph)
     (event : nativeGraph.EventId) :
-    environmentStep nativeRuntime state (.executeSample event) = FinDist.pure state := by
+    environmentStep nativeRuntime state (.executeSample event) = PMF.pure state := by
   by_cases ready : state.config.cut.Ready event
   · apply environmentStep_executeSample_of_nonsample nativeRuntime state event ready
     intro payload law outputEq codeEq view
@@ -26,21 +26,21 @@ private theorem sample_inert (state : EventGraphRuntime.State nativeGraph)
   · exact environmentStep_executeSample_of_not_ready nativeRuntime state event ready
 
 theorem environment_pure (execution : app.Execution) (command : app.Command) :
-    ∃ next, execution.environmentStep app command = FinDist.pure next := by
+    ∃ next, execution.environmentStep app command = PMF.pure next := by
   cases command with
   | activate who => exact ⟨activate execution who, activation_law execution who⟩
   | wait | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
       exact ⟨_, rfl⟩
   | application command =>
       cases command with
       | grant event | advanceClock | expire event =>
           simp only [ReactiveApplication.Execution.environmentStep, app, serviceApp,
-            reactiveApplication, environmentStep, FinDist.map_pure]
+            reactiveApplication, environmentStep, PMF.pure_map]
           exact ⟨_, rfl⟩
       | executeSample event =>
           simp only [ReactiveApplication.Execution.environmentStep, app, serviceApp,
-            reactiveApplication, sample_inert, FinDist.map_pure]
+            reactiveApplication, sample_inert, PMF.pure_map]
           exact ⟨_, rfl⟩
 
 /-- The unique point of the existing deterministic environment law. -/
@@ -48,27 +48,27 @@ def environmentResult (execution : app.Execution) (command : app.Command) : app.
   (environment_pure execution command).choose
 
 theorem environmentResult_law (execution : app.Execution) (command : app.Command) :
-    execution.environmentStep app command = FinDist.pure (environmentResult execution command) :=
+    execution.environmentStep app command = PMF.pure (environmentResult execution command) :=
   (environment_pure execution command).choose_spec
 
 theorem environmentResult_eq (execution : app.Execution) (command : app.Command)
-    (next : app.Execution) (law : execution.environmentStep app command = FinDist.pure next) :
+    (next : app.Execution) (law : execution.environmentStep app command = PMF.pure next) :
     environmentResult execution command = next := by
   have same := (environmentResult_law execution command).symm.trans law
-  exact FinDist.mem_support_pure.mp (same ▸ FinDist.mem_support_pure.mpr rfl)
+  exact (PMF.mem_support_pure_iff _ _).mp (same ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem environmentResult_application_law (execution : app.Execution)
     (command : EnvironmentCommand nativeGraph) :
     app.environment execution.application command =
-      FinDist.pure (environmentResult execution (.application command)).application := by
-  have law := congrArg (fun distribution : FinDist app.Execution =>
+      PMF.pure (environmentResult execution (.application command)).application := by
+  have law := congrArg (fun distribution : PMF app.Execution =>
     distribution.map (fun result => result.application))
       (environmentResult_law execution (.application command))
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp,
-    Function.comp_def, FinDist.map_pure] at law
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp,
+    Function.comp_def, PMF.pure_map] at law
   have identity : (app.environment execution.application command).map
       (fun state : app.State => state) = app.environment execution.application command :=
-    FinDist.map_id _
+    PMF.map_id _
   exact identity.symm.trans law
 
 theorem environmentResult_recall (execution : app.Execution) (command : app.Command) :
@@ -77,8 +77,8 @@ theorem environmentResult_recall (execution : app.Execution) (command : app.Comm
   have reached : environmentResult execution command ∈
       (execution.environmentStep app command).support := by
     rw [environmentResult_law]
-    exact FinDist.mem_support_pure.mpr rfl
-  obtain ⟨middle, _, same⟩ := FinDist.support_map .. ▸ reached
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  obtain ⟨middle, _, same⟩ := PMF.support_map .. ▸ reached
   exact congrArg ReactiveApplication.Execution.environmentRecall same.symm
 
 theorem environmentResult_activate (execution : app.Execution) (who : Player) :
@@ -91,13 +91,13 @@ theorem environmentResult_preserves {predicate : app.State → Prop}
     predicate (environmentResult execution command).application := by
   apply invariant.environmentStep execution _ command valid
   rw [environmentResult_law]
-  exact FinDist.mem_support_pure.mpr rfl
+  exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem environmentResult_grant (execution : app.Execution) (event : nativeGraph.EventId) :
     environmentResult execution (.application (.grant event)) = granted execution event := by
   apply environmentResult_eq
   simp only [ReactiveApplication.Execution.environmentStep, app, serviceApp,
-    reactiveApplication, environmentStep, FinDist.map_pure, granted]
+    reactiveApplication, environmentStep, PMF.pure_map, granted]
 
 def includeLatest (execution : app.Execution) (event : nativeGraph.EventId) (who : Player) :
     app.Execution :=
@@ -107,34 +107,34 @@ def includeLatest (execution : app.Execution) (event : nativeGraph.EventId) (who
 private theorem passive_step (players : Player → app.Policy) (execution : app.Execution)
     (instruction : ServiceInstruction nativeGraph) (command : app.Command)
     (selected : nativeRuntime.interactionInstruction leaks network execution.environmentRecall
-      (execution.observeEnvironment app) instruction = FinDist.pure command)
+      (execution.observeEnvironment app) instruction = PMF.pure command)
     (passive : command.actor? app = none) :
     nativeRuntime.interactionStep leaks players network instruction execution =
-      FinDist.pure (environmentResult execution command) := by
-  simp only [interactionStep, selected, FinDist.pure_bind, ReactiveApplication.dispatch,
-    environmentResult_law, FinDist.pure_bind, passive, ReactiveApplication.resume]
+      PMF.pure (environmentResult execution command) := by
+  simp only [interactionStep, selected, PMF.pure_bind, ReactiveApplication.dispatch,
+    environmentResult_law, PMF.pure_bind, passive, ReactiveApplication.resume]
 
 theorem grant_step (players : Player → app.Policy) (execution : app.Execution)
     (event : nativeGraph.EventId) :
     nativeRuntime.interactionStep leaks players network (.grant event) execution =
-      FinDist.pure (environmentResult execution (.application (.grant event))) :=
+      PMF.pure (environmentResult execution (.application (.grant event))) :=
   passive_step players execution _ _ rfl rfl
 
 theorem tick_step (players : Player → app.Policy) (execution : app.Execution) :
     nativeRuntime.interactionStep leaks players network .tick execution =
-      FinDist.pure (environmentResult execution (.application .advanceClock)) :=
+      PMF.pure (environmentResult execution (.application .advanceClock)) :=
   passive_step players execution _ _ rfl rfl
 
 theorem expire_step (players : Player → app.Policy) (execution : app.Execution)
     (event : nativeGraph.EventId) :
     nativeRuntime.interactionStep leaks players network (.expire event) execution =
-      FinDist.pure (environmentResult execution (.application (.expire event))) :=
+      PMF.pure (environmentResult execution (.application (.expire event))) :=
   passive_step players execution _ _ rfl rfl
 
 theorem include_step (players : Player → app.Policy) (execution : app.Execution)
     (event : nativeGraph.EventId) (who : Player) :
     nativeRuntime.interactionStep leaks players network (.includeLatest event who) execution =
-      FinDist.pure (includeLatest execution event who) := by
+      PMF.pure (includeLatest execution event who) := by
   apply passive_step players execution _ _ rfl
   unfold reactiveLatest
   split <;> rfl
@@ -143,8 +143,8 @@ theorem player_step (players : Player → app.Policy) (execution : app.Execution
     nativeRuntime.interactionStep leaks players network (.player who) execution =
       (players who (execution.recall who) (execution.observe app who)).map
         (fun response => (activate execution who).respond app who response) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-    ReactiveApplication.dispatch, activation_law, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+    ReactiveApplication.dispatch, activation_law, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke]
   rfl
 
@@ -180,13 +180,13 @@ def bobInput (responses : BobResponses) : app.Execution :=
   let expired := environmentResult secondTick (.application (.expire carolBinding))
   activate (environmentResult expired (.application (.grant bobBinding))) bob
 
-def preludeLaw (players : Player → app.Policy) : FinDist (app.Action × app.Action) :=
+def preludeLaw (players : Player → app.Policy) : PMF (app.Action × app.Action) :=
   (players alice (initial.recall alice) (initial.observe app alice)).bind fun first =>
     let beforeBob := bobPreludeInput first
     (players bob (beforeBob.recall bob) (beforeBob.observe app bob)).map
       fun second => (first, second)
 
-def carolLaw (players : Player → app.Policy) : FinDist CarolResponses :=
+def carolLaw (players : Player → app.Policy) : PMF CarolResponses :=
   (players alice (initial.recall alice) (initial.observe app alice)).bind fun first =>
     let beforeBob := bobPreludeInput first
     (players bob (beforeBob.recall bob) (beforeBob.observe app bob)).bind fun second =>
@@ -194,14 +194,14 @@ def carolLaw (players : Player → app.Policy) : FinDist CarolResponses :=
       (players alice (beforeAlice.recall alice) (beforeAlice.observe app alice)).map fun third =>
         ⟨first, second, third⟩
 
-def bobLaw (players : Player → app.Policy) : FinDist BobResponses :=
+def bobLaw (players : Player → app.Policy) : PMF BobResponses :=
   (carolLaw players).bind fun first =>
     let beforeCarol := carolInput first
     (players carol (beforeCarol.recall carol) (beforeCarol.observe app carol)).map fun second =>
       ⟨first, second⟩
 
 def decisionLaw (players : Player → app.Policy) (event : nativeGraph.EventId) :
-    FinDist app.Execution :=
+    PMF app.Execution :=
   (nativeRuntime.runInteractionPlan leaks players network (nativeBeforeResponse event) initial).bind
     fun prior => prior.environmentStep app (.activate (nativeOwner event))
 
@@ -212,8 +212,8 @@ theorem carol_factorization (players : Player → app.Policy) :
       .includeLatest aliceBinding alice, .tick, .expire aliceBinding, .grant carolBinding]
       initial).bind fun prior => prior.environmentStep app (.activate carol)) = _
   simp only [runInteractionPlan, player_step, grant_step, tick_step, expire_step, include_step,
-    FinDist.pure_bind, FinDist.bind_pure, FinDist.bind_map, FinDist.map_bind,
-    FinDist.bind_bind, activation_law, carolLaw, FinDist.map_comp]
+    PMF.pure_bind, PMF.bind_pure, PMF.bind_map, PMF.map_bind,
+    PMF.bind_bind, activation_law, carolLaw, PMF.map_comp]
   rfl
 
 theorem bob_factorization (players : Player → app.Policy) :
@@ -225,8 +225,8 @@ theorem bob_factorization (players : Player → app.Policy) :
       .expire carolBinding, .grant bobBinding]
       initial).bind fun prior => prior.environmentStep app (.activate bob)) = _
   simp only [runInteractionPlan, player_step, grant_step, tick_step, expire_step, include_step,
-    FinDist.pure_bind, FinDist.bind_pure, FinDist.bind_map, FinDist.map_bind,
-    FinDist.bind_bind, activation_law, bobLaw, carolLaw, FinDist.map_comp]
+    PMF.pure_bind, PMF.bind_pure, PMF.bind_map, PMF.map_bind,
+    PMF.bind_bind, activation_law, bobLaw, carolLaw, PMF.map_comp]
   rfl
 
 end Vegas.Examples.SelectiveAssociation.Restricted.Prefix

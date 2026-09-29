@@ -177,7 +177,7 @@ theorem sourceServiceOpportunity_commit_covered
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte] at supported
   obtain ⟨chosen, chosenSupported, supported⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨value, _sourceSupported, chosenEq⟩ := sourceServicePolicy_commit_supported
     setup leaks fresh guard next wholeProfile profile permitted refs source embedding refsBefore
     offset aligned execution agree history granted serial selected candidate chosen chosenSupported
@@ -185,7 +185,7 @@ theorem sourceServiceOpportunity_commit_covered
     rw [chosenEq]
     exact Option.some_ne_none _
   rw [ite_eq_right transmitted] at supported
-  cases FinDist.mem_support_pure.mp supported
+  cases (PMF.mem_support_pure_iff _ _).mp supported
   rw [chosenEq]
   have bounded := covered event
   rw [outputEq] at bounded
@@ -266,9 +266,9 @@ theorem sourceServiceOpportunity_reveal_covered
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte] at supported
   rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
       refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
-        granted, FinDist.bind_map] at supported
+        granted, PMF.bind_map] at supported
   obtain ⟨disclose, _chosen, supported⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   rw [serviceDecision_effectiveDisclosure (runtime setup) leaks published binding source refs
     execution checkpoint.agrees event outputEq codeEq node disclose] at supported
   cases effective : effectiveDisclosure published binding source disclose with
@@ -297,7 +297,7 @@ theorem sourceServiceOpportunity_reveal_covered
         rw [sourceServiceActions, ite_eq_right optional]
         exact bounds.replay_compiled (runtime setup) leaks owner _ _ response supported
       · rw [ite_eq_right silent] at supported
-        cases FinDist.mem_support_pure.mp supported
+        cases (PMF.mem_support_pure_iff _ _).mp supported
         obtain ⟨value, success⟩ : ∃ value,
             disclosureResult published binding source true = .success value := by
           cases disclose with

@@ -22,20 +22,20 @@ theorem native_full_continuation_of_enough
       ⟨some control, trace⟩).support) :
     ∃ full ∈ (nativeModel.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support, full.state = final.state := by
-  have short := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon
+  have short := nativeMenu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler profile fuel ⟨some control, trace⟩ enough
-  have long := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon
+  have long := nativeMenu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler profile (2 * nativeHorizon + 1) ⟨some control, trace⟩ (by
       change nativeApp.rank nativeHorizon (some control) ≤ 2 * nativeHorizon + 1
-      have bound := nativeApp.trace_bound (FinDist.pure nativeInitial) nativeHorizon
-        nativeScheduler (nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+      have bound := nativeApp.trace_bound (PMF.pure nativeInitial) nativeHorizon
+        nativeScheduler (nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon
           nativeScheduler trace)
       omega)
   have mapped : final.state ∈ ((nativeModel.runBehavioralFrom profile fuel
       ⟨some control, trace⟩).map ExecutionProtocol.History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨final, supported, rfl⟩
-  rw [short, ← long, FinDist.support_map] at mapped
+  rw [short, ← long, PMF.support_map] at mapped
   exact mapped
 
 open Classical in
@@ -59,7 +59,7 @@ theorem native_opening_exact_from_control
   let past := control.execution.recall who
   let view := control.execution.observe nativeApp who
   have information : nativeModel.infoOf who trace = some (past, view) := by
-    change (nativeMenu.signals (FinDist.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
+    change (nativeMenu.signals (PMF.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
       who trace = some (past, view)
     rw [nativeMenu.info]
     simp only [ReactiveApplication.observe, active, ↓reduceIte]
@@ -135,7 +135,7 @@ theorem native_binding_at_opening_from_final
   | some binding =>
       obtain ⟨later, laterEq, preserved⟩ :=
         (native_binding_invariant who binding).behavioral_continuation nativeMenu
-          (FinDist.pure nativeInitial) nativeHorizon nativeScheduler profile fuel control trace
+          (PMF.pure nativeInitial) nativeHorizon nativeScheduler profile fuel control trace
           final value supported
       have same : later = result := Option.some.inj (laterEq.symm.trans finalEq)
       subst later

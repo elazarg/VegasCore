@@ -79,8 +79,8 @@ theorem ledgerViolation_application
       (.application command)).support) :
     ledgerViolation who permitted next.network.ledger =
       ledgerViolation who permitted execution.network.ledger := by
-  obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-  obtain ⟨_, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+  obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ supported
   rfl
 
 theorem ledgerViolation_respond
@@ -110,16 +110,16 @@ theorem ledgerViolation_environment
     ledgerViolation who permitted next.network.ledger = true := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact detected
   | activate actor =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact detected
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       change ledgerViolation who permitted
         (execution.includePending app id).network.ledger = true
       rw [app.includePending_network]
@@ -130,8 +130,8 @@ theorem ledgerViolation_environment
           exact ledgerViolation_mono who permitted (fun _ member => List.mem_append_left _ member)
             detected
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨_, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact detected
 
 theorem ledgerViolation_policyInvariant

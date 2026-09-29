@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveResponseMenu
 import GameTheory.Analysis.Protocol.CounterfactualRegret
-import GameTheoryExtensions.Protocol.DecisionRecall
+import GameTheory.Protocol.DecisionRecall
 
 /-! # Own play is determined by reactive decision recall
 
@@ -59,7 +59,7 @@ theorem respond_ownPlay (execution : app.Execution) (who : Principal) (response 
   | some transmission =>
       cases transmission <;> simp only [Execution.respond, ↓reduceIte, recallOwnPlay_append]
 
-theorem trace_ownPlay (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem trace_ownPlay (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) : ∀ {state} (history : (app.protocol initial horizon scheduler).Trace state),
     (app.signals initial horizon scheduler).ownPlay who history =
       app.recallOwnPlay (app.recallAt who state)
@@ -75,14 +75,14 @@ theorem trace_ownPlay (initial : FinDist app.State) (horizon : Nat) (scheduler :
       cases before with
       | none =>
           have chosen := idle (by simp [protocol, actor])
-          obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ realized
+          obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ realized
           simp only [chosen, earlier]
           rfl
       | some control =>
           rcases control with ⟨remaining, actor, execution⟩
           cases actor with
           | some owner =>
-              cases FinDist.mem_support_pure.mp realized
+              cases (PMF.mem_support_pure_iff _ _).mp realized
               by_cases same : who = owner
               · subst owner
                 cases chosen : joint who with
@@ -105,11 +105,11 @@ theorem trace_ownPlay (initial : FinDist app.State) (horizon : Nat) (scheduler :
               have chosen := idle (by simp [protocol, actor])
               rw [chosen, earlier]
               cases remaining with
-              | zero => cases FinDist.mem_support_pure.mp realized; rfl
+              | zero => cases (PMF.mem_support_pure_iff _ _).mp realized; rfl
               | succ remaining =>
                   obtain ⟨command, _, supported⟩ :=
-                    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ realized)
-                  obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ realized)
+                  obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
                   exact congrArg (fun recall => app.recallOwnPlay (recall who))
                     (app.environmentStep_recall execution next command moved).symm
 
@@ -117,7 +117,7 @@ namespace ResponseMenu
 
 variable {app} (menu : app.ResponseMenu)
 
-theorem ownPlay_toRawTrace (initial : FinDist app.State) (horizon : Nat)
+theorem ownPlay_toRawTrace (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal) {state}
     (history : (menu.protocol initial horizon scheduler).Trace state) :
     (app.signals initial horizon scheduler).ownPlay who
@@ -132,7 +132,7 @@ theorem ownPlay_toRawTrace (initial : FinDist app.State) (horizon : Nat)
       | some response =>
           rw [app.info, menu.info]
 
-theorem ownPlay_of_info_some (initial : FinDist app.State) (horizon : Nat)
+theorem ownPlay_of_info_some (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal)
     (history : (menu.protocol initial horizon scheduler).History)
     (past : List app.PlayerEntry) (view : app.PlayerView)
@@ -157,7 +157,7 @@ theorem ownPlay_of_info_some (initial : FinDist app.State) (horizon : Nat)
 
 /-- At a decision site, private recall determines the whole canonical own-play
 sequence even though the common inactive information state forgets it. -/
-theorem ownPlay_at_site (initial : FinDist app.State) (horizon : Nat)
+theorem ownPlay_at_site (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (who : Principal)
     (site : (menu.information initial horizon scheduler).InformationSite who)
     (first second : (menu.information initial horizon scheduler).InformationHistory who site.1) :
@@ -176,12 +176,12 @@ theorem ownPlay_at_site (initial : FinDist app.State) (horizon : Nat)
           second.2).symm
 
 /-- Every response-menu instance has decision recall with its existing native observations. -/
-theorem decisionRecall (initial : FinDist app.State) (horizon : Nat)
+theorem decisionRecall (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) :
     (menu.information initial horizon scheduler).DecisionRecall :=
   menu.ownPlay_at_site initial horizon scheduler
 
-theorem commonPlayerReachAt (initial : FinDist app.State) (horizon : Nat)
+theorem commonPlayerReachAt (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler)
     (strategy : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal) (site : (menu.information initial horizon scheduler).InformationSite who) :

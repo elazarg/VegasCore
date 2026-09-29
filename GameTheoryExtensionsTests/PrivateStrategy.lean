@@ -17,25 +17,25 @@ namespace GameTheoryExtensionsTests.PrivateStrategy
 open GameTheory.Protocol.PrivateStrategy GameTheory.Math.Probability
 
 def strategy : Strategy Bool Bool Bool where
-  initial := FinDist.uniformOfFintype
-  respond memory input := FinDist.pure (xor memory input, memory)
+  initial := PMF.uniformOfFintype
+  respond memory input := PMF.pure (xor memory input, memory)
 
 def observe (past : List Bool) : Bool := past.headD false
 
-def advance (past : List Bool) (output : Bool) : FinDist (List Bool) :=
-  FinDist.pure (output :: past)
+def advance (past : List Bool) (output : Bool) : PMF (List Bool) :=
+  PMF.pure (output :: past)
 
 theorem private_two (memory : Bool) : runPrivate strategy observe advance 2 [] [] memory =
-    FinDist.pure ([false, memory], [(memory, false), (false, memory)]) := by
+    PMF.pure ([false, memory], [(memory, false), (false, memory)]) := by
   cases memory <;> simp [runPrivate, strategy, observe, advance]
 
 theorem behavioral_two : runBehavioral (behavioral strategy) observe advance 2 [] [] =
-    (FinDist.uniformOfFintype (α := Bool)).map (fun bit =>
+    (PMF.uniformOfFintype (α := Bool)).map (fun bit =>
       ([false, bit], [(bit, false), (false, bit)])) := by
   rw [← realize strategy observe advance 2 [] []]
-  change (FinDist.uniformOfFintype (α := Bool)).bind _ = _
-  rw [FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  change (PMF.uniformOfFintype (α := Bool)).bind _ = _
+  rw [← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro memory _
   exact private_two memory
 

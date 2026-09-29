@@ -91,7 +91,7 @@ theorem handle_deviationContinuation
       (actor : graph.actor? event = some focal),
       graph.normalizePolicy focal (profile focal) event actor
         (graph.playerObserve focal execution.native.application.config) =
-          FinDist.pure action) :
+          PMF.pure action) :
     next.deviationContinuation profile focal =
       execution.native.application.deviationContinuation profile focal := by
   obtain ⟨event, addressed, actor⟩ :=
@@ -142,7 +142,7 @@ theorem environmentStep_expire_deviationContinuation
       (actor : graph.actor? event = some focal),
       graph.normalizePolicy focal (profile focal) event actor
         (graph.playerObserve focal execution.native.application.config) =
-          FinDist.pure action) :
+          PMF.pure action) :
     (environmentStep runtime execution.native.application (.expire event)).bind
         (fun next => next.deviationContinuation profile focal) =
       execution.native.application.deviationContinuation profile focal := by
@@ -153,7 +153,7 @@ theorem environmentStep_expire_deviationContinuation
         calc
           _ = (environmentStep runtime execution.native.application (.expire event)).bind
               (fun _ => execution.native.application.deviationContinuation profile focal) := by
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro next supported
             obtain unchanged | ⟨ready, action, member⟩ :=
               runtime.environmentStep_expire_config_eq_or_mem_step
@@ -166,7 +166,7 @@ theorem environmentStep_expire_deviationContinuation
                 action member (runtime.environmentStep_remembered _ _ _ supported)
                 (fun _ owned => focalAction next supported ready action member owned)
                 (fun different => (different rfl).elim)
-          _ = _ := FinDist.bind_const _ _
+          _ = _ := PMF.bind_const _ _
       · rw [runtime.environmentStep_expire_eq_of_age execution.native.application event
           (feasible event) (assumptions.activationAge owner same event actorEq)]
         simp
@@ -217,7 +217,7 @@ theorem environmentStep_deviationContinuation
       (actor : graph.actor? event = some focal),
       graph.normalizePolicy focal (profile focal) event actor
         (graph.playerObserve focal execution.native.application.config) =
-          FinDist.pure action) :
+          PMF.pure action) :
     (environmentStep runtime execution.native.application command).bind
         (fun next => next.deviationContinuation profile focal) =
       execution.native.application.deviationContinuation profile focal := by
@@ -258,7 +258,7 @@ theorem environmentPolicyStep_deviationContinuation
       (actor : graph.actor? event = some focal),
       graph.normalizePolicy focal (profile focal) event actor
         (graph.playerObserve focal execution.native.application.config) =
-          FinDist.pure action)
+          PMF.pure action)
     (focalExpiry : ∀ event, command = .application (.expire event) → ∀ (next : State graph)
       (_supported : next ∈
         (environmentStep runtime execution.native.application (.expire event)).support)
@@ -269,7 +269,7 @@ theorem environmentPolicyStep_deviationContinuation
       (actor : graph.actor? event = some focal),
       graph.normalizePolicy focal (profile focal) event actor
         (graph.playerObserve focal execution.native.application.config) =
-          FinDist.pure action) :
+          PMF.pure action) :
     (runtime.application.environmentPolicyStep execution command).bind
         (fun next => next.native.application.deviationContinuation profile focal) =
       execution.native.application.deviationContinuation profile focal := by
@@ -280,7 +280,7 @@ theorem environmentPolicyStep_deviationContinuation
   | «include» id =>
       simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
         MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.pure_bind]
+        PMF.pure_bind]
       cases lookup : execution.native.pool.lookup id with
       | none =>
           rw [runtime.application.includePending_missing execution.native id lookup]
@@ -300,8 +300,8 @@ theorem environmentPolicyStep_deviationContinuation
   | application applicationCommand =>
       simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
         MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.bind_bind, FinDist.pure_bind]
-      rw [FinDist.bind_map]
+        PMF.bind_bind, PMF.pure_bind]
+      rw [PMF.bind_map]
       change (environmentStep runtime execution.native.application applicationCommand).bind
           (fun next => next.deviationContinuation profile focal) =
         execution.native.application.deviationContinuation profile focal

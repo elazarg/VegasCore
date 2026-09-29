@@ -32,8 +32,8 @@ theorem carol_flip_probability (weight : ℝ) (nonnegative : 0 ≤ weight)
     (responses : CarolResponses)
     (different : responses.aliceBinding ≠ response alice
       ((aliceInput responses.alicePrelude responses.bobPrelude).observe app alice)) :
-    (carolLaw (mixed weight nonnegative atMostOne)).prob responses ≤
-      (carolLaw (mixed weight nonnegative atMostOne)).prob (flipCarol selected responses) := by
+    ((carolLaw (mixed weight nonnegative atMostOne)) responses).toReal ≤
+      ((carolLaw (mixed weight nonnegative atMostOne)) (flipCarol selected responses)).toReal := by
   have first := mixed_flip_silent weight nonnegative atMostOne selected alice
     (initial.recall alice) (initial.recall alice) (initial.observe app alice)
     (initial.observe app alice) rfl rfl rfl responses.alicePrelude
@@ -54,7 +54,7 @@ theorem carol_flip_probability (weight : ℝ) (nonnegative : 0 ≤ weight)
   dsimp only [flipCarol]
   rw [← first, recallSame, viewSame]
   exact mul_le_mul_of_nonneg_left
-    (mul_le_mul_of_nonneg_left third (FinDist.prob_nonneg _ _)) (FinDist.prob_nonneg _ _)
+    (mul_le_mul_of_nonneg_left third (ENNReal.toReal_nonneg)) (ENNReal.toReal_nonneg)
 
 theorem bob_flip_probability (weight : ℝ) (nonnegative : 0 ≤ weight)
     (atMostOne : weight ≤ 1) (selected : Handle nativeGraph) (owner : selected.1 = alice)
@@ -67,8 +67,8 @@ theorem bob_flip_probability (weight : ℝ) (nonnegative : 0 ≤ weight)
         (carolInput (flipCarol selected responses.beforeCarol)).observe app carol) =
       ((carolInput responses.beforeCarol).recall carol,
         (carolInput responses.beforeCarol).observe app carol)) :
-    (bobLaw (mixed weight nonnegative atMostOne)).prob responses ≤
-      (bobLaw (mixed weight nonnegative atMostOne)).prob (flipBob selected responses) := by
+    ((bobLaw (mixed weight nonnegative atMostOne)) responses).toReal ≤
+      ((bobLaw (mixed weight nonnegative atMostOne)) (flipBob selected responses)).toReal := by
   have before := carol_flip_probability weight nonnegative atMostOne selected owner
     responses.beforeCarol different
   have recallSame := congrArg Prod.fst carolSame
@@ -77,6 +77,6 @@ theorem bob_flip_probability (weight : ℝ) (nonnegative : 0 ≤ weight)
   rw [bob_probability, bob_probability]
   dsimp only [flipBob]
   rw [recallSame, viewSame]
-  exact mul_le_mul_of_nonneg_right before (FinDist.prob_nonneg _ _)
+  exact mul_le_mul_of_nonneg_right before (ENNReal.toReal_nonneg)
 
 end Vegas.Examples.SelectiveAssociation.Restricted.Prefix

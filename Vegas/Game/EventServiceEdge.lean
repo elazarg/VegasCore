@@ -28,7 +28,7 @@ unilateral-mixture simulation on typed terminal stores, admitting every native
 player policy. -/
 def servicedCanonicalSimulation (runtime : EventGraphRuntime graph)
     (ordered : graph.BarrierOrdered) (feasible : runtime.ServiceFeasible)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
       (runtime.servicedEventGame inputs roster reactionRounds wire order)
@@ -42,7 +42,7 @@ def servicedCanonicalSimulation (runtime : EventGraphRuntime graph)
     unfold Vegas.EventGraph.canonicalGame
     rw [compiled, runtime.servicedEventGame_honest_store_law ordered feasible,
       graph.gameForm_play_map_terminalStore]
-    exact FinDist.bind_congr fun input _ => by
+    exact bind_congr_on_support _ fun input _ => by
       rw [← graph.runPolicies_canonical_normalize_eq profile input]
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
@@ -54,9 +54,9 @@ def servicedCanonicalSimulation (runtime : EventGraphRuntime graph)
         runtime.compileProfile profile := rfl
     unfold Vegas.EventGraph.canonicalGame
     rw [compiled, law]
-    refine FinDist.bind_congr fun alternative _ => ?_
+    refine bind_congr_on_support _ fun alternative _ => ?_
     rw [graph.gameForm_play_map_terminalStore]
-    exact FinDist.bind_congr fun input _ => by
+    exact bind_congr_on_support _ fun input _ => by
       rw [← graph.runPolicies_canonical_normalize_eq
         (Profile.update (sig := graph.gameSignature) profile who alternative) input]
 

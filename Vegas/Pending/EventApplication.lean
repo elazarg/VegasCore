@@ -778,7 +778,7 @@ private theorem bind_complete_mem_step (state : State graph)
       (state.config.step event ready
         (cast (congrArg EventField.Action outputEq.symm) result)).support := by
   rw [state.config.step_eq_map_of_code event ready outputEq (.bind owner payload)
-    codeEq result (FinDist.pure result) rfl]
+    codeEq result (PMF.pure result) rfl]
   simp
 
 omit [DecidableEq Player] in
@@ -800,7 +800,7 @@ private theorem resolve_complete_mem_step (state : State graph)
         (cast (congrArg EventField.Action outputEq.symm) disclose)).support := by
   rw [state.config.step_eq_map_of_code event ready outputEq
     (.resolve owner payload binding checks) codeEq disclose
-    (FinDist.pure result)]
+    (PMF.pure result)]
   · simp
   · rw [EventCode.resolve_eval?, resultEq]
     rfl
@@ -1498,7 +1498,7 @@ theorem handle_publicView_replaceRemembered (runtime : EventGraphRuntime graph)
 /-- A sample command runs the retained chance kernel once when the addressed
 event is ready. Other event kinds stutter. -/
 private def executeSample (state : State graph) (event : graph.EventId) :
-    FinDist (State graph) :=
+    PMF (State graph) :=
   if ready : state.config.cut.Ready event then
     match nodeView graph event with
     | .sample _ _ outputEq _codeEq =>
@@ -1507,8 +1507,8 @@ private def executeSample (state : State graph) (event : graph.EventId) :
             { state with
               config
               activatedAt := State.refreshActivated config state.clock state.activatedAt }
-    | .bind .. | .resolve .. => FinDist.pure state
-  else FinDist.pure state
+    | .bind .. | .resolve .. => PMF.pure state
+  else PMF.pure state
 
 /-- Expiry is local to one ready strategic event and consumes no other event's
 budget. It completes binds with failure and resolutions with `false`. -/
@@ -1533,11 +1533,11 @@ private def expire (runtime : EventGraphRuntime graph) (state : State graph)
   else state
 
 def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
-    EnvironmentCommand graph → FinDist (State graph)
-  | .grant event => FinDist.pure { state with serviceGrant := some event }
-  | .advanceClock => FinDist.pure { state with clock := state.clock + 1 }
+    EnvironmentCommand graph → PMF (State graph)
+  | .grant event => PMF.pure { state with serviceGrant := some event }
+  | .advanceClock => PMF.pure { state with clock := state.clock + 1 }
   | .executeSample event => executeSample state event
-  | .expire event => FinDist.pure (expire runtime state event)
+  | .expire event => PMF.pure (expire runtime state event)
 
 omit [DecidableEq Player] in
 /-- Environment application operations cannot write a player's action cache. -/
@@ -1547,7 +1547,7 @@ theorem environmentStep_remembered (runtime : EventGraphRuntime graph)
     after.remembered = before.remembered := by
   cases command with
   | grant event | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst after
       rfl
   | executeSample event =>
@@ -1556,19 +1556,19 @@ theorem environmentStep_remembered (runtime : EventGraphRuntime graph)
       split at member
       · cases view : nodeView graph event with
         | bind | resolve =>
-            simp only [view, FinDist.mem_support_pure] at member
+            simp only [view, PMF.mem_support_pure_iff _ _] at member
             subst after
             rfl
         | sample =>
-            simp only [view, FinDist.support_map, Set.mem_image] at member
+            simp only [view, PMF.support_map, Set.mem_image] at member
             obtain ⟨config, _, rfl⟩ := member
             rfl
-      · simp only [FinDist.mem_support_pure] at member
+      · simp only [PMF.mem_support_pure_iff _ _] at member
         subst after
         rfl
   | expire event =>
-      change after ∈ (FinDist.pure (expire runtime before event)).support at member
-      rw [FinDist.mem_support_pure] at member
+      change after ∈ (PMF.pure (expire runtime before event)).support at member
+      rw [PMF.mem_support_pure_iff _ _] at member
       subst after
       unfold expire
       split
@@ -1594,7 +1594,7 @@ theorem environmentStep_serviceGrant (runtime : EventGraphRuntime graph)
       | _ => before.serviceGrant := by
   cases command with
   | grant event | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst after
       rfl
   | executeSample event =>
@@ -1603,19 +1603,19 @@ theorem environmentStep_serviceGrant (runtime : EventGraphRuntime graph)
       split at member
       · cases view : nodeView graph event with
         | bind | resolve =>
-            simp only [view, FinDist.mem_support_pure] at member
+            simp only [view, PMF.mem_support_pure_iff _ _] at member
             subst after
             rfl
         | sample =>
-            simp only [view, FinDist.support_map, Set.mem_image] at member
+            simp only [view, PMF.support_map, Set.mem_image] at member
             obtain ⟨config, _, rfl⟩ := member
             rfl
-      · simp only [FinDist.mem_support_pure] at member
+      · simp only [PMF.mem_support_pure_iff _ _] at member
         subst after
         rfl
   | expire event =>
-      change after ∈ (FinDist.pure (expire runtime before event)).support at member
-      rw [FinDist.mem_support_pure] at member
+      change after ∈ (PMF.pure (expire runtime before event)).support at member
+      rw [PMF.mem_support_pure_iff _ _] at member
       subst after
       change (expire runtime before event).serviceGrant = before.serviceGrant
       unfold expire
@@ -1641,11 +1641,11 @@ theorem environmentStep_tables
     next.accepted = state.accepted ∧ next.candidates = state.candidates := by
   cases command with
   | grant event =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨rfl, rfl⟩
   | advanceClock =>
-      simp only [environmentStep, FinDist.mem_support_pure] at member
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨rfl, rfl⟩
   | executeSample event =>
@@ -1656,20 +1656,20 @@ theorem environmentStep_tables
         cases view : nodeView graph event with
         | bind | resolve =>
             simp only [view] at member
-            simp only [FinDist.mem_support_pure] at member
+            simp only [PMF.mem_support_pure_iff _ _] at member
             subst next
             exact ⟨rfl, rfl⟩
         | sample =>
           simp only [view] at member
-          rw [FinDist.support_map, Set.mem_image] at member
+          rw [PMF.support_map, Set.mem_image] at member
           obtain ⟨config, _, rfl⟩ := member
           exact ⟨rfl, rfl⟩
-      · simp only [FinDist.mem_support_pure] at member
+      · simp only [PMF.mem_support_pure_iff _ _] at member
         subst next
         exact ⟨rfl, rfl⟩
   | expire event =>
-      change next ∈ (FinDist.pure (expire runtime state event)).support at member
-      simp only [FinDist.mem_support_pure] at member
+      change next ∈ (PMF.pure (expire runtime state event)).support at member
+      simp only [PMF.mem_support_pure_iff _ _] at member
       subst next
       unfold expire
       split
@@ -1715,7 +1715,7 @@ omit [DecidableEq Player] in
 theorem environmentStep_executeSample_of_not_ready
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
-    environmentStep runtime state (.executeSample event) = FinDist.pure state := by
+    environmentStep runtime state (.executeSample event) = PMF.pure state := by
   simp only [environmentStep, executeSample, dite_eq_right ready]
 
 omit [DecidableEq Player] in
@@ -1724,7 +1724,7 @@ theorem environmentStep_executeSample_of_nonsample
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (view : ∀ payload law outputEq codeEq,
       nodeView graph event ≠ .sample payload law outputEq codeEq) :
-    environmentStep runtime state (.executeSample event) = FinDist.pure state := by
+    environmentStep runtime state (.executeSample event) = PMF.pure state := by
   simp only [environmentStep, executeSample, dite_eq_left ready]
   cases actual : nodeView graph event with
   | bind | resolve => rfl
@@ -1745,7 +1745,7 @@ theorem environmentStep_expire_bind_eq
       (graph.nodes event) = .bind owner payload)
     (viewEq : nodeView graph event = .bind owner payload outputEq codeEq) :
     environmentStep runtime state (.expire event) =
-      FinDist.pure (state.complete event ready
+      PMF.pure (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
           (PublicationResult.failure : PublicationResult (L.Val payload)))
         (cast (congrArg EventField.Value outputEq.symm)
@@ -1777,7 +1777,7 @@ theorem environmentStep_expire_resolve_eq
     (viewEq : nodeView graph event =
       .resolve owner payload binding checks outputEq codeEq) :
     environmentStep runtime state (.expire event) =
-      FinDist.pure (state.complete event ready
+      PMF.pure (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) false)
         (cast (congrArg EventField.Value outputEq.symm)
           (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
@@ -1804,7 +1804,7 @@ theorem environmentStep_expire_config_eq_or_mem_step
     next.config = state.config ∨
       ∃ (ready : state.config.cut.Ready event) (action : graph.Action event),
         next.config ∈ (state.config.step event ready action).support := by
-  simp only [environmentStep, FinDist.mem_support_pure] at member
+  simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
   subst next
   unfold expire
   split
@@ -1838,7 +1838,7 @@ omit [DecidableEq Player] in
 theorem environmentStep_expire_of_not_ready
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
-    environmentStep runtime state (.expire event) = FinDist.pure state := by
+    environmentStep runtime state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, dite_eq_right ready]
 
 omit [DecidableEq Player] in
@@ -1846,7 +1846,7 @@ theorem environmentStep_expire_of_not_activated
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (activated : state.activatedAt event = none) :
-    environmentStep runtime state (.expire event) = FinDist.pure state := by
+    environmentStep runtime state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, dite_eq_left ready]
   split
   · rfl
@@ -1860,7 +1860,7 @@ theorem environmentStep_expire_of_not_due
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (entered : Nat) (activated : state.activatedAt event = some entered)
     (due : ¬runtime.deadline event ≤ state.clock - entered) :
-    environmentStep runtime state (.expire event) = FinDist.pure state := by
+    environmentStep runtime state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, dite_eq_left ready]
   split
   · rename_i actual
@@ -1881,7 +1881,7 @@ theorem environmentStep_expire_sample_eq
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .sample payload law)
     (viewEq : nodeView graph event = .sample payload law outputEq codeEq) :
-    environmentStep runtime state (.expire event) = FinDist.pure state := by
+    environmentStep runtime state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, dite_eq_left ready]
   split
   · rename_i actual
@@ -1908,23 +1908,23 @@ theorem environmentStep_executeSample_config_activated
   · cases view : nodeView graph event with
     | bind owner payload outputEq codeEq =>
         simp only [environmentStep, executeSample, dite_eq_left ready, view,
-          FinDist.mem_support_pure] at member
+          PMF.mem_support_pure_iff _ _] at member
         subst next
         exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
     | resolve owner payload binding checks outputEq codeEq =>
         simp only [environmentStep, executeSample, dite_eq_left ready, view,
-          FinDist.mem_support_pure] at member
+          PMF.mem_support_pure_iff _ _] at member
         subst next
         exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
     | sample payload law outputEq codeEq =>
         rw [environmentStep_executeSample_eq runtime state event ready payload law
-          outputEq codeEq view, FinDist.support_map] at member
+          outputEq codeEq view, PMF.support_map] at member
         obtain ⟨config, configMem, rfl⟩ := member
         exact ⟨rfl, Or.inr ⟨ready,
           cast (congrArg EventField.Action outputEq.symm) PUnit.unit,
           configMem, rfl⟩⟩
   · simp only [environmentStep, executeSample, dite_eq_right ready,
-      FinDist.mem_support_pure] at member
+      PMF.mem_support_pure_iff _ _] at member
     subst next
     exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 
@@ -1945,7 +1945,7 @@ theorem environmentStep_expire_config_activated
   · cases activated : state.activatedAt event with
     | none =>
         rw [environmentStep_expire_of_not_activated runtime state event ready activated,
-          FinDist.mem_support_pure] at member
+          PMF.mem_support_pure_iff _ _] at member
         subst next
         exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
     | some entered =>
@@ -1954,13 +1954,13 @@ theorem environmentStep_expire_config_activated
           | sample payload law outputEq codeEq =>
               rw [environmentStep_expire_sample_eq runtime state event ready entered
                 activated due payload law outputEq codeEq view,
-                FinDist.mem_support_pure] at member
+                PMF.mem_support_pure_iff _ _] at member
               subst next
               exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
           | bind owner payload outputEq codeEq =>
               rw [environmentStep_expire_bind_eq runtime state event ready entered
                 activated due owner payload outputEq codeEq view,
-                FinDist.mem_support_pure] at member
+                PMF.mem_support_pure_iff _ _] at member
               subst next
               let failed : PublicationResult (L.Val payload) := .failure
               exact ⟨rfl, Or.inr ⟨ready,
@@ -1970,7 +1970,7 @@ theorem environmentStep_expire_config_activated
           | resolve owner payload binding checks outputEq codeEq =>
               rw [environmentStep_expire_resolve_eq runtime state event ready entered
                 activated due owner payload binding checks outputEq codeEq view,
-                FinDist.mem_support_pure] at member
+                PMF.mem_support_pure_iff _ _] at member
               subst next
               have resultEq := resolveOutput?_false_eq_failure_of_ready state event ready
                 owner payload binding checks outputEq codeEq
@@ -1979,11 +1979,11 @@ theorem environmentStep_expire_config_activated
                 resolve_complete_mem_step state event ready owner payload binding checks
                   outputEq codeEq false .failure resultEq, rfl⟩⟩
         · rw [environmentStep_expire_of_not_due runtime state event ready entered
-            activated due, FinDist.mem_support_pure] at member
+            activated due, PMF.mem_support_pure_iff _ _] at member
           subst next
           exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
   · rw [environmentStep_expire_of_not_ready runtime state event ready,
-      FinDist.mem_support_pure] at member
+      PMF.mem_support_pure_iff _ _] at member
     subst next
     exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 

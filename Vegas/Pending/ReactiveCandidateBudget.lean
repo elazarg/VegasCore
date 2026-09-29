@@ -188,16 +188,16 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
   rw [ReactiveApplication.environmentStep_recall _ execution next command reached] at absent
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid who serial absent
   | activate actor =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid who serial absent
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
       cases found : execution.network.lookup id with
       | none => exact valid who serial absent
@@ -213,14 +213,14 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
                 (provenance.pending message (List.mem_of_find?_eq_some found)) accepted
                 who serial absent
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       rw [(environmentStep_tables runtime execution.application state command changed).2]
       exact valid who serial absent
 
 theorem candidateRecall_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     ∀ {state} (_trace : ((runtime.reactiveApplication leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state),
@@ -238,7 +238,7 @@ theorem candidateRecall_history (runtime : EventGraphRuntime graph)
   intro state trace
   have valid := invariant.history (inputs.map State.initial) horizon (by
     intro state supported
-    obtain ⟨input, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨fun who serial _ => State.initial_candidate input who (.prepared serial),
       MessageNetwork.Satisfies.empty⟩) trace
   cases state with
@@ -276,7 +276,7 @@ theorem reactiveFreshSlot_le_recall (runtime : EventGraphRuntime graph)
 serials per player. The final active response is included in this bound. -/
 theorem reactiveFreshSlot_lt_horizon (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (horizon : Nat)
+    (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)

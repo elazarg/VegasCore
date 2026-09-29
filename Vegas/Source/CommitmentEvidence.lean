@@ -119,35 +119,35 @@ theorem evidenceHolds_step : {Γ : SourceCtx Player L} → {O : Finset VarId} �
     target ∈ (step program state joint).support → (fact : CommitmentEvidence Player L) →
     evidenceHolds program state fact → evidenceHolds program target fact
   | _, _, .ret _, state, target, joint, reached, fact, known => by
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact known
   | _, _, .sample name _ law next, state, target, joint, reached, fact, known => by
       cases state with
       | inl config =>
-          obtain ⟨value, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨value, _, rfl⟩ := PMF.support_map .. ▸ reached
           apply (evidenceHolds_entry next _ fact).mpr
           exact fact.holds_cons config.state known name (.publicData _) value
       | inr rest =>
-          obtain ⟨after, selected, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨after, selected, rfl⟩ := PMF.support_map .. ▸ reached
           exact evidenceHolds_step next rest after joint selected fact known
   | _, _, .commit name owner _ guard next, state, target, joint, reached, fact, known => by
       cases state with
       | inl config =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           apply (evidenceHolds_entry next _ fact).mpr
           exact fact.holds_cons config.state known name _ _
       | inr rest =>
-          obtain ⟨after, selected, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨after, selected, rfl⟩ := PMF.support_map .. ▸ reached
           exact evidenceHolds_step next rest after joint selected fact known
   | _, _, .reveal published owner name _ source _ next,
       state, target, joint, reached, fact, known => by
       cases state with
       | inl config =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           apply (evidenceHolds_entry next _ fact).mpr
           exact fact.holds_cons config.state known published _ _
       | inr rest =>
-          obtain ⟨after, selected, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨after, selected, rfl⟩ := PMF.support_map .. ▸ reached
           exact evidenceHolds_step next rest after joint selected fact known
 
 /-- Disclosing an openable binding emits its value even when guard validation
@@ -177,19 +177,19 @@ theorem disclosedEvidence_sound : {Γ : SourceCtx Player L} → {O : Finset VarI
       cases state with
       | inl config => exact False.elim (List.not_mem_nil member)
       | inr rest =>
-          obtain ⟨after, selected, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨after, selected, rfl⟩ := PMF.support_map .. ▸ reached
           exact disclosedEvidence_sound next rest after joint selected fact member
   | _, _, .commit _ _ _ _ next, state, target, joint, reached, fact, member => by
       cases state with
       | inl config => exact False.elim (List.not_mem_nil member)
       | inr rest =>
-          obtain ⟨after, selected, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨after, selected, rfl⟩ := PMF.support_map .. ▸ reached
           exact disclosedEvidence_sound next rest after joint selected fact member
   | _, _, .reveal published owner name _ source _ next,
       state, target, joint, reached, fact, member => by
       cases state with
       | inl config =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           change fact ∈ (if OwnAction.disclosure (joint owner) then _ else []) at member
           split at member
           · cases stored : config.state.get source with
@@ -201,7 +201,7 @@ theorem disclosedEvidence_sound : {Γ : SourceCtx Player L} → {O : Finset VarI
                 exact ⟨.there source, stored⟩
           · exact False.elim (List.not_mem_nil member)
       | inr rest =>
-          obtain ⟨after, selected, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨after, selected, rfl⟩ := PMF.support_map .. ▸ reached
           exact disclosedEvidence_sound next rest after joint selected fact member
 
 end ProtocolState

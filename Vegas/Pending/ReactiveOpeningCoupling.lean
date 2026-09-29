@@ -51,17 +51,17 @@ private theorem framed_inclusion_readout (runtime : EventGraphRuntime graph)
     (network : runtime.NetworkPolicy leaks) (focal : Player) :
     (runtime.interactionStep leaks players network (.includeLatest event owner) current).map
       (fun next => ((runtime.reactiveApplication leaks).messageView next, next.recall focal)) =
-    FinDist.pure (inclusionReadout runtime leaks initial owner selected
+    PMF.pure (inclusionReadout runtime leaks initial owner selected
       ((runtime.reactiveApplication leaks).messageView current, current.recall focal)) := by
   let app := runtime.reactiveApplication leaks
   have selection := frame.selection runtime leaks owner event candidate raw offset selected
     initial current serials
-  simp only [interactionStep, interactionInstruction, selection, FinDist.pure_bind]
+  simp only [interactionStep, interactionInstruction, selection, PMF.pure_bind]
   cases selected with
   | none =>
       simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
         ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+        PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume]
       simp only [inclusionReadout, Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
         ReactiveApplication.messageView, ReactiveApplication.Execution.observeEnvironment,
@@ -74,7 +74,7 @@ private theorem framed_inclusion_readout (runtime : EventGraphRuntime graph)
         slots initial current serials opened
       have succeeds := accepted (by rfl)
       simp only [Option.isSome_some, ↓reduceIte, ReactiveApplication.dispatch,
-        ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind,
+        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
         ReactiveApplication.Command.actor?, ReactiveApplication.resume]
       simp only [inclusionReadout, Option.isSome_some, ↓reduceIte,
         ReactiveApplication.messageView, ReactiveApplication.Execution.includePending,
@@ -110,16 +110,16 @@ private theorem openingWindow_inclusion_readout (runtime : EventGraphRuntime gra
         initial).map (fun next => (app.messageView next, next.recall focal))).map
           (inclusionReadout runtime leaks initial owner selected) := by
   dsimp only
-  rw [runtime.runInteractionPlan_append, FinDist.map_bind, FinDist.map_comp,
-    FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [runtime.runInteractionPlan_append, PMF.map_bind, PMF.map_comp,
+    ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro current reached
   have start := OpeningWindowFrame.initial runtime leaks owner event candidate raw selected
     initial serials published
   have frame := start.run runtime leaks owner event candidate raw (initial.recall owner).length
     selected 0 initial initial network roster current reached owned valid
   simp only [Nat.zero_add] at frame
-  simpa only [runInteractionPlan, FinDist.bind_pure, Function.comp_def] using
+  simpa only [runInteractionPlan, PMF.bind_pure, Function.comp_def] using
     framed_inclusion_readout runtime leaks owner event candidate raw
       (initial.recall owner).length selected initial current frame serials accepted _ network focal
 
@@ -181,7 +181,7 @@ theorem openingWindow_inclusion_coupling (runtime : EventGraphRuntime graph)
     funext transcript
     simp only [inclusionReadout, networks, publicView]
   rw [transformed]
-  apply congrArg (FinDist.map (inclusionReadout runtime leaks right owner selected))
+  apply congrArg (PMF.map (inclusionReadout runtime leaks right owner selected))
   simpa only [counts] using runtime.openingWindow_coupling leaks owner event candidate raw
     (left.recall owner).length selected network roster focal left right leftRecall rightRecall
       messages recall publicView privateView owned meaning

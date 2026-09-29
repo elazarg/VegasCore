@@ -110,18 +110,18 @@ theorem sourceService_decision_boundary
         (((rosters event).take slot).map ServiceInstruction.player) execution).support at phase
   have grantedOrigins : (runtime setup).ResolutionEvidenceOrigins leaks granted := by
     obtain ⟨state, stateSupport, reachedBoundary⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ boundarySupport)
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ boundarySupport)
     have grantedReached : granted ∈ ((runtime setup).runInteractionPlan leaks
         menu.uniformResponses network (rosterPlanPrefix setup rosters event.val ++
           [.grant event]) (ReactiveApplication.Execution.initial (application setup leaks)
             state)).support := by
-      rw [(runtime setup).runInteractionPlan_append, FinDist.support_bind]
+      rw [(runtime setup).runInteractionPlan_append, PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨boundary, reachedBoundary, ?_⟩
       change granted ∈ (((runtime setup).interactionStep leaks menu.uniformResponses network
-        (.grant event) boundary).bind fun next => FinDist.pure next).support
-      rw [grantLaw, FinDist.pure_bind]
-      exact FinDist.mem_support_pure.mpr rfl
-    obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ stateSupport
+        (.grant event) boundary).bind fun next => PMF.pure next).support
+      rw [grantLaw, PMF.pure_bind]
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl
+    obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ stateSupport
     exact ((runtime setup).resolutionEvidenceOrigins_run leaks bounds menu.uniformResponses
       (fun owner past view response supported => sourceServiceMenu_in_compiled setup leaks bounds
         rosters owner past view ((menu.uniformResponses_support owner past view response).mp
@@ -129,9 +129,9 @@ theorem sourceService_decision_boundary
       (State.initial_bindingInvariant (graph := graph setup) (setup.eventInputs initial))
       ((application setup leaks).initial_inputRecall _) MessageNetwork.Satisfies.empty
       grantedReached).2.2
-  rw [grantLaw, FinDist.pure_bind] at phase
+  rw [grantLaw, PMF.pure_bind] at phase
   have sampling := activated
-  rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map] at sampling
+  rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at sampling
   obtain ⟨sample, _, same⟩ := sampling
   have unchanged := (runtime setup).player_window_application leaks menu.uniformResponses network
     ((rosters event).take slot) granted prior phase

@@ -21,7 +21,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   {smaller larger : app.ResponseMenu} (included : smaller.IncludedIn larger)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 /-- Restricting one covered physical law commutes with menu inclusion. -/
 theorem restrictPolicy_law (who : Principal) (policy : app.Policy)
@@ -31,16 +31,16 @@ theorem restrictPolicy_law (who : Principal) (policy : app.Policy)
       (smaller.restrictPolicy initial horizon scheduler who policy info).map
         (included.choice initial horizon scheduler who info) := by
   cases info with
-  | none => simp only [restrictPolicy, FinDist.map_pure]; rfl
+  | none => simp only [restrictPolicy, PMF.pure_map]; rfl
   | some input =>
       have largeCovered : ∀ response ∈ (policy input.1 input.2).support,
           response ∈ larger.actions who input.1 input.2 :=
         fun response supported => included who _ _ (covered _ _ response supported)
       simp only [restrictPolicy, dite_eq_left (covered input.1 input.2),
-        dite_eq_left largeCovered, FinDist.map_bindOnSupport]
-      apply FinDist.bindOnSupport_congr
+        dite_eq_left largeCovered, map_bindOnSupport]
+      apply bindOnSupport_congr _
       intro response supported
-      rw [FinDist.map_pure]
+      rw [PMF.pure_map]
       rfl
 
 /-- A globally legal replacement preserves the original target opponents. -/
@@ -108,7 +108,7 @@ theorem runFrom_restrictPolicy_supported
         (smaller.restrictPolicy initial horizon scheduler who policy))
       fuel history).support ∧ included.history initial horizon scheduler retained = next := by
   rw [← included.runFrom_restrictPolicy initial horizon scheduler source target agrees who
-    policy covered fuel history, FinDist.support_map] at supported
+    policy covered fuel history, PMF.support_map] at supported
   exact supported
 
 /-- Evaluation of the legal replacement is the actual physical execution
@@ -132,7 +132,7 @@ theorem runFrom_restrictPolicy_finish
   have law := congrArg (fun distribution => distribution.map ExecutionProtocol.History.state)
     (included.runFrom_restrictPolicy initial horizon scheduler source target agrees who
       policy covered fuel history)
-  rw [FinDist.map_comp] at law
+  rw [PMF.map_comp] at law
   change _ = ((larger.information initial horizon scheduler).runBehavioralFrom
     (GameTheory.Profile.update
       (sig := (larger.information initial horizon scheduler).behavioralSignature) target who

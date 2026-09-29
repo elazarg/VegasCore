@@ -46,7 +46,7 @@ def rosterScheduler (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) : (application setup leaks).Scheduler :=
   fun past view => match (rosterPlan setup rosters)[past.length]? with
-    | none => FinDist.pure .wait
+    | none => PMF.pure .wait
     | some instruction => (runtime setup).interactionInstruction leaks network past view instruction
 
 /-- Every event actor has an activation at its own event. The compiler theorems
@@ -202,7 +202,7 @@ theorem roster_segment_rounds (setup : Setup (Player := Player) (L := L))
             instruction execution := by
         simp only [ReactiveApplication.round, rosterScheduler, position, selected, interactionStep]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next supported
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split

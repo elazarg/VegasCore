@@ -50,7 +50,7 @@ theorem submissionDependencyCondition_congr (runtime : EventGraphRuntime graph)
 
 def DependencyAuthorized (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) : Prop :=
   (runtime.reactiveApplication leaks).RequiresSubmissionAuthorization
     (runtime.submissionDependencyCondition leaks) initial horizon scheduler
@@ -97,7 +97,7 @@ theorem ready_submission_authorized (runtime : EventGraphRuntime graph)
 the event is ready, including after earlier deviations by arbitrary players. -/
 theorem ready_submission_authorized_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (control : (runtime.reactiveApplication leaks).Control)
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
@@ -121,7 +121,7 @@ theorem ready_submission_authorized_history (runtime : EventGraphRuntime graph)
 contract. This covers replay and changes to the current completion cut. -/
 theorem premature_not_accepted (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (contract : runtime.DependencyAuthorized leaks initial horizon scheduler)
     {first last : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).History}

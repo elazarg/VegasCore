@@ -41,22 +41,22 @@ def rank (horizon : Nat) : app.ProtocolState → Nat
   | none => 2 * horizon + 1
   | some control => 2 * control.remaining + if control.actor.isSome then 1 else 0
 
-def transition (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
-    app.ProtocolState → (Principal → Option app.Action) → FinDist app.ProtocolState
+def transition (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    app.ProtocolState → (Principal → Option app.Action) → PMF app.ProtocolState
   | none, _ => initial.map fun state => some ⟨horizon, none, Execution.initial app state⟩
   | some control, joint => match control.actor with
-    | some who => FinDist.pure (some { control with
+    | some who => PMF.pure (some { control with
         actor := none
         execution := control.execution.respond app who ((joint who).getD ⟨none⟩) })
     | none => match control.remaining with
-      | 0 => FinDist.pure (some control)
+      | 0 => PMF.pure (some control)
       | remaining + 1 =>
           (scheduler control.execution.environmentRecall
             (control.execution.observeEnvironment app)).bind fun command =>
             (control.execution.environmentStep app command).map fun execution =>
               some ⟨remaining, command.actor? app, execution⟩
 
-def protocol (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def protocol (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ExecutionProtocol Principal where
   State := app.ProtocolState
   Action _ := app.Action
@@ -85,7 +85,7 @@ theorem observe_isSome (who : Principal) (state : app.ProtocolState) :
   | some control =>
       by_cases active : control.actor = some who <;> simp [observe, actor, active]
 
-def signals (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def signals (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     InfoSignals (app.protocol initial horizon scheduler) where
   PublicSignal := Unit
   PrivateSignal _ := app.Info
@@ -97,7 +97,7 @@ def signals (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Sched
   initInfo _ view _ := view
   pushInfo _ _ _ view _ := view
 
-theorem info (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem info (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) : ∀ {state} (trace : (app.protocol initial horizon scheduler).Trace state),
     (app.signals initial horizon scheduler).infoOf who trace = app.observe who state
   | _, .start => rfl
@@ -105,7 +105,7 @@ theorem info (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Sche
 
 /-- Every active player has the same one-response menu. No service position
 or response capacity is added to its observation. -/
-def information (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def information (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     InformationModel (app.protocol initial horizon scheduler) where
   toInfoSignals := app.signals initial horizon scheduler
   menu _ info := {choice | choice.isSome = info.isSome}
@@ -123,39 +123,39 @@ theorem rank_zero (horizon : Nat) (state : app.ProtocolState) :
   | none => simp [rank, terminal]
   | some control => cases control.actor <;> simp [rank, terminal]
 
-theorem rank_step (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem rank_step (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (running : ¬ app.terminal before)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     app.rank horizon after < app.rank horizon before := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       simp [rank]
   | some control =>
       rcases control with ⟨remaining, current, execution⟩
       cases current with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simp [rank]
       | none =>
           cases remaining with
           | zero => exact (running ⟨rfl, rfl⟩).elim
           | succ remaining =>
               obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, _, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, _, rfl⟩ := PMF.support_map .. ▸ supported
               cases command <;> simp [rank, Command.actor?]
               omega
 
-theorem terminates (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+theorem terminates (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     (app.protocol initial horizon scheduler).WellFoundedPlay := by
   apply wellFoundedPlay_of_rank (app.rank horizon)
   intro before after transition
   obtain ⟨joint, legal, reached⟩ := transition
   exact app.rank_step initial horizon scheduler before after joint legal.1 reached
 
-theorem trace_bound (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+theorem trace_bound (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ∀ {state} (trace : (app.protocol initial horizon scheduler).Trace state),
       trace.length + app.rank horizon state ≤ 2 * horizon + 1
   | _, .start => by simp [Trace.length, protocol, rank]
@@ -165,7 +165,7 @@ theorem trace_bound (initial : FinDist app.State) (horizon : Nat) (scheduler : a
       simp only [Trace.length]
       omega
 
-theorem bounded (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+theorem bounded (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     (app.protocol initial horizon scheduler).BoundedHorizon (2 * horizon + 1) := by
   intro state trace enough
   have bound := app.trace_bound initial horizon scheduler trace

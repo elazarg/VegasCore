@@ -36,8 +36,8 @@ variable [Finite E.History]
 
 include sameDepth in
 theorem informationReadout_mass (readout : E.History → X) :
-    ((M.runBehavioral strategy depth).map
-      (M.informationReadout who site readout)).probOf {value | value.isSome} =
+    (((M.runBehavioral strategy depth).map
+      (M.informationReadout who site readout)).toOuterMeasure {value | value.isSome}).toReal =
       M.informationMass strategy who site := by
   classical
   rw [M.informationMass_eq_fixedDepth_probOf strategy who site depth sameDepth,
@@ -50,19 +50,19 @@ theorem informationReadout_mass (readout : E.History → X) :
 include sameDepth in
 open Classical in
 private theorem informationReadout_prob (readout : E.History → X) (value : X) :
-    ((M.runBehavioral strategy depth).map
-      (M.informationReadout who site readout)).prob (some value) =
+    (((M.runBehavioral strategy depth).map
+      (M.informationReadout who site readout)) (some value)).toReal =
       ∑ history : M.InformationHistory who site.1,
         M.historyReachProbability strategy history.1 *
           (if value = readout history.1 then 1 else 0) := by
   classical
   let := Fintype.ofFinite E.History
-  rw [FinDist.prob_map, FinDist.expect_eq_sum]
+  rw [toReal_map_apply, expect_eq_sum]
   have terms (history : E.History) :
-      (M.runBehavioral strategy depth).prob history *
+      ((M.runBehavioral strategy depth) history).toReal *
           (if some value = M.informationReadout who site readout history then 1 else 0) =
         if M.infoOf who history.trace = site.1 then
-          (M.runBehavioral strategy depth).prob history *
+          ((M.runBehavioral strategy depth) history).toReal *
             (if value = readout history then 1 else 0) else 0 := by
     by_cases observed : M.infoOf who history.trace = site.1 <;>
       simp [informationReadout, observed]
@@ -80,13 +80,13 @@ information event, divided by the information event's mass. -/
 theorem bayesBelief_readout_prob (readout : E.History → X)
     (antichain : site.IsHistoryAntichain)
     (positive : 0 < M.informationMass strategy who site) (value : X) :
-    ((M.bayesBelief strategy who site antichain positive).map
-      (fun history => readout history.1)).prob value =
-      ((M.runBehavioral strategy depth).map
-        (M.informationReadout who site readout)).prob (some value) /
+    (((M.bayesBelief strategy who site antichain positive).map
+      (fun history => readout history.1)) value).toReal =
+      (((M.runBehavioral strategy depth).map
+        (M.informationReadout who site readout)) (some value)).toReal /
           M.informationMass strategy who site := by
   classical
-  rw [FinDist.prob_map, FinDist.expect_eq_sum,
+  rw [toReal_map_apply, expect_eq_sum,
     M.informationReadout_prob strategy who site depth sameDepth readout value,
     Finset.sum_div]
   apply Finset.sum_congr rfl
@@ -110,7 +110,7 @@ include sameDepth sourceClock law in
 theorem informationMass_readout_at_depth :
     M.informationMass strategy who site = N.informationMass source who sourceSite := by
   classical
-  have mass := congrArg (fun distribution => distribution.probOf {value | value.isSome}) law
+  have mass := congrArg (fun distribution => (distribution.toOuterMeasure {value | value.isSome}).toReal) law
   rw [M.informationReadout_mass strategy who site depth sameDepth readout,
     N.informationReadout_mass source who sourceSite sourceDepth sourceClock sourceReadout] at mass
   exact mass
@@ -128,7 +128,7 @@ theorem bayesBelief_readout_at_depth
       (N.bayesBelief source who sourceSite sourceAntichain sourcePositive).map
         (fun history => sourceReadout history.1) := by
   classical
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro value
   rw [M.bayesBelief_readout_prob strategy who site depth sameDepth readout,
     N.bayesBelief_readout_prob source who sourceSite sourceDepth sourceClock sourceReadout,
@@ -155,15 +155,15 @@ theorem informationReadout_law_of_fiber
   let mark (value : X) := if predicate value then some value else none
   calc
     _ = ((M.runBehavioral strategy depth).map readout).map mark := by
-      rw [FinDist.map_comp]
-      apply FinDist.map_congr_of_eq_on_support
+      rw [PMF.map_comp]
+      apply map_congr_on_support _
       intro history supported
       simp only [informationReadout, Function.comp_apply, mark, rawFiber history supported]
     _ = ((N.runBehavioral source sourceDepth).map sourceReadout).map mark :=
       congrArg (fun distribution => distribution.map mark) unmarked
     _ = _ := by
-      rw [FinDist.map_comp]
-      apply FinDist.map_congr_of_eq_on_support
+      rw [PMF.map_comp]
+      apply map_congr_on_support _
       intro history supported
       simp only [informationReadout, Function.comp_apply, mark, sourceFiber history supported]
 

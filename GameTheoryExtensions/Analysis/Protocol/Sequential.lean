@@ -2,7 +2,9 @@
 
 import GameTheory.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Protocol.SequentialIncentives
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Sequential equilibrium transport and finite-menu requirements
 

@@ -31,7 +31,7 @@ private abbrev app : ReactiveApplication Bool where
   environment _ command := nomatch command
   observePlayer _ _ := ()
   observePublic _ := ()
-  observePending _ pending := (FinDist.uniformOfFintype (α := Bool)).map fun observed =>
+  observePending _ pending := (PMF.uniformOfFintype (α := Bool)).map fun observed =>
     if observed then (pending.map Message.id).toFinset else ∅
 
 private def silent : app.Action := ⟨none⟩
@@ -56,15 +56,15 @@ private theorem included : smaller.IncludedIn larger := by
   rcases member with rfl | rfl <;> simp
 
 private def scheduler : app.Scheduler := fun past _ =>
-  FinDist.pure (if past.length = 0 then .activate false else .activate true)
+  PMF.pure (if past.length = 0 then .activate false else .activate true)
 
-private abbrev source := smaller.information (FinDist.pure ()) 2 scheduler
-private abbrev target := larger.information (FinDist.pure ()) 2 scheduler
-private abbrev restriction := included.actionRestriction (FinDist.pure ()) 2 scheduler
+private abbrev source := smaller.information (PMF.pure ()) 2 scheduler
+private abbrev target := larger.information (PMF.pure ()) 2 scheduler
+private abbrev restriction := included.actionRestriction (PMF.pure ()) 2 scheduler
 
 private def embed (profile : ∀ who, source.BehavioralPolicy who) :
     ∀ who, target.BehavioralPolicy who := fun who info =>
-  (profile who info).map (included.choice (FinDist.pure ()) 2 scheduler who info)
+  (profile who info).map (included.choice (PMF.pure ()) 2 scheduler who info)
 
 /-- The extension genuinely permits a packet excluded by the smaller game. -/
 theorem extra_packet (who : Bool) (past : List app.PlayerEntry) (view : app.PlayerView) :
@@ -74,7 +74,7 @@ theorem extra_packet (who : Bool) (past : List app.PlayerEntry) (view : app.Play
 
 /-- Every source policy, including randomized withholding, has the same complete continuation. -/
 theorem arbitrary_policy_continuation (profile : ∀ who, source.BehavioralPolicy who)
-    (fuel : Nat) (history : (smaller.protocol (FinDist.pure ()) 2 scheduler).History) :
+    (fuel : Nat) (history : (smaller.protocol (PMF.pure ()) 2 scheduler).History) :
     (source.runBehavioralFrom profile fuel history).map restriction.history =
       target.runBehavioralFrom (embed profile) fuel (restriction.history history) := by
   apply restriction.runFrom_law profile (embed profile) _ fuel history
@@ -87,13 +87,13 @@ theorem arbitrary_policy_state_law (profile : ∀ who, source.BehavioralPolicy w
     (source.runBehavioral profile fuel).map History.state =
       (target.runBehavioral (embed profile) fuel).map History.state := by
   have law := restriction.initialized_law profile (embed profile) (by intro who site; rfl) fuel
-  have projected := congrArg (FinDist.map History.state) law
-  rw [FinDist.map_comp] at projected
+  have projected := congrArg (PMF.map History.state) law
+  rw [PMF.map_comp] at projected
   exact projected
 
 /-- A pending-message observation is retained verbatim at every legal smaller-menu history. -/
 theorem passive_read_retained
-    (history : (smaller.protocol (FinDist.pure ()) 2 scheduler).History)
+    (history : (smaller.protocol (PMF.pure ()) 2 scheduler).History)
     (who : Bool) (past : List app.PlayerEntry) (view : app.PlayerView)
     (observed : source.infoOf who history.trace = some (past, view))
     (packet : Message Bool Bool) (received : packet ∈ view.messages.leaked) :
@@ -104,7 +104,7 @@ theorem passive_read_retained
 
 /-- Both strict menu instances use ordinary decision recall, including off-path sites. -/
 theorem both_have_decision_recall : source.DecisionRecall ∧ target.DecisionRecall :=
-  ⟨smaller.decisionRecall (FinDist.pure ()) 2 scheduler,
-    larger.decisionRecall (FinDist.pure ()) 2 scheduler⟩
+  ⟨smaller.decisionRecall (PMF.pure ()) 2 scheduler,
+    larger.decisionRecall (PMF.pure ()) 2 scheduler⟩
 
 end InteractionTests.ReactiveMenuRestriction

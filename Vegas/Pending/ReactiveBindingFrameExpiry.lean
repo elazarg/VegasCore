@@ -38,8 +38,8 @@ theorem expire_resolution (frame : Frame runtime leaks memory owner original rep
     (due : runtime.deadline event ≤ original.application.clock - entered) :
     let app := runtime.reactiveApplication leaks
     ∃ left right,
-      original.environmentStep app (.application (.expire event)) = FinDist.pure left ∧
-      repaired.environmentStep app (.application (.expire event)) = FinDist.pure right ∧
+      original.environmentStep app (.application (.expire event)) = PMF.pure left ∧
+      repaired.environmentStep app (.application (.expire event)) = PMF.pure right ∧
       Frame runtime leaks memory owner left right := by
   let app := runtime.reactiveApplication leaks
   have rightReady : repaired.application.config.cut.Ready event := by
@@ -68,17 +68,17 @@ theorem expire_resolution (frame : Frame runtime leaks memory owner original rep
       application := repaired.application.complete event rightReady action value
       environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .application (.expire event)⟩] }
-  have first : original.environmentStep app (.application (.expire event)) = FinDist.pure left := by
+  have first : original.environmentStep app (.application (.expire event)) = PMF.pure left := by
     change ((environmentStep runtime original.application (.expire event)).map _).map _ = _
     rw [environmentStep_expire_resolve_eq runtime original.application event ready entered
       activated due actor payload binding checks outputEq codeEq node,
-        FinDist.map_pure, FinDist.map_pure]
+        PMF.pure_map, PMF.pure_map]
   have second : repaired.environmentStep app (.application (.expire event)) =
-      FinDist.pure right := by
+      PMF.pure right := by
     change ((environmentStep runtime repaired.application (.expire event)).map _).map _ = _
     rw [environmentStep_expire_resolve_eq runtime repaired.application event rightReady entered
       rightActivated rightDue actor payload binding checks outputEq codeEq node,
-        FinDist.map_pure, FinDist.map_pure]
+        PMF.pure_map, PMF.pure_map]
   have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
   have paired := frame.complete_unmodified event ready rightReady
     (onlyBindings.public_value_none (.inr event) visible)

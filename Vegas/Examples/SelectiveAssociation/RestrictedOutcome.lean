@@ -36,8 +36,8 @@ theorem decision_rank (event : nativeGraph.EventId) (control : app.Control)
 
 theorem full_enough (control : app.Control) (trace : arena.Trace (some control)) :
     app.rank nativeHorizon (some control) ≤ 2 * nativeHorizon + 1 := by
-  have bound := app.trace_bound (FinDist.pure nativeInitial) nativeHorizon scheduler
-    (menu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon scheduler trace)
+  have bound := app.trace_bound (PMF.pure nativeInitial) nativeHorizon scheduler
+    (menu.toRawTrace (PMF.pure nativeInitial) nativeHorizon scheduler trace)
   omega
 
 theorem full_continuation_state (players : Profile model.behavioralSignature)
@@ -50,8 +50,8 @@ theorem full_continuation_state (players : Profile model.behavioralSignature)
   have long := finish_law players control trace (2 * nativeHorizon + 1) (full_enough control trace)
   have mapped : final.state ∈ ((model.runBehavioralFrom players fuel
       ⟨some control, trace⟩).map ExecutionProtocol.History.state).support :=
-    FinDist.support_map .. ▸ ⟨final, supported, rfl⟩
-  rw [short, ← long, FinDist.support_map] at mapped
+    PMF.support_map .. ▸ ⟨final, supported, rfl⟩
+  rw [short, ← long, PMF.support_map] at mapped
   exact mapped
 
 theorem future_decision (players : Profile model.behavioralSignature)
@@ -114,13 +114,13 @@ theorem publication_from_earlier_binding (players : Profile model.behavioralSign
       have short : decisionSteps event (nativePublicationEvent who) ≤ 2 * nativeHorizon + 1 := by
         fin_cases event <;> fin_cases who <;> decide
       rw [← Nat.add_sub_of_le short, model.runBehavioralFrom_add] at supported
-      obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨atOpening, stateEq, ownerActive, ownerGrant⟩ := future_decision players event
         (nativePublicationEvent who) ordered control trace active granted later laterMem
       rw [native_publication_owner] at ownerActive
       obtain ⟨preservedControl, preservedEq, preserved⟩ :=
         (binding_invariant who (.success bit)).behavioral_continuation menu
-          (FinDist.pure nativeInitial) nativeHorizon scheduler players
+          (PMF.pure nativeInitial) nativeHorizon scheduler players
             (decisionSteps event (nativePublicationEvent who)) control trace later stored laterMem
       have same : preservedControl = atOpening := Option.some.inj
         (preservedEq.symm.trans stateEq)
@@ -154,7 +154,7 @@ theorem final_binding_published (players : Profile model.behavioralSignature)
   have short : decisionSteps event (nativePublicationEvent who) ≤ 2 * nativeHorizon + 1 := by
     fin_cases event <;> fin_cases who <;> decide
   rw [← Nat.add_sub_of_le short, model.runBehavioralFrom_add] at supported
-  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨atOpening, openingEq, ownerActive, ownerGrant⟩ := future_decision players event
     (nativePublicationEvent who) ordered control trace active granted later laterMem
   rw [native_publication_owner] at ownerActive
@@ -164,7 +164,7 @@ theorem final_binding_published (players : Profile model.behavioralSignature)
   obtain ⟨value, stored⟩ := binding_present_at_opening who who atOpening laterTrace ownerActive
     ownerGrant
   obtain ⟨preservedControl, preservedEq, preserved⟩ :=
-    (binding_invariant who value).behavioral_continuation menu (FinDist.pure nativeInitial)
+    (binding_invariant who value).behavioral_continuation menu (PMF.pure nativeInitial)
       nativeHorizon scheduler players _ atOpening laterTrace final stored finalMem
   have same : preservedControl = result := Option.some.inj (preservedEq.symm.trans stateEq)
   subst preservedControl
@@ -199,7 +199,7 @@ theorem binding_from_final (players : Profile model.behavioralSignature)
     ((nativeBindingRef who).get?_isSome control.execution.application.config.store
       (by rw [native_binding_ref_eq]; exact field))
   obtain ⟨preservedControl, preservedEq, preserved⟩ :=
-    (binding_invariant who original).behavioral_continuation menu (FinDist.pure nativeInitial)
+    (binding_invariant who original).behavioral_continuation menu (PMF.pure nativeInitial)
       nativeHorizon scheduler players fuel control trace final stored supported
   have same : preservedControl = result := Option.some.inj (preservedEq.symm.trans stateEq)
   subst preservedControl
@@ -214,7 +214,7 @@ theorem publicGuess_false_of_alice_false (who : Player) (control : app.Control)
   | true =>
       have information : model.infoOf who trace =
           some (control.execution.recall who, control.execution.observe app who) := by
-        change (menu.signals (FinDist.pure nativeInitial) nativeHorizon scheduler).infoOf
+        change (menu.signals (PMF.pure nativeInitial) nativeHorizon scheduler).infoOf
           who trace = _
         rw [menu.info]
         simp only [ReactiveApplication.observe, active, ↓reduceIte]

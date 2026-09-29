@@ -266,17 +266,17 @@ theorem Checkpoint.owner_opportunity
     environmentRecall := granted.environmentRecall ++
       [⟨granted.observeEnvironment app, .activate owner⟩] }
   have grantedLaw : (runtime setup).interactionStep leaks players network (.grant event)
-      execution = FinDist.pure granted := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+      execution = PMF.pure granted := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, FinDist.map_pure,
+      reactiveApplication, environmentStep, PMF.pure_map,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume]
     rfl
   refine ⟨activated, ?_, rfl, rfl, rfl, ?_, rfl⟩
   · exact { checkpoint with
       invariant := checkpoint.invariant.copy rfl rfl rfl
       binding := checkpoint.binding.copy rfl rfl rfl }
-  · simp only [runInteractionPlan, grantedLaw, FinDist.pure_bind, FinDist.bind_pure]
+  · simp only [runInteractionPlan, grantedLaw, PMF.pure_bind, PMF.bind_pure]
     exact (runtime setup).player_instruction_published leaks players network
       granted owner checkpoint.pending
 
@@ -360,7 +360,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
         ((runtime setup).reportNetwork leaks watcher)
         ([.includeLatest event owner, .player watcher, .wire] ++
           List.replicate (event.val + 1) .tick ++ [.expire event])
-        (execution.respond (application setup leaks) owner response) = FinDist.pure next ∧
+        (execution.respond (application setup leaks) owner response) = PMF.pure next ∧
       Checkpoint setup leaks initial
         (revealSuccessor published selected source (sourceChoice setup leaks response))
         (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1) next ∧
@@ -396,9 +396,9 @@ theorem Checkpoint.reveal_response [Fintype Player]
       checkpoint.binding event ownedEvent outputEq codeEq node before decoded granted value bound
       ready timely entered (event.val + 1) activated due checkpoint.pending leaked checkpoint.inputs
       checkpoint.serials response member
-  have sourceSame : sourceNext = next := FinDist.mem_support_pure.mp (by
+  have sourceSame : sourceNext = next := (PMF.mem_support_pure_iff _ _).mp (by
     rw [← law, sourceLaw]
-    exact FinDist.mem_support_pure.mpr rfl)
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   subst sourceNext
   let action := cast (congrArg EventGraph.EventField.Action outputEq.symm)
     (sourceChoice setup leaks response)
@@ -417,9 +417,9 @@ theorem Checkpoint.reveal_response [Fintype Player]
   have supported : next ∈ ((runtime setup).runInteractionPlan leaks players
       ((runtime setup).reportNetwork leaks watcher) suffix submitted).support := by
     rw [show (runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher) suffix submitted = FinDist.pure next
+        ((runtime setup).reportNetwork leaks watcher) suffix submitted = PMF.pure next
       from law]
-    exact FinDist.mem_support_pure.mpr rfl
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
   have progressed := (runtime setup).runInteractionPlan_facts leaks
     (setup.eventInputs initial) players ((runtime setup).reportNetwork leaks watcher)
     suffix submitted next

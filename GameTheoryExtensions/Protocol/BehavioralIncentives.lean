@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Core.IncentiveCone
+import GameTheory.Analysis.IncentiveCone
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 
 /-! # A necessary and sufficient SPE preservation criterion
@@ -49,7 +49,7 @@ theorem isBehavioralSubgamePerfect_iff_comparisons
         (M.continuationComparison single observe bound profile who deviation).Holds
           (utility · who) := by
   rw [M.isBehavioralSubgamePerfect_iff single bounded]
-  simp only [continuationComparison, IncentiveComparison.Holds, FinDist.expect_map]
+  simp only [continuationComparison, IncentiveComparison.Holds, expect_map]
   constructor
   · intro perfect who ⟨⟨root, proper⟩, alternative⟩
     exact perfect root proper who alternative
@@ -95,7 +95,7 @@ theorem behavioral_spe_preservation_iff_cone
       · subst player
         simpa only [utilities, ↓reduceIte] using respected replacement
       · simp only [IncentiveComparison.Holds, utilities, same, ↓reduceIte,
-          FinDist.expect_const, le_refl]
+          expect_constant, le_refl]
     simpa only [utilities, ↓reduceIte] using preserves utilities source who deviation
   · intro included utility source who deviation
     exact (IncentiveComparison.mem_cone_iff _ _).mp (included who deviation)

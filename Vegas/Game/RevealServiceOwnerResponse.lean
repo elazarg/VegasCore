@@ -65,7 +65,7 @@ theorem remaining_readout_eq_decode
             (fun final => final.state.bind fun control =>
               decodeState? (terminalRefs setup.program)
                 control.execution.application.config.store) := by
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro final supported
   have terminal : (responses.protocol (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher)).terminal final.state := by
@@ -150,8 +150,8 @@ theorem owner_response_finish_decode_law
     (execution.respond (application setup leaks) who response) (by
       simp only [ReactiveApplication.respond_environmentRecall, List.length_append,
         List.length_cons, List.length_nil, lengthPrefix, position])
-  simp only [ReactiveApplication.finish, ReactiveApplication.resume, FinDist.pure_bind,
-    remaining, rounds, FinDist.map_comp, Function.comp_def, ReactiveApplication.finished,
+  simp only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.pure_bind,
+    remaining, rounds, PMF.map_comp, Function.comp_def, ReactiveApplication.finished,
     Option.bind_some]
   have law := prefix_response_option_law setup leaks bounds watcher observer profile players
     watcherPolicy ordinary projects initial initialSupport setup.program reveals profile

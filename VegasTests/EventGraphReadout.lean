@@ -140,7 +140,7 @@ example :
 /-- Resolving the original private input binding stores its successful value. -/
 example :
     (readoutGraph.nodes 1).eval? true initial.store =
-      some (FinDist.pure (.success true)) := rfl
+      some (PMF.pure (.success true)) := rfl
 
 private def sampled : readoutGraph.Config :=
   initial.complete 0 (initial_ready 0) PUnit.unit sampleValue
@@ -179,8 +179,8 @@ example :
   have stores := Vegas.EventGraph.stepThen_map_store_comm initial 0 1
     (initial_ready 0) (initial_ready 1) (by decide) PUnit.unit true
   have readouts := congrArg
-    (FinDist.map fun store => graphPayoff.eval? store) stores
-  simpa only [FinDist.map_comp, Function.comp_def] using readouts
+    (PMF.map fun store => graphPayoff.eval? store) stores
+  simpa only [PMF.map_comp, Function.comp_def] using readouts
 
 end
 

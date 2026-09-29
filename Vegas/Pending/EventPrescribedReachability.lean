@@ -78,7 +78,7 @@ theorem serviceStep_submittedAt_other
       submittedAt (before.principalHistory owner) query := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, commandMem, stepMem⟩ := member
       by_cases same : who = owner
@@ -114,7 +114,7 @@ theorem serviceStep_submittedAt_other
           before command after stepMem]
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨command, _, stepMem⟩ := member
       rw [congrFun (runtime.application.environmentStep_principalHistory before
         (WireCommand.toEnvironmentCommand runtime.application command) after stepMem) owner]
@@ -144,11 +144,11 @@ theorem runServicePlan_submittedAt_other
       submittedAt (before.principalHistory owner) query := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       rfl
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, headMem, tailMem⟩ := member
       have first := runtime.serviceStep_submittedAt_other owner policy players prescribed wire
         instruction before middle event query grant different headMem
@@ -179,14 +179,14 @@ theorem runServicePlan_owned_ready_event_complete
   let granted := runtime.afterGrant before event
   have grantMem : granted ∈
       (runtime.serviceStep players wire (.grant event) before).support := by
-    rw [runtime.serviceStep_grant_eq, FinDist.mem_support_pure]
+    rw [runtime.serviceStep_grant_eq, PMF.mem_support_pure_iff _ _]
   have planEq : eventServicePlan roster reactionRounds event =
       .grant event :: (List.replicate 3 (.player owner) ++
         (List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
         [.includeLatest event owner, .sample event]) := by
     simp [eventServicePlan, actor]
   rw [planEq, runServicePlan, runtime.serviceStep_grant_eq,
-    FinDist.pure_bind] at member
+    PMF.pure_bind] at member
   have grantedInvariant := runtime.serviceStep_facts inputs players wire (.grant event)
     before granted boundary.invariant grantMem |>.invariant
   have grantedPolicy := runtime.serviceStep_policyCoherentAll owner policy players wire
@@ -344,20 +344,20 @@ theorem runServicePlan_event_current_unsubmitted
   have planEq : eventServicePlan roster reactionRounds event =
       .grant event :: (visitPrefix ++ [.sample event]) := by
     simp [eventServicePlan, actor, visitPrefix, work, reactions]
-  rw [planEq, runServicePlan, runtime.serviceStep_grant_eq, FinDist.pure_bind,
-    runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [planEq, runServicePlan, runtime.serviceStep_grant_eq, PMF.pure_bind,
+    runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨included, includeMem, sampleMem⟩ := member
   have sampleStep : after ∈
       (runtime.serviceStep players wire (.sample event) included).support := by
-    simpa only [runServicePlan, FinDist.bind_pure] using sampleMem
+    simpa only [runServicePlan, PMF.bind_pure] using sampleMem
   have histories := runtime.application.environmentStep_principalHistory included _ after sampleStep
   have includedSubmitted : submittedAt (included.principalHistory owner) event = true := by
     rw [histories] at submitted
     exact submitted
   have grantMem : granted ∈
       (runtime.serviceStep players wire (.grant event) before).support := by
-    rw [runtime.serviceStep_grant_eq, FinDist.mem_support_pure]
+    rw [runtime.serviceStep_grant_eq, PMF.mem_support_pure_iff _ _]
   have grantedUnsubmitted : OwnerUnsubmitted runtime granted owner := by
     apply boundary.unsubmitted.frame
     · exact (runtime.serviceStep_facts inputs players wire (.grant event) before granted
@@ -366,7 +366,7 @@ theorem runServicePlan_event_current_unsubmitted
         grantMem) owner
   have grantedBoundary := boundary.after_zero_plan runtime inputs ordered owner policy players
     prescribed wire [.grant event] before granted (by rfl) grantedUnsubmitted (by
-      simpa only [runServicePlan, FinDist.bind_pure] using grantMem)
+      simpa only [runServicePlan, PMF.bind_pure] using grantMem)
   have noGrant : ∀ instruction ∈ work, ∀ query, instruction ≠ .grant query := by
     intro instruction instructionMem query
     change instruction ∈ List.replicate 3 (.player owner) ++ reactions at instructionMem
@@ -478,7 +478,7 @@ theorem PrescribedOwnerBoundary.after_event_of_current_unsubmitted
           (runtime.afterGrant before event)).support := by
         have rewritten := member
         rw [planEq, runServicePlan, runtime.serviceStep_grant_eq,
-          FinDist.pure_bind] at rewritten
+          PMF.pure_bind] at rewritten
         exact rewritten
       have frame := runtime.runServicePlan_submittedAt_other owner policy players prescribed wire
         (eventServicePlan roster reactionRounds event).tail (runtime.afterGrant before event) after
@@ -570,12 +570,12 @@ theorem runEventSweep_prescribedOwner_of_blocks
           event ∈ after.native.application.config.cut.completed := by
   induction events generalizing before with
   | nil =>
-      simp only [List.flatMap_nil, runServicePlan, FinDist.mem_support_pure] at member
+      simp only [List.flatMap_nil, runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact ⟨boundary, by simp⟩
   | cons event rest ih =>
       simp only [List.flatMap_cons, runtime.runServicePlan_append,
-        FinDist.support_bind, Set.mem_iUnion] at member
+        PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, headMem, tailMem⟩ := member
       have middleBoundary := blockBoundary before event middle boundary headMem
       have tail := ih middle middleBoundary tailMem
@@ -635,11 +635,11 @@ theorem runServicePlan_expire_principalHistory
     after.principalHistory owner = before.principalHistory owner := by
   induction events generalizing before with
   | nil =>
-      simp only [List.map_nil, runServicePlan, FinDist.mem_support_pure] at member
+      simp only [List.map_nil, runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       rfl
   | cons event rest ih =>
-      simp only [List.map_cons, runServicePlan, FinDist.support_bind,
+      simp only [List.map_cons, runServicePlan, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨middle, first, tail⟩ := member
       exact (ih middle tail).trans (congrFun
@@ -661,12 +661,12 @@ theorem serviceEpoch_prescribedOwnerBoundary
     (member : after ∈ (runtime.serviceEpoch roster reactionRounds players wire order
       before).support) :
     PrescribedOwnerBoundary runtime inputs after owner := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨chosen, _, planMem⟩ := member
   let sweep := chosen.val.flatMap (eventServicePlan roster reactionRounds)
   let expires := (List.finRange graph.order.eventCount).map ServiceInstruction.expire
   have epochEq : epochPlan chosen roster reactionRounds = sweep ++ [.tick] ++ expires := by rfl
-  rw [epochEq, runtime.runServicePlan_append, FinDist.support_bind] at planMem
+  rw [epochEq, runtime.runServicePlan_append, PMF.support_bind] at planMem
   simp only [Set.mem_iUnion] at planMem
   obtain ⟨ticked, tickedMem, expiryMem⟩ := planMem
   obtain ⟨swept, sweepMem, tickMem⟩ :=
@@ -674,12 +674,12 @@ theorem serviceEpoch_prescribedOwnerBoundary
   have sweepLaw := runtime.runEventSweep_prescribedOwner inputs ordered feasible owner policy roster
     reactionRounds players prescribed wire chosen.val before swept boundary sweepMem
   have tickStep : ticked ∈ (runtime.serviceStep players wire .tick swept).support := by
-    simpa only [runServicePlan, FinDist.bind_pure] using tickMem
+    simpa only [runServicePlan, PMF.bind_pure] using tickMem
   have tickProgress := runtime.serviceStep_facts inputs players wire .tick swept ticked
     sweepLaw.1.invariant tickStep
   have combinedMem : ticked ∈ (runtime.runServicePlan players wire
       (sweep ++ [.tick]) before).support := by
-    rw [runtime.runServicePlan_append, FinDist.support_bind]
+    rw [runtime.runServicePlan_append, PMF.support_bind]
     simp only [Set.mem_iUnion]
     exact ⟨swept, sweepMem, tickMem⟩
   have progress := runtime.runServicePlan_facts inputs players wire (sweep ++ [.tick]) before
@@ -745,11 +745,11 @@ theorem runService_prescribedOwnerBoundary
   induction count with
   | zero =>
       intro before after boundary member
-      simp only [runService, FinDist.mem_support_pure] at member
+      simp only [runService, PMF.mem_support_pure_iff _ _] at member
       simpa only [member] using boundary
   | succ count ih =>
       intro before after boundary member
-      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runService, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, epochMem, tailMem⟩ := member
       exact ih middle after
         (runtime.serviceEpoch_prescribedOwnerBoundary inputs ordered feasible owner policy roster
@@ -757,7 +757,7 @@ theorem runService_prescribedOwnerBoundary
         tailMem
 
 theorem EpochBoundary.prescribedOwnerBoundary
-    (runtime : EventGraphRuntime graph) (inputs : FinDist graph.Inputs)
+    (runtime : EventGraphRuntime graph) (inputs : PMF graph.Inputs)
     (ordered : graph.BarrierOrdered) (feasible : runtime.ServiceFeasible)
     (owner : Player) (policy : graph.BehavioralPolicy owner)
     (roster : List Player) (reactionRounds : Nat)
@@ -819,7 +819,7 @@ theorem epochPlan_prefix_ownerActivationAgeOne
   · obtain ⟨tail, executedEq, expiresEq⟩ := afterTick
     have executedShape : executed = (sweep ++ [.tick]) ++ tail := by
       simpa only [List.append_assoc, List.singleton_append] using executedEq
-    rw [executedShape, runtime.runServicePlan_append, FinDist.support_bind] at member
+    rw [executedShape, runtime.runServicePlan_append, PMF.support_bind] at member
     simp only [Set.mem_iUnion] at member
     obtain ⟨ticked, tickedMem, tailMem⟩ := member
     obtain ⟨swept, sweepMem, tickMem⟩ :=
@@ -827,12 +827,12 @@ theorem epochPlan_prefix_ownerActivationAgeOne
     have sweepLaw := runtime.runEventSweep_prescribedOwner inputs ordered feasible owner policy
       roster reactionRounds players prescribed wire chosen.val before swept boundary sweepMem
     have tickStep : ticked ∈ (runtime.serviceStep players wire .tick swept).support := by
-      simpa only [runServicePlan, FinDist.bind_pure] using tickMem
+      simpa only [runServicePlan, PMF.bind_pure] using tickMem
     have tickProgress := runtime.serviceStep_facts inputs players wire .tick swept ticked
       sweepLaw.1.invariant tickStep
     have combinedMem : ticked ∈ (runtime.runServicePlan players wire
         (sweep ++ [.tick]) before).support := by
-      rw [runtime.runServicePlan_append, FinDist.support_bind]
+      rw [runtime.runServicePlan_append, PMF.support_bind]
       simp only [Set.mem_iUnion]
       exact ⟨swept, sweepMem, tickMem⟩
     have sweepTicks : serviceTicks sweep = 0 := by
@@ -883,7 +883,7 @@ namespace ServiceReachable
 small-step control prefix, including positions inside an event visit and the
 post-tick expiry sweep. -/
 theorem ownerActivationAgeOne
-    (runtime : EventGraphRuntime graph) (inputs : FinDist graph.Inputs)
+    (runtime : EventGraphRuntime graph) (inputs : PMF graph.Inputs)
     (ordered : graph.BarrierOrdered) (feasible : runtime.ServiceFeasible)
     (owner : Player) (policy : graph.BehavioralPolicy owner)
     (roster : List Player) (reactionRounds : Nat)

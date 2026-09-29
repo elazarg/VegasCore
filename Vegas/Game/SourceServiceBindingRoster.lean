@@ -103,12 +103,12 @@ theorem sourceServicePolicy_commit_delayed_service
     profile refs source embedding refsBefore offset aligned execution agree history serial selected
       candidate unused serials players network granted ready timely vacant
   apply Eq.trans ?_ immediate
-  rw [FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro response supported
   rw [sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile refs source
     embedding refsBefore offset aligned execution agree history granted,
-    FinDist.support_map] at supported
+    PMF.support_map] at supported
   obtain ⟨choice, _, responseEq⟩ := supported
   have physical := serviceDecision_binding_fresh (runtime setup) leaks execution owner event
     payload outputEq codeEq node serial selected candidate choice
@@ -119,15 +119,15 @@ theorem sourceServicePolicy_commit_delayed_service
     bounds players lawful network execution owner event payload outputEq codeEq node granted owned
       ready published serials serial opening roster
   have projected (opening : Option (Raw L)) := congrArg
-    (FinDist.map (fun value : EventGraphRuntime.State (graph setup) ×
+    (PMF.map (fun value : EventGraphRuntime.State (graph setup) ×
         List (Message Player (WitnessedPacket (graph setup))) ×
         List (MessageId Player × Bool) × (Player → Nat) => (value.1.config, value.2.2.1)))
       (delayed opening)
   cases choice with
   | failure =>
-      simpa only [FinDist.map_comp, Function.comp_def, reactiveBinding] using projected none
+      simpa only [PMF.map_comp, Function.comp_def, reactiveBinding] using projected none
   | success value =>
-      simpa only [FinDist.map_comp, Function.comp_def, reactiveBinding] using
+      simpa only [PMF.map_comp, Function.comp_def, reactiveBinding] using
         projected (some ⟨payload, value⟩)
 
 end Vegas

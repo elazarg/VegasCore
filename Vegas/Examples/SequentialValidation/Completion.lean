@@ -19,10 +19,10 @@ theorem native_tail_add (index first second : Nat) (state : EventGraphRuntime.St
     nativeTail index (first + second) state =
       (nativeTail index first state).bind (nativeTail (index + first) second) := by
   induction first generalizing index state with
-  | zero => simp only [Nat.zero_add, Nat.add_zero, nativeTail, FinDist.pure_bind]
+  | zero => simp only [Nat.zero_add, Nat.add_zero, nativeTail, PMF.pure_bind]
   | succ first ih =>
-      simp only [Nat.succ_add, nativeTail, FinDist.bind_bind]
-      apply FinDist.bind_congr
+      simp only [Nat.succ_add, nativeTail, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro next _
       simpa only [Nat.add_assoc, Nat.add_comm 1 first] using ih (index + 1) next
 
@@ -31,9 +31,9 @@ theorem native_tail_progress (inputs : nativeGraph.Inputs) (index count : Nat)
     (reached : next ∈ (nativeTail index count state).support) :
     State.ServiceProgress inputs (nativeTailTicks index count) state next := by
   induction count generalizing index state with
-  | zero => cases FinDist.mem_support_pure.mp reached; exact .refl valid
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact .refl valid
   | succ count ih =>
-      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have step : State.ServiceProgress inputs (nativeTailCommand index).clockTicks state middle :=
         ⟨environmentStep_invariant nativeRuntime state middle _ valid supported,
           environmentStep_completed_subset nativeRuntime state middle _ supported,
@@ -47,13 +47,13 @@ theorem native_window_completes (inputs : nativeGraph.Inputs) (event : nativeGra
     (reached : next ∈ (nativeTail (12 + 11 * event.val) 11 state).support) :
     event ∈ next.config.cut.completed := by
   rw [show 11 = 10 + 1 from rfl, native_tail_add] at reached
-  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have progress := native_tail_progress inputs _ _ state middle valid supported
   have ticks : nativeTailTicks (12 + 11 * event.val) 10 = 10 := by fin_cases event <;> decide
   have command : nativeTailCommand (12 + 11 * event.val + 10) = .expire event := by
     fin_cases event <;> rfl
   have last : next ∈ (environmentStep nativeRuntime middle (.expire event)).support := by
-    simpa only [nativeTail, command, FinDist.bind_pure] using moved
+    simpa only [nativeTail, command, PMF.bind_pure] using moved
   rcases progress.ready_or_completed event ready with done | stillReady
   · exact environmentStep_completed_subset nativeRuntime middle next _ last done
   · have strategic : (nativeGraph.actor? event).isSome = true := by fin_cases event <;> decide
@@ -86,7 +86,7 @@ theorem native_tail_completes (inputs : nativeGraph.Inputs)
     induction count with
     | zero =>
         intro index before after sum _ completedBefore member
-        simp only [nativeTail, FinDist.mem_support_pure] at member
+        simp only [nativeTail, PMF.mem_support_pure_iff _ _] at member
         subst after
         change before.config.cut.completed = Finset.univ
         apply Finset.eq_univ_of_forall
@@ -98,7 +98,7 @@ theorem native_tail_completes (inputs : nativeGraph.Inputs)
         intro index before after sum invariant completedBefore member
         let event : nativeGraph.EventId := ⟨index, by change index < 4; omega⟩
         rw [show (count + 1) * 11 = 11 + count * 11 by omega, native_tail_add] at member
-        obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ member)
+        obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
         have progress := native_tail_progress inputs _ _ before middle invariant supported
         have done : event ∈ middle.config.cut.completed := by
           by_cases already : event ∈ before.config.cut.completed
@@ -121,9 +121,9 @@ theorem native_rounds_length (players : Bool → nativeApp.Policy) (count : Nat)
     (reached : next ∈ (nativeApp.runRounds nativeScheduler players count execution).support) :
     next.environmentRecall.length = execution.environmentRecall.length + count := by
   induction count generalizing execution with
-  | zero => cases FinDist.mem_support_pure.mp reached; omega
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; omega
   | succ count ih =>
-      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       rw [ih middle moved, native_round_length players execution middle supported]
       omega
 
@@ -133,7 +133,7 @@ theorem native_runtime_completes (players : Bool → nativeApp.Policy) (bit : Bo
     (reached : next ∈ (nativeApp.runRounds nativeScheduler players 56
       (nativeInitialExecution bit)).support) : next.application.config.cut.Terminal := by
   rw [show 56 = 12 + 44 from rfl, nativeApp.runRounds_add] at reached
-  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have position : middle.environmentRecall.length = 12 :=
     native_rounds_length players 12 _ middle supported
   have valid := ((nativeRuntime.reactiveStateInvariant nativeLeaks
@@ -142,7 +142,7 @@ theorem native_runtime_completes (players : Bool → nativeApp.Policy) (bit : Bo
   have projected : next.application ∈
       ((nativeApp.runRounds nativeScheduler players 44 middle).map
         ReactiveApplication.Execution.application).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, moved, rfl⟩
   rw [native_run_tail players 44 12 middle position (by omega) (by omega)] at projected
   exact native_tail_completes _ middle.application next.application valid projected

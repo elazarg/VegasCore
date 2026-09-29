@@ -57,7 +57,7 @@ theorem certified_withholding_emits (bit : Bool)
 theorem certified_withholding_included (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       (.includeLatest bobPublication bob) (certifiedWithholdRespond bit) =
-        FinDist.pure (certifiedWithholdIncluded bit) := by
+        PMF.pure (certifiedWithholdIncluded bit) := by
   have selected : nativeRuntime.reactiveLatest nativeLeaks bobPublication bob
       ((certifiedWithholdRespond bit).observeEnvironment nativeApp) = .include (bob, 0) := by
     simpa only [certifiedWithholdRespond, certifiedWithholdAction,
@@ -65,8 +65,8 @@ theorem certified_withholding_included (players : Player → nativeApp.Policy) (
       nativeRuntime.reactiveLatest_after_submit nativeLeaks bob bobPublication
         (quietBob bit) (quiet_bob_serials bit) certifiedWithholding rfl
   rw [nativeRuntime.interaction_includeLatest_environment, selected]
-  change (FinDist.pure _).map _ = _
-  rw [FinDist.map_pure]
+  change (PMF.pure _).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 theorem certified_withholding_application (bit : Bool) :
@@ -80,8 +80,8 @@ theorem certified_withholding_application (bit : Bool) :
   change (nativeRuntime.interactionStep nativeLeaks (fun _ => nativeAlicePolicy) nativeNetwork
     (.includeLatest bobPublication bob) (certifiedWithholdRespond bit)).map
     (fun result => (result.application, result.receipts)) = _ at law
-  rw [certified_withholding_included, FinDist.map_pure] at law
-  have pair := FinDist.mem_support_pure.mp (law ▸ FinDist.mem_support_pure.mpr rfl)
+  rw [certified_withholding_included, PMF.pure_map] at law
+  have pair := (PMF.mem_support_pure_iff _ _).mp (law ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   constructor
   · exact (congrArg Prod.fst pair).trans applicationEq.symm
   · exact congrArg Prod.snd pair
@@ -224,15 +224,15 @@ theorem plain_opening_available (past : List nativeApp.PlayerEntry)
 theorem plain_opening_included (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       (.includeLatest bobPublication bob) (plainOpeningRespond bit) =
-        FinDist.pure (plainOpeningIncluded bit) := by
+        PMF.pure (plainOpeningIncluded bit) := by
   have selected : nativeRuntime.reactiveLatest nativeLeaks bobPublication bob
       ((plainOpeningRespond bit).observeEnvironment nativeApp) = .include (bob, 0) := by
     simpa only [plainOpeningRespond, quiet_bob_network, MessageNetwork.empty] using
       nativeRuntime.reactiveLatest_after_submit nativeLeaks bob bobPublication
         (quietBob bit) (quiet_bob_serials bit) plainOpening rfl
   rw [nativeRuntime.interaction_includeLatest_environment, selected]
-  change (FinDist.pure _).map _ = _
-  rw [FinDist.map_pure]
+  change (PMF.pure _).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 theorem plain_opening_accepted (bit : Bool) :
@@ -246,8 +246,8 @@ theorem plain_opening_accepted (bit : Bool) :
   change (nativeRuntime.interactionStep nativeLeaks (fun _ => nativeAlicePolicy) nativeNetwork
     (.includeLatest bobPublication bob) (plainOpeningRespond bit)).map
     (fun result => (result.application, result.receipts)) = _ at law
-  rw [plain_opening_included, FinDist.map_pure] at law
-  have pair := FinDist.mem_support_pure.mp (law ▸ FinDist.mem_support_pure.mpr rfl)
+  rw [plain_opening_included, PMF.pure_map] at law
+  have pair := (PMF.mem_support_pure_iff _ _).mp (law ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   exact ⟨(congrArg Prod.fst pair).trans applicationEq.symm, congrArg Prod.snd pair⟩
 
 theorem plain_opening_ledger (bit : Bool) :

@@ -34,16 +34,16 @@ def effect {Claim : Type} (execution : (application Claim).Execution)
 
 theorem effect_law {Claim : Type} (execution : (application Claim).Execution)
     (cmd : (application Claim).Command) :
-    execution.environmentStep (application Claim) cmd = FinDist.pure (effect execution cmd) := by
+    execution.environmentStep (application Claim) cmd = PMF.pure (effect execution cmd) := by
   cases cmd <;>
     simp only [ReactiveApplication.Execution.environmentStep, application, leaks,
-      FinDist.map_pure] <;> rfl
+      PMF.pure_map] <;> rfl
 
 theorem effect_recall {Claim : Type} (execution : (application Claim).Execution)
     (cmd : (application Claim).Command) (who : Player) :
     (effect execution cmd).recall who = execution.recall who := by
   exact congrFun ((application Claim).environmentStep_recall execution (effect execution cmd) cmd
-    (by rw [effect_law]; exact FinDist.mem_support_pure.mpr rfl)) who
+    (by rw [effect_law]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)) who
 
 theorem effect_environmentRecall {Claim : Type} (execution : (application Claim).Execution)
     (cmd : (application Claim).Command) :
@@ -301,7 +301,7 @@ theorem effect_sound {Claim : Type} (execution : (application Claim).Execution)
     (cmd : (application Claim).Command) (sound : (packetEvidence Claim).Sound execution) :
     (packetEvidence Claim).Sound (effect execution cmd) :=
   (packetEvidence Claim).sound_environment execution (effect execution cmd) cmd sound
-    (by rw [effect_law]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [effect_law]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem aliceInput_sound {Claim : Type} (first second : (application Claim).Action) :
     (packetEvidence Claim).Sound (aliceInput first second) := by

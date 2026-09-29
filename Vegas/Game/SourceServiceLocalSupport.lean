@@ -121,7 +121,7 @@ theorem sourceService_decision_supported
       obtain ⟨value, _, choiceEq⟩ := decision
       rw [sourceServicePolicy_commit setup leaks fresh guard next profile remainingProfile
         refs source embedding refsBefore event.val aligned execution checkpoint.agrees
-        checkpoint.history grantedHead, FinDist.support_map]
+        checkpoint.history grantedHead, PMF.support_map]
       refine ⟨.success value, ?_, choiceEq⟩
       exact (inherited full who).1 rfl (source.view who) (.success value) trivial
   | @reveal Γ names published owner name payload fresh binding unresolved next =>
@@ -163,7 +163,7 @@ theorem sourceService_decision_supported
       obtain ⟨disclose, _, choiceEq⟩ := decision
       rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next profile
         remainingProfile refs source embedding refsBefore event.val aligned execution
-        checkpoint.agrees checkpoint.history grantedHead, FinDist.support_map]
+        checkpoint.agrees checkpoint.history grantedHead, PMF.support_map]
       refine ⟨effectiveDisclosure published binding source disclose, ?_, ?_⟩
       · apply (inherited full who).1 rfl (source.view who)
         simpa only [Config.view, effectiveDisclosureView_observe] using

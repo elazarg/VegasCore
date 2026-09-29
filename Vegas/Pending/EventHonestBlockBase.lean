@@ -64,11 +64,11 @@ theorem environmentPolicyStep_honestBoundary (runtime : EventGraphRuntime graph)
       (.application command)).support) : HonestBoundary runtime inputs next := by
   have native : next.native ∈ ((runtime.application.environmentPolicyStep execution
       (.application command)).map MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.support_map, Set.mem_image] at native
+    PMF.support_map, Set.mem_image] at native
   obtain ⟨state, supported, stateEq⟩ := native
   have applicationEq : next.native.application = state := by rw [← stateEq]
   have tables := environmentStep_tables runtime execution.native.application state command supported
@@ -104,7 +104,7 @@ theorem compileProfile_wait_of_not_ready (runtime : EventGraphRuntime graph)
     (unready : ¬execution.native.application.config.cut.Ready event) :
     runtime.compileProfile profile who (execution.principalHistory who)
       (MessageApplication.State.observe runtime.application execution.native who) =
-        FinDist.pure .wait := by
+        PMF.pure .wait := by
   have unreadyView : ¬execution.native.application.publicView.EventReady event :=
     fun ready => unready ((State.publicView_eventReady _ _).mp ready)
   have observedGrant : (MessageApplication.State.observe runtime.application
@@ -154,14 +154,14 @@ private theorem environmentPolicyStep_quiet (runtime : EventGraphRuntime graph)
     (execution next : runtime.application.PolicyExecution)
     (command : runtime.application.EnvironmentPolicyCommand)
     (law : (runtime.application.environmentPolicyStep execution command).map
-      MessageInterface.PolicyExecution.native = FinDist.pure execution.native)
+      MessageInterface.PolicyExecution.native = PMF.pure execution.native)
     (member : next ∈ (runtime.application.environmentPolicyStep execution command).support) :
     Quiet runtime execution next := by
   have projected : next.native ∈ ((runtime.application.environmentPolicyStep execution command).map
       MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
-  rw [law, FinDist.mem_support_pure] at projected
+  rw [law, PMF.mem_support_pure_iff _ _] at projected
   refine ⟨projected, ?_⟩
   intro who event
   rw [runtime.application.environmentStep_principalHistory execution command next member]
@@ -186,8 +186,8 @@ private theorem serviceStep_idle (runtime : EventGraphRuntime graph)
   | player who =>
       simp only [serviceStep, MessageApplication.invoke] at member
       rw [runtime.compileProfile_wait_of_not_ready profile execution event who grant unready,
-        FinDist.pure_bind, runtime.application.playerStep_wait,
-        FinDist.mem_support_pure] at member
+        PMF.pure_bind, runtime.application.playerStep_wait,
+        PMF.mem_support_pure_iff _ _] at member
       subst next
       refine ⟨rfl, ?_⟩
       intro observer query
@@ -197,7 +197,7 @@ private theorem serviceStep_idle (runtime : EventGraphRuntime graph)
       · simp [same]
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       apply environmentPolicyStep_quiet runtime execution next
         (command.toEnvironmentCommand runtime.application) _ step
@@ -241,7 +241,7 @@ private theorem serviceStep_idle (runtime : EventGraphRuntime graph)
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step]
       change (environmentStep runtime execution.native.application (.executeSample event)).map
         (fun application => ({ execution.native with application } : runtime.application.State)) = _
-      rw [environmentStep_executeSample_of_not_ready runtime _ event unready, FinDist.map_pure]
+      rw [environmentStep_executeSample_of_not_ready runtime _ event unready, PMF.pure_map]
   | grant | tick | expire => contradiction
 
 private theorem runServicePlan_idle (runtime : EventGraphRuntime graph)
@@ -256,11 +256,11 @@ private theorem runServicePlan_idle (runtime : EventGraphRuntime graph)
       plan execution).support) : Quiet runtime execution next := by
   induction plan generalizing execution with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact .refl runtime execution
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, head, tail⟩ := member
       have first := serviceStep_idle runtime profile wire event instruction execution middle
         (allowed instruction List.mem_cons_self) grant unready empty head
@@ -286,11 +286,11 @@ theorem serviceStep_grant_eq (runtime : EventGraphRuntime graph)
     (players : Player → runtime.application.PlayerPolicy) (wire : runtime.application.WirePolicy)
     (execution : runtime.application.PolicyExecution) (event : graph.EventId) :
     runtime.serviceStep players wire (.grant event) execution =
-      FinDist.pure (runtime.afterGrant execution event) := by
+      PMF.pure (runtime.afterGrant execution event) := by
   simp only [serviceStep, MessageApplication.environmentPolicyStep,
     MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.advance,
     MessageApplication.step]
-  simp only [application, environmentStep, FinDist.map_pure, FinDist.pure_bind]
+  simp only [application, environmentStep, PMF.pure_map, PMF.pure_bind]
   rfl
 
 theorem HonestBoundary.afterGrant {runtime : EventGraphRuntime graph} {inputs : graph.Inputs}
@@ -299,9 +299,9 @@ theorem HonestBoundary.afterGrant {runtime : EventGraphRuntime graph} {inputs : 
     HonestBoundary runtime inputs (runtime.afterGrant execution event) := by
   apply environmentPolicyStep_honestBoundary runtime inputs execution _ (.grant event) boundary
   change runtime.afterGrant execution event ∈
-    (runtime.serviceStep (fun _ _ _ => FinDist.pure .wait)
-      (fun _ _ => FinDist.pure .wait) (.grant event) execution).support
-  rw [runtime.serviceStep_grant_eq, FinDist.mem_support_pure]
+    (runtime.serviceStep (fun _ _ _ => PMF.pure .wait)
+      (fun _ _ => PMF.pure .wait) (.grant event) execution).support
+  rw [runtime.serviceStep_grant_eq, PMF.mem_support_pure_iff _ _]
 
 omit [DecidableEq Player] in
 private theorem eventServicePlan_tail_idle (roster : List Player) (reactionRounds : Nat)
@@ -343,14 +343,14 @@ theorem HonestBoundary.unready_block (runtime : EventGraphRuntime graph)
     (runtime.runServicePlan (runtime.compileProfile profile) wire
         (eventServicePlan roster reactionRounds event) execution).map
           (fun next => next.native.application.config) =
-        FinDist.pure execution.native.application.config ∧
+        PMF.pure execution.native.application.config ∧
       ∀ next ∈ (runtime.runServicePlan (runtime.compileProfile profile) wire
         (eventServicePlan roster reactionRounds event) execution).support,
         HonestBoundary runtime inputs next := by
   have plan : eventServicePlan roster reactionRounds event =
       .grant event :: (eventServicePlan roster reactionRounds event).tail := by
     simp [eventServicePlan]
-  rw [plan, runServicePlan, runtime.serviceStep_grant_eq, FinDist.pure_bind]
+  rw [plan, runServicePlan, runtime.serviceStep_grant_eq, PMF.pure_bind]
   have quiet next (member : next ∈ (runtime.runServicePlan (runtime.compileProfile profile)
       wire (eventServicePlan roster reactionRounds event).tail
         (runtime.afterGrant execution event)).support) :
@@ -359,9 +359,9 @@ theorem HonestBoundary.unready_block (runtime : EventGraphRuntime graph)
       (eventServicePlan_tail_idle roster reactionRounds event) rfl unready
       boundary.pending_empty member
   constructor
-  · apply FinDist.eq_pure_of_support_subset_singleton
+  · apply pmf_eq_pure_of_support_subset_singleton
     intro config member
-    rw [FinDist.support_map] at member
+    rw [PMF.support_map] at member
     obtain ⟨next, supported, rfl⟩ := member
     change next.native.application.config = execution.native.application.config
     have configEq := congrArg (fun native : runtime.application.State => native.application.config)
@@ -393,8 +393,8 @@ theorem HonestBoundary.sample_block (runtime : EventGraphRuntime graph)
         HonestBoundary runtime inputs next := by
   have plan : eventServicePlan roster reactionRounds event = [.grant event, .sample event] := by
     simp [eventServicePlan, ownerless]
-  simp only [plan, runServicePlan, runtime.serviceStep_grant_eq, FinDist.pure_bind,
-    FinDist.bind_pure]
+  simp only [plan, runServicePlan, runtime.serviceStep_grant_eq, PMF.pure_bind,
+    PMF.bind_pure]
   let granted := runtime.afterGrant execution event
   have grantedBoundary := boundary.afterGrant event
   constructor
@@ -403,19 +403,19 @@ theorem HonestBoundary.sample_block (runtime : EventGraphRuntime graph)
         (fun next => next.native.application.config) = _
     have nativeLaw := runtime.application.environmentStep_native granted
       (.application (.executeSample event))
-    have projected := congrArg (fun measure : FinDist runtime.application.State =>
+    have projected := congrArg (fun measure : PMF runtime.application.State =>
       measure.map (fun native => native.application.config)) nativeLaw
-    simp only [FinDist.map_comp, Function.comp_def] at projected
+    simp only [PMF.map_comp, Function.comp_def] at projected
     rw [projected]
     simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step]
     change ((environmentStep runtime granted.native.application (.executeSample event)).map
       (fun application => ({ granted.native with application } : runtime.application.State))).map
         (fun native => native.application.config) = _
     rw [environmentStep_executeSample_eq runtime granted.native.application event ready
-      payload law outputEq codeEq viewNode, FinDist.map_comp, FinDist.map_comp]
+      payload law outputEq codeEq viewNode, PMF.map_comp, PMF.map_comp]
     change (execution.native.application.config.step event ready
       (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)).map id = _
-    rw [FinDist.map_id]
+    rw [PMF.map_id]
     have singleton : Subsingleton (graph.Action event) := by
       change Subsingleton (graph.outputLayout event).Action
       rw [outputEq]

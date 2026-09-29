@@ -52,7 +52,7 @@ theorem bayesBelief_eq_of_eq_off
   have firstMass := factor first firstReach firstCommon
   have secondMass := factor second secondReach secondCommon
   simp_rw [← M.counterfactualReachProbability_eq_of_eq_off agree] at secondMass
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
   rw [M.bayesBelief_prob first who site antichain firstPositive history,
     M.bayesBelief_prob second who site antichain secondPositive history,

@@ -105,20 +105,20 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
     exact actor
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨packets, traffic, counted⟩
   | cons who rest ih =>
-      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at step
+      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at step
       change middle ∈ ((initial.environmentStep app (.activate who)).bind
         (app.invoke players who)).support at step
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at step
-      obtain ⟨sample, sampled, step⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ step)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ step
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at step
+      obtain ⟨sample, sampled, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app who sample
       have activation : activated ∈ (initial.environmentStep app (.activate who)).support := by
         rw [ReactiveApplication.Execution.activation_samples]
-        exact FinDist.support_map .. ▸ ⟨sample, sampled, rfl⟩
+        exact PMF.support_map .. ▸ ⟨sample, sampled, rfl⟩
       have activeRecall := app.environment_inputRecall initial activated (.activate who)
         recalled activation
       have allowed := covered who _ _ response chosen

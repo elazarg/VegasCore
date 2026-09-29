@@ -101,17 +101,17 @@ theorem owner_window_focal_law (runtime : EventGraphRuntime graph)
           (runtime.bindingTraffic leaks owner)) := by
   intro app players
   induction roster generalizing left right with
-  | nil => simpa only [List.map_nil, runInteractionPlan, FinDist.map_pure] using
-      congrArg FinDist.pure same
+  | nil => simpa only [List.map_nil, runInteractionPlan, PMF.pure_map] using
+      congrArg PMF.pure same
   | cons actor rest ih =>
       have networks : left.network = right.network := congrArg Prod.fst same
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.map_bind,
-        FinDist.bind_map, FinDist.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.map_bind,
+        PMF.bind_map, PMF.bind_bind]
       rw [networks]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro sample _
       let before := left.sampledActivation app actor sample
       let after := right.sampledActivation app actor sample
@@ -139,7 +139,7 @@ theorem owner_window_focal_law (runtime : EventGraphRuntime graph)
           exact congrArg₂ (fun view evidence =>
             (⟨after.network.observe owner, view, evidence⟩ : app.PlayerView)) projected receipts
         rw [recalls, views]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro response _
         exact ih _ _ (app.respond_inputRecall before owner response beforeRecall)
           (app.respond_inputRecall after owner response afterRecall)
@@ -148,7 +148,7 @@ theorem owner_window_focal_law (runtime : EventGraphRuntime graph)
           beforeRecall afterRecall (congrArg Prod.fst matched)
         simp only [players, Function.update_of_ne acts]
         rw [replay]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro response supported
         exact ih _ _ (app.respond_inputRecall before actor response beforeRecall)
           (app.respond_inputRecall after actor response afterRecall)

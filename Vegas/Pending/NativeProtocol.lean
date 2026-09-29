@@ -64,19 +64,19 @@ def nativeInstructionStep (runtime : EventGraphRuntime graph)
     (wire : runtime.application.WirePolicy) (instruction : ServiceInstruction graph)
     (execution : NativeExecution runtime)
     (joint : Player → Option (PlayerAction graph)) :
-    FinDist (NativeExecution runtime) :=
+    PMF (NativeExecution runtime) :=
   match instruction with
   | .player who => runtime.actionStep who execution
       ((joint who).getD PlayerAction.wait)
-  | _ => (runtime.serviceStep (fun _ _ _ => FinDist.pure .wait) wire instruction
+  | _ => (runtime.serviceStep (fun _ _ _ => PMF.pure .wait) wire instruction
       (execution.environmentExecution runtime)).map fun next =>
         { execution with native := next.native, environmentHistory := next.environmentHistory }
 
 def nativeTransition (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     NativeProtocolState runtime → (Player → Option (PlayerAction graph)) →
-      FinDist (NativeProtocolState runtime)
+      PMF (NativeProtocolState runtime)
   | none, _ => inputs.map fun input => some
       { epochs := runtime.serviceEpochs
         plan := []
@@ -87,7 +87,7 @@ def nativeTransition (runtime : EventGraphRuntime graph)
         (runtime.nativeInstructionStep wire instruction control.execution joint).map
           fun execution => some { control with plan := rest, execution := execution }
     | [] => match control.epochs with
-      | 0 => FinDist.pure (some control)
+      | 0 => PMF.pure (some control)
       | epochs + 1 =>
           (order control.execution.environmentHistory
             (MessageApplication.State.environmentView runtime.application
@@ -99,7 +99,7 @@ def nativeTransition (runtime : EventGraphRuntime graph)
 /-- Only player actions are strategic coordinates. Service policies
 are fixed parameters, evaluated on their original public observations. -/
 def nativeProtocol (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ExecutionProtocol Player where
   State := NativeProtocolState runtime
@@ -117,7 +117,7 @@ def nativeProtocol (runtime : EventGraphRuntime graph)
     by_cases acts : runtime.nativeActor state = some who <;> simp [acts]
 
 theorem native_singleMover (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (state : NativeProtocolState runtime) {first second : Player}
     (firstActs : (runtime.nativeProtocol inputs roster reactionRounds wire order).active
@@ -136,7 +136,7 @@ theorem nativeObserve_isSome (runtime : EventGraphRuntime graph) (who : Player)
         simp [nativeObserve, acts]
 
 def nativeSignals (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     InfoSignals (runtime.nativeProtocol inputs roster reactionRounds wire order) where
   PublicSignal := Unit
@@ -150,7 +150,7 @@ def nativeSignals (runtime : EventGraphRuntime graph)
   pushInfo _ _ _ view _ := view
 
 theorem native_info (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) (who : Player) :
     ∀ {state}
       (trace : (runtime.nativeProtocol inputs roster reactionRounds wire order).Trace state),
@@ -160,7 +160,7 @@ theorem native_info (runtime : EventGraphRuntime graph)
   | _, .extend _ _ _ _ => rfl
 
 def nativeInformation (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     InformationModel (runtime.nativeProtocol inputs roster reactionRounds wire order) where
   toInfoSignals := runtime.nativeSignals inputs roster reactionRounds wire order

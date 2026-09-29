@@ -34,8 +34,8 @@ theorem retainedImplementation_response_ownBindings (owner : Player)
     (next : (runtime.reactiveApplication leaks).Action × BindingMemory runtime leaks)
     (reached : next ∈ ((retainedImplementation runtime leaks menu owner reference policy).respond
       memory input).support) : next.2.shadow.OwnBindings owner := by
-  obtain ⟨proposed, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-  obtain ⟨response, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨proposed, supported, rfl⟩ := PMF.support_map .. ▸ reached
+  obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ supported
   dsimp only
   split
   · exact onlyBindings
@@ -54,17 +54,17 @@ theorem retainedImplementation_resume_ownBindings (owner : Player)
       owner players actor execution memory).support) : next.2.shadow.OwnBindings owner := by
   cases actor with
   | none =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact onlyBindings
   | some who =>
       by_cases acting : who = owner
       · subst who
         simp only [ReactiveApplication.Implementation.resume, ite_true] at reached
-        obtain ⟨response, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+        obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ reached
         exact retainedImplementation_response_ownBindings runtime leaks menu owner reference
           policy memory onlyBindings _ response supported
       · simp only [ReactiveApplication.Implementation.resume, acting, ite_false] at reached
-        obtain ⟨_, _, rfl⟩ := FinDist.support_map .. ▸ reached
+        obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ reached
         exact onlyBindings
 
 /-- The actual joint runner preserves own-binding memory at every supported
@@ -83,15 +83,15 @@ theorem retainedImplementation_runJoint_ownBindings (owner : Player)
     next.2.shadow.OwnBindings owner := by
   induction count generalizing execution memory with
   | zero =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact onlyBindings
   | succ count ih =>
       obtain ⟨middle, moved, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨command, _, dispatched⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ moved)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
       obtain ⟨activated, _, responded⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ dispatched)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
       exact ih middle.1 middle.2
         (retainedImplementation_resume_ownBindings runtime leaks menu owner reference policy
           players (command.actor? (runtime.reactiveApplication leaks)) activated memory

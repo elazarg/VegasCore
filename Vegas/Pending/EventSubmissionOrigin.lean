@@ -32,10 +32,10 @@ theorem compilePlayerPolicy_commitment_origin
   all_goals try simp only [bindingStageCommand, resolutionSubmission,
     resolutionPayload] at supported
   all_goals repeat' first | split at supported
-  all_goals try simp only [FinDist.mem_support_pure] at supported
+  all_goals try simp only [PMF.mem_support_pure_iff _ _] at supported
   all_goals try { cases supported }
   all_goals try {
-    rw [FinDist.support_map, Set.mem_image] at supported
+    rw [PMF.support_map, Set.mem_image] at supported
     obtain ⟨action, _, impossible⟩ := supported
     cases impossible }
   have payloadEq := MessageInterface.PlayerCommand.submit.inj supported
@@ -83,7 +83,7 @@ theorem serviceStep_canonicalCommitments
     after.native.pool.Satisfies (CanonicalCommitments (graph := graph) owner) := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, commandMem, step⟩ := member
       apply runtime.application.playerStep_pool_satisfies _ who before after command safe _ step
@@ -98,7 +98,7 @@ theorem serviceStep_canonicalCommitments
         (MessageApplication.State.observe runtime.application before.native owner)
         event handle (payloadEq ▸ commandMem)
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.application.environmentPolicyStep_pool_satisfies _ before after command
@@ -121,11 +121,11 @@ theorem runServicePlan_canonicalCommitments
     after.native.pool.Satisfies (CanonicalCommitments (graph := graph) owner) := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact safe
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, first, last⟩ := member
       exact ih middle (serviceStep_canonicalCommitments runtime owner policy players ownerPolicy
         wire instruction before middle safe first) last
@@ -144,7 +144,7 @@ theorem serviceEpoch_canonicalCommitments
     (member : after ∈ (runtime.serviceEpoch roster reactionRounds players wire order
       before).support) :
     after.native.pool.Satisfies (CanonicalCommitments (graph := graph) owner) := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨chosen, _, run⟩ := member
   exact runServicePlan_canonicalCommitments runtime owner policy players ownerPolicy wire
     (epochPlan chosen roster reactionRounds) before after safe run
@@ -165,11 +165,11 @@ theorem runService_canonicalCommitments
     after.native.pool.Satisfies (CanonicalCommitments (graph := graph) owner) := by
   induction count generalizing before with
   | zero =>
-      simp only [runService, FinDist.mem_support_pure] at member
+      simp only [runService, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact safe
   | succ count ih =>
-      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runService, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, epoch, rest⟩ := member
       exact ih middle (serviceEpoch_canonicalCommitments runtime owner policy roster
         reactionRounds players ownerPolicy wire order before middle safe epoch) rest

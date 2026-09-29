@@ -128,8 +128,8 @@ theorem rawBinding_reserved_preparedPrefix
   have mapped : (final.application.config, final.receipts) ∈
       ((runtime.interactionStep leaks players scheduler (.includeLatest event who)
         submitted).map fun next => (next.application.config, next.receipts)).support :=
-    FinDist.support_map .. ▸ ⟨final, reached, rfl⟩
-  rw [resultLaw, FinDist.mem_support_pure] at mapped
+    PMF.support_map .. ▸ ⟨final, reached, rfl⟩
+  rw [resultLaw, PMF.mem_support_pure_iff _ _] at mapped
   have configEq := congrArg Prod.fst mapped
   dsimp only [Prod.fst] at configEq
   have selected : runtime.interactionStep leaks players scheduler (.includeLatest event who)
@@ -137,9 +137,9 @@ theorem rawBinding_reserved_preparedPrefix
     have chosen := runtime.reactiveLatest_after_submit leaks who event execution serials
       material rfl
     unfold interactionStep
-    rw [interactionInstruction, chosen, FinDist.pure_bind]
+    rw [interactionInstruction, chosen, PMF.pure_bind]
     simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-    exact FinDist.bind_pure _
+    exact PMF.bind_pure _
   have found : submitted.network.lookup id =
       some ⟨id, ⟨.commitment event (who, .prepared serial), none⟩⟩ :=
     serials.lookup_submit who ⟨.commitment event (who, .prepared serial), none⟩
@@ -151,8 +151,8 @@ theorem rawBinding_reserved_preparedPrefix
     change final ∈ (runtime.interactionStep leaks players scheduler
       (.includeLatest event who) submitted).support at reached
     rw [selected] at reached
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at reached
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at reached
     rw [reached]
     exact unchanged
   have count : final.application.publicView.bindingCount who = serial + 1 := by

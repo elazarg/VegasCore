@@ -66,14 +66,14 @@ theorem first_step (alice bob : CommitmentAdmission) (choice : PublicationResult
     (admitted : alice.Admits choice) :
     (game alice bob).step (game alice bob).init
         ⟨submitA choice, legal_first alice bob choice admitted⟩ =
-      FinDist.pure (afterA choice) := by
+      PMF.pure (afterA choice) := by
   simp [game, executionProtocol, program, ProtocolState.entry, ProtocolState.step,
     submitA, afterA]
 
 def firstHistory (alice bob : CommitmentAdmission) (choice : PublicationResult Bool)
     (admitted : alice.Admits choice) : (game alice bob).Trace (afterA choice) :=
   .extend .start (submitA choice) (legal_first alice bob choice admitted)
-    (by rw [first_step alice bob choice admitted]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [first_step alice bob choice admitted]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 /-- Forfeiture at A is an actual legal history when that site admits it. -/
 example : Nonempty ((game .forfeiture .values).Trace (afterA .failure)) :=

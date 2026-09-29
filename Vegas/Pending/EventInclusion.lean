@@ -58,7 +58,7 @@ theorem serviceStep_includeLatest_afterSubmit_native
     (runtime.serviceStep players wire (.includeLatest event owner)
         (runtime.application.afterSubmit execution owner packet)).map
         MessageInterface.PolicyExecution.native =
-      FinDist.pure
+      PMF.pure
         ⟨nextState,
           ((execution.native.pool.submit owner packet).2.includePending
             (owner, execution.native.pool.nextSerial owner)).state,

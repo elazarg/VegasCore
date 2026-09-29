@@ -28,7 +28,7 @@ namespace IncludedIn
 
 variable {smaller larger : app.ResponseMenu} (included : smaller.IncludedIn larger)
   [DecidableEq Principal]
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 include included in
 theorem legal {state : app.ProtocolState} {joint : Principal → Option app.Action}
@@ -134,24 +134,24 @@ theorem localStep (original : (smaller.protocol initial horizon scheduler).Histo
   · simp only [InformationModel.localStep, history_state,
       show (smaller.protocol initial horizon scheduler).terminal original.state from stopped,
       show (larger.protocol initial horizon scheduler).terminal original.state from stopped,
-      dite_eq_left, FinDist.map_pure]
+      dite_eq_left, PMF.pure_map]
   · rcases original with ⟨state, original⟩
     change ¬ app.terminal state at stopped
     cases original with
     | start =>
       change ¬ app.terminal none at stopped
       simp only [InformationModel.localStep, history, protocol,
-        dite_eq_right stopped, FinDist.map_bindOnSupport]
-      apply FinDist.bindOnSupport_congr
+        dite_eq_right stopped, map_bindOnSupport]
+      apply bindOnSupport_congr _
       intro target realized
-      rw [FinDist.map_pure]
+      rw [PMF.pure_map]
       rfl
     | extend prior joint permitted realized =>
       simp only [InformationModel.localStep, history, protocol,
-        dite_eq_right stopped, FinDist.map_bindOnSupport]
-      apply FinDist.bindOnSupport_congr
+        dite_eq_right stopped, map_bindOnSupport]
+      apply bindOnSupport_congr _
       intro target realized
-      rw [FinDist.map_pure]
+      rw [PMF.pure_map]
       rfl
 
 /-- Nested finite menus give the structural restriction used by the general SE theorem. -/
@@ -200,8 +200,8 @@ theorem decoded_at_site
   change target who site.1 =
     (source who site.1).map (included.choice initial horizon scheduler who site.1) at same
   rw [observed] at same
-  simp only [decodeProfile, ReactiveApplication.decodePolicy, embedPolicy, FinDist.map_comp]
-  rw [same, FinDist.map_comp]
+  simp only [decodeProfile, ReactiveApplication.decodePolicy, embedPolicy, PMF.map_comp]
+  rw [same, PMF.map_comp]
   rfl
 
 end IncludedIn

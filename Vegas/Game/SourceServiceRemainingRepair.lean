@@ -103,7 +103,7 @@ theorem remaining_events_stopped_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (events.flatMap (rosterBlock setup rosters)) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -133,12 +133,12 @@ theorem remaining_events_stopped_coupling
     (runtime setup) leaks menu owner reference (players owner)
   induction events generalizing original repaired memory before with
   | nil =>
-      refine ⟨FinDist.pure (original, repaired, memory), ?_, ?_, ?_⟩
-      · simp only [List.flatMap_nil, runInteractionPlan, FinDist.map_pure]
+      refine ⟨PMF.pure (original, repaired, memory), ?_, ?_, ?_⟩
+      · simp only [List.flatMap_nil, runInteractionPlan, PMF.pure_map]
       · simp only [List.flatMap_nil, List.length_nil,
-          ReactiveApplication.Implementation.runJoint, FinDist.map_pure]
+          ReactiveApplication.Implementation.runJoint, PMF.pure_map]
       · intro next reached
-        cases FinDist.mem_support_pure.mp reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         exact ⟨⟨trace⟩, onlyBindings, Or.inr (Or.inr frame)⟩
   | cons event rest ih =>
       let block := rosterBlock setup rosters event
@@ -158,7 +158,7 @@ theorem remaining_events_stopped_coupling
             (by simpa only [List.flatMap_cons, List.append_assoc, block, suffix] using split)
             position
       have existsTail next (member : next ∈ step.support) :
-          ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup)
+          ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup)
             leaks),
             coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
               suffix next.1 ∧
@@ -177,11 +177,11 @@ theorem remaining_events_stopped_coupling
             next.1.application.publicView.missedBindingBy owner = true
         · let left := (runtime setup).runInteractionPlan leaks players network suffix next.1
           let right := strategy.runJoint owner players scheduler suffix.length next.2.1 next.2.2
-          refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+          refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
             FinDist.map_snd_product .., ?_⟩
           intro final supported
           have reached : final.1 ∈ left.support := by
-            rw [← FinDist.map_fst_product left right, FinDist.support_map]
+            rw [← bindPairLaw_map_fst left right, PMF.support_map]
             exact ⟨final, supported, rfl⟩
           rcases bad with ⟨record, present, authored, forbidden⟩ | missed
           · exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks
@@ -196,11 +196,11 @@ theorem remaining_events_stopped_coupling
           have leftSupport : next.1 ∈
               ((runtime setup).runInteractionPlan leaks players network block original).support :=
                 by
-            rw [← first, FinDist.support_map]
+            rw [← first, PMF.support_map]
             exact ⟨next, member, rfl⟩
           have rightSupport : next.2 ∈
               (strategy.runJoint owner players scheduler block.length repaired memory).support := by
-            rw [← second, FinDist.support_map]
+            rw [← second, PMF.support_map]
             exact ⟨next, member, rfl⟩
           have nextMemory := BindingMemory.retainedImplementation_runJoint_ownBindings
             (runtime setup) leaks menu owner reference (players owner) players scheduler
@@ -241,36 +241,36 @@ theorem remaining_events_stopped_coupling
       let coupling := step.bindOnSupport tail
       have leftLaw : coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players
           network ((event :: rest).flatMap (rosterBlock setup rosters)) original := by
-        rw [FinDist.map_bindOnSupport]
+        rw [map_bindOnSupport]
         calc
           _ = step.bind (fun next =>
               (runtime setup).runInteractionPlan leaks players network suffix next.1) := by
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next member
             exact (existsTail next member).choose_spec.1
           _ = _ := by
-            rw [← FinDist.bind_map, first, ← (runtime setup).runInteractionPlan_append]
+            rw [← PMF.bind_map, first, ← (runtime setup).runInteractionPlan_append]
             rfl
       have rightLaw : coupling.map Prod.snd = strategy.runJoint owner players scheduler
           ((event :: rest).flatMap (rosterBlock setup rosters)).length repaired memory := by
         rw [List.flatMap_cons, List.length_append,
-          ReactiveApplication.Implementation.runJoint_add, FinDist.map_bindOnSupport]
+          ReactiveApplication.Implementation.runJoint_add, map_bindOnSupport]
         calc
           _ = step.bind (fun next => strategy.runJoint owner players scheduler suffix.length
               next.2.1 next.2.2) := by
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next member
             exact (existsTail next member).choose_spec.2.1
           _ = (step.map Prod.snd).bind (fun next =>
               strategy.runJoint owner players scheduler suffix.length next.1 next.2) := by
-            rw [FinDist.bind_map]
+            rw [PMF.bind_map]
           _ = _ := by rw [second]
       refine ⟨coupling, leftLaw, rightLaw, ?_⟩
       intro final supported
       have reached : final.2 ∈ (strategy.runJoint owner players scheduler
           ((event :: rest).flatMap (rosterBlock setup rosters)).length repaired memory).support :=
             by
-        rw [← rightLaw, FinDist.support_map]
+        rw [← rightLaw, PMF.support_map]
         exact ⟨final, supported, rfl⟩
       refine ⟨?_, ?_, ?_⟩
       · exact menu.trace_implementation_runJoint (initialLaw setup)
@@ -281,7 +281,7 @@ theorem remaining_events_stopped_coupling
           owner reference (players owner) players scheduler _ repaired memory onlyBindings final.2
           reached
       · obtain ⟨next, member, tailSupport⟩ :=
-          Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+          Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
         exact (existsTail next member).choose_spec.2.2 final tailSupport
 
 end Vegas

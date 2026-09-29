@@ -33,7 +33,7 @@ theorem sourceService_owner_bayes_posterior
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -76,8 +76,8 @@ theorem sourceService_owner_bayes_posterior
       site.1 = some (reference.recall owner, reference.observe (application setup leaks) owner) →
       (native.stateBelief owner site).map (fun state => state.bind fun control =>
         sourceServicePrefix? setup event.val control.execution.application.config) =
-        (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
-          History.state).condOnFibre (setup.protocolObserve owner)
+        fiberConditional (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
+          History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourceServicePrefix? setup event.val reference.application.config)) := by
   intro normalized admission encoded players executions referenceSupport site siteInput
@@ -105,9 +105,9 @@ theorem sourceService_owner_bayes_posterior
           (normalized_sourceService_admitted setup original permitted)) count owner selected
   have referenceState : embed reference ∈
       ((model.runBehavioral native.strategy depth).map History.state).support := by
-    rw [law, FinDist.support_map]
+    rw [law, PMF.support_map]
     exact ⟨reference, referenceSupport, rfl⟩
-  obtain ⟨history, historySupport, stateEq⟩ := FinDist.support_map .. ▸ referenceState
+  obtain ⟨history, historySupport, stateEq⟩ := PMF.support_map .. ▸ referenceState
   have observed : model.infoOf owner history.trace = site.1 := by
     rw [show model.infoOf owner history.trace =
       (application setup leaks).observe owner history.state from menu.info .., stateEq, siteInput]
@@ -131,11 +131,11 @@ theorem sourceService_owner_bayes_posterior
   rw [law, siteInput] at conditioned
   have present : some (input reference) ∈
       (executions.map ((application setup leaks).observe owner ∘ embed)).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨reference, referenceSupport, observeEmbed reference⟩
-  have transported := FinDist.map_conditional_readout executions embed
+  have transported := PMF.map_conditional_readout executions embed
     ((application setup leaks).observe owner) (some (input reference)) present
-  have fiber := FinDist.condOnFibre_eq_of_support_fiber executions
+  have fiber := fiberConditional_eq_of_support_fiber executions
     ((application setup leaks).observe owner ∘ embed) input (some (input reference))
     (input reference) (by
       intro value _
@@ -153,7 +153,7 @@ theorem sourceService_owner_bayes_posterior
     by simpa only [executions, before] using referenceSupport
   have result := posterior supported
   change (native.stateBelief owner site).map read = _
-  rw [conditioned, ← transported, FinDist.map_comp]
+  rw [conditioned, ← transported, PMF.map_comp]
   simpa only [executions, before, Function.comp_def, read, embed, Option.bind_some, input]
     using result
 
@@ -169,7 +169,7 @@ theorem sourceService_owner_bayes_at_history
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (network : (runtime setup).NetworkPolicy leaks)
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
@@ -213,8 +213,8 @@ theorem sourceService_owner_bayes_at_history
       control.execution ∈ executions.support ∧
       (native.stateBelief owner site).map (fun state => state.bind fun current =>
         sourceServicePrefix? setup event.val current.execution.application.config) =
-        (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
-          History.state).condOnFibre (setup.protocolObserve owner)
+        fiberConditional (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
+          History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourceServicePrefix? setup event.val control.execution.application.config)) := by
   intro normalized admission encoded model executions site history control current position
@@ -251,9 +251,9 @@ theorem sourceService_owner_bayes_at_history
   rw [← strategy] at law
   have stateSupport : some control ∈
       ((model.runBehavioral native.strategy depth).map History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨history.1, supported, current⟩
-  rw [law, FinDist.support_map] at stateSupport
+  rw [law, PMF.support_map] at stateSupport
   obtain ⟨execution, executionSupport, same⟩ := stateSupport
   have executionEq : execution = control.execution :=
     congrArg ReactiveApplication.Control.execution (Option.some.inj same)

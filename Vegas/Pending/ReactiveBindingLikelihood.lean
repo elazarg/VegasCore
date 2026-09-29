@@ -98,8 +98,8 @@ theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
         (runtime.bindingTraffic leaks focal)) := by
   let app := runtime.reactiveApplication leaks
   induction roster generalizing left right with
-  | nil => simpa only [List.map_nil, runInteractionPlan, FinDist.map_pure] using
-      congrArg FinDist.pure same
+  | nil => simpa only [List.map_nil, runInteractionPlan, PMF.pure_map] using
+      congrArg PMF.pure same
   | cons who rest ih =>
       have networks : left.network = right.network := congrArg Prod.fst same
       have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
@@ -116,12 +116,12 @@ theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
           publics
         simp only [ReactiveApplication.Execution.observeEnvironment, networks, receipts, observed]
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.map_bind,
-        FinDist.bind_map, FinDist.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.map_bind,
+        PMF.bind_map, PMF.bind_bind]
       rw [networks]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro sample _
       let first := left.sampledActivation app who sample
       let second := right.sampledActivation app who sample
@@ -139,7 +139,7 @@ theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
       change (app.replayPolicy (first.recall who) (first.observe app who)).bind _ =
         (app.replayPolicy (second.recall who) (second.observe app who)).bind _
       rw [replay]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro response supported
       have transport := app.replayPolicy_cases _ _ response supported
       have firstState : (first.respond app who response).application = first.application := by
@@ -189,12 +189,12 @@ theorem binding_replay_window_coupling (runtime : EventGraphRuntime graph)
     (visible : focal = owner → first = second) (serial : Nat)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
     let app := runtime.reactiveApplication leaks
-    FinDist.map (runtime.bindingTraffic leaks focal)
+    PMF.map (runtime.bindingTraffic leaks focal)
       (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network
       (roster.map ServiceInstruction.player)
         (left.respond app owner
           (runtime.reactiveBinding leaks owner event payload first serial))) =
-    FinDist.map (runtime.bindingTraffic leaks focal)
+    PMF.map (runtime.bindingTraffic leaks focal)
       (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network
       (roster.map ServiceInstruction.player)
         (right.respond app owner
@@ -333,10 +333,10 @@ theorem binding_replay_inclusion_coupling (runtime : EventGraphRuntime graph)
     (serials : left.network.SerialsBeforeNext) :
     let app := runtime.reactiveApplication leaks
     let phase := roster.map ServiceInstruction.player ++ [.includeLatest event owner]
-    FinDist.map (runtime.bindingTraffic leaks focal)
+    PMF.map (runtime.bindingTraffic leaks focal)
       (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network phase
         (left.respond app owner (runtime.reactiveBinding leaks owner event payload first serial))) =
-    FinDist.map (runtime.bindingTraffic leaks focal)
+    PMF.map (runtime.bindingTraffic leaks focal)
       (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network phase
         (right.respond app owner
           (runtime.reactiveBinding leaks owner event payload second serial))) :=
@@ -346,8 +346,8 @@ theorem binding_replay_inclusion_coupling (runtime : EventGraphRuntime graph)
     leftRecall rightRecall owner focal event payload first second visible serial same
   dsimp only [phase]
   rw [runInteractionPlan_append, runInteractionPlan_append,
-    FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ prefixLaw
+    PMF.map_bind, PMF.map_bind]
+  apply bind_eq_of_map_eq _ _ _ _ prefixLaw
   intro before beforeSupport after _afterSupport equal
   obtain ⟨selected, found⟩ := runtime.binding_submitted_selection leaks network roster left owner
     event payload first serial published serials before beforeSupport
@@ -372,12 +372,12 @@ theorem binding_replay_inclusion_coupling (runtime : EventGraphRuntime graph)
   have nextNetworks := congrArg Prod.fst nextEqual
   have nextReceipts := congrArg (fun value => value.2.1) nextEqual
   have nextPrivate := congrArg (fun value => value.2.2.2) nextEqual
-  simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
-    selected, nextSelected, FinDist.pure_bind, ReactiveApplication.dispatch,
+  simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
+    selected, nextSelected, PMF.pure_bind, ReactiveApplication.dispatch,
     ReactiveApplication.resume,
     ReactiveApplication.Command.actor?, ReactiveApplication.Execution.environmentStep,
-    FinDist.map_pure]
-  apply congrArg FinDist.pure
+    PMF.pure_map]
+  apply congrArg PMF.pure
   dsimp only [bindingTraffic]
   refine Prod.ext nextNetworks (Prod.ext nextReceipts (Prod.ext ?_ nextPrivate))
   change before.environmentRecall ++ [⟨before.observeEnvironment app, _⟩] =

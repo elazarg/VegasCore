@@ -146,7 +146,7 @@ theorem PolicyInvariant.runRounds_congr {players : Principal → app.Policy}
   have dispatchEq (command : app.Command) (current : app.Execution)
       (ok : predicate current) : app.dispatch players command current =
         app.dispatch other command current := by
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro next reached
     exact resumeEq _ next (invariant.environment current next command ok reached)
   induction count generalizing execution with
@@ -154,13 +154,13 @@ theorem PolicyInvariant.runRounds_congr {players : Principal → app.Policy}
   | succ count ih =>
       have stepEq : app.round scheduler players execution =
           app.round scheduler other execution :=
-        FinDist.bind_congr fun command _ => dispatchEq command execution valid
+        bind_congr_on_support _ fun command _ => dispatchEq command execution valid
       change (app.round scheduler players execution).bind _ =
         (app.round scheduler other execution).bind _
       rw [← stepEq]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next reached
-      obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact ih next (invariant.dispatch command execution next valid moved)
 
 /-- Completing one player's policy changes no initialized execution law,
@@ -188,7 +188,7 @@ theorem PolicyInvariant.canonical_run_congr {players : Principal → app.Policy}
     (agree : ∀ execution, predicate execution → ∀ who,
       players who (execution.recall who) (execution.observe app who) =
         other who (execution.recall who) (execution.observe app who))
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state)) (fuel : Nat) :
     (((app.information initial horizon scheduler).runSingleMoverBehavioralFrom
       (app.singleMover initial horizon scheduler) (fun who => app.encodePolicy (players who))
@@ -203,7 +203,7 @@ theorem PolicyInvariant.canonical_run_congr {players : Principal → app.Policy}
   | zero => rfl
   | succ fuel ih =>
       rw [Function.iterate_succ_apply', Function.iterate_succ_apply', ← ih]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro before reached
       have valid := invariant.canonical_run initial horizon scheduler setup fuel before
         (by rwa [app.run_map_state])
@@ -222,7 +222,7 @@ theorem PolicyInvariant.canonical_run_congr {players : Principal → app.Policy}
               rw [agree execution valid who]
 
 theorem Policy.recover_canonical_run (players : Principal → app.Policy) (who : Principal)
-    (recovery : app.Policy) (initial : FinDist app.State) (horizon : Nat)
+    (recovery : app.Policy) (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (fuel : Nat) :
     (((app.information initial horizon scheduler).runSingleMoverBehavioralFrom
       (app.singleMover initial horizon scheduler) (fun actor => app.encodePolicy

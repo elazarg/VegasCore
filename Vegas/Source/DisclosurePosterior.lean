@@ -27,8 +27,8 @@ def Config.withOwnHistory (config : Config Player L Γ) (who : Player)
 
 /-- An observation-local conditional law of original private histories. -/
 def Config.restoreMemory (config : Config Player L Γ) (who : Player)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L))) :
-    FinDist (Config Player L Γ) :=
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) :
+    PMF (Config Player L Γ) :=
   (remember (config.view who)).map (config.withOwnHistory who)
 
 @[simp] theorem Config.withOwnHistory_view (config : Config Player L Γ)
@@ -87,20 +87,20 @@ conditioning does not discard the initial private state or another player's
 own history. -/
 theorem commitSuccessor_memory_disintegration {payload : L.Ty} (name : VarId)
     (guard : SourceGuard L Γ who name payload) (config : Config Player L Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView who Γ → FinDist (PublicationResult (L.Val payload))) :
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView who Γ → PMF (PublicationResult (L.Val payload))) :
     ((config.restoreMemory who remember).bind fun original =>
       (choose (original.view who)).map (commitSuccessor name guard original)) =
       ((bindingMemoryLaw name payload remember choose (config.view who)).map Prod.fst).bind
         fun binding =>
-          (((bindingMemoryLaw name payload remember choose (config.view who)).condOnFibre
+          ((fiberConditional (bindingMemoryLaw name payload remember choose (config.view who))
             Prod.fst binding).map Prod.snd).map
               ((commitSuccessor name guard config binding).withOwnHistory who) := by
-  simpa only [Config.restoreMemory, Config.view, FinDist.map_eq_bind, FinDist.bind_bind,
-    FinDist.pure_bind, Config.withOwnHistory, Function.update_self, commitSuccessor,
+  simpa only [Config.restoreMemory, Config.view, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
+    PMF.pure_bind, Config.withOwnHistory, Function.update_self, commitSuccessor,
     Function.update_idem] using
     bindingMemoryLaw_disintegrate name payload remember choose (config.view who)
-    (fun binding past => FinDist.pure
+    (fun binding past => PMF.pure
       ((commitSuccessor name guard config binding).withOwnHistory who past))
 
 /-- Exact joint configuration disintegration for a guarded reveal. Distinct
@@ -109,23 +109,23 @@ original action history. -/
 theorem revealSuccessor_memory_disintegration {payload : L.Ty} {name : VarId}
     (published : VarId) (selected : HasVar Γ name (.commitment who payload))
     (config : Config Player L Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView who Γ → FinDist Bool) :
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView who Γ → PMF Bool) :
     ((config.restoreMemory who remember).bind fun original =>
       (choose (original.view who)).map (revealSuccessor published selected original)) =
       ((disclosureMemoryLaw published selected config.registry config.revelations remember
         choose (config.view who)).map Prod.fst).bind fun disclose =>
-          (((disclosureMemoryLaw published selected config.registry config.revelations remember
-            choose (config.view who)).condOnFibre Prod.fst disclose).map Prod.snd).map
+          ((fiberConditional (disclosureMemoryLaw published selected config.registry config.revelations remember
+            choose (config.view who)) Prod.fst disclose).map Prod.snd).map
               ((revealSuccessor published selected config disclose).withOwnHistory who) := by
   have law := disclosureMemoryLaw_disintegrate published selected config.registry
     config.revelations remember choose (config.view who)
-    (fun disclose past => FinDist.pure
+    (fun disclose past => PMF.pure
       ((revealSuccessor published selected config disclose).withOwnHistory who past))
   simp only [Config.view, effectiveDisclosureView_observe,
     revealSuccessor_effective_withOwnHistory] at law
-  simpa only [Config.restoreMemory, FinDist.bind_map, Config.withOwnHistory_view,
-    Config.view, FinDist.map_eq_bind, FinDist.pure_bind, FinDist.bind_bind,
+  simpa only [Config.restoreMemory, PMF.bind_map, Config.withOwnHistory_view,
+    Config.view, ← PMF.bind_pure_comp, Function.comp_def, PMF.pure_bind, PMF.bind_bind,
     Config.withOwnHistory, Function.update_self, revealSuccessor,
     Function.update_idem] using law
 

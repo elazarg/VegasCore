@@ -20,10 +20,10 @@ private abbrev app : ReactiveApplication Bool where
   packet := fun _ _ _ => id
   submit state _ _ := state
   handle ready _ := if ready then some ready else none
-  environment _ _ := FinDist.pure true
+  environment _ _ := PMF.pure true
   observePlayer ready _ := ready
   observePublic := id
-  observePending _ _ := FinDist.pure ∅
+  observePending _ _ := PMF.pure ∅
 
 private def sent : app.Execution :=
   (ReactiveApplication.Execution.initial app false).respond app false
@@ -52,9 +52,9 @@ theorem rejected_replay_is_not_reincluded :
 theorem rejected_replay_service_law :
     ((replayed.environmentStep app
       (app.atMostOnceCommand (replayed.observeEnvironment app) (.include (false, 0)))).map
-        (fun execution => execution.receipts)) = FinDist.pure [((false, 0), false)] := by
+        (fun execution => execution.receipts)) = PMF.pure [((false, 0), false)] := by
   rw [rejected_replay_is_not_reincluded]
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
 private def retried : app.Execution :=
@@ -69,9 +69,9 @@ theorem retry_service_law :
     ((retried.environmentStep app
       (app.atMostOnceCommand (retried.observeEnvironment app) (.include (false, 1)))).map
         (fun execution => execution.receipts)) =
-      FinDist.pure [((false, 0), false), ((false, 1), true)] := by
+      PMF.pure [((false, 0), false), ((false, 1), true)] := by
   rw [retry_is_fresh]
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
 end InteractionTests.ReactivePublication

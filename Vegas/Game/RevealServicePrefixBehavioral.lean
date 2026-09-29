@@ -53,11 +53,11 @@ theorem menu_prefix_readout (setup : Setup (Player := Player) (L := L))
   change ((responses.information (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)).runBehavioral profile _).map
       (prefixReadout setup leaks count ∘ History.state) = _
-  rw [← FinDist.map_comp, menu_prefix_state setup leaks responses watcher reveals profile
-    count within, FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [← PMF.map_comp, menu_prefix_state setup leaks responses watcher reveals profile
+    count within, PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro state _supported
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   rfl
 
 /-- The actual finite C-game compiler preserves the complete source-state

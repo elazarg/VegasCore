@@ -55,7 +55,7 @@ theorem run_roster_source_prefix_option_law
             (final.application.config.history.map
               (setup.eventGraph.fromModeCompletion .sequential)))) =
         ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[count]
-          (FinDist.pure (ProtocolState.entry program source))).map some := by
+          (PMF.pure (ProtocolState.entry program source))).map some := by
   intro Γ openNames program
   induction program with
   | ret payoffs =>
@@ -64,8 +64,8 @@ theorem run_roster_source_prefix_option_law
       have zero : count = 0 := by simpa [eventCount] using countBound
       subst count
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-        FinDist.map_pure, Function.iterate_zero_apply]
-      apply congrArg FinDist.pure
+        PMF.pure_map, Function.iterate_zero_apply]
+      apply congrArg PMF.pure
       rw [checkpoint.history]
       exact decodePrefix?_zero_of_agrees _ refs embedding.ref source checkpoint.emptyRegistry _
         checkpoint.agrees
@@ -81,8 +81,8 @@ theorem run_roster_source_prefix_option_law
       cases count with
       | zero =>
           simp only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-            FinDist.map_pure, Function.iterate_zero_apply]
-          apply congrArg FinDist.pure
+            PMF.pure_map, Function.iterate_zero_apply]
+          apply congrArg PMF.pure
           rw [checkpoint.history]
           exact decodePrefix?_zero_of_agrees _ refs embedding.ref source checkpoint.emptyRegistry _
             checkpoint.agrees
@@ -172,10 +172,10 @@ theorem run_roster_source_prefix_option_law
                       (setup.eventGraph.fromModeCompletion .sequential)))) =
               (((fun law => law.bind (ProtocolState.behavioralStateStep next
                 (afterReveal profile)))^[count]
-                  (FinDist.pure (ProtocolState.entry next
+                  (PMF.pure (ProtocolState.entry next
                     (revealSuccessor published selected source slot.isSome)))).map
                       (Sum.inr (α := Config Player L Γ))).map some := by
-            rw [FinDist.map_bind]
+            rw [PMF.map_bind]
             have constant (after : (application setup leaks).Execution)
                 (reached : after ∈ ((runtime setup).runInteractionPlan leaks
                   ((runtime setup).openingWindowPlayers leaks owner event candidate ⟨payload, value⟩
@@ -191,7 +191,7 @@ theorem run_roster_source_prefix_option_law
                         (setup.eventGraph.fromModeCompletion .sequential)))) =
                   (((fun law => law.bind (ProtocolState.behavioralStateStep next
                     (afterReveal profile)))^[count]
-                      (FinDist.pure (ProtocolState.entry next
+                      (PMF.pure (ProtocolState.entry next
                         (revealSuccessor published selected source slot.isSome)))).map
                           (Sum.inr (α := Config Player L Γ))).map some := by
               obtain ⟨afterCheckpoint, afterClean, _afterGrant⟩ :=
@@ -229,30 +229,30 @@ theorem run_roster_source_prefix_option_law
                 tailRefs tailEmbedding tailBefore (offset + 1) nextAligned count nextBound after
                 afterCheckpoint afterCounts afterClean afterSerials
               simp only [decodePrefix?_reveal]
-              have lifted := congrArg (fun law : FinDist (Option (ProtocolState next)) =>
+              have lifted := congrArg (fun law : PMF (Option (ProtocolState next)) =>
                 law.map (Option.map (Sum.inr (α := Config Player L Γ)))) tailLaw
-              simp only [FinDist.map_comp, Function.comp_def, Option.map_some] at lifted
+              simp only [PMF.map_comp, Function.comp_def, Option.map_some] at lifted
               convert lifted using 1
               · rfl
-              · simp only [FinDist.map_comp, Function.comp_def]
-            exact (FinDist.bind_congr constant).trans (FinDist.bind_const _ _)
-          rw [planEq, runInteractionPlan_append, grantLaw, FinDist.pure_bind,
+              · simp only [PMF.map_comp, Function.comp_def]
+            exact (bind_congr_on_support _ constant).trans (PMF.bind_const _ _)
+          rw [planEq, runInteractionPlan_append, grantLaw, PMF.pure_bind,
             runInteractionPlan_append, rosterPolicy_phase_law setup leaks rosters timing
               wholeProfile opportunity event owner granted actor candidate ⟨payload, value⟩
                 opening (Nat.le_of_eq ownerOffset) network (event.val + 1), choiceLaw,
-                  FinDist.bind_bind, FinDist.map_bind,
-                    ProtocolState.behavioralStatePrefix_reveal, FinDist.map_bind]
-          apply FinDist.bind_congr
+                  PMF.bind_bind, PMF.map_bind,
+                    ProtocolState.behavioralStatePrefix_reveal, PMF.map_bind]
+          apply bind_congr_on_support _
           intro disclose _
           cases disclose with
           | false =>
               simpa only [Bool.false_eq_true, ↓reduceIte, Option.isSome_none, phase]
                 using finishSlot none
           | true =>
-              simp only [↓reduceIte, FinDist.bind_bind, FinDist.map_bind]
-              have branch := FinDist.bind_congr (μ := timing event owner actor)
+              simp only [↓reduceIte, PMF.bind_bind, PMF.map_bind]
+              have branch := bind_congr_on_support _ (μ := timing event owner actor)
                 fun slot _ => finishSlot (some slot)
-              simp only [Option.isSome_some, FinDist.bind_const, phase, FinDist.map_bind] at branch
+              simp only [Option.isSome_some, PMF.bind_const, phase, PMF.map_bind] at branch
               exact branch
 
 /-- The actual roster compiler preserves every initialized source prefix law,
@@ -284,8 +284,8 @@ theorem roster_compiled_prefix_law
       (source who) (permitted who)) = profile :=
     funext fun who => (setup.behavioralPolicyEquiv admission who).apply_symm_apply (profile who)
   rw [← encoded, setup.encoded_prefix_state, encoded, initialLaw,
-    FinDist.bind_map, FinDist.map_bind]
-  apply FinDist.bind_congr
+    PMF.bind_map, PMF.map_bind]
+  apply bind_congr_on_support _
   intro initial supported
   exact run_roster_source_prefix_option_law setup leaks rosters timing network source initial
     setup.program reveals source (setup.initialConfig initial)

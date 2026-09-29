@@ -134,8 +134,8 @@ theorem declared_sequential_equilibrium_preserved (table : PayoffTable)
       ((Restricted.restrictedModel.runBehavioral restricted.strategy
         (2 * nativeHorizon + 1)).map History.state).map
           (Restricted.nativePayoffObservation table) := by
-    have projected := congrArg (FinDist.map Prod.fst) targetJointLaw
-    simpa only [FinDist.map_comp, Function.comp_def] using projected
+    have projected := congrArg (PMF.map Prod.fst) targetJointLaw
+    simpa only [PMF.map_comp, Function.comp_def] using projected
   have compiledLaw := Restricted.compile_joint_law table canonical.strategy
   rw [← restrictedStrategy] at compiledLaw
   exact targetLaw.trans (compiledLaw.symm.trans sourceLaw.symm)

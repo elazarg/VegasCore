@@ -18,7 +18,7 @@ open GameTheory.Math.Probability
 
 variable {Principal : Type} (app : ReactiveApplication Principal)
 
-theorem policyMixture_posterior_support_snoc {Index : Type} (initial : FinDist Index)
+theorem policyMixture_posterior_support_snoc {Index : Type} (initial : PMF Index)
     (policies : Index → app.Policy) (past : List app.PlayerEntry) (entry : app.PlayerEntry)
     (index : Index) (retained : index ∈
       ((app.policyMixture initial policies).posterior past).support)
@@ -28,22 +28,22 @@ theorem policyMixture_posterior_support_snoc {Index : Type} (initial : FinDist I
   let joint := ((app.policyMixture initial policies).posterior past).bind fun selected =>
     (policies selected past entry.beforeView).map fun action => (action, selected)
   have produced : (entry.action, index) ∈ joint.support := by
-    simp only [joint, FinDist.support_bind, Set.mem_iUnion]
+    simp only [joint, PMF.support_bind, Set.mem_iUnion]
     refine ⟨index, retained, ?_⟩
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨entry.action, possible, rfl⟩
   have meets : ∃ pair ∈ Prod.fst ⁻¹' {entry.action}, pair ∈ joint.support :=
     ⟨(entry.action, index), rfl, produced⟩
   rw [Implementation.posterior_snoc]
-  change index ∈ ((joint.condOnFibre Prod.fst entry.action).map Prod.snd).support
-  rw [FinDist.condOnFibre, dite_eq_left meets, FinDist.support_map]
+  change index ∈ ((fiberConditional joint Prod.fst entry.action).map Prod.snd).support
+  rw [fiberConditional, dite_eq_left meets, PMF.support_map]
   refine ⟨(entry.action, index), ?_, rfl⟩
-  apply FinDist.prob_pos_iff.mp
-  rw [FinDist.prob_condOn, ite_eq_left
+  apply pmf_toReal_pos_iff.mp
+  rw [toReal_filter_apply, ite_eq_left
     (show (entry.action, index) ∈ Prod.fst ⁻¹' {entry.action} from rfl)]
-  exact div_pos (FinDist.prob_pos_iff.mpr produced) (FinDist.probOf_pos meets)
+  exact div_pos (pmf_toReal_pos_iff.mpr produced) (toOuterMeasure_toReal_pos _ meets)
 
-theorem policyMixture_posterior_support_append {Index : Type} (initial : FinDist Index)
+theorem policyMixture_posterior_support_append {Index : Type} (initial : PMF Index)
     (policies : Index → app.Policy) (past suffix : List app.PlayerEntry) (index : Index)
     (retained : index ∈ ((app.policyMixture initial policies).posterior past).support)
     (possible : ∀ before entry after, suffix = before ++ entry :: after →
@@ -60,20 +60,20 @@ theorem policyMixture_posterior_support_append {Index : Type} (initial : FinDist
         simpa only [List.cons_append, List.nil_append, List.append_assoc] using earlier)
       simpa only [List.append_assoc, List.singleton_append] using tail
 
-theorem policyMixture_action_support {Index : Type} (initial : FinDist Index)
+theorem policyMixture_action_support {Index : Type} (initial : PMF Index)
     (policies : Index → app.Policy) (past : List app.PlayerEntry) (view : app.PlayerView)
     (index : Index) (action : app.Action)
     (retained : index ∈ ((app.policyMixture initial policies).posterior past).support)
     (possible : action ∈ (policies index past view).support) :
     action ∈ ((app.policyMixture initial policies).policy past view).support := by
   rw [app.policyMixture_policy]
-  simp only [FinDist.support_bind, Set.mem_iUnion]
+  simp only [PMF.support_bind, Set.mem_iUnion]
   exact ⟨index, retained, possible⟩
 
 /-- A future selected slot, or never opening, stays possible after every
 lawful prefix of waiting responses. -/
 theorem scheduledMixture_retains_future {slots : Nat}
-    (initial : FinDist (Option (Fin slots))) (offset : Nat)
+    (initial : PMF (Option (Fin slots))) (offset : Nat)
     (opening : app.Action) (waiting : app.Policy)
     (past suffix : List app.PlayerEntry) (atStart : past.length = offset)
     (selected : Option (Fin slots)) (initially : selected ∈ initial.support)
@@ -81,9 +81,9 @@ theorem scheduledMixture_retains_future {slots : Nat}
     (lawful : ∀ before entry after, suffix = before ++ entry :: after →
       entry.action ∈ (waiting (past ++ before) entry.beforeView).support) :
     selected ∈ ((app.policyMixture initial (fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure opening) waiting)).posterior (past ++ suffix)).support := by
+      (fun _ _ => PMF.pure opening) waiting)).posterior (past ++ suffix)).support := by
   let policies := fun selected : Option (Fin slots) =>
-    app.scheduledPolicy offset selected (fun _ _ => FinDist.pure opening) waiting
+    app.scheduledPolicy offset selected (fun _ _ => PMF.pure opening) waiting
   have dormant := app.policyMixture_posterior_dormant initial policies waiting offset
     (fun selected before view earlier =>
       app.scheduledPolicy_before offset selected _ waiting before view earlier)
@@ -112,7 +112,7 @@ theorem scheduledMixture_retains_future {slots : Nat}
 /-- Before the first opening, every current opening and every lawful waiting
 response has positive probability under a fully supported timing mixture. -/
 theorem scheduledMixture_before_open_full {slots : Nat}
-    (initial : FinDist (Option (Fin slots))) (full : initial.FullSupport) (offset : Nat)
+    (initial : PMF (Option (Fin slots))) (full : FullSupport initial) (offset : Nat)
     (opening : app.Action) (waiting : app.Policy)
     (past suffix : List app.PlayerEntry) (atStart : past.length = offset)
     (inside : suffix.length < slots)
@@ -120,7 +120,7 @@ theorem scheduledMixture_before_open_full {slots : Nat}
       entry.action ∈ (waiting (past ++ before) entry.beforeView).support)
     (view : app.PlayerView) :
     let law := (app.policyMixture initial (fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure opening) waiting)).policy (past ++ suffix) view
+      (fun _ _ => PMF.pure opening) waiting)).policy (past ++ suffix) view
     opening ∈ law.support ∧
       ∀ action ∈ (waiting (past ++ suffix) view).support, action ∈ law.support := by
   dsimp only
@@ -133,7 +133,7 @@ theorem scheduledMixture_before_open_full {slots : Nat}
   constructor
   · apply app.policyMixture_action_support initial _ _ view (some slot) opening selected
     simp only [scheduledPolicy, Option.map_some, List.length_append, atStart, slot,
-      ↓reduceIte, FinDist.mem_support_pure]
+      ↓reduceIte, PMF.mem_support_pure_iff _ _]
   · intro action supported
     apply app.policyMixture_action_support initial _ _ view none action never
     simpa only [scheduledPolicy, Option.map_none, reduceCtorEq, ↓reduceIte] using supported

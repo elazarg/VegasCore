@@ -37,12 +37,12 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (observe : (application setup leaks).ProtocolState → Observation)
     (observationInvariant : ∀ state,
       observe (((runtime setup).reactiveNormalization leaks).state state) = observe state)
@@ -112,9 +112,9 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
         ((((bounds.menu (runtime setup) leaks).information (initialLaw setup) count
           scheduler).runBehavioral effective.strategy (2 * count + 1)).map
             GameTheory.Protocol.ExecutionProtocol.History.state).support := by
-      rw [← stateLaw, FinDist.support_map]
+      rw [← stateLaw, PMF.support_map]
       exact ⟨final, reached, rfl⟩
-    rw [FinDist.support_map, ← histories, FinDist.support_map] at normalized
+    rw [PMF.support_map, ← histories, PMF.support_map] at normalized
     obtain ⟨_, ⟨permitted, _, rfl⟩, sameState⟩ := normalized
     have clear := sourceService_history_audit_clear setup leaks bounds values capacity rosters
       opportunities network sample authentic permitted who
@@ -128,7 +128,7 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     exact clear
   · have joint := congrArg (fun law => law.bind fun state =>
       (settle state).map (fun payoffs => (observe state, payoffs))) stateLaw
-    simp only [FinDist.bind_map, settlementInvariant, observationInvariant] at joint
+    simp only [PMF.bind_map, settlementInvariant, observationInvariant] at joint
     exact joint.trans settled
 
 end Vegas

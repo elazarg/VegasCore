@@ -41,9 +41,9 @@ private theorem unique_of_two_with_excluded {α : Type} (entries : List α)
 theorem native_accepted_recall (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) :
     nativeRuntime.AcceptedRecall nativeLeaks control.execution := by
-  have raw := nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace
-  exact nativeRuntime.acceptedRecall_history nativeLeaks (FinDist.pure nativeInputs)
-    nativeHorizon nativeScheduler (by rw [FinDist.map_pure]; exact raw)
+  have raw := nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace
+  exact nativeRuntime.acceptedRecall_history nativeLeaks (PMF.pure nativeInputs)
+    nativeHorizon nativeScheduler (by rw [PMF.pure_map]; exact raw)
 
 /-- Every compatible legal history has at most one older publication envelope.
 The conclusion even allows foreign envelopes recalled from earlier replays. -/
@@ -59,11 +59,11 @@ theorem native_old_publication_unique (control : nativeApp.Control)
         first.payload.call.event? nativeGraph = some (nativePublicationEvent who) →
         second.payload.call.event? nativeGraph = some (nativePublicationEvent who) →
           first = second := by
-  have raw := nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace
+  have raw := nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace
   have binding := (nativeRuntime.reactiveBindingInvariant nativeLeaks).history
-    (FinDist.pure nativeInitial) nativeHorizon nativeScheduler (by
+    (PMF.pure nativeInitial) nativeHorizon nativeScheduler (by
       intro state member
-      cases FinDist.mem_support_pure.mp member
+      cases (PMF.mem_support_pure_iff _ _).mp member
       exact State.initial_bindingInvariant nativeInputs) raw
   obtain ⟨candidate, accepted, owner, _⟩ := binding.success_provenance (nativeBindingRef who)
     bit stored
@@ -100,28 +100,28 @@ theorem native_transport_history
       control.execution.application.remembered = nativeInitial.remembered ∧
       ∀ response, (control.execution.respond (serviceApp observation) who response).SubmissionAudit
         (serviceApp observation) ReactivePlayerView.publicView := by
-  have raw := (serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+  have raw := (serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation) trace
   have remembered := (nativeRuntime.reactiveRememberedInvariant observation
-    (fun table => table = nativeInitial.remembered)).history (FinDist.pure nativeInitial)
+    (fun table => table = nativeInitial.remembered)).history (PMF.pure nativeInitial)
       nativeHorizon (serviceScheduler observation) (by
         intro state member
-        cases FinDist.mem_support_pure.mp member
+        cases (PMF.mem_support_pure_iff _ _).mp member
         rfl) raw
   have audit := (serviceApp observation).submissionAudit_history ReactivePlayerView.publicView
-    (fun _ _ => rfl) (FinDist.pure nativeInitial) nativeHorizon (serviceScheduler observation) raw
-  refine ⟨(serviceApp observation).history_provenance (FinDist.pure nativeInitial)
+    (fun _ _ => rfl) (PMF.pure nativeInitial) nativeHorizon (serviceScheduler observation) raw
+  refine ⟨(serviceApp observation).history_provenance (PMF.pure nativeInitial)
       nativeHorizon (serviceScheduler observation) raw,
-    (serviceApp observation).history_inputRecall (FinDist.pure nativeInitial) nativeHorizon
+    (serviceApp observation).history_inputRecall (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation) raw,
     (serviceApp observation).pendingOrPublished_history (serviceScheduler observation)
-      (FinDist.pure nativeInitial) nativeHorizon raw,
+      (PMF.pure nativeInitial) nativeHorizon raw,
     (serviceApp observation).serialsBeforeNext_history (serviceScheduler observation)
-      (FinDist.pure nativeInitial) nativeHorizon raw, remembered, ?_⟩
+      (PMF.pure nativeInitial) nativeHorizon raw, remembered, ?_⟩
   intro response
   exact (serviceApp observation).submissionAudit_respond ReactivePlayerView.publicView
     (fun _ _ => rfl) control.execution who response audit.1
-    ((serviceApp observation).submissionOrigin_next_none_history (FinDist.pure nativeInitial)
+    ((serviceApp observation).submissionOrigin_next_none_history (PMF.pure nativeInitial)
       nativeHorizon (serviceScheduler observation) control raw who) (audit.2 who active)
 
 /-- Every raw response has the same publication-owner view after its reserved
@@ -183,15 +183,15 @@ theorem native_opening_reserved_local (left right : nativeApp.Control)
   obtain ⟨next, pureStep⟩ := nativeRuntime.reactiveLatest_step_pure nativeLeaks who
     (nativePublicationEvent who) (left.execution.respond nativeApp who response)
   rw [pureStep] at leftMem
-  have firstEq := FinDist.mem_support_pure.mp leftMem
+  have firstEq := (PMF.mem_support_pure_iff _ _).mp leftMem
   subst afterLeft
-  rw [pureStep, FinDist.map_pure] at law
+  rw [pureStep, PMF.pure_map] at law
   have mapped : afterRight.application.playerView who ∈
-      (FinDist.pure (next.application.playerView who)).support := by
+      (PMF.pure (next.application.playerView who)).support := by
     rw [law]
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨afterRight, rightMem, rfl⟩
-  exact (FinDist.mem_support_pure.mp mapped).symm
+  exact ((PMF.mem_support_pure_iff _ _).mp mapped).symm
 
 theorem native_publication_playerView_congr (left right : EventGraphRuntime.State nativeGraph)
     (who : Player)

@@ -92,9 +92,9 @@ theorem reactive_commit_agrees
         (execution.respond (runtime.reactiveApplication leaks) owner
           (runtime.reactiveBinding leaks owner event payload choice serial))).map
             (fun final => (final.application.config, final.receipts))).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
-  rw [law, FinDist.mem_support_pure] at projected
+  rw [law, PMF.mem_support_pure_iff _ _] at projected
   have configEq := congrArg Prod.fst projected
   change next.application.config = _ at configEq
   rw [configEq]
@@ -144,9 +144,9 @@ theorem reactive_commit_history
         (execution.respond (runtime.reactiveApplication leaks) owner
           (runtime.reactiveBinding leaks owner event payload choice serial))).map
             (fun final => (final.application.config, final.receipts))).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, supported, rfl⟩
-  rw [law, FinDist.mem_support_pure] at projected
+  rw [law, PMF.mem_support_pure_iff _ _] at projected
   have configEq := congrArg Prod.fst projected
   change next.application.config = _ at configEq
   rw [configEq]

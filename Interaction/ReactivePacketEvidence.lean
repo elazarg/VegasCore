@@ -97,20 +97,20 @@ theorem sound_environment (execution next : app.Execution) (command : app.Comman
     (reached : next ∈ (execution.environmentStep app command).support) : evidence.Sound next := by
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact sound
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact sound.learn who selected
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact evidence.sound_includePending execution id sound
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       exact evidence.sound_mono execution state sound
         (fun fact valid => (evidence.persists fact).environment _ command state valid changed)
 
@@ -122,7 +122,7 @@ theorem serviceInvariant (scheduler : app.Scheduler) :
 
 /-- Carried evidence is sound at every history, for arbitrary raw responses
 and adaptive scheduling, including all application rejections. -/
-theorem history_sound (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem history_sound (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     {state} (trace : (app.protocol initial horizon scheduler).Trace state) :
     ReactiveApplication.serviceInvariant evidence.Sound state :=
   (evidence.serviceInvariant scheduler).history initial horizon
@@ -130,7 +130,7 @@ theorem history_sound (initial : FinDist app.State) (horizon : Nat) (scheduler :
 
 /-- A received certificate is true at every history compatible with the
 recipient's information, including zero-probability histories of a profile. -/
-theorem knows_observed (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+theorem knows_observed (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerView)
     (fact : evidence.Fact) (observed : fact ∈ evidence.observe view) :
     (app.information initial horizon scheduler).Knows who (some (past, view))
@@ -154,7 +154,7 @@ theorem knows_observed (initial : FinDist app.State) (horizon : Nat) (scheduler 
 
 /-- Finite menus inherit the same knowledge guarantee without any profile or
 positive-probability premise. -/
-theorem knows_observed_menu (menu : app.ResponseMenu) (initial : FinDist app.State)
+theorem knows_observed_menu (menu : app.ResponseMenu) (initial : PMF app.State)
     (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerView)
     (fact : evidence.Fact) (observed : fact ∈ evidence.observe view) :

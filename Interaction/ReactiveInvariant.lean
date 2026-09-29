@@ -55,20 +55,20 @@ theorem Invariant.environmentStep (invariant : app.Invariant predicate)
     predicate next.application := by
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact invariant.includePending execution id valid
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       exact invariant.environment execution.application command state valid changed
 
 def stateInvariant (predicate : app.State → Prop) : app.ProtocolState → Prop
@@ -76,7 +76,7 @@ def stateInvariant (predicate : app.State → Prop) : app.ProtocolState → Prop
   | some control => predicate control.execution.application
 
 theorem Invariant.transition (invariant : app.Invariant predicate)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (setup : ∀ state ∈ initial.support, predicate state)
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (valid : stateInvariant predicate before)
@@ -84,26 +84,26 @@ theorem Invariant.transition (invariant : app.Invariant predicate)
     stateInvariant predicate after := by
   cases before with
   | none =>
-      obtain ⟨state, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact setup state supported
   | some control =>
       rcases control with ⟨remaining, current, execution⟩
       cases current with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact invariant.respond execution who _ valid
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
-              obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+              obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               exact invariant.environmentStep execution next command valid supported
 
 /-- Covers every legal initialized history, including arbitrary deviations,
 off-path prefixes, and scheduler choices outside a reserved service. -/
 theorem Invariant.history (invariant : app.Invariant predicate)
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (setup : ∀ state ∈ initial.support, predicate state) :
     ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
       stateInvariant predicate state

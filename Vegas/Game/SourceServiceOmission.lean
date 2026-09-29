@@ -86,9 +86,9 @@ theorem sourceService_command_prefix_no_omission
       (runtime setup).runInteractionPlan leaks players network (rosterPlan setup rosters)
         (ReactiveApplication.Execution.initial app state)).support := by
     rw [← List.take_append_drop count (rosterPlan setup rosters)]
-    simp only [runInteractionPlan_append, ← FinDist.bind_bind, FinDist.support_bind]
+    simp only [runInteractionPlan_append, ← PMF.bind_bind, PMF.support_bind]
     apply Set.mem_iUnion₂.mpr
-    exact ⟨current, FinDist.support_bind .. ▸ reached, continued⟩
+    exact ⟨current, PMF.support_bind .. ▸ reached, continued⟩
   have clear := sourceService_plan_no_omission setup leaks bounds values capacity rosters
     opportunities players lawful network final finalSupported event
   cases kind : (graph setup).outputLayout event with

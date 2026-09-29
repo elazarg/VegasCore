@@ -34,42 +34,42 @@ def nativeAdvancePosition : Option (Nat × Option Player × Nat) →
 
 theorem native_controlStep_position (players : Player → (serviceApp observation).Policy)
     (state next : (serviceApp observation).ProtocolState)
-    (supported : next ∈ ((serviceApp observation).controlStep (FinDist.pure nativeInitial)
+    (supported : next ∈ ((serviceApp observation).controlStep (PMF.pure nativeInitial)
       nativeHorizon
       (serviceScheduler observation) players state).support) :
     nativePosition next = nativeAdvancePosition (nativePosition state) := by
   cases state with
   | none =>
       simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
-        Option.bind_none, ReactiveApplication.transition, FinDist.map_pure] at supported
-      cases FinDist.mem_support_pure.mp supported
+        Option.bind_none, ReactiveApplication.transition, PMF.pure_map] at supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
           obtain ⟨response, _, reached⟩ :=
-            Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-          cases FinDist.mem_support_pure.mp reached
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simp only [nativePosition, Option.map_some, nativeAdvancePosition]
           rw [(serviceApp observation).respond_environmentRecall]
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp supported; rfl
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; rfl
           | succ remaining =>
               obtain ⟨command, commandMem, stepped⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-              obtain ⟨result, resultMem, rfl⟩ := FinDist.support_map .. ▸ stepped
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+              obtain ⟨result, resultMem, rfl⟩ := PMF.support_map .. ▸ stepped
               have cursor : result.environmentRecall.length =
                   execution.environmentRecall.length + 1 := by
-                obtain ⟨updated, _, rfl⟩ := FinDist.support_map .. ▸ resultMem
+                obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ resultMem
                 simp
               have actor : command.actor? (serviceApp observation) =
                   (nativePlan[execution.environmentRecall.length]?).bind
                     nativeInstructionPlayer := by
                 cases found : nativePlan[execution.environmentRecall.length]? with
                 | none =>
-                    simp only [serviceScheduler, found, FinDist.mem_support_pure] at commandMem
+                    simp only [serviceScheduler, found, PMF.mem_support_pure_iff _ _] at commandMem
                     subst command
                     rfl
                 | some instruction =>
@@ -80,15 +80,15 @@ theorem native_controlStep_position (players : Player → (serviceApp observatio
 theorem native_iterate_position (players : Player → (serviceApp observation).Policy) (fuel : Nat)
     (state next : (serviceApp observation).ProtocolState)
     (supported : next ∈ ((fun law => law.bind ((serviceApp observation).controlStep
-      (FinDist.pure nativeInitial) nativeHorizon (serviceScheduler observation) players))^[fuel]
-        (FinDist.pure state)).support) :
+      (PMF.pure nativeInitial) nativeHorizon (serviceScheduler observation) players))^[fuel]
+        (PMF.pure state)).support) :
     nativePosition next = nativeAdvancePosition^[fuel] (nativePosition state) := by
   induction fuel generalizing next with
-  | zero => cases FinDist.mem_support_pure.mp supported; rfl
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; rfl
   | succ fuel ih =>
       rw [Function.iterate_succ_apply'] at supported
       obtain ⟨middle, middleMem, nextMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       rw [native_controlStep_position players middle next nextMem, ih middle middleMem,
         Function.iterate_succ_apply']
 
@@ -99,15 +99,15 @@ theorem native_behavioral_position (profile : ∀ who, (serviceModel observation
       history).support) :
     nativePosition final.state = nativeAdvancePosition^[fuel] (nativePosition history.state) := by
   apply native_iterate_position
-    ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    ((serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation) profile)
     fuel history.state final.state
-  have law := (serviceMenu observation).run_map_controlStep (FinDist.pure nativeInitial)
+  have law := (serviceMenu observation).run_map_controlStep (PMF.pure nativeInitial)
     nativeHorizon
     (serviceScheduler observation) profile fuel history
-  apply (congrArg (fun law : FinDist (serviceApp observation).ProtocolState => final.state ∈
+  apply (congrArg (fun law : PMF (serviceApp observation).ProtocolState => final.state ∈
     law.support) law).mp
-  rw [FinDist.support_map]
+  rw [PMF.support_map]
   exact ⟨final, supported, rfl⟩
 
 theorem native_grant_of_decision_cursor (event : nativeGraph.EventId)

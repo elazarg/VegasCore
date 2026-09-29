@@ -121,14 +121,14 @@ theorem interaction_includeLatest_prescribed (runtime : EventGraphRuntime graph)
       (runtime.reactiveApplication leaks) message.id) :
     (runtime.interactionStep leaks players network (.includeLatest event who) execution).map
         (fun next => next.application) =
-      FinDist.pure
+      PMF.pure
         (execution.includePending (runtime.reactiveApplication leaks) message.id).application := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind]
   rw [runtime.reactiveLatest_prescribed leaks who event execution integrity message emitted authored
     addressed pending unpublished]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
-    ReactiveApplication.resume, FinDist.map_pure]
+    PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
+    ReactiveApplication.resume, PMF.pure_map]
 
 omit [DecidableEq Player] in
 /-- A zero-tick segment cannot age an unfinished event out of its deadline. -/

@@ -51,11 +51,11 @@ private def profileOf (policy : PurePolicy (who := ()) program) :
 /-- Binding failure and opening it publishes failure, which pays nothing. -/
 example :
     (program.run (profileOf failingPolicy) (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = FinDist.pure [((), 0)] := by
+      program.evaluatePayoffs = PMF.pure [((), 0)] := by
   simp only [SourceProgram.run, program, profileOf, failingPolicy,
     PurePolicy.toBehavioral, SourceProgram.runWith, SourceProgram.commitKernel,
-    SourceProgram.revealKernel, SourceProgram.afterCommit, FinDist.pure_bind,
-    FinDist.map_pure]
+    SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind,
+    PMF.pure_map]
   rfl
 
 /-- The translation binds a real value, so it must refuse to open it. Were it to
@@ -63,11 +63,11 @@ open, the publication would carry that value and pay one. -/
 example :
     (program.run (profileOf (PurePolicy.bindValues program failingPolicy))
         (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = FinDist.pure [((), 0)] := by
+      program.evaluatePayoffs = PMF.pure [((), 0)] := by
   simp only [SourceProgram.run, program, profileOf, failingPolicy, PurePolicy.bindValues,
     PurePolicy.bindValuesFrom, PurePolicy.toBehavioral, SourceProgram.runWith,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 /-- The canonical Boolean is `false`, so a policy that genuinely binds `false`
@@ -78,11 +78,11 @@ private def genuinePolicy : PurePolicy (who := ()) program :=
 
 example :
     (program.run (profileOf genuinePolicy) (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = FinDist.pure [((), 1)] := by
+      program.evaluatePayoffs = PMF.pure [((), 1)] := by
   simp only [SourceProgram.run, program, profileOf, genuinePolicy,
     PurePolicy.toBehavioral, SourceProgram.runWith, SourceProgram.commitKernel,
-    SourceProgram.revealKernel, SourceProgram.afterCommit, FinDist.pure_bind,
-    FinDist.map_pure]
+    SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind,
+    PMF.pure_map]
   rfl
 
 /-- And the translation leaves it alone, so it still pays one. A translation
@@ -90,11 +90,11 @@ that refused wherever it saw the canonical value would pay nothing here. -/
 example :
     (program.run (profileOf (PurePolicy.bindValues program genuinePolicy))
         (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = FinDist.pure [((), 1)] := by
+      program.evaluatePayoffs = PMF.pure [((), 1)] := by
   simp only [SourceProgram.run, program, profileOf, genuinePolicy, PurePolicy.bindValues,
     PurePolicy.bindValuesFrom, PurePolicy.toBehavioral, SourceProgram.runWith,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 /-- The class is not vacuous: the policy the translation has to repair is

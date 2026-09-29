@@ -169,7 +169,7 @@ theorem normalizeDisclosureFrom_effective {who : Player} :
   | _, _, .reveal published _ _ _ selected _ next, registry, revelations, unpatch, policy => by
       refine ⟨?_, normalizeDisclosureFrom_effective next _ _ _ policy.2⟩
       intro own view disclose supported
-      obtain rfl := FinDist.mem_support_pure.mp supported
+      obtain rfl := (PMF.mem_support_pure_iff _ _).mp supported
       exact effectiveDisclosure_idempotent published selected _ _
 
 /-- One translated pure policy works against every opponent profile and from
@@ -196,7 +196,7 @@ theorem normalizeDisclosureFrom_runWith {who : Player} :
       unpatch, policy, profile, normalized, others, prescribed, compiled,
       state, history, actualHistory, histories, restored => by
       simp only [runWith]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro value _
       exact normalizeDisclosureFrom_runWith next registry.weaken revelations.weaken
         _ policy _ _ others prescribed compiled _ _ _ histories
@@ -209,14 +209,14 @@ theorem normalizeDisclosureFrom_runWith {who : Player} :
       by_cases owned : owner = who
       · subst who
         have left : commitKernel normalized (sourceObserve owner state, actualHistory owner) =
-            FinDist.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
+            PMF.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
           rw [commitKernel, compiled]
           simp only [PurePolicy.toBehavioral, PurePolicy.normalizeDisclosureFrom, restored]
         have right : commitKernel profile (sourceObserve owner state, history owner) =
-            FinDist.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
+            PMF.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
           rw [commitKernel, prescribed]
           rfl
-        rw [left, right, FinDist.pure_bind, FinDist.pure_bind]
+        rw [left, right, PMF.pure_bind, PMF.pure_bind]
         apply normalizeDisclosureFrom_runWith next _ _ _ policy.2
           (afterCommit profile) (afterCommit normalized)
           (fun other different => congrArg Prod.snd (others other different))
@@ -232,7 +232,7 @@ theorem normalizeDisclosureFrom_runWith {who : Player} :
           rw [commitKernel, others owner owned, histories owner owned]
           rfl
         rw [kernel]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro value _
         apply normalizeDisclosureFrom_runWith next _ _ _ policy.2
           (afterCommit profile) (afterCommit normalized)
@@ -257,16 +257,16 @@ theorem normalizeDisclosureFrom_runWith {who : Player} :
         let intended := policy.1 rfl (sourceObserve owner state, history owner)
         let effective := effectiveDisclosure published selected config intended
         have left : revealKernel normalized (sourceObserve owner state, actualHistory owner) =
-            FinDist.pure effective := by
+            PMF.pure effective := by
           rw [revealKernel, compiled]
           simp only [PurePolicy.toBehavioral, PurePolicy.normalizeDisclosureFrom, restored]
           congr 1
           exact effectiveDisclosureView_observe published selected config intended
         have right : revealKernel profile (sourceObserve owner state, history owner) =
-            FinDist.pure intended := by
+            PMF.pure intended := by
           rw [revealKernel, prescribed]
           rfl
-        rw [left, right, FinDist.pure_bind, FinDist.pure_bind]
+        rw [left, right, PMF.pure_bind, PMF.pure_bind]
         change runWith next _
             (Env.cons (disclosureResult published selected config effective) state)
             _ _ _ =
@@ -290,7 +290,7 @@ theorem normalizeDisclosureFrom_runWith {who : Player} :
           rw [revealKernel, others owner owned, histories owner owned]
           rfl
         rw [kernel]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro disclose _
         apply normalizeDisclosureFrom_runWith next _ _ _ policy.2
           (afterReveal profile) (afterReveal normalized)
@@ -328,11 +328,11 @@ theorem exists_effectiveDisclosure_belief_mixture {who : Player} {Γ : SourceCtx
     {O : Finset VarId} {Parameter : Type}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (replacement : BehavioralPolicy who program) (registry : Registry Γ)
-    (revelations : Revelations Γ) (belief : FinDist (Config Player L Γ))
+    (revelations : Revelations Γ) (belief : PMF (Config Player L Γ))
     (registryEq : ∀ config ∈ belief.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ belief.support, @config.revelations = @revelations)
     (parameter : Config Player L Γ → Parameter) :
-    ∃ mixture : FinDist {policy : BehavioralPolicy who program //
+    ∃ mixture : PMF {policy : BehavioralPolicy who program //
         policy.EffectiveDisclosures program registry revelations},
       (belief.bind fun config =>
         (runFrom program (Function.update profile who replacement) config).map
@@ -346,16 +346,16 @@ theorem exists_effectiveDisclosure_belief_mixture {who : Player} {Γ : SourceCtx
   refine ⟨mixture.map (fun policy =>
     ⟨(policy.normalizeDisclosureFrom program registry revelations id).toBehavioral program,
       normalizeDisclosureFrom_effective program registry revelations id policy⟩), ?_⟩
-  rw [FinDist.bind_map, FinDist.bind_comm]
-  apply FinDist.bind_congr
+  rw [PMF.bind_map, PMF.bind_comm]
+  apply bind_congr_on_support _
   intro config supported
   rw [laws config (Finset.mem_toList.mpr (FinDist.mem_supportFinset.mpr supported)),
-    FinDist.map_bind]
-  apply FinDist.bind_congr
+    PMF.map_bind]
+  apply bind_congr_on_support _
   intro policy _
   have same := normalizeDisclosure_runFrom program profile policy config
   rw [registryEq config supported, revelationsEq config supported] at same
-  exact congrArg (FinDist.map fun result => (parameter config, result)) same.symm
+  exact congrArg (PMF.map fun result => (parameter config, result)) same.symm
 
 end SourceProgram
 end Vegas

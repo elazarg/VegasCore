@@ -98,7 +98,7 @@ example : runtime.ServiceFeasible := by
   rfl
 
 private def fixedPolicy (choice : PublicationResult Bool) : pairGraph.BehavioralPolicy false :=
-  fun _ _ _ => FinDist.pure choice
+  fun _ _ _ => PMF.pure choice
 
 private def granted : EventGraphRuntime.State pairGraph :=
   { EventGraphRuntime.State.initial (graph := pairGraph) (fun input => nomatch input) with
@@ -134,7 +134,7 @@ example (choice : PublicationResult Bool)
     | inr event =>
         change (none : Option (EventGraphRuntime.Handle pairGraph)) ≠ some (false, .prepared 0)
         simp
-  simpa only [fixedPolicy, Vegas.EventGraph.normalizePolicy, FinDist.pure_bind,
+  simpa only [fixedPolicy, Vegas.EventGraph.normalizePolicy, PMF.pure_bind,
     List.replicate_succ, List.replicate_zero, List.cons_append, List.nil_append,
     grantedExecution, MessageApplication.PolicyExecution.initial,
     MessageApplication.State.initial] using
@@ -178,7 +178,7 @@ private def stagedHistory (choice : PublicationResult Bool) :
 sampling operation. Neither emits a packet in the first owner opportunity. -/
 example (choice : PublicationResult Bool) :
     runtime.compilePlayerPolicy false (fixedPolicy choice) [] (observed granted) =
-      FinDist.pure (.privateCommand (.remember 0 choice)) := by
+      PMF.pure (.privateCommand (.remember 0 choice)) := by
   have actor : pairGraph.actor? 0 = some false := rfl
   simp [EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,
     EventGraphRuntime.stagingCount, observed, granted,
@@ -207,7 +207,7 @@ selected value. Failure is not a cleartext alternative to commitment. -/
 example (choice : PublicationResult Bool) :
     runtime.compilePlayerPolicy false (fixedPolicy choice)
         (stagedHistory choice) (observed (staged choice)) =
-      FinDist.pure (.submit (.commitment 0 (false, .prepared 0))) := by
+      PMF.pure (.submit (.commitment 0 (false, .prepared 0))) := by
   have actor : pairGraph.actor? 0 = some false := rfl
   cases choice <;>
     simp [EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,

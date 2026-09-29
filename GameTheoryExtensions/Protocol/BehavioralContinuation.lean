@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Protocol.SingleMover
-import GameTheoryExtensions.Protocol.Continuation
+import GameTheory.Protocol.SingleMover
+import GameTheory.Protocol.Continuation
 
 /-! # Behavioral subgame perfection in bounded single-mover protocols
 
@@ -32,14 +32,14 @@ theorem runRandomizedFor_eq_of_bound {bound : ℕ} (bounded : E.BoundedHorizon b
   obtain ⟨extra, rfl⟩ := Nat.exists_eq_add_of_le enough
   rw [E.runRandomizedFor_add]
   calc
-    _ = (E.runRandomizedFor chooser bound history).bind FinDist.pure := by
-      apply FinDist.bind_congr
+    _ = (E.runRandomizedFor chooser bound history).bind PMF.pure := by
+      apply bind_congr_on_support _
       intro final reached
       apply E.runRandomizedFor_of_terminal
       rcases E.runRandomizedFor_terminal_or_length _ _ _ _ reached with stopped | consumed
       · exact stopped
       · exact bounded final.state final.trace (by omega)
-    _ = _ := FinDist.bind_pure _
+    _ = _ := PMF.bind_pure _
 
 end ExecutionProtocol
 
@@ -66,9 +66,9 @@ theorem isBehavioralSubgamePerfect_iff {bound : ℕ} (bounded : E.BoundedHorizon
     (profile : Profile M.behavioralSignature) (utility : E.History → ι → ℝ) :
     M.IsBehavioralSubgamePerfect single bounded profile utility ↔
       ∀ history, M.IsSubgameRoot history → ∀ who (alternative : M.BehavioralPolicy who),
-        (M.runSingleMoverBehavioralFrom single (Profile.update profile who alternative)
-          bound history).expect (utility · who) ≤
-        (M.runSingleMoverBehavioralFrom single profile bound history).expect (utility · who) := by
+        expect (M.runSingleMoverBehavioralFrom single (Profile.update profile who alternative)
+          bound history) (utility · who) ≤
+        expect (M.runSingleMoverBehavioralFrom single profile bound history) (utility · who) := by
   simp only [IsBehavioralSubgamePerfect, isNash_iff]
   rfl
 
@@ -104,11 +104,11 @@ theorem isSubgamePerfect_of_behavioral {bound : ℕ} (bounded : E.BoundedHorizon
   intro who alternative
   have bound := perfect history proper who alternative.toBehavioral
   rw [← Profile.map_update] at bound
-  change (M.runSingleMoverBehavioralFrom single
+  change expect (M.runSingleMoverBehavioralFrom single
       (fun player => (Profile.update profile who alternative player).toBehavioral)
-      _ history).expect (utility · who) ≤
-    (M.runSingleMoverBehavioralFrom single (fun player => (profile player).toBehavioral)
-      _ history).expect (utility · who) at bound
+      _ history) (utility · who) ≤
+    expect (M.runSingleMoverBehavioralFrom single (fun player => (profile player).toBehavioral)
+      _ history) (utility · who) at bound
   rw [M.runSingleMoverBehavioralFrom_toBehavioral,
     M.runSingleMoverBehavioralFrom_toBehavioral] at bound
   exact bound
@@ -132,7 +132,7 @@ theorem isBehavioralSubgamePerfect_of_root_mixture_laws
     {Observation : Type uv} (sourceObserve : E.History → Observation)
     (targetObserve : T.History → Observation) (profile : Profile M.behavioralSignature)
     (coverage : ∀ targetRoot, N.IsSubgameRoot targetRoot →
-      ∃ roots : FinDist {root : E.History // M.IsSubgameRoot root},
+      ∃ roots : PMF {root : E.History // M.IsSubgameRoot root},
         (N.runSingleMoverBehavioralFrom targetSingle
           (Profile.map (target := N.behavioralSignature) compile profile)
           targetBound targetRoot).map targetObserve =
@@ -141,7 +141,7 @@ theorem isBehavioralSubgamePerfect_of_root_mixture_laws
               sourceObserve) ∧
         ∀ who (alternative : N.BehavioralPolicy who),
           ∃ replacements : {root : E.History // M.IsSubgameRoot root} →
-              FinDist (M.BehavioralPolicy who),
+              PMF (M.BehavioralPolicy who),
           (N.runSingleMoverBehavioralFrom targetSingle (Profile.update
             (Profile.map (target := N.behavioralSignature) compile profile) who alternative)
             targetBound targetRoot).map targetObserve =
@@ -158,9 +158,9 @@ theorem isBehavioralSubgamePerfect_of_root_mixture_laws
   intro targetRoot proper who alternative
   obtain ⟨roots, honest, deviations⟩ := coverage targetRoot proper
   obtain ⟨replacements, deviated⟩ := deviations who alternative
-  have honestValue := congrArg (fun law => law.expect (utility · who)) honest
-  have deviatedValue := congrArg (fun law => law.expect (utility · who)) deviated
-  simp only [FinDist.expect_map, FinDist.expect_bind] at honestValue deviatedValue
+  have honestValue := congrArg (fun law => expect law (utility · who)) honest
+  have deviatedValue := congrArg (fun law => expect law (utility · who)) deviated
+  simp only [expect_map, FinDist.expect_bind] at honestValue deviatedValue
   rw [deviatedValue, honestValue]
   apply FinDist.expect_mono
   intro root _
@@ -184,7 +184,7 @@ theorem isBehavioralSubgamePerfect_of_continuation_laws
           targetBound targetRoot).map targetObserve =
           (M.runSingleMoverBehavioralFrom single profile sourceBound sourceRoot).map sourceObserve ∧
         ∀ who (alternative : N.BehavioralPolicy who),
-          ∃ mixture : FinDist (M.BehavioralPolicy who),
+          ∃ mixture : PMF (M.BehavioralPolicy who),
           (N.runSingleMoverBehavioralFrom targetSingle (Profile.update
             (Profile.map (target := N.behavioralSignature) compile profile) who alternative)
             targetBound targetRoot).map targetObserve =
@@ -200,11 +200,11 @@ theorem isBehavioralSubgamePerfect_of_continuation_laws
     sourceBounded targetBounded compile sourceObserve targetObserve profile ?_ utility perfect
   intro targetRoot proper
   obtain ⟨sourceRoot, sourceProper, honest, deviations⟩ := coverage targetRoot proper
-  refine ⟨FinDist.pure ⟨sourceRoot, sourceProper⟩, ?_, ?_⟩
-  · simpa only [FinDist.pure_bind] using honest
+  refine ⟨PMF.pure ⟨sourceRoot, sourceProper⟩, ?_, ?_⟩
+  · simpa only [PMF.pure_bind] using honest
   · intro who alternative
     obtain ⟨mixture, deviated⟩ := deviations who alternative
-    exact ⟨fun _ => mixture, by simpa only [FinDist.pure_bind] using deviated⟩
+    exact ⟨fun _ => mixture, by simpa only [PMF.pure_bind] using deviated⟩
 
 /-- Reflection covers source roots. Agreement for every source profile at a
 matching target root realizes each compiled source deviation there. -/
@@ -230,10 +230,10 @@ theorem isBehavioralSubgamePerfect_of_compiled_of_continuation_laws
   rw [M.isBehavioralSubgamePerfect_iff single sourceBounded]
   intro sourceRoot proper who alternative
   obtain ⟨targetRoot, targetProper, laws⟩ := coverage sourceRoot proper
-  have honest := congrArg (fun law => law.expect (utility · who)) (laws profile)
-  have deviated := congrArg (fun law => law.expect (utility · who))
+  have honest := congrArg (fun law => expect law (utility · who)) (laws profile)
+  have deviated := congrArg (fun law => expect law (utility · who))
     (laws (Profile.update profile who alternative))
-  simp only [FinDist.expect_map] at honest deviated
+  simp only [expect_map] at honest deviated
   have optimal := perfect targetRoot targetProper who (compile who alternative)
   rw [← Profile.map_update, deviated, honest] at optimal
   exact optimal

@@ -204,17 +204,16 @@ theorem report_departure_lower (owner watcher : Player)
     (departure : (application setup leaks).handle execution.application message = none ∨
       certifiedOpening message.payload = false)
     (continuation : (application setup leaks).Scheduler) (count : Nat) :
-    (leaks watcher execution.network.pending).probOf {selected | id ∈ selected} ≤
-      (((application setup leaks).reportInclusion players watcher execution).bind
-        ((application setup leaks).runRounds continuation players count)).probOf
-          {final | departureEvidence setup leaks owner final} := by
+    ((leaks watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+      ((((application setup leaks).reportInclusion players watcher execution).bind
+        ((application setup leaks).runRounds continuation players count)).toOuterMeasure {final | departureEvidence setup leaks owner final}).toReal := by
   classical
   have reports : ∀ observed ∈ (execution.environmentStep (application setup leaks)
       (.activate watcher)).support,
       message ∈ (observed.observe (application setup leaks) watcher).messages.leaked →
         players watcher (observed.recall watcher)
           (observed.observe (application setup leaks) watcher) =
-            FinDist.pure ⟨some (.replay id)⟩ := by
+            PMF.pure ⟨some (.replay id)⟩ := by
     intro observed reached seen
     rw [reporter]
     exact (application setup leaks).reportFirstUnpublished_after_activation execution watcher
@@ -223,7 +222,7 @@ theorem report_departure_lower (owner watcher : Player)
   · have detection := (application setup leaks).sampling_rejected_receipt_lower players watcher
       execution id message found foreign unknown fresh reports rejected continuation count
     apply detection.trans
-    rw [← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf]
+    rw [← expect_indicator, ← expect_indicator]
     apply FinDist.expect_mono
     intro final _
     change (if (id, false) ∈ final.receipts then (1 : ℝ) else 0) ≤
@@ -238,7 +237,7 @@ theorem report_departure_lower (owner watcher : Player)
       (by change message.id.1 = owner; rw [identified, authored]) malformed reports
       continuation count
     apply detection.trans
-    rw [← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf]
+    rw [← expect_indicator, ← expect_indicator]
     apply FinDist.expect_mono
     intro final _
     change (if ledgerViolation owner certifiedOpening final.network.ledger = true then
@@ -270,11 +269,9 @@ theorem fresh_submission_report_lower (owner watcher : Player) (different : owne
         ⟨(owner, before.network.nextSerial owner), packet⟩ = none ∨
       certifiedOpening packet = false)
     (continuation : (application setup leaks).Scheduler) (count : Nat) :
-    (leaks watcher snapshot.network.pending).probOf
-        {selected | (owner, before.network.nextSerial owner) ∈ selected} ≤
-      (((application setup leaks).reportInclusion players watcher snapshot).bind
-        ((application setup leaks).runRounds continuation players count)).probOf
-          {final | departureEvidence setup leaks owner final} := by
+    ((leaks watcher snapshot.network.pending).toOuterMeasure {selected | (owner, before.network.nextSerial owner) ∈ selected}).toReal ≤
+      ((((application setup leaks).reportInclusion players watcher snapshot).bind
+        ((application setup leaks).runRounds continuation players count)).toOuterMeasure {final | departureEvidence setup leaks owner final}).toReal := by
   let id := (owner, before.network.nextSerial owner)
   have found : snapshot.network.lookup id = some ⟨id, packet⟩ := by
     rw [network]
@@ -329,9 +326,9 @@ private theorem evidence_after_report (owner watcher : Player)
       ((application setup leaks).runRounds continuation players count)).support) :
     departureEvidence setup leaks owner final := by
   have invariant := departureEvidence_persistent setup leaks owner players
-  obtain ⟨reported, report, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨reported, report, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨observed, activate, included⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ report)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ report)
   exact invariant.runRounds continuation count reported final
     (invariant.dispatch _ observed reported
       (invariant.dispatch (.activate watcher) execution observed evidence activate) included) rest
@@ -393,28 +390,26 @@ theorem reserved_report_departure_lower (owner watcher : Player) (different : ow
         certifiedOpening packet = false)
     (continuation : (application setup leaks).Scheduler) (count : Nat) :
     let submitted := before.respond (application setup leaks) owner ⟨some (.submit submission)⟩
-    (leaks watcher submitted.network.pending).probOf
-        {selected | (owner, before.network.nextSerial owner) ∈ selected} ≤
-      ((((runtime setup).interactionStep leaks players ((runtime setup).reportNetwork leaks watcher)
+    ((leaks watcher submitted.network.pending).toOuterMeasure {selected | (owner, before.network.nextSerial owner) ∈ selected}).toReal ≤
+      (((((runtime setup).interactionStep leaks players ((runtime setup).reportNetwork leaks watcher)
           (.includeLatest event owner) submitted).bind
         ((application setup leaks).reportInclusion players watcher)).bind
-          ((application setup leaks).runRounds continuation players count)).probOf
-            {final | departureEvidence setup leaks owner final} := by
+          ((application setup leaks).runRounds continuation players count)).toOuterMeasure {final | departureEvidence setup leaks owner final}).toReal := by
   classical
   let app := application setup leaks
   let submitted := before.respond app owner ⟨some (.submit submission)⟩
   let id := (owner, before.network.nextSerial owner)
   let packet := submission.emit submitted.application owner (before.network.known owner)
-  change (leaks watcher submitted.network.pending).probOf {selected | id ∈ selected} ≤
-    ((((runtime setup).interactionStep leaks players ((runtime setup).reportNetwork leaks watcher)
+  change ((leaks watcher submitted.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+    (((((runtime setup).interactionStep leaks players ((runtime setup).reportNetwork leaks watcher)
       (.includeLatest event owner) submitted).bind (app.reportInclusion players watcher)).bind
-        (app.runRounds continuation players count)).probOf _
+        (app.runRounds continuation players count)).toOuterMeasure _).toReal
   rw [(runtime setup).interaction_includeLatest_environment]
   by_cases addressed : submission.call.packet.event? (graph setup) = some event
   · rw [(runtime setup).reactiveLatest_after_submit leaks owner event before serials submission
       addressed]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.pure_bind]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.pure_bind]
     have found : submitted.network.lookup id = some ⟨id, packet⟩ :=
       serials.lookup_submit owner packet
     have evidence := inclusion_records_departure setup leaks owner submitted id ⟨id, packet⟩
@@ -423,30 +418,30 @@ theorem reserved_report_departure_lower (owner watcher : Player) (different : ow
       environmentRecall := submitted.environmentRecall ++
         [⟨submitted.observeEnvironment app, .include id⟩] }
     have recordedEvidence : departureEvidence setup leaks owner recorded := evidence
-    rw [← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf]
+    rw [← expect_indicator, ← expect_indicator]
     calc
-      _ ≤ (leaks watcher submitted.network.pending).expect (fun _ => (1 : ℝ)) := by
+      _ ≤ expect (leaks watcher submitted.network.pending) (fun _ => (1 : ℝ)) := by
         apply FinDist.expect_mono
         intro selected _
         change (if id ∈ selected then (1 : ℝ) else 0) ≤ 1
         split <;> norm_num
-      _ = 1 := FinDist.expect_const ..
+      _ = 1 := expect_constant ..
       _ = _ := by
         symm
         calc
-          _ = (((app.reportInclusion players watcher _).bind
-              (app.runRounds continuation players count))).expect (fun _ => (1 : ℝ)) := by
-            apply FinDist.expect_congr
+          _ = expect (((app.reportInclusion players watcher _).bind
+              (app.runRounds continuation players count))) (fun _ => (1 : ℝ)) := by
+            apply expect_congr_on_support
             intro final reached
             have detected := evidence_after_report setup leaks owner watcher players recorded final
               recordedEvidence continuation count reached
             change (if departureEvidence setup leaks owner final then (1 : ℝ) else 0) = 1
             simp only [detected, ↓reduceIte]
-          _ = 1 := FinDist.expect_const ..
+          _ = 1 := expect_constant ..
   · rw [nonmatching_submission_wait setup leaks owner before event submission pendingPublished
       addressed]
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.pure_bind]
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.pure_bind]
     let waited : app.Execution := { submitted with
       environmentRecall := submitted.environmentRecall ++
         [⟨submitted.observeEnvironment app, .wait⟩] }

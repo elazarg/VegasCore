@@ -45,7 +45,7 @@ theorem sourceService_resolutionEvidence
     (sourceServiceMenu_in_compiled setup leaks bounds rosters) (initialLaw setup) horizon
     scheduler (by
       intro state supported
-      obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact State.initial_bindingInvariant (graph := graph setup) (setup.eventInputs initial)) trace
 
 /-- The first opening of any source binding is already the exact native normal
@@ -74,7 +74,7 @@ theorem sourceService_opening_normal
   have valid := ((runtime setup).reactiveBindingInvariant leaks).history
     (initialLaw setup) horizon scheduler (by
       intro state supported
-      obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact State.initial_bindingInvariant (graph := graph setup) (setup.eventInputs initial))
     rawTrace
   have recalled := (application setup leaks).history_inputRecall
@@ -116,7 +116,7 @@ theorem sourceService_successful_opening
   have valid := ((runtime setup).reactiveBindingInvariant leaks).history
     (initialLaw setup) horizon scheduler (by
       intro state supported
-      obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact State.initial_bindingInvariant (graph := graph setup) (setup.eventInputs initial))
     rawTrace
   have recalled := app.history_inputRecall (initialLaw setup) horizon scheduler rawTrace

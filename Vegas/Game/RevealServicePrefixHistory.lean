@@ -2,7 +2,9 @@
 
 import Vegas.Game.RevealServiceCompletion
 import Interaction.ReactiveScheduleEvaluation
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Counted native histories at service-prefix boundaries
 
@@ -38,13 +40,13 @@ theorem segment_control_steps (watcher : Player)
     (fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) players))^[
         segment.length + (segment.filterMap instructionActor).length]
-        (FinDist.pure (some ⟨segment.length + rest.length, none, execution⟩)) =
+        (PMF.pure (some ⟨segment.length + rest.length, none, execution⟩)) =
       ((runtime setup).runInteractionPlan leaks players
         ((runtime setup).reportNetwork leaks watcher) segment execution).map
           (fun next => some ⟨rest.length, none, next⟩) := by
   induction segment generalizing before execution with
   | nil => simp only [List.length_nil, List.filterMap_nil, Nat.zero_add,
-      Function.iterate_zero_apply, runInteractionPlan, FinDist.map_pure]
+      Function.iterate_zero_apply, runInteractionPlan, PMF.pure_map]
   | cons instruction segment ih =>
       let first := 1 + (instructionActor instruction).toList.length
       let later := segment.length + (segment.filterMap instructionActor).length
@@ -78,8 +80,8 @@ theorem segment_control_steps (watcher : Player)
           (runtime setup).interactionStep leaks players
             ((runtime setup).reportNetwork leaks watcher) instruction execution := by
         simp only [ReactiveApplication.round, schedulerEq, interactionStep]
-      rw [step, FinDist.map_eq_bind, FinDist.iterate_bind, runInteractionPlan, FinDist.map_bind]
-      apply FinDist.bind_congr
+      rw [step, ← PMF.bind_pure_comp, Function.comp_def, iterate_bind, runInteractionPlan, PMF.map_bind]
+      apply bind_congr_on_support _
       intro next reached
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
@@ -101,7 +103,7 @@ theorem menu_run_control_steps [Fintype Player]
       (fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher)
         (responses.decodeProfile (initialLaw setup) (horizon setup watcher)
-          (scheduler setup leaks watcher) profile)))^[fuel] (FinDist.pure history.state) := by
+          (scheduler setup leaks watcher) profile)))^[fuel] (PMF.pure history.state) := by
   let app := application setup leaks
   let players := responses.decodeProfile (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) profile
@@ -115,7 +117,7 @@ theorem menu_run_control_steps [Fintype Player]
           (scheduler setup leaks watcher)).runBehavioralFrom profile fuel history).map
           (responses.toRawHistory (initialLaw setup) (horizon setup watcher)
             (scheduler setup leaks watcher))).map History.state := by
-      rw [FinDist.map_comp]
+      rw [PMF.map_comp]
       rfl
     _ = _ := by
       rw [responses.run_embed,
@@ -146,15 +148,15 @@ theorem menu_prefix_state [Fintype Player]
             (fun execution =>
               some ⟨horizon setup watcher - blockOffset count, none, execution⟩)) := by
   rw [InformationModel.runBehavioral, menu_run_control_steps,
-    Function.iterate_succ_apply, FinDist.pure_bind]
+    Function.iterate_succ_apply, PMF.pure_bind]
   change (fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher)
       (responses.decodeProfile (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) profile)))^[blockOffset count + 2 * count]
       ((initialLaw setup).map (fun state => some ⟨horizon setup watcher, none,
         ReactiveApplication.Execution.initial (application setup leaks) state⟩)) = _
-  rw [FinDist.map_eq_bind, FinDist.iterate_bind]
-  apply FinDist.bind_congr
+  rw [← PMF.bind_pure_comp, Function.comp_def, iterate_bind]
+  apply bind_congr_on_support _
   intro state _supported
   let rest := ((List.finRange (graph setup).order.eventCount).drop count).flatMap
     (block setup watcher)

@@ -5,7 +5,10 @@ Authors: VegasCore contributors
 -/
 
 import Interaction.TransactionalInclusion
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Applications over public message interaction
 
@@ -45,7 +48,7 @@ structure MessageApplication (Principal : Type uPrincipal)
   privateStep : Application → Principal → PrivateCommand → Application
   /-- Seal sender-local resources before the packet enters the observable pool. -/
   submitStep : Application → Principal → Payload → Application
-  environmentStep : Application → EnvironmentCommand → FinDist Application
+  environmentStep : Application → EnvironmentCommand → PMF Application
   handle : Application → Message Principal Payload → Option Application
   observePlayer : Application → Principal → PlayerView
   observeEnvironment : Application → EnvironmentView
@@ -125,30 +128,30 @@ noncomputable section
 
 /-- The native transition law. Application chance and policy randomization
 are distinct kernels; both are retained by the policy interpretation. -/
-def step [DecidableEq Principal] (state : app.State) : app.Action → FinDist app.State
+def step [DecidableEq Principal] (state : app.State) : app.Action → PMF app.State
   | .privateCommand who command =>
-      FinDist.pure { state with application := app.privateStep state.application who command }
+      PMF.pure { state with application := app.privateStep state.application who command }
   | .submit who payload =>
-      FinDist.pure { state with
+      PMF.pure { state with
         application := app.submitStep state.application who payload
         pool := (state.pool.submit who payload).2 }
   | .replay who id =>
-      FinDist.pure { state with pool := (state.pool.replay who id).state }
+      PMF.pure { state with pool := (state.pool.replay who id).state }
   | .deliver who id =>
-      FinDist.pure { state with pool := (state.pool.deliver who id).state }
-  | .include id => FinDist.pure (app.includePending state id)
+      PMF.pure { state with pool := (state.pool.deliver who id).state }
+  | .include id => PMF.pure (app.includePending state id)
   | .environment command =>
       (app.environmentStep state.application command).map
         fun application => { state with application }
 
 /-- The law of a supplied finite native action sequence, without a policy or
 an assumed settlement event at the end of the sequence. -/
-def run [DecidableEq Principal] : List app.Action → app.State → FinDist app.State
-  | [], state => FinDist.pure state
+def run [DecidableEq Principal] : List app.Action → app.State → PMF app.State
+  | [], state => PMF.pure state
   | action :: rest, state => (app.step state action).bind (run rest)
 
 @[simp] theorem run_nil [DecidableEq Principal] (state : app.State) :
-    app.run [] state = FinDist.pure state := rfl
+    app.run [] state = PMF.pure state := rfl
 
 @[simp] theorem run_cons [DecidableEq Principal] (state : app.State)
     (action : app.Action) (rest : List app.Action) :
@@ -160,7 +163,7 @@ theorem run_append [DecidableEq Principal] (state : app.State)
   induction first generalizing state with
   | nil => simp
   | cons action rest ih =>
-      simp only [List.cons_append, run_cons, FinDist.bind_bind]
+      simp only [List.cons_append, run_cons, PMF.bind_bind]
       congr 1
       funext next
       exact ih next

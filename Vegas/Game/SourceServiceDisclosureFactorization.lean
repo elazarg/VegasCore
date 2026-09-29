@@ -29,7 +29,7 @@ def guardedDisclosureTranscript
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
     (owner focal : Player) (event : (graph setup).EventId) (ticks : Nat)
-    (timing : FinDist (Fin (roster.count owner)))
+    (timing : PMF (Fin (roster.count owner)))
     (execution : (application setup leaks).Execution) (disclose : Bool) :=
   let app := application setup leaks
   let phase := (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
@@ -89,7 +89,7 @@ theorem guarded_disclosure_transcript_congr
     (rightPublished : right.network.Satisfies fun message =>
       message.id ∈ right.network.ledger.map Message.id)
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
-    (focal : Player) (ticks : Nat) (timing : FinDist (Fin (roster.count owner)))
+    (focal : Player) (ticks : Nat) (timing : PMF (Fin (roster.count owner)))
     (leftChoice rightChoice : Bool)
     (leftEffective : leftChoice = false ∨ ∃ value : L.Val payload,
       leftChoice = true ∧ disclosureResult published binding leftSource true = .success value)
@@ -131,15 +131,15 @@ theorem guarded_disclosure_transcript_congr
       simp only [guardedDisclosureTranscript, ↓reduceIte,
         leftOpening, rightOpening]
       rw [← counts]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro slot _supported
       have included := (runtime setup).openingWindow_inclusion_focal_coupling leaks network
         roster left right leftRecall rightRecall leftSerials rightSerials leftPublished
         rightPublished owner focal event candidate ⟨payload, value⟩ owned (some slot)
           (fun _ => leftValid) (fun _ => rightValid) traffic counts (fun _ => handled)
-      conv_lhs => rw [runInteractionPlan_append, FinDist.map_bind]
-      conv_rhs => rw [runInteractionPlan_append, FinDist.map_bind]
-      apply FinDist.bind_eq_of_map_eq _ _ _ _ included
+      conv_lhs => rw [runInteractionPlan_append, PMF.map_bind]
+      conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
+      apply bind_eq_of_map_eq _ _ _ _ included
       intro before _ after _ equal
       exact (runtime setup).settlement_focal_law leaks _ network event ticks before after
         focal equal
@@ -154,7 +154,7 @@ theorem guarded_disclosure_successor_factorization
     (published : VarId) (binding : HasVar Γ name (.commitment owner payload))
     (refs : ContextRefs (graph setup).layout Γ) (event : (graph setup).EventId)
     (outputEq : (graph setup).outputLayout event = .publication payload)
-    (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (prior : PMF Seed) (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (agree : ∀ seed ∈ prior.support,
       refs.Agrees (source seed).state (execution seed).application.config.store)
@@ -176,17 +176,17 @@ theorem guarded_disclosure_successor_factorization
     (offset : Nat) (counts : ∀ seed ∈ prior.support,
       ((execution seed).recall owner).length = offset)
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
-    (focal : Player) (ticks : Nat) (timing : FinDist (Fin (roster.count owner)))
-    (noise : DecisionView focal Γ → FinDist _)
+    (focal : Player) (ticks : Nat) (timing : PMF (Fin (roster.count owner)))
+    (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (config.view focal)).map fun extra => (config, extra))
-    (choice : Config Player L Γ → FinDist Bool)
+    (choice : Config Player L Γ → PMF Bool)
     (effective : ∀ seed ∈ prior.support, ∀ disclose ∈ (choice (source seed)).support,
       disclose = false ∨ ∃ value : L.Val payload,
         disclose = true ∧ disclosureResult published binding (source seed) true = .success value) :
-    ∃ nextNoise : DecisionView focal ((published, .publication payload) :: Γ) → FinDist _,
+    ∃ nextNoise : DecisionView focal ((published, .publication payload) :: Γ) → PMF _,
       (prior.bind fun seed => (choice (source seed)).bind fun disclose =>
         (guardedDisclosureTranscript setup leaks network roster owner focal event ticks timing
           (execution seed) disclose).map fun extra =>
@@ -194,7 +194,7 @@ theorem guarded_disclosure_successor_factorization
       ((prior.map source).bind fun config =>
         (choice config).map (revealSuccessor published binding config)).bind fun config =>
           (nextNoise (config.view focal)).map fun extra => (config, extra) := by
-  apply FinDist.exists_updated_observation_kernel_of_readout prior source
+  apply PMF.exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun config => config.view focal) noise factor choice
     (revealSuccessor published binding) (fun config => config.view focal)

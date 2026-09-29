@@ -28,7 +28,7 @@ variable {Principal : Type} [Fintype Principal] [DecidableEq Principal]
     raw.actions who (normal.recall who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def splitBayes
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)

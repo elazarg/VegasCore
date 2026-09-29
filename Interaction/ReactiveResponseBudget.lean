@@ -22,21 +22,21 @@ def responseBudget (horizon : Nat) : app.ProtocolState → Prop
   | some control => ∀ who, (control.execution.recall who).length + control.remaining +
       (if control.actor = some who then 1 else 0) ≤ horizon
 
-theorem responseBudget_transition (initial : FinDist app.State) (horizon : Nat)
+theorem responseBudget_transition (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)
     (joint : Principal → Option app.Action) (valid : app.responseBudget horizon before)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     app.responseBudget horizon after := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       intro who
       simp [Execution.initial]
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some actor =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           intro who
           have budget := valid who
           by_cases same : who = actor
@@ -52,12 +52,12 @@ theorem responseBudget_transition (initial : FinDist app.State) (horizon : Nat)
       | none =>
           cases remaining with
           | zero =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               exact valid
           | succ remaining =>
               obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               intro who
               have budget := valid who
               rw [app.environmentStep_recall execution next command moved]
@@ -66,7 +66,7 @@ theorem responseBudget_transition (initial : FinDist app.State) (horizon : Nat)
                 (if command.actor? app = some who then 1 else 0) ≤ horizon
               split <;> omega
 
-theorem responseBudget_history (initial : FinDist app.State) (horizon : Nat)
+theorem responseBudget_history (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) :
     ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
       app.responseBudget horizon state
@@ -76,7 +76,7 @@ theorem responseBudget_history (initial : FinDist app.State) (horizon : Nat)
         (responseBudget_history initial horizon scheduler prior) reached
 
 /-- Even the final activation has an unused response opportunity. -/
-theorem active_recall_lt_horizon (initial : FinDist app.State) (horizon : Nat)
+theorem active_recall_lt_horizon (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (who : Principal) (active : control.actor = some who) :

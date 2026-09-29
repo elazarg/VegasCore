@@ -19,7 +19,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [R : IExpr.ResultTypes
 structure Setup where
   context : SourceCtx Player L
   namesNodup : (context.map Prod.fst).Nodup
-  initialLaw : FinDist (State L context)
+  initialLaw : PMF (State L context)
   obligations : Finset VarId
   program : SourceProgram Player L context obligations
   accounts : obligations = commitmentNames context
@@ -28,14 +28,14 @@ namespace Setup
 
 def run (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
-    FinDist (State L setup.program.terminalCtx) :=
+    PMF (State L setup.program.terminalCtx) :=
   setup.initialLaw.bind fun initial => SourceProgram.run setup.program profile initial
 
 /-- The public result law of a profile. `run` keeps the complete terminal
 state; only this projection is an outcome. -/
 def publicRun (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
-    FinDist (SourceProgram.PublicOutcome setup.program) :=
+    PMF (SourceProgram.PublicOutcome setup.program) :=
   (setup.run profile).map (SourceProgram.publicOutcome setup.program)
 
 def gameForm (setup : Setup (Player := Player) (L := L)) : GameForm Player where

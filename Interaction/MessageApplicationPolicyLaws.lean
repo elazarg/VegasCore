@@ -6,7 +6,9 @@ Authors: VegasCore contributors
 
 import Interaction.MessageApplicationPolicies
 import Interaction.MessageApplicationLaws
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Native support refinement for message-application policies -/
 
@@ -27,8 +29,8 @@ theorem playerStep_action_mem [DecidableEq Principal]
     (action : app.Action) (haction : PlayerCommand.toAction app who command = some action)
     (next : app.PolicyExecution) (hnext : next ∈ (app.playerStep who execution command).support) :
     action ∈ next.nativeTrace := by
-  simp only [playerStep, advance, haction, FinDist.bind_bind, FinDist.pure_bind,
-    FinDist.support_bind, Set.mem_iUnion, FinDist.mem_support_pure] at hnext
+  simp only [playerStep, advance, haction, PMF.bind_bind, PMF.pure_bind,
+    PMF.support_bind, Set.mem_iUnion, PMF.mem_support_pure_iff _ _] at hnext
   obtain ⟨_, _, rfl⟩ := hnext
   simp
 
@@ -40,17 +42,17 @@ private theorem advance_support [DecidableEq Principal]
       advanced.1 ∈ (app.run suffix execution.native).support := by
   cases action with
   | none =>
-      simp only [advance, FinDist.mem_support_pure] at hadvanced
+      simp only [advance, PMF.mem_support_pure_iff _ _] at hadvanced
       subst advanced
       exact ⟨[], by simp⟩
   | some action =>
-      simp only [advance, FinDist.support_bind, Set.mem_iUnion] at hadvanced
+      simp only [advance, PMF.support_bind, Set.mem_iUnion] at hadvanced
       rcases hadvanced with ⟨next, hnext, hadvanced⟩
-      simp only [FinDist.mem_support_pure] at hadvanced
+      simp only [PMF.mem_support_pure_iff _ _] at hadvanced
       subst advanced
       refine ⟨[action], rfl, ?_⟩
-      simp only [run_cons, run_nil, FinDist.support_bind, Set.mem_iUnion]
-      exact ⟨next, hnext, FinDist.mem_support_pure.mpr rfl⟩
+      simp only [run_cons, run_nil, PMF.support_bind, Set.mem_iUnion]
+      exact ⟨next, hnext, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
 
 /-- A player step appends exactly a supported native action suffix. -/
 theorem playerStep_native_support [DecidableEq Principal]
@@ -59,9 +61,9 @@ theorem playerStep_native_support [DecidableEq Principal]
     (hnext : next ∈ (app.playerStep who execution command).support) :
     ∃ suffix, next.nativeTrace = execution.nativeTrace ++ suffix ∧
       next.native ∈ (app.run suffix execution.native).support := by
-  simp only [playerStep, FinDist.support_bind, Set.mem_iUnion] at hnext
+  simp only [playerStep, PMF.support_bind, Set.mem_iUnion] at hnext
   rcases hnext with ⟨advanced, hadvanced, hnext⟩
-  simp only [FinDist.mem_support_pure] at hnext
+  simp only [PMF.mem_support_pure_iff _ _] at hnext
   subst next
   exact advance_support app execution _ advanced hadvanced
 
@@ -72,9 +74,9 @@ theorem environmentStep_native_support [DecidableEq Principal]
     (hnext : next ∈ (app.environmentPolicyStep execution command).support) :
     ∃ suffix, next.nativeTrace = execution.nativeTrace ++ suffix ∧
       next.native ∈ (app.run suffix execution.native).support := by
-  simp only [environmentPolicyStep, FinDist.support_bind, Set.mem_iUnion] at hnext
+  simp only [environmentPolicyStep, PMF.support_bind, Set.mem_iUnion] at hnext
   rcases hnext with ⟨advanced, hadvanced, hnext⟩
-  simp only [FinDist.mem_support_pure] at hnext
+  simp only [PMF.mem_support_pure_iff _ _] at hnext
   subst next
   exact advance_support app execution _ advanced hadvanced
 
@@ -93,27 +95,27 @@ theorem invoke_native_step [DecidableEq Principal]
         ∃ action, advanced.1 ∈ (app.step execution.native action).support := by
     cases action with
     | none =>
-        simp only [advance, FinDist.mem_support_pure] at hadvanced
+        simp only [advance, PMF.mem_support_pure_iff _ _] at hadvanced
         subst advanced
         exact Or.inl rfl
     | some action =>
-        simp only [advance, FinDist.support_bind, Set.mem_iUnion,
-          FinDist.mem_support_pure] at hadvanced
+        simp only [advance, PMF.support_bind, Set.mem_iUnion,
+          PMF.mem_support_pure_iff _ _] at hadvanced
         obtain ⟨state, hstate, rfl⟩ := hadvanced
         exact Or.inr ⟨action, hstate⟩
   cases invocation with
   | player who =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨command, _, hstep⟩ := hnext
-      simp only [playerStep, FinDist.support_bind, Set.mem_iUnion,
-        FinDist.mem_support_pure] at hstep
+      simp only [playerStep, PMF.support_bind, Set.mem_iUnion,
+        PMF.mem_support_pure_iff _ _] at hstep
       obtain ⟨advanced, hadvanced, rfl⟩ := hstep
       exact hadvance _ advanced hadvanced
   | environment =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨command, _, hstep⟩ := hnext
-      simp only [environmentPolicyStep, FinDist.support_bind, Set.mem_iUnion,
-        FinDist.mem_support_pure] at hstep
+      simp only [environmentPolicyStep, PMF.support_bind, Set.mem_iUnion,
+        PMF.mem_support_pure_iff _ _] at hstep
       obtain ⟨advanced, hadvanced, rfl⟩ := hstep
       exact hadvance _ advanced hadvanced
 
@@ -126,11 +128,11 @@ theorem invoke_native_support [DecidableEq Principal]
       next.native ∈ (app.run suffix execution.native).support := by
   cases invocation with
   | player who =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hnext
       rcases hnext with ⟨command, _, hstep⟩
       exact playerStep_native_support app who execution command next hstep
   | environment =>
-      simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hnext
       rcases hnext with ⟨command, _, hstep⟩
       exact environmentStep_native_support app execution command next hstep
 
@@ -144,18 +146,18 @@ theorem runPolicies_native_support [DecidableEq Principal]
       next.native ∈ (app.run suffix execution.native).support := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact ⟨[], by simp⟩
   | cons invocation rest ih =>
-      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [runPolicies, PMF.support_bind, Set.mem_iUnion] at hnext
       rcases hnext with ⟨middle, hmiddle, hnext⟩
       rcases invoke_native_support app players environment execution middle invocation hmiddle with
         ⟨first, hfirstTrace, hfirstRun⟩
       rcases ih middle hnext with ⟨second, hsecondTrace, hsecondRun⟩
       refine ⟨first ++ second, ?_, ?_⟩
       · rw [hsecondTrace, hfirstTrace, List.append_assoc]
-      · rw [app.run_append, FinDist.support_bind]
+      · rw [app.run_append, PMF.support_bind]
         simp only [Set.mem_iUnion]
         exact ⟨middle.native, hfirstRun, hsecondRun⟩
 
@@ -232,11 +234,11 @@ theorem runPolicies_map_invariant [DecidableEq Principal]
   induction labels generalizing execution with
   | nil =>
       intro next supported
-      simp only [List.map_nil, runPolicies, FinDist.mem_support_pure] at supported
+      simp only [List.map_nil, runPolicies, PMF.mem_support_pure_iff _ _] at supported
       rwa [supported]
   | cons label rest ih =>
       intro next supported
-      simp only [List.map_cons, runPolicies, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [List.map_cons, runPolicies, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨middle, first, remaining⟩ := supported
       exact ih middle (preserve label execution hinitial middle first) next remaining
 
@@ -247,7 +249,7 @@ fallback outcome is introduced. -/
 theorem runPolicies_map_bindOnSupport_conservation [DecidableEq Principal]
     {Label Outcome : Type*} (toInvocation : Label → @Invocation Principal)
     (plan : List Label) (invariant : app.PolicyExecution → Prop)
-    (residual : ∀ execution, invariant execution → FinDist Outcome)
+    (residual : ∀ execution, invariant execution → PMF Outcome)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)
     (initial : app.PolicyExecution) (hinitial : invariant initial)
     (preserve : ∀ label execution, invariant execution → ∀ next,
@@ -279,14 +281,14 @@ theorem runPolicies_map_bindOnSupport_conservation [DecidableEq Principal]
     intro before after split execution reached hexecution
     induction after generalizing before execution with
     | nil =>
-        change (FinDist.pure execution).bindOnSupport _ = _
+        change (PMF.pure execution).bindOnSupport _ = _
         rw [FinDist.pure_bindOnSupport]
     | cons label rest ih =>
         let stepLaw := app.invoke players environment execution (toInvocation label)
         let restLaw := app.runPolicies players environment (rest.map toInvocation)
         have totalPreserved : ∀ next ∈ (stepLaw.bind restLaw).support, invariant next := by
           intro next nextMem
-          simp only [FinDist.support_bind, Set.mem_iUnion] at nextMem
+          simp only [PMF.support_bind, Set.mem_iUnion] at nextMem
           obtain ⟨middle, middleMem, restMem⟩ := nextMem
           exact app.runPolicies_map_invariant toInvocation invariant players environment
             preserve rest middle (preserve label execution hexecution middle middleMem)
@@ -299,7 +301,7 @@ theorem runPolicies_map_bindOnSupport_conservation [DecidableEq Principal]
                     preserve (label :: rest) execution hexecution next supported)) =
               (stepLaw.bind restLaw).bindOnSupport fun next supported =>
                 residual next (totalPreserved next supported) := by
-          apply FinDist.bindOnSupport_congr_measure rfl
+          apply bindOnSupport_congr_measure rfl
           intro next _ _
           congr
         rw [normalized]
@@ -309,12 +311,12 @@ theorem runPolicies_map_bindOnSupport_conservation [DecidableEq Principal]
                 (toInvocation label)).bindOnSupport
               (fun middle supported => residual middle
                 (preserve label execution hexecution middle supported)) := by
-              apply FinDist.bindOnSupport_congr
+              apply bindOnSupport_congr _
               intro middle middleMem
               apply ih (before ++ [label])
               · simpa [List.append_assoc] using split
               · simp only [List.map_append, app.runPolicies_append,
-                  FinDist.support_bind, Set.mem_iUnion]
+                  PMF.support_bind, Set.mem_iUnion]
                 exact ⟨execution, reached, by
                   simpa [runPolicies] using middleMem⟩
           _ = residual execution hexecution :=
@@ -330,13 +332,13 @@ private theorem advance_action_property [DecidableEq Principal]
     ∀ action ∈ advanced.2, property action := by
   cases action with
   | none =>
-      simp only [advance, FinDist.mem_support_pure] at hadvanced
+      simp only [advance, PMF.mem_support_pure_iff _ _] at hadvanced
       subst advanced
       exact hinitial
   | some action =>
-      simp only [advance, FinDist.support_bind, Set.mem_iUnion] at hadvanced
+      simp only [advance, PMF.support_bind, Set.mem_iUnion] at hadvanced
       obtain ⟨next, _, hadvanced⟩ := hadvanced
-      simp only [FinDist.mem_support_pure] at hadvanced
+      simp only [PMF.mem_support_pure_iff _ _] at hadvanced
       subst advanced
       intro emitted hemitted
       rcases List.mem_append.mp hemitted with hprior | hnew
@@ -359,29 +361,29 @@ theorem runPolicies_action_property [DecidableEq Principal]
     ∀ action ∈ next.nativeTrace, property action := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hinitial
   | cons invocation rest ih =>
-      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [runPolicies, PMF.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
       apply ih middle ?_ hnext
       cases invocation with
       | player who =>
-          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hmiddle
           obtain ⟨command, hcommand, hstep⟩ := hmiddle
-          simp only [playerStep, FinDist.support_bind, Set.mem_iUnion] at hstep
+          simp only [playerStep, PMF.support_bind, Set.mem_iUnion] at hstep
           obtain ⟨advanced, hadvanced, hstep⟩ := hstep
-          simp only [FinDist.mem_support_pure] at hstep
+          simp only [PMF.mem_support_pure_iff _ _] at hstep
           subst middle
           exact advance_action_property app property execution _ advanced hinitial
             (hplayers who _ _ command hcommand) hadvanced
       | environment =>
-          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hmiddle
           obtain ⟨command, hcommand, hstep⟩ := hmiddle
-          simp only [environmentPolicyStep, FinDist.support_bind, Set.mem_iUnion] at hstep
+          simp only [environmentPolicyStep, PMF.support_bind, Set.mem_iUnion] at hstep
           obtain ⟨advanced, hadvanced, hstep⟩ := hstep
-          simp only [FinDist.mem_support_pure] at hstep
+          simp only [PMF.mem_support_pure_iff _ _] at hstep
           subst middle
           exact advance_action_property app property execution _ advanced hinitial
             (henvironment _ _ command hcommand) hadvanced

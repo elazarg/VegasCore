@@ -66,7 +66,7 @@ theorem roster_activation_segment
       List.getElem?_map, List.getElem?_eq_getElem index]
     rfl
   simp only [rosterScheduler, selected, interactionInstruction] at supported
-  exact ⟨actor, FinDist.mem_support_pure.mp supported⟩
+  exact ⟨actor, (PMF.mem_support_pure_iff _ _).mp supported⟩
 
 /-- This instantiates the complete stopped window on the existing source
 service calendar and retained menu. No menu-coverage or timing certificate is
@@ -98,7 +98,7 @@ theorem repeated_roster_stopped_coupling
     let app := application setup leaks
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players

@@ -25,10 +25,10 @@ theorem native_initial_representation (control : nativeApp.Control)
     (ambient : control.execution.application.serviceGrant = none) :
     control = nativeInitialControl := by
   obtain ⟨accounted, supported⟩ := nativeMenu.roundSupported_uniform
-    (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace
+    (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace
   rw [active] at supported
   obtain ⟨count, prior, command, position, priorMem, commandMem, actor, observed⟩ := supported
-  have cursor := nativeApp.roundsFrom_recall (FinDist.pure nativeInitial) nativeScheduler
+  have cursor := nativeApp.roundsFrom_recall (PMF.pure nativeInitial) nativeScheduler
     nativeMenu.uniformResponses count prior priorMem
   have bounded : count < nativePlan.length := by
     change _ + _ = nativePlan.length at accounted
@@ -37,7 +37,7 @@ theorem native_initial_representation (control : nativeApp.Control)
     simp only [serviceScheduler, cursor] at commandMem
     cases found : nativePlan[count]? with
     | none =>
-        simp only [found, FinDist.mem_support_pure] at commandMem
+        simp only [found, PMF.mem_support_pure_iff _ _] at commandMem
         subst command
         cases actor
     | some instruction =>
@@ -54,15 +54,15 @@ theorem native_initial_representation (control : nativeApp.Control)
   rcases positions with early | ⟨event, same⟩
   · rw [early] at priorMem position
     have priorEq : prior = nativeRoot := by
-      simpa only [ReactiveApplication.roundsFrom, FinDist.pure_bind,
-        ReactiveApplication.runRounds, FinDist.mem_support_pure, nativeRoot] using priorMem
+      simpa only [ReactiveApplication.roundsFrom, PMF.pure_bind,
+        ReactiveApplication.runRounds, PMF.mem_support_pure_iff _ _, nativeRoot] using priorMem
     subst prior
     have commandEq : command = .activate alice := by
-      change command ∈ (FinDist.pure (.activate alice)).support at commandMem
-      exact FinDist.mem_support_pure.mp commandMem
+      change command ∈ (PMF.pure (.activate alice)).support at commandMem
+      exact (PMF.mem_support_pure_iff _ _).mp commandMem
     subst command
     change control.execution ∈ (initial.environmentStep app (.activate 0)).support at observed
-    rw [initial_activation, FinDist.mem_support_pure] at observed
+    rw [initial_activation, PMF.mem_support_pure_iff _ _] at observed
     have remaining : control.remaining = 88 := by
       rw [native_horizon] at accounted
       omega
@@ -89,23 +89,23 @@ theorem native_initial_trace : Nonempty (nativeArena.Trace (some nativeInitialCo
       · intro who
         simp [nativeArena, serviceArena, ReactiveApplication.ResponseMenu.protocol,
           ReactiveApplication.actor]
-    · change _ ∈ ((FinDist.pure nativeInitial).map _).support
-      rw [FinDist.map_pure, FinDist.mem_support_pure]
+    · change _ ∈ ((PMF.pure nativeInitial).map _).support
+      rw [PMF.pure_map, PMF.mem_support_pure_iff _ _]
       rfl
   obtain ⟨setupTrace⟩ := setup
-  apply nativeMenu.trace_environment (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+  apply nativeMenu.trace_environment (PMF.pure nativeInitial) nativeHorizon nativeScheduler
     88 nativeRoot activatedInitial (.activate alice) setupTrace
-  · change _ ∈ (FinDist.pure (.activate alice : nativeApp.Command)).support
-    exact FinDist.mem_support_pure.mpr rfl
+  · change _ ∈ (PMF.pure (.activate alice : nativeApp.Command)).support
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
   · change activatedInitial ∈ (initial.environmentStep app (.activate 0)).support
     rw [initial_activation]
-    exact FinDist.mem_support_pure.mpr rfl
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 def nativeInitialSite : nativeModel.InformationSite alice := by
   let trace := native_initial_trace.some
   have information : nativeModel.infoOf alice trace =
       some (activatedInitial.recall alice, activatedInitial.observe nativeApp alice) := by
-    change (nativeMenu.signals (FinDist.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
+    change (nativeMenu.signals (PMF.pure nativeInitial) nativeHorizon nativeScheduler).infoOf
       alice trace = _
     rw [nativeMenu.info]
     rfl

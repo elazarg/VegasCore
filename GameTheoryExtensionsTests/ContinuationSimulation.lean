@@ -20,10 +20,10 @@ namespace GameTheoryExtensionsTests.ContinuationSimulation
 
 open GameTheory GameTheory.Math.Probability
 
-def coin : FinDist Bool := FinDist.uniformOfFintype
+def coin : PMF Bool := PMF.uniformOfFintype
 
 def source (_who : Unit) (branch : Bool) : IncentiveComparison (Bool × Bool) :=
-  ⟨FinDist.pure (branch, true), FinDist.pure (branch, false)⟩
+  ⟨PMF.pure (branch, true), PMF.pure (branch, false)⟩
 
 def middle (_who _comparison : Unit) : IncentiveComparison (Bool × Bool) :=
   ⟨coin.map (fun branch => (branch, true)), coin.map (fun branch => (branch, false))⟩
@@ -44,19 +44,19 @@ def composed : GameTheory.ContinuationSimulation source target := first.trans se
 theorem composition_retains_mixture (who : Unit) (comparison : Bool) :
     composed.alternatives who comparison = coin := by
   simp only [composed, GameTheory.ContinuationSimulation.trans, second,
-    GameTheory.ContinuationSimulation.ofMap, FinDist.pure_bind, first]
+    GameTheory.ContinuationSimulation.ofMap, PMF.pure_bind, first]
 
 /-- A deterministic source-site decoder cannot supply the same certificate. -/
 theorem no_single_source_prescribed (branch : Bool) :
     (middle () ()).prescribed ≠ (source () branch).prescribed := by
   intro same
   have projected := congrArg (fun law => law.map Prod.fst) same
-  simp only [middle, source, FinDist.map_comp, FinDist.map_pure] at projected
-  change coin.map id = FinDist.pure branch at projected
-  rw [FinDist.map_id] at projected
-  have mass := congrArg (fun law => law.prob (!branch)) projected
+  simp only [middle, source, PMF.map_comp, PMF.pure_map] at projected
+  change coin.map id = PMF.pure branch at projected
+  rw [PMF.map_id] at projected
+  have mass := congrArg (fun law => (law (!branch)).toReal) projected
   cases branch <;> norm_num [coin, FinDist.prob_uniformOfFintype,
-    FinDist.prob_pure_eq_ite] at mass
+    toReal_pure_apply] at mass
 
 /-- Matching these law pairs transports every utility satisfying both source
 inequalities, including utilities depending on the source-site label. -/
@@ -78,23 +78,23 @@ theorem cone_preservation_without_simulation :
     (simulation.prescribed () ())
 
 def neutral (branch : Bool) : IncentiveComparison Bool :=
-  ⟨FinDist.pure branch, FinDist.pure branch⟩
+  ⟨PMF.pure branch, PMF.pure branch⟩
 
-def crossed : IncentiveComparison Bool := ⟨FinDist.pure false, FinDist.pure true⟩
+def crossed : IncentiveComparison Bool := ⟨PMF.pure false, PMF.pure true⟩
 
 /-- Matching prescribed and deviating laws by unrelated source mixtures is
 unsound: every source comparison is an indifference, while the target has a
 strictly profitable deviation. Shared weights are essential to the rule. -/
 theorem separate_law_matching_insufficient :
-    (∃ weights : FinDist Bool,
+    (∃ weights : PMF Bool,
       crossed.prescribed = weights.bind (fun branch => (neutral branch).prescribed)) ∧
-    (∃ weights : FinDist Bool,
+    (∃ weights : PMF Bool,
       crossed.alternative = weights.bind (fun branch => (neutral branch).alternative)) ∧
     (∀ utility branch, (neutral branch).Holds utility) ∧
     ¬ crossed.Holds (fun outcome => if outcome then 1 else 0) := by
-  refine ⟨⟨FinDist.pure false, ?_⟩, ⟨FinDist.pure true, ?_⟩, ?_, ?_⟩
-  · simp only [crossed, FinDist.pure_bind, neutral]
-  · simp only [crossed, FinDist.pure_bind, neutral]
+  refine ⟨⟨PMF.pure false, ?_⟩, ⟨PMF.pure true, ?_⟩, ?_, ?_⟩
+  · simp only [crossed, PMF.pure_bind, neutral]
+  · simp only [crossed, PMF.pure_bind, neutral]
   · intro utility branch
     exact le_refl _
   · norm_num [crossed, IncentiveComparison.Holds]

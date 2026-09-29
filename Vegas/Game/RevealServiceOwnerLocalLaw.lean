@@ -67,7 +67,7 @@ theorem owner_local_law_readout
     (history : (protocol setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).History)
     (current : history.state =
       some ⟨horizon setup watcher - blockOffset event.val - 2, some who, execution⟩)
-    (law : FinDist ((information setup leaks (bounds.withInitialValues (initialLaw setup))
+    (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who ((information setup leaks (bounds.withInitialValues (initialLaw setup))
         watcher).infoOf who history.trace)))
     (joint : Bool → Player → Option (OwnAction Player L))
@@ -131,11 +131,11 @@ theorem owner_local_law_readout
           (scheduler setup leaks watcher) players
             (some ⟨horizon setup watcher - blockOffset event.val - 2, none,
               execution.respond (application setup leaks) who response⟩))).map decode := by
-      simpa only [FinDist.map_comp, Function.comp_def] using
+      simpa only [PMF.map_comp, Function.comp_def] using
         congrArg (fun distribution => distribution.map decode) first
     _ = _ := by
-      rw [FinDist.map_bind, FinDist.bind_map, FinDist.map_bind]
-      apply FinDist.bind_congr
+      rw [PMF.map_bind, PMF.bind_map, PMF.map_bind]
+      apply bind_congr_on_support _
       intro choice _supported
       exact owner_response_finish_decode_law setup leaks bounds watcher who reveals observer
         profile players reports ordinary projects initial initialSupport event owned source

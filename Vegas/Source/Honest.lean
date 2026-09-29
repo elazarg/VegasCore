@@ -83,11 +83,11 @@ theorem runFrom_successful :
     GuardsAcceptFrom p profile config →
     ∀ terminal ∈ (runFrom p profile config).support, Successful terminal
   | _, _, .ret _, _, _, _, hconfig, _, terminal, hterminal => by
-      rw [runFrom, runWith, FinDist.mem_support_pure] at hterminal
+      rw [runFrom, runWith, PMF.mem_support_pure_iff _ _] at hterminal
       exact hterminal ▸ hconfig
   | _, _, .sample sampleName _ _ k, profile, honest, config, hconfig, guards,
       terminal, hterminal => by
-      rw [runFrom_sample, FinDist.support_bind] at hterminal
+      rw [runFrom_sample, PMF.support_bind] at hterminal
       obtain ⟨value, hvalue, hmem⟩ := Set.mem_iUnion₂.mp hterminal
       refine runFrom_successful k (afterSample profile) (fun who => honest who)
         (sampleSuccessor sampleName config value) ?_ (guards value hvalue) terminal hmem
@@ -98,7 +98,7 @@ theorem runFrom_successful :
             | .there h' => hconfig.publications h' }
   | _, _, .commit cellName owner _ guard k, profile, honest, config, hconfig, guards,
       terminal, hterminal => by
-      rw [runFrom_commit, FinDist.support_bind] at hterminal
+      rw [runFrom_commit, PMF.support_bind] at hterminal
       obtain ⟨choice, hchoice, hmem⟩ := Set.mem_iUnion₂.mp hterminal
       have hvalue : ∃ value, choice = .success value := by
         cases choice with
@@ -118,7 +118,7 @@ theorem runFrom_successful :
             | .there h' => hconfig.publications h' }
   | _, _, .reveal published owner _ _ source _ k, profile, honest, config, hconfig, guards,
       terminal, hterminal => by
-      rw [runFrom_reveal, FinDist.support_bind] at hterminal
+      rw [runFrom_reveal, PMF.support_bind] at hterminal
       obtain ⟨disclose, hdisclose, hmem⟩ := Set.mem_iUnion₂.mp hterminal
       have hopen : disclose = true := by
         cases disclose with

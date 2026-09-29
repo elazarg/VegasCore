@@ -27,7 +27,7 @@ theorem compileProfile_wait_of_owner_submitted
     (ownerSubmitted : submittedAt (execution.principalHistory owner) event = true) :
     runtime.compileProfile profile who (execution.principalHistory who)
         (MessageApplication.State.observe runtime.application execution.native who) =
-      FinDist.pure .wait := by
+      PMF.pure .wait := by
   unfold compileProfile compilePlayerPolicy
   have observedGrant : (MessageApplication.State.observe runtime.application
       execution.native who).application.publicView.serviceGrant = some event := by
@@ -52,7 +52,7 @@ theorem serviceStep_compileProfile_wait_of_owner_submitted
     (actor : graph.actor? event = some owner)
     (ownerSubmitted : submittedAt (execution.principalHistory owner) event = true) :
     runtime.serviceStep (runtime.compileProfile profile) wire (.player who) execution =
-      FinDist.pure
+      PMF.pure
         { execution with
           principalHistory := fun other =>
             if other = who then execution.principalHistory who ++
@@ -61,7 +61,7 @@ theorem serviceStep_compileProfile_wait_of_owner_submitted
             else execution.principalHistory other } := by
   simp only [serviceStep, MessageApplication.invoke]
   rw [runtime.compileProfile_wait_of_owner_submitted profile execution event owner who grant
-    actor ownerSubmitted, FinDist.pure_bind]
+    actor ownerSubmitted, PMF.pure_bind]
   exact runtime.application.playerStep_wait who execution
 
 def HonestReactionState (runtime : EventGraphRuntime graph)
@@ -85,7 +85,7 @@ theorem serviceStep_wire_honestReactionState
     runtime.HonestReactionState event owner before accepted message next := by
   rcases state with ⟨submitted, pending | included⟩
   · simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-      FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+      PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
     obtain ⟨command, _, step⟩ := member
     have ownerHistory : next.principalHistory owner = execution.principalHistory owner := by
       exact congrFun (runtime.application.environmentStep_principalHistory execution
@@ -96,7 +96,7 @@ theorem serviceStep_wire_honestReactionState
         ((runtime.application.environmentPolicyStep execution
           (command.toEnvironmentCommand runtime.application)).map
             MessageInterface.PolicyExecution.native).support := by
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨next, step, rfl⟩
     rw [runtime.application.environmentStep_native] at nativeMem
     cases command with
@@ -104,13 +104,13 @@ theorem serviceStep_wire_honestReactionState
         left
         simp only [WireCommand.toEnvironmentCommand,
           MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-          FinDist.mem_support_pure] at nativeMem
+          PMF.mem_support_pure_iff _ _] at nativeMem
         rw [nativeMem]
         exact ⟨pending.1, by simpa [MessagePool.deliver_preserves_pending] using pending.2⟩
     | «include» id =>
         simp only [WireCommand.toEnvironmentCommand,
           MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-          FinDist.mem_support_pure] at nativeMem
+          PMF.mem_support_pure_iff _ _] at nativeMem
         cases lookup : execution.native.pool.lookup id with
         | none =>
             rw [runtime.application.includePending_missing execution.native id lookup] at nativeMem
@@ -141,7 +141,7 @@ theorem serviceStep_wire_honestReactionState
               simp at lookup
               simpa [pending.2, MessagePool.removeFirst, lookup] using poolEq
   · simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-      FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+      PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
     obtain ⟨command, _, step⟩ := member
     have ownerHistory : next.principalHistory owner = execution.principalHistory owner := by
       exact congrFun (runtime.application.environmentStep_principalHistory execution
@@ -152,20 +152,20 @@ theorem serviceStep_wire_honestReactionState
         ((runtime.application.environmentPolicyStep execution
           (command.toEnvironmentCommand runtime.application)).map
             MessageInterface.PolicyExecution.native).support := by
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨next, step, rfl⟩
     rw [runtime.application.environmentStep_native] at nativeMem
     cases command with
     | deliver observer id | wait =>
         simp only [WireCommand.toEnvironmentCommand,
           MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-          FinDist.mem_support_pure] at nativeMem
+          PMF.mem_support_pure_iff _ _] at nativeMem
         rw [nativeMem]
         exact ⟨included.1, by simpa [MessagePool.deliver_preserves_pending] using included.2⟩
     | «include» id =>
         simp only [WireCommand.toEnvironmentCommand,
           MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-          FinDist.mem_support_pure] at nativeMem
+          PMF.mem_support_pure_iff _ _] at nativeMem
         have missing : execution.native.pool.lookup id = none := by
           simp [MessagePool.lookup, included.2]
         rw [runtime.application.includePending_missing execution.native id missing] at nativeMem
@@ -188,7 +188,7 @@ theorem serviceStep_player_honestReactionState
   have grant : execution.native.application.serviceGrant = some event := by
     rcases branch with h | h <;> simp [h.1, grantBefore, grantAccepted]
   rw [runtime.serviceStep_compileProfile_wait_of_owner_submitted profile wire execution event
-    owner who grant actor submitted, FinDist.mem_support_pure] at member
+    owner who grant actor submitted, PMF.mem_support_pure_iff _ _] at member
   subst next
   refine ⟨?_, branch⟩
   by_cases same : owner = who
@@ -215,7 +215,7 @@ private theorem serviceStep_honestReaction_history
       execution).support)
     (quiet : ∀ who, runtime.compileProfile profile who (execution.principalHistory who)
       (MessageApplication.State.observe runtime.application execution.native who) =
-        FinDist.pure .wait) :
+        PMF.pure .wait) :
     ∀ who query,
       stagingCount (next.principalHistory who) query =
           stagingCount (execution.principalHistory who) query ∧
@@ -224,8 +224,8 @@ private theorem serviceStep_honestReaction_history
   cases instruction with
   | player selected =>
       simp only [serviceStep, MessageApplication.invoke] at member
-      rw [quiet selected, FinDist.pure_bind, runtime.application.playerStep_wait,
-        FinDist.mem_support_pure] at member
+      rw [quiet selected, PMF.pure_bind, runtime.application.playerStep_wait,
+        PMF.mem_support_pure_iff _ _] at member
       subst next
       intro who query
       by_cases same : who = selected
@@ -234,7 +234,7 @@ private theorem serviceStep_honestReaction_history
       · simp [same]
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       intro who query
       rw [runtime.application.environmentStep_principalHistory execution
@@ -268,11 +268,11 @@ theorem runServicePlan_honestReaction
             submittedAt (execution.principalHistory who) query := by
   induction plan generalizing execution with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨state, fun _ _ => ⟨rfl, rfl⟩⟩
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, head, tail⟩ := member
       have middleState : runtime.HonestReactionState event owner before accepted message middle :=
           by
@@ -289,7 +289,7 @@ theorem runServicePlan_honestReaction
         rcases state.2 with branch | branch <;> simp [branch.1, grantBefore, grantAccepted]
       have quiet : ∀ who, runtime.compileProfile profile who (execution.principalHistory who)
           (MessageApplication.State.observe runtime.application execution.native who) =
-            FinDist.pure .wait := fun who =>
+            PMF.pure .wait := fun who =>
         runtime.compileProfile_wait_of_owner_submitted profile execution event owner who grant actor
           state.1
       have headHistory := serviceStep_honestReaction_history runtime profile wire instruction
@@ -328,12 +328,12 @@ theorem runServicePlan_honestReaction_includeLatest
           submittedAt (next.principalHistory who) query =
             submittedAt (execution.principalHistory who) query := by
   rw [runtime.runServicePlan_append] at member
-  simp only [FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨middle, prefixMem, suffixMem⟩ := member
   obtain ⟨middleState, prefixHistory⟩ := runtime.runServicePlan_honestReaction profile wire
     event owner before accepted message handled actor grantBefore grantAccepted plan allowed
     execution middle state prefixMem
-  simp only [runServicePlan, FinDist.bind_pure] at suffixMem
+  simp only [runServicePlan, PMF.bind_pure] at suffixMem
   rcases middleState with ⟨_, pending | included⟩
   · have selected : latestEventSubmission? middle.native.pool event owner = some message := by
       unfold latestEventSubmission?
@@ -357,11 +357,11 @@ theorem runServicePlan_honestReaction_includeLatest
     have nativeMem : next.native ∈
         ((runtime.application.environmentPolicyStep middle (.include message.id)).map
           MessageInterface.PolicyExecution.native).support := by
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨next, suffixMem, rfl⟩
     rw [runtime.application.environmentStep_native] at nativeMem
     simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-      FinDist.mem_support_pure] at nativeMem
+      PMF.mem_support_pure_iff _ _] at nativeMem
     have lookup : middle.native.pool.lookup message.id = some message := by
       simp [MessagePool.lookup, pending.2]
     have handledMiddle : handle runtime middle.native.application message = some accepted := by
@@ -391,7 +391,7 @@ theorem runServicePlan_honestReaction_includeLatest
       unfold latestEventSubmission?
       rw [included.2]
       rfl
-    rw [absent, runtime.application.environmentStep_wait, FinDist.mem_support_pure] at suffixMem
+    rw [absent, runtime.application.environmentStep_wait, PMF.mem_support_pure_iff _ _] at suffixMem
     subst next
     exact ⟨included.1, included.2, prefixHistory⟩
 

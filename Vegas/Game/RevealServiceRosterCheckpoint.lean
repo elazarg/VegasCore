@@ -37,7 +37,7 @@ theorem PublicCheckpoint.grant
       granted.application.serviceGrant = some event ∧ granted.recall = execution.recall ∧
       granted.network = execution.network ∧
       (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        FinDist.pure granted := by
+        PMF.pure granted := by
   let app := application setup leaks
   let granted : app.Execution := { execution with
     application := { execution.application with serviceGrant := some event }
@@ -47,9 +47,9 @@ theorem PublicCheckpoint.grant
   · exact { checkpoint with
       invariant := checkpoint.invariant.copy rfl rfl rfl
       binding := checkpoint.binding.copy rfl rfl rfl }
-  · simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  · simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, FinDist.map_pure,
+      reactiveApplication, environmentStep, PMF.pure_map,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume]
     rfl
 

@@ -43,12 +43,12 @@ theorem roster_audited_sequential_equilibrium
     (base : (application setup leaks).ProtocolState → Player → ℝ)
     (baseInvariant : ∀ state,
       base (((runtime setup).reactiveNormalization leaks).state state) = base state)
-    (sample : List (EnvelopeEvidence setup leaks) → FinDist (List (EnvelopeEvidence setup leaks)))
+    (sample : List (EnvelopeEvidence setup leaks) → PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       permittedRosterEnvelope setup leaks record = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     {Observation : Type} (observe : (application setup leaks).ProtocolState → Observation)
     (observationInvariant : ∀ state,
       observe (((runtime setup).reactiveNormalization leaks).state state) = observe state)

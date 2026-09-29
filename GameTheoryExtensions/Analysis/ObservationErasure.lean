@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Decision experiments detecting erased information
 
@@ -28,34 +31,34 @@ open Math.Probability
 
 variable {State Signal Action Fact : Type*}
 
-def outcomeLaw (prior : FinDist State) (observe : State → Signal)
-    (policy : Signal → FinDist Action) : FinDist (State × Action) :=
+def outcomeLaw (prior : PMF State) (observe : State → Signal)
+    (policy : Signal → PMF Action) : PMF (State × Action) :=
   prior.bind fun state => (policy (observe state)).map fun action => (state, action)
 
-def value (prior : FinDist State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (policy : Signal → FinDist Action) : ℝ :=
-  (outcomeLaw prior observe policy).expect fun result => utility result.1 result.2
+def value (prior : PMF State) (observe : State → Signal)
+    (utility : State → Action → ℝ) (policy : Signal → PMF Action) : ℝ :=
+  expect (outcomeLaw prior observe policy) fun result => utility result.1 result.2
 
-theorem value_eq_expect (prior : FinDist State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (policy : Signal → FinDist Action) :
+theorem value_eq_expect (prior : PMF State) (observe : State → Signal)
+    (utility : State → Action → ℝ) (policy : Signal → PMF Action) :
     value prior observe utility policy =
-      prior.expect (fun state => (policy (observe state)).expect (utility state)) := by
-  simp only [value, outcomeLaw, FinDist.expect_bind, FinDist.expect_map]
+      expect prior (fun state => expect (policy (observe state)) (utility state)) := by
+  simp only [value, outcomeLaw, FinDist.expect_bind, expect_map]
 
 /-- Unnormalized conditional value. Zero-probability observations impose no
 constraint; on a positive-probability fiber normalization cancels from comparisons. -/
-def localValue (prior : FinDist State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (signal : Signal) (response : FinDist Action) : ℝ :=
-  prior.expect ((observe ⁻¹' {signal}).indicator fun state => response.expect (utility state))
+def localValue (prior : PMF State) (observe : State → Signal)
+    (utility : State → Action → ℝ) (signal : Signal) (response : PMF Action) : ℝ :=
+  expect prior ((observe ⁻¹' {signal}).indicator fun state => expect response (utility state))
 
-def IsBayesOptimal (prior : FinDist State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (policy : Signal → FinDist Action) : Prop :=
+def IsBayesOptimal (prior : PMF State) (observe : State → Signal)
+    (utility : State → Action → ℝ) (policy : Signal → PMF Action) : Prop :=
   ∀ signal alternative,
     localValue prior observe utility signal alternative ≤
       localValue prior observe utility signal (policy signal)
 
-theorem value_eq_sum_local (prior : FinDist State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (policy : Signal → FinDist Action) :
+theorem value_eq_sum_local (prior : PMF State) (observe : State → Signal)
+    (utility : State → Action → ℝ) (policy : Signal → PMF Action) :
     value prior observe utility policy =
       ∑ signal ∈ (prior.map observe).supportFinset,
         localValue prior observe utility signal (policy signal) := by
@@ -63,43 +66,43 @@ theorem value_eq_sum_local (prior : FinDist State) (observe : State → Signal)
   rw [value_eq_expect, FinDist.expect_eq_sum_fibers prior observe]
   apply Finset.sum_congr rfl
   intro signal _
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro state _
   by_cases same : observe state = signal
   · simp [same]
   · simp [same]
 
-theorem IsBayesOptimal.value_le {prior : FinDist State} {observe : State → Signal}
-    {utility : State → Action → ℝ} {policy : Signal → FinDist Action}
+theorem IsBayesOptimal.value_le {prior : PMF State} {observe : State → Signal}
+    {utility : State → Action → ℝ} {policy : Signal → PMF Action}
     (optimal : IsBayesOptimal prior observe utility policy)
-    (alternative : Signal → FinDist Action) :
+    (alternative : Signal → PMF Action) :
     value prior observe utility alternative ≤ value prior observe utility policy := by
   rw [value_eq_sum_local, value_eq_sum_local]
   exact Finset.sum_le_sum fun signal _ => optimal signal (alternative signal)
 
-theorem localValue_eq_expect_pure (prior : FinDist State) (observe : State → Signal)
-    (utility : State → Action → ℝ) (signal : Signal) (response : FinDist Action) :
+theorem localValue_eq_expect_pure (prior : PMF State) (observe : State → Signal)
+    (utility : State → Action → ℝ) (signal : Signal) (response : PMF Action) :
     localValue prior observe utility signal response =
-      response.expect fun action =>
-        localValue prior observe utility signal (FinDist.pure action) := by
+      expect response fun action =>
+        localValue prior observe utility signal (PMF.pure action) := by
   classical
   unfold localValue
   rw [FinDist.expect_comm]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro state _
   by_cases same : observe state = signal
-  · simp [same, FinDist.expect_pure]
-  · simp [same, FinDist.expect_const]
+  · simp [same, expect_pure]
+  · simp [same, expect_constant]
 
 /-- A finite action menu has an optimal response at every observation. The
 observation and hidden-state carriers need not themselves be finite. -/
 theorem exists_bayesOptimal [Finite Action] [Nonempty Action]
-    (prior : FinDist State) (observe : State → Signal) (utility : State → Action → ℝ) :
+    (prior : PMF State) (observe : State → Signal) (utility : State → Action → ℝ) :
     ∃ policy, IsBayesOptimal prior observe utility policy := by
   classical
   choose best maximal using fun signal => Finite.exists_max
-    (fun action => localValue prior observe utility signal (FinDist.pure action))
-  refine ⟨fun signal => FinDist.pure (best signal), ?_⟩
+    (fun action => localValue prior observe utility signal (PMF.pure action))
+  refine ⟨fun signal => PMF.pure (best signal), ?_⟩
   intro signal alternative
   rw [localValue_eq_expect_pure]
   apply FinDist.expect_le_of_forall
@@ -108,18 +111,18 @@ theorem exists_bayesOptimal [Finite Action] [Nonempty Action]
 
 /-- The payoff-relevant fact can be recovered from the observation wherever
 the prior has positive mass. -/
-def Determines (prior : FinDist State) (observe : State → Signal) (fact : State → Fact) : Prop :=
+def Determines (prior : PMF State) (observe : State → Signal) (fact : State → Fact) : Prop :=
   ∀ first ∈ prior.support, ∀ second ∈ prior.support,
     observe first = observe second → fact first = fact second
 
-theorem determines_iff_of_fullSupport (prior : FinDist State) (full : prior.FullSupport)
+theorem determines_iff_of_fullSupport (prior : PMF State) (full : FullSupport prior)
     (observe : State → Signal) (fact : State → Fact) :
     Determines prior observe fact ↔
       ∀ first second, observe first = observe second → fact first = fact second := by
   exact ⟨fun determines first second => determines first (full first) second (full second),
     fun determines first _ second _ => determines first second⟩
 
-theorem determines_iff_decoder (prior : FinDist State) (observe : State → Signal)
+theorem determines_iff_decoder (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) :
     Determines prior observe fact ↔
       ∃ decode : Signal → Fact, ∀ state ∈ prior.support, decode (observe state) = fact state := by
@@ -143,88 +146,88 @@ theorem determines_iff_decoder (prior : FinDist State) (observe : State → Sign
 def reportUtility [DecidableEq Fact] (fact : State → Fact) (state : State) (report : Fact) : ℝ :=
   if fact state = report then 1 else 0
 
-theorem report_value [DecidableEq Fact] (prior : FinDist State) (observe : State → Signal)
-    (fact : State → Fact) (policy : Signal → FinDist Fact) :
+theorem report_value [DecidableEq Fact] (prior : PMF State) (observe : State → Signal)
+    (fact : State → Fact) (policy : Signal → PMF Fact) :
     value prior observe (reportUtility fact) policy =
-      prior.expect fun state => (policy (observe state)).prob (fact state) := by
+      expect prior fun state => ((policy (observe state)) (fact state)).toReal := by
   rw [value_eq_expect]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro state _
-  change (policy (observe state)).expect (fun report => if fact state = report then 1 else 0) = _
-  rw [FinDist.expect_ite_eq, mul_one]
+  change expect (policy (observe state)) (fun report => if fact state = report then 1 else 0) = _
+  rw [expect_ite_eq, mul_one]
 
-theorem report_value_le_one [DecidableEq Fact] (prior : FinDist State)
-    (observe : State → Signal) (fact : State → Fact) (policy : Signal → FinDist Fact) :
+theorem report_value_le_one [DecidableEq Fact] (prior : PMF State)
+    (observe : State → Signal) (fact : State → Fact) (policy : Signal → PMF Fact) :
     value prior observe (reportUtility fact) policy ≤ 1 := by
   rw [report_value]
-  exact FinDist.expect_le_of_forall _ _ _ fun _ _ => FinDist.prob_le_one _ _
+  exact FinDist.expect_le_of_forall _ _ _ fun _ _ => pmf_toReal_apply_le_one _ _
 
-private theorem eq_pure_of_prob_one (law : FinDist Fact) (fact : Fact)
-    (certain : law.prob fact = 1) : law = FinDist.pure fact := by
+private theorem eq_pure_of_prob_one (law : PMF Fact) (fact : Fact)
+    (certain : (law fact).toReal = 1) : law = PMF.pure fact := by
   symm
   apply FinDist.ext_of_prob_on_support
   intro other supported
-  rw [FinDist.mem_support_pure] at supported
+  rw [PMF.mem_support_pure_iff _ _] at supported
   subst other
   rw [FinDist.prob_pure_self, certain]
 
-theorem report_value_eq_one_iff [DecidableEq Fact] (prior : FinDist State)
-    (observe : State → Signal) (fact : State → Fact) (policy : Signal → FinDist Fact) :
+theorem report_value_eq_one_iff [DecidableEq Fact] (prior : PMF State)
+    (observe : State → Signal) (fact : State → Fact) (policy : Signal → PMF Fact) :
     value prior observe (reportUtility fact) policy = 1 ↔
-      ∀ state ∈ prior.support, policy (observe state) = FinDist.pure (fact state) := by
+      ∀ state ∈ prior.support, policy (observe state) = PMF.pure (fact state) := by
   rw [report_value]
   constructor
   · intro one state supported
     exact eq_pure_of_prob_one _ _ (FinDist.eq_of_expect_eq_of_le prior _ 1
-      (fun _ _ => FinDist.prob_le_one _ _) one supported)
+      (fun _ _ => pmf_toReal_apply_le_one _ _) one supported)
   · intro certain
     calc
-      _ = prior.expect (fun _ => (1 : ℝ)) := by
-        apply FinDist.expect_congr
+      _ = expect prior (fun _ => (1 : ℝ)) := by
+        apply expect_congr_on_support
         intro state supported
         rw [certain state supported, FinDist.prob_pure_self]
-      _ = 1 := FinDist.expect_const _ _
+      _ = 1 := expect_constant _ _
 
 /-- Exact classification: randomized reporting achieves certainty precisely
 when an ordinary deterministic decoder exists on the prior support. -/
-theorem exists_perfect_report_iff [DecidableEq Fact] (prior : FinDist State)
+theorem exists_perfect_report_iff [DecidableEq Fact] (prior : PMF State)
     (observe : State → Signal) (fact : State → Fact) :
     (∃ policy, value prior observe (reportUtility fact) policy = 1) ↔
       Determines prior observe fact := by
   constructor
   · rintro ⟨policy, perfect⟩ first firstPresent second secondPresent same
     have certain := (report_value_eq_one_iff prior observe fact policy).mp perfect
-    have equal : FinDist.pure (fact first) = FinDist.pure (fact second) := by
+    have equal : PMF.pure (fact first) = PMF.pure (fact second) := by
       rw [← certain first firstPresent, ← certain second secondPresent, same]
-    have member : fact first ∈ (FinDist.pure (fact second)).support := by
-      rw [← equal, FinDist.mem_support_pure]
-    exact FinDist.mem_support_pure.mp member
+    have member : fact first ∈ (PMF.pure (fact second)).support := by
+      rw [← equal, PMF.mem_support_pure_iff _ _]
+    exact (PMF.mem_support_pure_iff _ _).mp member
   · intro determines
     obtain ⟨decode, decodes⟩ := (determines_iff_decoder prior observe fact).mp determines
-    refine ⟨fun signal => FinDist.pure (decode signal), ?_⟩
+    refine ⟨fun signal => PMF.pure (decode signal), ?_⟩
     rw [report_value_eq_one_iff]
     intro state supported
     rw [decodes state supported]
 
 /-- Equality of the complete initialized state/report law, not only its value. -/
-theorem report_value_eq_one_iff_law [DecidableEq Fact] (prior : FinDist State)
-    (observe : State → Signal) (fact : State → Fact) (policy : Signal → FinDist Fact) :
+theorem report_value_eq_one_iff_law [DecidableEq Fact] (prior : PMF State)
+    (observe : State → Signal) (fact : State → Fact) (policy : Signal → PMF Fact) :
     value prior observe (reportUtility fact) policy = 1 ↔
       outcomeLaw prior observe policy = prior.map (fun state => (state, fact state)) := by
   constructor
   · intro perfect
     have certain := (report_value_eq_one_iff prior observe fact policy).mp perfect
-    rw [outcomeLaw, FinDist.map_eq_bind]
-    apply FinDist.bind_congr
+    rw [outcomeLaw, ← PMF.bind_pure_comp, Function.comp_def]
+    apply bind_congr_on_support _
     intro state supported
-    rw [certain state supported, FinDist.map_pure]
+    rw [certain state supported, PMF.pure_map]
   · intro sameLaw
-    rw [value, sameLaw, FinDist.expect_map]
-    simp only [reportUtility, ↓reduceIte, FinDist.expect_const]
+    rw [value, sameLaw, expect_map]
+    simp only [reportUtility, ↓reduceIte, expect_constant]
 
 theorem bayesOptimal_report_value_eq_one [DecidableEq Fact]
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
-    (determines : Determines prior observe fact) (policy : Signal → FinDist Fact)
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
+    (determines : Determines prior observe fact) (policy : Signal → PMF Fact)
     (optimal : IsBayesOptimal prior observe (reportUtility fact) policy) :
     value prior observe (reportUtility fact) policy = 1 := by
   obtain ⟨perfect, perfectValue⟩ := (exists_perfect_report_iff prior observe fact).mpr determines
@@ -235,10 +238,10 @@ theorem bayesOptimal_report_value_eq_one [DecidableEq Fact]
 /-- Merging two positive-probability states with different payoff-relevant
 facts forces a strictly positive error for every randomized abstract policy. -/
 theorem report_value_lt_one_of_collision [DecidableEq Fact]
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
     {first second : State} (firstPresent : first ∈ prior.support)
     (secondPresent : second ∈ prior.support) (same : observe first = observe second)
-    (different : fact first ≠ fact second) (policy : Signal → FinDist Fact) :
+    (different : fact first ≠ fact second) (policy : Signal → PMF Fact) :
     value prior observe (reportUtility fact) policy < 1 := by
   refine lt_of_le_of_ne (report_value_le_one prior observe fact policy) ?_
   intro perfect
@@ -252,12 +255,12 @@ coarse policy's fact/report outcome law if the coarse observation merges two
 positive-prior states with distinct facts. The source policy is unrestricted;
 in particular this holds for every source optimum and every translator. -/
 theorem no_optimal_report_law_match [DecidableEq Fact]
-    (prior : FinDist State) (coarse : State → Signal) (fine : State → Fine)
+    (prior : PMF State) (coarse : State → Signal) (fine : State → Fine)
     (fact : State → Fact) (fineDetermines : Determines prior fine fact)
     {first second : State} (firstPresent : first ∈ prior.support)
     (secondPresent : second ∈ prior.support) (same : coarse first = coarse second)
-    (different : fact first ≠ fact second) (source : Signal → FinDist Fact)
-    (target : Fine → FinDist Fact)
+    (different : fact first ≠ fact second) (source : Signal → PMF Fact)
+    (target : Fine → PMF Fact)
     (targetOptimal : IsBayesOptimal prior fine (reportUtility fact) target) :
     (outcomeLaw prior fine target).map (fun result => (fact result.1, result.2)) ≠
       (outcomeLaw prior coarse source).map (fun result => (fact result.1, result.2)) := by
@@ -266,9 +269,9 @@ theorem no_optimal_report_law_match [DecidableEq Fact]
     firstPresent secondPresent same different source
   have targetValue := bayesOptimal_report_value_eq_one prior fine fact
     fineDetermines target targetOptimal
-  have sameValue := congrArg (fun law : FinDist (Fact × Fact) =>
-    law.expect (fun result => if result.1 = result.2 then (1 : ℝ) else 0)) sameLaw
-  simp only [FinDist.expect_map] at sameValue
+  have sameValue := congrArg (fun law : PMF (Fact × Fact) =>
+    expect law (fun result => if result.1 = result.2 then (1 : ℝ) else 0)) sameLaw
+  simp only [expect_map] at sameValue
   change value prior fine (reportUtility fact) target =
     value prior coarse (reportUtility fact) source at sameValue
   linarith
@@ -277,14 +280,14 @@ theorem no_optimal_report_law_match [DecidableEq Fact]
 target optimum can match its fact/report law after a relevant observation merge.
 This does not quantify over general protocol sequential equilibria. -/
 theorem exists_optimal_no_report_law_match [Finite Fact] [Nonempty Fact] [DecidableEq Fact]
-    (prior : FinDist State) (coarse : State → Signal) (fine : State → Fine)
+    (prior : PMF State) (coarse : State → Signal) (fine : State → Fine)
     (fact : State → Fact) (fineDetermines : Determines prior fine fact)
     {first second : State} (firstPresent : first ∈ prior.support)
     (secondPresent : second ∈ prior.support) (same : coarse first = coarse second)
     (different : fact first ≠ fact second) :
-    ∃ source : Signal → FinDist Fact,
+    ∃ source : Signal → PMF Fact,
       IsBayesOptimal prior coarse (reportUtility fact) source ∧
-      ∀ target : Fine → FinDist Fact,
+      ∀ target : Fine → PMF Fact,
         IsBayesOptimal prior fine (reportUtility fact) target →
           (outcomeLaw prior fine target).map (fun result => (fact result.1, result.2)) ≠
             (outcomeLaw prior coarse source).map (fun result => (fact result.1, result.2)) := by

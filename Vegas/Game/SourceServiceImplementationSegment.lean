@@ -31,7 +31,7 @@ private theorem resume_other_joint {app : ReactiveApplication Player} {Memory : 
   cases actor with
   | none =>
       simp only [ReactiveApplication.Implementation.resume, ReactiveApplication.resume,
-        FinDist.map_pure]
+        PMF.pure_map]
   | some who =>
       have other : who ≠ owner := fun same => different (congrArg some same)
       simp only [ReactiveApplication.Implementation.resume, other, ↓reduceIte,
@@ -46,18 +46,18 @@ private theorem resume_position {app : ReactiveApplication Player} {Memory : Typ
     next.1.environmentRecall = execution.environmentRecall := by
   cases actor with
   | none =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | some who =>
       by_cases same : who = owner
       · subst who
         simp only [ReactiveApplication.Implementation.resume, ↓reduceIte,
-          FinDist.support_map] at supported
+          PMF.support_map] at supported
         obtain ⟨response, _, rfl⟩ := supported
         exact app.respond_environmentRecall execution owner response.1
       · rw [resume_other_joint implementation owner players (some who)
           (fun equal => same (Option.some.inj equal)) execution memory] at supported
-        obtain ⟨middle, chosen, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨middle, chosen, rfl⟩ := PMF.support_map .. ▸ supported
         exact app.resume_environmentRecall players (some who) execution middle chosen
 
 private theorem joint_position {app : ReactiveApplication Player} {Memory : Type}
@@ -69,19 +69,19 @@ private theorem joint_position {app : ReactiveApplication Player} {Memory : Type
     next.1.environmentRecall.length = execution.environmentRecall.length + count := by
   induction count generalizing execution memory with
   | zero =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | succ count ih =>
       obtain ⟨middle, advanced, reached⟩ := Set.mem_iUnion₂.mp
-        (FinDist.support_bind .. ▸ supported)
+        (PMF.support_bind .. ▸ supported)
       have rest := ih middle.1 middle.2 reached
       obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp
-        (FinDist.support_bind .. ▸ advanced)
+        (PMF.support_bind .. ▸ advanced)
       obtain ⟨activated, moved, resumed⟩ := Set.mem_iUnion₂.mp
-        (FinDist.support_bind .. ▸ dispatched)
+        (PMF.support_bind .. ▸ dispatched)
       have unchanged := resume_position implementation owner players (command.actor? app)
         activated memory middle resumed
-      obtain ⟨updated, _, same⟩ := FinDist.support_map .. ▸ moved
+      obtain ⟨updated, _, same⟩ := PMF.support_map .. ▸ moved
       have entered : activated.environmentRecall.length =
           execution.environmentRecall.length + 1 := by
         rw [← same]
@@ -111,7 +111,7 @@ theorem roster_segment_runJoint
   induction segment generalizing before execution with
   | nil =>
       simp only [List.length_nil, ReactiveApplication.Implementation.runJoint,
-        runInteractionPlan, FinDist.map_pure]
+        runInteractionPlan, PMF.pure_map]
   | cons instruction segment ih =>
       have selected : (rosterPlan setup rosters)[before.length]? = some instruction := by
         rw [split, List.append_assoc, List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
@@ -137,20 +137,20 @@ theorem roster_segment_runJoint
             ((runtime setup).interactionStep leaks players network instruction execution).map
               (fun next => (next, memory)) := by
         simp only [ReactiveApplication.Implementation.round, rosterScheduler, position, selected,
-          interactionStep, FinDist.map_bind]
-        apply FinDist.bind_congr
+          interactionStep, PMF.map_bind]
+        apply bind_congr_on_support _
         intro command supported
         have actor := roster_instruction_actor setup leaks network execution.environmentRecall
           (execution.observeEnvironment app) instruction fixed command supported
-        simp only [ReactiveApplication.dispatch, FinDist.map_bind]
-        apply FinDist.bind_congr
+        simp only [ReactiveApplication.dispatch, PMF.map_bind]
+        apply bind_congr_on_support _
         intro next _
         apply resume_other_joint
         rw [actor]
         exact actorDifferent
       rw [List.length_cons, ReactiveApplication.Implementation.runJoint, step,
-        FinDist.bind_map, runInteractionPlan, FinDist.map_bind]
-      apply FinDist.bind_congr
+        PMF.bind_map, runInteractionPlan, PMF.map_bind]
+      apply bind_congr_on_support _
       intro next reached
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
@@ -181,7 +181,7 @@ theorem roster_runJoint_append_reserved
             ((runtime setup).runInteractionPlan leaks players network reserved next.1).map
               fun final => (final, next.2)) := by
   rw [List.length_append, ReactiveApplication.Implementation.runJoint_add]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro next supported
   apply roster_segment_runJoint setup leaks rosters network implementation owner players
     (before ++ leading) reserved after split absent next.1 next.2
@@ -212,7 +212,7 @@ theorem roster_runJoint_at_owner
                 rest.length resumed.1 resumed.2 := by
   rw [show leading.length + 1 + rest.length = leading.length + (rest.length + 1) by omega,
     ReactiveApplication.Implementation.runJoint_add]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro pair supported
   have cursor := joint_position implementation owner players
     (rosterScheduler setup leaks rosters network) leading.length execution memory pair supported
@@ -227,7 +227,7 @@ theorem roster_runJoint_at_owner
     rfl
   simp only [ReactiveApplication.Implementation.runJoint,
     ReactiveApplication.Implementation.round, rosterScheduler, selected,
-    interactionInstruction, FinDist.pure_bind, ReactiveApplication.Command.actor?,
-    FinDist.bind_bind]
+    interactionInstruction, PMF.pure_bind, ReactiveApplication.Command.actor?,
+    PMF.bind_bind]
 
 end Vegas

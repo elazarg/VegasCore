@@ -59,11 +59,11 @@ def serviceProtocolSite? (runtime : EventGraphRuntime graph) (focal : Player) :
   | some control => runtime.serviceDecisionSite? focal control
 
 private def serviceProtocolTransition (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player)
     (state : ServiceProtocolState runtime) (decision : Option (ServiceDecision runtime)) :
-    FinDist (ServiceProtocolState runtime) :=
+    PMF (ServiceProtocolState runtime) :=
   match state with
   | none => inputs.map fun input => some
       { epochs := runtime.serviceEpochs
@@ -72,12 +72,12 @@ private def serviceProtocolTransition (runtime : EventGraphRuntime graph)
           (MessageApplication.State.initial runtime.application (State.initial input)) }
   | some control => match control.plan with
     | [] => match control.epochs, decision with
-      | 0, _ => FinDist.pure state
-      | epochs + 1, some (.order chosen) => FinDist.pure <| some
+      | 0, _ => PMF.pure state
+      | epochs + 1, some (.order chosen) => PMF.pure <| some
           { epochs := epochs
             plan := epochPlan chosen roster reactionRounds
             execution := control.execution }
-      | _, _ => FinDist.pure state
+      | _, _ => PMF.pure state
     | instruction :: rest =>
         let next := match instruction, decision with
           | .player who, some (.player command) =>
@@ -93,7 +93,7 @@ private def serviceProtocolTransition (runtime : EventGraphRuntime graph)
 /-- Bounded service as a protocol with one analysis decision maker. Tagged
 actions distinguish the three original policy interfaces. -/
 abbrev serviceProtocol (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player) : ExecutionProtocol Unit where
   State := ServiceProtocolState runtime
@@ -135,7 +135,7 @@ abbrev serviceProtocol (runtime : EventGraphRuntime graph)
             · cases site <;> simp [decision, serviceDecisionAvailable, siteEq]
 
 private abbrev serviceSignals (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player) :
     InfoSignals (runtime.serviceProtocol inputs roster reactionRounds players wire focal) where
@@ -150,7 +150,7 @@ private abbrev serviceSignals (runtime : EventGraphRuntime graph)
   pushInfo _ _ _ _ signal := signal
 
 private theorem serviceSignals_infoOf (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player)
     {state : (runtime.serviceProtocol inputs roster reactionRounds players wire focal).State}
@@ -166,7 +166,7 @@ private theorem serviceSignals_infoOf (runtime : EventGraphRuntime graph)
 /-- Information states are exactly the invocation arguments of the original
 focal, wire, and order policy interfaces. -/
 abbrev serviceInformation (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player) :
     InformationModel (runtime.serviceProtocol inputs roster reactionRounds players wire focal) where
@@ -203,7 +203,7 @@ private structure ServiceControlGrowth (runtime : EventGraphRuntime graph)
       history.length < after.progress runtime
 
 private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player)
     (control : ServiceControl runtime)
@@ -222,7 +222,7 @@ private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
   | nil =>
       cases epochs with
       | zero =>
-          simp only [serviceProtocolTransition, FinDist.mem_support_pure] at supported
+          simp only [serviceProtocolTransition, PMF.mem_support_pure_iff _ _] at supported
           subst target
           refine ⟨_, rfl, ⟨le_rfl, le_rfl, le_rfl, ?_, ?_, ?_⟩⟩ <;>
             intro history view site <;> simp [serviceDecisionSite?] at site
@@ -245,7 +245,7 @@ private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
                     serviceDecisionAvailable] at available
               | order chosen =>
                   simp only [choiceEq, serviceProtocolTransition,
-                    FinDist.mem_support_pure] at supported
+                    PMF.mem_support_pure_iff _ _] at supported
                   subst target
                   let before : ServiceControl runtime := ⟨epochs + 1, [], execution⟩
                   let after := before.selectOrder runtime roster reactionRounds chosen
@@ -280,7 +280,7 @@ private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
                 cases decision with
                 | player command =>
                     simp only [choiceEq, serviceProtocolTransition,
-                      FinDist.support_map] at supported
+                      PMF.support_map] at supported
                     obtain ⟨nextExecution, step, rfl⟩ := supported
                     have focalLength := runtime.application.playerStep_history_self focal execution
                       command nextExecution step
@@ -332,7 +332,7 @@ private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
                   have active := active.1
                   simp [serviceDecisionSite?, same] at active
             simp only [inactive, serviceProtocolTransition,
-              FinDist.support_map] at supported
+              PMF.support_map] at supported
             obtain ⟨nextExecution, step, rfl⟩ := supported
             have focalLength := runtime.serviceStep_focalHistory_length players wire focal
               (.player who) execution nextExecution step
@@ -376,7 +376,7 @@ private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
                   simp [serviceProtocol, serviceDecisionSite?,
                     serviceDecisionAvailable] at available
               | wire command =>
-                  simp only [choiceEq, serviceProtocolTransition, FinDist.support_map] at supported
+                  simp only [choiceEq, serviceProtocolTransition, PMF.support_map] at supported
                   obtain ⟨nextExecution, step, rfl⟩ := supported
                   have focalHistory := runtime.application.environmentStep_principalHistory
                     execution (WireCommand.toEnvironmentCommand runtime.application command)
@@ -419,7 +419,7 @@ private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
                 rw [choiceEq] at active
                 have active := active.1
                 simp [serviceDecisionSite?] at active
-          simp only [serviceProtocolTransition, FinDist.support_map] at supported
+          simp only [serviceProtocolTransition, PMF.support_map] at supported
           obtain ⟨nextExecution, step, rfl⟩ := supported
           have focalLength := runtime.serviceStep_focalHistory_length players wire focal _
             execution nextExecution step
@@ -497,7 +497,7 @@ private theorem active_serviceSite_not_precedes (runtime : EventGraphRuntime gra
           simp [serviceDecisionSite?] at active
 
 private theorem service_actedAt_precedes (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player)
     {state : (runtime.serviceProtocol inputs roster reactionRounds players wire focal).State}
@@ -549,7 +549,7 @@ private theorem service_actedAt_precedes (runtime : EventGraphRuntime graph)
 site.  Setup is inactive, ordinary instructions preserve the relevant cursor,
 and selecting a nonempty epoch plan strictly advances the order cursor. -/
 theorem service_actsOnceWhereItMatters (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player) :
     (runtime.serviceInformation inputs roster reactionRounds players wire
@@ -592,14 +592,14 @@ theorem service_actsOnceWhereItMatters (runtime : EventGraphRuntime graph)
 
 /-- The three live randomized interfaces as one behavioral protocol policy. -/
 def serviceBehavioral (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (modelWire behaviorWire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy)
     (focal : Player) (replacement : runtime.application.PlayerPolicy) :
     (runtime.serviceInformation inputs roster reactionRounds players modelWire
       focal).BehavioralPolicy () := fun info => match info with
-  | none => FinDist.pure ⟨none, rfl⟩
+  | none => PMF.pure ⟨none, rfl⟩
   | some (.player history view) =>
       (replacement history view).map fun command =>
         ⟨some (.player command), ⟨.player command, rfl, command, rfl⟩⟩
@@ -621,7 +621,7 @@ structure PureServiceResponses (runtime : EventGraphRuntime graph) where
 
 /-- Read the three original response functions from a pure protocol policy. -/
 def pureServiceResponsesOfPolicy (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player)
     (policy :
@@ -643,21 +643,21 @@ def pureServiceResponsesOfPolicy (runtime : EventGraphRuntime graph)
 def PureServiceResponses.playerPure {runtime : EventGraphRuntime graph}
     (response : PureServiceResponses runtime) :
     runtime.application.PlayerPolicy := fun history view =>
-  FinDist.pure (response.player history view)
+  PMF.pure (response.player history view)
 
 def PureServiceResponses.wirePure {runtime : EventGraphRuntime graph}
     (response : PureServiceResponses runtime) :
     runtime.application.WirePolicy := fun history view =>
-  FinDist.pure (response.wire history view)
+  PMF.pure (response.wire history view)
 
 def PureServiceResponses.orderPure {runtime : EventGraphRuntime graph}
     (response : PureServiceResponses runtime) :
     runtime.ServiceOrderPolicy := fun history view =>
-  FinDist.pure (response.order history view)
+  PMF.pure (response.order history view)
 
 private theorem serviceBehavioral_pureServiceResponsesOfPolicy
     (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (focal : Player)
     (policy :
@@ -674,7 +674,7 @@ private theorem serviceBehavioral_pureServiceResponsesOfPolicy
   funext info
   cases info with
   | none =>
-      apply congrArg FinDist.pure
+      apply congrArg PMF.pure
       apply Subtype.ext
       exact (policy none).2.symm
   | some site =>
@@ -689,9 +689,9 @@ private theorem serviceBehavioral_pureServiceResponsesOfPolicy
               cases decision with
               | player command =>
                   simp only [serviceBehavioral, PureServiceResponses.playerPure,
-                    FinDist.map_pure, InformationModel.Policy.toBehavioral]
+                    PMF.pure_map, InformationModel.Policy.toBehavioral]
                   rw [show policy (some (.player history view)) = choice from rfl]
-                  apply congrArg FinDist.pure
+                  apply congrArg PMF.pure
                   apply Subtype.ext
                   have direct : (policy (some (.player history view))).1 =
                       some (.player command) := by
@@ -730,9 +730,9 @@ private theorem serviceBehavioral_pureServiceResponsesOfPolicy
                   cases tagged
               | wire command =>
                   simp only [serviceBehavioral, PureServiceResponses.wirePure,
-                    FinDist.map_pure, InformationModel.Policy.toBehavioral]
+                    PMF.pure_map, InformationModel.Policy.toBehavioral]
                   rw [show policy (some (.wire history view)) = choice from rfl]
-                  apply congrArg FinDist.pure
+                  apply congrArg PMF.pure
                   apply Subtype.ext
                   have direct : (policy (some (.wire history view))).1 =
                       some (.wire command) := by
@@ -771,9 +771,9 @@ private theorem serviceBehavioral_pureServiceResponsesOfPolicy
                   cases tagged
               | order chosen =>
                   simp only [serviceBehavioral, PureServiceResponses.orderPure,
-                    FinDist.map_pure, InformationModel.Policy.toBehavioral]
+                    PMF.pure_map, InformationModel.Policy.toBehavioral]
                   rw [show policy (some (.order history view)) = choice from rfl]
-                  apply congrArg FinDist.pure
+                  apply congrArg PMF.pure
                   apply Subtype.ext
                   have direct : (policy (some (.order history view))).1 =
                       some (.order chosen) := by
@@ -786,7 +786,7 @@ private theorem serviceBehavioral_pureServiceResponsesOfPolicy
                   rw [extracted, choiceEq]
 
 private theorem serviceBehavioral_choice_law (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (modelWire behaviorWire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy)
@@ -799,7 +799,7 @@ private theorem serviceBehavioral_choice_law (runtime : EventGraphRuntime graph)
       ((runtime.serviceInformation inputs roster reactionRounds players modelWire focal).infoOf ()
       trace)).map Subtype.val) =
       match runtime.serviceProtocolSite? focal state with
-      | none => FinDist.pure none
+      | none => PMF.pure none
       | some (.player history view) => (replacement history view).map
           (fun command => some (.player command))
       | some (.wire history view) => (behaviorWire history view).map
@@ -810,10 +810,10 @@ private theorem serviceBehavioral_choice_law (runtime : EventGraphRuntime graph)
   cases siteEq : runtime.serviceProtocolSite? focal state with
   | none => simp [serviceBehavioral]
   | some site =>
-      cases site <;> rw [serviceBehavioral, FinDist.map_comp] <;> rfl
+      cases site <;> rw [serviceBehavioral, PMF.map_comp] <;> rfl
 
 private theorem serviceBehavioral_step (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (modelWire behaviorWire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy)
@@ -835,14 +835,14 @@ private theorem serviceBehavioral_step (runtime : EventGraphRuntime graph)
           players focal replacement) behaviorWire order control).map some := by
   let M := runtime.serviceInformation inputs roster reactionRounds players modelWire focal
   rw [InformationModel.behavioralJoint_eq_map_of_at_most_one_active
-    (M := M) _ trace notTerminal () (fun _ _ => rfl), FinDist.bind_map]
+    (M := M) _ trace notTerminal () (fun _ _ => rfl), PMF.bind_map]
   calc
     _ = ((runtime.serviceBehavioral inputs roster reactionRounds players modelWire behaviorWire
           order focal replacement (M.infoOf () trace)).map Subtype.val).bind
         (serviceProtocolTransition runtime inputs roster reactionRounds players modelWire focal
           (some control)) := by
-      rw [FinDist.bind_map]
-      apply FinDist.bind_congr
+      rw [PMF.bind_map]
+      apply bind_congr_on_support _
       intro choice _
       rfl
     _ = _ := by
@@ -856,7 +856,7 @@ private theorem serviceBehavioral_step (runtime : EventGraphRuntime graph)
               | zero => exact False.elim (notTerminal trivial)
               | succ epochs =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
-                    serviceControlStep, FinDist.map_eq_bind]
+                    serviceControlStep, ← PMF.bind_pure_comp, Function.comp_def]
           | cons instruction rest =>
               cases instruction with
               | player who =>
@@ -864,14 +864,14 @@ private theorem serviceBehavioral_step (runtime : EventGraphRuntime graph)
                   · subst who
                     simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
                       serviceControlStep, serviceStep, MessageApplication.invoke,
-                      FinDist.map_bind, FinDist.bind_map, Function.comp_def]
+                      PMF.map_bind, PMF.bind_map, Function.comp_def]
                   · simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
                       serviceControlStep, serviceStep, MessageApplication.invoke, same,
-                      FinDist.map_bind, Function.comp_def]
+                      PMF.map_bind, Function.comp_def]
               | wire =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
                     serviceControlStep, serviceStep, MessageApplication.invoke,
-                    MessageApplication.wireEnvironment, FinDist.map_bind, FinDist.bind_map,
+                    MessageApplication.wireEnvironment, PMF.map_bind, PMF.bind_map,
                     Function.comp_def]
               | grant event =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
@@ -890,16 +890,16 @@ private theorem serviceBehavioral_step (runtime : EventGraphRuntime graph)
                     serviceControlStep, serviceStep, Function.comp_def]
 
 private def serviceControlRun (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player) (replacement : runtime.application.PlayerPolicy) :
-    Nat → ServiceProtocolState runtime → FinDist (ServiceProtocolState runtime)
+    Nat → ServiceProtocolState runtime → PMF (ServiceProtocolState runtime)
   | fuel, some control =>
       (runtime.runServiceControlSteps roster reactionRounds
         (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
           players focal replacement) wire order fuel control).map some
-  | 0, none => FinDist.pure none
+  | 0, none => PMF.pure none
   | fuel + 1, none => inputs.bind fun input =>
       (runtime.runServiceControlSteps roster reactionRounds
         (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
@@ -910,7 +910,7 @@ private def serviceControlRun (runtime : EventGraphRuntime graph)
             (MessageApplication.State.initial runtime.application (State.initial input)) }).map some
 
 private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (modelWire behaviorWire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy)
@@ -940,7 +940,7 @@ private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
         players modelWire behaviorWire order focal replacement
       by_cases terminal : E.terminal history.state
       · rw [InformationModel.runBehavioralFrom_of_terminal (M := M) policies _ terminal,
-          FinDist.map_pure]
+          PMF.pure_map]
         rcases history with ⟨state, trace⟩
         cases state with
         | none => exact False.elim terminal
@@ -949,16 +949,16 @@ private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
             cases epochs <;> cases plan <;>
               simp [E, serviceControlRun, runServiceControlSteps] at *
       · rw [InformationModel.runBehavioralFrom_succ_of_not_terminal (M := M) policies fuel
-          terminal, FinDist.map_bind]
+          terminal, PMF.map_bind]
         calc
           _ = (M.behavioralJoint policies history.trace terminal).bind fun draw =>
               (E.step history.state draw).bind
                 (runtime.serviceControlRun inputs roster reactionRounds players behaviorWire order
                   focal replacement fuel) := by
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro draw _
-            rw [FinDist.map_bindOnSupport]
-            apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+            rw [map_bindOnSupport]
+            apply bindOnSupport_eq_bind_of_eq_on_support _
             intro next realized
             exact ih (history.extend draw.2 realized)
           _ = _ := by
@@ -966,20 +966,20 @@ private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
             cases state with
             | none =>
                 rw [InformationModel.behavioralJoint_eq_pure_of_no_active (M := M) policies
-                  trace terminal (fun _ => by simp), FinDist.pure_bind]
+                  trace terminal (fun _ => by simp), PMF.pure_bind]
                 simp only [E, serviceProtocol, serviceProtocolTransition, serviceControlRun,
-                  FinDist.bind_map]
+                  PMF.bind_map]
             | some control =>
                 dsimp only [M, E, policies]
-                rw [← FinDist.bind_bind]
+                rw [← PMF.bind_bind]
                 rw [runtime.serviceBehavioral_step inputs roster reactionRounds players modelWire
-                  behaviorWire order focal replacement control trace terminal, FinDist.bind_map]
+                  behaviorWire order focal replacement control trace terminal, PMF.bind_map]
                 rcases control with ⟨epochs, plan, execution⟩
                 cases epochs <;> cases plan
                 · exact False.elim (terminal trivial)
-                · simp [serviceControlRun, runServiceControlSteps, FinDist.map_bind]
-                · simp [serviceControlRun, runServiceControlSteps, FinDist.map_bind]
-                · simp [serviceControlRun, runServiceControlSteps, FinDist.map_bind]
+                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind]
+                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind]
+                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind]
 
 private def serviceExecution? (runtime : EventGraphRuntime graph) :
     ServiceProtocolState runtime → Option runtime.application.PolicyExecution
@@ -987,7 +987,7 @@ private def serviceExecution? (runtime : EventGraphRuntime graph) :
   | some control => some control.execution
 
 private theorem service_runBehavioral_execution (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (modelWire behaviorWire : runtime.application.WirePolicy)
     (order : runtime.ServiceOrderPolicy)
@@ -1011,25 +1011,25 @@ private theorem service_runBehavioral_execution (runtime : EventGraphRuntime gra
         (runtime.serviceProtocol inputs roster reactionRounds players modelWire
           focal).initHistory).map
       (serviceExecution? runtime ∘ ExecutionProtocol.History.state) = _
-  rw [← FinDist.map_comp]
+  rw [← PMF.map_comp]
   rw [runtime.service_runBehavioralFrom inputs roster reactionRounds players modelWire
     behaviorWire order focal replacement]
-  simp only [ExecutionProtocol.initHistory_state, serviceControlRun, FinDist.map_bind,
-    FinDist.map_comp]
+  simp only [ExecutionProtocol.initHistory_state, serviceControlRun, PMF.map_bind,
+    PMF.map_comp]
   rw [runtime.servicedEventGame_eq_evalServiceControl inputs roster reactionRounds behaviorWire
-    order, FinDist.map_bind]
-  apply FinDist.bind_congr
+    order, PMF.map_bind]
+  apply bind_congr_on_support _
   intro input _
   have controlLaw := runtime.runServiceControlSteps_map_execution roster reactionRounds
     (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
       players focal replacement) behaviorWire order runtime.serviceEpochs []
     (MessageApplication.PolicyExecution.initial runtime.application
       (MessageApplication.State.initial runtime.application (State.initial input)))
-  rw [← controlLaw, FinDist.map_comp]
+  rw [← controlLaw, PMF.map_comp]
   rfl
 
 private theorem service_runPure_execution (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (modelWire : runtime.application.WirePolicy) (focal : Player)
     (pureProfile : (i : Unit) →
@@ -1075,11 +1075,11 @@ private setup.  The resulting finite law is over total deterministic response
 functions, while every opponent policy and every native transition kernel is
 left unchanged. -/
 theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player) (replacement : runtime.application.PlayerPolicy) :
-    ∃ mixture : FinDist (PureServiceResponses runtime),
+    ∃ mixture : PMF (PureServiceResponses runtime),
       (runtime.servicedEventGame inputs roster reactionRounds wire order).play
           (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
             players focal replacement) =
@@ -1103,10 +1103,10 @@ theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)
   let response (pureProfile : (i : Unit) → M.Policy i) : PureServiceResponses runtime :=
     runtime.pureServiceResponsesOfPolicy inputs roster reactionRounds players wire focal
       (pureProfile ())
-  let mixture : FinDist (PureServiceResponses runtime) := (FinDist.pi mixed).map response
+  let mixture : PMF (PureServiceResponses runtime) := (independentProduct mixed).map response
   refine ⟨mixture, ?_⟩
-  apply FinDist.map_injective (Option.some_injective runtime.application.PolicyExecution)
-  rw [FinDist.map_bind]
+  apply pmf_map_injective (Option.some_injective runtime.application.PolicyExecution)
+  rw [PMF.map_bind]
   have behavioralExecution := runtime.service_runBehavioral_execution inputs roster
     reactionRounds players wire wire order focal replacement
   change _ = mixture.bind (fun response =>
@@ -1118,16 +1118,16 @@ theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)
   change (M.runBehavioralFrom behavioral (fuel + 1) history).map
       (fun result => serviceExecution? runtime result.state) = _
   rw [← mixedLaw]
-  simp only [mixture, FinDist.bind_map]
+  simp only [mixture, PMF.bind_map]
   change (M.runMixedFrom mixed (fuel + 1) history).map
       (fun result => serviceExecution? runtime result.state) =
-    (FinDist.pi mixed).bind fun pureProfile =>
+    (independentProduct mixed).bind fun pureProfile =>
       ((runtime.servicedEventGame inputs roster reactionRounds
         (response pureProfile).wirePure (response pureProfile).orderPure).play
           (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
             players focal (response pureProfile).playerPure)).map some
-  rw [InformationModel.runMixedFrom, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [InformationModel.runMixedFrom, PMF.map_bind]
+  apply bind_congr_on_support _
   intro pureProfile _
   exact runtime.service_runPure_execution inputs roster reactionRounds players wire focal
     pureProfile

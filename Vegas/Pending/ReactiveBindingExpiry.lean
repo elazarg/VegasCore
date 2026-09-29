@@ -50,9 +50,9 @@ private theorem expiry_application_frame
           rw [← activations]
           exact activated
         rw [environmentStep_expire_of_not_activated runtime original.application event ready
-          activated, FinDist.mem_support_pure] at leftSupport
+          activated, PMF.mem_support_pure_iff _ _] at leftSupport
         rw [environmentStep_expire_of_not_activated runtime repaired.application event rightReady
-          rightActivated, FinDist.mem_support_pure] at rightSupport
+          rightActivated, PMF.mem_support_pure_iff _ _] at rightSupport
         subst left
         subst right
         exact frame
@@ -68,30 +68,30 @@ private theorem expiry_application_frame
           | sample payload law outputEq codeEq =>
               rw [environmentStep_expire_sample_eq runtime original.application event ready entered
                 activated due payload law outputEq codeEq node,
-                  FinDist.mem_support_pure] at leftSupport
+                  PMF.mem_support_pure_iff _ _] at leftSupport
               rw [environmentStep_expire_sample_eq runtime repaired.application event rightReady
                 entered rightActivated rightDue payload law outputEq codeEq node,
-                  FinDist.mem_support_pure] at rightSupport
+                  PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
               exact frame
           | bind actor payload outputEq codeEq =>
               rw [environmentStep_expire_bind_eq runtime original.application event ready entered
                 activated due actor payload outputEq codeEq node,
-                  FinDist.mem_support_pure] at leftSupport
+                  PMF.mem_support_pure_iff _ _] at leftSupport
               rw [environmentStep_expire_bind_eq runtime repaired.application event rightReady
                 entered rightActivated rightDue actor payload outputEq codeEq node,
-                  FinDist.mem_support_pure] at rightSupport
+                  PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
               exact frame.complete_unmodified event ready rightReady noValue noAction _ _
           | resolve actor payload binding checks outputEq codeEq =>
               rw [environmentStep_expire_resolve_eq runtime original.application event ready entered
                 activated due actor payload binding checks outputEq codeEq node,
-                  FinDist.mem_support_pure] at leftSupport
+                  PMF.mem_support_pure_iff _ _] at leftSupport
               rw [environmentStep_expire_resolve_eq runtime repaired.application event rightReady
                 entered rightActivated rightDue actor payload binding checks outputEq codeEq node,
-                  FinDist.mem_support_pure] at rightSupport
+                  PMF.mem_support_pure_iff _ _] at rightSupport
               subst left
               subst right
               exact frame.complete_unmodified event ready rightReady noValue noAction _ _
@@ -99,9 +99,9 @@ private theorem expiry_application_frame
             rw [← clocks]
             exact due
           rw [environmentStep_expire_of_not_due runtime original.application event ready entered
-            activated due, FinDist.mem_support_pure] at leftSupport
+            activated due, PMF.mem_support_pure_iff _ _] at leftSupport
           rw [environmentStep_expire_of_not_due runtime repaired.application event rightReady
-            entered rightActivated rightNotDue, FinDist.mem_support_pure] at rightSupport
+            entered rightActivated rightNotDue, PMF.mem_support_pure_iff _ _] at rightSupport
           subst left
           subst right
           exact frame
@@ -109,9 +109,9 @@ private theorem expiry_application_frame
       rw [← cuts]
       exact ready
     rw [environmentStep_expire_of_not_ready runtime original.application event ready,
-      FinDist.mem_support_pure] at leftSupport
+      PMF.mem_support_pure_iff _ _] at leftSupport
     rw [environmentStep_expire_of_not_ready runtime repaired.application event rightNotReady,
-      FinDist.mem_support_pure] at rightSupport
+      PMF.mem_support_pure_iff _ _] at rightSupport
     subst left
     subst right
     exact frame
@@ -131,10 +131,10 @@ theorem expiry_unmodified
       (.application (.expire event))).support) :
     Frame runtime leaks memory owner left right := by
   let app := runtime.reactiveApplication leaks
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
     at leftSupport rightSupport
-  obtain ⟨leftState, leftMoved, rfl⟩ := FinDist.support_map .. ▸ leftSupport
-  obtain ⟨rightState, rightMoved, rfl⟩ := FinDist.support_map .. ▸ rightSupport
+  obtain ⟨leftState, leftMoved, rfl⟩ := PMF.support_map .. ▸ leftSupport
+  obtain ⟨rightState, rightMoved, rfl⟩ := PMF.support_map .. ▸ rightSupport
   have next := frame.expiry_application_frame event noValue noAction leftState rightState
     leftMoved rightMoved
   exact { next with
@@ -176,11 +176,11 @@ theorem clock_tail_unmodified
       have expireLaw (execution : app.Execution) :
           runtime.runInteractionPlan leaks players network [.expire event] execution =
             execution.environmentStep app (.application (.expire event)) := by
-        simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+        simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
           ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-          FinDist.bind_pure]
-        change (execution.environmentStep app (.application (.expire event))).bind FinDist.pure = _
-        exact FinDist.bind_pure _
+          PMF.bind_pure]
+        change (execution.environmentStep app (.application (.expire event))).bind PMF.pure = _
+        exact PMF.bind_pure _
       exact frame.expiry_unmodified event noValue noAction left right
         ((expireLaw original) ▸ leftSupport) ((expireLaw repaired) ▸ rightSupport)
   | succ ticks ih =>
@@ -191,16 +191,16 @@ theorem clock_tail_unmodified
             [⟨execution.observeEnvironment app, .application .advanceClock⟩] }
       have tickLaw (execution : app.Execution) :
           runtime.interactionStep leaks players network .tick execution =
-            FinDist.pure (advance execution) := by
-        simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+            PMF.pure (advance execution) := by
+        simp only [interactionStep, interactionInstruction, PMF.pure_bind,
           ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-        change (execution.environmentStep app (.application .advanceClock)).bind FinDist.pure = _
-        rw [FinDist.bind_pure]
-        change ((FinDist.pure { execution.application with
+        change (execution.environmentStep app (.application .advanceClock)).bind PMF.pure = _
+        rw [PMF.bind_pure]
+        change ((PMF.pure { execution.application with
           clock := execution.application.clock + 1 }).map _).map _ = _
-        rw [FinDist.map_pure, FinDist.map_pure]
+        rw [PMF.pure_map, PMF.pure_map]
       rw [List.replicate_succ, List.cons_append, runInteractionPlan, tickLaw,
-        FinDist.pure_bind] at leftSupport rightSupport
+        PMF.pure_bind] at leftSupport rightSupport
       exact ih frame.advanceClock leftSupport rightSupport
 
 /-- The two actual public-event service tails have a joint law on complete
@@ -212,7 +212,7 @@ theorem public_clock_tail_coupling
     (network : runtime.NetworkPolicy leaks) (event : graph.EventId)
     (visible : (graph.outputLayout event).IsPublic) (ticks : Nat) :
     let app := runtime.reactiveApplication leaks
-    ∃ coupling : FinDist (app.Execution × app.Execution),
+    ∃ coupling : PMF (app.Execution × app.Execution),
       coupling.map Prod.fst = runtime.runInteractionPlan leaks players network
         (List.replicate ticks .tick ++ [.expire event]) original ∧
       coupling.map Prod.snd = runtime.runInteractionPlan leaks players network
@@ -223,14 +223,14 @@ theorem public_clock_tail_coupling
     (List.replicate ticks .tick ++ [.expire event]) original
   let right := runtime.runInteractionPlan leaks players network
     (List.replicate ticks .tick ++ [.expire event]) repaired
-  refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+  refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
     FinDist.map_snd_product .., ?_⟩
   intro next supported
   have first : next.1 ∈ left.support := by
-    rw [← FinDist.map_fst_product left right, FinDist.support_map]
+    rw [← bindPairLaw_map_fst left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   have second : next.2 ∈ right.support := by
-    rw [← FinDist.map_snd_product left right, FinDist.support_map]
+    rw [← FinDist.map_snd_product left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   exact frame.clock_tail_unmodified players network event
     (onlyBindings.public_value_none (.inr event) visible)

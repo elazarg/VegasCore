@@ -31,7 +31,7 @@ def allowed (source : Bool) (state : State) : Set Bool :=
   active state _ := state.length < 4
   available state _ := allowed source state
   terminal state := 4 ≤ state.length
-  step state joint := FinDist.pure ((joint.1 ()).getD false :: state)
+  step state joint := PMF.pure ((joint.1 ()).getD false :: state)
   progress := by
     intro state running
     refine ⟨fun _ => some true, fun _ => ?_⟩
@@ -73,7 +73,7 @@ theorem rank_decreases (source : Bool) (before after : State)
     4 - after.length < 4 - before.length := by
   obtain ⟨joint, legal, reached⟩ := step
   have running : before.length < 4 := by have := legal.1; change ¬ 4 ≤ _ at this; omega
-  have eq := FinDist.mem_support_pure.mp reached
+  have eq := (PMF.mem_support_pure_iff _ _).mp reached
   subst after
   simp only [List.length_cons]
   omega
@@ -85,7 +85,7 @@ theorem history_length (source : Bool) : ∀ {state : State} (trace : (arena sou
     trace.length = state.length
   | _, .start => rfl
   | _, .extend prior joint _ reached => by
-      have stateEq := FinDist.mem_support_pure.mp reached
+      have stateEq := (PMF.mem_support_pure_iff _ _).mp reached
       subst_vars
       simpa only [Trace.length, List.length_cons] using
         congrArg (· + 1) (history_length source prior)
@@ -163,13 +163,13 @@ theorem backward_eq {source : Bool} (profile : Profile (model source).strategicS
       · rw [(arena source).historyBackwardValue_of_not_terminal stopped]
         have step : (arena source).step history.state
             ((model source).historyChooser profile history stopped) =
-              FinDist.pure (pick profile history.state :: history.state) := by
+              PMF.pure (pick profile history.state :: history.state) := by
           simp [arena, InformationModel.historyChooser, InformationModel.jointAt, pick]
         rw [(arena source).historyStepValue_of_step_eq_pure step]
         rw [ih _ ⟨_, _, show (pick profile history.state :: history.state) ∈
           ((arena source).step history.state
             ((model source).historyChooser profile history stopped)).support from by
-              rw [step]; exact FinDist.mem_support_pure.mpr rfl⟩]
+              rw [step]; exact (PMF.mem_support_pure_iff _ _).mpr rfl⟩]
         exact continuationPayoff_step profile prefer history.state (by
           change ¬ 4 ≤ history.state.length at stopped
           omega)
@@ -190,7 +190,7 @@ theorem source_valid : ∀ {state : State} (_trace : (arena true).Trace state),
     state = [] ∨ state.getLast? = some true
   | _, .start => Or.inl rfl
   | _, .extend (source := state) prior joint legal reached => by
-      have eq := FinDist.mem_support_pure.mp reached
+      have eq := (PMF.mem_support_pure_iff _ _).mp reached
       subst_vars
       right
       rcases source_valid prior with empty | last
@@ -303,7 +303,7 @@ def failedRoot : (arena false).History :=
   (arena false).initHistory.extend
     (joint := fun _ => some false)
     (by exact ⟨by simp [arena], fun _ => ⟨by simp [arena], by simp [allowed]⟩⟩)
-    (target := [false]) (FinDist.mem_support_pure.mpr rfl)
+    (target := [false]) ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 /-- The failed-binding continuation is an actual off-path proper subgame. -/
 theorem failedRoot_subgame : (model false).IsSubgameRoot failedRoot :=
@@ -370,11 +370,11 @@ theorem no_utility_independent_spe_compiler :
 
 /-- Randomization cannot recover a common optimum after failure either: the
 two utilities sum to at most three, while each has an attainable value two. -/
-theorem no_randomized_common_completion (law : FinDist (Option Bool)) :
-    ¬ (2 ≤ law.expect (fun choice => utility false (false, choice)) ∧
-      2 ≤ law.expect (fun choice => utility true (false, choice))) := by
+theorem no_randomized_common_completion (law : PMF (Option Bool)) :
+    ¬ (2 ≤ expect law (fun choice => utility false (false, choice)) ∧
+      2 ≤ expect law (fun choice => utility true (false, choice))) := by
   rintro ⟨first, second⟩
-  have total : law.expect (fun choice =>
+  have total : expect law (fun choice =>
       utility false (false, choice) + utility true (false, choice)) ≤ 3 :=
     FinDist.expect_le_of_forall _ _ _ (fun choice _ => failed_utility_sum choice)
   rw [FinDist.expect_add] at total

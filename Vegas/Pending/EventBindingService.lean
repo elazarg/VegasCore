@@ -26,12 +26,12 @@ private theorem environmentPolicyStep_bindingInvariant
   have nativeMem : next.native ∈
       ((runtime.application.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [runtime.application.environmentStep_native] at nativeMem
   cases actionEq : command.toAction with
   | none =>
-      simp only [actionEq, FinDist.mem_support_pure] at nativeMem
+      simp only [actionEq, PMF.mem_support_pure_iff _ _] at nativeMem
       rw [nativeMem]
       exact invariant
   | some action =>
@@ -77,11 +77,11 @@ theorem runServicePlan_bindingInvariant (runtime : EventGraphRuntime graph)
     next.native.application.BindingInvariant := by
   induction plan generalizing execution with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact invariant
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, head, tail⟩ := member
       exact ih middle
         (serviceStep_bindingInvariant runtime players wire instruction execution middle
@@ -95,7 +95,7 @@ private theorem serviceEpoch_bindingInvariant (runtime : EventGraphRuntime graph
     (invariant : execution.native.application.BindingInvariant)
     (member : next ∈ (runtime.serviceEpoch roster reactionRounds players wire order
       execution).support) : next.native.application.BindingInvariant := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨chosen, _, supported⟩ := member
   exact runServicePlan_bindingInvariant runtime players wire
     (epochPlan chosen roster reactionRounds) execution next invariant supported
@@ -111,11 +111,11 @@ theorem runService_bindingInvariant (runtime : EventGraphRuntime graph)
       execution).support) : next.native.application.BindingInvariant := by
   induction count generalizing execution with
   | zero =>
-      simp only [runService, FinDist.mem_support_pure] at member
+      simp only [runService, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact invariant
   | succ count ih =>
-      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runService, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, epoch, tail⟩ := member
       exact ih middle
         (serviceEpoch_bindingInvariant runtime roster reactionRounds players wire order
@@ -123,14 +123,14 @@ theorem runService_bindingInvariant (runtime : EventGraphRuntime graph)
 
 /-- Every outcome of the serviced event game retains exact binding provenance. -/
 theorem servicedEventGame_bindingInvariant (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy)
     (next : runtime.application.PolicyExecution)
     (member : next ∈
       ((runtime.servicedEventGame inputs roster reactionRounds wire order).play players).support) :
     next.native.application.BindingInvariant := by
-  simp only [servicedEventGame, FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [servicedEventGame, PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨input, _, supported⟩ := member
   exact runService_bindingInvariant runtime roster reactionRounds players wire order
     runtime.serviceEpochs _ next (State.initial_bindingInvariant input) supported

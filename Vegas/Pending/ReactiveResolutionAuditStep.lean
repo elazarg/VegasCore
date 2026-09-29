@@ -148,7 +148,7 @@ theorem resolution_stopped_response_coupling
           (original.observe (runtime.reactiveApplication leaks) owner)) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.invoke players owner original ∧
       coupling.map Prod.snd = strategy.resume owner players (some owner) repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -182,7 +182,7 @@ theorem resolution_stopped_response_coupling
       (repaired.recall owner, repaired.observe app owner)).map _ = _
     rw [implementation_respond runtime leaks owner reference (players owner) memory
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
-        FinDist.map_comp]
+        PMF.map_comp]
     simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
   have replayLaw := app.replayPolicy_eq_of_network_eq original repaired owner leftRecall
     rightRecall frame.network
@@ -191,16 +191,16 @@ theorem resolution_stopped_response_coupling
     rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
     exact actor
   refine ⟨coupling, ?_, ?_, ?_⟩
-  · simp only [coupling, FinDist.map_comp]
+  · simp only [coupling, PMF.map_comp]
     rfl
-  · simp only [coupling, FinDist.map_comp, ReactiveApplication.Implementation.resume, ↓reduceIte]
+  · simp only [coupling, PMF.map_comp, ReactiveApplication.Implementation.resume, ↓reduceIte]
     change law.map _ =
       ((retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner)).map _
-    rw [responseLaw, FinDist.map_comp]
+    rw [responseLaw, PMF.map_comp]
     rfl
   · intro next supported
-    obtain ⟨response, selected, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.resolution_audit_response_cases leaks bounds original owner remaining sound
         leftBinding leftRecall serials event payload binding checks outputEq codeEq node granted
           first response (available response selected) with replay | canonical | departure
@@ -300,7 +300,7 @@ theorem resolution_stopped_activation_coupling
             (activated.observe (runtime.reactiveApplication leaks) owner)) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.dispatch players (.activate owner) original ∧
       coupling.map Prod.snd = (repaired.environmentStep app (.activate owner)).bind
         (fun execution => strategy.resume owner players (some owner) execution memory) ∧
@@ -324,24 +324,24 @@ theorem resolution_stopped_activation_coupling
       (available selected supported)
   let step := fun selected supported => (existsStep selected supported).choose
   refine ⟨sample.bindOnSupport step, ?_, ?_, ?_⟩
-  · rw [FinDist.map_bindOnSupport]
+  · rw [map_bindOnSupport]
     change _ = (original.environmentStep app (.activate owner)).bind _
-    rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map]
-    apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+    rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map]
+    apply bindOnSupport_eq_bind_of_eq_on_support _
     intro selected supported
     exact (existsStep selected supported).choose_spec.1
-  · rw [FinDist.map_bindOnSupport, ReactiveApplication.Execution.activation_samples,
-      FinDist.bind_map]
+  · rw [map_bindOnSupport, ReactiveApplication.Execution.activation_samples,
+      PMF.bind_map]
     have same : leaks owner repaired.network.pending = sample := by
       rw [← frame.network]
     change _ = (leaks owner repaired.network.pending).bind _
     rw [same]
-    apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+    apply bindOnSupport_eq_bind_of_eq_on_support _
     intro selected supported
     exact (existsStep selected supported).choose_spec.2.1
   · intro next supported
     obtain ⟨selected, member, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+      Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
     rcases (existsStep selected member).choose_spec.2.2 next reached with bad | good
     · left
       exact bad

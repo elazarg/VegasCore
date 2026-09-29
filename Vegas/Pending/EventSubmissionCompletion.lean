@@ -35,12 +35,12 @@ theorem runServicePlan_first_submission (runtime : EventGraphRuntime graph)
       after ∈ (runtime.runServicePlan players wire remaining next).support := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       rw [notSubmitted] at submitted
       contradiction
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, first, tail⟩ := member
       cases recorded : submittedAt (middle.principalHistory owner) event with
       | true =>
@@ -51,7 +51,7 @@ theorem runServicePlan_first_submission (runtime : EventGraphRuntime graph)
               priorFalse, nextMem, nextTrue, tailMem⟩ := ih middle recorded tail
           refine ⟨instruction :: priorPlan, crossing, remaining, prior, next,
             by simp only [List.cons_append, split], ?_, priorFalse, nextMem, nextTrue, tailMem⟩
-          simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion]
+          simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion]
           exact ⟨middle, first, priorMem⟩
 
 /-- The compiled owner records a new event submission only while that event
@@ -73,7 +73,7 @@ theorem serviceStep_new_submission_ready (runtime : EventGraphRuntime graph)
     contradiction
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, chosen, step⟩ := member
       by_cases same : who = owner
@@ -93,13 +93,13 @@ theorem serviceStep_new_submission_ready (runtime : EventGraphRuntime graph)
               (before.principalHistory owner)
               (MessageApplication.State.observe runtime.application before.native owner)
               event packet grant chosen).1
-            rw [runtime.application.playerStep_submit_eq, FinDist.mem_support_pure] at step
+            rw [runtime.application.playerStep_submit_eq, PMF.mem_support_pure_iff _ _] at step
             subst after
             exact (before.native.application.publicView_eventReady event).mp ready
       · exact (impossible (runtime.application.playerStep_other_history who owner (Ne.symm same)
           before command after step)).elim
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact (impossible (congrFun (runtime.application.environmentStep_principalHistory before
@@ -131,11 +131,11 @@ theorem runServicePlan_submission_tail_complete (runtime : EventGraphRuntime gra
   by_cases already : event ∈ before.native.application.config.cut.completed
   · exact (runtime.runServicePlan_facts inputs players wire _ before after boundary.invariant
       member).completed already
-  rw [runtime.runServicePlan_append, FinDist.support_bind] at member
+  rw [runtime.runServicePlan_append, PMF.support_bind] at member
   simp only [Set.mem_iUnion] at member
   obtain ⟨middle, planMem, inclusionMem⟩ := member
   have included := inclusionMem
-  simp only [runServicePlan, FinDist.bind_pure] at included
+  simp only [runServicePlan, PMF.bind_pure] at included
   have histories := runtime.application.environmentStep_principalHistory middle _ after included
   have middleSubmitted : submittedAt (middle.principalHistory owner) event = true := by
     rw [histories] at submitted
@@ -164,9 +164,9 @@ theorem runServicePlan_submission_tail_complete (runtime : EventGraphRuntime gra
     rw [wholePlan]
     exact List.mem_append_left _ currentMem
   have nextSupported : next ∈ (runtime.runServicePlan players wire firstPlan before).support := by
-    rw [runtime.runServicePlan_append, FinDist.support_bind]
+    rw [runtime.runServicePlan_append, PMF.support_bind]
     simp only [Set.mem_iUnion]
-    exact ⟨prior, priorMem, by simpa only [runServicePlan, FinDist.bind_pure] using nextMem⟩
+    exact ⟨prior, priorMem, by simpa only [runServicePlan, PMF.bind_pure] using nextMem⟩
   have ticks : serviceTicks firstPlan = 0 := by
     unfold serviceTicks
     apply List.sum_eq_zero_iff.mpr
@@ -203,7 +203,7 @@ theorem runServicePlan_submission_tail_complete (runtime : EventGraphRuntime gra
     exact List.mem_append_right _ currentMem
   have tailMem : after ∈ (runtime.runServicePlan players wire
       (remaining ++ [.includeLatest event owner]) next).support := by
-    rw [runtime.runServicePlan_append, FinDist.support_bind]
+    rw [runtime.runServicePlan_append, PMF.support_bind]
     simp only [Set.mem_iUnion]
     exact ⟨middle, remainingMem, inclusionMem⟩
   cases viewNode : nodeView graph event with

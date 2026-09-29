@@ -63,13 +63,13 @@ private theorem dispatch_published (players : Principal → app.Policy)
       (∀ observer, next.observe app observer = execution.observe app observer) ∧
       (∀ message ∈ next.network.pending, message.id ∈ next.network.ledger.map Message.id) := by
   rcases permitted with rfl | ⟨who, rfl⟩
-  · simp only [dispatch, Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind,
+  · simp only [dispatch, Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
       Command.actor?, resume] at reached
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     exact ⟨rfl, rfl, fun _ => rfl, published⟩
   · rw [dispatch, execution.activate_of_pending_published app who published] at reached
-    simp only [FinDist.pure_bind, Command.actor?, resume, invoke] at reached
-    obtain ⟨action, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+    simp only [PMF.pure_bind, Command.actor?, resume, invoke] at reached
+    obtain ⟨action, supported, rfl⟩ := PMF.support_map .. ▸ reached
     exact app.respond_published _ who action published (responses who _ _ action supported)
 
 /-- An arbitrary finite sequence of activation/wait choices preserves clean
@@ -90,13 +90,13 @@ theorem runRounds_published (scheduler : app.Scheduler) (players : Principal →
       (∀ message ∈ next.network.pending, message.id ∈ next.network.ledger.map Message.id) := by
   induction count generalizing execution with
   | zero =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨rfl, rfl, fun _ => rfl, published⟩
   | succ count ih =>
       obtain ⟨middle, stepped, continued⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨command, selected, stepped⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ stepped)
       obtain ⟨stateEq, receiptsEq, observed, clean⟩ :=
         app.dispatch_published players responses execution middle command published
           (commands _ _ command selected) stepped
@@ -118,11 +118,11 @@ theorem runRounds_published_application (scheduler : app.Scheduler)
     (published : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id) :
     (app.runRounds scheduler players count execution).map Execution.application =
-      FinDist.pure execution.application := by
+      PMF.pure execution.application := by
   calc
     _ = (app.runRounds scheduler players count execution).map
         (fun _ => execution.application) := by
-      apply FinDist.map_congr_of_eq_on_support
+      apply map_congr_on_support _
       intro next supported
       exact (app.runRounds_published scheduler players commands responses count
         execution next published supported).1

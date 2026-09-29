@@ -25,31 +25,31 @@ departure mass bounds both the possible gain and the extra collected sanction.
 Using incremental collection retains the obligation when either side already
 faces a charge; an already certain fine cannot be counted twice. -/
 theorem settlement_le_of_departure_coupling
-    (coupled : FinDist Joint) (original repaired : Joint → Outcome)
+    (coupled : PMF Joint) (original repaired : Joint → Outcome)
     (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
-    (audit : Observation → FinDist (Player → Bool)) (deposit : Player → ℝ)
+    (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (who : Player) (departed : Set Joint) (gap coverage : ℝ)
     (outside : ∀ pair ∈ coupled.support, pair ∉ departed →
       base (original pair) who ≤ base (repaired pair) who)
     (inside : ∀ pair ∈ coupled.support, pair ∈ departed →
       base (original pair) who ≤ base (repaired pair) who + gap)
-    (collection : coupled.probOf departed * coverage ≤
-      (coupled.map original).expect (fun outcome => charge observe audit outcome who) -
-        (coupled.map repaired).expect (fun outcome => charge observe audit outcome who))
+    (collection : (coupled.toOuterMeasure departed).toReal * coverage ≤
+      expect (coupled.map original) (fun outcome => charge observe audit outcome who) -
+        expect (coupled.map repaired) (fun outcome => charge observe audit outcome who))
     (nonnegative : 0 ≤ deposit who) (sufficient : gap ≤ coverage * deposit who) :
-    ((coupled.map original).bind (settlement base observe audit deposit)).expect
+    expect ((coupled.map original).bind (settlement base observe audit deposit))
         (fun payoffs => payoffs who) ≤
-      ((coupled.map repaired).bind (settlement base observe audit deposit)).expect
+      expect ((coupled.map repaired).bind (settlement base observe audit deposit))
         (fun payoffs => payoffs who) := by
   have gain := coupled.expect_le_add_event_gap departed
     (fun pair => base (repaired pair) who) (fun pair => base (original pair) who)
     gap outside inside
-  have massNonnegative : 0 ≤ coupled.probOf departed := ENNReal.toReal_nonneg
+  have massNonnegative : 0 ≤ (coupled.toOuterMeasure departed).toReal := ENNReal.toReal_nonneg
   have enough := mul_le_mul_of_nonneg_left sufficient massNonnegative
   have collected := mul_le_mul_of_nonneg_right collection nonnegative
-  simp only [FinDist.expect_map] at collected
+  simp only [expect_map] at collected
   simp only [FinDist.expect_bind, settlement_expect, utility, FinDist.expect_sub,
-    FinDist.expect_mul_const, FinDist.expect_map]
+    FinDist.expect_mul_const, expect_map]
   nlinarith
 
 end GameTheory.Enforcement.TerminalAudit

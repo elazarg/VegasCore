@@ -76,22 +76,22 @@ theorem environment_serialRecall (execution next : app.Execution) (command : app
     next.SerialRecall app := by
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       cases found : execution.network.lookup id <;>
         simpa [Execution.SerialRecall, Execution.includePending,
           MessageNetwork.includePending, found] using valid
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
 
 theorem serialRecallInvariant (scheduler : app.Scheduler) :
@@ -100,7 +100,7 @@ theorem serialRecallInvariant (scheduler : app.Scheduler) :
   environment execution next command valid _ reached :=
     app.environment_serialRecall execution next command valid reached
 
-theorem serialRecall_history (scheduler : app.Scheduler) (initial : FinDist app.State)
+theorem serialRecall_history (scheduler : app.Scheduler) (initial : PMF app.State)
     (horizon : Nat) {state : app.ProtocolState}
     (trace : (app.protocol initial horizon scheduler).Trace state) :
     serviceInvariant (fun execution => execution.SerialRecall app) state :=

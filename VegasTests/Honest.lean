@@ -36,12 +36,12 @@ private def program : SourceProgram Unit simpleExpr [] ∅ :=
 
 /-- Bind the value the guard accepts, and open it. -/
 private def honestPolicy : BehavioralPolicy (who := ()) program :=
-  (fun _ _ => FinDist.pure (.success true), fun _ _ => FinDist.pure true, PUnit.unit)
+  (fun _ _ => PMF.pure (.success true), fun _ _ => PMF.pure true, PUnit.unit)
 
 /-- Bind the value the guard rejects, and open it. Still honest: honesty is
 about binding a value and opening it, not about what the guard says. -/
 private def rejectedPolicy : BehavioralPolicy (who := ()) program :=
-  (fun _ _ => FinDist.pure (.success false), fun _ _ => FinDist.pure true, PUnit.unit)
+  (fun _ _ => PMF.pure (.success false), fun _ _ => PMF.pure true, PUnit.unit)
 
 private def start : Config Unit simpleExpr [] :=
   ⟨Env.empty (CellVal simpleExpr), [], Revelations.initial [], fun _ => []⟩
@@ -59,7 +59,7 @@ private theorem guardsAccept :
     GuardsAcceptFrom program (fun _ => honestPolicy) start := by
   intro choice choiceMember
   simp only [GuardsAcceptFrom, SourceProgram.commitKernel, honestPolicy,
-    FinDist.mem_support_pure] at choiceMember ⊢
+    PMF.mem_support_pure_iff _ _] at choiceMember ⊢
   subst choiceMember
   refine ⟨fun value bound => ?_, fun disclose _ => trivial⟩
   simp only [commitSuccessor, Env.cons_get_here] at bound
@@ -85,10 +85,10 @@ example : ∀ terminal ∈ (program.run (fun _ => honestPolicy)
 /-- And it pays, because the publication carries the value. -/
 example :
     (program.run (fun _ => honestPolicy) (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = FinDist.pure [((), 1)] := by
+      program.evaluatePayoffs = PMF.pure [((), 1)] := by
   simp only [SourceProgram.run, program, honestPolicy, SourceProgram.runWith,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 /-- The premise has content: it fails for the equally honest profile that binds
@@ -101,10 +101,10 @@ example : ¬ GuardsAcceptFrom program (fun _ => rejectedPolicy) start := by
 
 example :
     (program.run (fun _ => rejectedPolicy) (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = FinDist.pure [((), 0)] := by
+      program.evaluatePayoffs = PMF.pure [((), 0)] := by
   simp only [SourceProgram.run, program, rejectedPolicy, SourceProgram.runWith,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 end

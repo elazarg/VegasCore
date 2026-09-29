@@ -21,8 +21,8 @@ theorem InformationModel.behavioralJoint_map_val (M : InformationModel E) [Finty
     (profile : ∀ who, M.BehavioralPolicy who) {state} (history : E.Trace state)
     (running : ¬ E.terminal state) :
     (M.behavioralJoint profile history running).map Subtype.val =
-      FinDist.pi (fun who => (profile who (M.infoOf who history)).map Subtype.val) := by
-  rw [InformationModel.behavioralJoint, FinDist.map_comp, FinDist.pi_map]
+      independentProduct (fun who => (profile who (M.infoOf who history)).map Subtype.val) := by
+  rw [InformationModel.behavioralJoint, PMF.map_comp, FinDist.pi_map]
   rfl
 
 theorem ExecutionProtocol.runRandomizedFor_map_of_oneStep
@@ -35,17 +35,17 @@ theorem ExecutionProtocol.runRandomizedFor_map_of_oneStep
       T.runRandomizedFor normalized fuel (project history) := by
   intro fuel
   induction fuel with
-  | zero => intro history; simp only [runRandomizedFor_zero, FinDist.map_pure]
+  | zero => intro history; simp only [runRandomizedFor_zero, PMF.pure_map]
   | succ fuel ih =>
       intro history
       rw [show fuel + 1 = 1 + fuel by omega, runRandomizedFor_add, runRandomizedFor_add,
-        FinDist.map_bind]
+        PMF.map_bind]
       calc
         _ = (E.runRandomizedFor raw 1 history).bind fun next =>
             T.runRandomizedFor normalized fuel (project next) :=
-          FinDist.bind_congr fun next _ => ih next
+          bind_congr_on_support _ fun next _ => ih next
         _ = ((E.runRandomizedFor raw 1 history).map project).bind
-            (T.runRandomizedFor normalized fuel) := (FinDist.bind_map ..).symm
+            (T.runRandomizedFor normalized fuel) := (PMF.bind_map ..).symm
         _ = _ := by rw [oneStep]
 
 end GameTheory.Protocol

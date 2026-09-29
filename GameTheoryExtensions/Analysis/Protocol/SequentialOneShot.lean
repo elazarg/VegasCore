@@ -29,14 +29,14 @@ for the common posterior relationships used by this implication. -/
 theorem BehavioralAssessment.IsSequentiallyConsistent.rationalAt_of_localOptimal
     {assessment : M.BehavioralAssessment} (decisionRecall : M.DecisionRecall)
     (consistent : assessment.IsSequentiallyConsistent
-      decisionRecall.antichain)
+      decisionRecall.decisionInformationAntichain)
     (who : Player)
     (clock : ∀ site : M.InformationSite who,
       ∃ depth, InformationSite.CommonDepth M site depth)
     (horizon : Nat) (payoff : E.History → ℝ)
     (localOptimal : ∀ (site : M.InformationSite who) depth,
       InformationSite.CommonDepth M site depth → depth < horizon →
-      ∀ law : FinDist (M.Choice who site.1),
+      ∀ law : PMF (M.Choice who site.1),
         (assessment.continuationContext site payoff (horizon - depth)).value
             ((assessment.strategy who).withLaw site.1 law) ≤
           (assessment.continuationContext site payoff (horizon - depth)).value
@@ -54,7 +54,7 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.rationalAt_of_localOptimal
         localOptimal current atDepth uniformDepth before (alternative current.1))
   have first := converges.context_value (sequence 0) (approximates 0).1 site payoff
     (horizon - depth) (fun _ => alternative) alternative
-    (fun _ => finDistConvergesPointwise_const _)
+    (fun _ => pmfConvergesPointwise_const _)
   have second := converges.context_value (sequence 0) (approximates 0).1 site payoff
     (horizon - depth) (fun n => (sequence n).strategy who) (assessment.strategy who)
     (converges.strategy who)
@@ -72,13 +72,13 @@ public decision clock, follows from one-shot comparisons at all sites. -/
 theorem BehavioralAssessment.IsSequentiallyConsistent.sequentiallyRational_of_localOptimal
     {assessment : M.BehavioralAssessment} (decisionRecall : M.DecisionRecall)
     (consistent : assessment.IsSequentiallyConsistent
-      decisionRecall.antichain)
+      decisionRecall.decisionInformationAntichain)
     (horizon : Nat) (payoff : Player → E.History → ℝ)
     (depth : ∀ who, M.InformationSite who → Nat)
     (clock : ∀ who site, InformationSite.CommonDepth M site (depth who site))
     (within : ∀ who site, depth who site ≤ horizon)
     (localOptimal : ∀ who (site : M.InformationSite who), depth who site < horizon →
-      ∀ law : FinDist (M.Choice who site.1),
+      ∀ law : PMF (M.Choice who site.1),
         (assessment.continuationContext site (payoff who) (horizon - depth who site)).value
             ((assessment.strategy who).withLaw site.1 law) ≤
           (assessment.continuationContext site (payoff who) (horizon - depth who site)).value

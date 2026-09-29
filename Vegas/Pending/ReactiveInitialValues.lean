@@ -26,12 +26,12 @@ variable {Player : Type} [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 open Classical in
-def initialValues (initial : FinDist (State graph)) : Finset (Raw L) :=
+def initialValues (initial : PMF (State graph)) : Finset (Raw L) :=
   initial.supportFinset.biUnion fun state => Finset.univ.biUnion fun who =>
     Finset.univ.biUnion fun input : graph.InputId =>
       ((state.candidates.lookup (who, .initial input)).opening?).toList.toFinset
 
-theorem mem_initialValues (initial : FinDist (State graph)) (raw : Raw L) :
+theorem mem_initialValues (initial : PMF (State graph)) (raw : Raw L) :
     raw ∈ initialValues initial ↔
       ∃ state ∈ initial.support, ∃ who input,
         state.candidates.lookup (who, .initial input) = .openable raw := by
@@ -39,19 +39,19 @@ theorem mem_initialValues (initial : FinDist (State graph)) (raw : Raw L) :
   simp [initialValues]
 
 open Classical in
-def withInitialValues (bounds : MessageBounds graph) (initial : FinDist (State graph)) :
+def withInitialValues (bounds : MessageBounds graph) (initial : PMF (State graph)) :
     MessageBounds graph :=
   { bounds with values := bounds.values ∪ initialValues initial }
 
 theorem withInitialValues_preserves_values (bounds : MessageBounds graph)
-    (initial : FinDist (State graph)) : bounds.values ⊆ (bounds.withInitialValues initial).values :=
+    (initial : PMF (State graph)) : bounds.values ⊆ (bounds.withInitialValues initial).values :=
   Finset.subset_union_left
 
 theorem withInitialValues_candidateCount (bounds : MessageBounds graph)
-    (initial : FinDist (State graph)) :
+    (initial : PMF (State graph)) :
     (bounds.withInitialValues initial).candidateCount = bounds.candidateCount := rfl
 
-theorem initial_value_covered (bounds : MessageBounds graph) (initial : FinDist (State graph))
+theorem initial_value_covered (bounds : MessageBounds graph) (initial : PMF (State graph))
     (state : State graph) (supported : state ∈ initial.support) (who : Player)
     (input : graph.InputId) (raw : Raw L)
     (fixed : state.candidates.lookup (who, .initial input) = .openable raw) :
@@ -63,7 +63,7 @@ theorem initial_value_covered (bounds : MessageBounds graph) (initial : FinDist 
 /-- Completing the alphabet retains every previously admitted raw response,
 including malformed traffic and independently attached evidence. -/
 theorem withInitialValues_rawMenu [DecidableEq Player] (bounds : MessageBounds graph)
-    (initial : FinDist (State graph)) (runtime : EventGraphRuntime graph)
+    (initial : PMF (State graph)) (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
     (bounds.rawMenu runtime leaks).IncludedIn
       ((bounds.withInitialValues initial).rawMenu runtime leaks) := by
@@ -102,7 +102,7 @@ theorem withInitialValues_rawMenu [DecidableEq Player] (bounds : MessageBounds g
 /-- Every initialized opening remains an available normalized response at every
 local view. Availability does not assert that the packet will be accepted. -/
 theorem initialized_opening_available [DecidableEq Player] (bounds : MessageBounds graph)
-    (initial : FinDist (State graph)) (state : State graph)
+    (initial : PMF (State graph)) (state : State graph)
     (supported : state ∈ initial.support) (who : Player) (input : graph.InputId) (raw : Raw L)
     (fixed : state.candidates.lookup (who, .initial input) = .openable raw)
     (runtime : EventGraphRuntime graph)

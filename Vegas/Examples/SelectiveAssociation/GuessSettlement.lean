@@ -32,12 +32,12 @@ theorem native_binding_plan_preserves (who : Player) (players : Player → (serv
       plan execution).support) :
     (nativeBindingRef who).get? next.application.config.store = some value := by
   induction plan generalizing execution with
-  | nil => cases FinDist.mem_support_pure.mp supported; exact stored
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp supported; exact stored
   | cons instruction rest ih =>
       obtain ⟨middle, middleMem, restMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨command, _, stepped⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ middleMem)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ middleMem)
       exact ih middle ((ReactiveApplication.Invariant.policyInvariant (serviceApp observation)
         (native_binding_invariant who value) players).dispatch
           command execution middle stored stepped) restMem
@@ -52,7 +52,7 @@ theorem native_binding_timeout (who : Player) (players : Player → (serviceApp 
     (nativeBindingRef who).get? next.application.config.store = some .failure := by
   rw [nativeBindingDelay, runInteractionPlan_append] at supported
   obtain ⟨ticked, tickedMem, expiryMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have ticks := native_ticks_application players _ execution ticked tickedMem
   obtain ⟨entered, activated⟩ := valid.activatedAt_eq_some_of_ready_actor
     (nativeBindingEvent who) ready (by rw [native_actor, native_binding_owner]; rfl)
@@ -60,16 +60,16 @@ theorem native_binding_timeout (who : Player) (players : Player → (serviceApp 
   have expireMem : next ∈ (nativeRuntime.interactionStep observation players (serviceNetwork
     observation)
       (.expire (nativeBindingEvent who)) ticked).support := by
-    simpa only [runInteractionPlan, FinDist.bind_pure] using expiryMem
+    simpa only [runInteractionPlan, PMF.bind_pure] using expiryMem
   have moved := nativeRuntime.reactive_application_support observation players
     (.expire (nativeBindingEvent who)) ticked next (by
-      simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using expireMem)
+      simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using expireMem)
   rw [environmentStep_expire_bind_eq nativeRuntime ticked.application (nativeBindingEvent who)
     (by simpa only [ticks.1] using ready) entered
     (by simpa only [ticks.2.1] using activated)
     (by rw [ticks.2.2]; omega) who .bool (native_binding_output who) (native_binding_code who)
       (native_binding_node who)] at moved
-  have same := FinDist.mem_support_pure.mp moved
+  have same := (PMF.mem_support_pure_iff _ _).mp moved
   rw [same]
   rw [native_binding_ref_eq]
   fin_cases who <;> simp [nativeBindingEvent, State.complete, EventGraph.Config.store,
@@ -111,9 +111,9 @@ theorem native_binding_response_settlement_finish (who : Player) (players : Play
     (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
     (unfinished : (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed)
     (chooses : players who (control.execution.recall who)
-      (control.execution.observe (serviceApp observation) who) = FinDist.pure response)
+      (control.execution.observe (serviceApp observation) who) = PMF.pure response)
     (result : (serviceApp observation).ProtocolState)
-    (supported : result ∈ ((serviceApp observation).finish (FinDist.pure nativeInitial)
+    (supported : result ∈ ((serviceApp observation).finish (PMF.pure nativeInitial)
       nativeHorizon
       (serviceScheduler observation) players (some control)).support) :
     ∃ middle ∈ (nativeRuntime.interactionStep observation players (serviceNetwork observation)
@@ -151,12 +151,12 @@ theorem native_binding_response_settlement_finish (who : Player) (players : Play
     rw [(serviceApp observation).respond_environmentRecall]
     simpa only [List.length_append, List.length_singleton] using position
   simp only [ReactiveApplication.finish, active, ReactiveApplication.resume,
-    ReactiveApplication.invoke, chooses, FinDist.map_pure, FinDist.pure_bind] at supported
+    ReactiveApplication.invoke, chooses, PMF.pure_map, PMF.pure_bind] at supported
   change result ∈ (((serviceApp observation).runRounds (serviceScheduler observation) players
     control.remaining responded).map
     (serviceApp observation).finished).support at supported
   rw [runAfter] at supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   have afterEq : nativeAfterResponse (nativeBindingEvent who) =
       .includeLatest (nativeBindingEvent who) who :: ((nativeBindingDelay who) ++
         ((List.finRange nativeGraph.order.eventCount).drop ((nativeBindingEvent who).val +
@@ -166,10 +166,10 @@ theorem native_binding_response_settlement_finish (who : Player) (players : Play
       List.append_assoc, List.nil_append, native_binding_owner]
   rw [afterEq, runInteractionPlan] at finalMem
   obtain ⟨middle, middleMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ finalMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ finalMem)
   rw [runInteractionPlan_append] at restMem
   obtain ⟨settled, settledMem, tailMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ restMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ restMem)
   have respondedValid := (nativeRuntime.reactiveStateInvariant observation nativeInputs).respond
     control.execution who response valid
   have respondedReady : responded.application.config.cut.Ready (nativeBindingEvent who) := by
@@ -196,35 +196,35 @@ theorem native_binding_settlement_behavioral (who : Player)
     (response : (serviceApp observation).Action) (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
     (unfinished : (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed)
-    (chooses : (serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    (chooses : (serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation)
       profile who (control.execution.recall who) (control.execution.observe (serviceApp
         observation) who) =
-        FinDist.pure response)
+        PMF.pure response)
     (final : (serviceArena observation).History)
     (supported : final ∈ ((serviceModel observation).runBehavioralFrom profile (2 * nativeHorizon
       + 1)
       ⟨some control, trace⟩).support) :
     ∃ middle ∈ (nativeRuntime.interactionStep observation
-        ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+        ((serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
           (serviceScheduler observation)
           profile) (serviceNetwork observation) (.includeLatest (nativeBindingEvent who) who)
         (control.execution.respond (serviceApp observation) who response)).support,
       (nativeBindingAt who) final.state =
         some (((nativeBindingRef who).get? middle.application.config.store).getD .failure) := by
-  have law := (serviceMenu observation).run_eq_finish (FinDist.pure nativeInitial) nativeHorizon
+  have law := (serviceMenu observation).run_eq_finish (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation)
     profile (2 * nativeHorizon + 1) ⟨some control, trace⟩ (by
       change (serviceApp observation).rank nativeHorizon (some control) ≤ 2 * nativeHorizon + 1
-      have bound := (serviceApp observation).trace_bound (FinDist.pure nativeInitial)
+      have bound := (serviceApp observation).trace_bound (PMF.pure nativeInitial)
         nativeHorizon (serviceScheduler observation)
-        ((serviceMenu observation).toRawTrace (FinDist.pure nativeInitial) nativeHorizon
+        ((serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon
           (serviceScheduler observation) trace)
       omega)
   obtain ⟨middle, middleMem, result, stateEq, bound⟩ :=
     native_binding_response_settlement_finish who
     _ control trace response active granted unfinished chooses final.state (by
-      rw [← law, FinDist.support_map]
+      rw [← law, PMF.support_map]
       exact ⟨final, supported, rfl⟩)
   exact ⟨middle, middleMem, by
     simpa only [nativeBindingAt, stateEq, Option.bind_some] using bound⟩

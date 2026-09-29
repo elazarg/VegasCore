@@ -174,19 +174,19 @@ private theorem environmentPolicyStep_activationOrigin
   have native : next.native ∈
       ((runtime.application.environmentPolicyStep execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [MessageApplication.environmentStep_native] at native
   cases command with
   | deliver observer id | wait =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       apply State.activationOrigin_of_activatedEq
       simpa only using congrArg
         (fun state : runtime.application.State => state.application.activatedAt) native
   | «include» id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.mem_support_pure] at native
+        MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
       cases lookup : execution.native.pool.lookup id with
       | none =>
           rw [runtime.application.includePending_missing execution.native id lookup] at native
@@ -213,7 +213,7 @@ private theorem environmentPolicyStep_activationOrigin
               exact State.activationOrigin_of_refreshEq facts.2
   | application command =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, FinDist.support_map, Set.mem_image] at native
+        MessageApplication.step, PMF.support_map, Set.mem_image] at native
       obtain ⟨state, supported, same⟩ := native
       have nextEq := congrArg
         (fun result : runtime.application.State => result.application) same.symm
@@ -259,19 +259,19 @@ theorem serviceStep_activationOrigin (runtime : EventGraphRuntime graph)
     State.ActivationOrigin execution.native.application next.native.application := by
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, member⟩ := member
       have native : next.native ∈
           ((runtime.application.playerStep who execution command).map
             MessageInterface.PolicyExecution.native).support := by
-        rw [FinDist.support_map]
+        rw [PMF.support_map]
         exact ⟨next, member, rfl⟩
       rw [MessageApplication.playerStep_native] at native
       cases command with
       | privateCommand command =>
         simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-          FinDist.mem_support_pure] at native
+          PMF.mem_support_pure_iff _ _] at native
         apply State.activationOrigin_of_activatedEq
         have nextEq := congrArg
           (fun state : runtime.application.State => state.application.activatedAt) native
@@ -279,13 +279,13 @@ theorem serviceStep_activationOrigin (runtime : EventGraphRuntime graph)
           (privateStep_facts execution.native.application who command).2.2
       | submit payload | replay id | wait =>
         simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-          FinDist.mem_support_pure] at native
+          PMF.mem_support_pure_iff _ _] at native
         apply State.activationOrigin_of_activatedEq
         simpa only [application, submitStep_activatedAt] using congrArg
           (fun state : runtime.application.State => state.application.activatedAt) native
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨command, _, member⟩ := member
       exact environmentPolicyStep_activationOrigin runtime execution next
         (command.toEnvironmentCommand runtime.application) member
@@ -304,11 +304,11 @@ theorem runServicePlan_activationOrigin (runtime : EventGraphRuntime graph)
     State.ActivationOrigin execution.native.application next.native.application := by
   induction plan generalizing execution with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact State.activationOrigin_of_activatedEq rfl
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, headMem, tailMem⟩ := member
       have headProgress := runtime.serviceStep_facts inputs players wire instruction
         execution middle invariant headMem
@@ -330,7 +330,7 @@ theorem serviceEpoch_activationOrigin (runtime : EventGraphRuntime graph)
     (member : next ∈ (runtime.serviceEpoch roster reactionRounds players wire order
       execution).support) :
     State.ActivationOrigin execution.native.application next.native.application := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at member
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at member
   obtain ⟨chosen, _, member⟩ := member
   exact runtime.runServicePlan_activationOrigin inputs players wire
     (epochPlan chosen roster reactionRounds) execution next invariant member
@@ -362,7 +362,7 @@ theorem environmentStep_expire_eq_of_age (runtime : EventGraphRuntime graph)
     (state : State graph) (event : graph.EventId) (feasible : 2 ≤ runtime.deadline event)
     (age : ∀ entered, state.activatedAt event = some entered →
       event ∉ state.config.cut.completed → state.clock - entered ≤ 1) :
-    environmentStep runtime state (.expire event) = FinDist.pure state := by
+    environmentStep runtime state (.expire event) = PMF.pure state := by
   by_cases ready : state.config.cut.Ready event
   · cases activated : state.activatedAt event with
     | none => exact runtime.environmentStep_expire_of_not_activated state event ready activated
@@ -388,11 +388,11 @@ theorem serviceStep_expire_application_eq (runtime : EventGraphRuntime graph)
   have native : next.native ∈
       ((runtime.application.environmentPolicyStep execution
         (.application (.expire event))).map MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, member, rfl⟩
   rw [MessageApplication.environmentStep_native] at native
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, FinDist.support_map, Set.mem_image] at native
+    MessageApplication.step, PMF.support_map, Set.mem_image] at native
   obtain ⟨state, supported, same⟩ := native
   change state ∈ (Vegas.EventGraphRuntime.environmentStep runtime
     execution.native.application (.expire event)).support at supported
@@ -400,7 +400,7 @@ theorem serviceStep_expire_application_eq (runtime : EventGraphRuntime graph)
     (fun result : runtime.application.State => result.application) same.symm
   rw [applicationEq]
   rw [runtime.environmentStep_expire_eq_of_age execution.native.application event feasible age,
-    FinDist.mem_support_pure] at supported
+    PMF.mem_support_pure_iff _ _] at supported
   exact supported
 
 private theorem runServicePlan_expiry_list_application_eq
@@ -417,10 +417,10 @@ private theorem runServicePlan_expiry_list_application_eq
     next.native.application = execution.native.application := by
   induction events generalizing execution with
   | nil =>
-      simp only [List.map_nil, runServicePlan, FinDist.mem_support_pure] at member
+      simp only [List.map_nil, runServicePlan, PMF.mem_support_pure_iff _ _] at member
       exact congrArg (fun result => result.native.application) member
   | cons event rest ih =>
-      simp only [List.map_cons, runServicePlan, FinDist.support_bind,
+      simp only [List.map_cons, runServicePlan, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨middle, headMem, tailMem⟩ := member
       have middleEq := runtime.serviceStep_expire_application_eq players wire

@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
-import GameTheoryExtensions.Protocol.SingleMover
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.SingleMover
+import GameTheory.Protocol.StateKernel
 
 /-! # Coalescing distinguishes outcome implementation from a fixed compiler
 
@@ -40,7 +40,7 @@ abbrev State := List Outcome
   active state _ := active split state
   available state _ := {action | available split state action}
   terminal state := ¬ active split state
-  step state joint := FinDist.pure ((joint.1 ()).getD none :: state)
+  step state joint := PMF.pure ((joint.1 ()).getD none :: state)
   progress state running := by
     refine ⟨fun _ => some (if state = [] then none else some false), fun _ => ?_⟩
     refine ⟨not_not.mp running, ?_⟩
@@ -77,7 +77,7 @@ theorem history_length (split : Bool) : ∀ {state : State} (trace : (arena spli
     trace.length = state.length
   | _, .start => rfl
   | _, .extend prior _ _ realized => by
-      cases FinDist.mem_support_pure.mp realized
+      cases (PMF.mem_support_pure_iff _ _).mp realized
       simpa only [Trace.length, List.length_cons] using
         congrArg (· + 1) (history_length split prior)
 
@@ -89,10 +89,10 @@ theorem bounded (split : Bool) : (arena split).BoundedHorizon 2 := by
 
 def canonical (split goal : Bool) : Profile (model split).behavioralSignature := fun _ state =>
   if running : active split state then
-    FinDist.pure ⟨some (if state = [] then none else some goal), by
+    PMF.pure ⟨some (if state = [] then none else some goal), by
       refine ⟨running, ?_⟩
       by_cases empty : state = [] <;> simp [available, empty]⟩
-  else FinDist.pure ⟨none, running⟩
+  else PMF.pure ⟨none, running⟩
 
 instance (split : Bool) (who : Unit) (state : State) :
     Fintype ((model split).Choice who state) := by
@@ -104,11 +104,11 @@ instance (split : Bool) (who : Unit) (state : State) :
   ⟨((canonical split false) who state).support_nonempty.choose⟩
 
 def reference (split : Bool) : (model split).BehavioralAssessment :=
-  .ofStrategy (fun _ _ => FinDist.uniformOfFintype)
+  .ofStrategy (fun _ _ => PMF.uniformOfFintype)
 
 theorem reference_mixed (split : Bool) : (reference split).IsFullyMixed := by
   intro who site choice
-  exact FinDist.mem_support_uniformOfFintype choice
+  exact PMF.mem_support_uniformOfFintype choice
 
 instance (split : Bool) : Finite (arena split).History :=
   (reference_mixed split).finite_history (bounded split)
@@ -131,10 +131,10 @@ theorem antichain (split : Bool) : (model split).DecisionInformationAntichain :=
   omega
 
 def kernel {split : Bool} (profile : Profile (model split).behavioralSignature)
-    (state : State) : FinDist State :=
+    (state : State) : PMF State :=
   if active split state then
     (profile () state).map (fun choice => choice.val.getD none :: state)
-  else FinDist.pure state
+  else PMF.pure state
 
 theorem single (split : Bool) : ∀ state {first second},
     (arena split).active state first → (arena split).active state second → first = second := by
@@ -152,13 +152,13 @@ theorem chooser_kernel {split : Bool} (profile : Profile (model split).behaviora
     (fun choice : Option Outcome => choice.getD none :: history.state)) marginal
   have acts : active split history.state := not_not.mp running
   simpa only [InformationModel.singleMoverChooser, arena, kernel, acts, ite_eq_left,
-    FinDist.map_comp, Function.comp_def, FinDist.map_eq_bind, FinDist.bind_bind,
-    FinDist.pure_bind] using mapped
+    PMF.map_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
+    PMF.pure_bind] using mapped
 
 theorem run_states {split : Bool} (profile : Profile (model split).behavioralSignature)
     (fuel : Nat) (history : (arena split).History) :
     ((model split).runBehavioralFrom profile fuel history).map History.state =
-      (fun law => law.bind (kernel profile))^[fuel] (FinDist.pure history.state) := by
+      (fun law => law.bind (kernel profile))^[fuel] (PMF.pure history.state) := by
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     (model split) (single split)]
   apply runRandomizedFor_map_state
@@ -189,7 +189,7 @@ theorem terminal_reward (split goal : Bool) (history : (arena split).History)
         rw [selected] at authorized
         exact authorized.2
       have next : state = action :: before := by
-        simpa only [arena, selected, Option.getD_some] using FinDist.mem_support_pure.mp realized
+        simpa only [arena, selected, Option.getD_some] using (PMF.mem_support_pure_iff _ _).mp realized
       subst state
       cases action with
       | none =>
@@ -213,36 +213,36 @@ theorem canonical_source (goal : Bool) : canonical false goal = canonical false 
 
 theorem canonical_root_law (split goal : Bool) :
     ((model split).runBehavioral (canonical split goal) 2).map History.state =
-      FinDist.pure [none] := by
+      PMF.pure [none] := by
   rw [InformationModel.runBehavioral, run_states]
   simp [Function.iterate_succ_apply', kernel, canonical, active,
-    initHistory, FinDist.pure_bind]
+    initHistory, PMF.pure_bind]
 
 theorem canonical_branch_law (goal : Bool) (history : (arena true).History)
     (atBranch : history.state = [some false]) :
     ((model true).runBehavioralFrom (canonical true goal) 2 history).map History.state =
-      FinDist.pure [some goal, some false] := by
+      PMF.pure [some goal, some false] := by
   rw [run_states, atBranch]
-  simp [Function.iterate_succ_apply', kernel, canonical, active, FinDist.pure_bind]
+  simp [Function.iterate_succ_apply', kernel, canonical, active, PMF.pure_bind]
 
 def stateLaw {split : Bool} (profile : Profile (model split).behavioralSignature)
-    (state : State) : FinDist State :=
-  (fun law => law.bind (kernel profile))^[2] (FinDist.pure state)
+    (state : State) : PMF State :=
+  (fun law => law.bind (kernel profile))^[2] (PMF.pure state)
 
 theorem branch_law (profile : Profile (model true).behavioralSignature) :
     stateLaw profile [some false] =
       (profile () [some false]).map (fun choice => [choice.val.getD none, some false]) := by
-  simp [stateLaw, Function.iterate_succ_apply', kernel, active, FinDist.pure_bind,
-    FinDist.map_eq_bind]
+  simp [stateLaw, Function.iterate_succ_apply', kernel, active, PMF.pure_bind,
+    ← PMF.bind_pure_comp, Function.comp_def]
 
 theorem canonical_state_root (split goal : Bool) :
-    stateLaw (canonical split goal) [] = FinDist.pure [none] := by
+    stateLaw (canonical split goal) [] = PMF.pure [none] := by
   have law := canonical_root_law split goal
   rw [InformationModel.runBehavioral, run_states] at law
   exact law
 
 theorem canonical_state_branch (goal : Bool) :
-    stateLaw (canonical true goal) [some false] = FinDist.pure [some goal, some false] := by
+    stateLaw (canonical true goal) [some false] = PMF.pure [some goal, some false] := by
   rw [branch_law]
   simp [canonical, active]
 
@@ -256,20 +256,20 @@ theorem context_value {split : Bool} (assessment : (model split).BehavioralAsses
     (site : (model split).InformationSite ()) (goal : Bool)
     (alternative : (model split).BehavioralPolicy ()) :
     (assessment.continuationContext site (fun h => reward goal h.state) 2).value alternative =
-      (stateLaw (Profile.update assessment.strategy () alternative) site.1).expect
+      expect (stateLaw (Profile.update assessment.strategy () alternative) site.1)
         (reward goal) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
   calc
-    _ = (assessment.belief () site).expect (fun _ =>
-        (stateLaw (Profile.update assessment.strategy () alternative) site.1).expect
+    _ = expect (assessment.belief () site) (fun _ =>
+        expect (stateLaw (Profile.update assessment.strategy () alternative) site.1)
           (reward goal)) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro history _
       have same : history.1.state = site.1 := by simpa using history.2
-      have laws := congrArg (fun law => law.expect (reward goal))
+      have laws := congrArg (fun law => expect law (reward goal))
         (run_states (Profile.update assessment.strategy () alternative) 2 history.1)
-      simpa only [FinDist.expect_map, same, stateLaw] using laws
-    _ = _ := FinDist.expect_const _ _
+      simpa only [expect_map, same, stateLaw] using laws
+    _ = _ := expect_constant _ _
 
 theorem update_own (split : Bool) (profile : Profile (model split).behavioralSignature) :
     Profile.update profile () (profile ()) = profile := by
@@ -289,12 +289,12 @@ theorem canonical_rational (split goal : Bool)
   have same : history.1.state = site.1 := by simpa using history.2
   rw [same] at acts
   rcases acts with root | ⟨rfl, branch⟩
-  · rw [root, canonical_state_root, FinDist.expect_pure]
+  · rw [root, canonical_state_root, expect_pure]
     change _ ≤ 2
     exact FinDist.expect_le_of_forall _ _ _ (fun state _ => reward_le_two goal state)
-  · rw [branch, canonical_state_branch, FinDist.expect_pure]
+  · rw [branch, canonical_state_branch, expect_pure]
     have value : reward goal [some goal, some false] = 1 := by simp [reward]
-    rw [value, branch_law, FinDist.expect_map]
+    rw [value, branch_law, expect_map]
     apply FinDist.expect_le_of_forall
     intro choice _
     exact reward_pair_le_one goal _
@@ -326,7 +326,7 @@ def branchHistory : (arena true).History :=
       refine ⟨?_, fun _ => ?_⟩
       · simp [arena, active]
       · exact ⟨Or.inl rfl, by simp [available]⟩)
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def branchSite : (model true).InformationSite () :=
   (model true).informationSite () branchHistory (some false)
@@ -344,18 +344,18 @@ theorem update_unit {split : Bool}
 
 theorem rational_branch_value (goal : Bool) (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin (fun _ h => reward goal h.state) 2) :
-    1 ≤ (stateLaw assessment.strategy [some false]).expect (reward goal) := by
+    1 ≤ expect (stateLaw assessment.strategy [some false]) (reward goal) := by
   have bound := rational () branchSite ((canonical true goal) ()) (Set.mem_univ _)
   rw [context_value, context_value, update_own, update_unit, branch_site_value] at bound
-  change (stateLaw (canonical true goal) [some false]).expect (reward goal) ≤ _ at bound
-  rw [canonical_state_branch, FinDist.expect_pure] at bound
+  change expect (stateLaw (canonical true goal) [some false]) (reward goal) ≤ _ at bound
+  rw [canonical_state_branch, expect_pure] at bound
   simpa only [reward, List.cons.injEq, List.cons_ne_self, and_false, ↓reduceIte,
     List.headD_cons, ite_eq_left rfl] using bound
 
 theorem branch_opposite_reward_bound (profile : Profile (model true).behavioralSignature) :
-    (stateLaw profile [some false]).expect (reward false) +
-      (stateLaw profile [some false]).expect (reward true) ≤ 1 := by
-  rw [← FinDist.expect_add, branch_law, FinDist.expect_map]
+    expect (stateLaw profile [some false]) (reward false) +
+      expect (stateLaw profile [some false]) (reward true) ≤ 1 := by
+  rw [← FinDist.expect_add, branch_law, expect_map]
   apply FinDist.expect_le_of_forall
   intro choice _
   cases action : choice.val.getD none with
@@ -376,15 +376,15 @@ theorem no_common_rational_strategy :
   have sum := branch_opposite_reward_bound first.strategy
   linarith
 
-def outcomeLaw {split : Bool} (assessment : (model split).BehavioralAssessment) : FinDist Outcome :=
+def outcomeLaw {split : Bool} (assessment : (model split).BehavioralAssessment) : PMF Outcome :=
   ((model split).runBehavioral assessment.strategy 2).map (fun h => h.state.headD none)
 
 theorem canonical_outcome (split goal : Bool) (assessment : (model split).BehavioralAssessment)
     (strategy : assessment.strategy = canonical split goal) :
-    outcomeLaw assessment = FinDist.pure none := by
+    outcomeLaw assessment = PMF.pure none := by
   have law := congrArg (fun law => law.map (fun state : State => state.headD none))
     (canonical_root_law split goal)
-  simpa only [outcomeLaw, strategy, FinDist.map_comp, FinDist.map_pure, List.headD_cons,
+  simpa only [outcomeLaw, strategy, PMF.map_comp, PMF.pure_map, List.headD_cons,
     Function.comp_def] using law
 
 /-- One source equilibrium works for both utilities. Its outcome is implementable

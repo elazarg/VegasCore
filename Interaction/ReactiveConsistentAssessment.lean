@@ -20,7 +20,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 /-- Complete any prescribed native profile without changing any strategy
 coordinate, including its behavior after earlier deviations. -/

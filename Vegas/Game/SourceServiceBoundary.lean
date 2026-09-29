@@ -218,7 +218,7 @@ theorem ServiceBoundary.grant {setup : Setup (Player := Player) (L := L)}
       granted.application = { execution.application with serviceGrant := some event } ∧
       granted.recall = execution.recall ∧
       (runtime setup).interactionStep leaks players network (.grant event) execution =
-        FinDist.pure granted := by
+        PMF.pure granted := by
   let app := application setup leaks
   let granted : app.Execution := { execution with
     application := { execution.application with serviceGrant := some event }
@@ -228,11 +228,11 @@ theorem ServiceBoundary.grant {setup : Setup (Player := Player) (L := L)}
   · exact { boundary with
       invariant := boundary.invariant.copy rfl rfl rfl
       binding := boundary.binding.copy rfl rfl rfl }
-  · simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
-    change (execution.environmentStep app (.application (.grant event))).bind FinDist.pure = _
-    rw [FinDist.bind_pure]
+  · simp only [interactionStep, interactionInstruction, PMF.pure_bind]
+    change (execution.environmentStep app (.application (.grant event))).bind PMF.pure = _
+    rw [PMF.bind_pure]
     simp only [ReactiveApplication.Execution.environmentStep,
-      app, application, reactiveApplication, environmentStep, FinDist.map_pure]
+      app, application, reactiveApplication, environmentStep, PMF.pure_map]
     rfl
 
 /-- Passive sampling retains every boundary fact, while keeping its actual

@@ -32,11 +32,11 @@ theorem runService_facts (runtime : EventGraphRuntime graph)
       next.native.application := by
   induction count generalizing execution with
   | zero =>
-      simp only [runService, FinDist.mem_support_pure] at supported
+      simp only [runService, PMF.mem_support_pure_iff _ _] at supported
       subst next
       exact State.ServiceProgress.refl invariant
   | succ count ih =>
-      simp only [runService, FinDist.support_bind, Set.mem_iUnion] at supported
+      simp only [runService, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨middle, middleMem, nextMem⟩ := supported
       have first := runtime.serviceEpoch_facts inputs roster reactionRounds players
         wire order execution middle invariant middleMem
@@ -53,8 +53,8 @@ theorem runService_add (runtime : EventGraphRuntime graph)
   induction first generalizing execution with
   | zero => simp [runService]
   | succ first ih =>
-      simp only [Nat.succ_add, runService, FinDist.bind_bind]
-      apply FinDist.bind_congr
+      simp only [Nat.succ_add, runService, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro middle _
       exact ih middle
 
@@ -67,7 +67,7 @@ theorem runServicePlan_support_append (runtime : EventGraphRuntime graph)
       (runtime.runServicePlan players wire (first ++ second) execution).support) :
     ∃ middle ∈ (runtime.runServicePlan players wire first execution).support,
       final ∈ (runtime.runServicePlan players wire second middle).support := by
-  rw [runServicePlan_append, FinDist.support_bind] at supported
+  rw [runServicePlan_append, PMF.support_bind] at supported
   simp only [Set.mem_iUnion] at supported
   obtain ⟨middle, middleMem, finalMem⟩ := supported
   exact ⟨middle, middleMem, finalMem⟩
@@ -87,7 +87,7 @@ theorem runServicePlan_support_instruction (runtime : EventGraphRuntime graph)
   obtain ⟨prior, priorMem, finalMem⟩ :=
     runtime.runServicePlan_support_append players wire before
       (instruction :: after) execution final supported
-  simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at finalMem
+  simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at finalMem
   obtain ⟨next, nextMem, restMem⟩ := finalMem
   exact ⟨prior, priorMem, next, nextMem, restMem⟩
 
@@ -196,7 +196,7 @@ theorem serviceEpoch_chance_complete (runtime : EventGraphRuntime graph)
     (supported : next ∈ (runtime.serviceEpoch roster reactionRounds players wire
       order execution).support) :
     event ∈ next.native.application.config.cut.completed := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at supported
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at supported
   obtain ⟨chosen, _, planMem⟩ := supported
   obtain ⟨before, after, planEq, beforeTicks⟩ :=
     epochPlan_split_sample chosen roster reactionRounds event
@@ -209,7 +209,7 @@ theorem serviceEpoch_chance_complete (runtime : EventGraphRuntime graph)
   rcases priorProgress.ready_or_completed event ready with completed | priorReady
   · have suffixProgress := runtime.runServicePlan_facts inputs players wire
       (.sample event :: after) prior next priorProgress.invariant (by
-        simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion]
+        simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion]
         exact ⟨sampled, sampleMem, afterMem⟩)
     exact suffixProgress.completed completed
   · have sampledDone := runtime.serviceStep_sample_complete players wire event
@@ -236,7 +236,7 @@ theorem serviceEpoch_strategic_complete_of_due (runtime : EventGraphRuntime grap
     (supported : next ∈ (runtime.serviceEpoch roster reactionRounds players wire
       order execution).support) :
     event ∈ next.native.application.config.cut.completed := by
-  simp only [serviceEpoch, FinDist.support_bind, Set.mem_iUnion] at supported
+  simp only [serviceEpoch, PMF.support_bind, Set.mem_iUnion] at supported
   obtain ⟨chosen, _, planMem⟩ := supported
   obtain ⟨before, after, planEq, beforeTicks⟩ :=
     epochPlan_split_expire chosen roster reactionRounds event
@@ -249,7 +249,7 @@ theorem serviceEpoch_strategic_complete_of_due (runtime : EventGraphRuntime grap
   rcases priorProgress.ready_or_completed event ready with completed | priorReady
   · have suffixProgress := runtime.runServicePlan_facts inputs players wire
       (.expire event :: after) prior next priorProgress.invariant (by
-        simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion]
+        simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion]
         exact ⟨expired, expireMem, afterMem⟩)
     exact suffixProgress.completed completed
   · have priorActivated := priorProgress.activated event entered activated priorReady.1
@@ -296,7 +296,7 @@ theorem commandCompletionService_run (runtime : EventGraphRuntime graph)
   | zero => rfl
   | succ count ih =>
       simp only [CompletionService.run, runService, commandCompletionService]
-      exact FinDist.bind_congr fun next _ => ih next
+      exact bind_congr_on_support _ fun next _ => ih next
 
 /-- One uniform deadline window completes every event that was ready at its
 start. Player and wire policies remain arbitrary. -/
@@ -334,14 +334,14 @@ theorem runService_terminal (runtime : EventGraphRuntime graph)
 in the setup law. This is operational support refinement, not a strategic or
 probability-law backtranslation. -/
 theorem servicedEventGame_reachable (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy)
     (next : runtime.application.PolicyExecution)
     (supported : next ∈
       ((runtime.servicedEventGame inputs roster reactionRounds wire order).play players).support) :
     ∃ input ∈ inputs.support, next.native.application.config.Reachable input := by
-  simp only [servicedEventGame, FinDist.support_bind, Set.mem_iUnion] at supported
+  simp only [servicedEventGame, PMF.support_bind, Set.mem_iUnion] at supported
   obtain ⟨input, inputMem, runMem⟩ := supported
   refine ⟨input, inputMem, ?_⟩
   exact (runtime.runService_facts input roster reactionRounds players wire order
@@ -350,14 +350,14 @@ theorem servicedEventGame_reachable (runtime : EventGraphRuntime graph)
 /-- Every supported play of the concrete serviced game reaches a terminal
 event-graph configuration, for arbitrary native player policies. -/
 theorem servicedEventGame_complete (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy)
     (next : runtime.application.PolicyExecution)
     (supported : next ∈
       ((runtime.servicedEventGame inputs roster reactionRounds wire order).play players).support) :
     next.native.application.config.cut.Terminal := by
-  simp only [servicedEventGame, FinDist.support_bind, Set.mem_iUnion] at supported
+  simp only [servicedEventGame, PMF.support_bind, Set.mem_iUnion] at supported
   obtain ⟨input, _, runMem⟩ := supported
   exact runtime.runService_terminal input roster reactionRounds players wire order
     (MessageApplication.PolicyExecution.initial _
@@ -367,7 +367,7 @@ theorem servicedEventGame_complete (runtime : EventGraphRuntime graph)
 
 /-- Terminal typed readout is total on every supported serviced-game result. -/
 theorem servicedEventGame_outcome_total (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy)
     (next : runtime.application.PolicyExecution)

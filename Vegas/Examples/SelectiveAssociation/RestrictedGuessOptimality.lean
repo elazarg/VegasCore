@@ -20,22 +20,22 @@ open GameTheory.Math.Probability
 
 theorem expected_guessReward_success (assessment : model.BehavioralAssessment)
     (who : Player) (site : model.InformationSite who) (bit : Bool) :
-    (assessment.belief who site).expect (fun history =>
+    expect (assessment.belief who site) (fun history =>
       guessReward (.success bit) history.1.state) =
-        (assessment.belief who site).probOf {history | hasAliceBit bit history.1.state} := by
+        ((assessment.belief who site).toOuterMeasure {history | hasAliceBit bit history.1.state}).toReal := by
   classical
-  exact FinDist.expect_indicator_eq_probOf _ _
+  exact expect_indicator _ _
 
 theorem prescribed_guess_optimal (assessment : model.BehavioralAssessment)
     (who : Player) (site : model.InformationSite who)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
     (posterior : publicGuess view = false →
-      (assessment.belief who site).probOf {history | hasAliceBit true history.1.state} ≤
-        (assessment.belief who site).probOf {history | hasAliceBit false history.1.state})
+      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal ≤
+        ((assessment.belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal)
     (guess : PublicationResult Bool) :
-    (assessment.belief who site).expect (fun history => guessReward guess history.1.state) ≤
-      (assessment.belief who site).expect (fun history =>
+    expect (assessment.belief who site) (fun history => guessReward guess history.1.state) ≤
+      expect (assessment.belief who site) (fun history =>
         guessReward (.success (publicGuess view)) history.1.state) := by
   classical
   cases selected : publicGuess view with
@@ -49,10 +49,10 @@ theorem prescribed_guess_optimal (assessment : model.BehavioralAssessment)
           · exact le_rfl
           · exact posterior selected
   | true =>
-      have target : (assessment.belief who site).expect (fun history =>
+      have target : expect (assessment.belief who site) (fun history =>
           guessReward (.success true) history.1.state) = 1 := by
-        refine (FinDist.expect_congr (v := fun _ => (1 : ℝ)) ?_).trans
-          (FinDist.expect_const _ _)
+        refine (expect_congr_on_support (v := fun _ => (1 : ℝ)) ?_).trans
+          (expect_constant _ _)
         intro history _
         have known := publicGuess_true_known who past view selected
           ⟨history.1, history.2.trans information⟩
@@ -117,20 +117,20 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
     (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who)) :
     (assessment.continuationContext site (fun history => nativeUtility who history.state)
       (2 * nativeHorizon + 1)).value (assessment.strategy who) =
-      (assessment.belief who site).expect (fun history =>
+      expect (assessment.belief who site) (fun history =>
         guessReward (.success (publicGuess view)) history.1.state) := by
   simp only [InformationModel.BehavioralAssessment.continuationContext_value,
     Profile.update_eq_self, FinDist.expect_bind, strategy]
-  apply FinDist.expect_congr
+  apply expect_congr_on_support
   intro history _
   obtain ⟨control, stateEq, active, _, observed⟩ := information_control who past view
     ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  refine (FinDist.expect_congr (v := fun _ =>
+  refine (expect_congr_on_support (v := fun _ =>
     guessReward (.success (publicGuess view)) (some control)) ?_).trans
-      (FinDist.expect_const _ _)
+      (expect_constant _ _)
   intro final supported
   have grant : control.execution.application.serviceGrant = some (nativeBindingEvent who) := by
     rw [← observed] at granted
@@ -146,17 +146,17 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     (information : site.1 = some (past, view))
     (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who))
     (posterior : publicGuess view = false →
-      (assessment.belief who site).probOf {history | hasAliceBit true history.1.state} ≤
-        (assessment.belief who site).probOf {history | hasAliceBit false history.1.state}) :
+      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal ≤
+        ((assessment.belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal) :
     assessment.IsSequentiallyRationalAt site (assessment.continuationContext site
       (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   classical
   intro alternative _
   have once : model.ActsOnceWhereItMatters := model.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
-      (menu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon scheduler))
+      (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler))
   rw [assessment.continuationContext_value_eq_expect_commit once site
-    (menu.informationSite_allNonterminal (FinDist.pure nativeInitial) nativeHorizon scheduler
+    (menu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon scheduler
       who site) _ (2 * nativeHorizon) alternative,
     profile_guesser_context assessment strategy who guesser site past view information granted]
   apply FinDist.expect_le_of_forall
@@ -164,7 +164,7 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
   obtain ⟨guess, bound⟩ := committed_guesser_bound assessment who guesser site past view
     information granted alternative choice
   calc
-    _ ≤ (assessment.belief who site).expect (fun history => guessReward guess history.1.state) := by
+    _ ≤ expect (assessment.belief who site) (fun history => guessReward guess history.1.state) := by
       simp only [InformationModel.BehavioralAssessment.continuationContext_value,
         FinDist.expect_bind, strategy]
       apply FinDist.expect_mono

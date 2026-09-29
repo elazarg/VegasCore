@@ -143,20 +143,20 @@ def advance (roster : List Player) (state : channel.State)
 
 def gameTransition (roster : List Player) (state : channel.State)
     (joint : {joint : ∀ who, Option (E.Action who) // E.Legal state.history.state joint}) :
-    FinDist channel.State :=
+    PMF channel.State :=
   (E.step state.history.state joint).bindOnSupport fun target realized =>
-    FinDist.pure (channel.advance roster state joint.1 joint.2 target realized)
+    PMF.pure (channel.advance roster state joint.1 joint.2 target realized)
 
 def transition (roster : List Player) (state : channel.State)
     (joint : ∀ who, Option (channel.Action who))
     (running : ¬ E.terminal state.history.state)
     (legal : IsLegalJoint (channel.active state) (channel.available state) joint) :
-    FinDist channel.State :=
+    PMF channel.State :=
   match empty : state.remaining with
   | [] =>
       let admitted := channel.gameJoint_legal state joint empty running legal
       channel.gameTransition roster state ⟨channel.gameJoint joint, admitted⟩
-  | actor :: rest => FinDist.pure (channel.communicate state actor rest
+  | actor :: rest => PMF.pure (channel.communicate state actor rest
       ((joint actor).bind fun action => action.elim (fun _ => none) id))
 
 open Classical in

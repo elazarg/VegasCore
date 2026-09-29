@@ -47,21 +47,21 @@ theorem environmentStep_recall (execution next : app.Execution) (command : app.C
     next.recall = execution.recall := by
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       rfl
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       cases found : execution.network.lookup id <;>
         simp only [Execution.includePending, MessageNetwork.includePending, found]
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       rfl
 
 theorem respond_recall_other (execution : app.Execution) (who observer : Principal)
@@ -116,20 +116,20 @@ theorem environment_inputRecall (execution next : app.Execution) (command : app.
     (reached : next ∈ (execution.environmentStep app command).support) : next.InputRecall app := by
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       cases found : execution.network.lookup id <;>
         simpa [Execution.InputRecall, Execution.includePending,
           MessageNetwork.includePending, found] using valid
@@ -146,31 +146,31 @@ def inputRecall : app.ProtocolState → Prop
   | none => True
   | some control => control.execution.InputRecall app
 
-theorem transition_inputRecall (initial : FinDist app.State) (horizon : Nat)
+theorem transition_inputRecall (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.ProtocolState)
     (joint : Principal → Option app.Action) (valid : app.inputRecall before)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     app.inputRecall after := by
   cases before with
   | none =>
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact app.initial_inputRecall state
   | some control =>
       rcases control with ⟨remaining, current, execution⟩
       cases current with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact app.respond_inputRecall execution who _ valid
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, _, supported⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, moved, rfl⟩ := FinDist.support_map .. ▸ supported
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
               exact app.environment_inputRecall execution next command valid moved
 
-theorem history_inputRecall (initial : FinDist app.State) (horizon : Nat)
+theorem history_inputRecall (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) :
     ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
       app.inputRecall state

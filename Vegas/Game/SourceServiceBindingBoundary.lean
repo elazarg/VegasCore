@@ -128,8 +128,8 @@ theorem ServiceBoundary.binding_inclusion
     have moved := included
     rw [(runtime setup).reactiveBinding_reserved_selection leaks before owner event payload
       (.success value) serial beforeSerials players network] at moved
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at moved
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at moved
     rw [moved]
     exact app.submit_include_serials_match_ledger before beforeSerials settled owner
       ⟨⟨.commitment event (owner, .prepared serial), some ⟨payload, value⟩⟩, .none⟩
@@ -268,25 +268,25 @@ theorem ServiceBoundary.binding_prefix_conformance
   let app := application setup leaks
   induction visits using List.reverseRecOn generalizing current with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨(runtime setup).service_published_conformance leaks execution boundary.published,
         traffic⟩
   | append_singleton visits actor ih =>
       rw [List.map_append, (runtime setup).runInteractionPlan_append] at reached
       obtain ⟨before, reachedBefore, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have prior := ih before reachedBefore
-      simp only [List.map_cons, List.map_nil, runInteractionPlan, FinDist.bind_pure,
-        interactionStep, interactionInstruction, FinDist.pure_bind] at reached
+      simp only [List.map_cons, List.map_nil, runInteractionPlan, PMF.bind_pure,
+        interactionStep, interactionInstruction, PMF.pure_bind] at reached
       change current ∈ ((before.environmentStep app (.activate actor)).bind
         (app.invoke players actor)).support at reached
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at reached
-      obtain ⟨sample, selected, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ reached
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at reached
+      obtain ⟨sample, selected, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ reached
       let activated := before.sampledActivation app actor sample
       have activation : activated ∈ (before.environmentStep app (.activate actor)).support := by
         rw [ReactiveApplication.Execution.activation_samples]
-        exact FinDist.support_map .. ▸ ⟨sample, selected, rfl⟩
+        exact PMF.support_map .. ▸ ⟨sample, selected, rfl⟩
       have sampled := (runtime setup).service_sampled_conformance leaks before actor sample prior.1
       obtain ⟨ready, timely, grant, binding, _, _, _, unsent⟩ :=
         boundary.binding_prefix_resources bounds players lawful network event atRank
@@ -362,10 +362,10 @@ theorem ServiceBoundary.binding_block
   have phase := reached
   rw [rosterBlock_of_owner setup rosters event owner owned,
     (runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, FinDist.pure_bind] at phase
+  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at phase
   simp only [List.append_assoc] at phase
   rw [← List.append_assoc, (runtime setup).runInteractionPlan_append] at phase
-  obtain ⟨included, inclusion, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ phase)
+  obtain ⟨included, inclusion, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   obtain ⟨represented, acceptedRecorded, prepared, accounted, published,
     value, admitted, checkpoint⟩ := grantBoundary.binding_inclusion bounds covered players lawful
       network event atRank name owner payload guard outputEq codeEq node owned grant
@@ -378,7 +378,7 @@ theorem ServiceBoundary.binding_block
     (runtime setup).settled_reveal_expiry leaks players network included event settled
       (event.val + 1)
   rw [exactTail] at tail
-  have finalEq := FinDist.mem_support_pure.mp tail
+  have finalEq := (PMF.mem_support_pure_iff _ _).mp tail
   subst final
   have finalCheckpoint : SourceCheckpoint setup (commitSuccessor name guard source (.success value))
       (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) after.application.config := by
@@ -417,7 +417,7 @@ theorem ServiceBoundary.binding_block
   · intro observer other future
     have otherEvent : other ≠ event := by intro equal; subst other; omega
     rw [(runtime setup).runInteractionPlan_append] at inclusion
-    obtain ⟨visited, window, inclusion⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ inclusion)
+    obtain ⟨visited, window, inclusion⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ inclusion)
     have includedRecall : included.recall observer = visited.recall observer := by
       have earlier := (runtime setup).runInteractionPlan_recall_prefix leaks players network
         [.includeLatest event owner] visited included inclusion observer

@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveHistory
 import Interaction.MessageNetworkInvariant
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.StateKernel
 
 /-! # Settlement evidence from the public traffic history
 
@@ -69,7 +69,7 @@ theorem trafficStep_public (firstBefore firstAfter secondBefore secondAfter : ap
 
 /-- A settlement readout of the existing protocol history, not another
 interpreter or a new observation available to players during execution. -/
-def trafficAudit (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+def trafficAudit (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     {state : app.ProtocolState} → (app.protocol initial horizon scheduler).Trace state →
       List app.TrafficRecord
   | _, .start => []
@@ -153,21 +153,21 @@ theorem trafficStep_environment (execution next : app.Execution) (command : app.
       (some ⟨remaining, command.actor? app, next⟩) = [] := by
   cases command with
   | wait =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simp [trafficStep]
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       simp [trafficStep, MessageNetwork.learn]
   | «include» id =>
-      simp only [Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       cases found : execution.network.lookup id <;>
         simp [trafficStep, Execution.includePending, MessageNetwork.includePending, found]
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       simp [trafficStep]
 
 /-- A per-transmission check can use the observation phase, packet and
@@ -206,7 +206,7 @@ theorem trafficViolation_mono (permitted : app.TrafficRecord → Bool) (who : Pr
 
 /-- Once a transmission is recorded, no subsequent player or scheduler choice
 can erase its phase or authorship from the settlement readout. -/
-theorem trafficAudit_reaches (initial : FinDist app.State) (horizon : Nat)
+theorem trafficAudit_reaches (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler)
     {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last) :
@@ -218,7 +218,7 @@ theorem trafficAudit_reaches (initial : FinDist app.State) (horizon : Nat)
       change _ ++ _ <+: _ at ih
       exact (List.prefix_append ..).trans ih
 
-theorem trafficViolation_reaches (initial : FinDist app.State) (horizon : Nat)
+theorem trafficViolation_reaches (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (permitted : app.TrafficRecord → Bool) (who : Principal)
     {first last : (app.protocol initial horizon scheduler).History} {fuel : Nat}
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last)
@@ -232,27 +232,26 @@ theorem trafficViolation_reaches (initial : FinDist app.State) (horizon : Nat)
 /-- A complete audit detects recorded misconduct with probability one under
 every later behavioral or randomized continuation. Collecting a monetary
 penalty still requires the settlement service to honor this verdict. -/
-theorem trafficViolation_continuation (initial : FinDist app.State) (horizon : Nat)
+theorem trafficViolation_continuation (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (permitted : app.TrafficRecord → Bool) (who : Principal)
     (chooser : (app.protocol initial horizon scheduler).RandomizedChooser)
     (fuel : Nat) (history : (app.protocol initial horizon scheduler).History)
     (detected : app.trafficViolation permitted who
       (app.trafficAudit initial horizon scheduler history.trace) = true) :
-    ((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history).probOf
-      {final | app.trafficViolation permitted who
-        (app.trafficAudit initial horizon scheduler final.trace) = true} = 1 := by
+    (((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history).toOuterMeasure {final | app.trafficViolation permitted who
+        (app.trafficAudit initial horizon scheduler final.trace) = true}).toReal = 1 := by
   classical
-  rw [← FinDist.expect_indicator_eq_probOf]
+  rw [← expect_indicator]
   calc
-    _ = ((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history).expect
+    _ = expect ((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history)
         (fun _ => (1 : ℝ)) := by
-      apply FinDist.expect_congr
+      apply expect_congr_on_support
       intro final supported
       have retained := app.trafficViolation_reaches initial horizon scheduler permitted who
         ((app.protocol initial horizon scheduler).runRandomizedFor_reachesWithin chooser
           fuel history final supported) detected
       simp [retained]
-    _ = 1 := FinDist.expect_const _ _
+    _ = 1 := expect_constant _ _
 
 /-- A partial audit cannot falsely accuse a player if every reported record
 is genuine and this player's actual transmissions conform. Missing records
@@ -269,13 +268,13 @@ theorem trafficViolation_partial_sound (permitted : app.TrafficRecord → Bool)
 /-- Recording any particular attributable violation suffices for detection.
 The audit may sample correlated subsets and need not observe every message. -/
 theorem trafficViolation_sampling_lower (permitted : app.TrafficRecord → Bool)
-    (who : Principal) (observations : FinDist (List app.TrafficRecord))
+    (who : Principal) (observations : PMF (List app.TrafficRecord))
     (record : app.TrafficRecord) (owner : record.input.broadcaster = who)
     (forbidden : permitted record = false) :
-    observations.probOf {observed | record ∈ observed} ≤
-      observations.probOf {observed | app.trafficViolation permitted who observed = true} := by
+    (observations.toOuterMeasure {observed | record ∈ observed}).toReal ≤
+      (observations.toOuterMeasure {observed | app.trafficViolation permitted who observed = true}).toReal := by
   classical
-  rw [← FinDist.expect_indicator_eq_probOf, ← FinDist.expect_indicator_eq_probOf]
+  rw [← expect_indicator, ← expect_indicator]
   apply FinDist.expect_mono
   intro observed _
   by_cases included : record ∈ observed

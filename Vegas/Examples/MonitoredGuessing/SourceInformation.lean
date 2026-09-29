@@ -133,16 +133,16 @@ theorem source_reach_bob (profile : Profile sourceModel.behavioralSignature) (bi
   rw [show (SourcePath.drawn bit).history.trace.length = 1 by
     simp [SourcePath.history, SourcePath.trace, Trace.length]]
   rw [← FinDist.prob_map_of_injective History.state source_state_injective]
-  change ((sourceModel.runBehavioralFrom profile 1 sourceArena.initHistory).map
-    History.state).prob _ = _
+  change (((sourceModel.runBehavioralFrom profile 1 sourceArena.initHistory).map
+    History.state) _).toReal = _
   rw [source_run_states]
-  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, FinDist.pure_bind,
+  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
     initHistory, sourceKernel]
-  change (((FinDist.uniformOfFintype (α := Bool)).map initialState).map
-    (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))).prob _ = _
-  rw [FinDist.map_comp]
-  change ((FinDist.uniformOfFintype (α := Bool)).map
-    (fun bit => (SourcePath.drawn bit).state)).prob (SourcePath.drawn bit).state = _
+  change ((((PMF.uniformOfFintype (α := Bool)).map initialState).map
+    (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))) _).toReal = _
+  rw [PMF.map_comp]
+  change (((PMF.uniformOfFintype (α := Bool)).map
+    (fun bit => (SourcePath.drawn bit).state)) (SourcePath.drawn bit)).toReal.state = _
   have injective : Function.Injective (fun bit => (SourcePath.drawn bit).state) := by
     intro first second same
     have decoded := congrArg decodeSource same
@@ -162,16 +162,16 @@ theorem source_mass_bob (profile : Profile sourceModel.behavioralSignature) :
 theorem source_consistent_bob (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain) :
     assessment.belief bob sourceBobSite =
-      (FinDist.uniformOfFintype (α := Bool)).map sourceBobHistory := by
+      (PMF.uniformOfFintype (α := Bool)).map sourceBobHistory := by
   classical
   obtain ⟨sequence, approximates, converges⟩ := consistent
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
   obtain ⟨bit, rfl⟩ := sourceBobHistories.surjective history
-  change (assessment.belief bob sourceBobSite).prob (sourceBobHistory bit) =
-    ((FinDist.uniformOfFintype (α := Bool)).map sourceBobHistory).prob (sourceBobHistory bit)
+  change ((assessment.belief bob sourceBobSite) (sourceBobHistory bit)).toReal =
+    (((PMF.uniformOfFintype (α := Bool)).map sourceBobHistory) (sourceBobHistory bit)).toReal
   have each (n : Nat) :
-      ((sequence n).belief bob sourceBobSite).prob (sourceBobHistory bit) = 1 / 2 := by
+      (((sequence n).belief bob sourceBobSite) (sourceBobHistory bit)).toReal = 1 / 2 := by
     rw [(approximates n).2 bob sourceBobSite (by rw [source_mass_bob]; norm_num)]
     change sourceModel.historyReachProbability (sequence n).strategy
       (SourcePath.drawn bit).history / sourceModel.informationMass

@@ -149,10 +149,10 @@ theorem RepairedPrefix.freshSlot
   reactiveFreshSlot_congr _ _ fun serial => invariant.fresh (.prepared serial)
 
 private theorem pure_eq {A : Type} {first second : A}
-    (equal : FinDist.pure first = FinDist.pure second) : first = second := by
-  have member : first ∈ (FinDist.pure first).support := FinDist.mem_support_pure.mpr rfl
+    (equal : PMF.pure first = PMF.pure second) : first = second := by
+  have member : first ∈ (PMF.pure first).support := (PMF.mem_support_pure_iff _ _).mpr rfl
   rw [equal] at member
-  exact FinDist.mem_support_pure.mp member
+  exact (PMF.mem_support_pure_iff _ _).mp member
 
 /-- The actual compiled commitment block extends this invariant. The only
 extra premises are its entry service conditions and the static action decoder;
@@ -251,13 +251,13 @@ theorem RepairedPrefix.commit
   have block (side : Bool) :
       runtime.interactionStep leaks players scheduler (.includeLatest event owner)
         ((native side).respond app owner (runtime.reactiveBinding leaks owner event payload
-          (if side then repairedBinding else binding) serial)) = FinDist.pure (final side) := by
+          (if side then repairedBinding else binding) serial)) = PMF.pure (final side) := by
     have member := supported side
     rw [runtime.reactiveBinding_reserved_selection leaks (native side) owner event payload _ serial
       (serialsBoth side) players scheduler] at member ⊢
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-      FinDist.mem_support_pure] at member ⊢
-    exact congrArg FinDist.pure member.symm
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff _ _] at member ⊢
+    exact congrArg PMF.pure member.symm
   have joint := runtime.reactiveBinding_reserved_hidden_congr leaks (native false) (native true)
     owner invariant.network invariant.receipts invariant.publicView invariant.environmentRecall
     invariant.playerView invariant.recall invariant.fresh event payload outputEq codeEq node
@@ -267,7 +267,7 @@ theorem RepairedPrefix.commit
   have blockTrue := block true
   simp only [Bool.false_eq_true, ↓reduceIte] at blockFalse
   simp only [↓reduceIte] at blockTrue
-  rw [blockFalse, blockTrue, FinDist.map_pure, FinDist.map_pure] at joint
+  rw [blockFalse, blockTrue, PMF.pure_map, PMF.pure_map] at joint
   have same :
       ((final false).network, (final false).receipts, (final false).application.publicView,
         (final false).environmentRecall,
@@ -296,7 +296,7 @@ theorem RepairedPrefix.commit
         (readyBoth side) (timelyBoth side) (freshBoth side) (vacantBoth side) (unusedBoth side)
         (serialsBoth side) players scheduler
       dsimp only at law
-      rw [block side, FinDist.map_pure] at law
+      rw [block side, PMF.pure_map] at law
       have equal := pure_eq law
       exact congrArg (fun result => result.1.inputs) equal
     exact (retained false).trans (invariant.inputs.trans (retained true).symm)

@@ -41,12 +41,12 @@ theorem roster_audited_source_sequential_equilibrium_preserved
     [∀ who (site : (setup.informationModel admission).InformationSite who),
       Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (sample : List (EnvelopeEvidence setup leaks) → FinDist (List (EnvelopeEvidence setup leaks)))
+    (sample : List (EnvelopeEvidence setup leaks) → PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       permittedRosterEnvelope setup leaks record = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
       (fun who site => source.continuationContext site
@@ -88,7 +88,7 @@ theorem roster_audited_source_sequential_equilibrium_preserved
     (sourceReadout_normalization setup leaks) retained retainedSE
   have jointLaw := congrArg (fun law => law.map (fun output =>
     (output, fun who => output.elim 0 (fun state => utility state who)))) sourceLaw
-  simp only [FinDist.map_comp, Function.comp_def] at jointLaw
+  simp only [PMF.map_comp, Function.comp_def] at jointLaw
   exact ⟨target, targetSE, targetLaw.trans jointLaw⟩
 
 end Vegas

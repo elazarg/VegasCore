@@ -88,9 +88,9 @@ theorem publicGuess_environment (execution : app.Execution)
   have reached : Prefix.environmentResult execution (.application command) ∈
       (execution.environmentStep app (.application command)).support := by
     rw [Prefix.environmentResult_law]
-    exact FinDist.mem_support_pure.mpr rfl
-  obtain ⟨next, nextMem, nextEq⟩ := FinDist.support_map .. ▸ reached
-  obtain ⟨state, stateMem, stateEq⟩ := FinDist.support_map .. ▸ nextMem
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  obtain ⟨next, nextMem, nextEq⟩ := PMF.support_map .. ▸ reached
+  obtain ⟨state, stateMem, stateEq⟩ := PMF.support_map .. ▸ nextMem
   subst next
   rw [← nextEq]
   apply publicGuess_congr
@@ -109,7 +109,7 @@ theorem publicGuess_include_uncertified (execution : app.Execution)
   have exactState := Prefix.environmentResult_eq execution (.include id)
     { execution.includePending app id with environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .include id⟩] } (by
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure])
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map])
   rw [exactState]
   refine publicGuess_append_uncertified _ execution observer observer ?_ message ?_ absent
   · change (execution.includePending app id).application.accepted aliceBindingRef.field = _

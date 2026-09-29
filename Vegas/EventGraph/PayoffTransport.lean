@@ -111,7 +111,7 @@ theorem configWithPayoffs_step (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     (config.step event ready action).map (graph.configWithPayoffs payoffs) =
       (graph.configWithPayoffs payoffs config).step event ready action := by
-  simp only [Config.step, FinDist.map_comp, Function.comp_def, configWithPayoffs_complete,
+  simp only [Config.step, PMF.map_comp, Function.comp_def, configWithPayoffs_complete,
     configWithPayoffs_store]
   rfl
 
@@ -132,18 +132,18 @@ theorem runPlan_withPayoffs (plan : graph.EventPlan) (fuel : Nat) (config : grap
       (graph.configWithPayoffs payoffs config)) =
       (graph.runPlan plan fuel config).map (graph.configWithPayoffs payoffs) := by
   induction fuel generalizing config with
-  | zero => simp only [runPlan, FinDist.map_pure]
+  | zero => simp only [runPlan, PMF.pure_map]
   | succ fuel ih =>
       simp only [runPlan]
       by_cases terminal : config.cut.Terminal
       · simp only [show (graph.configWithPayoffs payoffs config).cut = config.cut from rfl,
-          terminal, dite_true, FinDist.map_pure]
+          terminal, dite_true, PMF.pure_map]
       · simp only [show (graph.configWithPayoffs payoffs config).cut = config.cut from rfl,
-          terminal, dite_false, planWithPayoffs_config, FinDist.map_bind]
-        apply congrArg (FinDist.bind (plan config _))
+          terminal, dite_false, planWithPayoffs_config, PMF.map_bind]
+        apply congrArg (PMF.bind (plan config _))
         funext choice
-        rw [← configWithPayoffs_step, FinDist.bind_map]
-        apply congrArg (FinDist.bind (config.step choice.1.1 choice.1.2 choice.2))
+        rw [← configWithPayoffs_step, PMF.bind_map]
+        apply congrArg (PMF.bind (config.step choice.1.1 choice.1.2 choice.2))
         funext next
         exact ih next
 

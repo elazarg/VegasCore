@@ -52,16 +52,16 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨rfl, rfl, rfl, rfl, published⟩
   | cons actor rest ih =>
-      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at step
+      obtain ⟨middle, step, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at step
       change middle ∈ ((initial.environmentStep app (.activate actor)).bind
         (app.invoke players actor)).support at step
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at step
-      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ step)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ step
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at step
+      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app actor sample
       have transport : response ∈ (app.replayPolicy (activated.recall actor)
           (activated.observe app actor)).support := by

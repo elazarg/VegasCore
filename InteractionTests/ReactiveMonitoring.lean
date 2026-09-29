@@ -25,13 +25,13 @@ private abbrev app : ReactiveApplication (Fin 3) where
   packet := fun _ _ _ => id
   submit state _ _ := state
   handle ready _ := if ready then some ready else none
-  environment _ _ := FinDist.pure true
+  environment _ _ := PMF.pure true
   observePlayer ready _ := ready
   observePublic := id
   observePending who pending := if who = 2 then
-    FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-      (FinDist.pure (pending.map Message.id).toFinset) (FinDist.pure ∅)
-    else FinDist.pure (pending.map Message.id).toFinset
+    mix (1 / 2) (by norm_num) (by norm_num)
+      (PMF.pure (pending.map Message.id).toFinset) (PMF.pure ∅)
+    else PMF.pure (pending.map Message.id).toFinset
 
 private def sent : app.Execution :=
   (ReactiveApplication.Execution.initial app false).respond app 0 ⟨some (.submit 7)⟩
@@ -39,12 +39,12 @@ private def sent : app.Execution :=
 private def message : Message (Fin 3) Nat := ⟨(0, 0), 7⟩
 
 private theorem sampling_half :
-    (app.observePending 2 sent.network.pending).probOf {selected | (0, 0) ∈ selected} =
+    ((app.observePending 2 sent.network.pending).toOuterMeasure {selected | (0, 0) ∈ selected}).toReal =
       (1 / 2 : ℝ) := by
-  change (FinDist.mix (1 / 2) (by norm_num) (by norm_num)
-    (FinDist.pure {(0, 0)}) (FinDist.pure ∅)).probOf _ = _
-  rw [← FinDist.expect_indicator_eq_probOf, FinDist.expect_mix,
-    FinDist.expect_pure, FinDist.expect_pure]
+  change ((mix (1 / 2) (by norm_num) (by norm_num)
+    (PMF.pure {(0, 0)}) (PMF.pure ∅)).toOuterMeasure _).toReal = _
+  rw [← expect_indicator, FinDist.expect_mix,
+    expect_pure, expect_pure]
   norm_num
 
 /-- All future policies and commands, including a later change to acceptance,
@@ -52,9 +52,8 @@ leave at least one-half probability of the original rejection receipt. -/
 theorem half_detection_after_arbitrary_continuation
     (players : Fin 3 → app.Policy) (reports : players 2 = app.reportFirstUnpublished)
     (scheduler : app.Scheduler) (count : Nat) :
-    (1 / 2 : ℝ) ≤ ((app.reportInclusion players 2 sent).bind
-      (app.runRounds scheduler players count)).probOf
-        {final | ((0, 0), false) ∈ final.receipts} := by
+    (1 / 2 : ℝ) ≤ (((app.reportInclusion players 2 sent).bind
+      (app.runRounds scheduler players count)).toOuterMeasure {final | ((0, 0), false) ∈ final.receipts}).toReal := by
   rw [← sampling_half]
   apply app.sampling_rejected_receipt_lower players 2 sent (0, 0) message rfl (by decide)
     rfl (by simp [sent, ReactiveApplication.Execution.respond,
@@ -72,7 +71,7 @@ theorem half_detection_after_arbitrary_continuation
 
 /-- The ordinary recipient still learns the pending foreign packet. -/
 theorem ordinary_pending_observation :
-    app.observePending 1 sent.network.pending = FinDist.pure {(0, 0)} ∧
+    app.observePending 1 sent.network.pending = PMF.pure {(0, 0)} ∧
       (sent.network.learn 1 {(0, 0)}).leaked 1 = [message] := ⟨rfl, rfl⟩
 
 /-- The payload changes from rejected to accepted without changing its bytes.

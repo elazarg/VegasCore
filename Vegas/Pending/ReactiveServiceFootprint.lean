@@ -48,7 +48,7 @@ private theorem maintenance_unfinished (runtime : EventGraphRuntime graph)
     query ∉ after.config.cut.completed := by
   cases command with
   | grant event | advanceClock =>
-      cases FinDist.mem_support_pure.mp moved
+      cases (PMF.mem_support_pure_iff _ _).mp moved
       exact unfinished
   | executeSample event =>
       obtain ⟨_, effect⟩ :=
@@ -90,18 +90,18 @@ theorem reactive_instruction_unfinished (runtime : EventGraphRuntime graph)
   cases instruction with
   | wire => cases untouched
   | player who =>
-      cases FinDist.mem_support_pure.mp selected
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ moved
-      obtain ⟨_, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      cases (PMF.mem_support_pure_iff _ _).mp selected
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
+      obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact unfinished
   | includeLatest event who =>
-      cases FinDist.mem_support_pure.mp selected
+      cases (PMF.mem_support_pure_iff _ _).mp selected
       have different : event ≠ query := by simpa only [ServiceInstruction.targets,
         beq_eq_false_iff_ne] using untouched
       unfold reactiveLatest at moved
       split at moved
-      · simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at moved
-        cases FinDist.mem_support_pure.mp moved
+      · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at moved
+        cases (PMF.mem_support_pure_iff _ _).mp moved
         exact unfinished
       · rename_i message found
         have good := List.find?_some found
@@ -110,8 +110,8 @@ theorem reactive_instruction_unfinished (runtime : EventGraphRuntime graph)
         have pending := List.mem_reverse.mp (List.mem_of_find?_eq_some found)
         have lookup := audit.lookup_of_mem (runtime.reactiveApplication leaks)
           ReactivePlayerView.publicView before message pending
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-          FinDist.mem_support_pure] at moved
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+          PMF.mem_support_pure_iff _ _] at moved
         subst after
         simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
           lookup]
@@ -124,9 +124,9 @@ theorem reactive_instruction_unfinished (runtime : EventGraphRuntime graph)
               (by rw [addressed]; exact fun same => different (Option.some.inj same))
               unfinished handled
   | grant event | tick | sample event | expire event =>
-      cases FinDist.mem_support_pure.mp selected
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ moved
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      cases (PMF.mem_support_pure_iff _ _).mp selected
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       apply maintenance_unfinished runtime _ state _ query _ unfinished changed
       all_goals simp_all [ServiceInstruction.targets]
 

@@ -29,7 +29,7 @@ def rosterDisclosureTranscript
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (owner : Player) (event : (graph setup).EventId)
     (candidate : Handle (graph setup)) (raw : Raw L)
-    (roster : List Player) (timing : FinDist (Fin (roster.count owner)))
+    (roster : List Player) (timing : PMF (Fin (roster.count owner)))
     (network : (runtime setup).NetworkPolicy leaks) (focal : Player)
     (execution : (application setup leaks).Execution) (disclose : Bool) :=
   let app := application setup leaks
@@ -58,7 +58,7 @@ theorem roster_successor_observation_kernel
       ((graph setup).nodes event) = .resolve owner payload (refs.get binding) [])
     (node : nodeView (graph setup) event =
       .resolve owner payload (refs.get binding) [] outputEq codeEq)
-    (prior : FinDist Seed) (initial : Seed → State L setup.context)
+    (prior : PMF Seed) (initial : Seed → State L setup.context)
     (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (checkpoint : ∀ seed ∈ prior.support,
@@ -77,17 +77,17 @@ theorem roster_successor_observation_kernel
     (clean : ∀ seed ∈ prior.support, (execution seed).network.Satisfies fun message =>
       message.id ∈ (execution seed).network.ledger.map Message.id)
     (granted : ∀ seed ∈ prior.support, (execution seed).application.serviceGrant = some event)
-    (roster : List Player) (timing : FinDist (Fin (roster.count owner)))
+    (roster : List Player) (timing : PMF (Fin (roster.count owner)))
     (network : (runtime setup).NetworkPolicy leaks) (focal : Player)
-    (noise : DecisionView focal Γ → FinDist ((application setup leaks).MessageReadout ×
+    (noise : DecisionView focal Γ → PMF ((application setup leaks).MessageReadout ×
       List (application setup leaks).PlayerEntry))
     (factor : prior.map (fun seed => (source seed,
         ((application setup leaks).messageView (execution seed), (execution seed).recall focal))) =
       (prior.map source).bind fun config => (noise (config.view focal)).map fun extra =>
         (config, extra))
-    (choice : Config Player L Γ → FinDist Bool) :
+    (choice : Config Player L Γ → PMF Bool) :
     ∃ nextNoise : DecisionView focal ((published, .publication payload) :: Γ) →
-        FinDist ((application setup leaks).MessageReadout ×
+        PMF ((application setup leaks).MessageReadout ×
           List (application setup leaks).PlayerEntry),
       (prior.bind fun seed => (choice (source seed)).bind fun disclose =>
         (rosterDisclosureTranscript setup leaks owner event (candidate seed)
@@ -96,7 +96,7 @@ theorem roster_successor_observation_kernel
       ((prior.map source).bind fun config =>
         (choice config).map (revealSuccessor published binding config)).bind fun config =>
           (nextNoise (config.view focal)).map fun extra => (config, extra) := by
-  apply FinDist.exists_updated_observation_kernel_of_readout prior source
+  apply PMF.exists_updated_observation_kernel_of_readout prior source
     (fun seed => ((application setup leaks).messageView (execution seed),
       (execution seed).recall focal)) (fun config => config.view focal) noise factor choice
         (revealSuccessor published binding) (fun config => config.view focal)
@@ -151,6 +151,6 @@ theorem roster_successor_observation_kernel
     | false => exact fixed none rfl
     | true =>
         change timing.bind _ = timing.bind _
-        exact FinDist.bind_congr fun slot _ => fixed (some slot) rfl
+        exact bind_congr_on_support _ fun slot _ => fixed (some slot) rfl
 
 end Vegas

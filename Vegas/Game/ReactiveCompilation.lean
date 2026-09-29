@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player]
 
 def reactiveInitial (setup : Setup (Player := Player) (L := L))
     (mode : Vegas.EventGraph.ExecutionMode) :
-    FinDist (EventGraphRuntime.State (setup.eventGraph.withMode mode)) :=
+    PMF (EventGraphRuntime.State (setup.eventGraph.withMode mode)) :=
   setup.initialLaw.map fun initial =>
     EventGraphRuntime.State.initial (setup.eventInputs initial)
 

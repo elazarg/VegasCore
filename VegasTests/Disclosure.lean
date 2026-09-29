@@ -44,10 +44,10 @@ private def refusalPays : SourceProgram Unit simpleExpr [] ∅ :=
 
 /-- Bind a value and then refuse to open it. -/
 private def withholdOpen : BehavioralPolicy (who := ()) openPays :=
-  (fun _ _ => FinDist.pure (.success false), fun _ _ => FinDist.pure false, PUnit.unit)
+  (fun _ _ => PMF.pure (.success false), fun _ _ => PMF.pure false, PUnit.unit)
 
 private def withholdRefusal : BehavioralPolicy (who := ()) refusalPays :=
-  (fun _ _ => FinDist.pure (.success false), fun _ _ => FinDist.pure false, PUnit.unit)
+  (fun _ _ => PMF.pure (.success false), fun _ _ => PMF.pure false, PUnit.unit)
 
 /-- Refusing to open is outside the disclosing class. -/
 example : ¬ Disclosing openPays withholdOpen := by
@@ -61,38 +61,38 @@ example : Disclosing openPays (BehavioralPolicy.forceDisclose openPays withholdO
   disclosing_forceDisclose openPays withholdOpen
 
 private def payoffLaw {p : SourceProgram Unit simpleExpr [] ∅}
-    (policy : BehavioralPolicy (who := ()) p) : FinDist (List (Unit × Int)) :=
+    (policy : BehavioralPolicy (who := ()) p) : PMF (List (Unit × Int)) :=
   (p.run (fun _ => policy) (Env.empty (CellVal simpleExpr))).map p.evaluatePayoffs
 
 /-- Withholding where opening pays is worth nothing. -/
-example : payoffLaw withholdOpen = FinDist.pure [((), 0)] := by
+example : payoffLaw withholdOpen = PMF.pure [((), 0)] := by
   simp only [payoffLaw, SourceProgram.run, openPays, withholdOpen, SourceProgram.runWith,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 /-- Forcing the owner to open collects the payoff it was refusing. -/
 example :
-    payoffLaw (BehavioralPolicy.forceDisclose openPays withholdOpen) = FinDist.pure [((), 1)] := by
+    payoffLaw (BehavioralPolicy.forceDisclose openPays withholdOpen) = PMF.pure [((), 1)] := by
   simp only [payoffLaw, SourceProgram.run, openPays, withholdOpen,
     BehavioralPolicy.forceDisclose, SourceProgram.runWith, SourceProgram.commitKernel,
-    SourceProgram.revealKernel, SourceProgram.afterCommit, FinDist.pure_bind, FinDist.map_pure]
+    SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind, PMF.pure_map]
   rfl
 
 /-- Where refusing is what pays, the same forcing destroys the payoff, so the
 premise cannot hold there. -/
-example : payoffLaw withholdRefusal = FinDist.pure [((), 1)] := by
+example : payoffLaw withholdRefusal = PMF.pure [((), 1)] := by
   simp only [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal, SourceProgram.runWith,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    FinDist.pure_bind, FinDist.map_pure]
+    PMF.pure_bind, PMF.pure_map]
   rfl
 
 example :
     payoffLaw (BehavioralPolicy.forceDisclose refusalPays withholdRefusal) =
-      FinDist.pure [((), 0)] := by
+      PMF.pure [((), 0)] := by
   simp only [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal,
     BehavioralPolicy.forceDisclose, SourceProgram.runWith, SourceProgram.commitKernel,
-    SourceProgram.revealKernel, SourceProgram.afterCommit, FinDist.pure_bind, FinDist.map_pure]
+    SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind, PMF.pure_map]
   rfl
 
 /-- A published value pays; a failure does not. -/
@@ -123,7 +123,7 @@ example :
     unfold payOnSuccess
     split <;> norm_num
   refine ⟨fun _ config => ?_, trivial⟩
-  simp only [runFrom, runWith, FinDist.expect_pure, publishedPays, revealSuccessor,
+  simp only [runFrom, runWith, expect_pure, publishedPays, revealSuccessor,
     Env.cons_get_here, Bool.false_eq_true, ite_false, ite_self]
   exact nonneg _
 

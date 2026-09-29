@@ -190,7 +190,7 @@ variable (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
   (depth fuel : Nat) (sameDepth : InformationSite.CommonDepth M site depth)
   (positive : 0 < M.informationMass assessment.strategy who site)
   (bayes : BehavioralAssessment.IsBayesConsistentAt M assessment who site
-    (recall.antichain who site) positive)
+    (recall.decisionInformationAntichain who site) positive)
   (payoff : E.History → ℝ)
 
 include recall sameDepth positive bayes in
@@ -199,18 +199,18 @@ initialized implementation. Its ex ante gain is exactly the probability of
 reaching the selected site times its conditional continuation gain. -/
 theorem switched_root_gain_eq_mass_mul_context_gain
     (alternative : M.BehavioralPolicy who) :
-    (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+    expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy who ((assessment.strategy who).switchAt M alternative site))
-        (depth + fuel)).expect payoff -
-      (M.runBehavioral assessment.strategy (depth + fuel)).expect payoff =
+        (depth + fuel)) payoff -
+      expect (M.runBehavioral assessment.strategy (depth + fuel)) payoff =
     M.informationMass assessment.strategy who site *
       ((assessment.continuationContext site payoff fuel).value alternative -
         (assessment.continuationContext site payoff fuel).value (assessment.strategy who)) := by
   let switched := (assessment.strategy who).switchAt M alternative site
   let updated := Profile.update (sig := M.behavioralSignature) assessment.strategy who switched
   let gain := fun history : E.History =>
-    (M.runBehavioralFrom updated fuel history).expect payoff -
-      (M.runBehavioralFrom assessment.strategy fuel history).expect payoff
+    expect (M.runBehavioralFrom updated fuel history) payoff -
+      expect (M.runBehavioralFrom assessment.strategy fuel history) payoff
   have noGain (history : E.History)
       (supported : history ∈ (M.runBehavioral assessment.strategy depth).support)
       (outside : M.infoOf who history.trace ≠ site.1) : gain history = 0 := by
@@ -228,8 +228,8 @@ theorem switched_root_gain_eq_mass_mul_context_gain
   obtain ⟨ownReach, shared⟩ :=
     M.commonPlayerReachAt_of_decisionRecall recall assessment.strategy who site
   have first :
-      (M.runBehavioral updated (depth + fuel)).expect payoff -
-          (M.runBehavioral assessment.strategy (depth + fuel)).expect payoff =
+      expect (M.runBehavioral updated (depth + fuel)) payoff -
+          expect (M.runBehavioral assessment.strategy (depth + fuel)) payoff =
         ownReach * M.counterfactualRegret assessment.strategy who site payoff fuel alternative := by
     rw [M.rootGain_eq_prefixExpectation updated assessment.strategy payoff depth fuel
       (M.run_switchAt_prefix recall assessment.strategy who site alternative depth sameDepth)]
@@ -241,10 +241,10 @@ theorem switched_root_gain_eq_mass_mul_context_gain
     intro history _
     dsimp only [gain]
     rw [M.run_switchAt_from_site recall assessment.strategy who site alternative history fuel]
-  let antichain := recall.antichain who site
+  let antichain := recall.decisionInformationAntichain who site
   have belief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site antichain positive := by
-    apply FinDist.ext_of_prob
+    apply pmf_ext_toReal
     intro history
     rw [M.bayesBelief_prob]
     exact bayes history
@@ -263,9 +263,9 @@ include recall sameDepth positive bayes in
 whole-policy sequential rationality at every positive-mass Bayes site. -/
 theorem sequentiallyRationalAt_of_root_optimal
     (optimal : ∀ alternative : M.BehavioralPolicy who,
-      (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy who alternative) (depth + fuel)).expect payoff ≤
-        (M.runBehavioral assessment.strategy (depth + fuel)).expect payoff) :
+      expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+        assessment.strategy who alternative) (depth + fuel)) payoff ≤
+        expect (M.runBehavioral assessment.strategy (depth + fuel)) payoff) :
     assessment.IsSequentiallyRationalAt site (assessment.continuationContext site payoff fuel) := by
   intro alternative _
   have bound := optimal ((assessment.strategy who).switchAt M alternative site)

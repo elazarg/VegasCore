@@ -62,9 +62,9 @@ private def completedSecond : pairGraph.Config :=
 
 /-- A real semantic step accepts the second source commitment first. -/
 private theorem step_second :
-    pairConfig.step second second_ready (.success true) = FinDist.pure completedSecond := by
-  change (FinDist.pure (PublicationResult.success true)).map _ = _
-  rw [FinDist.map_pure]
+    pairConfig.step second second_ready (.success true) = PMF.pure completedSecond := by
+  change (PMF.pure (PublicationResult.success true)).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 example : completedSecond.history.map Vegas.EventGraph.Completion.event = [second] := rfl
@@ -74,7 +74,7 @@ example : completedSecond.cut.Ready first :=
 
 example : completedSecond ∈ (pairConfig.step second second_ready (.success true)).support := by
   rw [step_second]
-  exact FinDist.mem_support_pure.mpr rfl
+  exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 example : eventCount pairSource = 4 := rfl
 
@@ -107,33 +107,33 @@ example : decodeObservation? (Γ := [(0, CellTy.commitment false simpleExpr.bool
 
 private def pairProfile : SourceProgram.BehavioralProfile pairSource :=
   fun _ =>
-    (fun _ _ => FinDist.pure (.success false),
-     (fun _ _ => FinDist.pure (.success true),
-      (fun _ _ => FinDist.pure true,
-       (fun _ _ => FinDist.pure true, PUnit.unit))))
+    (fun _ _ => PMF.pure (.success false),
+     (fun _ _ => PMF.pure (.success true),
+      (fun _ _ => PMF.pure true,
+       (fun _ _ => PMF.pure true, PUnit.unit))))
 
 private def orderSensitiveFirst : pairGraph.BehavioralPolicy false :=
   fun event actor observation =>
     if same : event = first then by
       subst event
-      exact FinDist.pure (.success (decide (second ∈ observation.completionOrder)))
+      exact PMF.pure (.success (decide (second ∈ observation.completionOrder)))
     else compileEventProfile pairSource pairProfile false event actor observation
 
 /-- The arbitrary policy class really can use public completion order. -/
 example : orderSensitiveFirst first rfl (pairGraph.playerObserve false pairConfig) =
-    FinDist.pure (.success false) := by
+    PMF.pure (.success false) := by
   simp [orderSensitiveFirst, Vegas.EventGraph.playerObserve, pairConfig,
     Vegas.EventGraph.Config.initial]
 
 example : orderSensitiveFirst first rfl (pairGraph.playerObserve false completedSecond) =
-    FinDist.pure (.success true) := by
+    PMF.pure (.success true) := by
   simp [orderSensitiveFirst, Vegas.EventGraph.playerObserve, completedSecond,
     Vegas.EventGraph.Config.complete, pairConfig, Vegas.EventGraph.Config.initial]
 
 /-- The actual order-sensitive deviation, not just a compiled source policy,
 is covered by the asynchronous graph mixture theorem. -/
-example (inputs : FinDist pairGraph.Inputs) (scheduler : pairGraph.PublicScheduler) :
-    ∃ mixture : FinDist (pairGraph.BehavioralPolicy false),
+example (inputs : PMF pairGraph.Inputs) (scheduler : pairGraph.PublicScheduler) :
+    ∃ mixture : PMF (pairGraph.BehavioralPolicy false),
       (inputs.bind fun initial => pairGraph.runPolicies scheduler
         (GameTheory.Profile.update (sig := pairGraph.gameSignature)
           (compileEventProfile pairSource pairProfile)
@@ -153,7 +153,7 @@ example (inputs : FinDist pairGraph.Inputs) (scheduler : pairGraph.PublicSchedul
 private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
   context := []
   namesNodup := by decide
-  initialLaw := FinDist.pure (Env.empty (CellVal simpleExpr))
+  initialLaw := PMF.pure (Env.empty (CellVal simpleExpr))
   obligations := ∅
   program := pairSource
   accounts := rfl
@@ -161,7 +161,7 @@ private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) w
 /-- The order-sensitive asynchronous deviation has a source-policy mixture
 for the program whose independent bindings admit both completion orders. -/
 example (scheduler : pairSetup.eventGraph.PublicScheduler) :
-    ∃ mixture : FinDist (SourceProgram.BehavioralPolicy false pairSource),
+    ∃ mixture : PMF (SourceProgram.BehavioralPolicy false pairSource),
       (pairSetup.initialLaw.bind fun initial =>
         (pairSetup.eventGraph.terminalOutcomes scheduler
           (GameTheory.Profile.update (sig := pairSetup.eventGraph.gameSignature)
@@ -178,7 +178,7 @@ example (scheduler : pairSetup.eventGraph.PublicScheduler) :
 for the foreign binding merely to reconstruct its source observation. -/
 example : compileEventProfile pairSource pairProfile true second rfl
       (pairGraph.playerObserve true pairConfig) =
-    FinDist.pure (PublicationResult.success true) := by
+    PMF.pure (PublicationResult.success true) := by
   rfl
 
 /-- Publicly completing the other hidden commitment first does not alter the
@@ -265,7 +265,7 @@ private def rejectingBound : rejectingGraph.Config :=
 /-- An unsatisfiable guard compiles, and its reveal computes failure. It is not
 silently replaced by an unrestricted commitment or a valid in-domain value. -/
 example : (rejectingGraph.nodes rejectingReveal).eval? true rejectingBound.store =
-    some (FinDist.pure (PublicationResult.failure : PublicationResult Bool)) := rfl
+    some (PMF.pure (PublicationResult.failure : PublicationResult Bool)) := rfl
 
 private def rejected : rejectingGraph.Config :=
   rejectingBound.complete rejectingReveal (by decide) true PublicationResult.failure

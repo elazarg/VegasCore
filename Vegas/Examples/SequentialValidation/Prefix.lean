@@ -31,22 +31,22 @@ def nativeInclude (execution : nativeApp.Execution) (id : MessageId Bool) :
 
 theorem native_activate_law (execution : nativeApp.Execution) (who : Bool) :
     execution.environmentStep nativeApp (.activate who) =
-      FinDist.pure (nativeActivate execution who) := by
+      PMF.pure (nativeActivate execution who) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    nativeLeaks, FinDist.map_pure, MessageNetwork.learn_empty]
+    nativeLeaks, PMF.pure_map, MessageNetwork.learn_empty]
   rfl
 
 theorem native_grant_law (execution : nativeApp.Execution) (event : nativeGraph.EventId) :
     execution.environmentStep nativeApp (.application (.grant event)) =
-      FinDist.pure (nativeGrant execution event) := by
+      PMF.pure (nativeGrant execution event) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, FinDist.map_pure]
+    environmentStep, PMF.pure_map]
   rfl
 
 theorem native_include_law (execution : nativeApp.Execution) (id : MessageId Bool) :
     execution.environmentStep nativeApp (.include id) =
-      FinDist.pure (nativeInclude execution id) := by
-  rw [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+      PMF.pure (nativeInclude execution id) := by
+  rw [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
 def nativeWindow (execution : nativeApp.Execution) (event : nativeGraph.EventId)

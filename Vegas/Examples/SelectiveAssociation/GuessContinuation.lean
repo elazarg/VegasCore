@@ -17,7 +17,7 @@ theorem native_carol_continuation_bound (players : Player → nativeApp.Policy)
     (valid : execution.application.Invariant nativeInputs) (guess : PublicationResult Bool)
     (stored : carolBindingRef.get? execution.application.config.store = some guess)
     (aliceResult : PublicationResult Bool) :
-    (nativeApp.runRounds scheduler players rounds execution).expect
+    expect (nativeApp.runRounds scheduler players rounds execution)
         (fun final => correctness aliceResult (nativeResults final.application.config).carol) ≤
       correctness aliceResult guess := by
   apply FinDist.expect_le_of_forall

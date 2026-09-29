@@ -110,7 +110,7 @@ theorem watcher_extra_traffic
     intro same
     apply excluded
     simp only [menu, ↓reduceIte, silent, FinDist.mem_supportFinset,
-      FinDist.mem_support_pure, same]
+      PMF.mem_support_pure_iff _ _, same]
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact (nonempty rfl).elim
@@ -227,7 +227,7 @@ theorem extra_choice_traffic
               (some (execution.recall who,
                 execution.observe (application setup leaks) who)) action))
           1 native).map History.state =
-            FinDist.pure (some ⟨remaining, none,
+            PMF.pure (some ⟨remaining, none,
               execution.respond (application setup leaks) who response⟩) := by
         have transport
             (first last : (effectiveInformation setup leaks bounds watcher).InfoState who)
@@ -245,11 +245,11 @@ theorem extra_choice_traffic
         exact one
       have nextState : next.state = some ⟨remaining, none,
           execution.respond (application setup leaks) who response⟩ := by
-        have inMap : next.state ∈ (FinDist.pure (some ⟨remaining, none,
+        have inMap : next.state ∈ (PMF.pure (some ⟨remaining, none,
             execution.respond (application setup leaks) who response⟩)).support := by
-          rw [← stateLaw, FinDist.support_map]
+          rw [← stateLaw, PMF.support_map]
           exact ⟨next, supported, rfl⟩
-        exact FinDist.mem_support_pure.mp inMap
+        exact (PMF.mem_support_pure_iff _ _).mp inMap
       let original := sourceMenu.toRawHistory initial horizon scheduler history.1
       have transition : some ⟨remaining, none,
           execution.respond (application setup leaks) who response⟩ ∈
@@ -258,7 +258,7 @@ theorem extra_choice_traffic
         change _ ∈ ((application setup leaks).transition initial horizon scheduler history.1.state
           (fun _ => some response)).support
         simp only [current, ReactiveApplication.transition, Option.getD_some,
-          FinDist.mem_support_pure]
+          PMF.mem_support_pure_iff _ _]
       have audit := (application setup leaks).stateTraffic_transition initial horizon scheduler
         original (fun _ => some response) _ transition
       refine ⟨record, ?_, attributed, forbidden⟩

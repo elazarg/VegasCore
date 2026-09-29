@@ -2,7 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Protocol.BehavioralContinuation
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.StateKernel
 
 /-! # Finite private-state decisions with optional authenticated disclosure
 
@@ -37,7 +37,7 @@ variable {Secret Decision : Type} [Nonempty Decision]
   | false => false
   | true => Classical.choice inferInstance
 
-variable (prior : FinDist Secret)
+variable (prior : PMF Secret)
 
 def actor (ambient : Bool) : State Secret Decision → Option Bool
   | .sender _ => if ambient then some false else none
@@ -49,13 +49,13 @@ def terminal : State Secret Decision → Prop
   | _ => False
 
 def transition (ambient : Bool) (state : State Secret Decision) (joint : (who : Bool) → Option
-  (PlayerAction Decision who)) : FinDist (State Secret Decision) :=
+  (PlayerAction Decision who)) : PMF (State Secret Decision) :=
   match state with
   | .initial => prior.map State.sender
-  | .sender bit => FinDist.pure (.receiver bit (ambient && (joint false).getD false))
+  | .sender bit => PMF.pure (.receiver bit (ambient && (joint false).getD false))
   | .receiver bit disclosed =>
-      FinDist.pure (.done bit disclosed ((joint true).getD (fallback true)))
-  | .done bit disclosed guess => FinDist.pure (.done bit disclosed guess)
+      PMF.pure (.done bit disclosed ((joint true).getD (fallback true)))
+  | .done bit disclosed guess => PMF.pure (.done bit disclosed guess)
 
 @[reducible] def arena (ambient : Bool) : ExecutionProtocol Bool where
   State := State Secret Decision
@@ -86,13 +86,13 @@ theorem history_length (ambient : Bool) : ∀ {state} (trace : (arena (Decision 
       have earlier := history_length ambient beforeTrace
       cases before with
       | initial =>
-          obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | sender bit =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | receiver bit disclosed =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           simpa only [Trace.length, depth] using congrArg (· + 1) earlier
       | done bit disclosed guess => exact (legal.1 trivial).elim
 
@@ -181,20 +181,20 @@ def senderHistory (ambient : Bool) (bit : Secret) : (arena (Decision := Decision
   (arena (Decision := Decision) prior ambient).initHistory.extend (target := .sender bit)
     (initial_legal prior ambient) (by
     change State.sender bit ∈ (prior.map State.sender).support
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨bit, full bit, rfl⟩)
 
 def receiverHistory (ambient : Bool) (bit : Secret) (disclose : Bool) :
     (arena (Decision := Decision)
   prior ambient).History :=
   (senderHistory prior full ambient bit).extend (sender_legal prior ambient bit disclose)
-    (FinDist.mem_support_pure.mpr rfl)
+    ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def terminalHistory (ambient : Bool) (bit : Secret) (disclose : Bool) (guess : Decision) : (arena
   (Decision := Decision) prior ambient).History :=
   (receiverHistory prior full ambient bit disclose).extend
     (receiver_legal prior ambient bit (ambient && disclose) guess)
-      (FinDist.mem_support_pure.mpr rfl)
+      ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 theorem initial_joint (ambient : Bool) (joint : (who : Bool) → Option (PlayerAction Decision who))
     (legal : (arena (Decision := Decision) prior ambient).Legal .initial joint) : joint = fun _ =>
@@ -261,19 +261,19 @@ theorem classified_step (ambient : Bool) (history : (arena (Decision := Decision
   rcases known with rfl | ⟨bit, rfl⟩ | ⟨bit, disclose, rfl⟩ | ⟨bit, disclose, guess, rfl⟩
   · have same := initial_joint prior ambient joint legal
     subst joint
-    obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ reached
+    obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ reached
     exact Or.inr (Or.inl ⟨bit, rfl⟩)
   · have same := sender_joint prior ambient bit joint legal
     obtain ⟨disclose, same⟩ : ∃ disclose, joint = senderJoint (Decision := Decision) ambient
       disclose :=
       ⟨_, same⟩
     subst joint
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     exact Or.inr (Or.inr (Or.inl ⟨bit, disclose, rfl⟩))
   · have same := receiver_joint prior ambient bit (ambient && disclose) joint legal
     obtain ⟨guess, same⟩ : ∃ guess, joint = receiverJoint guess := ⟨_, same⟩
     subst joint
-    cases FinDist.mem_support_pure.mp reached
+    cases (PMF.mem_support_pure_iff _ _).mp reached
     exact Or.inr (Or.inr (Or.inr ⟨bit, disclose, guess, rfl⟩))
   · exact (legal.1 trivial).elim
 
@@ -326,28 +326,28 @@ theorem antichain (ambient : Bool) : (model (Decision := Decision) prior
 
 variable {prior}
 
-def choose (prior : FinDist Secret) (ambient who : Bool) (value : PlayerAction Decision who) :
+def choose (prior : PMF Secret) (ambient who : Bool) (value : PlayerAction Decision who) :
   (model (Decision := Decision) prior ambient).BehavioralPolicy who :=
-  fun info => FinDist.pure ⟨if decisionInfo ambient who info then some value else none, by
+  fun info => PMF.pure ⟨if decisionInfo ambient who info then some value else none, by
     change (if decisionInfo ambient who info then some value else none).isSome =
       decisionInfo ambient who info
     cases decisionInfo ambient who info <;> rfl⟩
 
 def choiceLaw {ambient : Bool} (profile : Profile (model (Decision := Decision) prior
   ambient).behavioralSignature)
-    (who : Bool) (info : Option (Option Secret)) : FinDist (PlayerAction Decision who) :=
+    (who : Bool) (info : Option (Option Secret)) : PMF (PlayerAction Decision who) :=
   (profile who info).map (fun choice => choice.val.getD (fallback who))
 
 def kernel {ambient : Bool} (profile : Profile (model (Decision := Decision) prior
   ambient).behavioralSignature) :
-    State Secret Decision → FinDist (State Secret Decision)
+    State Secret Decision → PMF (State Secret Decision)
   | .initial => prior.map State.sender
   | .sender bit => (choiceLaw profile false (some (some bit))).map
       (fun disclose => .receiver bit (ambient && disclose))
   | .receiver bit disclosed =>
       (choiceLaw profile true (some (if disclosed then some bit else none))).map
       (fun guess => .done bit disclosed guess)
-  | .done bit disclosed guess => FinDist.pure (.done bit disclosed guess)
+  | .done bit disclosed guess => PMF.pure (.done bit disclosed guess)
 
 theorem chooser_kernel {ambient : Bool} (profile : Profile (model (Decision := Decision) prior
   ambient).behavioralSignature)
@@ -374,8 +374,8 @@ theorem chooser_kernel {ambient : Bool} (profile : Profile (model (Decision := D
         (fun choice : Option Bool =>
           State.receiver (Decision := Decision) bit (ambient && choice.getD false))) marginal
       simpa only [InformationModel.singleMoverChooser, arena, transition,
-        kernel, choiceLaw, observation, ↓reduceIte, FinDist.map_comp,
-        Function.comp_def, FinDist.map_eq_bind, FinDist.bind_bind, FinDist.pure_bind,
+        kernel, choiceLaw, observation, ↓reduceIte, PMF.map_comp,
+        Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
         ite_true] using mapped
   | receiver bit disclosed =>
       have marginal := (model (Decision := Decision) prior ambient).singleMoverJoint_marginal
@@ -390,8 +390,8 @@ theorem chooser_kernel {ambient : Bool} (profile : Profile (model (Decision := D
         (fun choice : Option Decision => State.done bit disclosed (choice.getD (fallback true))))
           marginal
       simpa only [InformationModel.singleMoverChooser, arena, transition,
-        kernel, choiceLaw, observation, ↓reduceIte, FinDist.map_comp,
-        Function.comp_def, FinDist.map_eq_bind, FinDist.bind_bind, FinDist.pure_bind,
+        kernel, choiceLaw, observation, ↓reduceIte, PMF.map_comp,
+        Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
         ite_true] using mapped
   | done bit disclosed guess => exact (running trivial).elim
 
@@ -401,7 +401,7 @@ theorem run_states {ambient : Bool} (profile : Profile (model (Decision := Decis
     ((model (Decision := Decision) prior ambient).runSingleMoverBehavioralFrom (single prior
       ambient) profile fuel history).map
       History.state = (fun law => law.bind (kernel profile))^[fuel]
-        (FinDist.pure history.state) := by
+        (PMF.pure history.state) := by
   classical
   apply runRandomizedFor_map_state
   · intro state stopped
@@ -411,7 +411,7 @@ theorem run_states {ambient : Bool} (profile : Profile (model (Decision := Decis
 
 def resultLaw {ambient : Bool} (profile : Profile (model (Decision := Decision) prior
   ambient).behavioralSignature)
-    (bit : Secret) (disclosed : Bool) : FinDist (State Secret Decision) :=
+    (bit : Secret) (disclosed : Bool) : PMF (State Secret Decision) :=
   (choiceLaw profile true (some (if disclosed then some bit else none))).map
     (fun guess => .done bit disclosed guess)
 
@@ -426,7 +426,7 @@ theorem run_receiver {ambient : Bool} (profile : Profile (model (Decision := Dec
   rw [run_states]
   cases ambient <;>
     simp [Function.iterate_succ_apply', kernel, resultLaw, receiverHistory, senderHistory,
-      History.extend, senderJoint, FinDist.map_eq_bind]
+      History.extend, senderJoint, ← PMF.bind_pure_comp, Function.comp_def]
 
 theorem run_sender {ambient : Bool} (profile : Profile (model (Decision := Decision) prior
   ambient).behavioralSignature)
@@ -439,7 +439,7 @@ theorem run_sender {ambient : Bool} (profile : Profile (model (Decision := Decis
   classical
   rw [run_states]
   simp [Function.iterate_succ_apply', kernel, resultLaw, senderHistory,
-    History.extend, FinDist.map_eq_bind, FinDist.bind_bind]
+    History.extend, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind]
 
 theorem run_initial {ambient : Bool} (profile : Profile (model (Decision := Decision) prior
   ambient).behavioralSignature) :
@@ -452,7 +452,7 @@ theorem run_initial {ambient : Bool} (profile : Profile (model (Decision := Deci
   classical
   rw [run_states]
   simp [Function.iterate_succ_apply', kernel, resultLaw, initHistory,
-    FinDist.map_eq_bind, FinDist.bind_bind]
+    ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind]
 
 def payoff (sender receiver : Secret → Decision → ℝ) (charge : Secret → ℝ) :
     State Secret Decision → Bool → ℝ
@@ -471,36 +471,36 @@ instance [Fintype Decision] (who : Bool) : Fintype (PlayerAction Decision who) :
 instance (who : Bool) : Nonempty (PlayerAction Decision who) := ⟨fallback who⟩
 
 /-- A finite fully mixed reference; the sender trembles equally at all private states. -/
-def reference [Fintype Decision] (prior : FinDist Secret) (ambient : Bool) :
+def reference [Fintype Decision] (prior : PMF Secret) (ambient : Bool) :
     (model (Decision := Decision) prior ambient).BehavioralAssessment :=
-  .ofStrategy fun who info => (FinDist.uniformOfFintype (α := PlayerAction Decision who)).bind
+  .ofStrategy fun who info => (PMF.uniformOfFintype (α := PlayerAction Decision who)).bind
     (fun value => choose prior ambient who value info)
 
-theorem reference_full [Fintype Decision] (prior : FinDist Secret) (ambient : Bool) :
+theorem reference_full [Fintype Decision] (prior : PMF Secret) (ambient : Bool) :
     (reference (Decision := Decision) prior ambient).IsFullyMixed := by
   classical
   intro who site choice
-  change choice ∈ ((FinDist.uniformOfFintype (α := PlayerAction Decision who)).bind
+  change choice ∈ ((PMF.uniformOfFintype (α := PlayerAction Decision who)).bind
     (fun value => choose prior ambient who value site.1)).support
-  simp only [FinDist.support_bind, Set.mem_iUnion]
-  refine ⟨choice.val.getD (fallback who), FinDist.mem_support_uniformOfFintype _, ?_⟩
-  rw [choose, FinDist.mem_support_pure]
+  simp only [PMF.support_bind, Set.mem_iUnion]
+  refine ⟨choice.val.getD (fallback who), PMF.mem_support_uniformOfFintype _, ?_⟩
+  rw [choose, PMF.mem_support_pure_iff _ _]
   apply Subtype.ext
   have legal := choice.property
   change choice.val.isSome = decisionInfo ambient who site.1 at legal
   cases value : choice.val <;> simp_all
 
-instance [Finite Decision] (prior : FinDist Secret) (ambient : Bool) :
+instance [Finite Decision] (prior : PMF Secret) (ambient : Bool) :
     Finite (arena (Decision := Decision) prior ambient).History := by
   classical
   let := Fintype.ofFinite Decision
   exact (reference_full (Decision := Decision) prior ambient).finite_history
     (bounded prior ambient)
 
-instance [Finite Decision] (prior : FinDist Secret) (ambient : Bool) :
+instance [Finite Decision] (prior : PMF Secret) (ambient : Bool) :
     Fintype (arena (Decision := Decision) prior ambient).History := Fintype.ofFinite _
 
-instance [Finite Decision] (prior : FinDist Secret) (ambient who : Bool)
+instance [Finite Decision] (prior : PMF Secret) (ambient who : Bool)
     (site : (model (Decision := Decision) prior ambient).InformationSite who) :
     Fintype ((model (Decision := Decision) prior ambient).InformationHistory who site.1) := by
   classical

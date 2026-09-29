@@ -6,7 +6,10 @@ Authors: VegasCore contributors
 
 import Interaction.IdealCommitments
 import Interaction.MessagePool
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Commitment traffic in a native pending-message experiment
 
@@ -80,7 +83,7 @@ theorem delivered_commitment_view_eq (first second : Bool) :
 law. This excludes access to the private table or an authorized opening; it
 does not establish security for an unrestricted ideal-service context. -/
 theorem wire_continuation_law {Outcome : Type}
-    (continueWith : Pool → FinDist Outcome) (first second : Bool) :
+    (continueWith : Pool → PMF Outcome) (first second : Bool) :
     continueWith (expose (honestSetup first)).pool =
       continueWith (expose (honestSetup second)).pool := rfl
 

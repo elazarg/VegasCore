@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.SequentialValidation.Histories
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.StateKernel
 
 /-! # Finite state calculations for the validation source game -/
 
@@ -51,11 +51,11 @@ theorem source_info (who : Bool) (history : sourceArena.History) :
   sourceSetup.protocol_info sourceAdmission who history.trace
 
 def sourceChoice (profile : Profile sourceModel.behavioralSignature) (who : Bool)
-    (info : sourceModel.InfoState who) : FinDist (Option (sourceArena.Action who)) :=
+    (info : sourceModel.InfoState who) : PMF (Option (sourceArena.Action who)) :=
   (profile who info).map Subtype.val
 
 def sourceKernel (profile : Profile sourceModel.behavioralSignature) :
-    sourceArena.State → FinDist sourceArena.State
+    sourceArena.State → PMF sourceArena.State
   | none => sourceSetup.initialLaw.map (fun state => some (.inl (sourceSetup.initialConfig state)))
   | some (.inl config) =>
       (sourceChoice profile false (some (.inl (config.view false)))).map fun choice =>
@@ -76,7 +76,7 @@ def sourceKernel (profile : Profile sourceModel.behavioralSignature) :
           (.there (.there (.there (.there (.there .here)))))
           config (OwnAction.disclosure choice))))))
   | some (.inr (.inr (.inr (.inr config)))) =>
-      FinDist.pure (some (.inr (.inr (.inr (.inr config)))))
+      PMF.pure (some (.inr (.inr (.inr (.inr config)))))
 
 theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature)
     (history : sourceArena.History) (running : ¬ sourceArena.terminal history.state) :
@@ -95,14 +95,14 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
       (sourceModel.singleMoverChooser sourceSingle profile history running).map
         (fun joint => f (joint.1 who)) =
       (sourceChoice profile who (sourceSetup.protocolObserve who history.state)).map f := by
-    exact (FinDist.map_comp f (fun joint => joint.1 who)
+    exact (PMF.map_comp f (fun joint => joint.1 who)
       (sourceModel.singleMoverJoint sourceSingle profile history running)).symm.trans
-        (congrArg (FinDist.map f) (marginalState who))
+        (congrArg (PMF.map f) (marginalState who))
   rcases history with ⟨state, trace⟩
   rcases state with _ | state
   · change (sourceModel.singleMoverChooser sourceSingle profile _ running).bind
       (fun _ => sourceKernel profile none) = sourceKernel profile none
-    exact FinDist.bind_const _ _
+    exact PMF.bind_const _ _
   rcases state with config | config | config | config | config
   all_goals try exact (running trivial).elim
   all_goals
@@ -111,9 +111,9 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
       ext joint
       simp only [sourceArena, Setup.executionProtocol, Setup.protocolStep,
         sourceSetup, sourceProgram, ProtocolState.step, ProtocolState.entry,
-        Sum.elim_inl, Sum.elim_inr, FinDist.map_pure]
+        Sum.elim_inl, Sum.elim_inr, PMF.pure_map]
   all_goals
-    conv_lhs => rw [← FinDist.map_eq_bind]
+    conv_lhs => rw [← ← PMF.bind_pure_comp, Function.comp_def]
   all_goals
     dsimp only [sourceKernel]
   · exact project false (fun choice => some (.inr (.inl
@@ -132,7 +132,7 @@ theorem source_run_states (profile : Profile sourceModel.behavioralSignature)
     (fuel : Nat) (history : sourceArena.History) :
     (sourceModel.runSingleMoverBehavioralFrom sourceSingle
       profile fuel history).map History.state =
-        (fun law => law.bind (sourceKernel profile))^[fuel] (FinDist.pure history.state) := by
+        (fun law => law.bind (sourceKernel profile))^[fuel] (PMF.pure history.state) := by
   apply runRandomizedFor_map_state
   · intro state stopped
     rcases state with _ | config | config | config | config | config

@@ -42,7 +42,7 @@ private def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
 private def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket graph) :=
-  fun _ _ => FinDist.pure ∅
+  fun _ _ => PMF.pure ∅
 
 private abbrev app := runtime.reactiveApplication leaks
 private abbrev candidate : Handle graph := (false, .prepared 0)
@@ -71,7 +71,7 @@ private def bindingMenu : app.ResponseMenu := by
     nonempty := fun _ _ _ => ⟨⟨none⟩, by simp⟩ }
 
 theorem finite_binding_histories (horizon : Nat) (scheduler : app.Scheduler) :
-    Finite (bindingMenu.protocol (FinDist.pure initial.application) horizon scheduler).History :=
+    Finite (bindingMenu.protocol (PMF.pure initial.application) horizon scheduler).History :=
   inferInstance
 
 theorem binding_menu_all_meanings (who : Bool) (past : List app.PlayerEntry)
@@ -108,8 +108,8 @@ This asserts consistency; no source compilation or nonzero-utility optimality
 is assumed in this test. -/
 theorem binding_assessment_consistent (horizon : Nat) (scheduler : app.Scheduler) :
     GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent
-      (bindingMenu.bayesAssessment (FinDist.pure initial.application) horizon scheduler)
-      (bindingMenu.decisionInformationAntichain (FinDist.pure initial.application)
+      (bindingMenu.bayesAssessment (PMF.pure initial.application) horizon scheduler)
+      (bindingMenu.decisionInformationAntichain (PMF.pure initial.application)
         horizon scheduler) :=
   bindingMenu.bayesAssessment_consistent _ _ _
 
@@ -148,12 +148,12 @@ theorem binding_hidden :
 private def granted : app.Execution :=
   { initial with application := { initial.application with serviceGrant := some 0 } }
 
-private def chooseBit (law : FinDist Bool) : graph.BehavioralPolicy false :=
+private def chooseBit (law : PMF Bool) : graph.BehavioralPolicy false :=
   fun _ _ _ => law.map PublicationResult.success
 
 /-- The actual graph-policy compiler consumes the source random law at the
 first activation and returns a complete submission action. -/
-theorem compiler_samples_on_activation (law : FinDist Bool) :
+theorem compiler_samples_on_activation (law : PMF Bool) :
     runtime.compileReactivePolicy leaks false (chooseBit law) [] (granted.observe app false) =
       law.map (fun bit => runtime.reactiveDecision leaks false 0 (.success bit)
         (granted.observe app false).application) := by
@@ -164,15 +164,15 @@ theorem compiler_samples_on_activation (law : FinDist Bool) :
     ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
     EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit,
-    FinDist.map_comp, Function.comp_def, actor]
+    PMF.map_comp, Function.comp_def, actor]
 
 /-- The finite instance admits every possible compiled first response, for
 every source distribution on Boolean values. -/
-theorem compiled_first_response_available (law : FinDist Bool) (action : app.Action)
+theorem compiled_first_response_available (law : PMF Bool) (action : app.Action)
     (supported : action ∈ (runtime.compileReactivePolicy leaks false (chooseBit law)
       [] (granted.observe app false)).support) :
     action ∈ bindingMenu.actions false [] (granted.observe app false) := by
-  rw [compiler_samples_on_activation, FinDist.support_map] at supported
+  rw [compiler_samples_on_activation, PMF.support_map] at supported
   obtain ⟨bit, _, rfl⟩ := supported
   exact binding_menu_compiled_decision false [] _ (.success bit)
 
@@ -208,13 +208,13 @@ theorem compiler_sends_and_binds (bit : Bool) :
   rw [first_action]
   cases bit <;> exact ⟨rfl, rfl, rfl⟩
 
-private theorem first_consistent (bit : Bool) (law : FinDist Bool)
+private theorem first_consistent (bit : Bool) (law : PMF Bool)
     (supported : bit ∈ law.support) :
     (runtime.prescribedReactivePolicy leaks false (chooseBit law)).Consistent
       ((firstResponse bit).recall false) := by
   have chosen : firstAction bit ∈ (runtime.compileReactivePolicy leaks false (chooseBit law)
       [] (granted.observe app false)).support := by
-    rw [compiler_samples_on_activation, FinDist.support_map]
+    rw [compiler_samples_on_activation, PMF.support_map]
     exact ⟨bit, supported, rfl⟩
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at chosen
   unfold firstResponse
@@ -224,10 +224,10 @@ private theorem first_consistent (bit : Bool) (law : FinDist Bool)
 
 /-- Re-activating an owner that followed the policy does not resample or send
 a competing commitment. Unsupported earlier choices instead trigger recovery. -/
-theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool)
+theorem compiler_does_not_resample (bit : Bool) (law : PMF Bool)
     (supported : bit ∈ law.support) :
     runtime.compileReactivePolicy leaks false (chooseBit law) ((firstResponse bit).recall false)
-      ((firstResponse bit).observe app false) = FinDist.pure ⟨none⟩ := by
+      ((firstResponse bit).observe app false) = PMF.pure ⟨none⟩ := by
   have sent : runtime.reactiveAlreadySubmitted leaks ((firstResponse bit).recall false) 0
     = true := by
     unfold firstResponse
@@ -241,11 +241,11 @@ theorem compiler_does_not_resample (bit : Bool) (law : FinDist Bool)
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _
     (first_consistent bit law supported)]
   rw [prescribedReactivePolicy_apply]
-  simp only [prescribedReactiveResponse, grant, sent, ↓reduceIte, FinDist.map_pure,
-    FinDist.bind_const]
+  simp only [prescribedReactiveResponse, grant, sent, ↓reduceIte, PMF.pure_map,
+    PMF.bind_const]
 
 private theorem wrong_response_inconsistent :
-    ¬ (runtime.prescribedReactivePolicy leaks false (chooseBit (FinDist.pure true))).Consistent
+    ¬ (runtime.prescribedReactivePolicy leaks false (chooseBit (PMF.pure true))).Consistent
       ((firstResponse false).recall false) := by
   intro consistent
   have recalled : (firstResponse false).recall false = [] ++
@@ -256,13 +256,13 @@ private theorem wrong_response_inconsistent :
     rfl
   rw [recalled] at consistent
   have chosen := (ReactiveApplication.Policy.consistent_snoc_iff
-    (runtime.prescribedReactivePolicy leaks false (chooseBit (FinDist.pure true))) []
+    (runtime.prescribedReactivePolicy leaks false (chooseBit (PMF.pure true))) []
     ⟨granted.observe app false, firstAction false,
       some ⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩⟩).mp consistent
-  have law := compiler_samples_on_activation (FinDist.pure true)
+  have law := compiler_samples_on_activation (PMF.pure true)
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at law
   have same : firstAction false = firstAction true := by
-    simpa only [law, FinDist.map_pure, FinDist.mem_support_pure, firstAction] using chosen.2
+    simpa only [law, PMF.pure_map, PMF.mem_support_pure_iff _ _, firstAction] using chosen.2
   rw [first_action, first_action] at same
   have sent := congrArg ReactiveApplication.Action.transmission same
   have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
@@ -275,9 +275,9 @@ private theorem wrong_response_inconsistent :
 /-- A wrong earlier binding does not suppress the desired submission. The
 source policy is deterministic here; the rejected cached choice is false. -/
 theorem compiler_recovers_wrong_choice :
-    runtime.compileReactivePolicy leaks false (chooseBit (FinDist.pure true))
+    runtime.compileReactivePolicy leaks false (chooseBit (PMF.pure true))
       ((firstResponse false).recall false) ((firstResponse false).observe app false) =
-      FinDist.pure (runtime.reactiveDecision leaks false 0 (.success true)
+      PMF.pure (runtime.reactiveDecision leaks false 0 (.success true)
         ((firstResponse false).observe app false).application) := by
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     wrong_response_inconsistent]
@@ -288,7 +288,7 @@ theorem compiler_recovers_wrong_choice :
     ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
     EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit, actor,
-    submitStep, Submission.register, FinDist.map_pure]
+    submitStep, Submission.register, PMF.pure_map]
 
 /-- Binding recall follows the actual completion, even when an earlier
 submitted candidate remembered the opposite intention. -/
@@ -318,30 +318,30 @@ theorem binding_after_passive_reaction
       (runtime.reactiveBinding observationRule false 0 .bool result 0)
     ((reactive.dispatch players (.activate observer) sent).map fun next =>
       (next.includePending reactive (false, 0)).application.config.outputs 0) =
-        FinDist.pure (some result) := by
+        PMF.pure (some result) := by
   dsimp only
   let reactive := runtime.reactiveApplication observationRule
   let start := ReactiveApplication.Execution.initial reactive
     (State.initial (graph := graph) (fun input => nomatch input))
   let sent := start.respond reactive false
     (runtime.reactiveBinding observationRule false 0 .bool result 0)
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro output member
-  obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ member
-  have reached : next ∈ (reactive.runRounds (fun _ _ => FinDist.pure (.activate observer))
+  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ member
+  have reached : next ∈ (reactive.runRounds (fun _ _ => PMF.pure (.activate observer))
       players 1 sent).support := by
-    simpa only [ReactiveApplication.runRounds, ReactiveApplication.round, FinDist.pure_bind,
-      FinDist.bind_pure] using supported
+    simpa only [ReactiveApplication.runRounds, ReactiveApplication.round, PMF.pure_bind,
+      PMF.bind_pure] using supported
   obtain ⟨observed, activated, response⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have observedFacts : observed.application = sent.application ∧
       observed.network.pending = sent.network.pending := by
-    simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp] at activated
-    obtain ⟨read, _, rfl⟩ := FinDist.support_map .. ▸ activated
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp] at activated
+    obtain ⟨read, _, rfl⟩ := PMF.support_map .. ▸ activated
     exact ⟨rfl, rfl⟩
   dsimp only [ReactiveApplication.resume, ReactiveApplication.Command.actor?,
     ReactiveApplication.invoke] at response
-  obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ response
+  obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ response
   have facts := runtime.reactive_respond_application observationRule observed observer action
   have configEq : _ = start.application.config := facts.1.trans
     ((congrArg (fun state => state.config) observedFacts.1).trans
@@ -405,7 +405,7 @@ theorem binding_after_passive_reaction
     | inr event => cases associated
   obtain ⟨included, _⟩ := runtime.reactiveBinding_continuation_include observationRule false 0
     .bool rfl rfl rfl result 0 0 start (observed.respond reactive observer action) rfl
-    (fun _ _ => FinDist.pure (.activate observer)) players 1 reached pending nextReady nextTimely
+    (fun _ _ => PMF.pure (.activate observer)) players 1 reached pending nextReady nextTimely
     nextVacant nextUnused
   change ((observed.respond reactive observer action).includePending reactive
     (false, 0)).application.config.outputs 0 = some result

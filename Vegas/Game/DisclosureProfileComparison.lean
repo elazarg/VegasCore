@@ -21,45 +21,45 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {Γ : SourceCtx Player L} {O : Finset VarId}
 
 private def PrefixComparison (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (initial : FinDist (Config Player L Γ))
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
     (count : Nat) (source target : BehavioralProfile program) : Prop :=
   let prefixLaw := fun profile => initial.bind fun config =>
     (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program profile))
-      ^[count] (FinDist.pure (ProtocolState.entry program config))
+      ^[count] (PMF.pure (ProtocolState.entry program config))
   ∀ who (alternative : BehavioralPolicy who program), alternative.Admitted program admission →
     ∀ view ∈ ((prefixLaw target).map (ProtocolState.observe who program)).support,
-      ∃ alternatives : FinDist (ProtocolView who program ×
+      ∃ alternatives : PMF (ProtocolView who program ×
           {lifted : BehavioralPolicy who program // lifted.Admitted program admission}),
         (∀ selected ∈ alternatives.support,
           selected.1 ∈ ((prefixLaw source).map (ProtocolState.observe who program)).support ∧
           ProtocolView.actor who program selected.1 = ProtocolView.actor who program view ∧
           ProtocolView.position who program selected.1 = ProtocolView.position who program view) ∧
-        (((prefixLaw target).condOnFibre (ProtocolState.observe who program) view).bind
+        ((fiberConditional (prefixLaw target) (ProtocolState.observe who program) view).bind
           (ProtocolState.continuationLaw program target)) =
           alternatives.bind (fun selected =>
-            ((prefixLaw source).condOnFibre (ProtocolState.observe who program) selected.1).bind
+            (fiberConditional (prefixLaw source) (ProtocolState.observe who program) selected.1).bind
               (ProtocolState.continuationLaw program source)) ∧
-        (((prefixLaw target).condOnFibre (ProtocolState.observe who program) view).bind
+        ((fiberConditional (prefixLaw target) (ProtocolState.observe who program) view).bind
           (ProtocolState.continuationLaw program (Function.update target who alternative))) =
           alternatives.bind (fun selected =>
-            ((prefixLaw source).condOnFibre (ProtocolState.observe who program) selected.1).bind
+            (fiberConditional (prefixLaw source) (ProtocolState.observe who program) selected.1).bind
               (ProtocolState.continuationLaw program (Function.update source who selected.2.1)))
 
 private theorem prefixComparison_refl (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (initial : FinDist (Config Player L Γ))
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
     (count : Nat) (profile : BehavioralProfile program) :
     PrefixComparison program admission initial count profile profile := by
   intro who alternative admitted view present
-  refine ⟨FinDist.pure (view, ⟨alternative, admitted⟩), ?_, ?_, ?_⟩
+  refine ⟨PMF.pure (view, ⟨alternative, admitted⟩), ?_, ?_, ?_⟩
   · intro selected member
-    have same := FinDist.mem_support_pure.mp member
+    have same := (PMF.mem_support_pure_iff _ _).mp member
     subst selected
     exact ⟨present, rfl, rfl⟩
-  · simp only [FinDist.pure_bind]
-  · simp only [FinDist.pure_bind]
+  · simp only [PMF.pure_bind]
+  · simp only [PMF.pure_bind]
 
 private theorem prefixComparison_trans (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (initial : FinDist (Config Player L Γ))
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
     (count : Nat) (source middle target : BehavioralProfile program)
     (first : PrefixComparison program admission initial count source middle)
     (second : PrefixComparison program admission initial count middle target) :
@@ -73,7 +73,7 @@ private theorem prefixComparison_trans (program : SourceProgram Player L Γ O)
   refine ⟨law, ?_, ?_, ?_⟩
   · intro selected member
     obtain ⟨intermediate, chosen, reached⟩ := Set.mem_iUnion₂.mp
-      (FinDist.support_bindOnSupport .. ▸ member)
+      (PMF.support_bindOnSupport .. ▸ member)
     obtain ⟨positive, actor, position⟩ :=
       (originals intermediate chosen).choose_spec.1 selected reached
     exact ⟨positive, actor.trans (supported intermediate chosen).2.1,
@@ -81,18 +81,18 @@ private theorem prefixComparison_trans (program : SourceProgram Player L Γ O)
   · rw [prescribed]
     symm
     change (weights.bindOnSupport _).bind _ = _
-    rw [FinDist.bind_bindOnSupport]
-    exact FinDist.bindOnSupport_eq_bind_of_eq_on_support fun selected member =>
+    rw [bindOnSupport_bind]
+    exact bindOnSupport_eq_bind_of_eq_on_support _ fun selected member =>
       (originals selected member).choose_spec.2.1.symm
   · rw [deviating]
     symm
     change (weights.bindOnSupport _).bind _ = _
-    rw [FinDist.bind_bindOnSupport]
-    exact FinDist.bindOnSupport_eq_bind_of_eq_on_support fun selected member =>
+    rw [bindOnSupport_bind]
+    exact bindOnSupport_eq_bind_of_eq_on_support _ fun selected member =>
       (originals selected member).choose_spec.2.2.symm
 
 private theorem prefixComparison_normalize (program : SourceProgram Player L Γ O)
-    (admission : CommitmentInterface program) (initial : FinDist (Config Player L Γ))
+    (admission : CommitmentInterface program) (initial : PMF (Config Player L Γ))
     (registry : Registry Γ) (revelations : Revelations Γ)
     (registryEq : ∀ config ∈ initial.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
@@ -119,13 +119,13 @@ private theorem prefixComparison_normalize (program : SourceProgram Player L Γ 
   · obtain ⟨positive, prescribed, deviating⟩ := normalized_disclosure_foreign_comparison program
       same profile (profile owner) alternative registry revelations initial registryEq
         revelationsEq count view present
-    refine ⟨FinDist.pure (view, ⟨alternative, admitted⟩), ?_, ?_, ?_⟩
+    refine ⟨PMF.pure (view, ⟨alternative, admitted⟩), ?_, ?_, ?_⟩
     · intro selected member
-      have same := FinDist.mem_support_pure.mp member
+      have same := (PMF.mem_support_pure_iff _ _).mp member
       subst selected
       exact ⟨by simpa only [Function.update_eq_self] using positive, rfl, rfl⟩
-    · simpa only [FinDist.pure_bind, Function.update_eq_self] using prescribed
-    · simpa only [FinDist.pure_bind, Function.update_eq_self] using deviating
+    · simpa only [PMF.pure_bind, Function.update_eq_self] using prescribed
+    · simpa only [PMF.pure_bind, Function.update_eq_self] using deviating
 
 /-- Simultaneous playerwise normalization preserves every positive-prefix
 conditional continuation comparison as a finite mixture of actual original
@@ -134,31 +134,31 @@ No equilibrium or consistency of an intermediate normalized profile is assumed. 
 theorem normalizeDisclosureProfile_prefix_comparison
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
     (profile : BehavioralProfile program) (registry : Registry Γ)
-    (revelations : Revelations Γ) (initial : FinDist (Config Player L Γ))
+    (revelations : Revelations Γ) (initial : PMF (Config Player L Γ))
     (registryEq : ∀ config ∈ initial.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
     (count : Nat) :
     let normalized := normalizeDisclosureProfile program registry revelations profile
     let prefixLaw := fun selected => initial.bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program selected))
-        ^[count] (FinDist.pure (ProtocolState.entry program config))
+        ^[count] (PMF.pure (ProtocolState.entry program config))
     ∀ who (alternative : BehavioralPolicy who program), alternative.Admitted program admission →
       ∀ view ∈ ((prefixLaw normalized).map (ProtocolState.observe who program)).support,
-        ∃ alternatives : FinDist (ProtocolView who program ×
+        ∃ alternatives : PMF (ProtocolView who program ×
             {lifted : BehavioralPolicy who program // lifted.Admitted program admission}),
           (∀ selected ∈ alternatives.support,
             selected.1 ∈ ((prefixLaw profile).map (ProtocolState.observe who program)).support ∧
             ProtocolView.actor who program selected.1 = ProtocolView.actor who program view ∧
             ProtocolView.position who program selected.1 = ProtocolView.position who program view) ∧
-          (((prefixLaw normalized).condOnFibre (ProtocolState.observe who program) view).bind
+          ((fiberConditional (prefixLaw normalized) (ProtocolState.observe who program) view).bind
             (ProtocolState.continuationLaw program normalized)) =
             alternatives.bind (fun selected =>
-              ((prefixLaw profile).condOnFibre (ProtocolState.observe who program) selected.1).bind
+              (fiberConditional (prefixLaw profile) (ProtocolState.observe who program) selected.1).bind
                 (ProtocolState.continuationLaw program profile)) ∧
-          (((prefixLaw normalized).condOnFibre (ProtocolState.observe who program) view).bind
+          ((fiberConditional (prefixLaw normalized) (ProtocolState.observe who program) view).bind
             (ProtocolState.continuationLaw program (Function.update normalized who alternative))) =
             alternatives.bind (fun selected =>
-              ((prefixLaw profile).condOnFibre (ProtocolState.observe who program) selected.1).bind
+              (fiberConditional (prefixLaw profile) (ProtocolState.observe who program) selected.1).bind
                 (ProtocolState.continuationLaw program
                   (Function.update profile who selected.2.1))) := by
   classical

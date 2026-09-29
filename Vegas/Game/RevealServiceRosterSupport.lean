@@ -36,26 +36,26 @@ private def mixtureModes (owner : Player) (event : (graph setup).EventId)
     (candidate : Handle (graph setup)) (raw : Raw L) {slots : Nat}
     (selected : Option (Fin slots)) (visits : Nat)
     (current : (application setup leaks).Execution) : Prop :=
-  ∀ choices : FinDist (Option (Fin slots)), choices.FullSupport → ∀ mode,
+  ∀ choices : PMF (Option (Fin slots)), FullSupport choices → ∀ mode,
     compatibleMode selected visits mode →
     mode ∈ (((application setup leaks).policyMixture choices (fun selected =>
       (application setup leaks).scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         (application setup leaks).replayPolicy)).posterior (current.recall owner)).support
 
 private def mixtureExact (owner : Player) (event : (graph setup).EventId)
     (candidate : Handle (graph setup)) (raw : Raw L) {slots : Nat}
     (selected : Option (Fin slots)) (visits : Nat)
     (current : (application setup leaks).Execution) : Prop :=
-  ∀ choices : FinDist (Option (Fin slots)), ∀ full : choices.FullSupport,
+  ∀ choices : PMF (Option (Fin slots)), ∀ full : FullSupport choices,
     (((application setup leaks).policyMixture choices (fun selected =>
       (application setup leaks).scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         (application setup leaks).replayPolicy)).posterior (current.recall owner)) =
       match selected with
-      | none => choices.condOn (ReactiveApplication.remainingOpeningSlots visits)
+      | none => choices.filter (ReactiveApplication.remainingOpeningSlots visits)
           ⟨none, True.intro, full none⟩
-      | some slot => FinDist.pure (some slot)
+      | some slot => PMF.pure (some slot)
 
 private theorem own_response_entry (current : (application setup leaks).Execution)
     (owner : Player) (action : (application setup leaks).Action) :
@@ -110,7 +110,7 @@ private theorem exact_waiting (current : (application setup leaks).Execution)
       exact (application setup leaks).policyMixture_posterior_pure_snoc choices _ _ _
         (some slot) (exactModes choices full)
 
-private theorem posterior_response {Index : Type} (choices : FinDist Index)
+private theorem posterior_response {Index : Type} (choices : PMF Index)
     (policies : Index → (application setup leaks).Policy)
     (current : (application setup leaks).Execution) (owner : Player)
     (action : (application setup leaks).Action) (mode : Index)
@@ -205,7 +205,7 @@ private theorem initial_exact (initial : (application setup leaks).Execution)
   have dormant := (application setup leaks).policyMixture_posterior_dormant choices
     (fun selected => (application setup leaks).scheduledPolicy
       (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
           (application setup leaks).replayPolicy)
     (application setup leaks).replayPolicy (rosterOffset setup rosters owner event)
     (fun selected before view earlier => (application setup leaks).scheduledPolicy_before
@@ -314,7 +314,7 @@ private theorem frame_response
         have old := modes choices full mode previous
         apply posterior_response setup leaks choices _ current owner action mode old
         change action ∈ (app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-          (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+          (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
             app.replayPolicy (current.recall owner) (current.observe app owner)).support
         have different : mode.map (fun slot => rosterOffset setup rosters owner event + slot.val) ≠
             some (current.recall owner).length := by
@@ -388,7 +388,7 @@ private theorem frame_response
       have prior := modes choices full (some slot) (show visits ≤ slot.val from le_rfl)
       apply posterior_response setup leaks choices _ current owner _ (some slot) prior
       simp only [ReactiveApplication.scheduledPolicy, Option.map_some, frame.count,
-        slot, ↓reduceIte, FinDist.mem_support_pure]
+        slot, ↓reduceIte, PMF.mem_support_pure_iff _ _]
     · intro choices full
       obtain ⟨emitted, recall⟩ := own_response_entry setup leaks current owner
         ((runtime setup).windowOpening leaks event candidate raw)
@@ -402,7 +402,7 @@ private theorem frame_response
       apply app.policyMixture_action_support choices _ _ _ (some slot)
       · exact modes choices full (some slot) (show visits ≤ slot.val from le_rfl)
       · simp only [ReactiveApplication.scheduledPolicy, Option.map_some, frame.count,
-          slot, ↓reduceIte, FinDist.mem_support_pure]
+          slot, ↓reduceIte, PMF.mem_support_pure_iff _ _]
 
 private theorem frame_run
     (initial current : (application setup leaks).Execution)
@@ -453,7 +453,7 @@ private theorem frame_run
   let app := application setup leaks
   induction remaining generalizing current visits selected with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       simpa only [List.count_nil, Nat.add_zero] using
         ⟨selected, frame, past, recorded, absent, modes, exactModes⟩
   | cons who rest ih =>
@@ -465,13 +465,13 @@ private theorem frame_run
           ((runtime setup).reactiveApplication leaks) = some who := rfl
       simp only [List.map_cons, EventGraphRuntime.runInteractionPlan,
         EventGraphRuntime.interactionStep, EventGraphRuntime.interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, actor,
+        PMF.pure_bind, ReactiveApplication.dispatch, actor,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       let activated := current.sampledActivation app who sample
       have activatedFrame := frame.activate (runtime setup) leaks owner event candidate raw
         (rosterOffset setup rosters owner event) selected visits initial current who sample
@@ -526,7 +526,7 @@ theorem roster_window_support
     have dormant := (application setup leaks).policyMixture_posterior_dormant choices
       (fun selected => (application setup leaks).scheduledPolicy
         (rosterOffset setup rosters owner event) selected
-          (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+          (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
             (application setup leaks).replayPolicy)
       (application setup leaks).replayPolicy (rosterOffset setup rosters owner event)
       (fun selected before view earlier => (application setup leaks).scheduledPolicy_before
@@ -558,13 +558,13 @@ private theorem frame_owner_full
       (current.recall owner).drop (rosterOffset setup rosters owner event),
         entry.action = (runtime setup).windowOpening leaks event candidate raw)
     (modes : mixtureModes setup leaks rosters owner event candidate raw selected visits current)
-    (inside : visits < slots) (choices : FinDist (Option (Fin slots)))
-    (full : choices.FullSupport) (action : (application setup leaks).Action)
+    (inside : visits < slots) (choices : PMF (Option (Fin slots)))
+    (full : FullSupport choices) (action : (application setup leaks).Action)
     (member : action ∈ rosterActions setup leaks bounds rosters owner
       (current.recall owner) (current.observe (application setup leaks) owner)) :
     action ∈ (((application setup leaks).policyMixture choices (fun selected =>
       (application setup leaks).scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         (application setup leaks).replayPolicy)).policy
           (current.recall owner) (current.observe (application setup leaks) owner)).support := by
   let app := application setup leaks
@@ -601,7 +601,7 @@ private theorem frame_owner_full
     apply app.policyMixture_action_support choices _ _ _ (some slot)
     · exact modes choices full (some slot) (show visits ≤ slot.val from le_rfl)
     · simp only [ReactiveApplication.scheduledPolicy, Option.map_some, frame.count,
-        slot, ↓reduceIte, FinDist.mem_support_pure]
+        slot, ↓reduceIte, PMF.mem_support_pure_iff _ _]
 
 /-- The owner's actual recall at any retained prefix has the exact scheduled
 posterior: unpassed slots before opening, or its unique opening slot afterward.
@@ -636,18 +636,18 @@ theorem roster_window_posterior
       (selected.isSome ↔ ∃ entry ∈
         (final.recall owner).drop (rosterOffset setup rosters owner event),
           entry.action = (runtime setup).windowOpening leaks event candidate raw) ∧
-      ∀ choices : FinDist (Option (Fin ((rosters event).count owner))),
-        ∀ full : choices.FullSupport,
+      ∀ choices : PMF (Option (Fin ((rosters event).count owner))),
+        ∀ full : FullSupport choices,
         (((application setup leaks).policyMixture choices (fun selected =>
           (application setup leaks).scheduledPolicy
             (rosterOffset setup rosters owner event) selected
-            (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+            (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
               (application setup leaks).replayPolicy)).posterior (final.recall owner)) =
           match selected with
-          | none => choices.condOn
+          | none => choices.filter
               (ReactiveApplication.remainingOpeningSlots (visits.count owner))
                 ⟨none, True.intro, full none⟩
-          | some slot => FinDist.pure (some slot) := by
+          | some slot => PMF.pure (some slot) := by
   have start := OpeningWindowFrame.initial (runtime setup) leaks owner event candidate raw
     (none : Option (Fin ((rosters event).count owner))) initial serials published
   rw [offset] at start
@@ -657,7 +657,7 @@ theorem roster_window_posterior
     have dormant := (application setup leaks).policyMixture_posterior_dormant choices
       (fun selected => (application setup leaks).scheduledPolicy
         (rosterOffset setup rosters owner event) selected
-          (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+          (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
             (application setup leaks).replayPolicy)
       (application setup leaks).replayPolicy (rosterOffset setup rosters owner event)
       (fun selected before view earlier => (application setup leaks).scheduledPolicy_before
@@ -725,16 +725,16 @@ theorem roster_response_posterior
         (∃ entry ∈ (current.recall owner).drop (rosterOffset setup rosters owner event),
           entry.action = (runtime setup).windowOpening leaks event candidate raw) ∨
         (owner = who ∧ action = (runtime setup).windowOpening leaks event candidate raw)) ∧
-      ∀ choices : FinDist (Option (Fin ((rosters event).count owner))),
-        ∀ full : choices.FullSupport,
+      ∀ choices : PMF (Option (Fin ((rosters event).count owner))),
+        ∀ full : FullSupport choices,
         ((app.policyMixture choices (fun mode =>
           app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-            (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+            (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
               app.replayPolicy)).posterior (after.recall owner)) =
           match selected with
-          | none => choices.condOn (ReactiveApplication.remainingOpeningSlots count)
+          | none => choices.filter (ReactiveApplication.remainingOpeningSlots count)
               ⟨none, True.intro, full none⟩
-          | some slot => FinDist.pure (some slot) := by
+          | some slot => PMF.pure (some slot) := by
   intro app after count
   have start := OpeningWindowFrame.initial (runtime setup) leaks owner event candidate raw
     (none : Option (Fin ((rosters event).count owner))) initial serials published
@@ -812,7 +812,7 @@ theorem roster_owner_fullSupport
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support)
     (sample : Finset (MessageId Player))
-    (choices : FinDist (Option (Fin ((rosters event).count owner)))) (full : choices.FullSupport)
+    (choices : PMF (Option (Fin ((rosters event).count owner)))) (full : FullSupport choices)
     (action : (application setup leaks).Action)
     (member : action ∈ rosterActions setup leaks bounds rosters owner
       ((current.sampledActivation (application setup leaks) owner sample).recall owner)
@@ -820,7 +820,7 @@ theorem roster_owner_fullSupport
         (application setup leaks) owner)) :
     action ∈ (((application setup leaks).policyMixture choices (fun selected =>
       (application setup leaks).scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+        (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
         (application setup leaks).replayPolicy)).policy
       ((current.sampledActivation (application setup leaks) owner sample).recall owner)
       ((current.sampledActivation (application setup leaks) owner sample).observe
@@ -834,7 +834,7 @@ theorem roster_owner_fullSupport
     have dormant := (application setup leaks).policyMixture_posterior_dormant law
       (fun selected => (application setup leaks).scheduledPolicy
         (rosterOffset setup rosters owner event) selected
-          (fun _ _ => FinDist.pure ((runtime setup).windowOpening leaks event candidate raw))
+          (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
             (application setup leaks).replayPolicy)
       (application setup leaks).replayPolicy (rosterOffset setup rosters owner event)
       (fun selected before view earlier => (application setup leaks).scheduledPolicy_before

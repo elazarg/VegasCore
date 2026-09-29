@@ -30,7 +30,7 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (bounds : MessageBounds graph) (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-  (initial : FinDist (State graph)) (horizon : Nat)
+  (initial : PMF (State graph)) (horizon : Nat)
   (scheduler : (runtime.reactiveApplication leaks).Scheduler)
 
 def canonicalRawPolicy (who : Player)
@@ -86,7 +86,7 @@ theorem splitRaw_strategy_converges
     (vanishes : Tendsto weight atTop (nhds 0)) (who : Player)
     (site : InformationSite
       ((bounds.rawMenu runtime leaks).information initial horizon scheduler) who) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => (bounds.splitRawPolicy runtime leaks initial horizon scheduler who
         ((sequence n).strategy who) (weight n) (nonnegative n) (atMostOne n)) site.1)
       ((bounds.canonicalRawPolicy runtime leaks initial horizon scheduler who

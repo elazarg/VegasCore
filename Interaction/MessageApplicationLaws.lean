@@ -67,8 +67,8 @@ inclusion receipts. Their own observable effects use application projections. -/
 theorem step_environment_pool_receipts (state : app.State)
     (command : app.EnvironmentCommand) :
     (app.step state (.environment command)).map (fun next => (next.pool, next.receipts)) =
-      FinDist.pure (state.pool, state.receipts) := by
-  simp [step, FinDist.map_comp, Function.comp_def]
+      PMF.pure (state.pool, state.receipts) := by
+  simp [step, PMF.map_comp, Function.comp_def]
 
 /-- A native supported path records every supplied command, including commands
 whose application effect is a stutter. It does not assert any service bound. -/
@@ -82,7 +82,7 @@ theorem mem_run_support_iff (state final : app.State) (actions : List app.Action
     final ∈ (app.run actions state).support ↔ app.Executes state actions final := by
   induction actions generalizing state with
   | nil =>
-      simp only [run_nil, FinDist.mem_support_pure]
+      simp only [run_nil, PMF.mem_support_pure_iff _ _]
       constructor
       · rintro rfl
         exact .nil _
@@ -90,7 +90,7 @@ theorem mem_run_support_iff (state final : app.State) (actions : List app.Action
         cases h
         rfl
   | cons action rest ih =>
-      simp only [run_cons, FinDist.support_bind, Set.mem_iUnion, ih]
+      simp only [run_cons, PMF.support_bind, Set.mem_iUnion, ih]
       constructor
       · rintro ⟨next, hstep, htail⟩
         exact .cons hstep htail
@@ -133,23 +133,23 @@ theorem step_application_invariant (invariant : app.Application → Prop)
     (hnext : next ∈ (app.step state action).support) : invariant next.application := by
   cases action with
   | privateCommand who command =>
-      simp only [step, FinDist.mem_support_pure] at hnext
+      simp only [step, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hprivate _ _ _ hstate
   | submit who payload =>
-      simp only [step, FinDist.mem_support_pure] at hnext
+      simp only [step, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hsubmit _ _ _ hstate
   | replay who id | deliver who id =>
-      simp only [step, FinDist.mem_support_pure] at hnext
+      simp only [step, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact hstate
   | «include» id =>
-      simp only [step, FinDist.mem_support_pure] at hnext
+      simp only [step, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact app.includePending_application_invariant invariant hhandler state id hstate
   | environment command =>
-      simp only [step, FinDist.support_map, Set.mem_image] at hnext
+      simp only [step, PMF.support_map, Set.mem_image] at hnext
       obtain ⟨application, hsupported, rfl⟩ := hnext
       exact henvironment _ _ _ hstate hsupported
 

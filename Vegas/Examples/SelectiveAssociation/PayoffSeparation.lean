@@ -20,27 +20,27 @@ open GameTheory.Math.Probability
 
 def nativePayoutLaw
     {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
-    (profile : Profile (serviceModel observation).behavioralSignature) : FinDist ℝ :=
+    (profile : Profile (serviceModel observation).behavioralSignature) : PMF ℝ :=
   ((serviceApp observation).runRounds (serviceScheduler observation)
-    ((serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    ((serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation) profile)
       nativeHorizon nativeRoot).map (fun final => nativeAlicePayout final.application.config)
 
 def sourcePayoutLaw {Claim : Type} [Fintype Claim]
-    (profile : Profile (NamedSource.model Claim).behavioralSignature) : FinDist ℝ :=
+    (profile : Profile (NamedSource.model Claim).behavioralSignature) : PMF ℝ :=
   ((NamedSource.model Claim).runBehavioral profile (2 * NamedSource.horizon + 1)).map
     (fun history => returnedPayoff (NamedSource.protocolResults history.state) alice)
 
 theorem native_payout_expectation
     {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
     (profile : Profile (serviceModel observation).behavioralSignature) :
-    (nativePayoutLaw profile).expect id =
-      ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1)).expect
+    expect (nativePayoutLaw profile) id =
+      expect ((serviceModel observation).runBehavioral profile (2 * nativeHorizon + 1))
         (fun history => nativeUtility alice history.state) := by
   rw [native_initial_value]
   unfold nativePayoutLaw
-  rw [FinDist.expect_map]
-  apply FinDist.expect_congr
+  rw [expect_map]
+  apply expect_congr_on_support
   intro final supported
   apply nativeAlicePayout_eq_utility
   apply native_plan_complete _ final
@@ -48,24 +48,24 @@ theorem native_payout_expectation
 
 theorem source_payout_expectation {Claim : Type} [Fintype Claim]
     (profile : Profile (NamedSource.model Claim).behavioralSignature) :
-    (sourcePayoutLaw profile).expect id =
-      ((NamedSource.model Claim).runBehavioral profile (2 * NamedSource.horizon + 1)).expect
+    expect (sourcePayoutLaw profile) id =
+      expect ((NamedSource.model Claim).runBehavioral profile (2 * NamedSource.horizon + 1))
         (NamedSource.payoff alice) := by
   unfold sourcePayoutLaw
-  rw [FinDist.expect_map]
-  apply FinDist.expect_congr
+  rw [expect_map]
+  apply expect_congr_on_support
   intro history _
   exact returnedPayoff_eq_utility _ _
 
 theorem native_sequential_payout_bound (assessment : nativeModel.BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)) :
-    1 / 2 ≤ (nativePayoutLaw assessment.strategy).expect id := by
+    1 / 2 ≤ expect (nativePayoutLaw assessment.strategy) id := by
   rw [native_payout_expectation]
   exact native_sequential_initial_bound assessment rational
 
 theorem source_equilibrium_payout_zero (Claim : Type) [Fintype Claim] (defaultClaim : Claim) :
-    (sourcePayoutLaw (NamedSource.profile Claim defaultClaim)).expect id = 0 := by
+    expect (sourcePayoutLaw (NamedSource.profile Claim defaultClaim)) id = 0 := by
   rw [source_payout_expectation, NamedSource.prescribed_initial_alice_payoff]
 
 /-- Even Alice's returned-payoff law cannot be preserved. The payoff function
@@ -74,18 +74,18 @@ theorem exists_source_equilibrium_no_native_payout_match (Claim : Type) [Fintype
     (defaultClaim : Claim) :
     ∃ source : (NamedSource.model Claim).BehavioralAssessment,
       source.IsSequentialEquilibriumFor
-        ((NamedSource.menu Claim).decisionInformationAntichain (FinDist.pure NamedSource.initial)
+        ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
         (fun who site => source.continuationContext site (NamedSource.payoff who)
           (2 * NamedSource.horizon + 1)) ∧
-      (sourcePayoutLaw source.strategy).expect id = 0 ∧
+      expect (sourcePayoutLaw source.strategy) id = 0 ∧
       ∀ target : nativeModel.BehavioralAssessment,
         target.IsSequentiallyRationalWithin
           (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1) →
         sourcePayoutLaw source.strategy ≠ nativePayoutLaw target.strategy := by
   obtain ⟨source, strategy, equilibrium, _law⟩ :=
     NamedSource.exists_sequentialEquilibrium Claim defaultClaim
-  have zero : (sourcePayoutLaw source.strategy).expect id = 0 := by
+  have zero : expect (sourcePayoutLaw source.strategy) id = 0 := by
     rw [strategy, source_equilibrium_payout_zero]
   refine ⟨source, equilibrium, zero, fun target rational sameLaw => ?_⟩
   have gain := native_sequential_payout_bound target rational

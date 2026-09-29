@@ -62,10 +62,10 @@ theorem wrong_address_inclusion (players : Player → nativeApp.Policy) (bit : B
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       (.includeLatest bobPublication bob) (bobSubmission bit submission) =
-        FinDist.pure (waitExecution (bobSubmission bit submission)) := by
+        PMF.pure (waitExecution (bobSubmission bit submission)) := by
   rw [nativeRuntime.interaction_includeLatest_environment, wrong_address_selection bit _ wrong]
-  change (FinDist.pure _).map _ = _
-  rw [FinDist.map_pure]
+  change (PMF.pure _).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 private def SameAlice (left right : nativeApp.Execution) : Prop :=
@@ -89,12 +89,12 @@ private theorem same_alice_maintenance (left right nextLeft nextRight : nativeAp
     (leftMem : nextLeft ∈ (left.environmentStep nativeApp (.application command)).support)
     (rightMem : nextRight ∈ (right.environmentStep nativeApp (.application command)).support) :
     SameAlice nextLeft nextRight := by
-  obtain ⟨leftUpdated, leftMoved, rfl⟩ := FinDist.support_map .. ▸ leftMem
-  obtain ⟨leftState, leftSupported, rfl⟩ := FinDist.support_map .. ▸ leftMoved
-  obtain ⟨rightUpdated, rightMoved, rfl⟩ := FinDist.support_map .. ▸ rightMem
-  obtain ⟨rightState, rightSupported, rfl⟩ := FinDist.support_map .. ▸ rightMoved
+  obtain ⟨leftUpdated, leftMoved, rfl⟩ := PMF.support_map .. ▸ leftMem
+  obtain ⟨leftState, leftSupported, rfl⟩ := PMF.support_map .. ▸ leftMoved
+  obtain ⟨rightUpdated, rightMoved, rfl⟩ := PMF.support_map .. ▸ rightMem
+  obtain ⟨rightState, rightSupported, rfl⟩ := PMF.support_map .. ▸ rightMoved
   have pureStep (state : EventGraphRuntime.State nativeGraph) :
-      ∃ result, environmentStep nativeRuntime state command = FinDist.pure result := by
+      ∃ result, environmentStep nativeRuntime state command = PMF.pure result := by
     cases command with
     | executeSample event => exact (maintenance event rfl).elim
     | grant event | advanceClock | expire event => exact ⟨_, rfl⟩
@@ -104,14 +104,14 @@ private theorem same_alice_maintenance (left right nextLeft nextRight : nativeAp
     at leftSupported
   change rightState ∈ (environmentStep nativeRuntime right.application command).support
     at rightSupported
-  rw [leftPure, FinDist.mem_support_pure] at leftSupported
-  rw [rightPure, FinDist.mem_support_pure] at rightSupported
+  rw [leftPure, PMF.mem_support_pure_iff _ _] at leftSupported
+  rw [rightPure, PMF.mem_support_pure_iff _ _] at rightSupported
   subst leftState rightState
   have views := nativeRuntime.maintenance_playerView_congr left.application right.application
     alice command maintenance same.1
-  rw [leftPure, rightPure, FinDist.map_pure, FinDist.map_pure] at views
+  rw [leftPure, rightPure, PMF.pure_map, PMF.pure_map] at views
   have applicationEq : leftResult.playerView alice = rightResult.playerView alice :=
-    FinDist.mem_support_pure.mp (views ▸ FinDist.mem_support_pure.mpr rfl)
+    (PMF.mem_support_pure_iff _ _).mp (views ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   refine ⟨applicationEq, same.2.1, ?_⟩
   have observed := congrArg (fun view : PlayerView nativeGraph =>
     (⟨view.who, view.publicView, view.observation, view.candidates⟩ :
@@ -132,19 +132,19 @@ private theorem same_alice_activation (left right nextLeft nextRight : nativeApp
     (rightMem : nextRight ∈ (right.environmentStep nativeApp (.activate alice)).support) :
     SameAlice nextLeft nextRight := by
   have activation (execution : nativeApp.Execution) :
-      execution.environmentStep nativeApp (.activate alice) = FinDist.pure
+      execution.environmentStep nativeApp (.activate alice) = PMF.pure
         { execution with environmentRecall := execution.environmentRecall ++
           [⟨execution.observeEnvironment nativeApp, .activate alice⟩] } := by
     simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
       nativeLeaks, alice, watcher, bob, show (0 : Player) ≠ 2 by decide,
-      show (0 : Player) ≠ 1 by decide, ↓reduceIte, FinDist.map_pure, MessageNetwork.learn_empty]
-  rw [activation, FinDist.mem_support_pure] at leftMem rightMem
+      show (0 : Player) ≠ 1 by decide, ↓reduceIte, PMF.pure_map, MessageNetwork.learn_empty]
+  rw [activation, PMF.mem_support_pure_iff _ _] at leftMem rightMem
   subst nextLeft nextRight
   exact same
 
 /-- Stop after Alice's actual activation, before consulting her response policy. -/
 def bobToAlice (players : Player → nativeApp.Policy) (bit : Bool)
-    (submission : WitnessedSubmission nativeGraph) : FinDist nativeApp.Execution :=
+    (submission : WitnessedSubmission nativeGraph) : PMF nativeApp.Execution :=
   (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
     [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
     (bobSubmission bit submission)).bind fun execution =>
@@ -159,34 +159,34 @@ theorem wrong_address_alice_input (players : Player → nativeApp.Policy) (bit :
     (next.recall alice, next.observe nativeApp alice) =
       ((beforeAlice bit false).recall alice, (beforeAlice bit false).observe nativeApp alice) := by
   obtain ⟨granted, grantMem, activated⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   rw [runInteractionPlan, wrong_address_inclusion players bit submission wrong,
-    FinDist.pure_bind] at grantMem
+    PMF.pure_bind] at grantMem
   have inactive (command : EnvironmentCommand nativeGraph) :
       (ReactiveApplication.Command.application command).actor? nativeApp = none := rfl
-  have resume : nativeApp.resume players none = FinDist.pure := rfl
+  have resume : nativeApp.resume players none = PMF.pure := rfl
   simp only [runInteractionPlan, interactionStep, interactionInstruction,
-    FinDist.pure_bind, ReactiveApplication.dispatch, inactive,
-    resume, FinDist.bind_pure] at grantMem
+    PMF.pure_bind, ReactiveApplication.dispatch, inactive,
+    resume, PMF.bind_pure] at grantMem
   obtain ⟨ticked, tickMem, afterTick⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ grantMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ grantMem)
   obtain ⟨expired, expiryMem, grantMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ afterTick)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ afterTick)
   have includedSame : SameAlice (waitExecution (bobSubmission bit submission))
       (silentBobIncluded bit) := same_alice_submission bit submission
   have tickedSame := same_alice_maintenance _ _ ticked (silentBobTicked bit) .advanceClock
     (by intro event impossible; cases impossible) includedSame tickMem
-    (by rw [silent_bob_tick]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [silent_bob_tick]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   have expiredSame := same_alice_maintenance _ _ expired (silentBobExpired bit)
     (.expire bobPublication) (by intro event impossible; cases impossible) tickedSame expiryMem
-    (by rw [silent_bob_expiry]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [silent_bob_expiry]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   have grantedSame := same_alice_maintenance expired (afterBob bit false) granted
     (grantedAlice bit false) (.grant alicePublication)
     (by intro event impossible; cases impossible) expiredSame grantMem
-    (by rw [grant_alice]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [grant_alice]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   have finalSame := same_alice_activation granted (grantedAlice bit false) next
     (beforeAlice bit false) grantedSame activated
-    (by rw [activate_alice]; exact FinDist.mem_support_pure.mpr rfl)
+    (by rw [activate_alice]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   exact Prod.ext finalSame.2.1 finalSame.2.2
 
 theorem wrong_address_alice_input_law (players : Player → nativeApp.Policy) (bit : Bool)
@@ -194,11 +194,11 @@ theorem wrong_address_alice_input_law (players : Player → nativeApp.Policy) (b
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication) :
     (bobToAlice players bit submission).map
       (fun next => (next.recall alice, next.observe nativeApp alice)) =
-        FinDist.pure ((beforeAlice bit false).recall alice,
+        PMF.pure ((beforeAlice bit false).recall alice,
           (beforeAlice bit false).observe nativeApp alice) := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro observed supported
-  obtain ⟨next, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨next, reached, rfl⟩ := PMF.support_map .. ▸ supported
   exact wrong_address_alice_input players bit submission wrong next reached
 
 end Vegas.Examples.MonitoredGuessing.Restricted

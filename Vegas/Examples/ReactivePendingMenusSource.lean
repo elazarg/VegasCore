@@ -32,8 +32,8 @@ theorem no_utility_independent_spe_compiler
           (PendingMenus.sourceProtocolProfile admission)
           (protocolUtility PendingMenus.sourceProgram admission PendingMenus.sourceInitial
             (PendingMenus.sourceUtility preferOne)) →
-        model.IsBehavioralSubgamePerfect (app.singleMover (FinDist.pure initialState) 7 scheduler)
-          (app.bounded (FinDist.pure initialState) 7 scheduler)
+        model.IsBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+          (app.bounded (PMF.pure initialState) 7 scheduler)
           (compile (PendingMenus.sourceProtocolProfile admission)) (payoff preferOne) := by
   rintro ⟨compile, preserves⟩
   exact no_common_spe ⟨compile (PendingMenus.sourceProtocolProfile admission),

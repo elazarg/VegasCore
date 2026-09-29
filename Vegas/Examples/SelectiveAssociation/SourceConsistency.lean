@@ -24,8 +24,8 @@ def FairGuessBeliefs (Claim : Type) [Fintype Claim]
     site.1 = some (past, view) →
     ((who = carol ∧ view.application.visit = some 1) ∨
       (who = bob ∧ view.application.visit = some 2)) → NoPublicAlice view →
-    (assessment.belief who site).probOf {history | hasAliceBit false history.1.state} =
-      (assessment.belief who site).probOf {history | hasAliceBit true history.1.state}
+    ((assessment.belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal =
+      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal
 
 theorem tremble_fairGuessBeliefs (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
@@ -45,10 +45,10 @@ theorem fairGuessBeliefs_limit (Claim : Type) [Fintype Claim]
   classical
   intro who site past view observed decision hidden
   have eventLimit (event : Set ((model Claim).InformationHistory who site.1)) :
-      Tendsto (fun n => ((sequence n).belief who site).probOf event) atTop
-        (nhds ((assessment.belief who site).probOf event)) := by
-    simpa only [FinDist.expect_indicator_eq_probOf] using
-      (converges.belief who site).expect (fun history => if history ∈ event then (1 : ℝ) else 0)
+      Tendsto (fun n => (((sequence n).belief who site).toOuterMeasure event).toReal) atTop
+        (nhds (((assessment.belief who site).toOuterMeasure event).toReal)) := by
+    simpa only [expect_indicator] using
+      expect (converges.belief who site) (fun history => if history ∈ event then (1 : ℝ) else 0)
   have first := eventLimit {history | hasAliceBit false history.1.state}
   have second := eventLimit {history | hasAliceBit true history.1.state}
   have same : (fun n => (sequence n).belief who site |>.probOf
@@ -64,7 +64,7 @@ theorem exists_consistent_fair_assessment (Claim : Type) [Fintype Claim] (defaul
     ∃ assessment : (model Claim).BehavioralAssessment,
       assessment.strategy = profile Claim defaultClaim ∧
       assessment.IsSequentiallyConsistent
-        ((menu Claim).decisionInformationAntichain (FinDist.pure initial)
+        ((menu Claim).decisionInformationAntichain (PMF.pure initial)
           horizon (scheduler Claim)) ∧ FairGuessBeliefs Claim assessment := by
   let weight (n : Nat) : ℝ := 1 / ((n : ℝ) + 1)
   have positive (n : Nat) : 0 < weight n := by dsimp [weight]; positivity
@@ -77,13 +77,13 @@ theorem exists_consistent_fair_assessment (Claim : Type) [Fintype Claim] (defaul
   let sequence n := tremble Claim defaultClaim (weight n) (positive n) (atMostOne n)
   obtain ⟨assessment, strategy, index, _increasing, converges, consistent⟩ :=
     InformationModel.BehavioralAssessment.exists_consistent_completion_subsequence
-      ((menu Claim).decisionInformationAntichain (FinDist.pure initial)
+      ((menu Claim).decisionInformationAntichain (PMF.pure initial)
         horizon (scheduler Claim))
       (profile Claim defaultClaim) sequence
       (fun n => tremble_fullyMixed Claim defaultClaim (weight n) (positive n) (atMostOne n))
       (fun n => tremble_bayes Claim defaultClaim (weight n) (positive n) (atMostOne n))
       (fun who site => (menu Claim).perturbedAssessment_strategy_converges
-        (FinDist.pure initial) horizon (scheduler Claim) (profile Claim defaultClaim)
+        (PMF.pure initial) horizon (scheduler Claim) (profile Claim defaultClaim)
         weight positive atMostOne vanishes who site.1)
   refine ⟨assessment, strategy, consistent, ?_⟩
   exact fairGuessBeliefs_limit Claim (fun n => sequence (index n)) assessment converges

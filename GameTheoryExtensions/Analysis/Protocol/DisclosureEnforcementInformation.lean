@@ -17,7 +17,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 open GameTheory.Protocol.ExecutionProtocol
 
 variable {Secret Decision : Type} [Nonempty Decision]
-variable (prior : FinDist Secret) (full : ∀ secret, secret ∈ prior.support)
+variable (prior : PMF Secret) (full : ∀ secret, secret ∈ prior.support)
 
 def senderSite (secret : Secret) :
     (model (Decision := Decision) prior true).InformationSite false :=
@@ -173,13 +173,13 @@ theorem sender_context (assessment : (model (Decision := Decision) prior true).B
     (alternative : (model (Decision := Decision) prior true).BehavioralPolicy false) :
     (assessment.continuationContext (senderSite prior full secret)
       (fun h => utility h.state) 3).value alternative =
-      ((model prior true).runSingleMoverBehavioralFrom (single prior true)
+      expect ((model prior true).runSingleMoverBehavioralFrom (single prior true)
         (Profile.update (sig := (model prior true).behavioralSignature)
-          assessment.strategy false alternative) 3 (senderHistory prior full true secret)).expect
+          assessment.strategy false alternative) 3 (senderHistory prior full true secret))
             (fun h => utility h.state) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.eq_pure_of_subsingleton (assessment.belief false (senderSite prior full secret))
-      ⟨senderHistory prior full true secret, rfl⟩, FinDist.pure_bind,
+    eq_pure_of_subsingleton (assessment.belief false (senderSite prior full secret))
+      ⟨senderHistory prior full true secret, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
       (model prior true) (single prior true)]
 
@@ -189,36 +189,36 @@ theorem disclosed_context
     (alternative : (model (Decision := Decision) prior true).BehavioralPolicy true) :
     (assessment.continuationContext (receiverDisclosedSite prior full secret)
         (fun h => utility h.state) 3).value alternative =
-      ((model prior true).runSingleMoverBehavioralFrom (single prior true)
+      expect ((model prior true).runSingleMoverBehavioralFrom (single prior true)
         (Profile.update (sig := (model prior true).behavioralSignature)
           assessment.strategy true alternative) 3
-            (receiverHistory prior full true secret true)).expect
+            (receiverHistory prior full true secret true))
             (fun h => utility h.state) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.eq_pure_of_subsingleton
+    eq_pure_of_subsingleton
       (assessment.belief true (receiverDisclosedSite prior full secret))
-      ⟨receiverHistory prior full true secret true, rfl⟩, FinDist.pure_bind,
+      ⟨receiverHistory prior full true secret true, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
       (model prior true) (single prior true)]
 
 theorem value_receiver {ambient : Bool}
     (profile : Profile (model (Decision := Decision) prior ambient).behavioralSignature)
     (secret : Secret) (disclose : Bool) (utility : State Secret Decision → ℝ) :
-    ((model prior ambient).runSingleMoverBehavioralFrom (single prior ambient) profile 3
-      (receiverHistory prior full ambient secret disclose)).expect (fun h => utility h.state) =
-        (resultLaw profile secret (ambient && disclose)).expect utility := by
-  have mapped := congrArg (fun law => law.expect utility)
+    expect ((model prior ambient).runSingleMoverBehavioralFrom (single prior ambient) profile 3
+      (receiverHistory prior full ambient secret disclose)) (fun h => utility h.state) =
+        expect (resultLaw profile secret (ambient && disclose)) utility := by
+  have mapped := congrArg (fun law => expect law utility)
     (run_receiver full profile secret disclose)
-  simpa only [FinDist.expect_map] using mapped
+  simpa only [expect_map] using mapped
 
 theorem value_sender {ambient : Bool}
     (profile : Profile (model (Decision := Decision) prior ambient).behavioralSignature)
     (secret : Secret) (utility : State Secret Decision → ℝ) :
-    ((model prior ambient).runSingleMoverBehavioralFrom (single prior ambient) profile 3
-      (senderHistory prior full ambient secret)).expect (fun h => utility h.state) =
-        (choiceLaw profile false (some (some secret))).expect
-          (fun disclose => (resultLaw profile secret (ambient && disclose)).expect utility) := by
-  have mapped := congrArg (fun law => law.expect utility) (run_sender full profile secret)
-  simpa only [FinDist.expect_map, FinDist.expect_bind] using mapped
+    expect ((model prior ambient).runSingleMoverBehavioralFrom (single prior ambient) profile 3
+      (senderHistory prior full ambient secret)) (fun h => utility h.state) =
+        expect (choiceLaw profile false (some (some secret)))
+          (fun disclose => expect (resultLaw profile secret (ambient && disclose)) utility) := by
+  have mapped := congrArg (fun law => expect law utility) (run_sender full profile secret)
+  simpa only [expect_map, FinDist.expect_bind] using mapped
 
 end GameTheory.Protocol.DisclosureEnforcement

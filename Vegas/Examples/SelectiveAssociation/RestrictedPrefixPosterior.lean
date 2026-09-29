@@ -21,19 +21,19 @@ open GameTheory.Math.Probability PrefixSymmetry
 theorem carol_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (uncertified : publicGuess view = false) :
-    (carolLaw (mixed weight positive.le atMostOne)).probOf {responses |
+    ((carolLaw (mixed weight positive.le atMostOne)).toOuterMeasure {responses |
       ((carolInput responses).recall carol, (carolInput responses).observe app carol) =
         (past, view) ∧
       aliceBindingRef.get? (carolInput responses).application.config.store =
-        some (.success true)} ≤
-    (carolLaw (mixed weight positive.le atMostOne)).probOf {responses |
+        some (.success true)}).toReal ≤
+    ((carolLaw (mixed weight positive.le atMostOne)).toOuterMeasure {responses |
       ((carolInput responses).recall carol, (carolInput responses).observe app carol) =
         (past, view) ∧
       aliceBindingRef.get? (carolInput responses).application.config.store =
-        some (.success false)} := by
-  let players := (menu.perturbedAssessment (FinDist.pure nativeInitial) nativeHorizon scheduler
+        some (.success false)}).toReal := by
+  let players := (menu.perturbedAssessment (PMF.pure nativeInitial) nativeHorizon scheduler
     profile weight positive atMostOne).strategy
-  have decoded : menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players =
+  have decoded : menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players =
       mixed weight positive.le atMostOne := decode_perturbed weight positive atMostOne
   let selected : Handle nativeGraph :=
     (view.application.publicView.accepted aliceBindingRef.field).getD (alice, .prepared 0)
@@ -45,8 +45,8 @@ theorem carol_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weigh
   have moves (responses : CarolResponses) (member : responses ∈ event true)
       (supported : responses ∈ law.support) :
       flipCarol selected responses ∈ event false ∧
-        law.prob responses ≤ law.prob (flipCarol selected responses) := by
-    have support : responses ∈ (carolLaw (menu.decodeProfile (FinDist.pure nativeInitial)
+        (law responses).toReal ≤ (law (flipCarol selected responses)).toReal := by
+    have support : responses ∈ (carolLaw (menu.decodeProfile (PMF.pure nativeInitial)
         nativeHorizon scheduler players)).support := by
       rw [decoded]
       exact supported
@@ -64,7 +64,7 @@ theorem carol_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weigh
     refine ⟨⟨sameInput.trans member.1, related_true_false selected _ _ related member.2⟩, ?_⟩
     exact carol_flip_probability weight positive.le atMostOne selected owner responses
       (carol_true_response_different players responses support member.2)
-  exact FinDist.probOf_le_of_injection law (event true) (event false) (flipCarol selected)
+  exact PMF.toOuterMeasure_le_of_injection law (event true) (event false) (flipCarol selected)
     (fun _ _ _ _ same => (flipCarol_involutive selected).injective same)
     (fun responses member supported => (moves responses member supported).1)
     (fun responses member supported => (moves responses member supported).2)
@@ -72,16 +72,16 @@ theorem carol_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weigh
 theorem bob_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (uncertified : publicGuess view = false) :
-    (bobLaw (mixed weight positive.le atMostOne)).probOf {responses |
+    ((bobLaw (mixed weight positive.le atMostOne)).toOuterMeasure {responses |
       ((bobInput responses).recall bob, (bobInput responses).observe app bob) = (past, view) ∧
-      aliceBindingRef.get? (bobInput responses).application.config.store = some (.success true)} ≤
-    (bobLaw (mixed weight positive.le atMostOne)).probOf {responses |
+      aliceBindingRef.get? (bobInput responses).application.config.store = some (.success true)}).toReal ≤
+    ((bobLaw (mixed weight positive.le atMostOne)).toOuterMeasure {responses |
       ((bobInput responses).recall bob, (bobInput responses).observe app bob) = (past, view) ∧
       aliceBindingRef.get? (bobInput responses).application.config.store =
-        some (.success false)} := by
-  let players := (menu.perturbedAssessment (FinDist.pure nativeInitial) nativeHorizon scheduler
+        some (.success false)}).toReal := by
+  let players := (menu.perturbedAssessment (PMF.pure nativeInitial) nativeHorizon scheduler
     profile weight positive atMostOne).strategy
-  have decoded : menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players =
+  have decoded : menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players =
       mixed weight positive.le atMostOne := decode_perturbed weight positive atMostOne
   let selected : Handle nativeGraph :=
     (view.application.publicView.accepted aliceBindingRef.field).getD (alice, .prepared 0)
@@ -92,8 +92,8 @@ theorem bob_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight 
   have moves (responses : BobResponses) (member : responses ∈ event true)
       (supported : responses ∈ law.support) :
       flipBob selected responses ∈ event false ∧
-        law.prob responses ≤ law.prob (flipBob selected responses) := by
-    have support : responses ∈ (bobLaw (menu.decodeProfile (FinDist.pure nativeInitial)
+        (law responses).toReal ≤ (law (flipBob selected responses)).toReal := by
+    have support : responses ∈ (bobLaw (menu.decodeProfile (PMF.pure nativeInitial)
         nativeHorizon scheduler players)).support := by
       rw [decoded]
       exact supported
@@ -111,7 +111,7 @@ theorem bob_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight 
     refine ⟨⟨sameInput.trans member.1, related_true_false selected _ _ related member.2⟩, ?_⟩
     exact bob_flip_probability weight positive.le atMostOne selected owner responses
       (bob_true_response_different players responses support member.2) carolSame
-  exact FinDist.probOf_le_of_injection law (event true) (event false) (flipBob selected)
+  exact PMF.toOuterMeasure_le_of_injection law (event true) (event false) (flipBob selected)
     (fun _ _ _ _ same => (flipBob_involutive selected).injective same)
     (fun responses member supported => (moves responses member supported).1)
     (fun responses member supported => (moves responses member supported).2)

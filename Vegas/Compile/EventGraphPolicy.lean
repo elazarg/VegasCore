@@ -178,14 +178,14 @@ def compilePolicyTable {Field : Type}
     (who : Player) → BehavioralPolicy who program →
     (event : Fin (eventCount program)) → Vegas.EventGraph.Store layout →
     List (OwnAction Player L) →
-      FinDist (Vegas.EventGraph.EventField.Action (outputLayout program event))
+      PMF (Vegas.EventGraph.EventField.Action (outputLayout program event))
   | _, _, .ret _, _, _, _, _, event, _, _ => nomatch event
   | _, _, .sample name fresh law next, refs, outputs,
       who, policy, event, store, history =>
       let headRef : Vegas.EventGraph.FieldRef layout (.publicData _) := by
         simpa [outputLayout, eventCount] using
           outputs ⟨0, by simp [eventCount]⟩
-      Fin.cases (fun _ _ => FinDist.pure PUnit.unit)
+      Fin.cases (fun _ _ => PMF.pure PUnit.unit)
         (compilePolicyTable next (refs.cons headRef)
           (fun tail => outputs (Fin.succ tail)) who policy) event store history
   | _, _, .commit (payload := payload) name owner fresh guard next, refs,
@@ -199,8 +199,8 @@ def compilePolicyTable {Field : Type}
             match decodeObservation? who refs store with
             | some observation =>
                 policy.1 same (observation, history)
-            | none => FinDist.pure PublicationResult.failure
-          else FinDist.pure PublicationResult.failure)
+            | none => PMF.pure PublicationResult.failure
+          else PMF.pure PublicationResult.failure)
         (compilePolicyTable next (refs.cons headRef)
           (fun tail => outputs (Fin.succ tail)) who policy.2) event store history
   | Γ, _, .reveal (payload := payload) published owner name fresh selected unresolved
@@ -213,8 +213,8 @@ def compilePolicyTable {Field : Type}
           if same : owner = who then
             match decodeObservation? who refs store with
             | some observation => policy.1 same (observation, history)
-            | none => FinDist.pure false
-          else FinDist.pure false)
+            | none => PMF.pure false
+          else PMF.pure false)
         (compilePolicyTable next (refs.cons headRef)
           (fun tail => outputs (Fin.succ tail)) who policy.2) event store history
 
@@ -244,8 +244,8 @@ theorem compilePolicyTable_commit_of_decode {Field : Type}
       match decodeObservation? who refs store with
       | some observation =>
           policy.1 same' (observation, history)
-      | none => FinDist.pure PublicationResult.failure
-    else FinDist.pure PublicationResult.failure) = _
+      | none => PMF.pure PublicationResult.failure
+    else PMF.pure PublicationResult.failure) = _
   simp [same, decoded]
 
 /-- A malformed commit view chooses the genuine failure binding. -/
@@ -268,13 +268,13 @@ theorem compilePolicyTable_commit_of_decode_none {Field : Type}
     compilePolicyTable (.commit (payload := payload) name owner fresh guard next)
         refs outputs who policy
         ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store history =
-      FinDist.pure PublicationResult.failure := by
+      PMF.pure PublicationResult.failure := by
   change (if same' : owner = who then
       match decodeObservation? who refs store with
       | some observation =>
           policy.1 same' (observation, history)
-      | none => FinDist.pure PublicationResult.failure
-    else FinDist.pure PublicationResult.failure) = _
+      | none => PMF.pure PublicationResult.failure
+    else PMF.pure PublicationResult.failure) = _
   simp [same, decoded]
 
 /-- At a well-formed reveal observation, the compiled head kernel is exactly
@@ -304,8 +304,8 @@ theorem compilePolicyTable_reveal_of_decode {Field : Type}
   change (if same' : owner = who then
       match decodeObservation? who refs store with
       | some observation => policy.1 same' (observation, history)
-      | none => FinDist.pure false
-    else FinDist.pure false) = _
+      | none => PMF.pure false
+    else PMF.pure false) = _
   simp [same, decoded]
 
 /-- A malformed reveal view refuses disclosure. -/
@@ -330,12 +330,12 @@ theorem compilePolicyTable_reveal_of_decode_none {Field : Type}
         (.reveal (payload := payload) published owner name fresh selected unresolved next)
         refs outputs who policy
         ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store history =
-      FinDist.pure false := by
+      PMF.pure false := by
   change (if same' : owner = who then
       match decodeObservation? who refs store with
       | some observation => policy.1 same' (observation, history)
-      | none => FinDist.pure false
-    else FinDist.pure false) = _
+      | none => PMF.pure false
+    else PMF.pure false) = _
   simp [same, decoded]
 
 /-- Compile one source policy to the actual behavioral-policy interface of the

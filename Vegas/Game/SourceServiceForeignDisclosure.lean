@@ -90,7 +90,7 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
         (.includeLatest event site.owner :: List.replicate ticks .tick ++ [.expire event]))
       execution).map (fun final => final.application.config) =
       (revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
-        FinDist.pure (config.complete event ready
+        PMF.pure (config.complete event ready
           (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) disclose)
           (cast (congrArg EventGraph.EventField.Value site.outputEq.symm)
             (disclosureResult site.published site.binding site.source disclose))) := by
@@ -132,8 +132,8 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
         [.includeLatest (embedding.event ⟨0, by simp [eventCount]⟩) owner]) ++
         (List.replicate ticks .tick ++ [.expire (embedding.event ⟨0, by simp [eventCount]⟩)]) := by
     simp only [List.append_assoc, List.cons_append, List.nil_append]
-  rw [splitPlan, runInteractionPlan_append, law, FinDist.bind_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [splitPlan, runInteractionPlan_append, law, PMF.bind_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro disclose supported
   have guarded := effective_reveal_supported fresh binding unresolved next residual source
     effective disclose supported
@@ -155,7 +155,7 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
           (embedding.event ⟨0, by simp [eventCount]⟩)
             (execution.observe (application setup leaks) owner) else none) with
           | none => (application setup leaks).replayPolicy past view
-          | some (candidate, raw) => FinDist.pure ((runtime setup).windowOpening leaks
+          | some (candidate, raw) => PMF.pure ((runtime setup).windowOpening leaks
               (embedding.event ⟨0, by simp [eventCount]⟩) candidate raw))
         (application setup leaks).replayPolicy) = guardedPlayers := by
     have firing : ∀ length : Nat, (some slot).map (fun selected =>
@@ -178,9 +178,9 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
         simp only [Function.update_self, ReactiveApplication.scheduledPolicy,
           openingWindowPlayers, ↓reduceIte, firing]
       · simp only [Function.update_of_ne same, openingWindowPlayers, same, ↓reduceIte]
-  refine (FinDist.map_congr_of_eq_on_support (g := fun _ => _) ?_).trans (FinDist.map_const _ _)
+  refine (map_congr_on_support _ (g := fun _ => _) ?_).trans (FinDist.map_const _ _)
   intro final reached
-  obtain ⟨current, prior, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨current, prior, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   rw [servicePlan_players_eq setup leaks _ guardedPlayers network _ (by simp)
     (by intro who; simp) current] at rest
   have prior : current ∈ ((runtime setup).runInteractionPlan leaks guardedPlayers network
@@ -193,7 +193,7 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
     agree valid (embedding.event ⟨0, by simp [eventCount]⟩) outputEq codeEq node ready timely
     entered ticks activated due published serials network visits visit disclose guarded final
   rw [List.append_assoc (visits.map ServiceInstruction.player ++ [_]),
-    runInteractionPlan_append, FinDist.support_bind]
+    runInteractionPlan_append, PMF.support_bind]
   exact Set.mem_iUnion₂.mpr ⟨current, prior, rest⟩
 
 variable [Fintype Player]
@@ -328,8 +328,8 @@ theorem recorded_disclosure_phase_invariant {who : Player} {remaining : Nat}
       (transport response allowed) phase.visits (phase.event.val + 1)
   have applications := (law first firstAllowed).trans (law second secondAllowed).symm
   simp only [phaseConfigLaw, phaseLaw, DecisionPhase.tail, ending]
-  simpa only [List.append_assoc, FinDist.map_comp, Function.comp_def] using
-    congrArg (FinDist.map EventGraphRuntime.State.config) applications
+  simpa only [List.append_assoc, PMF.map_comp, Function.comp_def] using
+    congrArg (PMF.map EventGraphRuntime.State.config) applications
 
 /-- At a disclosure phase, every legal response of a player other than the
 owner leaves the same configuration law at the next event boundary, whether or
@@ -378,7 +378,7 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
     if (execution.recall site.owner).length ≤ offset + slot.val ∧
         offset + slot.val < (execution.recall site.owner).length + phase.visits.count site.owner
     then (revealKernel site.residual (site.source.view site.owner)).bind fun disclose =>
-      FinDist.pure (execution.application.config.complete phase.event ready
+      PMF.pure (execution.application.config.complete phase.event ready
         (cast (congrArg EventGraph.EventField.Action site.outputEq.symm) disclose)
         (cast (congrArg EventGraph.EventField.Value site.outputEq.symm)
           (disclosureResult site.published site.binding site.source disclose)))
@@ -436,7 +436,7 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
         sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
           approx.timing approx.profile phase.event site.owner owned service.network phase.visits
           after afterGrant]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro current _
       exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
         (by simp [rest]) (by intro actor; simp [rest]) current
@@ -450,8 +450,8 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
     dsimp only at mixture
     rw [sameRecall] at mixture
     unfold phaseConfigLaw phaseLaw DecisionPhase.tail
-    rw [ending, mixed, ← mixture, FinDist.map_bind]
-    apply FinDist.bind_congr
+    rw [ending, mixed, ← mixture, PMF.map_bind]
+    apply bind_congr_on_support _
     intro slot _
     by_cases inside : (execution.recall site.owner).length ≤ offset + slot.val ∧
         offset + slot.val < (execution.recall site.owner).length + phase.visits.count site.owner
@@ -484,7 +484,7 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
         unfold sourceServiceTimedFamily
         rw [scheduled_window_waiting service.setup service.leaks service.network site.owner offset
           slot _ phase.visits after separated]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro current _
         exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
           (by simp [rest]) (by intro actor; simp [rest]) current
@@ -493,8 +493,8 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
           afterPublished).trans ((runtime service.setup).application_service_law service.leaks _
             service.network rest passive after execution sameApp)
       rw [replayed]
-      simpa only [FinDist.map_comp, Function.comp_def] using
-        congrArg (FinDist.map EventGraphRuntime.State.config) applications
+      simpa only [PMF.map_comp, Function.comp_def] using
+        congrArg (PMF.map EventGraphRuntime.State.config) applications
   rw [law first firstAllowed, law second secondAllowed]
 
 open Classical in
@@ -510,7 +510,7 @@ theorem foreign_disclosure_comparison_eq (who : Player)
     (foreign : who ≠ owner) (owned : (graph service.setup).actor? event = some owner)
     (isPublication : (graph service.setup).outputLayout event = .publication payload)
     (granted : view.application.publicView.serviceGrant = some event)
-    (law : FinDist (service.model.Choice who site.1)) :
+    (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparison service.readout service.fuel
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by
@@ -542,7 +542,7 @@ theorem recorded_disclosure_comparison_eq (who : Player)
     (isPublication : (graph service.setup).outputLayout event = .publication payload)
     (granted : view.application.publicView.serviceGrant = some event)
     (recorded : (runtime service.setup).eventRecorded service.leaks past event = true)
-    (law : FinDist (service.model.Choice who site.1)) :
+    (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparison service.readout service.fuel
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by

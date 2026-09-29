@@ -60,7 +60,7 @@ private theorem sourceProfile_ordinary
   classical
   simp only [ReactiveApplication.ResponseMenu.decodeProfile, ReactiveApplication.decodePolicy,
     ReactiveApplication.ResponseMenu.embedPolicy, sourceProfile, dite_eq_right ordinary,
-    FinDist.map_comp]
+    PMF.map_comp]
   rfl
 
 include reveals observer openable in
@@ -104,28 +104,28 @@ private theorem successor_counterpart
       state = some ⟨count, nextActor, right⟩ ∧ ReplayAgreement setup leaks watcher left right
   have coupling := replay_control_bind_eq setup leaks bounds watcher reveals observer openable
     source target history remaining actor first second current same ordinaryLaw
-    (fun _ => FinDist.pure true) (fun state => FinDist.pure (decide (matched state)))
+    (fun _ => PMF.pure true) (fun state => PMF.pure (decide (matched state)))
     (by
       intro count nextActor left right reached related
       have witness : matched (some ⟨count, nextActor, right⟩) :=
         ⟨count, nextActor, left, right, reached, rfl, related⟩
       rw [decide_eq_true witness])
-  rw [FinDist.bind_const, ← FinDist.map_eq_bind] at coupling
+  rw [PMF.bind_const, ← ← PMF.bind_pure_comp, Function.comp_def] at coupling
   have inMap : decide (matched next) ∈
-      (FinDist.pure true).support := by
-    rw [coupling, FinDist.support_map]
+      (PMF.pure true).support := by
+    rw [coupling, PMF.support_map]
     exact ⟨next, supported, rfl⟩
-  have witness : matched next := of_decide_eq_true (FinDist.mem_support_pure.mp inMap)
+  have witness : matched next := of_decide_eq_true ((PMF.mem_support_pure_iff _ _).mp inMap)
   obtain ⟨count, nextActor, left, right, reached, nextEq, related⟩ := witness
   have prefixLaw := sourceMenu.run_map_controlSteps (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) source 1 history
-  simp only [Function.iterate_one, FinDist.pure_bind, current] at prefixLaw
+  simp only [Function.iterate_one, PMF.pure_bind, current] at prefixLaw
   have sourceReach : some ⟨count, nextActor, left⟩ ∈
       (((information setup leaks bounds watcher).runBehavioralFrom source 1 history).map
         History.state).support := by
     rw [prefixLaw]
     exact reached
-  obtain ⟨nextHistory, _, nextState⟩ := FinDist.support_map .. ▸ sourceReach
+  obtain ⟨nextHistory, _, nextState⟩ := PMF.support_map .. ▸ sourceReach
   exact ⟨nextHistory, count, nextActor, left, right, nextState, nextEq, related⟩
 
 
@@ -160,18 +160,18 @@ private theorem supported_counterpart
   induction fuel generalizing history with
   | zero =>
       have equal : history = (targetMenu.protocol initial count service).initHistory :=
-        FinDist.mem_support_pure.mp supported
+        (PMF.mem_support_pure_iff _ _).mp supported
       exact Or.inl (congrArg History.state equal)
   | succ fuel ih =>
       change history ∈ (targetModel.runBehavioralFrom target (fuel + 1)
         (targetMenu.protocol initial count service).initHistory).support at supported
-      rw [targetModel.runBehavioralFrom_add, FinDist.support_bind] at supported
+      rw [targetModel.runBehavioralFrom_add, PMF.support_bind] at supported
       obtain ⟨prior, reached, moved⟩ := Set.mem_iUnion₂.mp supported
       have targetStep := targetMenu.run_map_controlSteps initial count service target 1 prior
-      simp only [Function.iterate_one, FinDist.pure_bind] at targetStep
+      simp only [Function.iterate_one, PMF.pure_bind] at targetStep
       have stateSupport : history.state ∈
           (app.controlStep initial count service secondPlayers prior.state).support := by
-        rw [← targetStep, FinDist.support_map]
+        rw [← targetStep, PMF.support_map]
         exact ⟨history, moved, rfl⟩
       rcases ih prior reached with uninitialized | related
       · rw [uninitialized] at stateSupport
@@ -180,21 +180,21 @@ private theorem supported_counterpart
               initial.map (fun state => some ⟨count, none,
                 ReactiveApplication.Execution.initial app state⟩) := by
           simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
-            Option.bind_none, ReactiveApplication.transition, FinDist.map_eq_bind]
+            Option.bind_none, ReactiveApplication.transition, ← PMF.bind_pure_comp, Function.comp_def]
           rfl
-        rw [initialStep, FinDist.support_map] at stateSupport
+        rw [initialStep, PMF.support_map] at stateSupport
         obtain ⟨state, stateSupported, stateEq⟩ := stateSupport
         have sourceStep := sourceMenu.run_map_controlSteps initial count service source 1
           (sourceMenu.protocol initial count service).initHistory
-        simp only [Function.iterate_one, FinDist.pure_bind] at sourceStep
+        simp only [Function.iterate_one, PMF.pure_bind] at sourceStep
         change (sourceModel.runBehavioral source 1).map History.state =
           app.controlStep initial count service firstPlayers none at sourceStep
         rw [initialStep] at sourceStep
         have inSource : some ⟨count, none, ReactiveApplication.Execution.initial app state⟩ ∈
             ((sourceModel.runBehavioral source 1).map History.state).support := by
-          rw [sourceStep, FinDist.support_map]
+          rw [sourceStep, PMF.support_map]
           exact ⟨state, stateSupported, rfl⟩
-        obtain ⟨original, _, originalState⟩ := FinDist.support_map .. ▸ inSource
+        obtain ⟨original, _, originalState⟩ := PMF.support_map .. ▸ inSource
         refine Or.inr ⟨original, count, none, _, _, originalState, stateEq.symm, ?_⟩
         exact ReplayAgreement.refl _ (by simp [ReactiveApplication.Execution.initial,
           MessageNetwork.empty])

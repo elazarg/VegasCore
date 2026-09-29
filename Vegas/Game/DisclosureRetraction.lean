@@ -31,7 +31,7 @@ theorem ProtocolState.normalizeDisclosureRecall_entry {Γ : SourceCtx Player L}
 private def RetractsDisclosure {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) : Prop :=
   ∀ (profile : BehavioralProfile program) (policy : BehavioralPolicy who program)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
     (recall : DecisionView who Γ → List (OwnAction Player L)) (config : Config Player L Γ),
     (∀ past ∈ (remember (config.view who)).support,
       recall (sourceObserve who config.state, past) = config.history who) →
@@ -39,7 +39,7 @@ private def RetractsDisclosure {Γ : SourceCtx Player L} {O : Finset VarId}
       state ∈ ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who (policy.normalizeDisclosureFrom program config.registry
           config.revelations remember))))^[count]
-        (FinDist.pure (ProtocolState.entry program config))).support →
+        (PMF.pure (ProtocolState.entry program config))).support →
     ∀ original ∈ (policy.disclosureMemory program config.registry config.revelations
         remember state).support,
       ProtocolState.normalizeDisclosureRecall program recall original = state
@@ -47,7 +47,7 @@ private def RetractsDisclosure {Γ : SourceCtx Player L} {O : Finset VarId}
 omit [Fintype Player] in
 private theorem retractsDisclosure_entry {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (policy : BehavioralPolicy who program)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
     (recall : DecisionView who Γ → List (OwnAction Player L)) (config : Config Player L Γ)
     (coherent : ∀ past ∈ (remember (config.view who)).support,
       recall (sourceObserve who config.state, past) = config.history who)
@@ -56,8 +56,8 @@ private theorem retractsDisclosure_entry {Γ : SourceCtx Player L} {O : Finset V
       remember (ProtocolState.entry program config)).support) :
     ProtocolState.normalizeDisclosureRecall program recall original =
       ProtocolState.entry program config := by
-  rw [BehavioralPolicy.disclosureMemory_entry, Config.restoreMemory, FinDist.map_comp] at member
-  obtain ⟨past, supported, rfl⟩ := FinDist.support_map .. ▸ member
+  rw [BehavioralPolicy.disclosureMemory_entry, Config.restoreMemory, PMF.map_comp] at member
+  obtain ⟨past, supported, rfl⟩ := PMF.support_map .. ▸ member
   rw [Function.comp_apply, ProtocolState.normalizeDisclosureRecall_entry,
     Config.withOwnHistory_view, coherent past supported, Config.withOwnHistory_twice]
   simp only [Config.withOwnHistory, Function.update_eq_self]
@@ -72,7 +72,7 @@ private theorem retractsDisclosure_sample {Γ : SourceCtx Player L} {O : Finset 
   cases count with
   | zero =>
       have equal : state = ProtocolState.entry _ config := by
-        simpa only [Function.iterate_zero_apply, FinDist.mem_support_pure]
+        simpa only [Function.iterate_zero_apply, PMF.mem_support_pure_iff _ _]
           using reached
       subst state
       exact retractsDisclosure_entry _ policy remember recall config coherent original member
@@ -82,13 +82,13 @@ private theorem retractsDisclosure_sample {Γ : SourceCtx Player L} {O : Finset 
           (.sample name fresh law next) config.registry config.revelations remember))
         config count] at reached
       obtain ⟨value, _selected, stepSupported⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨later, laterSupported, rfl⟩ := FinDist.support_map .. ▸ stepSupported
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨later, laterSupported, rfl⟩ := PMF.support_map .. ▸ stepSupported
       change original ∈ ((policy.disclosureMemory next config.registry.weaken
         (Revelations.weaken config.revelations)
         (fun view => remember (view.back false)) later).map
           Sum.inr).support at member
-      obtain ⟨original, restoredSupported, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨original, restoredSupported, rfl⟩ := PMF.support_map .. ▸ member
       apply congrArg Sum.inr
       apply ih (afterSample profile) policy (fun view => remember (view.back false))
         (fun view => recall (view.back false)) (sampleSuccessor name config value) ?_
@@ -110,7 +110,7 @@ private theorem retractsDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
   cases count with
   | zero =>
       have equal : state = ProtocolState.entry _ config := by
-        simpa only [Function.iterate_zero_apply, FinDist.mem_support_pure] using reached
+        simpa only [Function.iterate_zero_apply, PMF.mem_support_pure_iff _ _] using reached
       subst state
       exact retractsDisclosure_entry _ policy remember recall config coherent original member
   | succ count =>
@@ -119,20 +119,20 @@ private theorem retractsDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
           (.commit name owner fresh guard next) config.registry config.revelations remember))
         config count] at reached
       obtain ⟨binding, selected, stepSupported⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨later, laterSupported, rfl⟩ := FinDist.support_map .. ▸ stepSupported
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨later, laterSupported, rfl⟩ := PMF.support_map .. ▸ stepSupported
       let posterior : DecisionView who ((name, .commitment owner payload) :: Γ) →
-          FinDist (List (OwnAction Player L)) := fun view =>
+          PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          ((bindingMemoryLaw name payload remember (policy.1 own)
-              (view.back true)).condOnFibre Prod.fst
+          (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+              (view.back true)) Prod.fst
             ((view.1.cells.get .here).getD .failure)).map Prod.snd
         else remember (view.back false)
       change original ∈ ((policy.2.disclosureMemory next
         ((commitSuccessor name guard config binding).registry)
         ((commitSuccessor name guard config binding).revelations)
         posterior later).map Sum.inr).support at member
-      obtain ⟨original, restoredSupported, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨original, restoredSupported, rfl⟩ := PMF.support_map .. ▸ member
       apply congrArg Sum.inr
       apply ih (afterCommit profile) policy.2 posterior (bindingRecall name owner payload recall)
         (commitSuccessor name guard config binding) ?_ count later ?_ original restoredSupported
@@ -149,8 +149,8 @@ private theorem retractsDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
               (config.view owner)).map Prod.fst).support := by
             simpa only [commitKernel, Function.update_self,
               BehavioralPolicy.normalizeDisclosureFrom] using selected
-          have remembered' : past ∈ (((bindingMemoryLaw name payload remember (policy.1 rfl)
-              (config.view owner)).condOnFibre Prod.fst binding).map Prod.snd).support := by
+          have remembered' : past ∈ ((fiberConditional (bindingMemoryLaw name payload remember (policy.1 rfl)
+              (config.view owner)) Prod.fst binding).map Prod.snd).support := by
             simpa only [posterior, dite_true, Config.view, commitSuccessor,
               Function.update_self, back_sourceObserve, ite_true, List.dropLast_concat,
               observed, Option.getD_some] using remembered
@@ -179,7 +179,7 @@ private theorem retractsDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
   cases count with
   | zero =>
       have equal : state = ProtocolState.entry _ config := by
-        simpa only [Function.iterate_zero_apply, FinDist.mem_support_pure] using reached
+        simpa only [Function.iterate_zero_apply, PMF.mem_support_pure_iff _ _] using reached
       subst state
       exact retractsDisclosure_entry _ policy remember recall config coherent original member
   | succ count =>
@@ -188,20 +188,20 @@ private theorem retractsDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
           (.reveal published owner name fresh selected unresolved next)
           config.registry config.revelations remember)) config count] at reached
       obtain ⟨disclose, chosen, stepSupported⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨later, laterSupported, rfl⟩ := FinDist.support_map .. ▸ stepSupported
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨later, laterSupported, rfl⟩ := PMF.support_map .. ▸ stepSupported
       let posterior : DecisionView who ((published, .publication payload) :: Γ) →
-          FinDist (List (OwnAction Player L)) := fun view =>
+          PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          ((disclosureMemoryLaw published (own ▸ selected) config.registry config.revelations
-              remember (policy.1 own) (view.back true)).condOnFibre Prod.fst
+          (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry config.revelations
+              remember (policy.1 own) (view.back true)) Prod.fst
             (OwnAction.disclosure view.2.getLast?)).map Prod.snd
         else remember (view.back false)
       change original ∈ ((policy.2.disclosureMemory next
         ((revealSuccessor published selected config disclose).registry)
         ((revealSuccessor published selected config disclose).revelations)
         posterior later).map Sum.inr).support at member
-      obtain ⟨original, restoredSupported, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨original, restoredSupported, rfl⟩ := PMF.support_map .. ▸ member
       apply congrArg Sum.inr
       apply ih (afterReveal profile) policy.2 posterior
         (publicationRecall published name owner payload recall)
@@ -215,8 +215,8 @@ private theorem retractsDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
                 Prod.fst).support :=
             by simpa only [revealKernel, Function.update_self,
               BehavioralPolicy.normalizeDisclosureFrom] using chosen
-          have remembered' : past ∈ (((disclosureMemoryLaw published selected config.registry
-              config.revelations remember (policy.1 rfl) (config.view owner)).condOnFibre
+          have remembered' : past ∈ ((fiberConditional (disclosureMemoryLaw published selected config.registry
+              config.revelations remember (policy.1 rfl) (config.view owner))
               Prod.fst disclose).map Prod.snd).support := by
             have recalled : OwnAction.disclosure (L := L)
                 (some (.reveal owner name disclose)) = disclose := rfl
@@ -247,7 +247,7 @@ theorem disclosure_prefix_retracts {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) →
     (profile : BehavioralProfile program) → (policy : BehavioralPolicy who program) →
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L))) →
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) →
     (recall : DecisionView who Γ → List (OwnAction Player L)) → (config : Config Player L Γ) →
     (∀ past ∈ (remember (config.view who)).support,
       recall (sourceObserve who config.state, past) = config.history who) →
@@ -255,7 +255,7 @@ theorem disclosure_prefix_retracts {who : Player} :
       state ∈ ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who (policy.normalizeDisclosureFrom program config.registry
           config.revelations remember))))^[count]
-        (FinDist.pure (ProtocolState.entry program config))).support →
+        (PMF.pure (ProtocolState.entry program config))).support →
     ∀ original ∈ (policy.disclosureMemory program config.registry config.revelations
         remember state).support,
       ProtocolState.normalizeDisclosureRecall program recall original = state
@@ -263,7 +263,7 @@ theorem disclosure_prefix_retracts {who : Player} :
       state, reached, original, member => by
       have equal : state = config := by
         simpa only [ProtocolState.entry, ProtocolState.behavioralStatePrefix_ret,
-          FinDist.mem_support_pure] using reached
+          PMF.mem_support_pure_iff _ _] using reached
       subst state
       exact retractsDisclosure_entry (.ret result) policy remember recall config coherent
         original member
@@ -289,30 +289,30 @@ theorem normalized_disclosure_prefix_map {Γ : SourceCtx Player L} {O : Finset V
     (policy : BehavioralPolicy who program) (config : Config Player L Γ) (count : Nat) :
     ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
       (Function.update profile who policy)))^[count]
-        (FinDist.pure (ProtocolState.entry program config))).map
+        (PMF.pure (ProtocolState.entry program config))).map
           (ProtocolState.normalizeDisclosureRecall (who := who) program (fun view => view.2)) =
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who
           (policy.normalizeDisclosures program config.registry config.revelations))))^[count]
-        (FinDist.pure (ProtocolState.entry program config)) := by
-  rw [normalized_disclosure_prefix program profile policy config count, FinDist.map_bind]
+        (PMF.pure (ProtocolState.entry program config)) := by
+  rw [normalized_disclosure_prefix program profile policy config count, PMF.map_bind]
   trans ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
     (Function.update profile who
       (policy.normalizeDisclosures program config.registry config.revelations))))^[count]
-    (FinDist.pure (ProtocolState.entry program config))).bind FinDist.pure
-  · apply FinDist.bind_congr
+    (PMF.pure (ProtocolState.entry program config))).bind PMF.pure
+  · apply bind_congr_on_support _
     intro state reached
     calc
       _ = (policy.disclosureMemory program config.registry config.revelations
-          (fun view => FinDist.pure view.2) state).map (fun _ => state) := by
-            apply FinDist.map_congr_of_eq_on_support
+          (fun view => PMF.pure view.2) state).map (fun _ => state) := by
+            apply map_congr_on_support _
             intro original member
             exact disclosure_prefix_retracts program profile policy
-              (fun view => FinDist.pure view.2) (fun view => view.2) config
-              (fun past supported => FinDist.mem_support_pure.mp supported)
+              (fun view => PMF.pure view.2) (fun view => view.2) config
+              (fun past supported => (PMF.mem_support_pure_iff _ _).mp supported)
               count state reached original member
-      _ = FinDist.pure state := FinDist.map_const _ _
-  · exact FinDist.bind_pure _
+      _ = PMF.pure state := FinDist.map_const _ _
+  · exact PMF.bind_pure _
 
 /-- The prefix projection preserves arbitrary correlated initial parameters
 jointly. Static source obligations/publication positions are fixed by the
@@ -320,14 +320,14 @@ program point, while the initial cells and memories may be correlated. -/
 theorem normalized_disclosure_prefix_joint_law {Γ : SourceCtx Player L} {O : Finset VarId}
     {Parameter : Type} (program : SourceProgram Player L Γ O)
     (profile : BehavioralProfile program) (policy : BehavioralPolicy who program)
-    (registry : Registry Γ) (revelations : Revelations Γ) (belief : FinDist (Config Player L Γ))
+    (registry : Registry Γ) (revelations : Revelations Γ) (belief : PMF (Config Player L Γ))
     (registryEq : ∀ config ∈ belief.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ belief.support, @config.revelations = @revelations)
     (parameter : Config Player L Γ → Parameter) (count : Nat) :
     (belief.bind fun config =>
       ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who policy)))^[count]
-          (FinDist.pure (ProtocolState.entry program config))).map
+          (PMF.pure (ProtocolState.entry program config))).map
             (fun state => (parameter config,
               ProtocolState.normalizeDisclosureRecall (who := who) program
                 (fun view => view.2) state))) =
@@ -335,13 +335,13 @@ theorem normalized_disclosure_prefix_joint_law {Γ : SourceCtx Player L} {O : Fi
         ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
           (Function.update profile who
             (policy.normalizeDisclosures program registry revelations))))^[count]
-          (FinDist.pure (ProtocolState.entry program config))).map
+          (PMF.pure (ProtocolState.entry program config))).map
             (fun state => (parameter config, state)) := by
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro config supported
   have equation := normalized_disclosure_prefix_map program profile policy config count
   rw [registryEq config supported, revelationsEq config supported] at equation
-  simpa only [FinDist.map_comp, Function.comp_def] using
-    congrArg (FinDist.map (fun state => (parameter config, state))) equation
+  simpa only [PMF.map_comp, Function.comp_def] using
+    congrArg (PMF.map (fun state => (parameter config, state))) equation
 
 end Vegas.SourceProgram

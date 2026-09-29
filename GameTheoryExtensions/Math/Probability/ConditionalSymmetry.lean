@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheory.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.Mixture
+import GameTheory.Math.Probability.Product
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Conditional probabilities under an observation-preserving symmetry
 
@@ -13,60 +16,65 @@ that failure has probability zero.
 
 noncomputable section
 
-namespace GameTheory.Math.Probability.FinDist
+namespace PMF
+
+open GameTheory.Math.Probability
 
 variable {α β : Type*}
 
-theorem prob_involution (law : FinDist α) (swap : α → α)
+theorem apply_involution (law : PMF α) (swap : α → α)
     (involution : Function.Involutive swap) (symmetric : law.map swap = law) (value : α) :
-    law.prob (swap value) = law.prob value := by
-  classical
-  rw [← symmetric, prob_map_of_injective swap involution.injective]
-  rw [symmetric]
+    law (swap value) = law value := by
+  conv_lhs => rw [← symmetric]
+  exact pmf_map_apply_of_injective law involution.injective value
 
-theorem condOn_involution (law : FinDist α) (swap : α → α)
+theorem filter_involution (law : PMF α) (swap : α → α)
     (involution : Function.Involutive swap) (symmetric : law.map swap = law)
     (event : Set α) (invariant : ∀ value, swap value ∈ event ↔ value ∈ event)
     (positive : ∃ value ∈ event, value ∈ law.support) :
-    (law.condOn event positive).map swap = law.condOn event positive := by
+    (law.filter event positive).map swap = law.filter event positive := by
   classical
-  apply ext_of_prob
-  intro value
-  have swapped := prob_map_of_injective swap involution.injective
-    (law.condOn event positive) (swap value)
+  ext value
+  have swapped := pmf_map_apply_of_injective (law.filter event positive)
+    involution.injective (swap value)
   rw [involution value] at swapped
-  rw [swapped, prob_condOn, prob_condOn, invariant value,
-    prob_involution law swap involution symmetric]
+  rw [swapped, PMF.filter_apply, PMF.filter_apply]
+  congr 1
+  by_cases member : value ∈ event
+  · have swappedMember := (invariant value).mpr member
+    simp only [Set.indicator, member, swappedMember, ↓reduceIte]
+    exact apply_involution law swap involution symmetric value
+  · have swappedMember : swap value ∉ event := fun inside => member ((invariant value).mp inside)
+    simp only [Set.indicator, member, swappedMember, ↓reduceIte]
 
-theorem probOf_eq_of_involution (law : FinDist α) (swap : α → α)
+theorem toOuterMeasure_eq_of_involution (law : PMF α) (swap : α → α)
     (symmetric : law.map swap = law) (first second : Set α)
     (exchanged : ∀ value ∈ law.support, swap value ∈ first ↔ value ∈ second) :
-    law.probOf first = law.probOf second := by
-  classical
-  rw [← expect_indicator_eq_probOf, ← expect_indicator_eq_probOf]
-  calc
-    law.expect (fun value => if value ∈ first then 1 else 0) =
-        (law.map swap).expect (fun value => if value ∈ first then 1 else 0) :=
-      congrArg (fun dist => dist.expect (fun value => if value ∈ first then 1 else 0))
-        symmetric.symm
-    _ = law.expect (fun value => if swap value ∈ first then 1 else 0) := expect_map ..
-    _ = _ := expect_congr fun value supported => by rw [exchanged value supported]
+    law.toOuterMeasure first = law.toOuterMeasure second := by
+  conv_lhs => rw [← symmetric]
+  rw [PMF.toOuterMeasure_map_apply]
+  apply PMF.toOuterMeasure_apply_eq_of_inter_support_eq
+  ext value
+  simp only [Set.mem_inter_iff, Set.mem_preimage]
+  constructor
+  · exact fun ⟨member, supported⟩ => ⟨(exchanged value supported).mp member, supported⟩
+  · exact fun ⟨member, supported⟩ => ⟨(exchanged value supported).mpr member, supported⟩
 
 /-- Equal event probabilities within each observed information fiber. The
 symmetry need only exchange the events on the original law's support. -/
-theorem condOn_observation_probOf_eq (law : FinDist α) (swap : α → α)
+theorem filter_observation_toOuterMeasure_eq (law : PMF α) (swap : α → α)
     (involution : Function.Involutive swap) (symmetric : law.map swap = law)
     (observe : α → β) (sameView : ∀ value, observe (swap value) = observe value)
     (info : β) (positive : ∃ value ∈ {value | observe value = info}, value ∈ law.support)
     (first second : Set α)
     (exchanged : ∀ value ∈ law.support, swap value ∈ first ↔ value ∈ second) :
-    (law.condOn {value | observe value = info} positive).probOf first =
-      (law.condOn {value | observe value = info} positive).probOf second := by
-  apply probOf_eq_of_involution _ swap
-    (condOn_involution law swap involution symmetric _ (fun value => by
+    (law.filter {value | observe value = info} positive).toOuterMeasure first =
+      (law.filter {value | observe value = info} positive).toOuterMeasure second := by
+  apply toOuterMeasure_eq_of_involution _ swap
+    (filter_involution law swap involution symmetric _ (fun value => by
       change observe (swap value) = info ↔ observe value = info
       rw [sameView value]) positive) first second
   intro value supported
-  exact exchanged value ((support_condOn law _ positive supported).2)
+  exact exchanged value ((PMF.mem_support_filter_iff _).mp supported).2
 
-end GameTheory.Math.Probability.FinDist
+end PMF

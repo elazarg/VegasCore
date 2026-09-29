@@ -321,7 +321,7 @@ theorem roster_step_traffic (bounds : MessageBounds (graph setup))
               change response ∈ (rosterMenu setup leaks bounds rosters).actions who
                 (control.execution.recall who) (control.execution.observe app who) at allowed
               simp only [ReactiveApplication.transition, actor, selected,
-                Option.getD_some, FinDist.mem_support_pure] at reached
+                Option.getD_some, PMF.mem_support_pure_iff _ _] at reached
               subst next
               exact roster_response_traffic setup leaks bounds rosters network reveals openable
                 who control (state ▸ history.trace) actor response allowed
@@ -333,9 +333,9 @@ theorem roster_step_traffic (bounds : MessageBounds (graph setup))
               exact ⟨countEq, actor⟩
           | succ remaining =>
               simp only [ReactiveApplication.transition, actor, countEq,
-                FinDist.support_bind] at reached
+                PMF.support_bind] at reached
               obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp reached
-              obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+              obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
               have noTraffic := app.trafficStep_environment control.execution updated command
                 supported remaining
               cases control with

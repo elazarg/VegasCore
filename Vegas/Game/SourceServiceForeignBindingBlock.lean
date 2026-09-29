@@ -73,7 +73,7 @@ theorem foreign_binding_block_stopped_coupling
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
     let ending : List (ServiceInstruction (graph setup)) :=
       .includeLatest event actor :: List.replicate ticks .tick ++ [.expire event]
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player ++ ending) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -98,7 +98,7 @@ theorem foreign_binding_block_stopped_coupling
         remaining + visits.length + (ticks + 2) := by rw [length]; omega
     rw [same]
     exact trace
-  have existsWindow : ∃ coupling : FinDist (app.Execution × app.Execution ×
+  have existsWindow : ∃ coupling : PMF (app.Execution × app.Execution ×
       BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original ∧
@@ -137,7 +137,7 @@ theorem foreign_binding_block_stopped_coupling
       ⟨(related next member).1, ((related next member).2).imp_right And.left⟩⟩
   obtain ⟨window, first, second, related⟩ := existsWindow
   have existsTail next (member : next ∈ window.support) :
-      ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+      ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
           ending next.1 ∧
         coupling.map Prod.snd = strategy.runJoint owner players scheduler ending.length
@@ -152,12 +152,12 @@ theorem foreign_binding_block_stopped_coupling
           record.input.envelope = false
     · let left := (runtime setup).runInteractionPlan leaks players network ending next.1
       let right := strategy.runJoint owner players scheduler ending.length next.2.1 next.2.2
-      refine ⟨FinDist.product left right, FinDist.map_fst_product ..,
+      refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
         FinDist.map_snd_product .., ?_⟩
       intro final supported
       obtain ⟨record, present, authored, rejected⟩ := bad
       have reached : final.1 ∈ left.support := by
-        rw [← FinDist.map_fst_product left right, FinDist.support_map]
+        rw [← bindPairLaw_map_fst left right, PMF.support_map]
         exact ⟨final, supported, rfl⟩
       exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
         network ending next.1 final.1 reached).subset present, authored, rejected⟩
@@ -165,11 +165,11 @@ theorem foreign_binding_block_stopped_coupling
       obtain ⟨nextTrace⟩ := (related next member).1
       have reached : next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
           (visits.map ServiceInstruction.player) original).support := by
-        rw [← first, FinDist.support_map]
+        rw [← first, PMF.support_map]
         exact ⟨next, member, rfl⟩
       have privateReached : next.2 ∈ (strategy.runJoint owner players scheduler visits.length
           repaired memory).support := by
-        rw [← second, FinDist.support_map]
+        rw [← second, PMF.support_map]
         exact ⟨next, member, rfl⟩
       have memoryValid := BindingMemory.retainedImplementation_runJoint_ownBindings
         (runtime setup) leaks menu owner reference (players owner) players scheduler visits.length
@@ -192,33 +192,33 @@ theorem foreign_binding_block_stopped_coupling
   let coupling := window.bindOnSupport tail
   have leftLaw : coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player ++ ending) original := by
-    rw [FinDist.map_bindOnSupport]
+    rw [map_bindOnSupport]
     calc
       _ = window.bind (fun next => (runtime setup).runInteractionPlan leaks players network
           ending next.1) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (existsTail next member).choose_spec.1
-      _ = _ := by rw [← FinDist.bind_map, first, ← (runtime setup).runInteractionPlan_append]
+      _ = _ := by rw [← PMF.bind_map, first, ← (runtime setup).runInteractionPlan_append]
   have rightLaw : coupling.map Prod.snd = strategy.runJoint owner players scheduler
       (visits.map ServiceInstruction.player ++ ending).length repaired memory := by
     rw [List.length_append, List.length_map, ReactiveApplication.Implementation.runJoint_add,
-      FinDist.map_bindOnSupport]
+      map_bindOnSupport]
     calc
       _ = window.bind (fun next =>
           strategy.runJoint owner players scheduler ending.length next.2.1 next.2.2) := by
-        apply FinDist.bindOnSupport_eq_bind_of_eq_on_support
+        apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (existsTail next member).choose_spec.2.1
       _ = (window.map Prod.snd).bind (fun next =>
           strategy.runJoint owner players scheduler ending.length next.1 next.2) := by
-        rw [FinDist.bind_map]
+        rw [PMF.bind_map]
       _ = _ := by rw [second]
   refine ⟨coupling, leftLaw, rightLaw, ?_⟩
   intro final supported
   have rightSupport : final.2 ∈ (strategy.runJoint owner players scheduler
       (visits.map ServiceInstruction.player ++ ending).length repaired memory).support := by
-    rw [← rightLaw, FinDist.support_map]
+    rw [← rightLaw, PMF.support_map]
     exact ⟨final, supported, rfl⟩
   refine ⟨?_, ?_⟩
   · apply menu.trace_implementation_runJoint (initialLaw setup) (rosterPlan setup rosters).length
@@ -237,7 +237,7 @@ theorem foreign_binding_block_stopped_coupling
       rw [total]
       exact trace
   · obtain ⟨next, member, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bindOnSupport .. ▸ supported)
+      Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
     exact (existsTail next member).choose_spec.2.2 final reached
 
 end Vegas

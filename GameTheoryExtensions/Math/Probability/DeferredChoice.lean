@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Math.Probability.Convergence
+import GameTheory.Math.Probability.Mixture
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import Mathlib.Probability.Distributions.Uniform
 
 /-! # Deferring a binary choice through finitely many opportunities
 
@@ -11,55 +15,57 @@ probability algebra, not a game interpreter or an equilibrium assertion.
 
 noncomputable section
 
-namespace GameTheory.Math.Probability.FinDist
+namespace PMF
+
+open GameTheory.Math.Probability
 
 open Filter
 
 variable {slots : Nat}
 
-theorem bind_bool_mix {α : Type} (choice : FinDist Bool)
-    (opening waiting : FinDist α) :
+theorem bind_bool_mix {α : Type} (choice : PMF Bool)
+    (opening waiting : PMF α) :
     (choice.bind fun disclose => if disclose then opening else waiting) =
-      FinDist.mix (choice.prob true) (choice.prob_nonneg true) (choice.prob_le_one true)
+      mix ((choice true).toReal) (ENNReal.toReal_nonneg) (pmf_toReal_apply_le_one choice true)
         opening waiting := by
-  have total := choice.sum_prob
+  have total := pmf_sum_toReal_eq_one choice
   simp only [Fintype.sum_bool] at total
-  have complement : choice.prob false = 1 - choice.prob true := by linarith
-  apply FinDist.ext_of_prob
+  have complement : (choice false).toReal = 1 - (choice true).toReal := by linarith
+  apply pmf_ext_toReal
   intro action
-  rw [FinDist.prob_bind, FinDist.expect_eq_sum, Fintype.sum_bool, FinDist.prob_mix]
+  rw [toReal_bind_apply, expect_eq_sum, Fintype.sum_bool, mix_apply_toReal]
   simp only [Bool.false_eq_true, ↓reduceIte, complement]
 
 /-- Mass assigned to sending strictly before an opportunity. -/
-def timingPrefix (timing : FinDist (Fin slots)) (count : Nat) : ℝ :=
-  ∑ slot : Fin slots, if slot.val < count then timing.prob slot else 0
+def timingPrefix (timing : PMF (Fin slots)) (count : Nat) : ℝ :=
+  ∑ slot : Fin slots, if slot.val < count then (timing slot).toReal else 0
 
-theorem timingPrefix_nonnegative (timing : FinDist (Fin slots)) (count : Nat) :
+theorem timingPrefix_nonnegative (timing : PMF (Fin slots)) (count : Nat) :
     0 ≤ timing.timingPrefix count := by
   apply Finset.sum_nonneg
   intro slot _
   split
-  · exact timing.prob_nonneg slot
+  · exact ENNReal.toReal_nonneg
   · exact le_rfl
 
-theorem timingPrefix_le_one (timing : FinDist (Fin slots)) (count : Nat) :
+theorem timingPrefix_le_one (timing : PMF (Fin slots)) (count : Nat) :
     timing.timingPrefix count ≤ 1 := by
-  rw [← timing.sum_prob]
+  rw [← pmf_sum_toReal_eq_one timing]
   apply Finset.sum_le_sum
   intro slot _
   split
   · exact le_rfl
-  · exact timing.prob_nonneg slot
+  · exact ENNReal.toReal_nonneg
 
 theorem timingPrefix_mix (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1)
-    (first second : FinDist (Fin slots)) (count : Nat) :
+    (first second : PMF (Fin slots)) (count : Nat) :
     (mix weight nonnegative bounded first second).timingPrefix count =
       weight * first.timingPrefix count + (1 - weight) * second.timingPrefix count := by
   unfold timingPrefix
   rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
   apply Finset.sum_congr rfl
   intro slot _
-  by_cases before : slot.val < count <;> simp only [before, ↓reduceIte, prob_mix,
+  by_cases before : slot.val < count <;> simp only [before, ↓reduceIte, mix_apply_toReal,
     mul_zero, add_zero]
 
 theorem timingPrefix_pure_of_le (slot : Fin slots) (count : Nat) (before : count ≤ slot.val) :
@@ -68,21 +74,21 @@ theorem timingPrefix_pure_of_le (slot : Fin slots) (count : Nat) (before : count
   intro other _
   by_cases earlier : other.val < count
   · have different : other ≠ slot := by intro same; subst other; omega
-    simp only [earlier, ↓reduceIte, prob_pure_of_ne different]
+    simp only [earlier, ↓reduceIte, toReal_pure_apply, different]
   · simp only [earlier, ↓reduceIte]
 
-theorem timingPrefix_zero (timing : FinDist (Fin slots)) : timing.timingPrefix 0 = 0 := by
+theorem timingPrefix_zero (timing : PMF (Fin slots)) : timing.timingPrefix 0 = 0 := by
   simp [timingPrefix]
 
-theorem timingPrefix_all (timing : FinDist (Fin slots)) : timing.timingPrefix slots = 1 := by
-  simp only [timingPrefix, Fin.is_lt, ↓reduceIte, sum_prob]
+theorem timingPrefix_all (timing : PMF (Fin slots)) : timing.timingPrefix slots = 1 := by
+  simp only [timingPrefix, Fin.is_lt, ↓reduceIte, pmf_sum_toReal_eq_one]
 
-theorem timingPrefix_succ (timing : FinDist (Fin slots)) (slot : Fin slots) :
-    timing.timingPrefix (slot.val + 1) = timing.timingPrefix slot.val + timing.prob slot := by
+theorem timingPrefix_succ (timing : PMF (Fin slots)) (slot : Fin slots) :
+    timing.timingPrefix (slot.val + 1) = timing.timingPrefix slot.val + (timing slot).toReal := by
   have point (other : Fin slots) :
-      (if other.val < slot.val + 1 then timing.prob other else 0) =
-        (if other.val < slot.val then timing.prob other else 0) +
-          (if other = slot then timing.prob slot else 0) := by
+      (if other.val < slot.val + 1 then (timing other).toReal else 0) =
+        (if other.val < slot.val then (timing other).toReal else 0) +
+          (if other = slot then (timing slot).toReal else 0) := by
     by_cases same : other = slot
     · subst other
       simp
@@ -93,30 +99,30 @@ theorem timingPrefix_succ (timing : FinDist (Fin slots)) (slot : Fin slots) :
     Finset.mem_univ, ↓reduceIte]
 
 /-- Probability that the binary choice has not yet been emitted. -/
-def deferredSurvival (probability : ℝ) (timing : FinDist (Fin slots)) (count : Nat) : ℝ :=
+def deferredSurvival (probability : ℝ) (timing : PMF (Fin slots)) (count : Nat) : ℝ :=
   1 - probability * timing.timingPrefix count
 
 theorem deferredSurvival_positive (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat) :
     0 < deferredSurvival probability timing count := by
   have atMost := mul_le_mul_of_nonneg_left (timing.timingPrefix_le_one count) nonnegative
   unfold deferredSurvival
   linarith
 
-theorem deferredSurvival_succ (probability : ℝ) (timing : FinDist (Fin slots))
+theorem deferredSurvival_succ (probability : ℝ) (timing : PMF (Fin slots))
     (slot : Fin slots) :
     deferredSurvival probability timing (slot.val + 1) =
-      deferredSurvival probability timing slot.val - probability * timing.prob slot := by
+      deferredSurvival probability timing slot.val - probability * (timing slot).toReal := by
   simp only [deferredSurvival, timingPrefix_succ]
   ring
 
 /-- Conditional probability of an eventual true choice after no earlier
 emission. This differs from the immediate hazard at the next opportunity. -/
-def deferredRemaining (probability : ℝ) (timing : FinDist (Fin slots)) (count : Nat) : ℝ :=
+def deferredRemaining (probability : ℝ) (timing : PMF (Fin slots)) (count : Nat) : ℝ :=
   probability * (1 - timing.timingPrefix count) / deferredSurvival probability timing count
 
 theorem deferredRemaining_eq (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat) :
     deferredRemaining probability timing count =
       1 - (1 - probability) / deferredSurvival probability timing count := by
   have positive := deferredSurvival_positive probability nonnegative small timing count
@@ -127,7 +133,7 @@ theorem deferredRemaining_eq (probability : ℝ) (nonnegative : 0 ≤ probabilit
 /-- Waiting changes the eventual binary probability by at most the timing
 mass already passed, uniformly even when the original probability tends to one. -/
 theorem deferredRemaining_error (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat) :
     0 ≤ probability - deferredRemaining probability timing count ∧
       probability - deferredRemaining probability timing count ≤ timing.timingPrefix count := by
   have positive := deferredSurvival_positive probability nonnegative small timing count
@@ -151,7 +157,7 @@ theorem deferredRemaining_error (probability : ℝ) (nonnegative : 0 ≤ probabi
   nlinarith [mul_le_mul_of_nonneg_right bound prefixNonnegative]
 
 theorem deferredRemaining_nonnegative (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat) :
     0 ≤ deferredRemaining probability timing count := by
   exact div_nonneg (mul_nonneg nonnegative (sub_nonneg.mpr (timing.timingPrefix_le_one count)))
     (deferredSurvival_positive probability nonnegative small timing count).le
@@ -159,7 +165,7 @@ theorem deferredRemaining_nonnegative (probability : ℝ) (nonnegative : 0 ≤ p
 /-- The conditional value distortion is bounded by passed timing mass times
 the difference between the two source continuation values. -/
 theorem deferredRemaining_value_error (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat)
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat)
     (whenTrue whenFalse : ℝ) :
     |(deferredRemaining probability timing count * whenTrue +
         (1 - deferredRemaining probability timing count) * whenFalse) -
@@ -178,7 +184,7 @@ theorem deferredRemaining_value_error (probability : ℝ) (nonnegative : 0 ≤ p
 lottery. Its gain differs from that source deviation's gain only by the
 prescribed waiting distortion. -/
 theorem deferredRemaining_local_comparison (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat)
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat)
     (immediate : ℝ) (immediateNonnegative : 0 ≤ immediate) (immediateBounded : immediate ≤ 1)
     (whenTrue whenFalse : ℝ) :
     let remaining := deferredRemaining probability timing (count + 1)
@@ -219,7 +225,7 @@ theorem deferredRemaining_local_comparison (probability : ℝ) (nonnegative : 0 
 multiple of the original binary regret. The alternative may be any mixture of
 the same two continuation values; timing need not converge to a final slot. -/
 theorem deferredRemaining_regret_le (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat)
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat)
     (lower : ℝ) (positive : 0 < lower)
     (remainingMass : lower ≤ 1 - timing.timingPrefix count)
     (replacement : ℝ) (replacementNonnegative : 0 ≤ replacement)
@@ -295,21 +301,21 @@ theorem deferredRemaining_regret_le (probability : ℝ) (nonnegative : 0 ≤ pro
 
 /-- Conditional probability of choosing true at an opportunity not yet used.
 The value outside the finite opportunity list is irrelevant and is zero. -/
-def deferredHazard (probability : ℝ) (timing : FinDist (Fin slots)) (count : Nat) : ℝ :=
+def deferredHazard (probability : ℝ) (timing : PMF (Fin slots)) (count : Nat) : ℝ :=
   if inside : count < slots then
-    probability * timing.prob ⟨count, inside⟩ / deferredSurvival probability timing count
+    probability * (timing ⟨count, inside⟩).toReal / deferredSurvival probability timing count
   else 0
 
-theorem deferredHazard_at (probability : ℝ) (timing : FinDist (Fin slots))
+theorem deferredHazard_at (probability : ℝ) (timing : PMF (Fin slots))
     (slot : Fin slots) :
     deferredHazard probability timing slot.val =
-      probability * timing.prob slot / deferredSurvival probability timing slot.val := by
+      probability * (timing slot).toReal / deferredSurvival probability timing slot.val := by
   simp only [deferredHazard, slot.isLt, ↓reduceDIte]
 
 /-- Opening with the present hazard and otherwise continuing the same deferred
 choice recovers its current conditional probability. -/
 theorem deferredRemaining_hazard_recursion (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (slot : Fin slots) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (slot : Fin slots) :
     deferredHazard probability timing slot.val +
         (1 - deferredHazard probability timing slot.val) *
           deferredRemaining probability timing (slot.val + 1) =
@@ -325,7 +331,7 @@ theorem deferredRemaining_hazard_recursion (probability : ℝ) (nonnegative : 0 
   ring
 
 theorem deferredRemaining_hazard_value (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (slot : Fin slots)
+    (small : probability < 1) (timing : PMF (Fin slots)) (slot : Fin slots)
     (whenTrue whenFalse : ℝ) :
     deferredHazard probability timing slot.val * whenTrue +
         (1 - deferredHazard probability timing slot.val) *
@@ -337,14 +343,14 @@ theorem deferredRemaining_hazard_value (probability : ℝ) (nonnegative : 0 ≤ 
   ring
 
 theorem deferredHazard_nonnegative (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (slot : Fin slots) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (slot : Fin slots) :
     0 ≤ deferredHazard probability timing slot.val := by
   rw [deferredHazard_at]
-  exact div_nonneg (mul_nonneg nonnegative (timing.prob_nonneg slot))
+  exact div_nonneg (mul_nonneg nonnegative (ENNReal.toReal_nonneg))
     (deferredSurvival_positive probability nonnegative small timing slot.val).le
 
 theorem deferredHazard_lt_one (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (slot : Fin slots) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (slot : Fin slots) :
     deferredHazard probability timing slot.val < 1 := by
   rw [deferredHazard_at]
   apply (div_lt_one (deferredSurvival_positive probability nonnegative small timing slot.val)).mpr
@@ -353,16 +359,16 @@ theorem deferredHazard_lt_one (probability : ℝ) (nonnegative : 0 ≤ probabili
   linarith
 
 theorem deferredHazard_positive (probability : ℝ) (positive : 0 < probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (full : timing.FullSupport)
+    (small : probability < 1) (timing : PMF (Fin slots)) (full : FullSupport timing)
     (slot : Fin slots) : 0 < deferredHazard probability timing slot.val := by
   rw [deferredHazard_at]
-  exact div_pos (mul_pos positive (prob_pos_iff.mpr (full slot)))
+  exact div_pos (mul_pos positive (pmf_toReal_pos_iff.mpr (full slot)))
     (deferredSurvival_positive probability positive.le small timing slot.val)
 
 /-- The product of behavioral waiting probabilities is the intended survival
 mass. In particular no positive source false mass is lost to deferral. -/
 theorem deferredHazard_survival (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (count : Nat)
+    (small : probability < 1) (timing : PMF (Fin slots)) (count : Nat)
     (within : count ≤ slots) :
     ∏ opportunity ∈ Finset.range count,
       (1 - deferredHazard probability timing opportunity) =
@@ -375,27 +381,27 @@ theorem deferredHazard_survival (probability : ℝ) (nonnegative : 0 ≤ probabi
       rw [Finset.prod_range_succ, ih (by omega)]
       have hazard := deferredHazard_at probability timing slot
       change deferredHazard probability timing count =
-        probability * timing.prob slot / deferredSurvival probability timing count at hazard
+        probability * (timing slot).toReal / deferredSurvival probability timing count at hazard
       rw [hazard]
       have positive := deferredSurvival_positive probability nonnegative small timing count
       have step := deferredSurvival_succ probability timing slot
       change deferredSurvival probability timing (count + 1) =
-        deferredSurvival probability timing count - probability * timing.prob slot at step
+        deferredSurvival probability timing count - probability * (timing slot).toReal at step
       rw [step]
       field_simp [ne_of_gt positive]
 
 theorem deferredHazard_first (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (slot : Fin slots) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (slot : Fin slots) :
     (∏ opportunity ∈ Finset.range slot.val,
       (1 - deferredHazard probability timing opportunity)) *
-        deferredHazard probability timing slot.val = probability * timing.prob slot := by
+        deferredHazard probability timing slot.val = probability * (timing slot).toReal := by
   rw [deferredHazard_survival probability nonnegative small timing slot.val slot.isLt.le,
     deferredHazard_at]
   exact mul_div_cancel₀ _ (ne_of_gt
     (deferredSurvival_positive probability nonnegative small timing slot.val))
 
 theorem deferredHazard_never (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) :
+    (small : probability < 1) (timing : PMF (Fin slots)) :
     ∏ opportunity ∈ Finset.range slots,
       (1 - deferredHazard probability timing opportunity) = 1 - probability := by
   rw [deferredHazard_survival probability nonnegative small timing slots le_rfl]
@@ -404,7 +410,7 @@ theorem deferredHazard_never (probability : ℝ) (nonnegative : 0 ≤ probabilit
 /-- The complete first-emission/never-emission experiment has the same value
 as the original binary choice whenever payoffs depend only on that choice. -/
 theorem deferredHazard_value (probability : ℝ) (nonnegative : 0 ≤ probability)
-    (small : probability < 1) (timing : FinDist (Fin slots)) (whenTrue whenFalse : ℝ) :
+    (small : probability < 1) (timing : PMF (Fin slots)) (whenTrue whenFalse : ℝ) :
     (∑ slot : Fin slots,
       ((∏ opportunity ∈ Finset.range slot.val,
         (1 - deferredHazard probability timing opportunity)) *
@@ -414,29 +420,29 @@ theorem deferredHazard_value (probability : ℝ) (nonnegative : 0 ≤ probabilit
           probability * whenTrue + (1 - probability) * whenFalse := by
   simp_rw [deferredHazard_first probability nonnegative small timing]
   rw [deferredHazard_never probability nonnegative small timing,
-    ← Finset.sum_mul, ← Finset.mul_sum, timing.sum_prob, mul_one]
+    ← Finset.sum_mul, ← Finset.mul_sum, pmf_sum_toReal_eq_one timing, mul_one]
 
 /-- A required choice still has positive survival at each actual opportunity
 when its timing distribution has full support. Survival after the last slot
 is zero, so the strict binary-choice bound cannot be used there. -/
-theorem deferredSurvival_one_positive (timing : FinDist (Fin slots))
-    (full : timing.FullSupport) (slot : Fin slots) :
+theorem deferredSurvival_one_positive (timing : PMF (Fin slots))
+    (full : FullSupport timing) (slot : Fin slots) :
     0 < deferredSurvival 1 timing slot.val := by
-  have positive := prob_pos_iff.mpr (full slot)
+  have positive := pmf_toReal_pos_iff.mpr (full slot)
   have bound := timing.timingPrefix_le_one (slot.val + 1)
   rw [timingPrefix_succ] at bound
   simp only [deferredSurvival, one_mul]
   linarith
 
-theorem deferredHazard_one_positive (timing : FinDist (Fin slots))
-    (full : timing.FullSupport) (slot : Fin slots) :
+theorem deferredHazard_one_positive (timing : PMF (Fin slots))
+    (full : FullSupport timing) (slot : Fin slots) :
     0 < deferredHazard 1 timing slot.val := by
   rw [deferredHazard_at, one_mul]
-  exact div_pos (prob_pos_iff.mpr (full slot))
+  exact div_pos (pmf_toReal_pos_iff.mpr (full slot))
     (deferredSurvival_one_positive timing full slot)
 
-theorem deferredHazard_one_le_one (timing : FinDist (Fin slots))
-    (full : timing.FullSupport) (slot : Fin slots) :
+theorem deferredHazard_one_le_one (timing : PMF (Fin slots))
+    (full : FullSupport timing) (slot : Fin slots) :
     deferredHazard 1 timing slot.val ≤ 1 := by
   rw [deferredHazard_at, one_mul]
   apply (div_le_one (deferredSurvival_one_positive timing full slot)).mpr
@@ -446,8 +452,8 @@ theorem deferredHazard_one_le_one (timing : FinDist (Fin slots))
   linarith
 
 /-- Waiting remains a positive choice before the final opportunity. -/
-theorem deferredHazard_one_lt_one (timing : FinDist (Fin slots))
-    (full : timing.FullSupport) (slot : Fin slots) (later : slot.val + 1 < slots) :
+theorem deferredHazard_one_lt_one (timing : PMF (Fin slots))
+    (full : FullSupport timing) (slot : Fin slots) (later : slot.val + 1 < slots) :
     deferredHazard 1 timing slot.val < 1 := by
   rw [deferredHazard_at, one_mul]
   apply (div_lt_one (deferredSurvival_one_positive timing full slot)).mpr
@@ -458,20 +464,20 @@ theorem deferredHazard_one_lt_one (timing : FinDist (Fin slots))
 
 /-- At the final opportunity submission is certain. Removing silence from
 that menu therefore agrees with the behavioral timing law. -/
-theorem deferredHazard_one_last (last : Nat) (timing : FinDist (Fin (last + 1)))
-    (full : timing.FullSupport) : deferredHazard 1 timing last = 1 := by
-  have positive := prob_pos_iff.mpr (full (Fin.last last))
+theorem deferredHazard_one_last (last : Nat) (timing : PMF (Fin (last + 1)))
+    (full : FullSupport timing) : deferredHazard 1 timing last = 1 := by
+  have positive := pmf_toReal_pos_iff.mpr (full (Fin.last last))
   have total := timing.timingPrefix_succ (Fin.last last)
   simp only [Fin.val_last, timingPrefix_all] at total
-  have remaining : deferredSurvival 1 timing last = timing.prob (Fin.last last) := by
+  have remaining : deferredSurvival 1 timing last = (timing (Fin.last last)).toReal := by
     simp only [deferredSurvival, one_mul]
     linarith
   change deferredHazard 1 timing (Fin.last last).val = 1
   rw [deferredHazard_at, one_mul, Fin.val_last, remaining]
   exact div_self (ne_of_gt positive)
 
-theorem deferredHazard_one_survival (timing : FinDist (Fin slots))
-    (full : timing.FullSupport) (count : Nat) (within : count ≤ slots) :
+theorem deferredHazard_one_survival (timing : PMF (Fin slots))
+    (full : FullSupport timing) (count : Nat) (within : count ≤ slots) :
     ∏ opportunity ∈ Finset.range count, (1 - deferredHazard 1 timing opportunity) =
       deferredSurvival 1 timing count := by
   induction count with
@@ -481,32 +487,32 @@ theorem deferredHazard_one_survival (timing : FinDist (Fin slots))
       rw [Finset.prod_range_succ, ih (by omega)]
       have hazard := deferredHazard_at 1 timing slot
       change deferredHazard 1 timing count =
-        1 * timing.prob slot / deferredSurvival 1 timing count at hazard
+        1 * (timing slot).toReal / deferredSurvival 1 timing count at hazard
       rw [hazard]
       have positive := deferredSurvival_one_positive timing full slot
       change 0 < deferredSurvival 1 timing count at positive
       have step := deferredSurvival_succ 1 timing slot
       change deferredSurvival 1 timing (count + 1) =
-        deferredSurvival 1 timing count - 1 * timing.prob slot at step
+        deferredSurvival 1 timing count - 1 * (timing slot).toReal at step
       rw [step]
       field_simp [ne_of_gt positive]
 
 /-- The first-submission distribution is precisely the selected timing law. -/
-theorem deferredHazard_one_first (timing : FinDist (Fin slots))
-    (full : timing.FullSupport) (slot : Fin slots) :
+theorem deferredHazard_one_first (timing : PMF (Fin slots))
+    (full : FullSupport timing) (slot : Fin slots) :
     (∏ opportunity ∈ Finset.range slot.val, (1 - deferredHazard 1 timing opportunity)) *
-      deferredHazard 1 timing slot.val = timing.prob slot := by
+      deferredHazard 1 timing slot.val = (timing slot).toReal := by
   rw [deferredHazard_one_survival timing full slot.val slot.isLt.le,
     deferredHazard_at, one_mul]
   exact mul_div_cancel₀ _ (ne_of_gt (deferredSurvival_one_positive timing full slot))
 
-theorem deferredHazard_one_never (timing : FinDist (Fin slots)) (full : timing.FullSupport) :
+theorem deferredHazard_one_never (timing : PMF (Fin slots)) (full : FullSupport timing) :
     ∏ opportunity ∈ Finset.range slots, (1 - deferredHazard 1 timing opportunity) = 0 := by
   rw [deferredHazard_one_survival timing full slots le_rfl]
   simp only [deferredSurvival, timingPrefix_all, mul_one, sub_self]
 
-theorem timingPrefix_tendsto {sequence : ℕ → FinDist (Fin slots)}
-    {target : FinDist (Fin slots)} (converges : FinDistConvergesPointwise sequence target)
+theorem timingPrefix_tendsto {sequence : ℕ → PMF (Fin slots)}
+    {target : PMF (Fin slots)} (converges : PMFConvergesPointwise sequence target)
     (count : Nat) :
     Tendsto (fun n => (sequence n).timingPrefix count) atTop
       (nhds (target.timingPrefix count)) := by
@@ -514,7 +520,7 @@ theorem timingPrefix_tendsto {sequence : ℕ → FinDist (Fin slots)}
   apply tendsto_finsetSum
   intro slot _
   by_cases before : slot.val < count
-  · simpa only [before, ↓reduceIte] using converges slot
+  · simpa only [before, ↓reduceIte] using converges.toReal slot
   · simp only [before, ↓reduceIte]
     exact tendsto_const_nhds
 
@@ -528,15 +534,15 @@ theorem timingPrefix_pure_last (last : Nat) (count : Nat) (before : count ≤ la
       subst slot
       simp only [Fin.val_last] at earlier
       omega
-    simp only [earlier, ↓reduceIte, prob_pure_of_ne different]
+    simp only [earlier, ↓reduceIte, toReal_pure_apply, different]
   · simp only [earlier, ↓reduceIte]
 
 /-- One timing sequence removes the conditional distortion uniformly over
 arbitrary source probabilities, with no lower bound on source trembles. -/
 theorem deferredRemaining_error_tendsto {last : Nat} (probability : ℕ → ℝ)
     (nonnegative : ∀ n, 0 ≤ probability n) (small : ∀ n, probability n < 1)
-    {timing : ℕ → FinDist (Fin (last + 1))}
-    (timingConverges : FinDistConvergesPointwise timing (pure (Fin.last last)))
+    {timing : ℕ → PMF (Fin (last + 1))}
+    (timingConverges : PMFConvergesPointwise timing (pure (Fin.last last)))
     (count : Nat) (before : count ≤ last) :
     Tendsto (fun n => probability n - deferredRemaining (probability n) (timing n) count)
       atTop (nhds 0) := by
@@ -552,8 +558,8 @@ The conclusion also holds when the limiting choice probability is one: the
 relevant survival denominators converge to one, rather than zero. -/
 theorem deferredHazard_tendsto_last {last : Nat} {probability : ℕ → ℝ}
     {limit : ℝ} (probabilityConverges : Tendsto probability atTop (nhds limit))
-    {timing : ℕ → FinDist (Fin (last + 1))}
-    (timingConverges : FinDistConvergesPointwise timing (pure (Fin.last last)))
+    {timing : ℕ → PMF (Fin (last + 1))}
+    (timingConverges : PMFConvergesPointwise timing (pure (Fin.last last)))
     (slot : Fin (last + 1)) :
     Tendsto (fun n => deferredHazard (probability n) (timing n) slot.val) atTop
       (nhds (if slot = Fin.last last then limit else 0)) := by
@@ -561,19 +567,19 @@ theorem deferredHazard_tendsto_last {last : Nat} {probability : ℕ → ℝ}
   rw [timingPrefix_pure_last last slot.val (by omega)] at prefixConverges
   have one : Tendsto (fun _ : ℕ => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
   have denominator := one.sub (probabilityConverges.mul prefixConverges)
-  have numerator := probabilityConverges.mul (timingConverges slot)
+  have numerator := probabilityConverges.mul (timingConverges.toReal slot)
   have quotient := numerator.div denominator (by norm_num : (1 : ℝ) - limit * 0 ≠ 0)
-  simpa only [deferredHazard_at, deferredSurvival, prob_pure_eq_ite,
+  simpa only [deferredHazard_at, deferredSurvival, toReal_pure_apply,
     mul_ite, mul_zero, mul_one, sub_zero, div_one, Pi.div_def] using quotient
 
 /-- A fully supported timing perturbation around the final opportunity. -/
 def finalTiming (last : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
-    (bounded : weight ≤ 1) : FinDist (Fin (last + 1)) :=
-  mix weight nonnegative bounded uniformOfFintype (pure (Fin.last last))
+    (bounded : weight ≤ 1) : PMF (Fin (last + 1)) :=
+  mix weight nonnegative bounded (uniformOfFintype (Fin (last + 1))) (pure (Fin.last last))
 
 theorem finalTiming_fullSupport (last : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
     (bounded : weight ≤ 1) (positive : 0 < weight) :
-    (finalTiming last weight nonnegative bounded).FullSupport := by
+    FullSupport (finalTiming last weight nonnegative bounded) := by
   intro slot
   exact mem_support_mix_left weight nonnegative bounded positive
     (mem_support_uniformOfFintype slot)
@@ -581,14 +587,15 @@ theorem finalTiming_fullSupport (last : Nat) (weight : ℝ) (nonnegative : 0 ≤
 theorem finalTiming_tendsto (last : Nat) {weight : ℕ → ℝ}
     (nonnegative : ∀ n, 0 ≤ weight n) (bounded : ∀ n, weight n ≤ 1)
     (converges : Tendsto weight atTop (nhds 0)) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => finalTiming last (weight n) (nonnegative n) (bounded n))
       (pure (Fin.last last)) := by
+  rw [pmfConvergesPointwise_iff_toReal]
   intro slot
-  have first := converges.mul_const ((uniformOfFintype : FinDist (Fin (last + 1))).prob slot)
+  have first := converges.mul_const (((uniformOfFintype (Fin (last + 1))) slot).toReal)
   have one : Tendsto (fun _ : ℕ => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-  have second := (one.sub converges).mul_const ((pure (Fin.last last)).prob slot)
-  simpa only [finalTiming, prob_mix, zero_mul, sub_zero, one_mul, zero_add] using
+  have second := (one.sub converges).mul_const (((pure (Fin.last last)) slot).toReal)
+  simpa only [finalTiming, mix_apply_toReal, zero_mul, sub_zero, one_mul, zero_add] using
     first.add second
 
-end GameTheory.Math.Probability.FinDist
+end PMF

@@ -42,7 +42,7 @@ def protocolMenu (setup : Setup (Player := Player) (L := L))
   | some view, choice => SourceProgram.ProtocolView.menu who setup.program admission view choice
 
 def protocolStep (setup : Setup (Player := Player) (L := L)) :
-    setup.ProtocolState → (Player → Option (OwnAction Player L)) → FinDist setup.ProtocolState
+    setup.ProtocolState → (Player → Option (OwnAction Player L)) → PMF setup.ProtocolState
   | none, _ => setup.initialLaw.map
       (fun initial => some (SourceProgram.ProtocolState.entry setup.program
         (setup.initialConfig initial)))
@@ -124,10 +124,10 @@ theorem protocol_remaining_step (setup : Setup (Player := Player) (L := L))
     setup.protocolRemaining after + 1 = setup.protocolRemaining before := by
   cases before with
   | none =>
-      obtain ⟨initial, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
       simp [protocolRemaining]
   | some state =>
-      obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact SourceProgram.ProtocolState.remaining_step setup.program state next joint
         running supported
 

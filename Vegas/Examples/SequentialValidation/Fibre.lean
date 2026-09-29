@@ -120,7 +120,7 @@ theorem native_remembered (control : nativeApp.Control)
     nativeInitialLaw 56 nativeScheduler _
     (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace)
   intro state supported
-  obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ supported
   rfl
 
 end Vegas.Examples.SequentialValidation

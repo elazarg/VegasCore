@@ -181,25 +181,25 @@ over private intentions. The equality retains the entire original successor
 configuration, including the intention used by every later source policy. -/
 theorem disclosure_alias_disintegration (published : VarId)
     (source : HasVar Γ name (.commitment owner payload))
-    (config : Config Player L Γ) (law : FinDist Bool) :
+    (config : Config Player L Γ) (law : PMF Bool) :
     law.map (revealSuccessor published source config) =
       (law.map (effectiveDisclosure published source config)).bind fun response =>
-        (law.condOnFibre (effectiveDisclosure published source config) response).map
+        (fiberConditional law (effectiveDisclosure published source config) response).map
           (fun intention => (revealSuccessor published source config response).restoreDisclosure
             owner name intention) := by
   classical
   conv_lhs => arg 2; rw [law.eq_bind_condOnFibre (effectiveDisclosure published source config)]
-  rw [FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind]
+  apply bind_congr_on_support _
   intro response reached
-  obtain ⟨original, supported, responseEq⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨original, supported, responseEq⟩ := PMF.support_map .. ▸ reached
   have meets : ∃ intention ∈ (effectiveDisclosure published source config) ⁻¹' {response},
       intention ∈ law.support := ⟨original, responseEq, supported⟩
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro intention compatible
-  rw [FinDist.condOnFibre, dite_eq_left meets] at compatible
+  rw [fiberConditional, dite_eq_left meets] at compatible
   have projects : effectiveDisclosure published source config intention = response :=
-    (FinDist.support_condOn law _ meets compatible).1
+    ((PMF.mem_support_filter_iff _).mp compatible).1
   rw [← projects, revealSuccessor_restore_effective]
 
 /-- A fully mixed intention law gives positive mass to every effective choice.
@@ -207,11 +207,11 @@ The removed choices are exact private aliases, not zero-probability moves left
 in the effective menu. -/
 theorem effectiveDisclosure_support (published : VarId)
     (source : HasVar Γ name (.commitment owner payload))
-    (config : Config Player L Γ) (law : FinDist Bool) (mixed : law.FullSupport) :
+    (config : Config Player L Γ) (law : PMF Bool) (mixed : FullSupport law) :
     (law.map (effectiveDisclosure published source config)).support =
       Set.range (effectiveDisclosure published source config) := by
   ext response
-  rw [FinDist.support_map]
+  rw [PMF.support_map]
   constructor
   · rintro ⟨intention, _supported, rfl⟩
     exact ⟨intention, rfl⟩

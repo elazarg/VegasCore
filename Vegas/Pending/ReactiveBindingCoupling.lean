@@ -182,10 +182,10 @@ theorem activation_inputs (memory : BindingMemory runtime leaks)
         ⟨right.network.publicView, right.application.publicView, right.receipts⟩
     rw [network, publicEq, receipts]
   dsimp only
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
   rw [show left.network.pending = right.network.pending from
     congrArg MessageNetwork.pending network]
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro selected _
   dsimp only [Function.comp_apply]
   refine Prod.ext (by rw [network]) (Prod.ext (by rw [serviceRecall, environment]) ?_)

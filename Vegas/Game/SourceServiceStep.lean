@@ -51,7 +51,7 @@ theorem source_sample_environment (runtime : EventGraphRuntime graph)
   rw [environmentStep_executeSample_eq runtime native event ready payload
     (compilePublicDist refs law) outputEq codeEq node]
   rw [sample_step native.config event ready outputEq refs law codeEq source agree,
-    FinDist.map_comp]
+    PMF.map_comp]
   rfl
 
 omit [DecidableEq Player] in
@@ -135,16 +135,16 @@ theorem compiled_disclosure_result {Γ : SourceCtx Player L}
   have evaluated := compileResolve_eval? refs source.registry source.revelations
     source.state store agree (published := published) selected disclose
   rw [EventGraph.EventCode.resolve_eval?] at evaluated
-  change Option.map FinDist.pure _ =
-    some (FinDist.pure (disclosureResult published selected source disclose)) at evaluated
+  change Option.map PMF.pure _ =
+    some (PMF.pure (disclosureResult published selected source disclose)) at evaluated
   cases result : EventGraph.EventCode.resolveOutput? (refs.get selected)
       (compileChecks (published := published) refs source.registry source.revelations selected)
       disclose store with
   | none => simp only [result, Option.map_none, reduceCtorEq] at evaluated
   | some value =>
       rw [result, Option.map_some, Option.some.injEq] at evaluated
-      have member : value ∈ (FinDist.pure value).support := by simp
-      rw [evaluated, FinDist.mem_support_pure] at member
+      have member : value ∈ (PMF.pure value).support := by simp
+      rw [evaluated, PMF.mem_support_pure_iff _ _] at member
       exact congrArg some member
 
 /-- Guard normalization leaves the actual emitted response unchanged. This
@@ -201,7 +201,7 @@ theorem source_binding_service (runtime : EventGraphRuntime graph)
     (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (choices : FinDist (PublicationResult (L.Val payload))) (serial : Nat)
+    (choices : PMF (PublicationResult (L.Val payload))) (serial : Nat)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
     (fresh : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
@@ -219,8 +219,8 @@ theorem source_binding_service (runtime : EventGraphRuntime graph)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
           (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
           execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
-  rw [FinDist.bind_map, FinDist.map_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [PMF.bind_map, PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro choice _
   exact runtime.reactiveBinding_reserved_config leaks execution owner event payload outputEq
     codeEq node choice serial ready timely fresh vacant unused serials players network

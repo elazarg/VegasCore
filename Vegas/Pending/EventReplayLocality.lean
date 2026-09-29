@@ -20,7 +20,7 @@ variable {graph : Vegas.EventGraph Player L}
 /-- Endpoint-aware lockstep comparison retaining actual reachability of every
 intermediate pair. -/
 inductive ReachableServicePathComparison (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player) (leftEnd rightEnd : ServiceControl runtime) : Prop
@@ -53,7 +53,7 @@ inductive ReachableServicePathComparison (runtime : EventGraphRuntime graph)
 /-- Endpoint-aware comparison whose semantic step receives actual reachability
 proofs for the two current controls. -/
 theorem ServiceControlPath.compareEndpointReachable (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player) {leftEnd rightEnd : ServiceControl runtime}
@@ -102,7 +102,7 @@ namespace NativeReplay
 /-- An arbitrary common include command at reachable prefixes preserves
 replay when every foreign sender uses its prescribed policy. -/
 theorem environmentInclude_reachable (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (ordered : graph.BarrierOrdered) (focal : Player)
@@ -183,17 +183,17 @@ theorem environmentExecuteSample_of_observation
       ((runtime.application.environmentPolicyStep left
         (.application (.executeSample event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨leftNext, leftSupported, rfl⟩
   have rightNative : rightNext.native ∈
       ((runtime.application.environmentPolicyStep right
         (.application (.executeSample event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨rightNext, rightSupported, rfl⟩
   rw [runtime.application.environmentStep_native] at leftNative rightNative
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, FinDist.support_map, Set.mem_image] at leftNative rightNative
+    MessageApplication.step, PMF.support_map, Set.mem_image] at leftNative rightNative
   obtain ⟨leftApplication, leftApplicationMem, leftStateEq⟩ := leftNative
   obtain ⟨rightApplication, rightApplicationMem, rightStateEq⟩ := rightNative
   have leftApplicationEq : leftNext.native.application = leftApplication := by
@@ -285,17 +285,17 @@ theorem environmentExecuteSample_completionOrder
       ((runtime.application.environmentPolicyStep left
         (.application (.executeSample event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨leftNext, leftSupported, rfl⟩
   have rightNative : rightNext.native ∈
       ((runtime.application.environmentPolicyStep right
         (.application (.executeSample event))).map
           MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨rightNext, rightSupported, rfl⟩
   rw [runtime.application.environmentStep_native] at leftNative rightNative
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, FinDist.support_map, Set.mem_image] at leftNative rightNative
+    MessageApplication.step, PMF.support_map, Set.mem_image] at leftNative rightNative
   obtain ⟨leftApplication, leftApplicationMem, leftStateEq⟩ := leftNative
   obtain ⟨rightApplication, rightApplicationMem, rightStateEq⟩ := rightNative
   change leftApplication ∈
@@ -320,18 +320,18 @@ theorem environmentExecuteSample_completionOrder
           rw [view] at opposite
           contradiction
         rw [environmentStep_executeSample_of_nonsample runtime left.native.application event
-            leftReady nonsample, FinDist.mem_support_pure] at leftApplicationMem
+            leftReady nonsample, PMF.mem_support_pure_iff _ _] at leftApplicationMem
         rw [environmentStep_executeSample_of_nonsample runtime right.native.application event
-            rightReady nonsample, FinDist.mem_support_pure] at rightApplicationMem
+            rightReady nonsample, PMF.mem_support_pure_iff _ _] at rightApplicationMem
         subst leftApplication
         subst rightApplication
         rw [← leftStateEq, ← rightStateEq]
         exact preOrder
     | sample payload law outputEq codeEq =>
         rw [environmentStep_executeSample_eq runtime left.native.application event leftReady
-          payload law outputEq codeEq view, FinDist.support_map] at leftApplicationMem
+          payload law outputEq codeEq view, PMF.support_map] at leftApplicationMem
         rw [environmentStep_executeSample_eq runtime right.native.application event rightReady
-          payload law outputEq codeEq view, FinDist.support_map] at rightApplicationMem
+          payload law outputEq codeEq view, PMF.support_map] at rightApplicationMem
         obtain ⟨leftConfig, leftConfigMem, rfl⟩ := leftApplicationMem
         obtain ⟨rightConfig, rightConfigMem, rfl⟩ := rightApplicationMem
         rw [← leftStateEq, ← rightStateEq]
@@ -347,9 +347,9 @@ theorem environmentExecuteSample_completionOrder
       rw [readyEq]
       exact ready
     rw [environmentStep_executeSample_of_not_ready runtime left.native.application event
-        leftReady, FinDist.mem_support_pure] at leftApplicationMem
+        leftReady, PMF.mem_support_pure_iff _ _] at leftApplicationMem
     rw [environmentStep_executeSample_of_not_ready runtime right.native.application event
-        rightReady, FinDist.mem_support_pure] at rightApplicationMem
+        rightReady, PMF.mem_support_pure_iff _ _] at rightApplicationMem
     subst leftApplication
     subst rightApplication
     rw [← leftStateEq, ← rightStateEq]
@@ -368,7 +368,7 @@ theorem orderStep (runtime : EventGraphRuntime graph)
     (focal : Player)
     (response : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → ServiceOrder graph)
-    (fixed : order = fun history view => FinDist.pure (response history view))
+    (fixed : order = fun history view => PMF.pure (response history view))
     {left right leftNext rightNext : ServiceControl runtime}
     (replay : ServiceReplay runtime focal left right)
     (leftPlan : left.plan = [])
@@ -381,22 +381,22 @@ theorem orderStep (runtime : EventGraphRuntime graph)
   cases leftEpochs : left.epochs with
   | zero =>
       have rightEpochs : right.epochs = 0 := by rw [← replay.epochs, leftEpochs]
-      simp only [serviceControlStep, leftPlan, leftEpochs, FinDist.mem_support_pure]
+      simp only [serviceControlStep, leftPlan, leftEpochs, PMF.mem_support_pure_iff _ _]
         at leftSupported
-      simp only [serviceControlStep, rightPlan, rightEpochs, FinDist.mem_support_pure]
+      simp only [serviceControlStep, rightPlan, rightEpochs, PMF.mem_support_pure_iff _ _]
         at rightSupported
       subst leftNext
       subst rightNext
       exact replay
   | succ epochs =>
       have rightEpochs : right.epochs = epochs + 1 := by rw [← replay.epochs, leftEpochs]
-      simp only [serviceControlStep, leftPlan, leftEpochs, fixed, FinDist.support_map,
+      simp only [serviceControlStep, leftPlan, leftEpochs, fixed, PMF.support_map,
         Set.mem_image] at leftSupported
-      simp only [serviceControlStep, rightPlan, rightEpochs, fixed, FinDist.support_map,
+      simp only [serviceControlStep, rightPlan, rightEpochs, fixed, PMF.support_map,
         Set.mem_image] at rightSupported
       obtain ⟨leftOrder, leftOrderMem, rfl⟩ := leftSupported
       obtain ⟨rightOrder, rightOrderMem, rfl⟩ := rightSupported
-      rw [FinDist.mem_support_pure] at leftOrderMem rightOrderMem
+      rw [PMF.mem_support_pure_iff _ _] at leftOrderMem rightOrderMem
       have inputEq := replay.environmentInput
       have orderEq : response left.execution.environmentHistory
             (MessageApplication.State.environmentView runtime.application
@@ -419,7 +419,7 @@ theorem focalPlayerStep (runtime : EventGraphRuntime graph)
     (focal : Player)
     (response : List runtime.application.PlayerEntry →
       runtime.application.View → runtime.application.PlayerCommand)
-    (fixed : players focal = fun history view => FinDist.pure (response history view))
+    (fixed : players focal = fun history view => PMF.pure (response history view))
     {left right leftNext rightNext : ServiceControl runtime}
     (replay : ServiceReplay runtime focal left right)
     (rest : List (ServiceInstruction graph))
@@ -432,8 +432,8 @@ theorem focalPlayerStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .player focal :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
   exact
@@ -446,7 +446,7 @@ theorem focalPlayerStep (runtime : EventGraphRuntime graph)
 /-- Executing a common pure wire-policy head instruction preserves control
 replay, including arbitrary public inclusion traffic. -/
 theorem wireStep (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (ordered : graph.BarrierOrdered) (focal : Player)
@@ -455,7 +455,7 @@ theorem wireStep (runtime : EventGraphRuntime graph)
         players who = runtime.compilePlayerPolicy who policy)
     (response : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → WireCommand Player)
-    (fixed : wire = fun history view => FinDist.pure (response history view))
+    (fixed : wire = fun history view => PMF.pure (response history view))
     {left right leftNext rightNext : ServiceControl runtime}
     (leftReachable : ServiceReachable runtime inputs roster reactionRounds players wire order left)
     (rightReachable : ServiceReachable runtime inputs roster reactionRounds players wire order
@@ -471,11 +471,11 @@ theorem wireStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .wire :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
-  simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion]
+  simp only [serviceStep, MessageApplication.invoke, PMF.support_bind, Set.mem_iUnion]
     at leftExecutionMem rightExecutionMem
   obtain ⟨leftCommand, leftChosen, leftStep⟩ := leftExecutionMem
   obtain ⟨rightCommand, rightChosen, rightStep⟩ := rightExecutionMem
@@ -494,16 +494,16 @@ theorem wireStep (runtime : EventGraphRuntime graph)
     congrArg (fun input => response input.1 input.2) inputEq
   have leftLaw : runtime.application.wireEnvironment wire
       left.execution.environmentHistory leftView =
-      FinDist.pure (chosen.toEnvironmentCommand runtime.application) := by
-    simp only [MessageApplication.wireEnvironment, fixed, FinDist.map_pure]
+      PMF.pure (chosen.toEnvironmentCommand runtime.application) := by
+    simp only [MessageApplication.wireEnvironment, fixed, PMF.pure_map]
     rfl
   have rightLaw : runtime.application.wireEnvironment wire
       right.execution.environmentHistory rightView =
-      FinDist.pure (chosen.toEnvironmentCommand runtime.application) := by
-    simp only [MessageApplication.wireEnvironment, fixed, FinDist.map_pure]
+      PMF.pure (chosen.toEnvironmentCommand runtime.application) := by
+    simp only [MessageApplication.wireEnvironment, fixed, PMF.pure_map]
     rw [chosenEq]
-  rw [leftLaw, FinDist.mem_support_pure] at leftChosen
-  rw [rightLaw, FinDist.mem_support_pure] at rightChosen
+  rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+  rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
   subst leftCommand
   subst rightCommand
   have nativeReplay : NativeReplay runtime focal leftExecution rightExecution := by
@@ -526,7 +526,7 @@ theorem wireStep (runtime : EventGraphRuntime graph)
 control replay. The only endpoint-sensitive input is equality of the two
 stage-two resolution packets. -/
 theorem prescribedPlayerStep (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal owner : Player) (different : owner ≠ focal)
@@ -567,8 +567,8 @@ theorem prescribedPlayerStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .player owner :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
   have leftCoherent := leftReachable.policyCoherentAll runtime inputs roster reactionRounds
@@ -603,11 +603,11 @@ theorem prescribedPlayerStep_noGrant (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .player owner :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
-  simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind, Set.mem_iUnion]
+  simp only [serviceStep, MessageApplication.invoke, PMF.support_bind, Set.mem_iUnion]
     at leftExecutionMem rightExecutionMem
   obtain ⟨leftCommand, leftChosen, leftStep⟩ := leftExecutionMem
   obtain ⟨rightCommand, rightChosen, rightStep⟩ := rightExecutionMem
@@ -622,8 +622,8 @@ theorem prescribedPlayerStep_noGrant (runtime : EventGraphRuntime graph)
       right.execution.native owner).application.publicView.serviceGrant = none := rightGrant
   rw [prescribed] at leftChosen rightChosen
   unfold compilePlayerPolicy at leftChosen rightChosen
-  rw [leftViewGrant, FinDist.mem_support_pure] at leftChosen
-  rw [rightViewGrant, FinDist.mem_support_pure] at rightChosen
+  rw [leftViewGrant, PMF.mem_support_pure_iff _ _] at leftChosen
+  rw [rightViewGrant, PMF.mem_support_pure_iff _ _] at rightChosen
   subst leftCommand
   subst rightCommand
   exact
@@ -651,8 +651,8 @@ theorem grantStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .grant event :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
   exact
@@ -680,8 +680,8 @@ theorem tickStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .tick :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
   exact
@@ -713,8 +713,8 @@ theorem sampleStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .sample event :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
   exact
@@ -753,8 +753,8 @@ theorem sampleStep_of_endpoint (runtime : EventGraphRuntime graph)
     exact leftPlan
   have leftMember := leftSupported
   have rightMember := rightSupported
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftMember
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightMember
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftMember
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightMember
   obtain ⟨leftExecution, leftExecutionMem, leftNextEq⟩ := leftMember
   obtain ⟨rightExecution, rightExecutionMem, rightNextEq⟩ := rightMember
   have orderEq : leftNext.execution.native.application.config.history.map Completion.event =
@@ -787,8 +787,8 @@ theorem expireStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .expire event :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
   exact
@@ -801,7 +801,7 @@ theorem expireStep (runtime : EventGraphRuntime graph)
 public pool. Foreign prescribed openings use reachable provenance and binding
 invariants; other packet forms are locally observational. -/
 theorem includeLatestStep (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (ordered : graph.BarrierOrdered) (focal owner : Player)
@@ -824,8 +824,8 @@ theorem includeLatestStep (runtime : EventGraphRuntime graph)
   have rightPlan : right.plan = .includeLatest event owner :: rest := by
     rw [← replay.plan]
     exact leftPlan
-  simp only [serviceControlStep, leftPlan, FinDist.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, FinDist.support_map, Set.mem_image] at rightSupported
+  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
+  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
   obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
   obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
   let leftView := MessageApplication.State.environmentView runtime.application
@@ -925,20 +925,20 @@ theorem includeLatestStep (runtime : EventGraphRuntime graph)
 identify the prescribed resolution packet and the public chance observation;
 the other branches depend only on the current replay relation. -/
 theorem pairedControlStep (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (ordered : graph.BarrierOrdered) (focal : Player)
     (focalResponse : List runtime.application.PlayerEntry →
       runtime.application.View → runtime.application.PlayerCommand)
     (fixedFocal : players focal = fun history view =>
-      FinDist.pure (focalResponse history view))
+      PMF.pure (focalResponse history view))
     (wireResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → WireCommand Player)
-    (fixedWire : wire = fun history view => FinDist.pure (wireResponse history view))
+    (fixedWire : wire = fun history view => PMF.pure (wireResponse history view))
     (orderResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → ServiceOrder graph)
-    (fixedOrder : order = fun history view => FinDist.pure (orderResponse history view))
+    (fixedOrder : order = fun history view => PMF.pure (orderResponse history view))
     (prescribedOthers : ∀ who, who ≠ focal →
       ∃ policy : graph.BehavioralPolicy who,
         players who = runtime.compilePlayerPolicy who policy)
@@ -1029,7 +1029,7 @@ discharge chance coupling, while completed public resolution outputs discharge
 prescribed stage-two packet equality. -/
 theorem pairedControlStep_of_endpoint (runtime : EventGraphRuntime graph)
     (feasible : runtime.ServiceFeasible) (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -1037,13 +1037,13 @@ theorem pairedControlStep_of_endpoint (runtime : EventGraphRuntime graph)
     (focalResponse : List runtime.application.PlayerEntry →
       runtime.application.View → runtime.application.PlayerCommand)
     (fixedFocal : players focal = fun history view =>
-      FinDist.pure (focalResponse history view))
+      PMF.pure (focalResponse history view))
     (wireResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → WireCommand Player)
-    (fixedWire : wire = fun history view => FinDist.pure (wireResponse history view))
+    (fixedWire : wire = fun history view => PMF.pure (wireResponse history view))
     (orderResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → ServiceOrder graph)
-    (fixedOrder : order = fun history view => FinDist.pure (orderResponse history view))
+    (fixedOrder : order = fun history view => PMF.pure (orderResponse history view))
     (opponentCompiled : ∀ owner, owner ≠ focal →
       players owner = runtime.compilePlayerPolicy owner (profile owner))
     (target : graph.EventId) (targetActor : graph.actor? target = some focal)
@@ -1128,7 +1128,7 @@ dependent action.  Different prefix lengths are impossible: lockstep replay
 would complete the event on the longer path before its alleged ready state. -/
 theorem reachedFocalAction_eq_of_pairedStep
     (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player) (event : graph.EventId)

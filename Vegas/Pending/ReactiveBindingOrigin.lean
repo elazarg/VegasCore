@@ -93,16 +93,16 @@ theorem acceptedRecall_environment
     execution next command reached
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact valid
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
       cases found : execution.network.lookup id with
       | none => exact valid
@@ -117,12 +117,12 @@ theorem acceptedRecall_environment
               exact acceptedRecall_handle runtime leaks execution state message valid
                 (origins.lookup id message found) accepted
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       exact valid.copy runtime leaks (environmentStep_tables runtime _ _ command changed).1
         (fun _ => List.Subset.refl _)
 
-theorem acceptedRecall_history (inputs : FinDist graph.Inputs) (horizon : Nat)
+theorem acceptedRecall_history (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
     ∀ {state} (_trace : ((runtime.reactiveApplication leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state),
@@ -140,7 +140,7 @@ theorem acceptedRecall_history (inputs : FinDist graph.Inputs) (horizon : Nat)
   intro state trace
   have valid := invariant.history (inputs.map State.initial) horizon (by
     intro state supported
-    obtain ⟨inputs, _, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨inputs, _, rfl⟩ := PMF.support_map .. ▸ supported
     refine ⟨?_, MessageNetwork.Satisfies.empty⟩
     intro event candidate accepted
     obtain ⟨input, owner, payload, impossible, _⟩ :=

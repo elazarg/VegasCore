@@ -23,7 +23,7 @@ variable {graph : Vegas.EventGraph Player L}
 control is selected by the policy extracted from actual reached actions. -/
 theorem reachedFocalPolicy_controlStep
     (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player)
@@ -45,7 +45,7 @@ theorem reachedFocalPolicy_controlStep
     graph.normalizePolicy focal
         (reachedFocalPolicy runtime inputs roster reactionRounds players wire order focal)
         event actor (graph.playerObserve focal before.execution.native.application.config) =
-      FinDist.pure action := by
+      PMF.pure action := by
   apply runtime.reachedFocalPolicy_eq_of_functional inputs roster reactionRounds players wire
     order focal functional event actor
   exact .realized before after reachable transition actor ready completion rfl
@@ -53,7 +53,7 @@ theorem reachedFocalPolicy_controlStep
 /-- Instruction-level form of `reachedFocalPolicy_controlStep`. -/
 theorem reachedFocalPolicy_serviceStep
     (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (focal : Player)
@@ -77,12 +77,12 @@ theorem reachedFocalPolicy_serviceStep
     graph.normalizePolicy focal
         (reachedFocalPolicy runtime inputs roster reactionRounds players wire order focal)
         event actor (graph.playerObserve focal execution.native.application.config) =
-      FinDist.pure action := by
+      PMF.pure action := by
   let before : ServiceControl runtime := ⟨epochs, instruction :: rest, execution⟩
   let after : ServiceControl runtime := ⟨epochs, rest, next⟩
   apply runtime.reachedFocalPolicy_controlStep inputs roster reactionRounds players wire order
     focal functional before after reachable
-  · simp only [before, after, serviceControlStep, FinDist.support_map, Set.mem_image]
+  · simp only [before, after, serviceControlStep, PMF.support_map, Set.mem_image]
     exact ⟨next, step, rfl⟩
   · exact completion
 
@@ -107,7 +107,7 @@ private theorem environmentPolicyStep_include_accept_support
   refine ⟨after, ?_, rfl⟩
   simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
     MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.pure_bind, FinDist.mem_support_pure]
+    PMF.pure_bind, PMF.mem_support_pure_iff _ _]
   rw [runtime.application.includePending_accept execution.native id message next lookup accepted]
 
 private theorem environmentPolicyStep_application_support
@@ -131,9 +131,9 @@ private theorem environmentPolicyStep_application_support
   refine ⟨after, ?_, rfl⟩
   simp only [MessageApplication.environmentPolicyStep, MessageApplication.advance,
     MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.support_bind, Set.mem_iUnion, FinDist.mem_support_pure]
+    PMF.support_bind, Set.mem_iUnion, PMF.mem_support_pure_iff _ _]
   refine ⟨(native, execution.nativeTrace ++ [.environment command]), ?_, rfl⟩
-  rw [FinDist.support_map]
+  rw [PMF.support_map]
   refine ⟨native, ?_, rfl⟩
   change native ∈ (fun application : State graph =>
       ({ execution.native with application := application } : runtime.application.State)) ''
@@ -144,7 +144,7 @@ private theorem environmentPolicyStep_application_support
 control.  The age argument is the sole timing fact and is kept pointwise. -/
 theorem ServiceReachable.deviationEnvironmentState
     (runtime : EventGraphRuntime graph) (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -183,7 +183,7 @@ instruction conserves the continuation for the reached-action focal policy. -/
 theorem environmentPolicyStep_reached_deviationContinuation
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -252,7 +252,7 @@ continuation extracted from all actual focal completions. -/
 theorem serviceControlStep_reached_deviationContinuation
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -283,14 +283,14 @@ theorem serviceControlStep_reached_deviationContinuation
       cases epochs with
       | zero => simp [serviceControlStep]
       | succ epochs =>
-          simp only [serviceControlStep, FinDist.bind_map]
-          exact FinDist.bind_const _ _
+          simp only [serviceControlStep, PMF.bind_map]
+          exact PMF.bind_const _ _
   | cons instruction rest =>
       rw [show runtime.serviceControlStep roster reactionRounds players wire order
           ⟨epochs, instruction :: rest, execution⟩ =
           (runtime.serviceStep players wire instruction execution).map
             (fun next => ⟨epochs, rest, next⟩) from rfl,
-        FinDist.bind_map]
+        PMF.bind_map]
       cases instruction with
       | player who =>
           by_cases same : who = focal
@@ -303,7 +303,7 @@ theorem serviceControlStep_reached_deviationContinuation
             rw [Profile.update_of_ne _ _ same]
             exact opponentCompiled who same
       | wire =>
-          simp only [serviceStep, MessageApplication.invoke, FinDist.bind_bind]
+          simp only [serviceStep, MessageApplication.invoke, PMF.bind_bind]
           calc
             _ = (runtime.application.wireEnvironment wire execution.environmentHistory
                   (MessageApplication.State.environmentView runtime.application
@@ -312,16 +312,16 @@ theorem serviceControlStep_reached_deviationContinuation
                   (Profile.update (sig := graph.gameSignature) profile focal
                     (runtime.reachedFocalPolicy inputs roster reactionRounds players wire order
                       focal)) focal) := by
-              apply FinDist.bind_congr
+              apply bind_congr_on_support _
               intro command commandMem
               apply runtime.environmentPolicyStep_reached_deviationContinuation feasible ordered
                 inputs profile roster reactionRounds players wire order focal functional epochs
                 .wire rest execution reachable assumptions
               intro after afterMem
-              simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+              simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
                 Set.mem_iUnion]
               exact ⟨command, commandMem, afterMem⟩
-            _ = _ := FinDist.bind_const _ _
+            _ = _ := PMF.bind_const _ _
       | grant event =>
           apply runtime.environmentPolicyStep_reached_deviationContinuation feasible ordered
             inputs profile roster reactionRounds players wire order focal functional epochs
@@ -359,7 +359,7 @@ protocol facts at reachable source controls, not a semantic law. -/
 theorem runServiceControlSteps_reached_deviationContinuation
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -399,7 +399,7 @@ theorem runServiceControlSteps_reached_deviationContinuation
           cases plan with
           | nil => simp [runServiceControlSteps]
           | cons instruction rest =>
-              simp only [runServiceControlSteps, FinDist.bind_bind]
+              simp only [runServiceControlSteps, PMF.bind_bind]
               calc
                 _ = (runtime.serviceControlStep roster reactionRounds players wire order
                       ⟨0, instruction :: rest, execution⟩).bind
@@ -407,7 +407,7 @@ theorem runServiceControlSteps_reached_deviationContinuation
                       (Profile.update (sig := graph.gameSignature) profile focal
                         (runtime.reachedFocalPolicy inputs roster reactionRounds players wire order
                           focal)) focal) := by
-                    apply FinDist.bind_congr
+                    apply bind_congr_on_support _
                     intro middle member
                     exact ih middle (.step reachable member)
                 _ = _ := runtime.serviceControlStep_reached_deviationContinuation feasible
@@ -416,7 +416,7 @@ theorem runServiceControlSteps_reached_deviationContinuation
       | succ epochs =>
           cases plan with
           | nil =>
-              simp only [runServiceControlSteps, FinDist.bind_bind]
+              simp only [runServiceControlSteps, PMF.bind_bind]
               calc
                 _ = (runtime.serviceControlStep roster reactionRounds players wire order
                       ⟨epochs + 1, [], execution⟩).bind
@@ -424,14 +424,14 @@ theorem runServiceControlSteps_reached_deviationContinuation
                       (Profile.update (sig := graph.gameSignature) profile focal
                         (runtime.reachedFocalPolicy inputs roster reactionRounds players wire order
                           focal)) focal) := by
-                    apply FinDist.bind_congr
+                    apply bind_congr_on_support _
                     intro middle member
                     exact ih middle (.step reachable member)
                 _ = _ := runtime.serviceControlStep_reached_deviationContinuation feasible
                   ordered inputs profile roster reactionRounds players wire order focal functional
                   opponentCompiled _ reachable (environmentState _ reachable)
           | cons instruction rest =>
-              simp only [runServiceControlSteps, FinDist.bind_bind]
+              simp only [runServiceControlSteps, PMF.bind_bind]
               calc
                 _ = (runtime.serviceControlStep roster reactionRounds players wire order
                       ⟨epochs + 1, instruction :: rest, execution⟩).bind
@@ -439,7 +439,7 @@ theorem runServiceControlSteps_reached_deviationContinuation
                       (Profile.update (sig := graph.gameSignature) profile focal
                         (runtime.reachedFocalPolicy inputs roster reactionRounds players wire order
                           focal)) focal) := by
-                    apply FinDist.bind_congr
+                    apply bind_congr_on_support _
                     intro middle member
                     exact ih middle (.step reachable member)
                 _ = _ := runtime.serviceControlStep_reached_deviationContinuation feasible
@@ -469,7 +469,7 @@ theorem runServiceControlSteps_initial_terminal
           MessageApplication.PolicyExecution.initial runtime.application
             (MessageApplication.State.initial runtime.application
               (State.initial input))⟩).map ServiceControl.execution).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨after, supported, rfl⟩
   rw [runtime.runServiceControlSteps_map_execution roster reactionRounds players wire order,
     runtime.evalServiceControl_nil roster reactionRounds players wire order] at executionMem
@@ -481,7 +481,7 @@ terminal semantic law for the reached-action focal policy. -/
 theorem runServiceControlSteps_reached_semantic_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (input : graph.Inputs) (inputMem : input ∈ inputs.support)
+    (inputs : PMF graph.Inputs) (input : graph.Inputs) (inputMem : input ∈ inputs.support)
     (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
@@ -529,8 +529,8 @@ theorem runServiceControlSteps_reached_semantic_law
           (Profile.update (sig := graph.gameSignature) profile focal
             (runtime.reachedFocalPolicy inputs roster reactionRounds players wire order focal))
           focal) := by
-      rw [FinDist.map_eq_bind]
-      apply FinDist.bind_congr
+      rw [← PMF.bind_pure_comp, Function.comp_def]
+      apply bind_congr_on_support _
       intro after member
       exact (after.execution.native.application.deviationContinuation_terminal _ focal
         (runtime.runServiceControlSteps_initial_terminal input roster reactionRounds players wire
@@ -549,7 +549,7 @@ theorem runServiceControlSteps_reached_semantic_law
 theorem runServiceControlSteps_reached_store_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (input : graph.Inputs) (inputMem : input ∈ inputs.support)
+    (inputs : PMF graph.Inputs) (input : graph.Inputs) (inputMem : input ∈ inputs.support)
     (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
@@ -583,16 +583,16 @@ theorem runServiceControlSteps_reached_store_law
   have semanticLaw := runtime.runServiceControlSteps_reached_semantic_law feasible ordered inputs
     input inputMem profile roster reactionRounds players wire order focal functional
     opponentCompiled environmentState
-  have projected := congrArg (fun measure : FinDist graph.SemanticKey =>
+  have projected := congrArg (fun measure : PMF graph.SemanticKey =>
     measure.map fun key => key.2.1) semanticLaw
-  simpa only [FinDist.map_comp, Function.comp_def, semanticKey, storeRecall] using projected
+  simpa only [PMF.map_comp, Function.comp_def, semanticKey, storeRecall] using projected
 
 /-- The actual big-step service execution has the same terminal store law as
 the small-step control used to establish reachability. -/
 theorem runService_reached_store_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (input : graph.Inputs) (inputMem : input ∈ inputs.support)
+    (inputs : PMF graph.Inputs) (input : graph.Inputs) (inputMem : input ∈ inputs.support)
     (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
@@ -630,9 +630,9 @@ theorem runService_reached_store_law
   have executionLaw := runtime.runServiceControlSteps_map_execution roster reactionRounds players
     wire order runtime.serviceEpochs [] initialExecution
   rw [runtime.evalServiceControl_nil roster reactionRounds players wire order] at executionLaw
-  have projected := congrArg (fun measure : FinDist runtime.application.PolicyExecution =>
+  have projected := congrArg (fun measure : PMF runtime.application.PolicyExecution =>
     measure.map fun next => next.native.application.config.store) executionLaw
-  simp only [FinDist.map_comp, Function.comp_def] at projected
+  simp only [PMF.map_comp, Function.comp_def] at projected
   exact projected.symm.trans controlLaw
 
 /-- The native law follows from two structural reachability facts:
@@ -641,7 +641,7 @@ certificate. -/
 theorem servicedEventGame_reached_store_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (focal : Player) (replacement : runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
@@ -685,8 +685,8 @@ theorem servicedEventGame_reached_store_law
     exact reachable.deviationEnvironmentState runtime ordered inputs profile roster reactionRounds
       players wire order focal control opponentCompiled (activationAge control reachable)
   change (inputs.bind _).map _ = _
-  rw [FinDist.map_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind]
+  apply bind_congr_on_support _
   intro input inputMem
   exact runtime.runService_reached_store_law feasible ordered inputs input inputMem profile roster
     reactionRounds players wire order focal functional opponentCompiled environmentState
@@ -696,7 +696,7 @@ native deviation into a finite mixture of graph-policy deviations. -/
 theorem exists_reachedPolicy_mixture_store_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered)
-    (inputs : FinDist graph.Inputs) (profile : graph.BehavioralProfile)
+    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (focal : Player) (replacement : runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -720,7 +720,7 @@ theorem exists_reachedPolicy_mixture_store_law
           control.execution.native.application.activatedAt event = some entered →
           event ∉ control.execution.native.application.config.cut.completed →
           control.execution.native.application.clock - entered ≤ 1) :
-    ∃ mixture : FinDist (graph.BehavioralPolicy focal),
+    ∃ mixture : PMF (graph.BehavioralPolicy focal),
       ((runtime.servicedEventGame inputs roster reactionRounds wire order).play
         (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
           (runtime.compileProfile profile) focal replacement)).map
@@ -740,12 +740,12 @@ theorem exists_reachedPolicy_mixture_store_law
   let alternative : PureServiceResponses runtime → graph.BehavioralPolicy focal :=
     fun response => runtime.reachedFocalPolicy inputs roster reactionRounds
       (nativePlayers response) response.wirePure response.orderPure focal
-  let mixture : FinDist (graph.BehavioralPolicy focal) := responses.map alternative
+  let mixture : PMF (graph.BehavioralPolicy focal) := responses.map alternative
   refine ⟨mixture, ?_⟩
   have projected := congrArg
-    (fun measure : FinDist runtime.application.PolicyExecution =>
+    (fun measure : PMF runtime.application.PolicyExecution =>
       measure.map fun next => next.native.application.config.store) responseLaw
-  rw [FinDist.map_bind] at projected
+  rw [PMF.map_bind] at projected
   calc
     _ = responses.bind (fun response =>
           ((runtime.servicedEventGame inputs roster reactionRounds response.wirePure
@@ -757,7 +757,7 @@ theorem exists_reachedPolicy_mixture_store_law
               (graph.normalizeProfile
                 (Profile.update (sig := graph.gameSignature) profile focal
                   (alternative response))) input).map (fun config => config.store)) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro response _
         exact runtime.servicedEventGame_reached_store_law feasible ordered inputs profile roster
           reactionRounds focal response.playerPure response.wirePure response.orderPure
@@ -768,6 +768,6 @@ theorem exists_reachedPolicy_mixture_store_law
               (graph.normalizeProfile
                 (Profile.update (sig := graph.gameSignature) profile focal alternative))
               input).map (fun config => config.store)) := by
-        simp only [mixture, FinDist.bind_map]
+        simp only [mixture, PMF.bind_map]
 
 end Vegas.EventGraphRuntime

@@ -2,8 +2,10 @@
 
 import GameTheoryExtensions.Protocol.RestrictionExecution
 import GameTheory.Analysis.Protocol.Sequential
-import GameTheoryExtensions.Math.Probability.Compactness
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Convergence
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Retained decision laws and their vanishing perturbations
 
@@ -37,8 +39,8 @@ theorem retained_site (who : Player) (site : M.InformationSite who) :
 the selected source site unique; no hidden history is inspected. -/
 def retainedLaw (source : ∀ who, M.BehavioralPolicy who) (who : Player)
     (info : N.InfoState who) (retained : restriction.Retained who info) :
-    FinDist (N.Choice who info) :=
-  Eq.mp (congrArg (fun value => FinDist (N.Choice who value)) retained.choose_spec)
+    PMF (N.Choice who info) :=
+  Eq.mp (congrArg (fun value => PMF (N.Choice who value)) retained.choose_spec)
     ((source who retained.choose.1).map (restriction.choice who retained.choose.1))
 
 @[simp] theorem retainedLaw_at (source : ∀ who, M.BehavioralPolicy who)
@@ -73,7 +75,7 @@ def perturbProfile (source : ∀ who, M.BehavioralPolicy who)
     ∀ who, N.BehavioralPolicy who := by
   classical
   exact fun who info => if retained : restriction.Retained who info then
-    FinDist.mix epsilon nonnegative small (reference who info)
+    mix epsilon nonnegative small (reference who info)
       (restriction.retainedLaw source who info retained)
     else reference who info
 
@@ -82,7 +84,7 @@ def PerturbsProfile (source : ∀ who, M.BehavioralPolicy who)
     (epsilon : ℝ) (nonnegative : 0 ≤ epsilon) (small : epsilon ≤ 1) : Prop :=
   ∀ who (site : M.InformationSite who),
     target who (restriction.information who site.1) =
-      FinDist.mix epsilon nonnegative small
+      mix epsilon nonnegative small
         (reference who (restriction.information who site.1))
         ((source who site.1).map (restriction.choice who site.1))
 
@@ -98,21 +100,21 @@ theorem perturbProfile_perturbs (source : ∀ who, M.BehavioralPolicy who)
 theorem perturbProfile_fullSupport (source : ∀ who, M.BehavioralPolicy who)
     (reference : ∀ who, N.BehavioralPolicy who)
     (epsilon : ℝ) (positive : 0 < epsilon) (small : epsilon ≤ 1)
-    (who : Player) (info : N.InfoState who) (full : (reference who info).FullSupport) :
-    (restriction.perturbProfile source reference epsilon positive.le small
-      who info).FullSupport := by
+    (who : Player) (info : N.InfoState who) (full : FullSupport (reference who info)) :
+    FullSupport (restriction.perturbProfile source reference epsilon positive.le small
+      who info) := by
   classical
   intro choice
   unfold perturbProfile
   split
-  · exact FinDist.mem_support_mix_left epsilon positive.le small positive (full choice)
+  · exact mem_support_mix_left epsilon positive.le small positive (full choice)
   · exact full choice
 
 private theorem transport_map {Index : Type*} {Value : Index → Type*}
-    (laws : ∀ index, FinDist (Value index)) {first second : Index} (same : first = second) :
+    (laws : ∀ index, PMF (Value index)) {first second : Index} (same : first = second) :
     (laws first).map (fun value => Eq.mp (congrArg Value same) value) = laws second := by
   subst second
-  exact FinDist.map_id _
+  exact PMF.map_id _
 
 theorem perturbs_at_history (source : ∀ who, M.BehavioralPolicy who)
     (reference target : ∀ who, N.BehavioralPolicy who)
@@ -120,13 +122,13 @@ theorem perturbs_at_history (source : ∀ who, M.BehavioralPolicy who)
     (perturbs : restriction.PerturbsProfile source reference target epsilon nonnegative small)
     (original : E.History) (running : ¬ E.terminal original.state) (who : Player) :
     target who (N.infoOf who (restriction.history original).trace) =
-      FinDist.mix epsilon nonnegative small
+      mix epsilon nonnegative small
         (reference who (N.infoOf who (restriction.history original).trace))
         ((source who (M.infoOf who original.trace)).map (restriction.choiceAt who original)) := by
   by_cases active : E.active original.state who
   · obtain ⟨decision, observed⟩ := M.exists_informationSite_of_active who original running active
     have indexed : target who (restriction.information who (M.infoOf who original.trace)) =
-        FinDist.mix epsilon nonnegative small
+        mix epsilon nonnegative small
           (reference who (restriction.information who (M.infoOf who original.trace)))
           ((source who (M.infoOf who original.trace)).map
             (restriction.choice who (M.infoOf who original.trace))) := by
@@ -140,17 +142,17 @@ theorem perturbs_at_history (source : ∀ who, M.BehavioralPolicy who)
             (congrArg (N.Choice who) (restriction.observed who original).symm) action) :=
         (transport_map (target who) (restriction.observed who original).symm).symm
       _ = _ := by
-        rw [indexed, FinDist.map_mix,
+        rw [indexed, mix_map,
           transport_map (reference who) (restriction.observed who original).symm,
-          FinDist.map_comp]
+          PMF.map_comp]
         rfl
   · have inactive : ¬ T.active (restriction.history original).state who :=
       fun enabled => active ((restriction.active original who).mp enabled)
     let _ := N.subsingleton_choice_of_not_active (restriction.history original).trace inactive
     obtain ⟨witness, _⟩ :=
       (target who (N.infoOf who (restriction.history original).trace)).support_nonempty
-    exact (FinDist.eq_pure_of_subsingleton _ witness).trans
-      (FinDist.eq_pure_of_subsingleton _ witness).symm
+    exact (eq_pure_of_subsingleton _ witness).trans
+      (eq_pure_of_subsingleton _ witness).symm
 
 /-- Convergent source laws and vanishing pinned trembles force the target
 limit to extend the source profile at every retained decision site. -/
@@ -170,19 +172,19 @@ theorem extendsProfile_of_perturbs_converges
   let _ : Finite (M.Choice who site.1) := (sourceMixed who site).finite
   have sourceLaws := (sourceConverges.strategy who site).map (restriction.choice who site.1)
   have targetLaws := targetConverges.strategy who (restriction.site who site)
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro action
   have convergence := (vanishes.mul_const
-    ((reference who (restriction.information who site.1)).prob action)).add
+    (((reference who (restriction.information who site.1)) action).toReal)).add
       (((tendsto_const_nhds (x := (1 : ℝ))).sub vanishes).mul (sourceLaws action))
   simp only [zero_mul, sub_zero, one_mul, zero_add] at convergence
   have same (n : ℕ) :
-      ((targetSequence n).strategy who (restriction.information who site.1)).prob action =
-      epsilon n * ((reference who (restriction.information who site.1)).prob action) +
+      (((targetSequence n).strategy who (restriction.information who site.1)) action).toReal =
+      epsilon n * (((reference who (restriction.information who site.1)) action).toReal) +
         (1 - epsilon n) *
-          (((sourceSequence n).strategy who site.1).map
-            (restriction.choice who site.1)).prob action := by
-    rw [perturbs n who site, FinDist.prob_mix]
+          ((((sourceSequence n).strategy who site.1).map
+            (restriction.choice who site.1)) action).toReal := by
+    rw [perturbs n who site, mix_apply_toReal]
   exact tendsto_nhds_unique (targetLaws action)
     (convergence.congr' (Eventually.of_forall fun n => (same n).symm))
 

@@ -79,7 +79,7 @@ theorem source_initial_memory_factorization
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (focal : Player) :
-    ∃ noise : DecisionView focal setup.context → FinDist _,
+    ∃ noise : DecisionView focal setup.context → PMF _,
       setup.initialLaw.map (fun initial =>
         ((setup.initialConfig initial, setup.initialConfig initial),
           (runtime setup).bindingTraffic leaks focal
@@ -97,18 +97,18 @@ theorem source_initial_memory_factorization
   let noise := fun view : DecisionView focal setup.context =>
     if present : ∃ initial ∈ setup.initialLaw.support,
         (setup.initialConfig initial).view focal = view then
-      FinDist.pure (read present.choose)
-    else FinDist.pure (read setup.initialLaw.support_nonempty.choose)
+      PMF.pure (read present.choose)
+    else PMF.pure (read setup.initialLaw.support_nonempty.choose)
   refine ⟨noise, ?_⟩
-  rw [FinDist.bind_map]
-  change setup.initialLaw.bind (fun initial => FinDist.pure
+  rw [PMF.bind_map]
+  change setup.initialLaw.bind (fun initial => PMF.pure
       ((setup.initialConfig initial, setup.initialConfig initial), read initial)) = _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro initial supported
   have present : ∃ other ∈ setup.initialLaw.support,
       (setup.initialConfig other).view focal = (setup.initialConfig initial).view focal :=
     ⟨initial, supported, rfl⟩
-  simp only [noise, dite_eq_left present, FinDist.map_pure]
+  simp only [noise, dite_eq_left present, PMF.pure_map]
   rw [show read initial = read present.choose from
     source_initial_traffic_eq setup leaks focal initial present.choose present.choose_spec.2.symm]
 
@@ -119,25 +119,25 @@ theorem source_maintenance_factorization
     {Seed Source View : Type}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (focal : Player) (prior : FinDist Seed) (source : Seed → Source)
+    (focal : Player) (prior : PMF Seed) (source : Seed → Source)
     (observe : Source → View)
     (execution : Seed → (application setup leaks).Execution)
-    (noise : View → FinDist _)
+    (noise : View → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (observe config)).map fun extra => (config, extra))
     (command : EnvironmentCommand (graph setup))
     (maintenance : ∀ event, command ≠ .executeSample event) :
-    ∃ nextNoise : View → FinDist _,
+    ∃ nextNoise : View → PMF _,
       (prior.bind fun seed =>
         ((execution seed).environmentStep (application setup leaks) (.application command)).map
           fun final => (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
         (nextNoise (observe config)).map fun extra => (config, extra) := by
-  obtain ⟨nextNoise, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨nextNoise, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
-    observe noise factor (fun _ => FinDist.pure Unit.unit)
+    observe noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) observe
     (fun seed _ => ((execution seed).environmentStep (application setup leaks)
       (.application command)).map ((runtime setup).bindingTraffic leaks focal))
@@ -145,8 +145,8 @@ theorem source_maintenance_factorization
     (fun left _ _ _ right _ _ _ _ same =>
       (runtime setup).bindingTraffic_maintenance leaks (execution left) (execution right)
         focal same command maintenance)
-  exact ⟨nextNoise, by simpa only [FinDist.pure_bind, FinDist.map_pure,
-    FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
+  exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
+    PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
 
 /-- An actual replay roster preserves the same source-conditioned traffic
 law while retaining all passive samples and all players' previous responses. -/
@@ -154,16 +154,16 @@ theorem source_replay_factorization
     {Seed : Type*} {Γ : SourceCtx Player L}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (focal : Player) (prior : FinDist Seed) (source : Seed → Config Player L Γ)
+    (focal : Player) (prior : PMF Seed) (source : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (recalled : ∀ seed ∈ prior.support, (execution seed).InputRecall (application setup leaks))
-    (noise : DecisionView focal Γ → FinDist _)
+    (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (config.view focal)).map fun extra => (config, extra))
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player) :
-    ∃ nextNoise : DecisionView focal Γ → FinDist _,
+    ∃ nextNoise : DecisionView focal Γ → PMF _,
       (prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
           (fun _ => (application setup leaks).replayPolicy) network
@@ -171,9 +171,9 @@ theorem source_replay_factorization
             (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
         (nextNoise (config.view focal)).map fun extra => (config, extra) := by
-  obtain ⟨nextNoise, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨nextNoise, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
-    (fun config => config.view focal) noise factor (fun _ => FinDist.pure Unit.unit)
+    (fun config => config.view focal) noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) (fun config => config.view focal)
     (fun seed _ => ((runtime setup).runInteractionPlan leaks
       (fun _ => (application setup leaks).replayPolicy) network
@@ -184,8 +184,8 @@ theorem source_replay_factorization
       (runtime setup).replay_window_focal_law leaks network roster focal
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) same)
-  exact ⟨nextNoise, by simpa only [FinDist.pure_bind, FinDist.map_pure,
-    FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
+  exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
+    PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
 
 /-- Passive activation turns the complete traffic factorization into a law
 for the player's actual input: its response history and current observation.
@@ -195,15 +195,15 @@ theorem source_activation_input_factorization
     {Seed Source View : Type}
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (focal : Player) (prior : FinDist Seed) (source : Seed → Source)
+    (focal : Player) (prior : PMF Seed) (source : Seed → Source)
     (observe : Source → View)
     (execution : Seed → (application setup leaks).Execution)
-    (noise : View → FinDist _)
+    (noise : View → PMF _)
     (factor : prior.map (fun seed => (source seed,
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map source).bind fun config =>
         (noise (observe config)).map fun extra => (config, extra)) :
-    ∃ channel : View → FinDist
+    ∃ channel : View → PMF
         (List (application setup leaks).PlayerEntry × (application setup leaks).PlayerView),
       (prior.bind fun seed =>
         ((execution seed).environmentStep (application setup leaks) (.activate focal)).map
@@ -220,9 +220,9 @@ theorem source_activation_input_factorization
         (right.environmentStep app (.activate focal)).map
           (fun final => (final.recall focal, final.observe app focal)) := by
     have networks : left.network = right.network := congrArg Prod.fst same
-    simp only [ReactiveApplication.Execution.activation_samples, FinDist.map_comp]
+    simp only [ReactiveApplication.Execution.activation_samples, PMF.map_comp]
     rw [networks]
-    apply FinDist.map_congr_of_eq_on_support
+    apply map_congr_on_support _
     intro sample _supported
     let first := left.sampledActivation app focal sample
     let second := right.sampledActivation app focal sample
@@ -244,16 +244,16 @@ theorem source_activation_input_factorization
     rw [sampledNetworks]
     exact congrArg₂ (fun view evidence =>
       (⟨second.network.observe focal, view, evidence⟩ : app.PlayerView)) projected receipts
-  obtain ⟨channel, law⟩ := FinDist.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨channel, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
-    observe noise factor (fun _ => FinDist.pure Unit.unit)
+    observe noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) observe
     (fun seed _ => ((execution seed).environmentStep app (.activate focal)).map
       fun final => (final.recall focal, final.observe app focal))
     (fun _ _ _ _ _ _ _ _ same => same)
     (fun left _ _ _ right _ _ _ _ same => coupled (execution left) (execution right) same)
-  exact ⟨channel, by simpa only [FinDist.pure_bind, FinDist.map_pure,
-    FinDist.bind_pure, FinDist.map_id, FinDist.map_comp, Function.comp_def] using law⟩
+  exact ⟨channel, by simpa only [PMF.pure_bind, PMF.pure_map,
+    PMF.bind_pure, PMF.map_id, PMF.map_comp, Function.comp_def] using law⟩
 
 omit [IExpr.ResultTypes L] in
 private theorem commit_view_reflects {Γ : SourceCtx Player L} {owner : Player}
@@ -285,13 +285,13 @@ def bindingPhaseTranscript
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks) (roster : List Player)
     (owner focal : Player) (event : (graph setup).EventId) (payload : L.Ty)
-    (offset ticks : Nat) {slots : Nat} (timing : FinDist (Option (Fin slots)))
+    (offset ticks : Nat) {slots : Nat} (timing : PMF (Option (Fin slots)))
     (execution : (application setup leaks).Execution)
     (result : PublicationResult (L.Val payload)) :=
   let app := application setup leaks
   let serial := execution.application.publicView.bindingCount owner
   let family := fun selected => app.scheduledPolicy offset selected
-    (fun _ _ => FinDist.pure
+    (fun _ _ => PMF.pure
       ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.replayPolicy
   let players := Function.update (fun _ => app.replayPolicy) owner
     (app.policyMixture timing family).policy
@@ -311,7 +311,7 @@ theorem binding_successor_memory_factorization
     {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}
     (name : VarId) (guard : SourceGuard L Γ owner name payload)
     (focal : Player) (event : (graph setup).EventId)
-    (prior : FinDist Seed) (source original : Seed → Config Player L Γ)
+    (prior : PMF Seed) (source original : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (recalled : ∀ seed ∈ prior.support,
       (execution seed).InputRecall (application setup leaks))
@@ -319,14 +319,14 @@ theorem binding_successor_memory_factorization
       message.id ∈ (execution seed).network.ledger.map Message.id)
     (offset ticks : Nat) (counts : ∀ seed ∈ prior.support,
       ((execution seed).recall owner).length = offset)
-    {slots : Nat} (timing : FinDist (Option (Fin slots)))
-    (noise : DecisionView focal Γ → FinDist _)
+    {slots : Nat} (timing : PMF (Option (Fin slots)))
+    (noise : DecisionView focal Γ → PMF _)
     (factor : prior.map (fun seed => ((source seed, original seed),
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
       (prior.map (fun seed => (source seed, original seed))).bind fun pair =>
         (noise (pair.1.view focal)).map fun extra => (pair, extra))
-    (choice : Config Player L Γ → FinDist (PublicationResult (L.Val payload))) :
-    ∃ nextNoise : DecisionView focal ((name, .commitment owner payload) :: Γ) → FinDist _,
+    (choice : Config Player L Γ → PMF (PublicationResult (L.Val payload))) :
+    ∃ nextNoise : DecisionView focal ((name, .commitment owner payload) :: Γ) → PMF _,
       (prior.bind fun seed => (choice (original seed)).bind fun result =>
         (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
           timing (execution seed) result).map fun extra =>
@@ -337,7 +337,7 @@ theorem binding_successor_memory_factorization
           (commitSuccessor name guard pair.1 result,
             commitSuccessor name guard pair.2 result)).bind fun pair =>
         (nextNoise (pair.1.view focal)).map fun extra => (pair, extra) := by
-  apply FinDist.exists_updated_observation_kernel_of_readout prior
+  apply PMF.exists_updated_observation_kernel_of_readout prior
     (fun seed => (source seed, original seed))
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun pair => pair.1.view focal) noise factor (fun pair => choice pair.2)
@@ -361,16 +361,16 @@ theorem binding_successor_memory_factorization
             ((counts left leftSupport).trans (counts right rightSupport).symm)
             (le_of_eq (counts left leftSupport)) (published left leftSupport)
     dsimp only [bindingPhaseTranscript]
-    conv_lhs => rw [runInteractionPlan_append, FinDist.map_bind]
-    conv_rhs => rw [runInteractionPlan_append, FinDist.map_bind]
-    apply FinDist.bind_eq_of_map_eq _ _ _ _ (by simpa only [serialEq] using coupled)
+    conv_lhs => rw [runInteractionPlan_append, PMF.map_bind]
+    conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
+    apply bind_eq_of_map_eq _ _ _ _ (by simpa only [serialEq] using coupled)
     intro before _ after _ equal
     let replay := fun _ : Player => (application setup leaks).replayPolicy
     calc
       _ = ((runtime setup).runInteractionPlan leaks replay network
           (List.replicate ticks .tick ++ [.expire event]) before).map
             ((runtime setup).bindingTraffic leaks focal) := by
-        apply congrArg (FinDist.map ((runtime setup).bindingTraffic leaks focal))
+        apply congrArg (PMF.map ((runtime setup).bindingTraffic leaks focal))
         exact servicePlan_players_eq setup leaks _ replay network _ (by simp)
           (by intro who; simp) before
       _ = ((runtime setup).runInteractionPlan leaks replay network
@@ -379,7 +379,7 @@ theorem binding_successor_memory_factorization
         (runtime setup).settlement_focal_law leaks replay network event ticks before after
           focal equal
       _ = _ := by
-        apply congrArg (FinDist.map ((runtime setup).bindingTraffic leaks focal))
+        apply congrArg (PMF.map ((runtime setup).bindingTraffic leaks focal))
         exact servicePlan_players_eq setup leaks replay _ network _ (by simp)
           (by intro who; simp) after
 
@@ -394,9 +394,9 @@ theorem binding_phase_memory
     (name : VarId) (guard : SourceGuard L Γ owner name payload)
     (focal : Player) (event : (graph setup).EventId)
     (source : Config Player L Γ) (execution : (application setup leaks).Execution)
-    (offset ticks : Nat) {slots : Nat} (timing : FinDist (Option (Fin slots)))
-    (remember : DecisionView owner Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView owner Γ → FinDist (PublicationResult (L.Val payload))) :
+    (offset ticks : Nat) {slots : Nat} (timing : PMF (Option (Fin slots)))
+    (remember : DecisionView owner Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView owner Γ → PMF (PublicationResult (L.Val payload))) :
     let memory := bindingMemoryLaw name payload remember choose (source.view owner)
     ((source.restoreMemory owner remember).bind fun original =>
       (choose (original.view owner)).bind fun result =>
@@ -404,7 +404,7 @@ theorem binding_phase_memory
           timing execution result).map fun traffic =>
             (traffic, commitSuccessor name guard original result)) =
       (memory.map Prod.fst).bind fun result =>
-        ((memory.condOnFibre Prod.fst result).map Prod.snd).bind fun past =>
+        ((fiberConditional memory Prod.fst result).map Prod.snd).bind fun past =>
           (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
             timing execution result).map fun traffic =>
               (traffic, (commitSuccessor name guard source result).withOwnHistory owner past) := by
@@ -414,7 +414,7 @@ theorem binding_phase_memory
       (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
         timing execution result).map fun traffic =>
           (traffic, (commitSuccessor name guard source result).withOwnHistory owner past))
-  simpa only [Config.restoreMemory, FinDist.bind_map, Config.view, Config.withOwnHistory,
+  simpa only [Config.restoreMemory, PMF.bind_map, Config.view, Config.withOwnHistory,
     commitSuccessor, Function.update_self, Function.update_idem, memory] using law
 
 /-- Failed disclosure intentions stay distinct in the proof joint law even
@@ -437,8 +437,8 @@ theorem guarded_disclosure_service_memory
     (node : nodeView (graph setup) event = .resolve owner payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       outputEq codeEq)
-    (remember : DecisionView owner Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView owner Γ → FinDist Bool)
+    (remember : DecisionView owner Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView owner Γ → PMF Bool)
     (players : Player → (application setup leaks).Policy)
     (network : (runtime setup).NetworkPolicy leaks)
     (remaining : List (ServiceInstruction (graph setup))) :
@@ -453,7 +453,7 @@ theorem guarded_disclosure_service_memory
           (execution.respond (application setup leaks) owner (response intended))).map fun final =>
             (final, revealSuccessor published binding original intended)) =
       (memory.map Prod.fst).bind fun effective =>
-        ((memory.condOnFibre Prod.fst effective).map Prod.snd).bind fun past =>
+        ((fiberConditional memory Prod.fst effective).map Prod.snd).bind fun past =>
           ((runtime setup).runInteractionPlan leaks players network remaining
             (execution.respond (application setup leaks) owner (response effective))).map
               fun final =>
@@ -465,7 +465,7 @@ theorem guarded_disclosure_service_memory
   have continued := congrArg (fun law => law.bind fun pair =>
     ((runtime setup).runInteractionPlan leaks players network remaining pair.1).map fun final =>
       (final, pair.2)) law
-  simpa only [FinDist.bind_bind, FinDist.bind_map, response, memory] using continued
+  simpa only [PMF.bind_bind, PMF.bind_map, response, memory] using continued
 
 /-- Equal successful guarded publications supply the handler agreement needed
 by the actual focal window coupling. Both candidates are recovered from their

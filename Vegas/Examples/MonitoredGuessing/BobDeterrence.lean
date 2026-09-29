@@ -26,12 +26,12 @@ theorem bob_extra_addressed_le_lower (table : PayoffTable)
       restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (addressed : submission.call.packet.event? nativeGraph = some bobPublication)
     (rest : List (ServiceInstruction nativeGraph)) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      (.includeLatest bobPublication bob :: rest) (bobSubmission bit submission)).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+      (.includeLatest bobPublication bob :: rest) (bobSubmission bit submission))
         (fun execution => Enforcement.executionUtility table execution bob) ≤
       Enforcement.payoffLower table bob := by
   rw [runInteractionPlan, bob_addressed_included players bit submission addressed,
-    FinDist.pure_bind]
+    PMF.pure_bind]
   apply FinDist.expect_le_of_forall
   intro final supported
   apply Enforcement.detected_bob_utility_le table final
@@ -41,7 +41,7 @@ theorem bob_extra_addressed_le_lower (table : PayoffTable)
 /-- This bound is uniform over the source continuation: it applies to every
 clean mixture of source results, including deliberately withholding profiles. -/
 theorem bob_extra_addressed_le_clean_outcomes (table : PayoffTable)
-    (outcomes : FinDist Results) (players : Player → nativeApp.Policy) (bit : Bool)
+    (outcomes : PMF Results) (players : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph)
     (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
       effectiveMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
@@ -49,10 +49,10 @@ theorem bob_extra_addressed_le_clean_outcomes (table : PayoffTable)
       restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (addressed : submission.call.packet.event? nativeGraph = some bobPublication)
     (rest : List (ServiceInstruction nativeGraph)) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      (.includeLatest bobPublication bob :: rest) (bobSubmission bit submission)).expect
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+      (.includeLatest bobPublication bob :: rest) (bobSubmission bit submission))
         (fun execution => Enforcement.executionUtility table execution bob) ≤
-      outcomes.expect (fun result => (table result bob : ℝ)) :=
+      expect outcomes (fun result => (table result bob : ℝ)) :=
   (bob_extra_addressed_le_lower table players bit submission available extra addressed rest).trans
     (Enforcement.lower_le_expect table bob outcomes)
 

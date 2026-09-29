@@ -28,38 +28,38 @@ private histories. It applies separately at each positive perturbation. -/
 theorem normalized_disclosure_prefix_posterior {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
     (policy : BehavioralPolicy who program) (registry : Registry Γ)
-    (revelations : Revelations Γ) (initial : FinDist (Config Player L Γ))
+    (revelations : Revelations Γ) (initial : PMF (Config Player L Γ))
     (registryEq : ∀ config ∈ initial.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ initial.support, @config.revelations = @revelations)
     (count : Nat) :
     let original := initial.bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who policy)))^[count]
-          (FinDist.pure (ProtocolState.entry program config))
+          (PMF.pure (ProtocolState.entry program config))
     let normalized := initial.bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
         (Function.update profile who (policy.normalizeDisclosures program registry revelations))))
-          ^[count] (FinDist.pure (ProtocolState.entry program config))
+          ^[count] (PMF.pure (ProtocolState.entry program config))
     ∀ observed ∈ (original.map (ProtocolState.observe who program)).support,
-      (original.condOnFibre (ProtocolState.observe who program) observed).map
+      (fiberConditional original (ProtocolState.observe who program) observed).map
           (ProtocolState.normalizeDisclosureRecall (who := who) program (fun view => view.2)) =
-        normalized.condOnFibre (ProtocolState.observe who program)
+        fiberConditional normalized (ProtocolState.observe who program)
           (ProtocolView.normalizeDisclosureRecall program (fun view => view.2) observed) := by
   dsimp only
   intro observed present
   let original := initial.bind fun config =>
     (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
       (Function.update profile who policy)))^[count]
-        (FinDist.pure (ProtocolState.entry program config))
+        (PMF.pure (ProtocolState.entry program config))
   let normalized := initial.bind fun config =>
     (fun distribution => distribution.bind (ProtocolState.behavioralStateStep program
       (Function.update profile who (policy.normalizeDisclosures program registry revelations))))
-        ^[count] (FinDist.pure (ProtocolState.entry program config))
+        ^[count] (PMF.pure (ProtocolState.entry program config))
   let kernel := policy.disclosureMemory program registry revelations
-    (fun view => FinDist.pure view.2)
+    (fun view => PMF.pure view.2)
   have expanded : original = normalized.bind kernel := by
-    rw [FinDist.bind_bind]
-    apply FinDist.bind_congr
+    rw [PMF.bind_bind]
+    apply bind_congr_on_support _
     intro config supported
     have equation := normalized_disclosure_prefix program profile policy config count
     rw [registryEq config supported, revelationsEq config supported] at equation
@@ -69,20 +69,20 @@ theorem normalized_disclosure_prefix_posterior {Γ : SourceCtx Player L} {O : Fi
         (fun view => view.2) original = state := by
     intro state supported original member
     obtain ⟨config, supportedConfig, reached⟩ :=
-      Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
     have retained := disclosure_prefix_retracts program profile policy
-      (fun view => FinDist.pure view.2) (fun view => view.2) config
-      (fun past chosen => FinDist.mem_support_pure.mp chosen) count
+      (fun view => PMF.pure view.2) (fun view => view.2) config
+      (fun past chosen => (PMF.mem_support_pure_iff _ _).mp chosen) count
     rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at retained
     exact retained state reached original member
-  have result := FinDist.conditional_retraction normalized kernel
+  have result := PMF.conditional_retraction normalized kernel
     (ProtocolState.normalizeDisclosureRecall (who := who) program (fun view => view.2))
     (ProtocolState.observe who program) (ProtocolState.observe who program)
     (ProtocolView.normalizeDisclosureRecall program (fun view => view.2))
     (ProtocolState.observe_normalizeDisclosureRecall program (fun view => view.2))
     restores
     (fun left _ right _ same => policy.disclosureMemory_observation_congr program
-      registry revelations (fun view => FinDist.pure view.2) left right same)
+      registry revelations (fun view => PMF.pure view.2) left right same)
     observed (by rwa [← expanded])
   rw [← expanded] at result
   exact result

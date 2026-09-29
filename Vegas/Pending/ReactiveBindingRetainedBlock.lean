@@ -62,7 +62,7 @@ theorem binding_window_retained_coupling
         ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = app.invoke players owner original ∧
       coupling.map Prod.snd = strategy.resume owner players (some owner) repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -93,7 +93,7 @@ theorem binding_window_retained_coupling
       (memory.shadow.inputView runtime leaks (repaired.observe app owner))).map _).support
         at supported
     rw [frame.past, frame.observed] at supported
-    obtain ⟨response, selected, rfl⟩ := FinDist.support_map .. ▸ supported
+    obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
     apply coverage
     rcases clean response selected with replay | ⟨opening, bounded, rfl⟩
     · have unchanged : memory.repairResponse runtime leaks owner
@@ -165,7 +165,7 @@ theorem binding_retained_coupling
         ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory runtime leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
       coupling.map Prod.fst = (app.invoke players owner original).bind
         (runtime.interactionStep leaks players scheduler (.includeLatest event owner)) ∧
       coupling.map Prod.snd =

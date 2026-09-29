@@ -33,7 +33,7 @@ def serviceInvariant (predicate : app.Execution → Prop) : app.ProtocolState �
   | some control => predicate control.execution
 
 theorem ServiceInvariant.transition (invariant : app.ServiceInvariant scheduler predicate)
-    (initial : FinDist app.State) (horizon : Nat)
+    (initial : PMF app.State) (horizon : Nat)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state))
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (valid : serviceInvariant predicate before)
@@ -41,25 +41,25 @@ theorem ServiceInvariant.transition (invariant : app.ServiceInvariant scheduler 
     serviceInvariant predicate after := by
   cases before with
   | none =>
-      obtain ⟨state, supported, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact setup state supported
   | some control =>
       rcases control with ⟨remaining, actor, execution⟩
       cases actor with
       | some who =>
-          cases FinDist.mem_support_pure.mp reached
+          cases (PMF.mem_support_pure_iff _ _).mp reached
           exact invariant.respond execution who _ valid
       | none =>
           cases remaining with
-          | zero => cases FinDist.mem_support_pure.mp reached; exact valid
+          | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
           | succ remaining =>
               obtain ⟨command, selected, moved⟩ :=
-                Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-              obtain ⟨next, supported, rfl⟩ := FinDist.support_map .. ▸ moved
+                Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+              obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               exact invariant.environment execution next command valid selected supported
 
 theorem ServiceInvariant.history (invariant : app.ServiceInvariant scheduler predicate)
-    (initial : FinDist app.State) (horizon : Nat)
+    (initial : PMF app.State) (horizon : Nat)
     (setup : ∀ state ∈ initial.support, predicate (Execution.initial app state)) :
     ∀ {state} (_trace : (app.protocol initial horizon scheduler).Trace state),
       serviceInvariant predicate state

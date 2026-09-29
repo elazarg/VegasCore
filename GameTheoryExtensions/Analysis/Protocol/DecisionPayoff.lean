@@ -21,7 +21,7 @@ variable {State Signal Fact Action : Type}
   [Finite State] [Finite Action] [Nonempty Action]
 
 theorem preserves_fixed_payoff_sequentialEquilibria_iff_commonMaximizer
-    (prior : FinDist State) (observe : State → Signal) (fact : State → Fact)
+    (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
     (utility : Fact → Action → ℝ) :
     (∀ source : (model (Action := Action) prior observe).BehavioralAssessment,
       source.IsSequentialEquilibriumFor (antichain prior observe)

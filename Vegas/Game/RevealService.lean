@@ -146,14 +146,14 @@ variable (setup : Setup (Player := Player) (L := L))
 
 abbrev application := (runtime setup).reactiveApplication leaks
 
-def initialLaw : FinDist (EventGraphRuntime.State (graph setup)) :=
+def initialLaw : PMF (EventGraphRuntime.State (graph setup)) :=
   setup.initialLaw.map (fun initial => EventGraphRuntime.State.initial (setup.eventInputs initial))
 
 /-- The fixed service consults only its own public command recall and the
 existing public report selector. Private sampling remains the given rule. -/
 def scheduler (watcher : Player) : (application setup leaks).Scheduler := fun history view =>
   match (plan setup watcher)[history.length]? with
-  | none => FinDist.pure .wait
+  | none => PMF.pure .wait
   | some instruction => (runtime setup).interactionInstruction leaks
       ((runtime setup).reportNetwork leaks watcher) history view instruction
 
@@ -293,11 +293,11 @@ theorem report_effective (who : Player) (past : List (application setup leaks).P
   cases found : view.messages.leaked.find? (fun message =>
       decide (message.id ∉ view.messages.ledger.map Message.id)) with
   | none =>
-      rw [found, FinDist.mem_support_pure] at supported
+      rw [found, PMF.mem_support_pure_iff _ _] at supported
       subst response
       exact silence_effective setup leaks bounds who past view
   | some message =>
-      rw [found, FinDist.mem_support_pure] at supported
+      rw [found, PMF.mem_support_pure_iff _ _] at supported
       subst response
       apply bounds.known_replay_available (runtime setup) leaks who past view message.id
       exact ⟨message, List.mem_append_left _ (List.mem_append_right _

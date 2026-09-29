@@ -143,43 +143,43 @@ theorem alice_context (assessment : (model true).BehavioralAssessment) (bit : Bo
     (utility : State → ℝ) (alternative : (model true).BehavioralPolicy false) :
     (assessment.continuationContext (aliceSite bit) (fun h => utility h.state) 3).value
         alternative =
-      ((model true).runSingleMoverBehavioralFrom (single true)
+      expect ((model true).runSingleMoverBehavioralFrom (single true)
         (Profile.update (sig := (model true).behavioralSignature)
-          assessment.strategy false alternative) 3 (aliceHistory true bit)).expect
+          assessment.strategy false alternative) 3 (aliceHistory true bit))
             (fun h => utility h.state) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.eq_pure_of_subsingleton (assessment.belief false (aliceSite bit))
-      ⟨aliceHistory true bit, rfl⟩, FinDist.pure_bind,
+    eq_pure_of_subsingleton (assessment.belief false (aliceSite bit))
+      ⟨aliceHistory true bit, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) (single true)]
 
 theorem disclosed_context (assessment : (model true).BehavioralAssessment) (bit : Bool)
     (utility : State → ℝ) (alternative : (model true).BehavioralPolicy true) :
     (assessment.continuationContext (bobDisclosedSite bit) (fun h => utility h.state) 3).value
         alternative =
-      ((model true).runSingleMoverBehavioralFrom (single true)
+      expect ((model true).runSingleMoverBehavioralFrom (single true)
         (Profile.update (sig := (model true).behavioralSignature)
-          assessment.strategy true alternative) 3 (bobHistory true bit true)).expect
+          assessment.strategy true alternative) 3 (bobHistory true bit true))
             (fun h => utility h.state) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.eq_pure_of_subsingleton (assessment.belief true (bobDisclosedSite bit))
-      ⟨bobHistory true bit true, rfl⟩, FinDist.pure_bind,
+    eq_pure_of_subsingleton (assessment.belief true (bobDisclosedSite bit))
+      ⟨bobHistory true bit true, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) (single true)]
 
 theorem value_bob {ambient : Bool} (profile : Profile (model ambient).behavioralSignature)
     (bit disclose : Bool) (utility : State → ℝ) :
-    ((model ambient).runSingleMoverBehavioralFrom (single ambient) profile 3
-      (bobHistory ambient bit disclose)).expect (fun h => utility h.state) =
-        (resultLaw profile bit (ambient && disclose)).expect utility := by
-  have mapped := congrArg (fun law => law.expect utility) (run_bob profile bit disclose)
-  simpa only [FinDist.expect_map] using mapped
+    expect ((model ambient).runSingleMoverBehavioralFrom (single ambient) profile 3
+      (bobHistory ambient bit disclose)) (fun h => utility h.state) =
+        expect (resultLaw profile bit (ambient && disclose)) utility := by
+  have mapped := congrArg (fun law => expect law utility) (run_bob profile bit disclose)
+  simpa only [expect_map] using mapped
 
 theorem value_alice {ambient : Bool} (profile : Profile (model ambient).behavioralSignature)
     (bit : Bool) (utility : State → ℝ) :
-    ((model ambient).runSingleMoverBehavioralFrom (single ambient) profile 3
-      (aliceHistory ambient bit)).expect (fun h => utility h.state) =
-        (choiceLaw profile false (some (some bit))).expect
-          (fun disclose => (resultLaw profile bit (ambient && disclose)).expect utility) := by
-  have mapped := congrArg (fun law => law.expect utility) (run_alice profile bit)
-  simpa only [FinDist.expect_map, FinDist.expect_bind] using mapped
+    expect ((model ambient).runSingleMoverBehavioralFrom (single ambient) profile 3
+      (aliceHistory ambient bit)) (fun h => utility h.state) =
+        expect (choiceLaw profile false (some (some bit)))
+          (fun disclose => expect (resultLaw profile bit (ambient && disclose)) utility) := by
+  have mapped := congrArg (fun law => expect law utility) (run_alice profile bit)
+  simpa only [expect_map, FinDist.expect_bind] using mapped
 
 end GameTheoryExtensionsTests.AmbientEnforcement

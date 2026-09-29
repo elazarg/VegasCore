@@ -34,13 +34,13 @@ theorem native_reserved_finish (players : Player → (serviceApp observation).Po
     (granted : control.execution.application.serviceGrant = some event)
     (chooses : players (nativeOwner event) (control.execution.recall (nativeOwner event))
       (control.execution.observe (serviceApp observation) (nativeOwner event)) =
-        FinDist.pure response)
+        PMF.pure response)
     (included : ∀ middle ∈ (nativeRuntime.interactionStep observation players
       (serviceNetwork observation) (.includeLatest event (nativeOwner event))
       (control.execution.respond (serviceApp observation) (nativeOwner event) response)).support,
         predicate middle.application)
     (result : (serviceApp observation).ProtocolState)
-    (supported : result ∈ ((serviceApp observation).finish (FinDist.pure nativeInitial)
+    (supported : result ∈ ((serviceApp observation).finish (PMF.pure nativeInitial)
       nativeHorizon (serviceScheduler observation) players (some control)).support) :
     ∃ final, result = some final ∧ predicate final.execution.application := by
   have position := (native_decision_cursor event control trace _ active granted).2
@@ -62,11 +62,11 @@ theorem native_reserved_finish (players : Player → (serviceApp observation).Po
     simp only [ReactiveApplication.round, serviceScheduler, cursor,
       native_inclusion_next_instruction, interactionStep]
   simp only [ReactiveApplication.finish, active, ReactiveApplication.resume,
-    ReactiveApplication.invoke, chooses, FinDist.map_pure, FinDist.pure_bind,
+    ReactiveApplication.invoke, chooses, PMF.pure_map, PMF.pure_bind,
     remainingEq, ReactiveApplication.runRounds] at supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   obtain ⟨middle, middleMem, finalMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ finalMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ finalMem)
   change middle ∈ ((serviceApp observation).round (serviceScheduler observation) players
     responded).support at middleMem
   rw [nextRound] at middleMem

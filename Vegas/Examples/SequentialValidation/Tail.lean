@@ -32,9 +32,9 @@ theorem native_tail_maintenance (index : Nat) (event : nativeGraph.EventId) :
   split <;> try simp
   split <;> simp
 
-def nativeTail : Nat → Nat → EventGraphRuntime.State nativeGraph → FinDist
+def nativeTail : Nat → Nat → EventGraphRuntime.State nativeGraph → PMF
     (EventGraphRuntime.State nativeGraph)
-  | _, 0, state => FinDist.pure state
+  | _, 0, state => PMF.pure state
   | index, count + 1, state => (environmentStep nativeRuntime state (nativeTailCommand index)).bind
       (nativeTail (index + 1) count)
 
@@ -44,17 +44,17 @@ theorem native_run_tail (players : Bool → nativeApp.Policy) (count index : Nat
     (nativeApp.runRounds nativeScheduler players count execution).map
       ReactiveApplication.Execution.application = nativeTail index count execution.application := by
   induction count generalizing index execution with
-  | zero => exact FinDist.map_pure _ _
+  | zero => exact PMF.pure_map _ _
   | succ count ih =>
       rw [ReactiveApplication.runRounds, ReactiveApplication.round,
         native_schedule execution (.application (nativeTailCommand index))
           (by rw [position]; exact native_calendar_tail index lower (by omega))]
-      simp only [ReactiveApplication.uniformInstruction, FinDist.pure_bind,
+      simp only [ReactiveApplication.uniformInstruction, PMF.pure_bind,
         ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-        ReactiveApplication.resume, FinDist.map_bind,
-        ReactiveApplication.Execution.environmentStep, FinDist.bind_map, FinDist.bind_bind,
+        ReactiveApplication.resume, PMF.map_bind,
+        ReactiveApplication.Execution.environmentStep, PMF.bind_map, PMF.bind_bind,
         nativeTail]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next _
       apply ih
       · change (execution.environmentRecall ++ [_]).length = index + 1
@@ -67,10 +67,10 @@ theorem native_tail_views (index count : Nat) (left right : EventGraphRuntime.St
     (nativeTail index count left).map (fun state => state.playerView true) =
       (nativeTail index count right).map (fun state => state.playerView true) := by
   induction count generalizing index left right with
-  | zero => simpa only [nativeTail, FinDist.map_pure] using congrArg FinDist.pure views
+  | zero => simpa only [nativeTail, PMF.pure_map] using congrArg PMF.pure views
   | succ count ih =>
-      simp only [nativeTail, FinDist.map_bind]
-      apply FinDist.bind_eq_of_map_eq _ _ _ _
+      simp only [nativeTail, PMF.map_bind]
+      apply bind_eq_of_map_eq _ _ _ _
         (maintenance_playerView_congr nativeRuntime left right true (nativeTailCommand index)
           (native_tail_maintenance index) views)
       intro next _ other _ same
@@ -82,9 +82,9 @@ theorem native_tail_store (index count : Nat) (state next : EventGraphRuntime.St
     (reached : next ∈ (nativeTail index count state).support) :
     next.config.store field = some value := by
   induction count generalizing index state with
-  | zero => cases FinDist.mem_support_pure.mp reached; exact stored
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact stored
   | succ count ih =>
-      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+      obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact ih (index + 1) middle
         (environmentStep_store_of_some nativeRuntime state middle (nativeTailCommand index)
           supported field value stored) moved
@@ -105,9 +105,9 @@ theorem native_tail_guesses (index count : Nat) (left right : EventGraphRuntime.
     (views : left.playerView true = right.playerView true) :
     (nativeTail index count left).map nativeGuess =
       (nativeTail index count right).map nativeGuess := by
-  rw [FinDist.map_eq_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ (native_tail_views index count left right views)
+  rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_eq_of_map_eq _ _ _ _ (native_tail_views index count left right views)
   intro next _ other _ same
-  exact congrArg FinDist.pure (native_guess_views next other same)
+  exact congrArg PMF.pure (native_guess_views next other same)
 
 end Vegas.Examples.SequentialValidation

@@ -42,16 +42,16 @@ private theorem replay_recall
   let app := application setup leaks
   induction visits generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨[], (List.append_nil _).symm, by intros; simp_all⟩
   | cons actor rest ih =>
-      obtain ⟨middle, step, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      simp only [interactionStep, interactionInstruction, FinDist.pure_bind] at step
+      obtain ⟨middle, step, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      simp only [interactionStep, interactionInstruction, PMF.pure_bind] at step
       change middle ∈ ((initial.environmentStep app (.activate actor)).bind
         (app.invoke (fun _ => app.replayPolicy) actor)).support at step
-      rw [ReactiveApplication.Execution.activation_samples, FinDist.bind_map] at step
-      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ step)
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ step
+      rw [ReactiveApplication.Execution.activation_samples, PMF.bind_map] at step
+      obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app actor sample
       have nextGrant : (activated.respond app actor response).application.serviceGrant =
           some event := (congrArg PublicView.serviceGrant
@@ -153,7 +153,7 @@ theorem sourceServiceTimedPolicy_future_supported
     (granted : control.execution.application.serviceGrant = some event)
     (owned : (graph setup).actor? event = some owner)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall owner) event = false)
-    (timing : FinDist (Fin ((rosters event).count owner)))
+    (timing : PMF (Fin ((rosters event).count owner)))
     (slot : Fin ((rosters event).count owner)) (positive : slot ∈ timing.support)
     (future : (control.execution.recall owner).length ≤
       rosterOffset setup rosters owner event + slot.val) :

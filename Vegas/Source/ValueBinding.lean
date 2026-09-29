@@ -42,9 +42,9 @@ def bindingPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .ret _ => PUnit.unit
   | _, _, .sample _ _ _ k => bindingPolicy who k
   | _, _, .commit (payload := payload) _ _ _ _ k =>
-      (fun _ _ => FinDist.pure (.success (L.someValue payload)), bindingPolicy who k)
+      (fun _ _ => PMF.pure (.success (L.someValue payload)), bindingPolicy who k)
   | _, _, .reveal _ _ _ _ _ _ k =>
-      (fun _ _ => FinDist.pure false, bindingPolicy who k)
+      (fun _ _ => PMF.pure false, bindingPolicy who k)
 
 theorem valueBinding_bindingPolicy (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
@@ -209,7 +209,7 @@ theorem valueBinding_bindValuesFrom {who : Player} :
   | _, _, .sample _ _ _ k, _, _, policy => valueBinding_bindValuesFrom k _ _ policy
   | _, _, .commit _ _ _ _ k, unpatch, _, policy => by
       refine ⟨fun own view => ?_, valueBinding_bindValuesFrom k _ _ policy.2⟩
-      simp only [PurePolicy.toBehavioral, PurePolicy.bindValuesFrom, FinDist.mem_support_pure]
+      simp only [PurePolicy.toBehavioral, PurePolicy.bindValuesFrom, PMF.mem_support_pure_iff _ _]
       cases policy.1 own (unpatch view) <;> simp
   | _, _, .reveal _ _ _ _ _ _ k, _, _, policy => valueBinding_bindValuesFrom k _ _ policy.2
 
@@ -673,36 +673,36 @@ theorem bindValues_publicOutcome_eq {who : Player} :
       (runWith p profile state registry revelations history).map (publicOutcome p)
   | _, _, .ret payoffs, _, _, _, profile, profile', _, _, _, state, state', registry,
       revelations, history, history', inv => by
-      simp only [runWith, FinDist.map_pure]
-      exact congrArg FinDist.pure
+      simp only [runWith, PMF.pure_map]
+      exact congrArg PMF.pure
         (sourcePublicEnv_congr state' state inv.publicEq inv.publicationEq)
   | _, _, .sample sampleName fresh law k, unpatch, patched, policy, profile, profile',
       agree, isOrig, isTrans, state, state', registry, revelations, history, history', inv => by
-      simp only [runWith, FinDist.map_bind]
+      simp only [runWith, PMF.map_bind]
       rw [sourcePublicEnv_congr state' state inv.publicEq inv.publicationEq]
-      refine FinDist.bind_congr fun a _ => ?_
+      refine bind_congr_on_support _ fun a _ => ?_
       exact bindValues_publicOutcome_eq k (unpatch.afterSample sampleName _)
         (patched.afterSample sampleName _) policy (afterSample profile) (afterSample profile')
         agree isOrig isTrans _ _ _ _ _ _ (patched_sample inv sampleName _ a)
   | _, _, .commit (payload := payload) cellName owner fresh guard k, unpatch, patched, policy,
       profile, profile', agree, isOrig, isTrans, state, state', registry, revelations,
       history, history', inv => by
-      simp only [runWith, FinDist.map_bind]
+      simp only [runWith, PMF.map_bind]
       by_cases hw : owner = who
       · subst hw
         have hview : unpatch (sourceObserve owner state', history' owner) =
             (sourceObserve owner state, history owner) := inv.unpatchEq
         have hl : commitKernel profile' (sourceObserve owner state', history' owner) =
-            FinDist.pure (match policy.1 rfl (sourceObserve owner state, history owner) with
+            PMF.pure (match policy.1 rfl (sourceObserve owner state, history owner) with
               | .failure => .success (L.someValue payload)
               | .success value => .success value) := by
           rw [commitKernel, isTrans]
           simp only [PurePolicy.toBehavioral, PurePolicy.bindValuesFrom, hview]
         have hr : commitKernel profile (sourceObserve owner state, history owner) =
-            FinDist.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
+            PMF.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
           rw [commitKernel, isOrig]
           rfl
-        rw [hl, hr, FinDist.pure_bind, FinDist.pure_bind]
+        rw [hl, hr, PMF.pure_bind, PMF.pure_bind]
         refine bindValues_publicOutcome_eq k _ _ policy.2 (afterCommit profile)
           (afterCommit profile') (fun other hne => congrArg Prod.snd (agree other hne))
           (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
@@ -718,7 +718,7 @@ theorem bindValues_publicOutcome_eq {who : Player} :
             commitKernel profile (sourceObserve owner state, history owner) := by
           rw [commitKernel, commitKernel, hobs, hhist, agree owner hw]
         rw [hkernel]
-        refine FinDist.bind_congr fun b _ => ?_
+        refine bind_congr_on_support _ fun b _ => ?_
         exact bindValues_publicOutcome_eq k _ _ policy.2 (afterCommit profile)
           (afterCommit profile') (fun other hne => congrArg Prod.snd (agree other hne))
           (congrArg Prod.snd isOrig) (congrArg Prod.snd isTrans) _ _ _ _ _ _
@@ -745,21 +745,21 @@ theorem bindValues_publicOutcome_eq {who : Player} :
           (fun h => match h with
             | .here => rfl
             | .there h' => inv.publicationEq h')
-      simp only [runWith, FinDist.map_bind]
+      simp only [runWith, PMF.map_bind]
       by_cases hw : owner = who
       · subst hw
         have hview : unpatch (sourceObserve owner state', history' owner) =
             (sourceObserve owner state, history owner) := inv.unpatchEq
         have hl : revealKernel profile' (sourceObserve owner state', history' owner) =
-            FinDist.pure (if patched source (sourceObserve owner state', history' owner) then
+            PMF.pure (if patched source (sourceObserve owner state', history' owner) then
               false else policy.1 rfl (sourceObserve owner state, history owner)) := by
           rw [revealKernel, isTrans]
           simp only [PurePolicy.toBehavioral, PurePolicy.bindValuesFrom, hview]
         have hr : revealKernel profile (sourceObserve owner state, history owner) =
-            FinDist.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
+            PMF.pure (policy.1 rfl (sourceObserve owner state, history owner)) := by
           rw [revealKernel, isOrig]
           rfl
-        rw [hl, hr, FinDist.pure_bind, FinDist.pure_bind,
+        rw [hl, hr, PMF.pure_bind, PMF.pure_bind,
           proposal_eq inv source (policy.1 rfl (sourceObserve owner state, history owner)),
           haccept]
         exact bindValues_publicOutcome_eq k _ _ policy.2 (afterReveal profile)
@@ -777,7 +777,7 @@ theorem bindValues_publicOutcome_eq {who : Player} :
           rw [revealKernel, revealKernel, hobs, hhist, agree owner hw]
         have hcell : state'.get source = state.get source := inv.foreignEq source hw
         rw [hkernel]
-        refine FinDist.bind_congr fun disclose _ => ?_
+        refine bind_congr_on_support _ fun disclose _ => ?_
         rw [hcell, haccept]
         exact bindValues_publicOutcome_eq k _ _ policy.2 (afterReveal profile)
           (afterReveal profile') (fun other hne => congrArg Prod.snd (agree other hne))
@@ -824,8 +824,8 @@ theorem bindValues_publicRun_eq {who : Player} (setup : Setup (Player := Player)
         (PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program policy))) =
       setup.publicRun (Function.update profile who
         (PurePolicy.toBehavioral setup.program policy)) := by
-  simp only [Setup.publicRun, Setup.run, FinDist.map_bind]
-  exact FinDist.bind_congr fun initial _ =>
+  simp only [Setup.publicRun, Setup.run, PMF.map_bind]
+  exact bind_congr_on_support _ fun initial _ =>
     bindValues_run_publicOutcome_eq setup.program profile policy initial
 
 /-- Every pure policy is matched by a policy that binds a value and has the

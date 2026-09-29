@@ -61,7 +61,7 @@ theorem off_turn_history_response_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = app.invoke players owner original ∧
       coupling.map Prod.snd = strategy.resume owner players (some owner) repaired memory ∧
       ∀ next ∈ coupling.support,
@@ -100,7 +100,7 @@ theorem off_turn_history_response_coupling
   intro next member
   have rightSupport : next.2 ∈
       (strategy.resume owner players (some owner) repaired memory).support := by
-      rw [← rightLaw, FinDist.support_map]
+      rw [← rightLaw, PMF.support_map]
       exact ⟨next, member, rfl⟩
   refine ⟨?_, ?_⟩
   · apply menu.trace_implementation_resume (initialLaw setup) (rosterPlan setup rosters).length
@@ -116,15 +116,15 @@ theorem off_turn_history_response_coupling
   · rcases related next member with bad | good
     · obtain ⟨record, step, authored, rejected⟩ := bad
       have reached : next.1 ∈ (app.invoke players owner original).support := by
-        rw [← leftLaw, FinDist.support_map]
+        rw [← leftLaw, PMF.support_map]
         exact ⟨next, member, rfl⟩
-      obtain ⟨response, _, same⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨response, _, same⟩ := PMF.support_map .. ▸ reached
       refine Or.inl ⟨record, ?_, authored, rejected⟩
       rw [← same, app.executionTraffic_activated_response prior original owner response
         remaining sampled]
       have publicSame : prior.observeEnvironment app = original.observeEnvironment app := by
         have supported := sampled
-        rw [ReactiveApplication.Execution.activation_samples, FinDist.support_map] at supported
+        rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at supported
         obtain ⟨observed, _, equal⟩ := supported
         rw [← equal]
         rfl

@@ -51,10 +51,10 @@ theorem reactive_activate_hidden_congr
         readout := by
   dsimp only
   have environment := environment_observed_eq runtime leaks left right network receipts publicEq
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
   rw [show left.network.pending = right.network.pending from
     congrArg MessageNetwork.pending network]
-  apply FinDist.map_congr_of_eq_on_support
+  apply map_congr_on_support _
   intro selected _
   dsimp only [Function.comp_apply]
   apply Prod.ext
@@ -79,14 +79,14 @@ private theorem maintenance_result_view
   have same := maintenance_playerView_congr runtime left right who command maintenance views
   have member : first.playerView who ∈
       ((environmentStep runtime right command).map (fun next => next.playerView who)).support := by
-    rw [← same, FinDist.support_map]
+    rw [← same, PMF.support_map]
     exact ⟨first, firstSupported, rfl⟩
   cases command with
   | executeSample event => exact (maintenance event rfl).elim
   | grant event | advanceClock | expire event =>
-      simp only [environmentStep, FinDist.mem_support_pure] at secondSupported
+      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at secondSupported
       subst second
-      simpa only [environmentStep, FinDist.map_pure, FinDist.mem_support_pure] using member
+      simpa only [environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] using member
 
 private theorem application_environment (state : State graph) (command : EnvironmentCommand graph) :
     (runtime.reactiveApplication leaks).environment state command =
@@ -118,7 +118,7 @@ theorem reactive_maintenance_hidden_congr
   | executeSample event => exact (maintenance event rfl).elim
   | grant event | advanceClock | expire event =>
       simp only [ReactiveApplication.Execution.environmentStep, application_environment,
-        environmentStep, FinDist.map_pure]
+        environmentStep, PMF.pure_map]
       congr 1
       apply Prod.ext network
       apply Prod.ext receipts
@@ -132,8 +132,8 @@ theorem reactive_maintenance_hidden_congr
         apply congrArg some
         apply Prod.ext (recall who ordinary)
         exact results left.application right.application _ _ who _ maintenance
-          (views who ordinary) (FinDist.mem_support_pure.mpr rfl)
-            (FinDist.mem_support_pure.mpr rfl)
+          (views who ordinary) ((PMF.mem_support_pure_iff _ _).mpr rfl)
+            ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 /-- Actual native execution uses the same public draw on both sides; network,
 receipts, service recall and every opponent's input remain jointly coupled. -/
@@ -164,11 +164,11 @@ theorem reactive_sample_hidden_congr
     hidden event publicEq views leftReady rightReady payload law outputEq codeEq viewEq
   dsimp only
   simp only [ReactiveApplication.Execution.environmentStep, application_environment,
-    FinDist.map_comp]
-  rw [FinDist.map_eq_bind, FinDist.map_eq_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ sampled
+    PMF.map_comp]
+  rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_eq_of_map_eq _ _ _ _ sampled
   intro first _ second _ same
-  apply congrArg FinDist.pure
+  apply congrArg PMF.pure
   dsimp only [Function.comp_apply]
   apply Prod.ext network
   apply Prod.ext receipts

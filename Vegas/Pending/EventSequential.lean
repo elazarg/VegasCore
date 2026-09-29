@@ -61,7 +61,7 @@ exact source-ranked event list.  This holds for arbitrary native player, wire,
 and adaptive service-order policies. -/
 theorem servicedSequentialGame_history
     (runtime : EventGraphRuntime graph.sequentialize)
-    (inputs : FinDist graph.sequentialize.Inputs)
+    (inputs : PMF graph.sequentialize.Inputs)
     (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (players : Player → runtime.application.PlayerPolicy)

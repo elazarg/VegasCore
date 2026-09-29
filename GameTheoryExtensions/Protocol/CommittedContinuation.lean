@@ -61,11 +61,11 @@ theorem runBehavioralFrom_commit_split
             (M.runBehavioralFrom profile fuel) := by
   rw [show elapsed + 1 + fuel = (elapsed + fuel) + 1 by omega]
   rw [M.runBehavioralFrom_succ_of_not_terminal _ _ nonterminal,
-    M.runBehavioralFrom_succ_of_not_terminal _ _ nonterminal, FinDist.bind_bind]
-  apply FinDist.bind_congr
+    M.runBehavioralFrom_succ_of_not_terminal _ _ nonterminal, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro joint _
-  rw [FinDist.bind_bindOnSupport]
-  apply FinDist.bindOnSupport_congr
+  rw [bindOnSupport_bind]
+  apply bindOnSupport_congr _
   intro state realized
   rw [M.runBehavioralFrom_commit_after once profile who info choice history information active
       joint.2 realized (elapsed + fuel),

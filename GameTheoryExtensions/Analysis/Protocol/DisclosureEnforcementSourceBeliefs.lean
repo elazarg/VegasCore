@@ -17,24 +17,22 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Filter
 open GameTheory.Protocol.ExecutionProtocol
 
 variable {Secret Decision : Type} [Nonempty Decision]
-variable (prior : FinDist Secret) (full : ∀ secret, secret ∈ prior.support)
+variable (prior : PMF Secret) (full : ∀ secret, secret ∈ prior.support)
 
 theorem source_reach_receiver
     (profile : Profile (model (Decision := Decision) prior false).behavioralSignature)
     (secret : Secret) :
     (model prior false).historyReachProbability profile
-      (receiverHistory prior full false secret false) = prior.prob secret := by
+      (receiverHistory prior full false secret false) = (prior secret).toReal := by
   classical
-  change ((model prior false).runBehavioralFrom profile 2 (arena prior false).initHistory).prob
-    (receiverHistory prior full false secret false) = _
+  change (((model prior false).runBehavioralFrom profile 2 (arena prior false).initHistory) (receiverHistory prior full false secret false)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     (model prior false) (single prior false),
     ← FinDist.prob_map_of_injective History.state (state_injective prior full false), run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    FinDist.pure_bind, initHistory, kernel, FinDist.bind_map, Bool.false_and,
+    PMF.pure_bind, initHistory, kernel, PMF.bind_map, Bool.false_and,
     FinDist.map_const]
-  change (prior.map (fun secret => State.receiver (Decision := Decision) secret false)).prob
-    (.receiver secret false) = _
+  change ((prior.map (fun secret => State.receiver (Decision := Decision) secret false)) (.receiver secret false)).toReal = _
   exact FinDist.prob_map_of_injective _ (fun _ _ same => (State.receiver.inj same).1) _ _
 
 variable [Finite Decision]
@@ -50,7 +48,7 @@ theorem source_mass_receiver
   rw [← (silentHistories (Decision := Decision) prior full false).sum_comp]
   change (∑ secret, (model prior false).historyReachProbability profile
     (receiverHistory prior full false secret false)) = _
-  simp only [source_reach_receiver, FinDist.sum_prob]
+  simp only [source_reach_receiver, pmf_sum_toReal_eq_one]
 
 theorem source_consistent_belief
     (assessment : (model (Decision := Decision) prior false).BehavioralAssessment)
@@ -59,14 +57,13 @@ theorem source_consistent_belief
       prior.map (silentHistory prior full false) := by
   classical
   obtain ⟨sequence, approximates, converges⟩ := consistent
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
   obtain ⟨secret, same⟩ := history_at_silent prior full false history
   have historyEq : history = silentHistory prior full false secret := Subtype.ext same
   subst history
   have each (n : Nat) :
-      ((sequence n).belief true (receiverSilentSite prior full false)).prob
-        (silentHistory prior full false secret) = prior.prob secret := by
+      (((sequence n).belief true (receiverSilentSite prior full false)) (silentHistory prior full false secret)).toReal = (prior secret).toReal := by
     rw [(approximates n).2 true (receiverSilentSite prior full false) (by
       rw [source_mass_receiver prior full]
       norm_num)]

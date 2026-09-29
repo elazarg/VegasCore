@@ -30,20 +30,20 @@ theorem protocol_behavioralContinuationValue_eq (program : SourceProgram Player 
     (profile : Profile (admittedBehavioralSignature program admission))
     (utility : State L program.terminalCtx → Player → ℝ)
     (history : (executionProtocol program admission initial).History) (who : Player) :
-    ((informationModel program admission initial).runSingleMoverBehavioralFrom
+    expect ((informationModel program admission initial).runSingleMoverBehavioralFrom
       (protocol_singleMover program admission initial)
       (Profile.map (target := (informationModel program admission initial).behavioralSignature)
         (fun who => behavioralPolicyEquiv program admission initial who) profile)
-      (instructionCount program) history).expect
+      (instructionCount program) history)
         (fun final => protocolUtility program admission initial utility final who) =
-      (ProtocolState.continuationLaw program (fun who => (profile who).1) history.state).expect
+      expect (ProtocolState.continuationLaw program (fun who => (profile who).1) history.state)
         (utility · who) := by
   have law := protocol_runBehavioralFrom_eq program admission initial (fun who => (profile who).1)
     (fun who => (profile who).2) (instructionCount program) history
     (by have count := protocol_history_length program admission initial history.trace; omega)
   have values := congrArg
-    (fun law => law.expect (fun state => state.elim 0 (utility · who))) law
-  simp only [FinDist.expect_map, Option.elim_some] at values
+    (fun law => expect law (fun state => state.elim 0 (utility · who))) law
+  simp only [expect_map, Option.elim_some] at values
   convert values using 1
   rfl
 
@@ -58,11 +58,11 @@ theorem protocol_isBehavioralSubgamePerfect_iff (program : SourceProgram Player 
         (protocolUtility program admission initial utility) ↔
       ∀ history, (informationModel program admission initial).IsSubgameRoot history →
         ∀ who (alternative : (admittedBehavioralSignature program admission).Strategy who),
-          (ProtocolState.continuationLaw program
+          expect (ProtocolState.continuationLaw program
             (fun player => (Profile.update profile who alternative player).1)
-            history.state).expect (utility · who) ≤
-          (ProtocolState.continuationLaw program (fun player => (profile player).1)
-            history.state).expect (utility · who) := by
+            history.state) (utility · who) ≤
+          expect (ProtocolState.continuationLaw program (fun player => (profile player).1)
+            history.state) (utility · who) := by
   rw [InformationModel.isBehavioralSubgamePerfect_iff]
   constructor
   · intro perfect history proper who alternative
@@ -85,20 +85,20 @@ theorem protocol_behavioralContinuationValue_eq (setup : Setup (Player := Player
     (profile : Profile (admittedBehavioralSignature setup.program admission))
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (history : (setup.executionProtocol admission).History) (who : Player) :
-    ((setup.informationModel admission).runSingleMoverBehavioralFrom
+    expect ((setup.informationModel admission).runSingleMoverBehavioralFrom
       (setup.protocol_singleMover admission)
       (Profile.map (target := (setup.informationModel admission).behavioralSignature)
         (fun who => setup.behavioralPolicyEquiv admission who) profile)
-      (instructionCount setup.program + 1) history).expect
+      (instructionCount setup.program + 1) history)
         (fun final => setup.protocolUtility admission utility final who) =
-      (setup.continuationLaw (fun who => (profile who).1) history.state).expect
+      expect (setup.continuationLaw (fun who => (profile who).1) history.state)
         (utility · who) := by
   have law := setup.protocol_runBehavioralFrom_eq admission (fun who => (profile who).1)
     (fun who => (profile who).2) (instructionCount setup.program + 1) history
     (by have count := setup.protocol_history_length admission history.trace; omega)
   have values := congrArg
-    (fun law => law.expect (fun state => state.elim 0 (utility · who))) law
-  simp only [FinDist.expect_map, Option.elim_some] at values
+    (fun law => expect law (fun state => state.elim 0 (utility · who))) law
+  simp only [expect_map, Option.elim_some] at values
   convert values using 1
   rfl
 
@@ -112,11 +112,11 @@ theorem protocol_isBehavioralSubgamePerfect_iff (setup : Setup (Player := Player
         (setup.protocolUtility admission utility) ↔
       ∀ history, (setup.informationModel admission).IsSubgameRoot history →
         ∀ who (alternative : (admittedBehavioralSignature setup.program admission).Strategy who),
-          (setup.continuationLaw
+          expect (setup.continuationLaw
             (fun player => (Profile.update profile who alternative player).1)
-            history.state).expect (utility · who) ≤
-          (setup.continuationLaw (fun player => (profile player).1)
-            history.state).expect (utility · who) := by
+            history.state) (utility · who) ≤
+          expect (setup.continuationLaw (fun player => (profile player).1)
+            history.state) (utility · who) := by
   rw [InformationModel.isBehavioralSubgamePerfect_iff]
   constructor
   · intro perfect history proper who alternative

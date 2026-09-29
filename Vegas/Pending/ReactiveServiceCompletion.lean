@@ -32,8 +32,8 @@ theorem runInteractionPlan_support_instruction (runtime : EventGraphRuntime grap
       ∃ next ∈ (runtime.interactionStep leaks players network instruction prior).support,
         final ∈ (runtime.runInteractionPlan leaks players network after next).support := by
   rw [runInteractionPlan_append] at supported
-  obtain ⟨prior, priorMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨next, nextMem, restMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ finalMem)
+  obtain ⟨prior, priorMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨next, nextMem, restMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ finalMem)
   exact ⟨prior, priorMem, next, nextMem, restMem⟩
 
 omit [DecidableEq Player] in
@@ -81,11 +81,11 @@ theorem reactive_application_support (runtime : EventGraphRuntime graph)
       (.application command) execution).support) :
     next.application ∈ (environmentStep runtime execution.application command).support := by
   change next ∈ ((execution.environmentStep (runtime.reactiveApplication leaks)
-    (.application command)).bind FinDist.pure).support at supported
-  rw [FinDist.bind_pure] at supported
+    (.application command)).bind PMF.pure).support at supported
+  rw [PMF.bind_pure] at supported
   simp only [ReactiveApplication.Execution.environmentStep] at supported
-  obtain ⟨updated, moved, rfl⟩ := FinDist.support_map .. ▸ supported
-  obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ moved
+  obtain ⟨updated, moved, rfl⟩ := PMF.support_map .. ▸ supported
+  obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ moved
   exact changed
 
 theorem interactionStep_sample_complete (runtime : EventGraphRuntime graph)
@@ -99,7 +99,7 @@ theorem interactionStep_sample_complete (runtime : EventGraphRuntime graph)
     event ∈ next.application.config.cut.completed := by
   have moved : next ∈ ((runtime.reactiveApplication leaks).dispatch players
       (.application (.executeSample event)) execution).support := by
-    simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using supported
+    simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using supported
   exact runtime.environmentStep_sample_complete _ _ event ready chance
     (runtime.reactive_application_support leaks players _ execution next moved)
 
@@ -117,7 +117,7 @@ theorem interactionStep_expire_complete (runtime : EventGraphRuntime graph)
     event ∈ next.application.config.cut.completed := by
   have moved : next ∈ ((runtime.reactiveApplication leaks).dispatch players
       (.application (.expire event)) execution).support := by
-    simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using supported
+    simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using supported
   exact runtime.environmentStep_expire_complete _ _ event ready strategic entered activated due
     (runtime.reactive_application_support leaks players _ execution next moved)
 
@@ -220,7 +220,7 @@ theorem reactiveCompletionService_run (runtime : EventGraphRuntime graph)
   | zero => rfl
   | succ count ih =>
       simp only [CompletionService.run, runInteractionEpochs, reactiveCompletionService]
-      exact FinDist.bind_congr fun next _ => ih next
+      exact bind_congr_on_support _ fun next _ => ih next
 
 theorem runInteractionEpochs_terminal (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -240,7 +240,7 @@ theorem runInteractionEpochs_terminal (runtime : EventGraphRuntime graph)
 the application, even under arbitrary player deviations and network choices. -/
 theorem canonical_interaction_complete (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (inputs : FinDist graph.Inputs) (chosen : ServiceOrder graph) (networkTurns : Nat)
+    (inputs : PMF graph.Inputs) (chosen : ServiceOrder graph) (networkTurns : Nat)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks)
     (result : (runtime.reactiveApplication leaks).ProtocolState)
@@ -258,9 +258,9 @@ theorem canonical_interaction_complete (runtime : EventGraphRuntime graph)
             ExecutionProtocol.History.state).support) :
     ∃ control, result = some control ∧ control.execution.application.config.cut.Terminal := by
   dsimp only at supported
-  rw [runtime.canonical_interaction_service leaks, FinDist.bind_map] at supported
-  obtain ⟨input, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨execution, moved, rfl⟩ := FinDist.support_map .. ▸ reached
+  rw [runtime.canonical_interaction_service leaks, PMF.bind_map] at supported
+  obtain ⟨input, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨execution, moved, rfl⟩ := PMF.support_map .. ▸ reached
   exact ⟨_, rfl, runtime.runInteractionEpochs_terminal leaks input chosen networkTurns
     players network
     _ execution (State.initial_invariant input) moved⟩

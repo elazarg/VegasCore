@@ -49,18 +49,18 @@ private theorem source_prefix_terminal_readout
     (program : SourceProgram Player L Γ openNames) (reveals : program.RevealOnly)
     (profile : BehavioralProfile program) (source : Config Player L Γ) :
     ((fun law => law.bind (ProtocolState.behavioralStateStep program profile))^[eventCount program]
-      (FinDist.pure (ProtocolState.entry program source))).map (ProtocolState.readout program) =
+      (PMF.pure (ProtocolState.entry program source))).map (ProtocolState.readout program) =
       (runFrom program profile source).map some := by
   induction program with
   | ret payoffs => simp [eventCount, runFrom, runWith, ProtocolState.readout, ProtocolState.entry]
   | sample name fresh law next ih => exact reveals.elim
   | commit name owner fresh guard next ih => exact reveals.elim
   | reveal published owner name fresh selected unresolved next ih =>
-      rw [eventCount, ProtocolState.behavioralStatePrefix_reveal, FinDist.map_bind,
-        runFrom_reveal, FinDist.map_bind]
-      apply FinDist.bind_congr
+      rw [eventCount, ProtocolState.behavioralStatePrefix_reveal, PMF.map_bind,
+        runFrom_reveal, PMF.map_bind]
+      apply bind_congr_on_support _
       intro disclose _
-      rw [FinDist.map_comp]
+      rw [PMF.map_comp]
       exact ih reveals (afterReveal profile) (revealSuccessor published selected source disclose)
 
 omit [Fintype Player] in
@@ -102,7 +102,7 @@ theorem run_roster_source_suffix_option_law
   have terminalLaw := congrArg (fun law => law.map
     (fun state => state.bind (ProtocolState.readout program))) prefixLaw
   rw [List.take_of_length_le (by simp)] at terminalLaw
-  simp only [FinDist.map_comp, Function.comp_def,
+  simp only [PMF.map_comp, Function.comp_def,
     decodePrefix_terminal_readout program reveals, Option.bind_some] at terminalLaw
   exact terminalLaw.trans (source_prefix_terminal_readout program reveals profile source)
 

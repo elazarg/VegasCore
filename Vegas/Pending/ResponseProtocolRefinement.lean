@@ -19,7 +19,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
-  (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+  (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
   (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
 
 theorem native_actions_history (who : Player) (actions : List (PlayerAction graph))
@@ -46,7 +46,7 @@ theorem native_actions_history (who : Player) (actions : List (PlayerAction grap
           simp [joint, nativeProtocol, nativeActor, List.replicate_succ]
         · simp [joint, same, Ne.symm same, nativeProtocol, nativeActor, List.replicate_succ]
       have law : (runtime.nativeProtocol inputs roster reactionRounds wire order).step history.state
-          ⟨joint, legal⟩ = FinDist.pure (some ⟨epochs,
+          ⟨joint, legal⟩ = PMF.pure (some ⟨epochs,
             List.replicate actions.length (.player who) ++ rest,
             runtime.takeAction who execution action⟩) := by
         change runtime.nativeTransition inputs roster reactionRounds wire order
@@ -54,11 +54,11 @@ theorem native_actions_history (who : Player) (actions : List (PlayerAction grap
         rw [stateEq]
         simp only [nativeTransition, List.length_cons, List.replicate_succ,
           List.cons_append, nativeInstructionStep, joint, ↓reduceIte, Option.getD_some,
-          actionStep, FinDist.map_pure]
+          actionStep, PMF.pure_map]
       have supported : some ⟨epochs, List.replicate actions.length (.player who) ++ rest,
           runtime.takeAction who execution action⟩ ∈
           ((runtime.nativeProtocol inputs roster reactionRounds wire order).step history.state
-            ⟨joint, legal⟩).support := by rw [law]; exact FinDist.mem_support_pure.mpr rfl
+            ⟨joint, legal⟩).support := by rw [law]; exact (PMF.mem_support_pure_iff _ _).mpr rfl
       obtain ⟨after, path, endpoint⟩ := ih (history.extend legal supported)
         (runtime.takeAction who execution action) rfl
       exact ⟨after, .step joint legal supported path, endpoint⟩
@@ -121,7 +121,7 @@ theorem response_step_native_history
               have target := reached
               rw [stateEq] at target
               simp only [responseTransition, selected, Option.getD_some,
-                FinDist.mem_support_pure] at target
+                PMF.mem_support_pure_iff _ _] at target
               exact ⟨next, by rw [endpoint, length]; exact target.symm⟩
           | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
               exact environment (by rw [stateEq]; rfl) (by rw [stateEq]; rfl)

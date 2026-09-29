@@ -85,7 +85,7 @@ theorem off_turn_roster_stopped_coupling
         (rosterScheduler setup leaks rosters network) target) owner policy
     let strategy := BindingMemory.retainedImplementation (runtime setup) leaks
       (sourceServiceMenu setup leaks bounds rosters) owner reference (players owner)
-    ∃ coupling : FinDist (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
+    ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original ∧
       coupling.map Prod.snd = strategy.runJoint owner players
@@ -119,7 +119,7 @@ theorem off_turn_roster_stopped_coupling
     refine ⟨?_, related next supported⟩
     have rightSupport : next.2 ∈
         (strategy.runJoint owner players scheduler visits.length repaired memory).support := by
-      rw [← second, FinDist.support_map]
+      rw [← second, PMF.support_map]
       exact ⟨next, supported, rfl⟩
     apply menu.trace_implementation_runJoint (initialLaw setup) (rosterPlan setup rosters).length
       scheduler strategy owner players _ _ remaining visits.length repaired memory trace

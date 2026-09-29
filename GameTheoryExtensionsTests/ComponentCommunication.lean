@@ -34,7 +34,7 @@ def communicated : GameForm (Fin 2) where
   sig :=
     { Strategy := MatrixGame.Action Bool (Bool → Bool)
       Outcome := Bool × Bool }
-  play profile := FinDist.pure (profile 0, profile 1 (profile 0))
+  play profile := PMF.pure (profile 0, profile 1 (profile 0))
 
 def payout (outcome : Bool × Bool) (who : Fin 2) : ℝ :=
   if who = 0 ∧ outcome.2 = true then 1 else 0
@@ -87,8 +87,8 @@ theorem message_strictly_profitable :
       expectedUtility payout 0
         (communicated.play ((responsive false).update 0 true)) := by
   rw [change_message]
-  change expectedUtility payout 0 (FinDist.pure (false, false)) <
-    expectedUtility payout 0 (FinDist.pure (true, true))
+  change expectedUtility payout 0 (PMF.pure (false, false)) <
+    expectedUtility payout 0 (PMF.pure (true, true))
   norm_num [payout]
 
 theorem communicated_not_nonstrategic :

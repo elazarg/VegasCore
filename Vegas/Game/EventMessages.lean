@@ -95,8 +95,8 @@ theorem eventPendingGame_map_outcome (setup : Setup (Player := Player) (L := L))
       (((setup.eventPendingGame mode runtime roster reactionRounds wire order).play players).map
         (fun execution => execution.native.application.config.store)).map
           (Vegas.decodeState? (Vegas.terminalRefs setup.program)) := by
-  rw [FinDist.map_comp]
-  apply FinDist.map_congr_of_eq_on_support
+  rw [PMF.map_comp]
+  apply map_congr_on_support _
   intro execution supported
   have terminal := runtime.servicedEventGame_complete _ roster reactionRounds wire order
     players execution supported
@@ -124,13 +124,13 @@ theorem eventPendingGame_honest_law (setup : Setup (Player := Player) (L := L))
   rw [runtime.servicedEventGame_honest_store_law
     (setup.eventGraph.withMode_barrierOrdered
       (Vegas.toEventGraph_barrierOrdered setup.program) mode) feasible]
-  simp only [FinDist.bind_map, FinDist.map_bind]
+  simp only [PMF.bind_map, PMF.map_bind]
   simp_rw [← (setup.eventGraph.withMode mode).runPolicies_canonical_normalize_eq,
     setup.eventGraph.runPolicies_withMode_store,
     setup.eventGraph.fromModeProfile_toModeProfile]
   have canonical := congrArg (fun law => law.map some)
     (Vegas.scheduled_setup_law setup setup.eventGraph.canonicalScheduler profile)
-  simp only [FinDist.map_bind, eventGraph,
+  simp only [PMF.map_bind, eventGraph,
     Vegas.terminalOutcomes_map_decode] at canonical
   exact canonical
 

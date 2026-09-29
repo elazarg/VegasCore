@@ -56,10 +56,10 @@ arbitrary sampling inside the supplied authentic traffic audit. -/
 def serviceAudit (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : List (runtime.reactiveApplication leaks).TrafficRecord →
-      FinDist (Player → Bool))
+      PMF (Player → Bool))
     (observed : List (runtime.reactiveApplication leaks).TrafficRecord ×
       Option (PublicView graph)) :
-    FinDist (Player → Bool) :=
+    PMF (Player → Bool) :=
   (trafficAudit observed.1).map fun verdict who =>
     verdict who || observed.2.elim false (fun view => view.missedBindingBy who)
 
@@ -76,7 +76,7 @@ collection probability is retained exactly. There is no independence premise. -/
 theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : List (runtime.reactiveApplication leaks).TrafficRecord →
-      FinDist (Player → Bool))
+      PMF (Player → Bool))
     (state : (runtime.reactiveApplication leaks).ProtocolState) (who : Player) :
     TerminalAudit.charge (runtime.serviceAuditObservation leaks)
         (runtime.serviceAudit leaks trafficAudit) state who =
@@ -85,7 +85,7 @@ theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
         TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic trafficAudit state
           who := by
   unfold TerminalAudit.charge serviceAudit serviceAuditObservation
-  simp only [FinDist.map_comp, Function.comp_def]
+  simp only [PMF.map_comp, Function.comp_def]
   cases state with
   | none => simp only [Option.map_none, Option.elim_none, Bool.or_false, Bool.false_eq_true,
       ite_false]
@@ -101,20 +101,20 @@ theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
 theorem serviceAudit_charge_ge_traffic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : List (runtime.reactiveApplication leaks).TrafficRecord →
-      FinDist (Player → Bool))
+      PMF (Player → Bool))
     (state : (runtime.reactiveApplication leaks).ProtocolState) (who : Player) :
     TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic trafficAudit state who ≤
       TerminalAudit.charge (runtime.serviceAuditObservation leaks)
         (runtime.serviceAudit leaks trafficAudit) state who := by
   rw [runtime.serviceAudit_charge]
   split
-  · exact FinDist.prob_le_one _ _
+  · exact pmf_toReal_apply_le_one _ _
   · exact le_refl _
 
 theorem serviceAudit_charge_of_omission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : List (runtime.reactiveApplication leaks).TrafficRecord →
-      FinDist (Player → Bool))
+      PMF (Player → Bool))
     (control : (runtime.reactiveApplication leaks).Control) (who : Player)
     (event : graph.EventId) (owned : graph.actor? event = some who)
     (missed : control.execution.application.publicView.missedBinding event = true) :
@@ -130,13 +130,13 @@ continuations after adding the public omission branch. -/
 theorem serviceAudit_collection_ge_traffic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : List (runtime.reactiveApplication leaks).TrafficRecord →
-      FinDist (Player → Bool))
-    (law : FinDist (runtime.reactiveApplication leaks).ProtocolState) (who : Player) :
-    ((((law.map (runtime.reactiveApplication leaks).stateTraffic).bind trafficAudit).map
-        (fun verdict => verdict who)).prob true) ≤
-      ((((law.map (runtime.serviceAuditObservation leaks)).bind
+      PMF (Player → Bool))
+    (law : PMF (runtime.reactiveApplication leaks).ProtocolState) (who : Player) :
+    (((((law.map (runtime.reactiveApplication leaks).stateTraffic).bind trafficAudit).map
+        (fun verdict => verdict who)) true).toReal) ≤
+      (((((law.map (runtime.serviceAuditObservation leaks)).bind
         (runtime.serviceAudit leaks trafficAudit)).map
-          (fun verdict => verdict who)).prob true) := by
+          (fun verdict => verdict who)) true).toReal) := by
   rw [TerminalAudit.collection_probability, TerminalAudit.collection_probability]
   apply FinDist.expect_mono
   intro state _supported
@@ -150,20 +150,20 @@ theorem serviceAudit_collection_from_record (runtime : EventGraphRuntime graph)
     {Evidence : Type}
     (project : (runtime.reactiveApplication leaks).TrafficRecord → Evidence)
     (attribution : Evidence → Player) (permitted : Evidence → Bool)
-    (sample : List Evidence → FinDist (List Evidence))
-    (law : FinDist (runtime.reactiveApplication leaks).ProtocolState)
+    (sample : List Evidence → PMF (List Evidence))
+    (law : PMF (runtime.reactiveApplication leaks).ProtocolState)
     (who : Player) (rate : ℝ)
     (coverage : ∀ actual record, record ∈ actual →
       attribution record = who → permitted record = false →
-      rate ≤ (sample actual).probOf {observed | record ∈ observed})
+      rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (record : (runtime.reactiveApplication leaks).TrafficRecord)
     (present : ∀ state ∈ law.support,
       record ∈ (runtime.reactiveApplication leaks).stateTraffic state)
     (owner : attribution (project record) = who)
     (forbidden : permitted (project record) = false) :
-    rate ≤ (((law.map (runtime.serviceAuditObservation leaks)).bind
+    rate ≤ ((((law.map (runtime.serviceAuditObservation leaks)).bind
       (runtime.serviceAudit leaks ((runtime.reactiveApplication leaks).sampledTrafficAudit
-        project attribution permitted sample))).map (fun verdict => verdict who)).prob true := by
+        project attribution permitted sample))).map (fun verdict => verdict who)) true).toReal := by
   exact ((runtime.reactiveApplication leaks).sampledTrafficAudit_collection_from_record
     project attribution permitted sample law _ who rate coverage record present owner
       forbidden).trans
@@ -174,21 +174,21 @@ which binding was missed on each branch and regardless of packet sampling. -/
 theorem serviceAudit_collection_of_omission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : List (runtime.reactiveApplication leaks).TrafficRecord →
-      FinDist (Player → Bool))
-    (law : FinDist (runtime.reactiveApplication leaks).ProtocolState) (who : Player)
+      PMF (Player → Bool))
+    (law : PMF (runtime.reactiveApplication leaks).ProtocolState) (who : Player)
     (missing : ∀ state ∈ law.support,
       state.elim false (fun control =>
         control.execution.application.publicView.missedBindingBy who) = true) :
-    (((law.map (runtime.serviceAuditObservation leaks)).bind
+    ((((law.map (runtime.serviceAuditObservation leaks)).bind
       (runtime.serviceAudit leaks trafficAudit)).map
-        (fun verdict => verdict who)).prob true = 1 := by
+        (fun verdict => verdict who)) true).toReal = 1 := by
   rw [TerminalAudit.collection_probability]
   calc
-    _ = law.expect (fun _ => (1 : ℝ)) := by
-      apply FinDist.expect_congr
+    _ = expect law (fun _ => (1 : ℝ)) := by
+      apply expect_congr_on_support
       intro state supported
       rw [runtime.serviceAudit_charge, missing state supported]
       rfl
-    _ = 1 := FinDist.expect_const _ _
+    _ = 1 := expect_constant _ _
 
 end Vegas.EventGraphRuntime

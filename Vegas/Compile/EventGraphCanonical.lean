@@ -33,7 +33,7 @@ theorem canonical_terminalState_law
         (compileEventProfile program profile) (encodeInputs state)).map
       (terminalState program) =
     SourceProgram.run program profile state := by
-  apply FinDist.map_injective (f := some) (Option.some_injective _)
+  apply pmf_map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode]
   have law := runWith_option_law program profile program profile
     (ContextRefs.initial Γ (outputLayout program)) (Revelations.initial Γ) []
@@ -45,7 +45,7 @@ theorem canonical_terminalState_law
     state (initialConfig_agrees program state) (fun _ => []) rfl
   change _ = (runWith program profile state [] (Revelations.initial Γ) (fun _ => [])).map some
   rw [← law]
-  rw [FinDist.map_comp]
+  rw [PMF.map_comp]
   rfl
 
 /-- Canonical compiled execution preserves the executable integer payout law,
@@ -72,7 +72,7 @@ theorem canonical_payout_law
       funext result
       exact terminalPayouts_eq_source program result
     _ = _ := by
-      rw [← FinDist.map_comp,
+      rw [← PMF.map_comp,
         canonical_terminalState_law program profile state]
 
 /-- A single compiled graph and behavioral profile serve an entire finite law
@@ -86,8 +86,8 @@ theorem canonical_setup_law
         (terminalState setup.program) =
       setup.run profile := by
   unfold Vegas.EventGraph.canonicalGame Vegas.EventGraph.gameForm Setup.run
-  simp only [FinDist.map_bind, FinDist.bind_map]
-  apply FinDist.bind_congr
+  simp only [PMF.map_bind, PMF.bind_map]
+  apply bind_congr_on_support _
   intro initial member
   exact canonical_terminalState_law setup.program profile initial
 
@@ -114,6 +114,6 @@ theorem canonical_setup_payout_law
       funext result
       exact terminalPayouts_eq_source setup.program result
     _ = _ := by
-      rw [← FinDist.map_comp, canonical_setup_law setup profile]
+      rw [← PMF.map_comp, canonical_setup_law setup profile]
 
 end Vegas

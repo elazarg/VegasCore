@@ -67,18 +67,18 @@ def canonicalEventSimulation (setup : Setup (Player := Player) (L := L)) :
       setup.eventPublicOutcome (fun _ _ => True) where
   compileStrategy := compileEventPolicy setup.program
   honest_law profile := by
-    have base := congrArg (FinDist.map (publicOutcome setup.program))
+    have base := congrArg (PMF.map (publicOutcome setup.program))
       (canonical_setup_law setup profile)
-    rw [FinDist.map_comp] at base
-    exact base.trans (FinDist.map_id _).symm
+    rw [PMF.map_comp] at base
+    exact base.trans (PMF.map_id _).symm
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
-    refine ⟨FinDist.pure (backtranslateEventPolicy setup.program who replacement), ?_⟩
-    have base := congrArg (FinDist.map (publicOutcome setup.program))
+    refine ⟨PMF.pure (backtranslateEventPolicy setup.program who replacement), ?_⟩
+    have base := congrArg (PMF.map (publicOutcome setup.program))
       (canonical_setup_deviation_law setup profile who replacement)
-    rw [FinDist.map_comp] at base
-    rw [FinDist.pure_bind]
-    exact base.trans (FinDist.map_id _).symm
+    rw [PMF.map_comp] at base
+    rw [PMF.pure_bind]
+    exact base.trans (PMF.map_id _).symm
 
 /-- The full-source compiler simulates every unilateral asynchronous graph
 deviation by a finite mixture of source policies: the compiler's edge to the
@@ -117,12 +117,12 @@ theorem eventGame_deviation_guarantee
     (profile : BehavioralProfile setup.program) (who : Player)
     (value : PublicOutcome setup.program → ℝ) (bound : ℝ)
     (sourceBound : ∀ alternative : BehavioralPolicy who setup.program,
-      bound ≤ (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
-        profile who alternative)).expect value)
+      bound ≤ expect (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
+        profile who alternative)) value)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
-    bound ≤ ((setup.eventGame scheduler).play
+    bound ≤ expect ((setup.eventGame scheduler).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
-        (compileEventProfile setup.program profile) who replacement)).expect
+        (compileEventProfile setup.program profile) who replacement))
           (fun outcome => value (setup.eventPublicOutcome outcome)) :=
   (setup.eventSimulation scheduler).guarantee profile who value bound sourceBound replacement
     trivial

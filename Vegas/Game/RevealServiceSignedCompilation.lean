@@ -44,12 +44,12 @@ SE. Utilities may depend on persistent private initial data as well as results. 
 theorem signed_audit_source_sequential_equilibrium_preserved
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (sample : List (EnvelopeEvidence setup leaks) →
-      FinDist (List (EnvelopeEvidence setup leaks)))
+      PMF (List (EnvelopeEvidence setup leaks)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
     (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
       permittedEnvelope setup leaks record = false →
-      probability who ≤ (sample actual).probOf {observed | record ∈ observed})
+      probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
       (fun who site => source.continuationContext site
@@ -130,7 +130,7 @@ theorem signed_audit_source_sequential_equilibrium_preserved
     (sourceReadout setup leaks) (sourceReadout_normalization setup leaks) replayed replayedBase
   have joint := congrArg (fun law => law.map (fun final =>
     (sourceReadout setup leaks final.state, base final.state))) replayLaw
-  rw [FinDist.map_comp] at joint
+  rw [PMF.map_comp] at joint
   exact ⟨target, targetSE, targetLaw.trans (joint.symm.trans sourceLaw)⟩
 
 end Vegas

@@ -26,26 +26,26 @@ theorem submissionAudit_dispatch (project : app.LocalObservation → app.PublicO
     (reached : next ∈ (app.dispatch players command execution).support) :
     next.SubmissionAudit app project ∧ next.InputRecall app ∧
       next.network.SerialsBeforeNext := by
-  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have middleAudit := app.submissionAudit_environment project execution middle command moved
     audit serials
   have middleRecall := app.environment_inputRecall execution middle command recall moved
   have middleSerials :=
-    (app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure command)).environment
-    execution middle command serials (FinDist.mem_support_pure.mpr rfl) moved
+    (app.serialsBeforeNextInvariant (fun _ _ => PMF.pure command)).environment
+    execution middle command serials ((PMF.mem_support_pure_iff _ _).mpr rfl) moved
   cases active : command.actor? app with
   | none =>
       simp only [resume, active] at resumed
-      cases FinDist.mem_support_pure.mp resumed
+      cases (PMF.mem_support_pure_iff _ _).mp resumed
       exact ⟨middleAudit, middleRecall, middleSerials⟩
   | some who =>
       simp only [resume, active] at resumed
-      obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ resumed
+      obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ resumed
       exact ⟨app.submissionAudit_respond project agrees middle who action middleAudit
         (app.submissionOrigin_next_none middle who middleRecall middleSerials)
         (app.activationAudit_environment execution middle command moved 0 who active),
         app.respond_inputRecall middle who action middleRecall,
-        (app.serialsBeforeNextInvariant (fun _ _ => FinDist.pure .wait)).respond
+        (app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
           middle who action middleSerials⟩
 
 theorem submissionAudit_runRounds (project : app.LocalObservation → app.PublicObservation)
@@ -58,11 +58,11 @@ theorem submissionAudit_runRounds (project : app.LocalObservation → app.Public
       next.network.SerialsBeforeNext := by
   induction count generalizing execution with
   | zero =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨audit, recall, serials⟩
   | succ count ih =>
-      obtain ⟨middle, stepped, rest⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
-      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ stepped)
+      obtain ⟨middle, stepped, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ stepped)
       obtain ⟨middleAudit, middleRecall, middleSerials⟩ := app.submissionAudit_dispatch project
         agrees players command execution middle audit recall serials dispatched
       exact ih middle middleAudit middleRecall middleSerials rest

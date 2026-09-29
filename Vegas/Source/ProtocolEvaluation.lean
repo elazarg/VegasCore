@@ -29,8 +29,8 @@ def joint {Γ : SourceCtx Player L} {O : Finset VarId}
 /-- Select the existing source continuation at this program point. -/
 def continuationLaw : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (BehavioralProfile program) →
-    ProtocolState program → FinDist (State L program.terminalCtx)
-  | _, _, .ret _ => fun _ config => FinDist.pure config.state
+    ProtocolState program → PMF (State L program.terminalCtx)
+  | _, _, .ret _ => fun _ config => PMF.pure config.state
   | _, _, .sample name fresh law next => fun profile =>
       Sum.elim
         (fun config => runFrom (.sample name fresh law next)
@@ -66,8 +66,8 @@ def readout : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 theorem continuationLaw_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →
     (state : ProtocolState program) → terminal program state →
-    (continuationLaw program profile state).map some = FinDist.pure (readout program state)
-  | _, _, .ret _, _, _, _ => FinDist.map_pure _ _
+    (continuationLaw program profile state).map some = PMF.pure (readout program state)
+  | _, _, .ret _, _, _, _ => PMF.pure_map _ _
   | _, _, .sample _ _ _ next, profile, state, stopped => by
       cases state with
       | inl config => exact stopped.elim
@@ -91,12 +91,12 @@ theorem continuationLaw_step : {Γ : SourceCtx Player L} → {O : Finset VarId} 
   | _, _, .sample _ _ _ next, profile, state, running => by
       cases state with
       | inl config =>
-          simp [step, continuationLaw, FinDist.bind_map, runFrom_sample,
+          simp [step, continuationLaw, PMF.bind_map, runFrom_sample,
             PurePolicy.toBehavioral]
           rfl
       | inr rest =>
           dsimp only [step, continuationLaw, Sum.elim]
-          rw [FinDist.bind_map]
+          rw [PMF.bind_map]
           exact continuationLaw_step next profile rest running
   | _, _, .commit _ _ _ _ next, profile, state, running => by
       cases state with
@@ -106,7 +106,7 @@ theorem continuationLaw_step : {Γ : SourceCtx Player L} → {O : Finset VarId} 
           rfl
       | inr rest =>
           dsimp only [step, continuationLaw, Sum.elim]
-          rw [FinDist.bind_map]
+          rw [PMF.bind_map]
           exact continuationLaw_step next (fun who => (profile who).2) rest running
   | _, _, .reveal _ _ _ _ _ _ next, profile, state, running => by
       cases state with
@@ -117,7 +117,7 @@ theorem continuationLaw_step : {Γ : SourceCtx Player L} → {O : Finset VarId} 
           rfl
       | inr rest =>
           dsimp only [step, continuationLaw, Sum.elim]
-          rw [FinDist.bind_map]
+          rw [PMF.bind_map]
           exact continuationLaw_step next (fun who => (profile who).2) rest running
 
 end ProtocolState
@@ -155,17 +155,17 @@ theorem protocol_runFor_eq {Γ : SourceCtx Player L} {O : Finset VarId}
         (fun who => (profile who).toBehavioral program) state stopped).symm
   | succ fuel ih =>
       by_cases stopped : ProtocolState.terminal program state
-      · rw [ExecutionProtocol.runFor_of_terminal _ _ stopped, FinDist.map_pure]
+      · rw [ExecutionProtocol.runFor_of_terminal _ _ stopped, PMF.pure_map]
         exact (ProtocolState.continuationLaw_terminal program
           (fun who => (profile who).toBehavioral program) state stopped).symm
-      · rw [ExecutionProtocol.runFor_succ_of_not_terminal _ _ stopped, FinDist.map_bind]
+      · rw [ExecutionProtocol.runFor_succ_of_not_terminal _ _ stopped, PMF.map_bind]
         change (ProtocolState.step program state (ProtocolState.joint program profile state)).bind
           _ = _
         calc
           _ = (ProtocolState.step program state (ProtocolState.joint program profile state)).bind
                 (fun after => (ProtocolState.continuationLaw program
                 (fun who => (profile who).toBehavioral program) after).map some) := by
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro after reached
             have consumed := ProtocolState.remaining_step program state after
               (ProtocolState.joint program profile state) stopped reached
@@ -173,7 +173,7 @@ theorem protocol_runFor_eq {Γ : SourceCtx Player L} {O : Finset VarId}
           _ = ((ProtocolState.step program state (ProtocolState.joint program profile state)).bind
               (ProtocolState.continuationLaw program
                 (fun who => (profile who).toBehavioral program))).map some :=
-            (FinDist.map_bind _ _ _).symm
+            (PMF.map_bind _ _ _).symm
           _ = _ := congrArg (fun law => law.map some)
             (ProtocolState.continuationLaw_step program profile state stopped)
 
@@ -212,7 +212,7 @@ theorem protocol_runFrom_eq {Γ : SourceCtx Player L} {O : Finset VarId}
     _ = (((executionProtocol program admission initial).runHistoryFor
         (protocolChooser program admission initial profile permitted).toHistoryChooser
         fuel history).map ExecutionProtocol.History.state).map
-          (ProtocolState.readout program) := by rw [FinDist.map_comp]; rfl
+          (ProtocolState.readout program) := by rw [PMF.map_comp]; rfl
     _ = _ := by
       rw [ExecutionProtocol.map_state_runHistoryFor]
       exact protocol_runFor_eq program admission initial profile permitted fuel history.state enough

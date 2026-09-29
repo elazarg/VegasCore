@@ -84,7 +84,7 @@ theorem roster_restrict_activation_state
   change (fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) players))^[
       count + (((rosterPlan setup rosters).take count).filterMap instructionActor).length + 2]
-        (FinDist.pure none) = _
+        (PMF.pure none) = _
   have prefixLaw := (application setup leaks).scheduled_prefix_control_steps (initialLaw setup)
     (rosterScheduler setup leaks rosters network) ((rosterPlan setup rosters).map instructionActor)
     (roster_scheduled_actor setup leaks rosters network) players count
@@ -93,12 +93,12 @@ theorem roster_restrict_activation_state
   rw [roster_roundsFrom setup leaks rosters network players count within.le] at prefixLaw
   rw [show count + (((rosterPlan setup rosters).take count).filterMap instructionActor).length + 2 =
       (count + (((rosterPlan setup rosters).take count).filterMap instructionActor).length + 1) + 1
-      by omega, Function.iterate_succ_apply', prefixLaw, FinDist.bind_map, FinDist.map_bind,
-    FinDist.bind_bind]
-  simp only [FinDist.bind_bind]
-  apply FinDist.bind_congr
+      by omega, Function.iterate_succ_apply', prefixLaw, PMF.bind_map, PMF.map_bind,
+    PMF.bind_bind]
+  simp only [PMF.bind_bind]
+  apply bind_congr_on_support _
   intro initial _
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro before supported
   have position := (runtime setup).runInteractionPlan_recall leaks players network
     ((rosterPlan setup rosters).take count)
@@ -111,7 +111,7 @@ theorem roster_restrict_activation_state
   conv_lhs => rw [remaining]
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
     ReactiveApplication.transition, rosterScheduler, countEq, selected,
-    interactionInstruction, FinDist.pure_bind, ReactiveApplication.Command.actor?]
+    interactionInstruction, PMF.pure_bind, ReactiveApplication.Command.actor?]
 
 omit [Fintype Player] in
 /-- The depth of an actual pending activation follows from its existing

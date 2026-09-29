@@ -22,9 +22,9 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Math.Probability
 
 theorem decode_profile :
-    menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler profile = policy := by
+    menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler profile = policy := by
   funext who
-  exact menu.decode_restrictPolicy_of_covered (FinDist.pure nativeInitial) nativeHorizon
+  exact menu.decode_restrictPolicy_of_covered (PMF.pure nativeInitial) nativeHorizon
     scheduler who (policy who) (policy_available who)
 
 theorem response_opens (who : Player) (view : app.PlayerView)
@@ -38,10 +38,10 @@ theorem response_opens (who : Player) (view : app.PlayerView)
 
 theorem profile_opens (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
     (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who)) :
-    menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler profile who past view =
-      FinDist.pure (nativeOpeningResponse (observation := leaks) who view) := by
+    menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler profile who past view =
+      PMF.pure (nativeOpeningResponse (observation := leaks) who view) := by
   rw [decode_profile]
-  exact congrArg FinDist.pure (response_opens who view granted)
+  exact congrArg PMF.pure (response_opens who view granted)
 
 theorem binding_invariant (who : Player) (value : PublicationResult Bool) :
     app.Invariant (fun state => (nativeBindingRef who).get? state.config.store = some value) := by
@@ -85,10 +85,10 @@ theorem finish_law (players : Profile model.behavioralSignature)
     (enough : app.rank nativeHorizon (some control) ≤ fuel) :
     (model.runBehavioralFrom players fuel ⟨some control, trace⟩).map
         ExecutionProtocol.History.state =
-      app.finish (FinDist.pure nativeInitial) nativeHorizon scheduler
-        (menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players)
+      app.finish (PMF.pure nativeInitial) nativeHorizon scheduler
+        (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players)
           (some control) :=
-  menu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon scheduler players fuel
+  menu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon scheduler players fuel
     ⟨some control, trace⟩ enough
 
 /-- Opening succeeds under any complete continuation profile whose current
@@ -100,9 +100,9 @@ theorem opening_success (players : Profile model.behavioralSignature)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
     (bit : Bool) (stored : (nativeBindingRef who).get?
       control.execution.application.config.store = some (.success bit))
-    (opens : menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players
+    (opens : menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players
       who (control.execution.recall who) (control.execution.observe app who) =
-        FinDist.pure (nativeOpeningResponse (observation := leaks) who
+        PMF.pure (nativeOpeningResponse (observation := leaks) who
           (control.execution.observe app who)))
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
@@ -112,10 +112,10 @@ theorem opening_success (players : Profile model.behavioralSignature)
   apply native_opening_finish (observation := leaks) _ control trace who bit active granted
     (native_decision_unfinished (observation := leaks) _ control trace who active granted)
       stored opens final.state
-  change final.state ∈ (app.finish (FinDist.pure nativeInitial) nativeHorizon scheduler
-    (menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players)
+  change final.state ∈ (app.finish (PMF.pure nativeInitial) nativeHorizon scheduler
+    (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players)
       (some control)).support
-  rw [← finish_law players control trace fuel enough, FinDist.support_map]
+  rw [← finish_law players control trace fuel enough, PMF.support_map]
   exact ⟨final, supported, rfl⟩
 
 theorem profile_opening_success (who : Player) (control : app.Control)
@@ -197,8 +197,8 @@ theorem future_opening (players : Profile model.behavioralSignature) (first last
 
 def Opens (players : Profile model.behavioralSignature) (who : Player) : Prop :=
   ∀ past view, view.application.publicView.serviceGrant = some (nativePublicationEvent who) →
-    menu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon scheduler players who past view =
-      FinDist.pure (nativeOpeningResponse (observation := leaks) who view)
+    menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players who past view =
+      PMF.pure (nativeOpeningResponse (observation := leaks) who view)
 
 theorem profile_Opens (who : Player) : Opens profile who := profile_opens who
 
@@ -220,12 +220,12 @@ theorem future_opening_success (players : Profile model.behavioralSignature)
   have short : openingSteps first last ≤ 2 * nativeHorizon + 1 := by
     fin_cases first <;> fin_cases last <;> decide
   rw [← Nat.add_sub_of_le short, model.runBehavioralFrom_add] at supported
-  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨atOpening, stateEq, ownerActive, ownerGrant⟩ :=
     future_opening players first last ordered control trace active granted later laterMem
   obtain ⟨preservedControl, preservedEq, preserved⟩ :=
     (binding_invariant last (.success bit)).behavioral_continuation menu
-      (FinDist.pure nativeInitial) nativeHorizon scheduler players (openingSteps first last)
+      (PMF.pure nativeInitial) nativeHorizon scheduler players (openingSteps first last)
         control trace later stored laterMem
   have same : preservedControl = atOpening := Option.some.inj (preservedEq.symm.trans stateEq)
   subst preservedControl

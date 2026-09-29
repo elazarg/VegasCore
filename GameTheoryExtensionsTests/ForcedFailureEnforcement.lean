@@ -41,13 +41,13 @@ theorem exclusion_without_source_actions_insufficient :
           (((model false).runSingleMoverBehavioralFrom (single false) source.strategy 3
             (arena false).initHistory).map History.state).map retained := by
   refine ⟨source_no_alice_site,
-    sourceAssessment (sourceProfile (FinDist.uniformOfFintype (α := Bool))),
+    sourceAssessment (sourceProfile (PMF.uniformOfFintype (α := Bool))),
     source_sequential_equilibrium _, ?_⟩
   rintro ⟨target, equilibrium, matching⟩
   apply no_unpenalized_fair_law
   refine ⟨target, equilibrium, ?_⟩
   change _ = (((model false).runSingleMoverBehavioralFrom (single false)
-    (sourceProfile (FinDist.uniformOfFintype (α := Bool))) 3
+    (sourceProfile (PMF.uniformOfFintype (α := Bool))) 3
       (arena false).initHistory).map History.state).map retained at matching
   rwa [source_initialized_law, source_profile_guess] at matching
 
@@ -55,14 +55,14 @@ theorem exclusion_without_source_actions_insufficient :
 detection followed by abort makes the deviation strictly better. This is a
 continuation-payoff test, not a claim about every game's failure convention. -/
 theorem abort_avoids_obligation :
-    (-1 : ℝ) < (Enforcement.caughtContinuation (FinDist.pure true) 0 1).expect id :=
+    (-1 : ℝ) < expect (Enforcement.caughtContinuation (PMF.pure true) 0 1) id :=
   Enforcement.certain_failure_can_reward 0 (-1) (by norm_num) 1
 
 /-- The guessing pilot's four-unit failed-opening loss would suffice at
 half-probability detection, if a service actually enforces this caught payoff.
 This is the continuation calculation, not an implementation of forced failure. -/
 theorem failed_opening_loss_suffices :
-    (Enforcement.caughtContinuation (FinDist.uniformOfFintype (α := Bool)) (-4) 1).expect id ≤
+    expect (Enforcement.caughtContinuation (PMF.uniformOfFintype (α := Bool)) (-4) 1) id ≤
       (0 : ℝ) := by
   rw [Enforcement.caught_continuation_value, FinDist.prob_uniformOfFintype]
   norm_num

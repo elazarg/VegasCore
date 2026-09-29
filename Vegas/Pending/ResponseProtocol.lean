@@ -60,19 +60,19 @@ def responseCount (runtime : EventGraphRuntime graph) : NativeProtocolState runt
   | _ => 0
 
 def responseTransition (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (state : NativeProtocolState runtime) (joint : Player → Option (List (PlayerAction graph))) :
-    FinDist (NativeProtocolState runtime) :=
+    PMF (NativeProtocolState runtime) :=
   match state with
   | some ⟨epochs, .player who :: rest, execution⟩ =>
-      FinDist.pure (some ⟨epochs,
+      PMF.pure (some ⟨epochs,
         (.player who :: rest).drop (responseLength who (.player who :: rest)),
         runtime.takeActions who execution ((joint who).getD [])⟩)
   | _ => runtime.nativeTransition inputs roster reactionRounds wire order state (fun _ => none)
 
 def responseProtocol (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ExecutionProtocol Player where
   State := NativeProtocolState runtime
@@ -90,7 +90,7 @@ def responseProtocol (runtime : EventGraphRuntime graph)
     by_cases acts : runtime.nativeActor state = some who <;> simp [acts]
 
 theorem response_singleMover (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (state : NativeProtocolState runtime) {first second : Player}
     (firstActs : (runtime.responseProtocol inputs roster reactionRounds wire order).active
@@ -99,7 +99,7 @@ theorem response_singleMover (runtime : EventGraphRuntime graph)
       state second) : first = second := Option.some.inj (firstActs.symm.trans secondActs)
 
 def responseSignals (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     InfoSignals (runtime.responseProtocol inputs roster reactionRounds wire order) where
   PublicSignal := Unit
@@ -113,7 +113,7 @@ def responseSignals (runtime : EventGraphRuntime graph)
   pushInfo _ _ _ view _ := view
 
 theorem response_info (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) (who : Player) :
     ∀ {state}
       (trace : (runtime.responseProtocol inputs roster reactionRounds wire order).Trace state),
@@ -125,7 +125,7 @@ theorem response_info (runtime : EventGraphRuntime graph)
 /-- The response budget must be computable from the original native input at
 every legal response entry, including off-path histories. -/
 def ResponseBudgetAdequate (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (budget : Player → NativeInput graph → Nat) : Prop :=
   ∀ (history : (runtime.responseProtocol inputs roster reactionRounds wire order).History)
@@ -134,7 +134,7 @@ def ResponseBudgetAdequate (runtime : EventGraphRuntime graph)
       budget who input = runtime.responseCount history.state
 
 def responseInformation (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (budget : Player → NativeInput graph → Nat)
     (adequate : runtime.ResponseBudgetAdequate inputs roster reactionRounds wire order budget) :
@@ -155,7 +155,7 @@ def responseInformation (runtime : EventGraphRuntime graph)
         cases choice <;> simp_all [LegalOption, responseProtocol]
 
 theorem responseRemaining_step (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (before after : NativeProtocolState runtime)
     (joint : Player → Option (List (PlayerAction graph)))
@@ -179,7 +179,7 @@ theorem responseRemaining_step (runtime : EventGraphRuntime graph)
       | cons instruction rest =>
           cases instruction with
           | player who =>
-              cases FinDist.mem_support_pure.mp reached
+              cases (PMF.mem_support_pure_iff _ _).mp reached
               have bound := responseLength_le who (ServiceInstruction.player who :: rest)
               simp only [responseLength, ↓reduceIte, List.length_cons] at bound
               simp only [nativeRemaining, List.length_drop, List.length_cons,
@@ -191,7 +191,7 @@ theorem responseRemaining_step (runtime : EventGraphRuntime graph)
               omega
 
 theorem response_terminates (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     (runtime.responseProtocol inputs roster reactionRounds wire order).WellFoundedPlay := by
   apply wellFoundedPlay_of_rank (runtime.nativeRemaining roster reactionRounds)
@@ -201,7 +201,7 @@ theorem response_terminates (runtime : EventGraphRuntime graph)
     before after joint legal.1 reached
 
 theorem response_history_bound (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     ∀ {state}
       (trace : (runtime.responseProtocol inputs roster reactionRounds wire order).Trace state),
@@ -217,7 +217,7 @@ theorem response_history_bound (runtime : EventGraphRuntime graph)
       omega
 
 theorem response_bounded (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     (runtime.responseProtocol inputs roster reactionRounds wire order).BoundedHorizon
       (runtime.nativeRemaining roster reactionRounds none) := by

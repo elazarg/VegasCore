@@ -131,9 +131,9 @@ abbrev BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Fins
   | _, _, .sample _ _ _ k => BehavioralPolicy who k
   | Γ, _, .commit (payload := payload) _ owner _ _ k =>
       ((owner = who) → DecisionView who Γ →
-        FinDist (PublicationResult (L.Val payload))) × BehavioralPolicy who k
+        PMF (PublicationResult (L.Val payload))) × BehavioralPolicy who k
   | Γ, _, .reveal _ owner _ _ _ _ k =>
-      ((owner = who) → DecisionView who Γ → FinDist Bool) ×
+      ((owner = who) → DecisionView who Γ → PMF Bool) ×
         BehavioralPolicy who k
 
 /-- One policy per player. A profile here is a plain function, so a deviation
@@ -168,9 +168,9 @@ def PurePolicy.toBehavioral {who : Player} : {Γ : SourceCtx Player L} → {O : 
   | _, _, .ret _, _ => PUnit.unit
   | _, _, .sample _ _ _ k, policy => toBehavioral k policy
   | _, _, .commit _ _ _ _ k, policy =>
-      (fun own view => FinDist.pure (policy.1 own view), toBehavioral k policy.2)
+      (fun own view => PMF.pure (policy.1 own view), toBehavioral k policy.2)
   | _, _, .reveal _ _ _ _ _ _ k, policy =>
-      (fun own view => FinDist.pure (policy.1 own view), toBehavioral k policy.2)
+      (fun own view => PMF.pure (policy.1 own view), toBehavioral k policy.2)
 
 /-- Failure actions make the policy space inhabited without any payload or
 guard satisfiability assumption. -/
@@ -179,9 +179,9 @@ def failurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .ret _ => PUnit.unit
   | _, _, .sample _ _ _ k => failurePolicy who k
   | _, _, .commit _ _ _ _ k =>
-      (fun _ _ => FinDist.pure .failure, failurePolicy who k)
+      (fun _ _ => PMF.pure .failure, failurePolicy who k)
   | _, _, .reveal _ _ _ _ _ _ k =>
-      (fun _ _ => FinDist.pure false, failurePolicy who k)
+      (fun _ _ => PMF.pure false, failurePolicy who k)
 
 def failureProfile (p : SourceProgram Player L Γ O) : BehavioralProfile p :=
   fun who => failurePolicy who p
@@ -212,7 +212,7 @@ def commitKernel {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {ow
     {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst} {g : SourceGuard L Γ owner name payload}
     {k : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
     (p : BehavioralProfile (SourceProgram.commit name owner fresh g k)) :
-    DecisionView owner Γ → FinDist (PublicationResult (L.Val payload)) :=
+    DecisionView owner Γ → PMF (PublicationResult (L.Val payload)) :=
   (p owner).1 rfl
 
 def revealKernel {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
@@ -220,7 +220,7 @@ def revealKernel {Γ : SourceCtx Player L} {O : Finset VarId} {published name : 
     {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (p : BehavioralProfile (SourceProgram.reveal published owner name fresh source unresolved k)) :
-    DecisionView owner Γ → FinDist Bool :=
+    DecisionView owner Γ → PMF Bool :=
   (p owner).1 rfl
 
 @[reducible] def terminalCtx : {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -340,8 +340,8 @@ end Registry
 
 def runWith : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (p : SourceProgram Player L Γ O) → BehavioralProfile p → State L Γ →
-    Registry Γ → Revelations Γ → History Player L → FinDist (State L (terminalCtx p))
-  | _, _, .ret _, _, s, _, _, _ => FinDist.pure s
+    Registry Γ → Revelations Γ → History Player L → PMF (State L (terminalCtx p))
+  | _, _, .ret _, _, s, _, _, _ => PMF.pure s
   | _, _, .sample _ _ d k, profile, s, r, revelations, history =>
       (L.evalDist d (sourcePublicEnv s)).bind fun a =>
         runWith k (afterSample profile) (Env.cons a s) r.weaken revelations.weaken history
@@ -389,7 +389,7 @@ structure Config (Player : Type) (L : IExpr) (Γ : SourceCtx Player L) where
 /-- Run a program from a configuration. -/
 def runFrom {Γ : SourceCtx Player L} {O : Finset VarId} (p : SourceProgram Player L Γ O)
     (profile : BehavioralProfile p) (config : Config Player L Γ) :
-    FinDist (State L (terminalCtx p)) :=
+    PMF (State L (terminalCtx p)) :=
   runWith p profile config.state config.registry config.revelations config.history
 
 /-- What a player sees at a configuration. -/

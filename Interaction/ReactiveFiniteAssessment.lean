@@ -20,7 +20,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 instance finite_choice (who : Principal) (info : app.Info) :
     Finite ((menu.information initial horizon scheduler).Choice who info) := by
@@ -43,7 +43,7 @@ instance nonempty_choice (who : Principal) (info : app.Info) :
 def uniformPolicy (who : Principal) :
     (menu.information initial horizon scheduler).BehavioralPolicy who := fun info => by
   let := Fintype.ofFinite ((menu.information initial horizon scheduler).Choice who info)
-  exact FinDist.uniformOfFintype
+  exact PMF.uniformOfFintype
 
 def uniformAssessment : (menu.information initial horizon scheduler).BehavioralAssessment :=
   InformationModel.BehavioralAssessment.ofStrategy (menu.uniformPolicy initial horizon scheduler)
@@ -51,7 +51,7 @@ def uniformAssessment : (menu.information initial horizon scheduler).BehavioralA
 theorem uniform_fullyMixed : (menu.uniformAssessment initial horizon scheduler).IsFullyMixed := by
   intro who site choice
   let := Fintype.ofFinite ((menu.information initial horizon scheduler).Choice who site.1)
-  exact FinDist.mem_support_uniformOfFintype choice
+  exact PMF.mem_support_uniformOfFintype choice
 
 instance finite_history [Finite Principal] :
     Finite (menu.protocol initial horizon scheduler).History :=
@@ -117,7 +117,7 @@ theorem perturbedAssessment_strategy_converges
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (weight : Nat → ℝ) (positive : ∀ n, 0 < weight n) (atMostOne : ∀ n, weight n ≤ 1)
     (vanishes : Filter.Tendsto weight Filter.atTop (nhds 0)) (who : Principal) (info : app.Info) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => (menu.perturbedAssessment initial horizon scheduler profile (weight n)
         (positive n) (atMostOne n)).strategy who info) (profile who info) :=
   (menu.uniformAssessment initial horizon scheduler).perturb_strategy_converges profile weight

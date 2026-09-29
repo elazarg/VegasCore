@@ -45,7 +45,7 @@ end ServiceOrder
 projection, and environment history. They cannot inspect hidden meanings. -/
 abbrev ServiceOrderPolicy (runtime : EventGraphRuntime graph) :=
   List runtime.application.EnvironmentEntry → runtime.application.EnvironmentObservation →
-    FinDist (ServiceOrder graph)
+    PMF (ServiceOrder graph)
 
 /-- A service instruction reserves an opportunity, never a player command. -/
 inductive ServiceInstruction (graph : Vegas.EventGraph Player L) where
@@ -85,7 +85,7 @@ def serviceStep (runtime : EventGraphRuntime graph)
     (wire : runtime.application.WirePolicy)
     (instruction : ServiceInstruction graph)
     (execution : runtime.application.PolicyExecution) :
-    FinDist runtime.application.PolicyExecution :=
+    PMF runtime.application.PolicyExecution :=
   match instruction with
   | .player who => runtime.application.invoke players
       (runtime.application.wireEnvironment wire) execution (.player who)
@@ -108,8 +108,8 @@ def runServicePlan (runtime : EventGraphRuntime graph)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) :
     List (ServiceInstruction graph) → runtime.application.PolicyExecution →
-      FinDist runtime.application.PolicyExecution
-  | [], execution => FinDist.pure execution
+      PMF runtime.application.PolicyExecution
+  | [], execution => PMF.pure execution
   | instruction :: rest, execution =>
       (runtime.serviceStep players wire instruction execution).bind
         (runtime.runServicePlan players wire rest)
@@ -125,10 +125,10 @@ theorem runServicePlan_append (runtime : EventGraphRuntime graph)
       (runtime.runServicePlan players wire first execution).bind
         (runtime.runServicePlan players wire second) := by
   induction first generalizing execution with
-  | nil => simp only [List.nil_append, runServicePlan, FinDist.pure_bind]
+  | nil => simp only [List.nil_append, runServicePlan, PMF.pure_bind]
   | cons instruction rest ih =>
-      simp only [List.cons_append, runServicePlan, FinDist.bind_bind]
-      exact FinDist.bind_congr fun next _ => ih next
+      simp only [List.cons_append, runServicePlan, PMF.bind_bind]
+      exact bind_congr_on_support _ fun next _ => ih next
 
 /-- Three uninterrupted owner calls accommodate private sampling, private
 staging, and submission. Every subsequent wire slot permits roster reactions. -/
@@ -175,7 +175,7 @@ def serviceEpoch (runtime : EventGraphRuntime graph)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (execution : runtime.application.PolicyExecution) :
-    FinDist runtime.application.PolicyExecution :=
+    PMF runtime.application.PolicyExecution :=
   (order execution.environmentHistory
     (MessageApplication.State.environmentView runtime.application execution.native)).bind
       fun chosen => runtime.runServicePlan players wire
@@ -187,8 +187,8 @@ def runService (runtime : EventGraphRuntime graph)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
-    Nat → runtime.application.PolicyExecution → FinDist runtime.application.PolicyExecution
-  | 0, execution => FinDist.pure execution
+    Nat → runtime.application.PolicyExecution → PMF runtime.application.PolicyExecution
+  | 0, execution => PMF.pure execution
   | count + 1, execution =>
       (runtime.serviceEpoch roster reactionRounds players wire order execution).bind
         (runtime.runService roster reactionRounds players wire order count)
@@ -208,7 +208,7 @@ def serviceEpochs (runtime : EventGraphRuntime graph) : Nat :=
 
 /-- The concrete native game, including public adaptive service ordering. -/
 def servicedEventGame (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
     GameForm Player where
   sig := MessageApplication.policySignature Player runtime.application

@@ -51,7 +51,7 @@ theorem included_application (execution : app.Execution) (id : MessageId Player)
   have shape := Prefix.environmentResult_eq execution (.include id)
     { execution.includePending app id with environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .include id⟩] } (by
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure])
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map])
   rw [shape]
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
 

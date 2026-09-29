@@ -36,7 +36,7 @@ def initial (bit : Bool) : State simpleExpr context := Env.cons bit (Env.empty _
 def setup : Setup (Player := Bool) (L := simpleExpr) where
   context := context
   namesNodup := by decide
-  initialLaw := (FinDist.uniformOfFintype (α := Bool)).map initial
+  initialLaw := (PMF.uniformOfFintype (α := Bool)).map initial
   obligations := ∅
   program := program
   accounts := rfl
@@ -55,11 +55,11 @@ private theorem setup_legal : game.Legal game.init (fun _ => none) :=
 def drawHistory (bit : Bool) : game.History :=
   ⟨afterSetup bit, .extend .start (fun _ => none) setup_legal (by
     change afterSetup bit ∈ (setup.initialLaw.map _).support
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     refine ⟨initial bit, ?_, rfl⟩
-    rw [show setup.initialLaw = (FinDist.uniformOfFintype (α := Bool)).map initial from rfl,
-      FinDist.support_map]
-    exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)⟩
+    rw [show setup.initialLaw = (PMF.uniformOfFintype (α := Bool)).map initial from rfl,
+      PMF.support_map]
+    exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)⟩
 
 theorem bob_cannot_tell (first second : Bool) :
     model.infoOf true (drawHistory first).trace = model.infoOf true (drawHistory second).trace := by
@@ -110,10 +110,10 @@ example (policy : model.BehavioralPolicy true) :
 source profile; it does not draw a fresh type from the prior. -/
 example (profile : BehavioralProfile program) (bit : Bool) :
     (setup.continuationLaw profile (drawHistory bit).state).map
-      (fun state => state.get (.there (.there .here))) = FinDist.pure bit := by
+      (fun state => state.get (.there (.there .here))) = PMF.pure bit := by
   simp [Setup.continuationLaw, drawHistory, afterSetup, setup, ProtocolState.continuationLaw,
     ProtocolState.entry, program, runFrom, runWith, Setup.initialConfig, initial,
-    FinDist.map_bind, Env.get, Env.cons]
+    PMF.map_bind, Env.get, Env.cons]
 
 example : model.IsSubgameRoot game.initHistory := model.initHistory_isSubgameRoot
 

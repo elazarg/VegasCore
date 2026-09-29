@@ -53,7 +53,7 @@ theorem watcher_choice_subsingleton (info : (application setup leaks).Info) :
   | some data =>
       obtain ⟨past, view⟩ := data
       have deterministic : ∃ response,
-          (application setup leaks).reportFirstUnpublished past view = FinDist.pure response := by
+          (application setup leaks).reportFirstUnpublished past view = PMF.pure response := by
         unfold ReactiveApplication.reportFirstUnpublished
         split <;> exact ⟨_, rfl⟩
       obtain ⟨response, chosen⟩ := deterministic
@@ -61,10 +61,10 @@ theorem watcher_choice_subsingleton (info : (application setup leaks).Info) :
       obtain ⟨right, rightMember, rightEq⟩ := second.2
       have leftChoice : left = response := by
         simpa only [menu, ↓reduceIte, chosen, FinDist.mem_supportFinset,
-          FinDist.mem_support_pure, Set.mem_singleton_iff] using leftMember
+          PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using leftMember
       have rightChoice : right = response := by
         simpa only [menu, ↓reduceIte, chosen, FinDist.mem_supportFinset,
-          FinDist.mem_support_pure, Set.mem_singleton_iff] using rightMember
+          PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using rightMember
       exact leftEq.trans ((congrArg some (leftChoice.trans rightChoice.symm)).trans rightEq.symm)
 
 include reveals observer openable in
@@ -82,7 +82,7 @@ theorem source_sequential_equilibrium_preserved
     let model := information setup leaks extended watcher
     let responses := menu setup leaks extended watcher
     let antichain := (responses.decisionRecall (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher)).antichain
+      (scheduler setup leaks watcher)).decisionInformationAntichain
     ∃ target : model.BehavioralAssessment,
       target.strategy = compiledProfile setup leaks extended watcher
         (setup.decodeBehavioralProfile admission source.strategy) 0 le_rfl (by norm_num) ∧
@@ -130,8 +130,8 @@ theorem source_sequential_equilibrium_preserved
       let _ := watcher_choice_subsingleton setup leaks extended watcher site.1
       obtain ⟨choice, _supported⟩ := law.support_nonempty
       have same : law = target.strategy watcher site.1 :=
-        (FinDist.eq_pure_of_subsingleton law choice).trans
-          (FinDist.eq_pure_of_subsingleton _ choice).symm
+        (eq_pure_of_subsingleton law choice).trans
+          (eq_pure_of_subsingleton _ choice).symm
       rw [same, InformationModel.BehavioralPolicy.withLaw_eq_self]
     · obtain ⟨history, _running, _action⟩ := site.2
       have active := InformationModel.InformationSite.active model site history

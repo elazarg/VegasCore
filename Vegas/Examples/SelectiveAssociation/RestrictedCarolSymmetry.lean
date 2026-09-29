@@ -23,11 +23,11 @@ def publicProjection (view : app.LocalObservation) : app.PublicObservation := vi
 theorem responded_audit (control : app.Control) (trace : arena.Trace (some control))
     (who : Player) (active : control.actor = some who) (action : app.Action) :
     (control.execution.respond app who action).SubmissionAudit app publicProjection := by
-  let raw := menu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon scheduler trace
+  let raw := menu.toRawTrace (PMF.pure nativeInitial) nativeHorizon scheduler trace
   have audit := app.submissionAudit_history publicProjection (by intros; rfl)
-    (FinDist.pure nativeInitial) nativeHorizon scheduler raw
+    (PMF.pure nativeInitial) nativeHorizon scheduler raw
   exact app.submissionAudit_respond publicProjection (by intros; rfl) control.execution who action
-    audit.1 (app.submissionOrigin_next_none_history (FinDist.pure nativeInitial) nativeHorizon
+    audit.1 (app.submissionOrigin_next_none_history (PMF.pure nativeInitial) nativeHorizon
       scheduler control raw who) (audit.2 who active)
 
 theorem latest_lookup_addressed (execution : app.Execution)
@@ -78,7 +78,7 @@ theorem environment_accepted (execution : app.Execution)
   have reached : (Prefix.environmentResult execution (.application command)).application ∈
       (app.environment execution.application command).support :=
     (Prefix.environmentResult_application_law execution command).symm ▸
-      FinDist.mem_support_pure.mpr rfl
+      (PMF.mem_support_pure_iff _ _).mpr rfl
   exact (environmentStep_tables nativeRuntime execution.application _ command reached).1
 
 theorem inclusion_accepted_of_present (execution : app.Execution) (event : nativeGraph.EventId)
@@ -93,18 +93,18 @@ theorem inclusion_accepted_of_present (execution : app.Execution) (event : nativ
           (nativeRuntime.reactiveLatest leaks event who
             (execution.observeEnvironment app))).support := by
     rw [Prefix.environmentResult_law]
-    exact FinDist.mem_support_pure.mpr rfl
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
   cases command : nativeRuntime.reactiveLatest leaks event who (execution.observeEnvironment app)
       with
   | wait =>
       rw [command] at reached
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.mem_support_pure] at reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at reached
       rw [reached]
   | «include» id =>
       rw [command] at reached
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
-        FinDist.mem_support_pure] at reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff _ _] at reached
       rw [reached]
       change (execution.includePending app id).application.accepted field = _
       unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending

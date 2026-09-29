@@ -102,7 +102,7 @@ theorem no_grant_no_transmission (runtime : EventGraphRuntime graph)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (noGrant : view.application.publicView.serviceGrant = none) :
     runtime.prescribedReactiveResponse leaks who policy history intentions view =
-      FinDist.pure (⟨none⟩, none) := by
+      PMF.pure (⟨none⟩, none) := by
   simp [prescribedReactiveResponse, noGrant]
 
 end Vegas.EventGraphRuntime

@@ -53,8 +53,8 @@ theorem Setup.reveal_choice_fullSupport
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed) (who : Player)
     (site : (setup.informationModel admission).InformationSite who) :
-    ((assessment.strategy who site.1).map fun choice =>
-      OwnAction.disclosure choice.1).FullSupport := by
+    FullSupport ((assessment.strategy who site.1).map fun choice =>
+      OwnAction.disclosure choice.1) := by
   intro disclose
   obtain ⟨history, _running, _action⟩ := site.2
   have active := InformationModel.InformationSite.active _ site history
@@ -73,7 +73,7 @@ theorem Setup.reveal_choice_fullSupport
       have permitted : choice ∈ (setup.informationModel admission).menu who site.1 := by
         rw [← observed, state]
         exact legal
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨⟨choice, permitted⟩, mixed who site ⟨choice, permitted⟩, decoded⟩
 
 end Vegas.SourceProgram
@@ -151,7 +151,7 @@ theorem owner_choice_data
     simpa only [nativeState, prefixReadout, ownerOpportunity] using read
   rw [sameRead]
   have choiceLaw := data.1
-  rw [← sourceLaw, FinDist.map_comp] at choiceLaw
+  rw [← sourceLaw, PMF.map_comp] at choiceLaw
   exact choiceLaw
 
 /-- Positive alias trembles make the compiled policy fully mixed at every
@@ -177,7 +177,7 @@ theorem compiledProfile_fullyMixed
   let decoded := setup.decodeBehavioralProfile admission source.strategy
   suffices choice.1 ∈ ((compiledProfile setup leaks extended watcher decoded weight nonnegative
       small who site.1).map Subtype.val).support by
-    obtain ⟨other, supported, same⟩ := FinDist.support_map .. ▸ this
+    obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
     exact (Subtype.ext same) ▸ supported
   obtain ⟨history, running, action⟩ := site.2
   have active := InformationModel.InformationSite.active _ site history
@@ -185,13 +185,13 @@ theorem compiledProfile_fullyMixed
   cases info with
   | none =>
       simp only [compiledProfile, ReactiveApplication.ResponseMenu.restrictPolicy,
-        FinDist.map_pure, FinDist.mem_support_pure]
+        PMF.pure_map, PMF.mem_support_pure_iff _ _]
       exact choice.2
   | some input =>
       rcases input with ⟨past, view⟩
       rw [compiledProfile_map_val]
       obtain ⟨response, member, value⟩ := choice.2
-      rw [value, FinDist.support_map]
+      rw [value, PMF.support_map]
       refine ⟨response, ?_, rfl⟩
       by_cases watches : who = watcher
       · change response ∈ (if who = watcher then _ else _ ) at member
@@ -228,13 +228,13 @@ theorem compiledProfile_converges
     (sequence : Nat → Profile (setup.informationModel admission).behavioralSignature)
     (source : Profile (setup.informationModel admission).behavioralSignature)
     (converges : ∀ who (site : (setup.informationModel admission).InformationSite who),
-      FinDistConvergesPointwise (fun n => sequence n who site.1) (source who site.1))
+      PMFConvergesPointwise (fun n => sequence n who site.1) (source who site.1))
     (weight : Nat → ℝ) (nonnegative : ∀ n, 0 ≤ weight n) (small : ∀ n, weight n ≤ 1)
     (vanishes : Filter.Tendsto weight Filter.atTop (nhds 0))
     (who : Player)
     (site : (information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).InformationSite who) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => compiledProfile setup leaks (bounds.withInitialValues (initialLaw setup))
         watcher (setup.decodeBehavioralProfile admission (sequence n)) (weight n)
           (nonnegative n) (small n) who site.1)

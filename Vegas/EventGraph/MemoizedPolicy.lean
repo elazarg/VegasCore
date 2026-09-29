@@ -42,9 +42,9 @@ theorem canonicalContinuation_congr_on_unfinished
         split
         · rename_i who actor
           rw [agree event ready.1 who actor (graph.playerObserve who config)]
-          apply FinDist.bind_congr
+          apply bind_congr_on_support _
           intro next member
-          simp only [FinDist.support_bind, Set.mem_iUnion] at member
+          simp only [PMF.support_bind, Set.mem_iUnion] at member
           obtain ⟨action, _, member⟩ := member
           apply ih next.remaining
           · have decreased := config.remaining_step event ready action next member
@@ -57,7 +57,7 @@ theorem canonicalContinuation_congr_on_unfinished
             exact config.cut.completed_subset_complete event ready completed
           · rfl
         · rename_i ownerless
-          apply FinDist.bind_congr
+          apply bind_congr_on_support _
           intro next member
           apply ih next.remaining
           · have decreased := config.remaining_step event ready
@@ -79,7 +79,7 @@ def memoizedProfile (profile : graph.BehavioralProfile)
     graph.BehavioralProfile :=
   fun who event actor observation =>
     match remembered event with
-    | some action => FinDist.pure action
+    | some action => PMF.pure action
     | none => graph.normalizePolicy who (profile who) event actor observation
 
 omit [DecidableEq Player] in
@@ -160,13 +160,13 @@ theorem BarrierOrdered.canonicalContinuation_remember
     subst actual
     rw [normalizePolicy_memoizedProfile]
     simp only [memoizedProfile, empty]
-    rw [FinDist.bind_bind]
-    apply FinDist.bind_congr
+    rw [PMF.bind_bind]
+    apply bind_congr_on_support _
     intro action _
     rw [ordered.canonicalContinuation_memoized_step profile
       (Function.update remembered event (some action)) config event ready who actor action
       (by simp)]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro next member
     apply graph.canonicalContinuation_memoized_congr_on_unfinished profile
     intro query unfinished

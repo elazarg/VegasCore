@@ -27,7 +27,7 @@ theorem watcher_raw_equilibrium_extends
     (utilityInvariant : ∀ state, utility (normalization.state state) = utility state)
     (indifferent : ∀ state, utility state watcher = 0)
     (source : watchedModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor watched_decisionRecall.antichain
+    (equilibrium : source.IsSequentialEquilibriumFor watched_decisionRecall.decisionInformationAntichain
       (fun who site => source.continuationContext site
         (fun history => utility history.state who)
         (2 * nativeHorizon + 1 - watchedDepth who site))) :
@@ -44,7 +44,7 @@ theorem watcher_raw_equilibrium_extends
   obtain ⟨effective, effectiveSE, _, _, executionLaw, _, _⟩ :=
     watcher_equilibrium_extends utility indifferent source equilibrium
   have fullSE := (effective.sequentialEquilibrium_remaining_iff effectiveModel
-    effective_decisionRecall.antichain (2 * nativeHorizon + 1)
+    effective_decisionRecall.decisionInformationAntichain (2 * nativeHorizon + 1)
     (effectiveMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler)
     effectiveDepth effective_common_depth (fun who history => utility history.state who)).mp
       effectiveSE
@@ -54,11 +54,11 @@ theorem watcher_raw_equilibrium_extends
         (fun who state => utility state who) fullSE
   refine ⟨raw, ?_, ?_⟩
   · simpa only [utilityInvariant] using rawSE
-  · have observationLaw := congrArg (FinDist.map (fun state => (observe state, utility state)))
+  · have observationLaw := congrArg (PMF.map (fun state => (observe state, utility state)))
       projected
-    simp only [FinDist.map_comp, Function.comp_def, observationInvariant, utilityInvariant]
+    simp only [PMF.map_comp, Function.comp_def, observationInvariant, utilityInvariant]
       at observationLaw
-    rw [observationLaw, ← executionLaw, FinDist.map_comp]
+    rw [observationLaw, ← executionLaw, PMF.map_comp]
     rfl
 
 end Vegas.Examples.MonitoredGuessing.Restricted

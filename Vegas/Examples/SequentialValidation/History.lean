@@ -18,17 +18,17 @@ def nativeSetupTrace (bit : Bool) :
     (by
       change (some ⟨56, none, nativeInitialExecution bit⟩ : nativeApp.ProtocolState) ∈
         (nativeInitialLaw.map _).support
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       refine ⟨nativeStart bit, ?_, rfl⟩
-      rw [nativeInitialLaw, FinDist.support_map]
-      exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)
+      rw [nativeInitialLaw, PMF.support_map]
+      exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
 
 def nativeEnvironmentTrace (remaining : Nat) (execution next : nativeApp.Execution)
     (trace : nativeArena.Trace (some ⟨remaining + 1, none, execution⟩))
     (command : nativeApp.Command)
     (scheduled : nativeScheduler execution.environmentRecall
-      (execution.observeEnvironment nativeApp) = FinDist.pure command)
-    (law : execution.environmentStep nativeApp command = FinDist.pure next) :
+      (execution.observeEnvironment nativeApp) = PMF.pure command)
+    (law : execution.environmentStep nativeApp command = PMF.pure next) :
     nativeArena.Trace (some ⟨remaining, command.actor? nativeApp, next⟩) :=
   .extend trace (fun _ => none)
     ⟨by change ¬ (remaining + 1 = 0 ∧ _); omega,
@@ -36,9 +36,9 @@ def nativeEnvironmentTrace (remaining : Nat) (execution next : nativeApp.Executi
     (by
       change _ ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
         (some ⟨remaining + 1, none, execution⟩) (fun _ => none)).support
-      simp only [ReactiveApplication.transition, scheduled, FinDist.pure_bind, law,
-        FinDist.map_pure]
-      exact FinDist.mem_support_pure.mpr rfl)
+      simp only [ReactiveApplication.transition, scheduled, PMF.pure_bind, law,
+        PMF.pure_map]
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def nativeResponseTrace (remaining : Nat) (execution : nativeApp.Execution) (who : Bool)
     (trace : nativeArena.Trace (some ⟨remaining, some who, execution⟩))
@@ -57,7 +57,7 @@ def nativeResponseTrace (remaining : Nat) (execution : nativeApp.Execution) (who
           change ¬ some who = some observer
           simpa only [Option.some.injEq] using Ne.symm same⟩
     (by
-      change _ ∈ (FinDist.pure (some (⟨remaining, none,
+      change _ ∈ (PMF.pure (some (⟨remaining, none,
         execution.respond nativeApp who ((if who = who then some action else none).getD
           ⟨none⟩)⟩ : nativeApp.Control))).support
       simp)
@@ -72,7 +72,7 @@ theorem native_select_singleton (execution : nativeApp.Execution)
     (fresh : (execution.observeEnvironment nativeApp).Unpublished nativeApp message.id) :
     nativeApp.uniformInstruction dependencyCondition execution.environmentRecall
       (execution.observeEnvironment nativeApp) (.select (eventProposal event who)) =
-        FinDist.pure (.include message.id) := by
+        PMF.pure (.include message.id) := by
   classical
   have absent : (execution.network.ledger.any fun prior => prior.id = message.id) = false := by
     apply Bool.eq_false_iff.mpr
@@ -81,7 +81,7 @@ theorem native_select_singleton (execution : nativeApp.Execution)
     exact fresh (List.mem_map.mpr ⟨prior, member, of_decide_eq_true same⟩)
   change (MessageNetwork.uniformPending _ execution.network.pending).map _ = _
   rw [pending, MessageNetwork.uniformPending_singleton]
-  · exact FinDist.map_pure _ _
+  · exact PMF.pure_map _ _
   · simp only [ReactiveApplication.authorizedEligibility, addressed, authorized, decide_true,
       ReactiveApplication.Execution.observeEnvironment, MessageNetwork.publicView, absent,
       Bool.not_false, Bool.and_self]

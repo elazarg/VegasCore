@@ -40,7 +40,7 @@ theorem owner_history_local_readout
     {info : (application setup leaks).Info}
     (observed : (information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).infoOf who history.trace = info)
-    (law : FinDist ((information setup leaks (bounds.withInitialValues (initialLaw setup))
+    (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who info))
     (joint : Bool → Player → Option (OwnAction Player L))
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose who) = disclose) :
@@ -62,7 +62,7 @@ theorem owner_history_local_readout
     owner_supported setup leaks extended watcher who reveals observer openable reference
       event owned history supported
   have position : boundary.environmentRecall.length = blockOffset event.val := by
-    rw [FinDist.support_bind] at boundarySupport
+    rw [PMF.support_bind] at boundarySupport
     obtain ⟨nativeInitial, _initialSupport, reached⟩ := Set.mem_iUnion₂.mp boundarySupport
     have count := (runtime setup).runInteractionPlan_recall leaks
       ((menu setup leaks extended watcher).decodeProfile (initialLaw setup)
@@ -82,8 +82,8 @@ theorem owner_history_local_readout
   have read : prefixReadout setup leaks event.val history.state = some source := by
     simpa only [nativeState, prefixReadout, ownerOpportunity] using decoded
   rw [read]
-  simpa only [Setup.protocolStep, FinDist.bind_map, Setup.continuationLaw,
-    FinDist.map_bind] using value
+  simpa only [Setup.protocolStep, PMF.bind_map, Setup.continuationLaw,
+    PMF.map_bind] using value
 
 open Classical in
 theorem owner_context_local_value
@@ -104,7 +104,7 @@ theorem owner_context_local_value
     (clock : InformationModel.InformationSite.CommonDepth
       (information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher) site
         (blockOffset event.val + 2 * event.val + 3))
-    (law : FinDist ((information setup leaks (bounds.withInitialValues (initialLaw setup))
+    (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who site.1))
     (joint : Bool → Player → Option (OwnAction Player L))
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose who) = disclose)
@@ -113,20 +113,20 @@ theorem owner_context_local_value
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
         ((assessment.strategy who).withLaw site.1 law) =
-      ((assessment.belief who site).map
-        (fun current => prefixReadout setup leaks event.val current.1.state)).expect
-          (fun state => law.expect fun choice =>
-            ((setup.protocolStep state
+      expect ((assessment.belief who site).map
+        (fun current => prefixReadout setup leaks event.val current.1.state))
+          (fun state => expect law fun choice =>
+            expect ((setup.protocolStep state
               (joint (sourceChoice setup leaks (choice.1.getD ⟨none⟩)))).bind
-                (setup.continuationLaw profile)).expect utility) := by
+                (setup.continuationLaw profile)) utility) := by
   let extended := bounds.withInitialValues (initialLaw setup)
   let responses := menu setup leaks extended watcher
   let model := information setup leaks extended watcher
   let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, FinDist.expect_map]
-  apply FinDist.expect_congr
+    FinDist.expect_bind, expect_map]
+  apply expect_congr_on_support
   intro history _supported
   have reached : history.1 ∈ (model.runBehavioral reference
       (blockOffset event.val + 2 * event.val + 3)).support := by
@@ -136,9 +136,9 @@ theorem owner_context_local_value
       InformationModel.BehavioralAssessment.ofStrategy] using result
   have equality := owner_history_local_readout setup leaks bounds watcher who reveals observer
     openable profile reference event owned history.1 reached history.2 law joint chosen
-  have value := congrArg (fun distribution => distribution.expect
+  have value := congrArg (fun distribution => expect distribution
     (fun result => result.elim 0 utility)) equality
   rw [strategy]
-  simpa only [FinDist.expect_map, FinDist.expect_bind, Option.elim_some, clock history] using value
+  simpa only [expect_map, FinDist.expect_bind, Option.elim_some, clock history] using value
 
 end Vegas

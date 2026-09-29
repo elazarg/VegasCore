@@ -36,7 +36,7 @@ recall. No continuation rationality or global opponent agreement is assumed. -/
 theorem retainedImplementation_legal_continuation
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (included : menu.IncludedIn (bounds.menu runtime leaks))
-    (initial : FinDist (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (source : ∀ who, (menu.information
       initial horizon scheduler).BehavioralPolicy who)

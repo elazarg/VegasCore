@@ -47,10 +47,10 @@ theorem sourceServiceLastPolicy_waiting_law
   | nil => rfl
   | cons who rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
-      apply FinDist.bind_congr
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro sample _
       let activated := initial.sampledActivation app who sample
       have wait := sourceServiceLastPolicy_wait setup leaks rosters profile who
@@ -70,7 +70,7 @@ theorem sourceServiceLastPolicy_waiting_law
         (activated.recall who) (activated.observe app who)).bind _ =
         (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
       rw [law]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro response supported
       have unchanged : (activated.respond app who response).application = initial.application := by
         rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> rfl
@@ -125,7 +125,7 @@ private theorem include_players_eq
     (runtime setup).interactionStep leaks first network (.includeLatest event owner) execution =
       (runtime setup).interactionStep leaks second network
         (.includeLatest event owner) execution := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind]
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind]
   rcases (runtime setup).reactiveLatest_wait_or_owned leaks event owner
       (execution.observeEnvironment ((runtime setup).reactiveApplication leaks)) with
     waiting | ⟨id, _authored, included⟩
@@ -153,16 +153,16 @@ theorem sourceServiceLastPolicy_foreign_tail
   let app := application setup leaks
   induction visits generalizing initial with
   | nil =>
-      simpa only [List.map_nil, List.nil_append, runInteractionPlan, FinDist.bind_pure] using
+      simpa only [List.map_nil, List.nil_append, runInteractionPlan, PMF.bind_pure] using
         include_players_eq setup leaks _ _ network event owner initial
   | cons who rest ih =>
       have foreign : who ≠ owner := fun same => absent (by simp only [same, List.mem_cons_self])
       have restAbsent : owner ∉ rest := fun member => absent (List.mem_cons_of_mem _ member)
       simp only [List.map_cons, List.cons_append, runInteractionPlan, interactionStep,
-        interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
+        interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
         ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
-      apply FinDist.bind_congr
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro sample _
       let activated := initial.sampledActivation app who sample
       have law := sourceServiceLastPolicy_wait setup leaks rosters profile who
@@ -172,7 +172,7 @@ theorem sourceServiceLastPolicy_foreign_tail
         (activated.recall who) (activated.observe app who)).bind _ =
         (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
       rw [law]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro response supported
       apply ih restAbsent
       rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> exact granted
@@ -191,16 +191,16 @@ theorem replay_window_eventRecorded
   classical
   let app := application setup leaks
   induction visits generalizing initial with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons who rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, supported, reached⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       rw [ih _ reached]
       by_cases same : owner = who
       · subst who

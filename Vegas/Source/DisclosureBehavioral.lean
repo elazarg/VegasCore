@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DisclosureNormalization
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Behavioral realization of normalized disclosure intentions
 
@@ -23,10 +25,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- The original binding and updated original recall, before observing the
 binding emitted by the realized policy. -/
 def bindingMemoryLaw (name : VarId) (payload : L.Ty)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView who Γ → FinDist (PublicationResult (L.Val payload)))
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView who Γ → PMF (PublicationResult (L.Val payload)))
     (view : DecisionView who Γ) :
-    FinDist (PublicationResult (L.Val payload) × List (OwnAction Player L)) :=
+    PMF (PublicationResult (L.Val payload) × List (OwnAction Player L)) :=
   (remember view).bind fun past =>
     (choose (view.1, past)).map fun binding =>
       (binding, past ++ [.commit who name payload binding])
@@ -36,9 +38,9 @@ is emitted by this source policy construction. -/
 def disclosureMemoryLaw {name : VarId} {payload : L.Ty} (published : VarId)
     (selected : HasVar Γ name (.commitment who payload))
     (registry : Registry Γ) (revelations : Revelations Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView who Γ → FinDist Bool) (view : DecisionView who Γ) :
-    FinDist (Bool × List (OwnAction Player L)) :=
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView who Γ → PMF Bool) (view : DecisionView who Γ) :
+    PMF (Bool × List (OwnAction Player L)) :=
   (remember view).bind fun past =>
     (choose (view.1, past)).map fun disclose =>
       (effectiveDisclosureView published selected registry revelations view.1 disclose,
@@ -46,44 +48,44 @@ def disclosureMemoryLaw {name : VarId} {payload : L.Ty} (published : VarId)
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 theorem bindingMemoryLaw_disintegrate {Result : Type} (name : VarId) (payload : L.Ty)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView who Γ → FinDist (PublicationResult (L.Val payload)))
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView who Γ → PMF (PublicationResult (L.Val payload)))
     (view : DecisionView who Γ)
-    (next : PublicationResult (L.Val payload) → List (OwnAction Player L) → FinDist Result) :
+    (next : PublicationResult (L.Val payload) → List (OwnAction Player L) → PMF Result) :
     ((remember view).bind fun past => (choose (view.1, past)).bind fun binding =>
       next binding (past ++ [.commit who name payload binding])) =
       ((bindingMemoryLaw name payload remember choose view).map Prod.fst).bind fun binding =>
-        (((bindingMemoryLaw name payload remember choose view).condOnFibre Prod.fst binding).map
+        ((fiberConditional (bindingMemoryLaw name payload remember choose view) Prod.fst binding).map
           Prod.snd).bind (next binding) := by
-  have disintegration := congrArg (FinDist.bind · (fun pair => next pair.1 pair.2))
+  have disintegration := congrArg (PMF.bind · (fun pair => next pair.1 pair.2))
     (bindingMemoryLaw name payload remember choose view).eq_bind_fst_conditional_snd
-  simpa only [bindingMemoryLaw, FinDist.bind_bind, FinDist.bind_map] using disintegration
+  simpa only [bindingMemoryLaw, PMF.bind_bind, PMF.bind_map] using disintegration
 
 omit [IExpr.ResultTypes L] in
 theorem disclosureMemoryLaw_disintegrate {Result : Type} {name : VarId} {payload : L.Ty}
     (published : VarId) (selected : HasVar Γ name (.commitment who payload))
     (registry : Registry Γ) (revelations : Revelations Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
-    (choose : DecisionView who Γ → FinDist Bool) (view : DecisionView who Γ)
-    (next : Bool → List (OwnAction Player L) → FinDist Result) :
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
+    (choose : DecisionView who Γ → PMF Bool) (view : DecisionView who Γ)
+    (next : Bool → List (OwnAction Player L) → PMF Result) :
     ((remember view).bind fun past => (choose (view.1, past)).bind fun disclose =>
       next (effectiveDisclosureView published selected registry revelations view.1 disclose)
         (past ++ [.reveal who name disclose])) =
       ((disclosureMemoryLaw published selected registry revelations remember choose view).map
         Prod.fst).bind fun disclose =>
-          (((disclosureMemoryLaw published selected registry revelations remember choose
-              view).condOnFibre Prod.fst disclose).map Prod.snd).bind (next disclose) := by
-  have disintegration := congrArg (FinDist.bind · (fun pair => next pair.1 pair.2))
+          ((fiberConditional (disclosureMemoryLaw published selected registry revelations remember choose
+              view) Prod.fst disclose).map Prod.snd).bind (next disclose) := by
+  have disintegration := congrArg (PMF.bind · (fun pair => next pair.1 pair.2))
     (disclosureMemoryLaw published selected registry revelations remember choose
       view).eq_bind_fst_conditional_snd
-  simpa only [disclosureMemoryLaw, FinDist.bind_bind, FinDist.bind_map] using disintegration
+  simpa only [disclosureMemoryLaw, PMF.bind_bind, PMF.bind_map] using disintegration
 
 /-- A behavioral compiler carries only an observation-local conditional law.
 Later policies see their original intentions through that posterior. -/
 def BehavioralPolicy.normalizeDisclosureFrom {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → Registry Γ → Revelations Γ →
-    (DecisionView who Γ → FinDist (List (OwnAction Player L))) →
+    (DecisionView who Γ → PMF (List (OwnAction Player L))) →
     BehavioralPolicy who program → BehavioralPolicy who program
   | _, _, .ret _, _, _, _, _ => PUnit.unit
   | _, _, .sample _ _ _ next, registry, revelations, remember, policy =>
@@ -98,7 +100,7 @@ def BehavioralPolicy.normalizeDisclosureFrom {who : Player} :
           (({ owner := owner, subject := name, payload := payload, source := .here,
               guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
           (fun view => if own : owner = who then
-            ((joint own (view.back true)).condOnFibre Prod.fst
+            (fiberConditional (joint own (view.back true)) Prod.fst
               ((view.1.cells.get .here).getD .failure)).map Prod.snd
           else remember (view.back false)) policy.2)
   | _, _, .reveal published owner _ _ selected _ next,
@@ -110,7 +112,7 @@ def BehavioralPolicy.normalizeDisclosureFrom {who : Player} :
         normalizeDisclosureFrom next registry.weaken
           (revelations.reveal (published := published) selected)
           (fun view => if own : owner = who then
-            ((joint own (view.back true)).condOnFibre Prod.fst
+            (fiberConditional (joint own (view.back true)) Prod.fst
               (OwnAction.disclosure view.2.getLast?)).map Prod.snd
           else remember (view.back false)) policy.2)
 
@@ -120,7 +122,7 @@ theorem BehavioralPolicy.normalizeDisclosureFrom_effective {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) →
     (registry : Registry Γ) → (revelations : Revelations Γ) →
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L))) →
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) →
     (policy : BehavioralPolicy who program) →
     (policy.normalizeDisclosureFrom program registry revelations remember).EffectiveDisclosures
       program registry revelations
@@ -136,17 +138,17 @@ theorem BehavioralPolicy.normalizeDisclosureFrom_effective {who : Player} :
       subst who
       change response ∈ ((disclosureMemoryLaw published selected registry revelations remember
         (policy.1 rfl) view).map Prod.fst).support at supported
-      obtain ⟨pair, produced, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨pair, produced, rfl⟩ := PMF.support_map .. ▸ supported
       obtain ⟨past, _remembered, produced⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ produced)
-      obtain ⟨intended, _chosen, rfl⟩ := FinDist.support_map .. ▸ produced
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ produced)
+      obtain ⟨intended, _chosen, rfl⟩ := PMF.support_map .. ▸ produced
       exact effectiveDisclosure_idempotent published selected _ intended
 
 private def RealizesDisclosure {who : Player} {Γ : SourceCtx Player L}
     {O : Finset VarId} (program : SourceProgram Player L Γ O) : Prop :=
   ∀ (profile : BehavioralProfile program) (policy : BehavioralPolicy who program)
     (registry : Registry Γ) (revelations : Revelations Γ)
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L)))
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
     (state : State L Γ) (history : History Player L),
     ((remember (sourceObserve who state, history who)).bind fun past =>
       runWith program (Function.update profile who policy) state registry revelations
@@ -175,7 +177,7 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
             guard := guard.weaken } : Obligation _) :: registry.weaken)
         revelations.weaken (Function.update history owner past))]
     change ((law.map Prod.fst).bind _) = ((law.map Prod.fst).bind _)
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro binding _
     have observed : (sourceObserve owner (Env.cons (x := name) binding state)).cells.get
         (HasVar.here : HasVar ((name, .commitment owner payload) :: _) name
@@ -185,8 +187,8 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
       (({ owner := owner, subject := name, payload := payload, source := .here,
           guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
       (fun nextView => if own : owner = owner then
-        ((bindingMemoryLaw name payload remember (policy.1 own)
-            (nextView.back true)).condOnFibre Prod.fst
+        (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+            (nextView.back true)) Prod.fst
           ((nextView.1.cells.get .here).getD .failure)).map Prod.snd
       else remember (nextView.back false))
       (Env.cons binding state)
@@ -196,15 +198,15 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
       List.dropLast_concat, observed, Option.getD_some,
       Function.update_idem, law, view] using step
   · simp only [runWith, commitKernel, Function.update_of_ne owned, afterCommit_update]
-    rw [FinDist.bind_comm]
-    apply FinDist.bind_congr
+    rw [PMF.bind_comm]
+    apply bind_congr_on_support _
     intro binding _
     have step := ih (afterCommit profile) policy.2
       (({ owner := owner, subject := name, payload := payload, source := .here,
           guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
       (fun nextView => if own : owner = who then
-        ((bindingMemoryLaw name payload remember (policy.1 own)
-            (nextView.back true)).condOnFibre Prod.fst
+        (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+            (nextView.back true)) Prod.fst
           ((nextView.1.cells.get .here).getD .failure)).map Prod.snd
       else remember (nextView.back false))
       (Env.cons binding state)
@@ -263,13 +265,13 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
     simp only [normalizedResult, view] at disintegration
     erw [disintegration]
     change ((law.map Prod.fst).bind _) = ((law.map Prod.fst).bind _)
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro disclose _
     have step := ih (afterReveal profile) policy.2
       registry.weaken (revelations.reveal (published := published) selected)
       (fun nextView => if own : owner = owner then
-        ((disclosureMemoryLaw published (own ▸ selected) registry revelations remember
-            (policy.1 own) (nextView.back true)).condOnFibre Prod.fst
+        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations remember
+            (policy.1 own) (nextView.back true)) Prod.fst
           (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
       else remember (nextView.back false))
       (Env.cons (result disclose) state)
@@ -280,14 +282,14 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
       Function.update_idem, law, view] using step
   · simp only [runWith_reveal_result, revealKernel, Function.update_of_ne owned,
       afterReveal_update]
-    rw [FinDist.bind_comm]
-    apply FinDist.bind_congr
+    rw [PMF.bind_comm]
+    apply bind_congr_on_support _
     intro disclose _
     have step := ih (afterReveal profile) policy.2
       registry.weaken (revelations.reveal (published := published) selected)
       (fun nextView => if own : owner = who then
-        ((disclosureMemoryLaw published (own ▸ selected) registry revelations remember
-            (policy.1 own) (nextView.back true)).condOnFibre Prod.fst
+        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations remember
+            (policy.1 own) (nextView.back true)) Prod.fst
           (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
       else remember (nextView.back false))
       (Env.cons (disclosureResult published selected
@@ -305,7 +307,7 @@ theorem normalizeDisclosureFrom_realize {who : Player} :
     (program : SourceProgram Player L Γ O) →
     (profile : BehavioralProfile program) → (policy : BehavioralPolicy who program) →
     (registry : Registry Γ) → (revelations : Revelations Γ) →
-    (remember : DecisionView who Γ → FinDist (List (OwnAction Player L))) →
+    (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) →
     (state : State L Γ) → (history : History Player L) →
     ((remember (sourceObserve who state, history who)).bind fun past =>
       runWith program (Function.update profile who policy) state registry revelations
@@ -313,12 +315,12 @@ theorem normalizeDisclosureFrom_realize {who : Player} :
       runWith program (Function.update profile who
         (policy.normalizeDisclosureFrom program registry revelations remember))
         state registry revelations history
-  | _, _, .ret _, _, _, _, _, _, _, _ => by simp only [runWith, FinDist.bind_const]
+  | _, _, .ret _, _, _, _, _, _, _, _ => by simp only [runWith, PMF.bind_const]
   | _, _, .sample name fresh law next, profile, policy, registry, revelations,
       remember, state, history => by
       simp only [runWith, afterSample_update]
-      rw [FinDist.bind_comm]
-      apply FinDist.bind_congr
+      rw [PMF.bind_comm]
+      apply bind_congr_on_support _
       intro value _
       have step := normalizeDisclosureFrom_realize next (afterSample profile) policy
         registry.weaken revelations.weaken (fun view => remember (view.back false))
@@ -342,7 +344,7 @@ def BehavioralPolicy.normalizeDisclosures {who : Player} {Γ : SourceCtx Player 
     {O : Finset VarId} (program : SourceProgram Player L Γ O)
     (registry : Registry Γ) (revelations : Revelations Γ)
     (policy : BehavioralPolicy who program) : BehavioralPolicy who program :=
-  policy.normalizeDisclosureFrom program registry revelations (fun view => FinDist.pure view.2)
+  policy.normalizeDisclosureFrom program registry revelations (fun view => PMF.pure view.2)
 
 /-- Every source behavioral policy has a fixed normalized behavioral policy
 with the same complete typed terminal law against every opponent profile.
@@ -355,10 +357,10 @@ theorem normalizeDisclosures_runFrom {who : Player} {Γ : SourceCtx Player L}
         (policy.normalizeDisclosures program config.registry config.revelations)) config =
       runFrom program (Function.update profile who policy) config := by
   symm
-  simpa only [FinDist.pure_bind, Function.update_eq_self, runFrom,
+  simpa only [PMF.pure_bind, Function.update_eq_self, runFrom,
     BehavioralPolicy.normalizeDisclosures] using
     normalizeDisclosureFrom_realize program profile policy config.registry config.revelations
-      (fun view => FinDist.pure view.2) config.state config.history
+      (fun view => PMF.pure view.2) config.state config.history
 
 /-- Simultaneously realize every player's original private intentions. Each
 coordinate depends on only that player's policy. -/
@@ -410,7 +412,7 @@ state; no independence between different players' initial types is required. -/
 theorem normalizeDisclosureProfile_joint_law [Finite Player] {Γ : SourceCtx Player L}
     {O : Finset VarId} {Parameter : Type}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
-    (registry : Registry Γ) (revelations : Revelations Γ) (belief : FinDist (Config Player L Γ))
+    (registry : Registry Γ) (revelations : Revelations Γ) (belief : PMF (Config Player L Γ))
     (registryEq : ∀ config ∈ belief.support, config.registry = registry)
     (revelationsEq : ∀ config ∈ belief.support, @config.revelations = @revelations)
     (parameter : Config Player L Γ → Parameter) :
@@ -419,10 +421,10 @@ theorem normalizeDisclosureProfile_joint_law [Finite Player] {Γ : SourceCtx Pla
         (fun result => (parameter config, result))) =
       belief.bind fun config => (runFrom program profile config).map
         (fun result => (parameter config, result)) := by
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro config supported
   have same := normalizeDisclosureProfile_runFrom program profile config
   rw [registryEq config supported, revelationsEq config supported] at same
-  exact congrArg (FinDist.map fun result => (parameter config, result)) same
+  exact congrArg (PMF.map fun result => (parameter config, result)) same
 
 end Vegas.SourceProgram

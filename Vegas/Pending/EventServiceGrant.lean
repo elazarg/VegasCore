@@ -22,17 +22,17 @@ theorem playerStep_serviceGrant (runtime : EventGraphRuntime graph)
     after.native.application.serviceGrant = before.native.application.serviceGrant := by
   cases command with
   | privateCommand command =>
-      rw [runtime.application.playerStep_private_eq, FinDist.mem_support_pure] at member
+      rw [runtime.application.playerStep_private_eq, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact runtime.afterPrivate_serviceGrant before owner command
   | submit payload =>
-      rw [runtime.application.playerStep_submit_eq, FinDist.mem_support_pure] at member
+      rw [runtime.application.playerStep_submit_eq, PMF.mem_support_pure_iff _ _] at member
       subst after
       rfl
   | replay id | wait =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, FinDist.pure_bind,
-        FinDist.mem_support_pure] at member
+        MessageApplication.advance, MessageApplication.step, PMF.pure_bind,
+        PMF.mem_support_pure_iff _ _] at member
       subst after
       rfl
 
@@ -47,21 +47,21 @@ theorem environmentPolicyStep_serviceGrant (runtime : EventGraphRuntime graph)
   have native : after.native ∈
       ((runtime.application.environmentPolicyStep before command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨after, member, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   cases command with
   | wait =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
   | deliver owner id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
   | «include» id =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
       cases lookup : before.native.pool.lookup id with
       | none => rw [runtime.application.includePending_missing before.native id lookup]
@@ -76,7 +76,7 @@ theorem environmentPolicyStep_serviceGrant (runtime : EventGraphRuntime graph)
               exact runtime.handle_serviceGrant before.native.application next message accepted
   | application command =>
       simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-        FinDist.support_map, Set.mem_image] at native
+        PMF.support_map, Set.mem_image] at native
       obtain ⟨state, stateMem, nativeEq⟩ := native
       rw [← nativeEq]
       have granted := environmentStep_serviceGrant runtime before.native.application state
@@ -96,13 +96,13 @@ theorem serviceStep_serviceGrant_eq (runtime : EventGraphRuntime graph)
     after.native.application.serviceGrant = before.native.application.serviceGrant := by
   cases instruction with
   | player owner =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.playerStep_serviceGrant owner before after command step
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        FinDist.bind_map, FinDist.support_bind, Set.mem_iUnion] at member
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       apply runtime.environmentPolicyStep_serviceGrant before after
         (WireCommand.toEnvironmentCommand runtime.application command) _ step
@@ -129,11 +129,11 @@ theorem runServicePlan_serviceGrant_eq (runtime : EventGraphRuntime graph)
     after.native.application.serviceGrant = before.native.application.serviceGrant := by
   induction plan generalizing before with
   | nil =>
-      simp only [runServicePlan, FinDist.mem_support_pure] at member
+      simp only [runServicePlan, PMF.mem_support_pure_iff _ _] at member
       subst after
       rfl
   | cons instruction rest ih =>
-      simp only [runServicePlan, FinDist.support_bind, Set.mem_iUnion] at member
+      simp only [runServicePlan, PMF.support_bind, Set.mem_iUnion] at member
       obtain ⟨middle, first, tail⟩ := member
       exact (ih middle (fun next mem => noGrant next (List.mem_cons_of_mem _ mem)) tail).trans
         (runtime.serviceStep_serviceGrant_eq players wire instruction before middle

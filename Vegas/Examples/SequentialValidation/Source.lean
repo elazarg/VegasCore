@@ -45,7 +45,7 @@ def initialState (bit : Bool) : State simpleExpr initialCtx :=
 def sourceSetup : Setup (Player := Bool) (L := simpleExpr) where
   context := initialCtx
   namesNodup := by decide
-  initialLaw := (FinDist.uniformOfFintype (α := Bool)).map initialState
+  initialLaw := (PMF.uniformOfFintype (α := Bool)).map initialState
   obligations := {1, 2}
   program := sourceProgram
   accounts := rfl
@@ -89,10 +89,10 @@ theorem guess_publication (bit : Bool) (dummy : PublicationResult Bool)
 instance : Nonempty (PublicationResult Bool) := ⟨.failure⟩
 
 def uniformSourcePolicy (who : Bool) : BehavioralPolicy who sourceProgram :=
-  (fun _ _ => FinDist.uniformOfFintype (α := PublicationResult Bool),
-    (fun _ _ => FinDist.uniformOfFintype (α := Bool),
-      (fun _ _ => FinDist.uniformOfFintype (α := Bool),
-        (fun _ _ => FinDist.uniformOfFintype (α := Bool), PUnit.unit))))
+  (fun _ _ => PMF.uniformOfFintype (α := PublicationResult Bool),
+    (fun _ _ => PMF.uniformOfFintype (α := Bool),
+      (fun _ _ => PMF.uniformOfFintype (α := Bool),
+        (fun _ _ => PMF.uniformOfFintype (α := Bool), PUnit.unit))))
 
 theorem uniformSourcePolicy_admitted (who : Bool) :
     (uniformSourcePolicy who).Admitted sourceProgram sourceAdmission := by
@@ -105,19 +105,19 @@ def uniformSourceProfile : Profile sourceModel.behavioralSignature :=
     (uniformSourcePolicy who) (uniformSourcePolicy_admitted who)
 
 theorem uniformSourceProfile_full (who : Bool) (info : sourceModel.InfoState who) :
-    (uniformSourceProfile who info).FullSupport := by
+    FullSupport (uniformSourceProfile who info) := by
   have admitted (value : PublicationResult Bool) :
       CommitmentAdmission.forfeiture.Admits value := by
     cases value <;> trivial
   intro choice
   suffices choice.val ∈ ((uniformSourceProfile who info).map Subtype.val).support by
-    obtain ⟨other, supported, same⟩ := FinDist.support_map .. ▸ this
+    obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
     exact (Subtype.ext same) ▸ supported
   rw [uniformSourceProfile, Setup.toProtocolBehavioralPolicy_map_val]
   rcases choice with ⟨action, legal⟩
   change sourceSetup.protocolMenu sourceAdmission who info action at legal
   cases info with
-  | none => exact FinDist.mem_support_pure.mpr legal
+  | none => exact (PMF.mem_support_pure_iff _ _).mpr legal
   | some info =>
       rcases info with current | current | current | current | current
       all_goals cases who <;> cases action
@@ -127,8 +127,8 @@ theorem uniformSourceProfile_full (who : Bool) (info : sourceModel.InfoState who
           ProtocolView.actor, ProtocolView.available, sourceAdmission,
           CommitmentInterface.forfeiture] at allowed
         simp_all [sourceSetup, sourceProgram, BehavioralPolicy.protocolAction,
-          uniformSourcePolicy, FinDist.support_map,
-          FinDist.mem_support_uniformOfFintype, eq_comm]
+          uniformSourcePolicy, PMF.support_map,
+          PMF.mem_support_uniformOfFintype, eq_comm]
 
 theorem uniformSourceProfile_fullyMixed :
     (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).IsFullyMixed :=

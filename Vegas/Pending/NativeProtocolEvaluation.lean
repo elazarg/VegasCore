@@ -2,8 +2,8 @@
 
 import Vegas.Pending.NativeProtocolPolicy
 import Vegas.Pending.NativeProtocolTermination
-import GameTheoryExtensions.Protocol.SingleMover
-import GameTheoryExtensions.Protocol.StateKernel
+import GameTheory.Protocol.SingleMover
+import GameTheory.Protocol.StateKernel
 
 /-! # The native protocol executes native policy invocations
 
@@ -24,10 +24,10 @@ variable {Player : Type} [DecidableEq Player]
 /-- Native policy evaluation for one service opportunity. This is a transition
 kernel, not another recursive service evaluator. -/
 def nativeControlStep (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → NativePolicy graph)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
-    NativeProtocolState runtime → FinDist (NativeProtocolState runtime)
+    NativeProtocolState runtime → PMF (NativeProtocolState runtime)
   | some ⟨epochs, .player who :: rest, execution⟩ =>
       (runtime.invokeNative who (players who) execution).map fun next =>
         some ⟨epochs, rest, next⟩
@@ -35,11 +35,11 @@ def nativeControlStep (runtime : EventGraphRuntime graph)
       runtime.nativeTransition inputs roster reactionRounds wire order state (fun _ => none)
 
 theorem nativeControlStep_eq_of_marginals (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → NativePolicy graph)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (state : NativeProtocolState runtime)
-    (joint : FinDist (Player → Option (PlayerAction graph)))
+    (joint : PMF (Player → Option (PlayerAction graph)))
     (marginal : ∀ who, joint.map (fun actions => actions who) =
       (encodeNativePolicy (players who) (runtime.nativeObserve who state)).map
         Subtype.val) :
@@ -48,12 +48,12 @@ theorem nativeControlStep_eq_of_marginals (runtime : EventGraphRuntime graph)
   change (joint.bind fun actions =>
     runtime.nativeTransition inputs roster reactionRounds wire order state actions) = _
   cases state with
-  | none => simp [nativeControlStep, nativeTransition, FinDist.bind_const]
+  | none => simp [nativeControlStep, nativeTransition, PMF.bind_const]
   | some control =>
       rcases control with ⟨epochs, plan, execution⟩
       cases plan with
       | nil =>
-          cases epochs <;> simp [nativeControlStep, nativeTransition, FinDist.bind_const]
+          cases epochs <;> simp [nativeControlStep, nativeTransition, PMF.bind_const]
       | cons instruction rest =>
           cases instruction with
           | player who =>
@@ -63,17 +63,17 @@ theorem nativeControlStep_eq_of_marginals (runtime : EventGraphRuntime graph)
                 (runtime.actionStep who execution
                   (action.getD PlayerAction.wait)).map
                     (fun next => some (NativeControl.mk epochs rest next)))) law
-              simpa only [FinDist.bind_map, Option.getD_some, nativeTransition,
+              simpa only [PMF.bind_map, Option.getD_some, nativeTransition,
                 nativeInstructionStep, nativeControlStep, invokeNative,
-                FinDist.map_bind] using selected
+                PMF.map_bind] using selected
           | wire | grant event | includeLatest event who | sample event | tick | expire event =>
               simp [nativeControlStep, nativeTransition, nativeInstructionStep,
-                FinDist.bind_const]
+                PMF.bind_const]
 
 /-- Exact native transition law under a behavioral profile, at any legal
 history. The policies receive no argument derived from the hidden service cursor. -/
 theorem native_behavioral_step (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → NativePolicy graph)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (history : (runtime.nativeProtocol inputs roster reactionRounds wire order).History)
@@ -91,7 +91,7 @@ theorem native_behavioral_step (runtime : EventGraphRuntime graph)
       (law.map Subtype.val).map (fun actions => actions who) =
         (encodeNativePolicy (players who)
           (runtime.nativeObserve who history.state)).map Subtype.val := by
-    rw [FinDist.map_comp]
+    rw [PMF.map_comp]
     change law.map (fun actions => actions.1 who) = _
     rw [InformationModel.singleMoverJoint_marginal]
     change (encodeNativePolicy (players who)
@@ -100,14 +100,14 @@ theorem native_behavioral_step (runtime : EventGraphRuntime graph)
     rw [native_info]
   have lawEq := runtime.nativeControlStep_eq_of_marginals inputs roster reactionRounds
     players wire order history.state (law.map Subtype.val) marginal
-  rw [FinDist.bind_map] at lawEq
+  rw [PMF.bind_map] at lawEq
   exact lawEq
 
 /-- Forgetting the canonical trace gives ordinary iteration of the native
 state kernel. The state still retains the actual private and environment
 recall consulted by the policies. -/
 theorem native_run_map_state (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → NativePolicy graph)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (fuel : Nat)
@@ -118,7 +118,7 @@ theorem native_run_map_state (runtime : EventGraphRuntime graph)
       (fun who => encodeNativePolicy (players who)) fuel history).map
         ExecutionProtocol.History.state =
       (fun law => law.bind (runtime.nativeControlStep inputs roster reactionRounds players wire
-        order))^[fuel] (FinDist.pure history.state) := by
+        order))^[fuel] (PMF.pure history.state) := by
   apply ExecutionProtocol.runRandomizedFor_map_state
   · intro state stopped
     cases state with
@@ -134,7 +134,7 @@ theorem native_run_map_state (runtime : EventGraphRuntime graph)
 /-- The certified fuel always reaches a terminal service control, including
 when the supplied history lies outside the profile's support. -/
 theorem native_run_terminal (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (profile : ∀ who,
       (runtime.nativeInformation inputs roster reactionRounds wire order).BehavioralPolicy who)

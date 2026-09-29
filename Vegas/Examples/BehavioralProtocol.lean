@@ -34,11 +34,11 @@ private def initial : Config Nat simpleExpr [] :=
 private def choice (bit : Bool) : PublicationResult Bool :=
   if bit then .success true else .failure
 
-private def lottery : FinDist (PublicationResult Bool) :=
-  (FinDist.uniformOfFintype (α := Bool)).map choice
+private def lottery : PMF (PublicationResult Bool) :=
+  (PMF.uniformOfFintype (α := Bool)).map choice
 
 def profile (who : Nat) : BehavioralPolicy who program :=
-  (fun _ _ => lottery, (fun _ _ => FinDist.pure true, PUnit.unit))
+  (fun _ _ => lottery, (fun _ _ => PMF.pure true, PUnit.unit))
 
 theorem admitted (who : Nat) :
     (profile who).Admitted program (CommitmentInterface.forfeiture program) := by
@@ -53,8 +53,8 @@ theorem not_value_only :
   intro allowed
   have impossible := allowed.1 rfl (initial.view 0) .failure (by
     change PublicationResult.failure ∈ lottery.support
-    rw [lottery, FinDist.support_map]
-    exact ⟨false, FinDist.mem_support_uniformOfFintype false, rfl⟩)
+    rw [lottery, PMF.support_map]
+    exact ⟨false, PMF.mem_support_uniformOfFintype false, rfl⟩)
   simp [CommitmentInterface.values, CommitmentAdmission.Admits] at impossible
 
 private abbrev admission := CommitmentInterface.forfeiture program
@@ -74,20 +74,20 @@ example :
     ((profile 0).toProtocol program admission (admitted 0)
       (ProtocolState.observe 0 program (ProtocolState.entry program initial))).map
         (fun selected => OwnAction.binding (L := simpleExpr) 0 0 .bool selected.1) = lottery := by
-  rw [BehavioralPolicy.toProtocol, FinDist.map_toSubtype]
+  rw [BehavioralPolicy.toProtocol, map_pmfToSubtype]
   simp only [BehavioralPolicy.protocolAction, program, ProtocolState.entry,
     ProtocolState.observe, Sum.elim_inl, dite_true, profile,
-    FinDist.map_comp, Function.comp_def, OwnAction.binding_commit]
-  exact FinDist.map_id _
+    PMF.map_comp, Function.comp_def, OwnAction.binding_commit]
+  exact PMF.map_id _
 
 /-- Even a replacement policy that would bind differently cannot revise a
 retained hidden binding. Randomized disclosure leaves that stored choice fixed. -/
 example (replacement : BehavioralProfile program) (value : PublicationResult Bool) :
     (ProtocolState.continuationLaw program replacement
       (Sum.inr (Sum.inl (commitSuccessor 0 guard initial value)))).map
-        (fun state => state.get (.there .here)) = FinDist.pure value := by
+        (fun state => state.get (.there .here)) = PMF.pure value := by
   simp [ProtocolState.continuationLaw, program, runFrom, runWith,
-    FinDist.map_bind, commitSuccessor, Env.get, Env.cons]
+    PMF.map_bind, commitSuccessor, Env.get, Env.cons]
 
 /-- The semantic horizon can be enlarged without changing behavioral SPE. -/
 example (policies : GameTheory.Profile model.behavioralSignature)

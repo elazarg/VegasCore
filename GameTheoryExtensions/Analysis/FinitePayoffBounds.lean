@@ -50,24 +50,24 @@ theorem range_nonnegative (payoff : Outcome → ℚ) : 0 ≤ range payoff :=
   sub_nonneg.mpr (lower_le_upper payoff)
 
 /-- This bound includes arbitrary randomized continuation strategies. -/
-theorem lower_le_expect (payoff : Outcome → ℚ) (law : FinDist Outcome) :
-    ((lower payoff : ℚ) : ℝ) ≤ law.expect (fun outcome => (payoff outcome : ℝ)) := by
-  rw [← FinDist.expect_const law ((lower payoff : ℚ) : ℝ)]
+theorem lower_le_expect (payoff : Outcome → ℚ) (law : PMF Outcome) :
+    ((lower payoff : ℚ) : ℝ) ≤ expect law (fun outcome => (payoff outcome : ℝ)) := by
+  rw [← expect_constant law ((lower payoff : ℚ) : ℝ)]
   apply FinDist.expect_mono
   intro outcome _
   exact_mod_cast lower_le payoff outcome
 
-theorem expect_le_upper (payoff : Outcome → ℚ) (law : FinDist Outcome) :
-    law.expect (fun outcome => (payoff outcome : ℝ)) ≤ ((upper payoff : ℚ) : ℝ) := by
-  rw [← FinDist.expect_const law ((upper payoff : ℚ) : ℝ)]
+theorem expect_le_upper (payoff : Outcome → ℚ) (law : PMF Outcome) :
+    expect law (fun outcome => (payoff outcome : ℝ)) ≤ ((upper payoff : ℚ) : ℝ) := by
+  rw [← expect_constant law ((upper payoff : ℚ) : ℝ)]
   apply FinDist.expect_mono
   intro outcome _
   exact_mod_cast le_upper payoff outcome
 
 theorem expect_gain_le_range (payoff : Outcome → ℚ)
-    (prescribed alternative : FinDist Outcome) :
-    alternative.expect (fun outcome => (payoff outcome : ℝ)) -
-      prescribed.expect (fun outcome => (payoff outcome : ℝ)) ≤ (range payoff : ℝ) := by
+    (prescribed alternative : PMF Outcome) :
+    expect alternative (fun outcome => (payoff outcome : ℝ)) -
+      expect prescribed (fun outcome => (payoff outcome : ℝ)) ≤ (range payoff : ℝ) := by
   have bounded := sub_le_sub (expect_le_upper payoff alternative)
     (lower_le_expect payoff prescribed)
   simpa only [range, Rat.cast_sub] using bounded
@@ -90,8 +90,8 @@ specified additional collection probability. No strategy enumeration or
 equilibrium assumption is needed to justify the gain row. -/
 theorem range_deposit_holds (payoff : Outcome → ℚ) (rate : ℚ) (positive : 0 < rate)
     (comparison : IncentiveComparison Outcome) (sanction : Set Outcome)
-    (collection : (rate : ℝ) ≤ comparison.alternative.probOf sanction -
-      comparison.prescribed.probOf sanction) :
+    (collection : (rate : ℝ) ≤ (comparison.alternative.toOuterMeasure sanction).toReal -
+      (comparison.prescribed.toOuterMeasure sanction).toReal) :
     comparison.Holds (Enforcement.sanctionedUtility
       (fun outcome => (payoff outcome : ℝ)) sanction (range payoff / rate : ℚ)) := by
   apply Enforcement.inferred_deposit_holds {()} (fun _ => range payoff) (fun _ => rate)

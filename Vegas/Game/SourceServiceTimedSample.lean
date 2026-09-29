@@ -42,10 +42,10 @@ theorem sourceServiceTimedPolicy_sample_window
   | nil => rfl
   | cons actor rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map, FinDist.bind_bind]
-      apply FinDist.bind_congr
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro sample _
       let activated := execution.sampledActivation app actor sample
       have law : sourceServiceTimedPolicy setup leaks rosters timing profile actor
@@ -58,7 +58,7 @@ theorem sourceServiceTimedPolicy_sample_window
       change (sourceServiceTimedPolicy setup leaks rosters timing profile actor
         (activated.recall actor) (activated.observe app actor)).bind _ = _
       rw [law]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro response _
       apply ih
       have unchanged := (runtime setup).reactive_respond_application leaks activated actor response
@@ -74,7 +74,7 @@ private theorem replay_window_application
         (visits.map ServiceInstruction.player) initial).support) :
     final.application = initial.application := by
   cases visits with
-  | nil => cases FinDist.mem_support_pure.mp reached; rfl
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp reached; rfl
   | cons first rest =>
       exact ((runtime setup).replay_window_preserves leaks
         (fun _ => (application setup leaks).replayPolicy) network first initial
@@ -127,7 +127,7 @@ theorem sourceServiceTimedPolicy_sample_phase_law
   rw [runInteractionPlan_append,
     sourceServiceTimedPolicy_sample_window setup leaks rosters timing profile event chance network
       (rosters event) execution granted]
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro current reached
   have same := replay_window_application setup leaks network (rosters event) execution current
     reached
@@ -140,12 +140,12 @@ theorem sourceServiceTimedPolicy_sample_phase_law
     have currentAgree : refs.Agrees source.state current.application.config.store := by
       rw [same]; exact agree
     rw [source_sample_environment (runtime setup) current.application event currentReady outputEq
-      refs law codeEq node source.state currentAgree, FinDist.map_comp]
-    apply FinDist.map_congr_of_eq_on_support
+      refs law codeEq node source.state currentAgree, PMF.map_comp]
+    apply map_congr_on_support _
     intro value _
     simp only [completed, same]
     rfl
-  rw [sampleLaw, FinDist.bind_map]
+  rw [sampleLaw, PMF.bind_map]
   rfl
 
 end Vegas

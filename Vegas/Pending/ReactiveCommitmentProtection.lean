@@ -83,23 +83,23 @@ theorem reactiveCommitmentsFixed_environment (runtime : EventGraphRuntime graph)
     exact retained event candidate addressed owned)
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact prior
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact prior.learn who selected
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       have kept := prior.includePending id
       cases found : execution.network.lookup id <;>
         simpa only [ReactiveCommitmentsFixed, ReactiveApplication.Execution.includePending,
           MessageNetwork.includePending, found] using kept
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact prior
 
 theorem reactiveCommitmentsFixed_service (runtime : EventGraphRuntime graph)
@@ -115,7 +115,7 @@ theorem reactiveCommitmentsFixed_service (runtime : EventGraphRuntime graph)
 that a packet names under its actual owner. -/
 theorem reactiveCommitmentsFixed_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (initial : FinDist (State graph)) (horizon : Nat)
+    (initial : PMF (State graph)) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     {state} (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       state) :
@@ -171,26 +171,26 @@ theorem prescribedReactivePolicy_commitment_fresh (runtime : EventGraphRuntime g
     ∃ serial, candidate = (who, .prepared serial) ∧
       view.application.candidates (.prepared serial) = .fresh := by
   rw [prescribedReactivePolicy_apply] at supported
-  obtain ⟨intentions, _, produced⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
-  obtain ⟨⟨response, intention⟩, issued, rfl⟩ := FinDist.support_map .. ▸ produced
+  obtain ⟨intentions, _, produced⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+  obtain ⟨⟨response, intention⟩, issued, rfl⟩ := PMF.support_map .. ▸ produced
   unfold prescribedReactiveResponse at issued
   split at issued
-  · cases FinDist.mem_support_pure.mp issued; cases sent
+  · cases (PMF.mem_support_pure_iff _ _).mp issued; cases sent
   · rename_i event grant
     split at issued
-    · cases FinDist.mem_support_pure.mp issued; cases sent
+    · cases (PMF.mem_support_pure_iff _ _).mp issued; cases sent
     · split at issued
       · split at issued
         · split at issued
-          · obtain ⟨choice, _, image⟩ := FinDist.support_map .. ▸ issued
+          · obtain ⟨choice, _, image⟩ := PMF.support_map .. ▸ issued
             have responseEq := congrArg Prod.fst image
             dsimp only at responseEq
             subst response
             exact runtime.reactiveDecision_commitment_fresh leaks who event choice
               view.application material sent target candidate packet
-          · cases FinDist.mem_support_pure.mp issued; cases sent
-        · cases FinDist.mem_support_pure.mp issued; cases sent
-      · cases FinDist.mem_support_pure.mp issued; cases sent
+          · cases (PMF.mem_support_pure_iff _ _).mp issued; cases sent
+        · cases (PMF.mem_support_pure_iff _ _).mp issued; cases sent
+      · cases (PMF.mem_support_pure_iff _ _).mp issued; cases sent
 
 def CommitmentFor (who : Player) (event : graph.EventId) (candidate : Handle graph)
     (message : Message Player (WitnessedPacket graph)) : Prop :=
@@ -328,37 +328,37 @@ theorem reactiveCandidateProtection_environment (runtime : EventGraphRuntime gra
     exact protection.fixed
   · cases command with
     | wait =>
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         exact protection.packets
     | activate actor =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact protection.packets.learn actor selected
     | «include» id =>
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         have kept := protection.packets.includePending id
         cases found : execution.network.lookup id <;>
           simpa only [ReactiveApplication.Execution.includePending,
             MessageNetwork.includePending, found] using kept
     | application command =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨state, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact protection.packets
   · intro unfinished
     cases command with
     | wait =>
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         exact protection.unused unfinished
     | activate actor =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact protection.unused unfinished
     | «include» id =>
-        simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-        cases FinDist.mem_support_pure.mp reached
+        simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+        cases (PMF.mem_support_pure_iff _ _).mp reached
         unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
           at unfinished ⊢
         cases found : execution.network.lookup id with
@@ -386,8 +386,8 @@ theorem reactiveCandidateProtection_environment (runtime : EventGraphRuntime gra
                 intro completed
                 exact unfinished (handle_completed_subset runtime _ state _ accepted completed)
     | application command =>
-        obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-        obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+        obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+        obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
         change state.HandleUnused candidate
         rw [State.HandleUnused, (environmentStep_tables runtime _ state command changed).1]
         apply protection.unused

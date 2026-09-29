@@ -514,7 +514,7 @@ theorem compilePlayerPolicy_commandAt
   all_goals subst_vars
   all_goals
     simp_all only [CommandAt, stagesEvent, resolutionSubmission,
-      FinDist.mem_support_pure, FinDist.support_map, Set.mem_image, decide_eq_true_eq,
+      PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image, decide_eq_true_eq,
       Bool.false_eq_true, reduceCtorEq, Option.some.injEq]
   all_goals subst_vars
   all_goals try {
@@ -538,7 +538,7 @@ theorem compilePlayerPolicy_private_stage
   repeat' first | split at member
   all_goals subst_vars
   all_goals
-    simp_all only [FinDist.mem_support_pure, FinDist.support_map, Set.mem_image,
+    simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
       MessageInterface.PlayerCommand.privateCommand.injEq, reduceCtorEq,
       Option.some.injEq]
   all_goals try {
@@ -603,7 +603,7 @@ theorem compilePlayerPolicy_private_zero_is_remember
   rw [observedGrant] at member
   repeat' first | split at member
   all_goals
-    simp_all only [FinDist.mem_support_pure, FinDist.support_map, Set.mem_image,
+    simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
       MessageInterface.PlayerCommand.privateCommand.injEq,
       reduceCtorEq, Option.some.injEq]
   all_goals aesop
@@ -652,7 +652,7 @@ theorem compilePlayerPolicy_submit_stage
   repeat' first | split at member
   all_goals subst_vars
   all_goals
-    simp_all only [FinDist.mem_support_pure, FinDist.support_map, Set.mem_image,
+    simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
       reduceCtorEq, MessageInterface.PlayerCommand.submit.injEq, Option.some.injEq,
       submit_ne_bindingStageCommand]
   all_goals first
@@ -675,7 +675,7 @@ theorem compilePlayerPolicy_nonwait_actor
   repeat' first | split at member
   all_goals subst_vars
   all_goals
-    simp_all only [FinDist.mem_support_pure, FinDist.support_map, Set.mem_image,
+    simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
       reduceCtorEq, Option.some.injEq]
 
 /-- At stage one, any private command that stages the granted event advances
@@ -747,7 +747,7 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
   cases command with
   | wait =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, FinDist.pure_bind, FinDist.mem_support_pure] at stepMem
+        MessageApplication.advance, PMF.pure_bind, PMF.mem_support_pure_iff _ _] at stepMem
       subst next
       intro query actor
       exact (coherent query actor).afterWait runtime execution owner query
@@ -755,7 +755,7 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
       simp [CommandAt, stagesEvent] at atEvent
   | privateCommand privateCommand =>
       rw [runtime.application.playerStep_private_eq] at stepMem
-      simp only [FinDist.mem_support_pure] at stepMem
+      simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
       obtain ⟨stagedEvent, stagedGrant, stageLt, staged⟩ :=
         runtime.compilePlayerPolicy_private_stage owner policy
@@ -799,7 +799,7 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
             execution.native.application owner event query privateCommand eventActor same staged
   | submit packet =>
       rw [runtime.application.playerStep_submit_eq] at stepMem
-      simp only [FinDist.mem_support_pure] at stepMem
+      simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
       have eventActor : graph.actor? event = some owner :=
         runtime.compilePlayerPolicy_nonwait_actor owner policy
@@ -845,7 +845,7 @@ theorem compilePlayerPolicy_invoke_policyCoherentAll
     (supported : next ∈
       (runtime.application.invoke players environment execution (.player owner)).support) :
     PolicyCoherentAll runtime next owner := by
-  simp only [MessageApplication.invoke, ownerCompiled, FinDist.support_bind,
+  simp only [MessageApplication.invoke, ownerCompiled, PMF.support_bind,
     Set.mem_iUnion] at supported
   obtain ⟨command, commandMem, stepMem⟩ := supported
   exact runtime.compilePlayerPolicy_playerStep_policyCoherentAll owner policy execution next

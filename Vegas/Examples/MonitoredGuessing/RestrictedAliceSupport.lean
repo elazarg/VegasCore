@@ -21,16 +21,16 @@ theorem bob_to_granted_alice (players : Player → nativeApp.Policy) (bit guess 
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) =
-      FinDist.pure (grantedAlice bit guess) := by
+      PMF.pure (grantedAlice bit guess) := by
   change nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
     ([.includeLatest bobPublication bob, .tick, .expire bobPublication] ++
       [.grant alicePublication]) _ = _
-  rw [runInteractionPlan_append, bob_service, FinDist.pure_bind]
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, FinDist.pure_bind,
+  rw [runInteractionPlan_append, bob_service, PMF.pure_bind]
+  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, grant_alice]
   rw [show (ReactiveApplication.Command.application (.grant alicePublication) :
     nativeApp.Command).actor? nativeApp = none from rfl,
-    ReactiveApplication.resume, FinDist.pure_bind]
+    ReactiveApplication.resume, PMF.pure_bind]
 
 theorem reference_receiver_support (bit : Bool) (execution : nativeApp.Execution)
     (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks
@@ -46,10 +46,10 @@ theorem reference_receiver_support (bit : Bool) (execution : nativeApp.Execution
       nativeNetwork (.player bob) (quietGranted bit) =
         (restrictedMenu.uniformResponses bob ((quietBob bit).recall bob)
           ((quietBob bit).observe nativeApp bob)).map ((quietBob bit).respond nativeApp bob) := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, quiet_bob_activation]
     rfl
-  rw [activated, FinDist.bind_map, FinDist.support_bind] at reached
+  rw [activated, PMF.bind_map, PMF.support_bind] at reached
   obtain ⟨response, responseMem, finished⟩ := Set.mem_iUnion₂.mp reached
   have permitted := (restrictedMenu.uniformResponses_support bob _ _ response).mp responseMem
   rw [bob_actions, Finset.mem_insert, Finset.mem_singleton] at permitted
@@ -58,19 +58,19 @@ theorem reference_receiver_support (bit : Bool) (execution : nativeApp.Execution
     have law := bob_to_granted_alice restrictedMenu.uniformResponses bit false
     simp only [choiceAction, Bool.false_eq_true, ↓reduceIte] at law
     rw [law] at finished
-    exact FinDist.mem_support_pure.mp finished
+    exact (PMF.mem_support_pure_iff _ _).mp finished
   · refine ⟨true, ?_⟩
     have law := bob_to_granted_alice restrictedMenu.uniformResponses bit true
     simp only [choiceAction, ↓reduceIte] at law
     rw [law] at finished
-    exact FinDist.mem_support_pure.mp finished
+    exact (PMF.mem_support_pure_iff _ _).mp finished
 
 theorem reference_rounds_nine_support (execution : nativeApp.Execution)
     (reached : execution ∈ (nativeApp.roundsFrom nativeInitialLaw nativeScheduler
       restrictedMenu.uniformResponses 9).support) :
     ∃ bit guess, execution = grantedAlice bit guess := by
-  rw [ReactiveApplication.roundsFrom, nativeInitialLaw, FinDist.bind_map,
-    FinDist.support_bind] at reached
+  rw [ReactiveApplication.roundsFrom, nativeInitialLaw, PMF.bind_map,
+    PMF.support_bind] at reached
   obtain ⟨bit, _, reached⟩ := Set.mem_iUnion₂.mp reached
   change execution ∈ (nativeApp.runRounds nativeScheduler restrictedMenu.uniformResponses
     9 (nativeStart bit)).support at reached
@@ -81,7 +81,7 @@ theorem reference_rounds_nine_support (execution : nativeApp.Execution)
       ([.player alice, .player watcher, .wire, .grant bobPublication] ++
         [.player bob, .includeLatest bobPublication bob, .tick, .expire bobPublication,
           .grant alicePublication]) (nativeStart bit) at rounds
-  rw [rounds, runInteractionPlan_append, reference_quiet_prefix, FinDist.pure_bind] at reached
+  rw [rounds, runInteractionPlan_append, reference_quiet_prefix, PMF.pure_bind] at reached
   obtain ⟨guess, same⟩ := reference_receiver_support bit execution reached
   exact ⟨bit, guess, same⟩
 
@@ -105,7 +105,7 @@ theorem final_alice_control (control : nativeApp.Control)
     | activate who => cases Option.some.inj acting; rfl
     | «include» id | application command | wait => cases acting
   subst command
-  rw [activate_alice, FinDist.mem_support_pure] at moved
+  rw [activate_alice, PMF.mem_support_pure_iff _ _] at moved
   change execution = beforeAlice bit guess at moved
   subst execution
   have remainingEq : remaining = 4 := by
@@ -135,14 +135,14 @@ theorem alice_control (control : nativeApp.Control)
   · rw [early] at priorMem
     left
     change prior ∈ (nativeInitialLaw.bind fun initial =>
-      FinDist.pure (ReactiveApplication.Execution.initial nativeApp initial)).support at priorMem
-    rw [← FinDist.map_eq_bind, nativeInitialLaw, FinDist.map_comp, FinDist.support_map] at priorMem
+      PMF.pure (ReactiveApplication.Execution.initial nativeApp initial)).support at priorMem
+    rw [← ← PMF.bind_pure_comp, Function.comp_def, nativeInitialLaw, PMF.map_comp, PMF.support_map] at priorMem
     obtain ⟨bit, _, rfl⟩ := priorMem
-    have commandEq : command = .activate alice := FinDist.mem_support_pure.mp selected
+    have commandEq : command = .activate alice := (PMF.mem_support_pure_iff _ _).mp selected
     subst command
     change execution ∈ ((nativeStart bit).environmentStep nativeApp (.activate alice)).support
       at moved
-    rw [initial_activation, FinDist.mem_support_pure] at moved
+    rw [initial_activation, PMF.mem_support_pure_iff _ _] at moved
     subst execution
     have remainingEq : remaining = 13 := by
       change 1 + remaining = 14 at accounted

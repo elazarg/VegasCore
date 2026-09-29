@@ -15,7 +15,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
-  (menu : app.ResponseMenu) (initial : FinDist app.State) (horizon : Nat)
+  (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Nat)
   (scheduler : app.Scheduler)
 
 theorem trace_respond (remaining : Nat) (execution : app.Execution) (who : Principal)
@@ -33,8 +33,8 @@ theorem trace_respond (remaining : Nat) (execution : app.Execution) (who : Princ
       · subst actor
         simpa [protocol, ReactiveApplication.actor, ResponseMenu.available] using available
       · simp [protocol, ReactiveApplication.actor, same, Ne.symm same]
-  · change _ ∈ (FinDist.pure _).support
-    simp only [↓reduceIte, Option.getD_some, FinDist.mem_support_pure]
+  · change _ ∈ (PMF.pure _).support
+    simp only [↓reduceIte, Option.getD_some, PMF.mem_support_pure_iff _ _]
 
 theorem trace_environment (remaining : Nat) (execution next : app.Execution)
     (command : app.Command)
@@ -52,10 +52,10 @@ theorem trace_environment (remaining : Nat) (execution next : app.Execution)
       simp [protocol, actor]
   · change _ ∈ ((scheduler execution.environmentRecall
       (execution.observeEnvironment app)).bind _).support
-    rw [FinDist.support_bind]
+    rw [PMF.support_bind]
     apply Set.mem_iUnion₂.mpr
     refine ⟨command, selected, ?_⟩
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, moved, rfl⟩
 
 theorem trace_round (players : Principal → app.Policy)
@@ -67,9 +67,9 @@ theorem trace_round (players : Principal → app.Policy)
     (supported : next ∈ (app.round scheduler players execution).support) :
     Nonempty ((menu.protocol initial horizon scheduler).Trace (some ⟨remaining, none, next⟩)) := by
   obtain ⟨command, selected, dispatched⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨observed, moved, resumed⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ dispatched)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   obtain ⟨pending⟩ := menu.trace_environment initial horizon scheduler remaining execution observed
     command trace selected moved
   cases active : command.actor? app with
@@ -77,13 +77,13 @@ theorem trace_round (players : Principal → app.Policy)
       rw [active] at pending
       change next ∈ (app.resume players (command.actor? app) observed).support at resumed
       rw [active] at resumed
-      cases FinDist.mem_support_pure.mp resumed
+      cases (PMF.mem_support_pure_iff _ _).mp resumed
       exact ⟨pending⟩
   | some who =>
       rw [active] at pending
       change next ∈ (app.resume players (command.actor? app) observed).support at resumed
       rw [active] at resumed
-      obtain ⟨response, chosen, rfl⟩ := FinDist.support_map .. ▸ resumed
+      obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ resumed
       exact menu.trace_respond initial horizon scheduler remaining observed who response pending
         (covered who _ _ response chosen)
 
@@ -97,11 +97,11 @@ theorem trace_runRounds (players : Principal → app.Policy)
     Nonempty ((menu.protocol initial horizon scheduler).Trace (some ⟨remaining, none, next⟩)) := by
   induction count generalizing execution with
   | zero =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact ⟨trace⟩
   | succ count ih =>
       obtain ⟨middle, moved, finished⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨middleTrace⟩ := menu.trace_round initial horizon scheduler players covered
         (remaining + count) execution middle trace moved
       exact ih middle middleTrace finished
@@ -113,7 +113,7 @@ theorem trace_roundsFrom (players : Principal → app.Policy)
     (supported : execution ∈ (app.roundsFrom initial scheduler players count).support) :
     Nonempty ((menu.protocol initial horizon scheduler).Trace
       (some ⟨horizon - count, none, execution⟩)) := by
-  obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have start : Nonempty ((menu.protocol initial horizon scheduler).Trace
       (some ⟨horizon, none, Execution.initial app state⟩)) := by
     refine ⟨.extend .start (fun _ => none) ?_ ?_⟩
@@ -123,7 +123,7 @@ theorem trace_roundsFrom (players : Principal → app.Policy)
       · intro who
         simp [protocol, actor]
     · change _ ∈ (initial.map _).support
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       exact ⟨state, stateMem, rfl⟩
   obtain ⟨trace⟩ := start
   exact menu.trace_runRounds initial horizon scheduler players covered (horizon - count) count

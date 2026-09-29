@@ -36,7 +36,7 @@ def openingWindowPlayers (runtime : EventGraphRuntime graph)
     Player → (runtime.reactiveApplication leaks).Policy := fun who =>
   let app := runtime.reactiveApplication leaks
   if who = owner then app.scheduledPolicy offset selected
-    (fun _ _ => FinDist.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
+    (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
   else app.replayPolicy
 
 /-- The behavioral realization of a conditional timing law. Its private
@@ -45,18 +45,18 @@ ordinary response policy. -/
 def openingWindowMixturePlayers (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots))) :
+    (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots))) :
     Player → (runtime.reactiveApplication leaks).Policy :=
   let app := runtime.reactiveApplication leaks
   Function.update (fun _ => app.replayPolicy) owner
     (app.policyMixture choices (fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure (runtime.windowOpening leaks event candidate raw))
+      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw))
         app.replayPolicy)).policy
 
 theorem openingWindowMixture_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots)))
+    (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots)))
     (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
     (execution : (runtime.reactiveApplication leaks).Execution)
     (before : (execution.recall owner).length ≤ offset) :
@@ -68,7 +68,7 @@ theorem openingWindowMixture_law (runtime : EventGraphRuntime graph)
           network plan execution := by
   let app := runtime.reactiveApplication leaks
   let opening := fun (_ : List app.PlayerEntry) (_ : app.PlayerView) =>
-    FinDist.pure (runtime.windowOpening leaks event candidate raw)
+    PMF.pure (runtime.windowOpening leaks event candidate raw)
   let family := fun selected : Option (Fin slots) =>
     app.scheduledPolicy offset selected opening app.replayPolicy
   have posterior := app.policyMixture_posterior_dormant choices family app.replayPolicy offset
@@ -80,7 +80,7 @@ theorem openingWindowMixture_law (runtime : EventGraphRuntime graph)
   dsimp only at actual
   rw [posterior] at actual
   refine actual.symm.trans ?_
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro selected _
   have players : Function.update (fun _ => app.replayPolicy) owner (family selected) =
       runtime.openingWindowPlayers leaks owner event candidate raw offset selected := by
@@ -99,7 +99,7 @@ have the required off-path stop behavior before taking their common limit. -/
 theorem openingWindowMixture_after_open (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
-    (offset : Nat) {slots : Nat} (choices : FinDist (Option (Fin slots))) (slot : Fin slots)
+    (offset : Nat) {slots : Nat} (choices : PMF (Option (Fin slots))) (slot : Fin slots)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (entry : (runtime.reactiveApplication leaks).PlayerEntry)
     (atSlot : past.length = offset + slot.val)
@@ -142,7 +142,7 @@ theorem openingWindowPlayers_cases (runtime : EventGraphRuntime graph)
       ReactiveApplication.scheduledPolicy] at supported
     split at supported
     · rename_i chosen
-      refine Or.inr ⟨active, FinDist.mem_support_pure.mp supported, ?_⟩
+      refine Or.inr ⟨active, (PMF.mem_support_pure_iff _ _).mp supported, ?_⟩
       cases selected with
       | none => simp at chosen
       | some slot => rfl
@@ -272,8 +272,8 @@ theorem openingWindow_coupling (runtime : EventGraphRuntime graph)
   let players := runtime.openingWindowPlayers leaks owner event candidate raw offset selected
   induction roster generalizing left right with
   | nil =>
-      simp only [List.map_nil, runInteractionPlan, FinDist.map_pure]
-      exact congrArg FinDist.pure (Prod.ext messages recall)
+      simp only [List.map_nil, runInteractionPlan, PMF.pure_map]
+      exact congrArg PMF.pure (Prod.ext messages recall)
   | cons who rest ih =>
       have networks : left.network = right.network := congrArg Prod.fst messages
       have sampled (ids : Finset (MessageId Player)) :
@@ -285,12 +285,12 @@ theorem openingWindow_coupling (runtime : EventGraphRuntime graph)
         simpa only [ReactiveApplication.messageView, ReactiveApplication.messageRecall,
           List.length_map] using congrArg List.length histories
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.map_bind,
-        FinDist.bind_map, FinDist.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.map_bind,
+        PMF.bind_map, PMF.bind_bind]
       rw [networks]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro ids _
       let first := left.sampledActivation app who ids
       let second := right.sampledActivation app who ids
@@ -304,7 +304,7 @@ theorem openingWindow_coupling (runtime : EventGraphRuntime graph)
       change (players who (first.recall who) (first.observe app who)).bind _ =
         (players who (second.recall who) (second.observe app who)).bind _
       rw [responses]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro action supported
       have firstSupported : action ∈
           (players who (first.recall who) (first.observe app who)).support := by
@@ -348,7 +348,7 @@ theorem openingWindow_posterior (runtime : EventGraphRuntime graph)
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (offset : Nat) {slots : Nat} (selected : Option (Fin slots))
     (network : runtime.NetworkPolicy leaks) (roster : List Player) (focal : Player)
-    (initial : FinDist (runtime.reactiveApplication leaks).Execution)
+    (initial : PMF (runtime.reactiveApplication leaks).Execution)
     (reference : (runtime.reactiveApplication leaks).Execution)
     (referenceRecall : reference.InputRecall (runtime.reactiveApplication leaks))
     (recalls : ∀ start ∈ initial.support,
@@ -378,7 +378,7 @@ theorem openingWindow_posterior (runtime : EventGraphRuntime graph)
       ((runtime.runInteractionPlan leaks players network
         (roster.map ServiceInstruction.player) start).map transcript).map
           (fun output => (output, start))
-    (joint.condOnFibre Prod.fst observed).map Prod.snd = initial := by
+    (fiberConditional joint Prod.fst observed).map Prod.snd = initial := by
   dsimp only
   let app := runtime.reactiveApplication leaks
   let players := runtime.openingWindowPlayers leaks owner event candidate raw offset selected
@@ -395,20 +395,20 @@ theorem openingWindow_posterior (runtime : EventGraphRuntime graph)
         ⟨(meaning chosen).2 start supported, (meaning chosen).1⟩)
   have independent : (initial.bind fun start =>
       (kernel start).map fun output => (output, start)) =
-        FinDist.product (kernel reference) initial := by
+        bindPairLaw (kernel reference) (fun _ => initial) := by
     calc
       _ = initial.bind (fun start =>
           (kernel reference).map fun output => (output, start)) := by
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro start supported
         rw [same start supported]
       _ = _ := by
-        simp only [FinDist.product, FinDist.map_eq_bind]
-        rw [FinDist.bind_comm]
-  change (((initial.bind fun start =>
-    (kernel start).map fun output => (output, start)).condOnFibre Prod.fst observed).map
+        simp only [FinDist.product, ← PMF.bind_pure_comp, Function.comp_def]
+        rw [PMF.bind_comm]
+  change ((fiberConditional (initial.bind fun start =>
+    (kernel start).map fun output => (output, start)) Prod.fst observed).map
       Prod.snd) = initial
   rw [independent]
-  exact FinDist.conditional_snd_product (kernel reference) initial observed
+  exact conditional_snd_bindPairLaw_const (kernel reference) initial observed
 
 end Vegas.EventGraphRuntime

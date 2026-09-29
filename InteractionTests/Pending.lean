@@ -31,7 +31,7 @@ structure Outcome where
 
 def Strategy : Bool → Type
   | false => Bool
-  | true => LocalView → FinDist Bool
+  | true => LocalView → PMF Bool
 
 def afterFirstSubmission (first : Bool) : MessageId Bool × Pool :=
   submit (empty Bool Bool) false first
@@ -45,7 +45,7 @@ def beforeResponse (first deliverFirst : Bool) : MessageId Bool × Pool :=
 /-- A fixed finite environment decides whether the first wire message is
 delivered and in which order the two pending messages enter the public ledger. -/
 def nativeRun (deliverFirst reverseInclusion first : Bool)
-    (respond : LocalView → FinDist Bool) : FinDist Outcome :=
+    (respond : LocalView → PMF Bool) : PMF Outcome :=
   let ready := beforeResponse first deliverFirst
   (respond (observe ready.2 true)).bind fun response =>
     let replied := submit ready.2 true response
@@ -54,7 +54,7 @@ def nativeRun (deliverFirst reverseInclusion first : Bool)
         includePending (includePending replied.2 replied.1).state ready.1
       else
         includePending (includePending replied.2 ready.1).state replied.1
-    FinDist.pure ⟨included.state, first, response⟩
+    PMF.pure ⟨included.state, first, response⟩
 
 def form (deliverFirst reverseInclusion : Bool) : GameForm Bool where
   sig := { Strategy := Strategy, Outcome := Outcome }
@@ -76,25 +76,25 @@ theorem delivered_cleartext (first : Bool) :
   simp [beforeResponse, afterFirstSubmission, submit, empty, deliver, lookup, observe]
 
 theorem response_marginal (deliverFirst reverseInclusion first : Bool)
-    (respond : LocalView → FinDist Bool) :
+    (respond : LocalView → PMF Bool) :
     (nativeRun deliverFirst reverseInclusion first respond).map Outcome.response =
       respond (observe (beforeResponse first deliverFirst).2 true) := by
   simp [nativeRun]
 
-def constantResponse (value : Bool) : LocalView → FinDist Bool :=
-  fun _ => FinDist.pure value
+def constantResponse (value : Bool) : LocalView → PMF Bool :=
+  fun _ => PMF.pure value
 
 theorem forward_ledger (first response : Bool) :
     (nativeRun true false first (constantResponse response)).map
         (fun outcome => outcome.pool.ledger) =
-      FinDist.pure [⟨(false, 0), first⟩, ⟨(true, 0), response⟩] := by
+      PMF.pure [⟨(false, 0), first⟩, ⟨(true, 0), response⟩] := by
   simp [nativeRun, constantResponse, beforeResponse, afterFirstSubmission, submit,
     empty, deliver, lookup, includePending, removeFirst]
 
 theorem reverse_ledger (first response : Bool) :
     (nativeRun true true first (constantResponse response)).map
         (fun outcome => outcome.pool.ledger) =
-      FinDist.pure [⟨(true, 0), response⟩, ⟨(false, 0), first⟩] := by
+      PMF.pure [⟨(true, 0), response⟩, ⟨(false, 0), first⟩] := by
   simp [nativeRun, constantResponse, beforeResponse, afterFirstSubmission, submit,
     empty, deliver, lookup, includePending, removeFirst]
 

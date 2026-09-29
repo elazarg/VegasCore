@@ -42,18 +42,18 @@ theorem servicePlan_players_eq
         | wire => exact False.elim (noWire (by simp))
         | grant event | sample event | tick | expire event =>
             simp only [EventGraphRuntime.interactionStep, EventGraphRuntime.interactionInstruction,
-              FinDist.pure_bind, ReactiveApplication.dispatch,
+              PMF.pure_bind, ReactiveApplication.dispatch,
               ReactiveApplication.Command.actor?]
-            apply FinDist.bind_congr
+            apply bind_congr_on_support _
             intro next _
             rfl
         | includeLatest event owner =>
             unfold EventGraphRuntime.interactionStep EventGraphRuntime.interactionInstruction
-            simp only [FinDist.pure_bind]
+            simp only [PMF.pure_bind]
             unfold EventGraphRuntime.reactiveLatest
             split <;> rfl
       simp only [EventGraphRuntime.runInteractionPlan, step]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next _
       exact ih (fun member => noWire (List.mem_cons_of_mem _ member))
         (fun who member => noPlayers who (List.mem_cons_of_mem _ member)) next
@@ -103,15 +103,15 @@ theorem rosterPolicy_phase_law
     rw [show phase = window ++ tail from rfl, runInteractionPlan_append, runInteractionPlan_append]
     rw [rosterPolicy_window_eq setup leaks rosters timing profile initial initial event owner
       granted owned candidate raw opening rfl network (rosters event)]
-    apply FinDist.bind_congr
+    apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq setup leaks _ _ network tail noWire noPlayers current
   rw [mixedLaw, openingWindowMixture_law _ _ _ _ _ _ _ _ _ _ _ offset]
   change (rosterSelection _ _).bind _ = _
-  rw [rosterSelection, FinDist.bind_bind]
-  apply FinDist.bind_congr
+  rw [rosterSelection, PMF.bind_bind]
+  apply bind_congr_on_support _
   intro disclose _
   cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte,
-    FinDist.pure_bind, FinDist.bind_map]
+    PMF.pure_bind, PMF.bind_map]
 
 end Vegas

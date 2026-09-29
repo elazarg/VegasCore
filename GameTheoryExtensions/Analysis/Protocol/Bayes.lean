@@ -28,9 +28,9 @@ theorem BehavioralAssessment.IsFullyMixed.support_at_history
         have legal := (M.menu_adequate who history.trace choice.val).mp choice.property
         simpa only [value, LegalOption] using legal
       let := M.subsingleton_choice_of_not_active history.trace inactive
-      rw [FinDist.eq_pure_of_subsingleton
+      rw [eq_pure_of_subsingleton
         (assessment.strategy who (M.infoOf who history.trace)) choice]
-      exact FinDist.mem_support_pure.mpr rfl
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl
   | some action =>
       have legal : some action ∈ M.menu who (M.infoOf who history.trace) :=
         value ▸ choice.property
@@ -43,19 +43,19 @@ theorem BehavioralAssessment.IsFullyMixed.history_supported
     ∀ {state} (trace : E.Trace state),
       (⟨state, trace⟩ : E.History) ∈
         (M.runBehavioral assessment.strategy trace.length).support
-  | _, .start => FinDist.mem_support_pure.mpr rfl
+  | _, .start => (PMF.mem_support_pure_iff _ _).mpr rfl
   | _, .extend (source := before) prior joint legal realized => by
       change _ ∈ (M.runBehavioralFrom assessment.strategy (prior.length + 1)
         E.initHistory).support
-      rw [M.runBehavioralFrom_add, FinDist.support_bind]
+      rw [M.runBehavioralFrom_add, PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨⟨before, prior⟩, mixed.history_supported prior, ?_⟩
       rw [M.runBehavioralFrom_succ_of_not_terminal _ 0 legal.1,
-        FinDist.support_bind]
+        PMF.support_bind]
       refine Set.mem_iUnion₂.mpr ⟨⟨joint, legal⟩, ?_, ?_⟩
       · exact M.mem_support_behavioralJoint assessment.strategy prior legal.1 joint legal
           (fun who => mixed.support_at_history ⟨before, prior⟩ legal.1 who _)
-      · rw [FinDist.support_bindOnSupport]
-        exact Set.mem_iUnion₂.mpr ⟨_, realized, FinDist.mem_support_pure.mpr rfl⟩
+      · rw [PMF.support_bindOnSupport]
+        exact Set.mem_iUnion₂.mpr ⟨_, realized, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
 
 /-- Every legal terminal history remains supported when evaluation is padded
 to any larger horizon. No particular equilibrium needs to reach that history. -/
@@ -66,15 +66,15 @@ theorem BehavioralAssessment.IsFullyMixed.terminal_supported
     history ∈ (M.runBehavioral assessment.strategy fuel).support := by
   rw [show fuel = history.trace.length + (fuel - history.trace.length) by omega]
   change history ∈ (M.runBehavioralFrom assessment.strategy _ E.initHistory).support
-  rw [M.runBehavioralFrom_add, FinDist.support_bind]
+  rw [M.runBehavioralFrom_add, PMF.support_bind]
   refine Set.mem_iUnion₂.mpr ⟨history, mixed.history_supported history.trace, ?_⟩
   rw [M.runBehavioralFrom_of_terminal assessment.strategy _ terminal]
-  exact FinDist.mem_support_pure.mpr rfl
+  exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem BehavioralAssessment.IsFullyMixed.historyReachProbability_pos
     {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
     (history : E.History) : 0 < M.historyReachProbability assessment.strategy history :=
-  FinDist.prob_pos_iff.mpr (mixed.history_supported history.trace)
+  pmf_toReal_pos_iff.mpr (mixed.history_supported history.trace)
 
 theorem BehavioralAssessment.IsFullyMixed.informationMass_pos
     {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
@@ -87,7 +87,7 @@ theorem BehavioralAssessment.IsFullyMixed.informationMass_pos
   exact Finset.single_le_sum
     (f := fun other : M.InformationHistory who site.1 =>
       M.historyReachProbability assessment.strategy other.1)
-    (fun other _ => FinDist.prob_nonneg _ _) (Finset.mem_univ history)
+    (fun other _ => ENNReal.toReal_nonneg) (Finset.mem_univ history)
 
 omit [Fintype ι] in
 /-- A bounded protocol admitting full mixing has only finitely many legal

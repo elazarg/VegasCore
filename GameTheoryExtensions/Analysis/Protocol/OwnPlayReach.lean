@@ -68,7 +68,7 @@ theorem ownPlayReachProbability_nonneg {who : Player} (policy : M.BehavioralPoli
     0 ≤ M.ownPlayReachProbability policy record := by
   induction record with
   | nil => exact zero_le_one
-  | cons entry prior ih => exact mul_nonneg (FinDist.prob_nonneg _ _) ih
+  | cons entry prior ih => exact mul_nonneg (ENNReal.toReal_nonneg) ih
 
 theorem ownPlayReachProbability_pos_support {who : Player} (policy : M.BehavioralPolicy who)
     (record : List (M.InfoState who × E.Action who))
@@ -81,10 +81,10 @@ theorem ownPlayReachProbability_pos_support {who : Player} (policy : M.Behaviora
   | cons entry prior ih =>
       have first := pos_of_mul_pos_left positive
         (M.ownPlayReachProbability_nonneg policy prior)
-      have rest := pos_of_mul_pos_right positive (FinDist.prob_nonneg _ _)
+      have rest := pos_of_mul_pos_right positive (ENNReal.toReal_nonneg)
       rcases List.mem_cons.mp member with same | earlier
       · cases same
-        exact FinDist.prob_pos_iff.mp first
+        exact pmf_toReal_pos_iff.mp first
       · exact ih rest earlier
 
 variable [Fintype Player]

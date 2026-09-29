@@ -67,14 +67,14 @@ private theorem sample_eq_map
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .sample payload law)
     (viewEq : nodeView graph event = .sample payload law outputEq codeEq)
-    (draw : FinDist (L.Val payload)) (evaluates : law.eval? state.config.store = some draw) :
+    (draw : PMF (L.Val payload)) (evaluates : law.eval? state.config.store = some draw) :
     environmentStep runtime state (.executeSample event) = draw.map (fun value =>
       state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
         (cast (congrArg EventField.Value outputEq.symm) value)) := by
   rw [environmentStep_executeSample_eq runtime state event ready payload law outputEq codeEq viewEq,
     state.config.step_eq_map_of_code event ready outputEq (.sample payload law) codeEq
-      PUnit.unit draw evaluates, FinDist.map_comp]
+      PUnit.unit draw evaluates, PMF.map_comp]
   rfl
 
 /-- A ready public chance event is coupled by the same sampled value. The
@@ -105,8 +105,8 @@ theorem environmentStep_sample_hidden_congr
   have rightLaw : law.eval? right.config.store = some draw := laws.symm.trans leftLaw
   rw [sample_eq_map runtime left event leftReady payload law outputEq codeEq viewEq draw leftLaw,
     sample_eq_map runtime right event rightReady payload law outputEq codeEq viewEq draw rightLaw]
-  simp only [FinDist.map_comp]
-  apply FinDist.map_congr_of_eq_on_support
+  simp only [PMF.map_comp]
+  apply map_congr_on_support _
   intro value _
   funext who
   dsimp only [Function.comp_apply]

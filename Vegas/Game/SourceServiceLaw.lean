@@ -85,8 +85,8 @@ theorem sourceService_prefix_state_law
     have phase := boundary.step_state_law remaining positive profile remainingProfile current refs
       embedding refsBefore rank aligned execution bounds network opportunities
         (inheritedEffective effective)
-    have projected := congrArg (FinDist.map (Option.map lift)) phase
-    simp only [FinDist.map_comp, Function.comp_def, Option.map_some] at projected
+    have projected := congrArg (PMF.map (Option.map lift)) phase
+    simp only [PMF.map_comp, Function.comp_def, Option.map_some] at projected
     have decodeAt (final : app.Execution) : readout (rank + 1) final =
         (decodeSourcePrefix? remaining refs current.registry current.revelations embedding.ref 1
           final.application.config.store (decodeHistory setup.program
@@ -99,17 +99,17 @@ theorem sourceService_prefix_state_law
       change setup.behavioralStateStep admission encoded
         (sourceServicePrefix? setup rank execution.application.config) = _
       rw [decoded, stateEq, setup.behavioralStateStep_encoded_some admission profile permitted,
-        stepEq.1, FinDist.map_comp]
+        stepEq.1, PMF.map_comp]
     rw [sourceStep]
     have expected := projected
     rw [eventEq] at expected
     refine Eq.trans ?_ expected
-    apply FinDist.map_congr_of_eq_on_support
+    apply map_congr_on_support _
     intro final _
     exact decodeAt final
   have prefixes : ∀ rank ≤ eventCount setup.program,
       (physical rank).map (readout rank) =
-        (fun law => law.bind kernel)^[rank + 1] (FinDist.pure none) := by
+        (fun law => law.bind kernel)^[rank + 1] (PMF.pure none) := by
     intro rank bound
     induction rank with
     | zero =>
@@ -118,12 +118,12 @@ theorem sourceService_prefix_state_law
             (rosterPlanPrefix setup rosters 0)
             (ReactiveApplication.Execution.initial app state)).map (readout 0) = _
         simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-          Nat.zero_add, Function.iterate_one, FinDist.pure_bind, ← FinDist.map_eq_bind,
-          FinDist.map_comp]
+          Nat.zero_add, Function.iterate_one, PMF.pure_bind, ← ← PMF.bind_pure_comp, Function.comp_def,
+          PMF.map_comp]
         change (initialLaw setup).map (fun state => sourceServicePrefix? setup 0
           (ReactiveApplication.Execution.initial app state).application.config) =
             setup.behavioralStateStep admission encoded none
-        rw [setup.behavioralStateStep_none, initialLaw, FinDist.map_comp]
+        rw [setup.behavioralStateStep_none, initialLaw, PMF.map_comp]
         congr 1
         funext initial
         exact sourceServicePrefix?_initial setup initial
@@ -137,13 +137,13 @@ theorem sourceService_prefix_state_law
             ((runtime setup).runInteractionPlan leaks players network
               (rosterBlock setup rosters ⟨rank, inside⟩)) := by
           dsimp only [physical]
-          simp only [plan, (runtime setup).runInteractionPlan_append, FinDist.bind_bind]
-        rw [distribution, FinDist.map_bind]
+          simp only [plan, (runtime setup).runInteractionPlan_append, PMF.bind_bind]
+        rw [distribution, PMF.map_bind]
         trans (physical rank).bind (fun execution => kernel (readout rank execution))
-        · exact FinDist.bind_congr (fun execution supported => step rank inside execution supported)
-        · rw [← FinDist.bind_map, prior]
+        · exact bind_congr_on_support _ (fun execution supported => step rank inside execution supported)
+        · rw [← PMF.bind_map, prior]
           exact (Function.iterate_succ_apply' (fun law => law.bind kernel) (rank + 1)
-            (FinDist.pure none)).symm
+            (PMF.pure none)).symm
   have sourceLaw := setup.runBehavioralFrom_state admission encoded (count + 1)
     (setup.executionProtocol admission).initHistory
   exact (prefixes count within).trans sourceLaw.symm
@@ -205,8 +205,8 @@ theorem sourceServiceLastPolicy_readout_law [Finite Player]
   let := Fintype.ofFinite Player
   have prefixLaw := sourceService_prefix_state_law setup leaks bounds values initialValues capacity
     rosters opportunities network profile permitted effective (eventCount setup.program) le_rfl
-  have observed := congrArg (FinDist.map setup.protocolReadout) prefixLaw
-  simp only [FinDist.map_comp, Function.comp_def] at observed
+  have observed := congrArg (PMF.map setup.protocolReadout) prefixLaw
+  simp only [PMF.map_comp, Function.comp_def] at observed
   have completed : rosterPlanPrefix setup rosters (eventCount setup.program) =
       rosterPlan setup rosters := by
     unfold rosterPlanPrefix rosterPlan
@@ -246,19 +246,19 @@ theorem sourceServiceCompiledProfile_readout_law
   have bindingOpportunities := opportunities.binding
   have physical := sourceServiceCompiledProfile_complete_state setup leaks bounds values
     initialValues capacity rosters bindingOpportunities network original permitted
-  have observed := congrArg (FinDist.map (sourceReadout setup leaks)) physical
-  simp only [FinDist.map_comp, Function.comp_def] at observed
+  have observed := congrArg (PMF.map (sourceReadout setup leaks)) physical
+  simp only [PMF.map_comp, Function.comp_def] at observed
   have effective (who : Player) : (normalized who).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context) :=
     (original who).normalizeDisclosureFrom_effective setup.program []
-      (Revelations.initial setup.context) (fun view => FinDist.pure view.2)
+      (Revelations.initial setup.context) (fun view => PMF.pure view.2)
   have sourceLaw := sourceServiceLastPolicy_readout_law setup leaks bounds values initialValues
     capacity rosters opportunities network normalized
       (normalized_sourceService_admitted setup original permitted) effective
   refine observed.trans (sourceLaw.trans ?_)
-  apply congrArg (FinDist.map some)
+  apply congrArg (PMF.map some)
   unfold Setup.run
-  apply FinDist.bind_congr
+  apply bind_congr_on_support _
   intro initial _
   exact normalizeDisclosureProfile_runFrom setup.program original (setup.initialConfig initial)
 

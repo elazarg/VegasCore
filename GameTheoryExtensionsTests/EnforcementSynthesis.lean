@@ -58,7 +58,7 @@ theorem rejected_table_has_no_real_solution :
 
 noncomputable section
 
-def comparison : IncentiveComparison Bool := ⟨FinDist.pure false, FinDist.pure true⟩
+def comparison : IncentiveComparison Bool := ⟨PMF.pure false, PMF.pure true⟩
 
 def base (outcome : Bool) : ℝ := if outcome then 3 / 2 else 0
 
@@ -71,8 +71,8 @@ theorem inferred_comparison :
     (fun _ => 3 / 2) (fun _ => 1) (by simp) inferred
     (fun _ => comparison) base {true} (index := ())
   apply (by norm_num at result; exact result)
-  · norm_num [comparison, base, FinDist.expect_pure]
-  · norm_num [comparison, FinDist.probOf_singleton, FinDist.prob_pure_eq_ite]
+  · norm_num [comparison, base, expect_pure]
+  · norm_num [comparison, FinDist.probOf_singleton, toReal_pure_apply]
 
 end
 

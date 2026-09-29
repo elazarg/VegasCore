@@ -48,7 +48,7 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
     (action : nativeApp.Action) :
     nativeScheduler (control.execution.respond nativeApp true action).environmentRecall
       ((control.execution.respond nativeApp true action).observeEnvironment nativeApp) =
-        FinDist.pure (nativeFinalCommand control.execution action) := by
+        PMF.pure (nativeFinalCommand control.execution action) := by
   classical
   let execution := control.execution
   have rawTrace := nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace
@@ -69,7 +69,7 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
       (List.mem_filter.mp filtered).1 selected.1.1.1
   have old : nativeApp.authorizedUniform dependencyCondition execution.environmentRecall
       (execution.observeEnvironment nativeApp) (eventProposal guessEvent true) =
-        FinDist.pure none := by
+        PMF.pure none := by
     change MessageNetwork.chooseUniform (MessageNetwork.eligibleIds
       (execution.network.unpublished (nativeApp.authorizedEligibility dependencyCondition
         execution.environmentRecall (eventProposal guessEvent true))) execution.network.pending) = _
@@ -119,15 +119,15 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => simp only [ReactiveApplication.submitsEligible, Bool.false_eq_true,
-      ↓reduceIte, FinDist.map_pure, Option.elim_none, nativeFinalCommand]
+      ↓reduceIte, PMF.pure_map, Option.elim_none, nativeFinalCommand]
   | some transmission =>
       cases transmission with
       | replay id => simp only [ReactiveApplication.submitsEligible, Bool.false_eq_true,
-          ↓reduceIte, FinDist.map_pure, Option.elim_none, nativeFinalCommand]
+          ↓reduceIte, PMF.pure_map, Option.elim_none, nativeFinalCommand]
       | submit submission =>
           rw [submitted]
           by_cases address : submission.call.packet.event? nativeGraph = some guessEvent <;>
             simp only [nativeFinalCommand, address, decide_true, decide_false, ↓reduceIte,
-              Bool.false_eq_true, FinDist.map_pure, Option.elim_some, Option.elim_none]
+              Bool.false_eq_true, PMF.pure_map, Option.elim_some, Option.elim_none]
 
 end Vegas.Examples.SequentialValidation

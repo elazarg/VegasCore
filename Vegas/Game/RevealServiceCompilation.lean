@@ -54,8 +54,7 @@ theorem source_raw_sequential_equilibrium_preserved
     (positive : ∀ who, who ≠ watcher → 0 < probability who)
     (sampling : ∀ owner, owner ≠ watcher →
       ∀ pending (message : Message Player (WitnessedPacket (graph setup))), message ∈ pending →
-        message.id.1 = owner → probability owner ≤ (leaks watcher pending).probOf
-          {selected | message.id ∈ selected})
+        message.id.1 = owner → probability owner ≤ ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
       (fun who site => source.continuationContext site
@@ -102,7 +101,7 @@ theorem source_raw_sequential_equilibrium_preserved
   trans ((information setup leaks extended watcher).runBehavioral retained.strategy
     (2 * horizon setup watcher + 1)).map
       (fun final => (sourceReadout setup leaks final.state, base final.state))
-  · apply FinDist.map_congr_of_eq_on_support
+  · apply map_congr_on_support _
     intro final supported
     congr 1
     funext who

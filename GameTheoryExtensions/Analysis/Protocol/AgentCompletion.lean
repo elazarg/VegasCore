@@ -4,7 +4,9 @@ import GameTheoryExtensions.Analysis.ConstrainedNash
 import GameTheoryExtensions.Analysis.Protocol.AgentForm
 import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
 import GameTheoryExtensions.Analysis.Protocol.Bayes
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Simultaneous Bayesian completion of free information agents
 
@@ -36,22 +38,22 @@ theorem exists_pinned_agent_completion
     (decisionCovered : ∀ who (site : M.InformationSite who), site.1 ∈ sites who)
     (utility : E.History → Player → ℝ) (free : Finset (M.InformationAgent sites))
     (pinned reference : (agent : M.InformationAgent sites) →
-      FinDist (M.Choice agent.1 agent.2.1))
-    (pinnedFull : ∀ agent, agent ∉ free → (pinned agent).FullSupport)
-    (referenceFull : ∀ agent, (reference agent).FullSupport)
+      PMF (M.Choice agent.1 agent.2.1))
+    (pinnedFull : ∀ agent, agent ∉ free → FullSupport (pinned agent))
+    (referenceFull : ∀ agent, FullSupport (reference agent))
     (epsilon : ℝ) (positive : 0 < epsilon) (small : epsilon < 1) :
     ∃ (residual : (agent : M.InformationAgent sites) →
-        FinDist (M.Choice agent.1 agent.2.1)) (assessment : M.BehavioralAssessment),
+        PMF (M.Choice agent.1 agent.2.1)) (assessment : M.BehavioralAssessment),
       assessment.strategy = M.agentBehavior sites fallback
         (pinnedTremble (F := M.informationAgentForm sites fallback horizon)
           free pinned reference residual epsilon positive.le small.le) ∧
       assessment.IsFullyMixed ∧
       BehavioralAssessment.IsBayesConsistent M assessment
-        decisionRecall.antichain ∧
+        decisionRecall.decisionInformationAntichain ∧
       ∀ (who : Player) (site : M.InformationSite who) (present : site.1 ∈ sites who),
         (⟨who, ⟨site.1, present⟩⟩ : M.InformationAgent sites) ∈ free →
         ∀ depth fuel, InformationSite.CommonDepth M site depth → depth + fuel = horizon →
-        ∀ alternative : FinDist (M.Choice who site.1),
+        ∀ alternative : PMF (M.Choice who site.1),
           (assessment.continuationContext site (fun history => utility history who) fuel).value
             ((assessment.strategy who).withLaw site.1 alternative) ≤
           (assessment.continuationContext site (fun history => utility history who) fuel).value
@@ -67,7 +69,7 @@ theorem exists_pinned_agent_completion
   let played := pinnedTremble (F := form) free pinned reference residual
     epsilon positive.le small.le
   let original := BehavioralAssessment.ofStrategy (M.agentBehavior sites fallback played)
-  have playedFull : ∀ agent, (played agent).FullSupport :=
+  have playedFull : ∀ agent, FullSupport (played agent) :=
     pinnedTremble_fullSupport free pinned reference residual epsilon positive small.le
       pinnedFull (fun agent _ => referenceFull agent)
   have mixed : original.IsFullyMixed := by
@@ -76,7 +78,7 @@ theorem exists_pinned_agent_completion
     have law := M.agentBehavior_at sites fallback played ⟨who, ⟨site.1, decisionCovered who site⟩⟩
     rw [law]
     exact playedFull ⟨who, ⟨site.1, decisionCovered who site⟩⟩ choice
-  let antichain := decisionRecall.antichain
+  let antichain := decisionRecall.decisionInformationAntichain
   let assessment := original.bayes mixed antichain
   have bayes : BehavioralAssessment.IsBayesConsistent M assessment antichain :=
     original.bayes_isBayesConsistent mixed antichain
@@ -87,9 +89,9 @@ theorem exists_pinned_agent_completion
   have realization (laws : Profile form.sig.mixed) :
       expectedUtility (fun history agent => utility history agent.1) agent
         (form.mixed.play laws) =
-      (M.runBehavioral (M.agentBehavior sites fallback laws) horizon).expect
+      expect (M.runBehavioral (M.agentBehavior sites fallback laws) horizon)
         (fun history => utility history who) := by
-    change (form.mixed.play laws).expect (fun history => utility history who) = _
+    change expect (form.mixed.play laws) (fun history => utility history who) = _
     rw [M.informationAgentForm_mixed_play sites fallback horizon
       decisionRecall.actsOnceWhereItMatters covered laws]
     rfl

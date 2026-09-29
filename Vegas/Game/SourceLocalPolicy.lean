@@ -30,7 +30,7 @@ theorem exists_admitted_local_law
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program admission)
     (who : Player) (info : setup.ProtocolView who)
-    (law : FinDist ((setup.informationModel admission).Choice who info)) :
+    (law : PMF ((setup.informationModel admission).Choice who info)) :
     ∃ alternative : BehavioralPolicy who setup.program,
       alternative.Admitted setup.program admission ∧
       ∀ (history : (setup.executionProtocol admission).History)
@@ -73,8 +73,8 @@ theorem exists_admitted_local_law
   have whole := setup.runBehavioralFrom_readout admission updated (fuel + 1) history enough
   rw [decoded] at first
   rw [decodedUpdated] at whole
-  apply FinDist.map_injective (Option.some_injective _)
-  rw [FinDist.map_bind]
+  apply pmf_map_injective (Option.some_injective _)
+  rw [PMF.map_bind]
   exact whole.symm.trans first
 
 end Vegas.SourceProgram.Setup

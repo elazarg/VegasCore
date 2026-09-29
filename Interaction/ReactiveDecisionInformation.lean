@@ -20,7 +20,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
 
 theorem control_of_active
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (history : (app.protocol initial horizon scheduler).History) (who : Principal)
     (active : (app.protocol initial horizon scheduler).active history.state who) :
     ∃ control, history.state = some control ∧ control.actor = some who := by
@@ -30,7 +30,7 @@ theorem control_of_active
       exact ⟨control, rfl, by simpa [protocol, actor, stateEq] using active⟩
 
 theorem informationSite_allNonterminal
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (who : Principal) (site : (app.information initial horizon scheduler).InformationSite who) :
     site.AllNonterminal := by
   intro history stopped
@@ -42,7 +42,7 @@ theorem informationSite_allNonterminal
   cases impossible
 
 theorem decisionInformationAntichain
-    (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler) :
+    (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     (app.information initial horizon scheduler).DecisionInformationAntichain := by
   intro who site first second joint legal target realized fuel path
   obtain ⟨before, firstEq, firstActive⟩ := app.control_of_active initial horizon scheduler
@@ -65,7 +65,7 @@ theorem decisionInformationAntichain
     change target ∈ (app.transition initial horizon scheduler first.1.state joint).support
       at realized
     rw [firstEq] at realized
-    simpa only [transition, firstActive, FinDist.mem_support_pure] using realized
+    simpa only [transition, firstActive, PMF.mem_support_pure_iff _ _] using realized
   have retained := app.reaches_recall_prefix initial horizon scheduler path middle after
     targetEq lastEq who
   have grows := congrArg List.length (app.respond_actions before.execution who action)

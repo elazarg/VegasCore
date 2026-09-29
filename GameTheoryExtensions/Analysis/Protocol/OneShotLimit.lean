@@ -74,7 +74,7 @@ theorem BehavioralAssessmentConvergesPointwise.exists_vanishing_local_gain_bound
         by_cases same : decision = site
         · subst decision
           simpa only [BehavioralPolicy.withLaw_self] using
-            finDistConvergesPointwise_const (alternative site.1)
+            pmfConvergesPointwise_const (alternative site.1)
         · have different : decision.1 ≠ site.1 := fun equal => same (Subtype.ext equal)
           simpa only [BehavioralPolicy.withLaw_of_ne _ _ _ different] using
             converges.strategy who decision

@@ -58,13 +58,13 @@ def instruction {Claim : Type} (view : (application Claim).EnvironmentView) :
   | .record event => latest view event
 
 def scheduler (Claim : Type) : (application Claim).Scheduler := fun past view =>
-  FinDist.pure ((calendar[past.length]?).elim .wait (instruction view))
+  PMF.pure ((calendar[past.length]?).elim .wait (instruction view))
 
 abbrev horizon : Nat := calendar.length
 abbrev arena (Claim : Type) [Fintype Claim] :=
-  (menu Claim).protocol (FinDist.pure initial) horizon (scheduler Claim)
+  (menu Claim).protocol (PMF.pure initial) horizon (scheduler Claim)
 abbrev model (Claim : Type) [Fintype Claim] :=
-  (menu Claim).information (FinDist.pure initial) horizon (scheduler Claim)
+  (menu Claim).information (PMF.pure initial) horizon (scheduler Claim)
 
 def root (Claim : Type) : (application Claim).Execution :=
   .initial (application Claim) initial
@@ -92,14 +92,14 @@ def playing (Claim : Type) (defaultClaim : Claim) (event : Event)
 def policy (Claim : Type) (defaultClaim : Claim) (who : Player) :
     (application Claim).Policy := fun _ view =>
   match view.application.visit with
-  | none => FinDist.pure ⟨none⟩
+  | none => PMF.pure ⟨none⟩
   | some event =>
       if who = eventOwner event then
         if event.val = 0 then
-          (FinDist.uniformOfFintype (α := Bool)).map fun bit =>
+          (PMF.uniformOfFintype (α := Bool)).map fun bit =>
             playing Claim defaultClaim event (.success bit)
-        else FinDist.pure (playing Claim defaultClaim event (.success (publicGuess view)))
-      else FinDist.pure ⟨none⟩
+        else PMF.pure (playing Claim defaultClaim event (.success (publicGuess view)))
+      else PMF.pure ⟨none⟩
 
 theorem playing_available (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (who : Player) (past : List (application Claim).PlayerEntry)
@@ -121,20 +121,20 @@ theorem policy_covered (Claim : Type) [Fintype Claim] (defaultClaim : Claim) (wh
     action ∈ (menu Claim).actions who past view := by
   unfold policy at supported
   split at supported
-  · cases FinDist.mem_support_pure.mp supported
+  · cases (PMF.mem_support_pure_iff _ _).mp supported
     exact silence_available Claim who past view
   · split at supported
     · split at supported
-      · obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      · obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact playing_available Claim defaultClaim who past view _ _
-      · cases FinDist.mem_support_pure.mp supported
+      · cases (PMF.mem_support_pure_iff _ _).mp supported
         exact playing_available Claim defaultClaim who past view _ _
-    · cases FinDist.mem_support_pure.mp supported
+    · cases (PMF.mem_support_pure_iff _ _).mp supported
       exact silence_available Claim who past view
 
 def profile (Claim : Type) [Fintype Claim] (defaultClaim : Claim) :
     Profile (model Claim).behavioralSignature := fun who =>
-  (menu Claim).restrictPolicy (FinDist.pure initial) horizon (scheduler Claim) who
+  (menu Claim).restrictPolicy (PMF.pure initial) horizon (scheduler Claim) who
     (policy Claim defaultClaim who)
 
 /-- One positive mixture weight applies at every player and information site;
@@ -142,22 +142,22 @@ the reference is uniform on the entire declared menu, including every replay. -/
 def tremble (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
     (model Claim).BehavioralAssessment :=
-  (menu Claim).perturbedAssessment (FinDist.pure initial) horizon (scheduler Claim)
+  (menu Claim).perturbedAssessment (PMF.pure initial) horizon (scheduler Claim)
     (profile Claim defaultClaim) weight positive atMostOne
 
 theorem tremble_fullyMixed (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
     (tremble Claim defaultClaim weight positive atMostOne).IsFullyMixed :=
-  (menu Claim).perturbedAssessment_fullyMixed (FinDist.pure initial) horizon (scheduler Claim)
+  (menu Claim).perturbedAssessment_fullyMixed (PMF.pure initial) horizon (scheduler Claim)
     (profile Claim defaultClaim) weight positive atMostOne
 
 theorem tremble_bayes (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
     InformationModel.BehavioralAssessment.IsBayesConsistent (model Claim)
       (tremble Claim defaultClaim weight positive atMostOne)
-      ((menu Claim).decisionInformationAntichain (FinDist.pure initial)
+      ((menu Claim).decisionInformationAntichain (PMF.pure initial)
         horizon (scheduler Claim)) :=
-  (menu Claim).perturbedAssessment_bayes (FinDist.pure initial) horizon (scheduler Claim)
+  (menu Claim).perturbedAssessment_bayes (PMF.pure initial) horizon (scheduler Claim)
     (profile Claim defaultClaim) weight positive atMostOne
 
 end Vegas.Examples.SelectiveAssociation.NamedSource

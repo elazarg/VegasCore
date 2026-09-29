@@ -22,28 +22,28 @@ theorem serviceStep_player_config (runtime : EventGraphRuntime graph)
     (before after : runtime.application.PolicyExecution)
     (supported : after ∈ (runtime.serviceStep players wire (.player owner) before).support) :
     after.native.application.config = before.native.application.config := by
-  simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+  simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
     Set.mem_iUnion] at supported
   obtain ⟨command, _, step⟩ := supported
   have native : after.native ∈ ((runtime.application.playerStep owner before command).map
       MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨after, step, rfl⟩
   rw [runtime.application.playerStep_native] at native
   cases command with
   | privateCommand command =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact privateStep_config before.native.application owner command
   | submit packet =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact submitStep_config before.native.application owner packet
   | replay id | wait =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
-        FinDist.mem_support_pure] at native
+        PMF.mem_support_pure_iff _ _] at native
       rw [native]
 
 /-- A newly completed event in a sample instruction belongs to chance,
@@ -59,11 +59,11 @@ theorem serviceStep_sample_completed_actor (runtime : EventGraphRuntime graph)
   have native : after.native ∈ ((runtime.application.environmentPolicyStep before
       (.application (.executeSample query))).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨after, supported, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.step,
-    FinDist.support_map, Set.mem_image] at native
+    PMF.support_map, Set.mem_image] at native
   obtain ⟨next, nextMem, nativeEq⟩ := native
   have applicationEq : after.native.application = next := by rw [← nativeEq]
   change next ∈ (environmentStep runtime before.native.application (.executeSample query)).support
@@ -90,7 +90,7 @@ theorem serviceStep_sample_completed_actor (runtime : EventGraphRuntime graph)
       exact (EventCode.actor_cast outputEq (graph.nodes query)).symm.trans
         (congrArg EventCode.actor codeEq)
     rw [runtime.environmentStep_executeSample_of_nonsample before.native.application query ready
-      nonsample, FinDist.mem_support_pure] at nextMem
+      nonsample, PMF.mem_support_pure_iff _ _] at nextMem
     rw [nextMem] at completed
     exact unfinished completed
 
@@ -104,7 +104,7 @@ private theorem serviceControlStep_instruction_support (runtime : EventGraphRunt
     (supported : after ∈
       (runtime.serviceControlStep roster reactionRounds players wire order before).support) :
     after.execution ∈ (runtime.serviceStep players wire instruction before.execution).support := by
-  simp only [serviceControlStep, plan, FinDist.support_map, Set.mem_image] at supported
+  simp only [serviceControlStep, plan, PMF.support_map, Set.mem_image] at supported
   obtain ⟨execution, executionMem, equal⟩ := supported
   rw [← equal]
   exact executionMem
@@ -114,19 +114,19 @@ paired transition theorem cannot occur: player calls do not complete events,
 and samples complete only chance events. -/
 theorem ServiceReplay.completionPaired
     (runtime : EventGraphRuntime graph)
-    (inputs : FinDist graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
     (ordered : graph.BarrierOrdered) (focal : Player)
     (focalResponse : List runtime.application.PlayerEntry →
       runtime.application.View → runtime.application.PlayerCommand)
-    (fixedFocal : players focal = fun history view => FinDist.pure (focalResponse history view))
+    (fixedFocal : players focal = fun history view => PMF.pure (focalResponse history view))
     (wireResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → WireCommand Player)
-    (fixedWire : wire = fun history view => FinDist.pure (wireResponse history view))
+    (fixedWire : wire = fun history view => PMF.pure (wireResponse history view))
     (orderResponse : List runtime.application.EnvironmentEntry →
       runtime.application.EnvironmentObservation → ServiceOrder graph)
-    (fixedOrder : order = fun history view => FinDist.pure (orderResponse history view))
+    (fixedOrder : order = fun history view => PMF.pure (orderResponse history view))
     (prescribedOthers : ∀ who, who ≠ focal →
       ∃ policy : graph.BehavioralPolicy who, players who = runtime.compilePlayerPolicy who policy)
     (event : graph.EventId) (actor : graph.actor? event = some focal)

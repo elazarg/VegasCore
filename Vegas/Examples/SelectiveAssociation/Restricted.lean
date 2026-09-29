@@ -20,7 +20,7 @@ namespace Vegas.Examples.SelectiveAssociation.Restricted
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
 def leaks : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph) :=
-  fun _ _ => FinDist.pure ∅
+  fun _ _ => PMF.pure ∅
 
 abbrev app := serviceApp leaks
 abbrev menu := serviceMenu leaks
@@ -66,9 +66,9 @@ def activate (execution : app.Execution) (who : Player) : app.Execution :=
       [⟨execution.observeEnvironment app, .activate who⟩] }
 
 theorem activation_law (execution : app.Execution) (who : Player) :
-    execution.environmentStep app (.activate who) = FinDist.pure (activate execution who) := by
+    execution.environmentStep app (.activate who) = PMF.pure (activate execution who) := by
   simp [ReactiveApplication.Execution.environmentStep, app, serviceApp, reactiveApplication,
-    leaks, FinDist.map_pure, activate]
+    leaks, PMF.pure_map, activate]
 
 def first (bit : Bool) : app.Execution :=
   (activate initial alice).respond app alice (certifiedOffer bit)
@@ -76,7 +76,7 @@ def first (bit : Bool) : app.Execution :=
 def bobInput (bit : Bool) : app.Execution := activate (first bit) bob
 
 theorem bob_activation (bit : Bool) :
-    (first bit).environmentStep app (.activate bob) = FinDist.pure (bobInput bit) :=
+    (first bit).environmentStep app (.activate bob) = PMF.pure (bobInput bit) :=
   activation_law _ _
 
 /-- The private certified packet exists on the wire, but the restricted
@@ -104,23 +104,23 @@ theorem bob_response_same (policy : app.Policy) :
 
 def firstPolicy (players : Player → app.Policy) : Player → app.Policy :=
   Function.update players alice fun _ _ =>
-    (FinDist.uniformOfFintype (α := Bool)).map certifiedOffer
+    (PMF.uniformOfFintype (α := Bool)).map certifiedOffer
 
 theorem first_round (players : Player → app.Policy) :
     nativeRuntime.interactionStep leaks (firstPolicy players) network (.player alice) initial =
-      (FinDist.uniformOfFintype (α := Bool)).map first := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-    ReactiveApplication.dispatch, activation_law, FinDist.pure_bind,
+      (PMF.uniformOfFintype (α := Bool)).map first := by
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+    ReactiveApplication.dispatch, activation_law, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
-    firstPolicy, Function.update_self, FinDist.map_comp]
+    firstPolicy, Function.update_self, PMF.map_comp]
   rfl
 
 theorem bob_round (players : Player → app.Policy) (bit : Bool) :
     nativeRuntime.interactionStep leaks (firstPolicy players) network (.player bob) (first bit) =
       (players bob ((bobInput bit).recall bob) ((bobInput bit).observe app bob)).map
         ((bobInput bit).respond app bob) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-    ReactiveApplication.dispatch, bob_activation, FinDist.pure_bind,
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+    ReactiveApplication.dispatch, bob_activation, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
     firstPolicy, Function.update_of_ne (by decide : bob ≠ alice)]
 
@@ -129,16 +129,16 @@ one Bob response distribution, independent of Alice's private bit. -/
 theorem two_rounds (players : Player → app.Policy) :
     nativeRuntime.runInteractionPlan leaks (firstPolicy players) network
       (nativePlan.take 2) initial =
-      (FinDist.uniformOfFintype (α := Bool)).bind fun bit =>
+      (PMF.uniformOfFintype (α := Bool)).bind fun bit =>
         (players bob ((bobInput false).recall bob) ((bobInput false).observe app bob)).map
           ((bobInput bit).respond app bob) := by
   change nativeRuntime.runInteractionPlan leaks (firstPolicy players) network
     [.player alice, .player bob] initial = _
-  rw [runInteractionPlan, first_round, FinDist.bind_map]
-  apply FinDist.bind_congr
+  rw [runInteractionPlan, first_round, PMF.bind_map]
+  apply bind_congr_on_support _
   intro bit _
   rw [runInteractionPlan, bob_round]
-  simp only [runInteractionPlan, FinDist.bind_pure]
+  simp only [runInteractionPlan, PMF.bind_pure]
   cases bit
   · rfl
   · rw [bob_response_same (players bob)]
@@ -148,8 +148,8 @@ of the private fair bit with accuracy above one half. Failure-valued reports
 are included. This is a prefix information bound, not an equilibrium claim. -/
 theorem first_response_guess_bound (policy : app.Policy)
     (report : app.Action → PublicationResult Bool) :
-    (FinDist.uniformOfFintype (α := Bool)).expect (fun bit =>
-      (policy ((bobInput bit).recall bob) ((bobInput bit).observe app bob)).expect
+    expect (PMF.uniformOfFintype (α := Bool)) (fun bit =>
+      expect (policy ((bobInput bit).recall bob) ((bobInput bit).observe app bob))
         (fun response => correctness (.success bit) (report response))) ≤ 1 / 2 := by
   have constant (bit : Bool) :
       policy ((bobInput bit).recall bob) ((bobInput bit).observe app bob) =
@@ -158,7 +158,7 @@ theorem first_response_guess_bound (policy : app.Policy)
     · rfl
     · exact (bob_response_same policy).symm
   simp_rw [constant]
-  simpa only [FinDist.expect_map] using fair_guess_le_half
+  simpa only [expect_map] using fair_guess_le_half
     ((policy ((bobInput false).recall bob) ((bobInput false).observe app bob)).map report)
 
 def reacted (bit : Bool) : app.Execution := (bobInput bit).respond app bob ⟨none⟩
@@ -226,9 +226,9 @@ private theorem included_receipts (bit : Bool) :
 
 theorem beforeOffer_law (bit : Bool) :
     (((reacted bit).environmentStep app (.application (.grant aliceBinding))).bind
-      fun next => next.environmentStep app (.activate alice)) = FinDist.pure (beforeOffer bit) := by
+      fun next => next.environmentStep app (.activate alice)) = PMF.pure (beforeOffer bit) := by
   simp [ReactiveApplication.Execution.environmentStep, app, serviceApp, reactiveApplication,
-    environmentStep, leaks, FinDist.map_pure, beforeOffer, activate]
+    environmentStep, leaks, PMF.pure_map, beforeOffer, activate]
 
 theorem association_selected (bit : Bool) :
     nativeRuntime.reactiveLatest leaks aliceBinding alice
@@ -236,8 +236,8 @@ theorem association_selected (bit : Bool) :
   cases bit <;> rfl
 
 theorem association_inclusion (bit : Bool) :
-    (offered bit).environmentStep app (.include (alice, 1)) = FinDist.pure (included bit) := by
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+    (offered bit).environmentStep app (.include (alice, 1)) = PMF.pure (included bit) := by
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
 /-- Public acceptance creates the same game association as in the leaking
@@ -297,9 +297,9 @@ theorem association_input_hidden (who : Player) (foreign : who ≠ alice) :
 
 def prefixPlayers (bit : Bool) : Player → app.Policy := fun who _ view =>
   if who = alice then
-    if view.application.publicView.serviceGrant = some aliceBinding then FinDist.pure associate
-    else FinDist.pure (certifiedOffer bit)
-  else FinDist.pure ⟨none⟩
+    if view.application.publicView.serviceGrant = some aliceBinding then PMF.pure associate
+    else PMF.pure (certifiedOffer bit)
+  else PMF.pure ⟨none⟩
 
 theorem prefixPlayers_available (bit : Bool) (who : Player) (past : List app.PlayerEntry)
     (view : app.PlayerView) (response : app.Action)
@@ -310,75 +310,75 @@ theorem prefixPlayers_available (bit : Bool) (who : Player) (past : List app.Pla
   · rename_i same
     subst who
     split at supported
-    · cases FinDist.mem_support_pure.mp supported
+    · cases (PMF.mem_support_pure_iff _ _).mp supported
       exact associate_available past view
-    · cases FinDist.mem_support_pure.mp supported
+    · cases (PMF.mem_support_pure_iff _ _).mp supported
       exact certifiedOffer_available bit past view
-  · cases FinDist.mem_support_pure.mp supported
+  · cases (PMF.mem_support_pure_iff _ _).mp supported
     change (⟨none⟩ : app.Action) ∈ (nativeBounds.rawMenu nativeRuntime leaks).actions who past view
     rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
     trivial
 
 private theorem prefix_first (bit : Bool) :
     nativeRuntime.interactionStep leaks (prefixPlayers bit) network (.player alice) initial =
-      FinDist.pure (first bit) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-    ReactiveApplication.dispatch, activation_law, FinDist.pure_bind,
+      PMF.pure (first bit) := by
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+    ReactiveApplication.dispatch, activation_law, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke]
-  change (FinDist.pure (certifiedOffer bit)).map _ = _
-  rw [FinDist.map_pure]
+  change (PMF.pure (certifiedOffer bit)).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 private theorem prefix_bob (bit : Bool) :
     nativeRuntime.interactionStep leaks (prefixPlayers bit) network (.player bob) (first bit) =
-      FinDist.pure (reacted bit) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-    ReactiveApplication.dispatch, bob_activation, FinDist.pure_bind,
+      PMF.pure (reacted bit) := by
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+    ReactiveApplication.dispatch, bob_activation, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke]
-  change (FinDist.pure (⟨none⟩ : app.Action)).map _ = _
-  rw [FinDist.map_pure]
+  change (PMF.pure (⟨none⟩ : app.Action)).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 private theorem prefix_offer (bit : Bool) :
     nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
-      [.grant aliceBinding, .player alice] (reacted bit) = FinDist.pure (offered bit) := by
+      [.grant aliceBinding, .player alice] (reacted bit) = PMF.pure (offered bit) := by
   have combined : nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
       [.grant aliceBinding, .player alice] (reacted bit) =
       (((reacted bit).environmentStep app (.application (.grant aliceBinding))).bind
         fun next => next.environmentStep app (.activate alice)).bind
           (app.invoke (prefixPlayers bit) alice) := by
-    simp only [runInteractionPlan, FinDist.bind_pure, interactionStep, interactionInstruction,
-      FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-      ReactiveApplication.resume, FinDist.bind_bind]
+    simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
+      PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+      ReactiveApplication.resume, PMF.bind_bind]
     rfl
-  rw [combined, beforeOffer_law, FinDist.pure_bind]
-  change (FinDist.pure associate).map _ = _
-  rw [FinDist.map_pure]
+  rw [combined, beforeOffer_law, PMF.pure_bind]
+  change (PMF.pure associate).map _ = _
+  rw [PMF.pure_map]
   rfl
 
 private theorem prefix_include (bit : Bool) :
     nativeRuntime.interactionStep leaks (prefixPlayers bit) network
-      (.includeLatest aliceBinding alice) (offered bit) = FinDist.pure (included bit) := by
+      (.includeLatest aliceBinding alice) (offered bit) = PMF.pure (included bit) := by
   simp only [interactionStep, interactionInstruction, association_selected,
-    FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-  change ((offered bit).environmentStep app (.include (alice, 1))).bind FinDist.pure = _
-  rw [FinDist.bind_pure, association_inclusion]
+    PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
+  change ((offered bit).environmentStep app (.include (alice, 1))).bind PMF.pure = _
+  rw [PMF.bind_pure, association_inclusion]
 
 /-- Both values reach their indistinguishable accepted-association states
 through the first five instructions of the unchanged service calendar, using
 responses admitted in the complete native menu. -/
 theorem five_rounds (bit : Bool) :
     nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
-      (nativePlan.take 5) initial = FinDist.pure (included bit) := by
+      (nativePlan.take 5) initial = PMF.pure (included bit) := by
   change nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
     [.player alice, .player bob, .grant aliceBinding, .player alice,
       .includeLatest aliceBinding alice] initial = _
-  rw [runInteractionPlan, prefix_first, FinDist.pure_bind,
-    runInteractionPlan, prefix_bob, FinDist.pure_bind]
+  rw [runInteractionPlan, prefix_first, PMF.pure_bind,
+    runInteractionPlan, prefix_bob, PMF.pure_bind]
   change nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
     ([.grant aliceBinding, .player alice] ++ [.includeLatest aliceBinding alice]) (reacted bit) = _
-  rw [runInteractionPlan_append, prefix_offer, FinDist.pure_bind,
-    runInteractionPlan, prefix_include, FinDist.pure_bind]
+  rw [runInteractionPlan_append, prefix_offer, PMF.pure_bind,
+    runInteractionPlan, prefix_include, PMF.pure_bind]
   rfl
 
 /-- Restoring the observation rule enables a distinction absent from the

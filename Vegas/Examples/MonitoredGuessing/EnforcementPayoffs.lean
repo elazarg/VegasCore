@@ -150,9 +150,9 @@ theorem detected_bob_utility_le (table : PayoffTable) (execution : nativeApp.Exe
     exact_mod_cast le_payoffUpper table bob _
   linarith
 
-theorem lower_le_expect (table : PayoffTable) (who : Player) (outcomes : FinDist Results) :
-    (payoffLower table who : ℝ) ≤ outcomes.expect (fun result => (table result who : ℝ)) := by
-  rw [← FinDist.expect_const outcomes (payoffLower table who : ℝ)]
+theorem lower_le_expect (table : PayoffTable) (who : Player) (outcomes : PMF Results) :
+    (payoffLower table who : ℝ) ≤ expect outcomes (fun result => (table result who : ℝ)) := by
+  rw [← expect_constant outcomes (payoffLower table who : ℝ)]
   apply FinDist.expect_mono
   intro result _
   exact_mod_cast payoffLower_le table who result
@@ -163,8 +163,8 @@ part of `monitoredPrefixLaw`, not a claim about arbitrary watcher policies. -/
 theorem initial_submission_le_lower (table : PayoffTable)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).bind
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan)).expect
+    expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
+      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (fun execution => executionUtility table execution alice) ≤ payoffLower table alice := by
   simp only [alice_utility]
   apply submission_deterred_by_range (fun result => table result alice)
@@ -174,13 +174,13 @@ theorem initial_submission_le_lower (table : PayoffTable)
   · exact_mod_cast deposit_nonnegative table alice
   · exact le_of_eq (alice_deposit table).symm
 
-theorem initial_submission_le_clean_outcomes (table : PayoffTable) (outcomes : FinDist Results)
+theorem initial_submission_le_clean_outcomes (table : PayoffTable) (outcomes : PMF Results)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
-    ((monitoredPrefixLaw bit (submissionAction submission)).bind
-      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan)).expect
+    expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
+      (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (fun execution => executionUtility table execution alice) ≤
-      outcomes.expect (fun result => (table result alice : ℝ)) :=
+      expect outcomes (fun result => (table result alice : ℝ)) :=
   (initial_submission_le_lower table bit submission players plan).trans
     (lower_le_expect table alice outcomes)
 
@@ -205,8 +205,8 @@ private theorem maintenance_bob_audit (players : Player → nativeApp.Policy)
     (supported : after ∈ (nativeApp.dispatch players (.application command) before).support) :
     Conformance.bobLedgerViolation after = Conformance.bobLedgerViolation before := by
   change after ∈ ((before.environmentStep nativeApp (.application command)).bind
-    FinDist.pure).support at supported
-  rw [FinDist.bind_pure] at supported
+    PMF.pure).support at supported
+  rw [PMF.bind_pure] at supported
   exact nativeApp.ledgerViolation_application bob Conformance.bobPacketPermitted
     before after command supported
 
@@ -216,16 +216,16 @@ theorem clock_tail_bob_audit (players : Player → nativeApp.Policy)
       [.tick, .tick, .expire alicePublication] before).support) :
     Conformance.bobLedgerViolation after = Conformance.bobLedgerViolation before := by
   obtain ⟨first, firstMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨second, secondMem, lastMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ restMem)
-  simp only [runInteractionPlan, FinDist.bind_pure] at lastMem
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ restMem)
+  simp only [runInteractionPlan, PMF.bind_pure] at lastMem
   have firstEq := maintenance_bob_audit players .advanceClock before first
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using firstMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using firstMem)
   have secondEq := maintenance_bob_audit players .advanceClock first second
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using secondMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using secondMem)
   have finalEq := maintenance_bob_audit players (.expire alicePublication) second after
-    (by simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using lastMem)
+    (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using lastMem)
   exact finalEq.trans (secondEq.trans firstEq)
 
 private theorem alice_opening_bob_audit (players : Player → nativeApp.Policy)
@@ -245,8 +245,8 @@ private theorem alice_opening_bob_audit (players : Player → nativeApp.Policy)
       (nativeOpeningAction alicePublication aliceHandle bit)).observeEnvironment nativeApp) =
         .include (alice, execution.network.nextSerial alice) at selected
   rw [nativeRuntime.interaction_includeLatest_environment, selected] at supported
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at supported
-  cases FinDist.mem_support_pure.mp supported
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
+  cases (PMF.mem_support_pure_iff _ _).mp supported
   change ledgerViolation bob Conformance.bobPacketPermitted
     (ReactiveApplication.Execution.includePending nativeApp
       (execution.respond nativeApp alice (nativeOpeningAction alicePublication aliceHandle bit))
@@ -272,11 +272,11 @@ theorem alice_service_bob_clear (players : Player → nativeApp.Policy)
   | false =>
       simp only [Restricted.choiceAction, Bool.false_eq_true, ↓reduceIte,
         Restricted.silent_alice_service] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       exact before_alice_bob_clear bit guess
   | true =>
       obtain ⟨middle, middleMem, tailMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       exact (clock_tail_bob_audit players middle final tailMem).trans
         ((alice_opening_bob_audit players (Restricted.beforeAlice bit guess) bit
           (Restricted.before_alice_serials bit guess) middle middleMem).trans
@@ -290,16 +290,16 @@ theorem alice_service_payoff_law (table : PayoffTable) (players : Player → nat
       ((Restricted.beforeAlice bit guess).respond nativeApp alice
         (Restricted.choiceAction alicePublication aliceHandle bit disclose))).map
           (fun final => (nativeResults final.application.config, executionUtility table final)) =
-      FinDist.pure (sourceResults (finalConfig bit guess disclose).state,
+      PMF.pure (sourceResults (finalConfig bit guess disclose).state,
         fun who => (table (sourceResults (finalConfig bit guess disclose).state) who : ℝ)) := by
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
-  obtain ⟨final, reached, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
   have summary : (nativeResults final.application.config, rejectedAlice final.receipts) =
       (sourceResults (finalConfig bit guess disclose).state, false) := by
-    apply FinDist.mem_support_pure.mp
+    apply (PMF.mem_support_pure_iff _ _).mp
     rw [Restricted.source_results, ← Restricted.alice_service_summary players bit guess disclose,
-      FinDist.support_map]
+      PMF.support_map]
     exact ⟨final, reached, rfl⟩
   change (nativeResults final.application.config, executionUtility table final) = _
   apply Prod.ext
@@ -312,15 +312,15 @@ theorem alice_service_payoff_law (table : PayoffTable) (players : Player → nat
 
 theorem alice_service_value (table : PayoffTable) (players : Player → nativeApp.Policy)
     (bit guess disclose : Bool) (who : Player) :
-    (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
+    expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       ((Restricted.beforeAlice bit guess).respond nativeApp alice
-        (Restricted.choiceAction alicePublication aliceHandle bit disclose))).expect
+        (Restricted.choiceAction alicePublication aliceHandle bit disclose)))
           (fun final => executionUtility table final who) =
       (table (sourceResults (finalConfig bit guess disclose).state) who : ℝ) := by
-  have law := congrArg (fun law : FinDist (Results × (Player → ℝ)) =>
-    law.expect (fun outcome => outcome.2 who)) (alice_service_payoff_law table players bit guess
+  have law := congrArg (fun law : PMF (Results × (Player → ℝ)) =>
+    expect law (fun outcome => outcome.2 who)) (alice_service_payoff_law table players bit guess
       disclose)
-  simpa only [FinDist.expect_map, FinDist.expect_pure] using law
+  simpa only [expect_map, expect_pure] using law
 
 end
 

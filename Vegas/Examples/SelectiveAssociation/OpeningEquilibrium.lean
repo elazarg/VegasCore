@@ -34,15 +34,15 @@ theorem native_committed_response
     (response : (serviceApp observation).Action) (selected : choice.1 = some response)
     (past : List (serviceApp observation).PlayerEntry) (view : (serviceApp observation).PlayerView)
     (information : some (past, view) = info) :
-    (serviceMenu observation).decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+    (serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation)
       (Profile.update (sig := (serviceModel observation).behavioralSignature) profile who
-        ((profile who).commit info choice)) who past view = FinDist.pure response := by
+        ((profile who).commit info choice)) who past view = PMF.pure response := by
   simp only [ReactiveApplication.ResponseMenu.decodeProfile, ReactiveApplication.decodePolicy,
     ReactiveApplication.ResponseMenu.embedPolicy, Profile.update_same]
   rw [information]
-  simp only [InformationModel.BehavioralPolicy.commit_self, FinDist.map_pure]
-  change FinDist.pure (choice.1.getD ⟨none⟩) = _
+  simp only [InformationModel.BehavioralPolicy.commit_self, PMF.pure_map]
+  change PMF.pure (choice.1.getD ⟨none⟩) = _
   rw [selected]
   rfl
 
@@ -52,28 +52,28 @@ theorem native_settlement_behavioral
     (who : Player) (response : nativeApp.Action) (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
-    (chooses : nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+    (chooses : nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon nativeScheduler
       profile who (control.execution.recall who) (control.execution.observe nativeApp who) =
-        FinDist.pure response)
+        PMF.pure response)
     (final : nativeArena.History)
     (supported : final ∈ (nativeModel.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :
     ∃ middle ∈ (nativeRuntime.interactionStep nativeLeaks
-        (nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+        (nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon nativeScheduler
           profile)
         nativeNetwork (.includeLatest (nativePublicationEvent who) who)
         (control.execution.respond nativeApp who response)).support,
       nativePublicationAt who final.state =
         some (((nativePublicationRef who).get? middle.application.config.store).getD .failure) := by
-  have law := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+  have law := nativeMenu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler
     profile (2 * nativeHorizon + 1) ⟨some control, trace⟩ (by
       change nativeApp.rank nativeHorizon (some control) ≤ 2 * nativeHorizon + 1
-      have bound := nativeApp.trace_bound (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
-        (nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace)
+      have bound := nativeApp.trace_bound (PMF.pure nativeInitial) nativeHorizon nativeScheduler
+        (nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace)
       omega)
   obtain ⟨middle, middleMem, result, stateEq, published⟩ := native_response_settlement_finish
     _ control trace who response active granted unfinished chooses final.state (by
-      rw [← law, FinDist.support_map]
+      rw [← law, PMF.support_map]
       exact ⟨final, supported, rfl⟩)
   exact ⟨middle, middleMem, by
     simpa only [nativePublicationAt, stateEq, Option.bind_some] using published⟩
@@ -254,16 +254,16 @@ theorem native_sequentially_rational_opening_succeeds
   classical
   have once := nativeModel.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
-      (nativeMenu.decisionInformationAntichain (FinDist.pure nativeInitial) nativeHorizon
+      (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon
         nativeScheduler))
   have law := nativeModel.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
     (assessment.strategy who) site.1 (assessment.strategy who site.1) history.1 history.2
-    (nativeMenu.informationSite_allNonterminal (FinDist.pure nativeInitial) nativeHorizon
+    (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler who site history)
     (InformationModel.InformationSite.active nativeModel site history) (2 * nativeHorizon)
   rw [InformationModel.BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self] at law
   rw [law] at supported
-  obtain ⟨choice, chosen, finalMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨choice, chosen, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   exact native_supported_opening_succeeds assessment who site past view siteEq bit granted
     unfinished stored rational choice chosen history final finalMem
 
@@ -279,22 +279,22 @@ theorem native_binding_continuation
       ⟨some control, trace⟩).support) :
     ∃ result, final.state = some result ∧
       (nativeBindingRef who).get? result.execution.application.config.store = some value := by
-  let players := nativeMenu.decodeProfile (FinDist.pure nativeInitial) nativeHorizon
+  let players := nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler profile
-  have law := nativeMenu.run_eq_finish (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
+  have law := nativeMenu.run_eq_finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler
     profile (2 * nativeHorizon + 1) ⟨some control, trace⟩ (by
       change nativeApp.rank nativeHorizon (some control) ≤ 2 * nativeHorizon + 1
-      have bound := nativeApp.trace_bound (FinDist.pure nativeInitial) nativeHorizon nativeScheduler
-        (nativeMenu.toRawTrace (FinDist.pure nativeInitial) nativeHorizon nativeScheduler trace)
+      have bound := nativeApp.trace_bound (PMF.pure nativeInitial) nativeHorizon nativeScheduler
+        (nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace)
       omega)
-  have finished : final.state ∈ (nativeApp.finish (FinDist.pure nativeInitial) nativeHorizon
+  have finished : final.state ∈ (nativeApp.finish (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler players (some control)).support := by
-    rw [← law, FinDist.support_map]
+    rw [← law, PMF.support_map]
     exact ⟨final, supported, rfl⟩
   simp only [ReactiveApplication.finish] at finished
-  obtain ⟨execution, executionMem, stateEq⟩ := FinDist.support_map .. ▸ finished
+  obtain ⟨execution, executionMem, stateEq⟩ := PMF.support_map .. ▸ finished
   obtain ⟨middle, middleMem, executionMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ executionMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ executionMem)
   have invariant := ReactiveApplication.Invariant.policyInvariant nativeApp
     (native_binding_invariant who value) players
   exact ⟨_, stateEq.symm, invariant.runRounds nativeScheduler control.remaining middle execution

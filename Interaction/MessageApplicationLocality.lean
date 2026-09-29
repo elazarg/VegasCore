@@ -49,27 +49,27 @@ theorem playerStep_other_input (actor observer : Principal) (hne : observer ≠ 
   have hnative : next.native ∈
       ((app.playerStep actor execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [app.playerStep_native] at hnative
   have hview : State.observe app next.native observer =
       State.observe app execution.native observer := by
     cases command with
     | privateCommand command =>
-        simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+        simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
         rw [hnative]
         simp only [State.observe, hprivate]
     | submit payload =>
-        simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+        simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
         rw [hnative]
         simp only [State.observe, MessagePool.submit, MessagePool.observe,
           ite_eq_right hne, hsubmit]
     | replay id =>
-        simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+        simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
         rw [hnative]
         simp only [State.observe, MessagePool.replay_other_observe _ _ _ _ hne]
     | wait =>
-        simp only [PlayerCommand.toAction, FinDist.mem_support_pure] at hnative
+        simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at hnative
         rw [hnative]
   exact Prod.ext hhistory hview
 
@@ -93,11 +93,11 @@ theorem runPolicies_other_input (observer : Principal)
       (execution.principalHistory observer, State.observe app execution.native observer) := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       rfl
   | cons invocation rest ih =>
-      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [runPolicies, PMF.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
       cases invocation with
       | environment => exact False.elim (henvironment (List.mem_cons_self ..))
@@ -106,7 +106,7 @@ theorem runPolicies_other_input (observer : Principal)
             intro heq
             subst actor
             exact hobserver (List.mem_cons_self ..)
-          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hmiddle
           obtain ⟨command, _, hstep⟩ := hmiddle
           exact (ih (fun hmem => henvironment (List.mem_cons_of_mem _ hmem))
             (fun hmem => hobserver (List.mem_cons_of_mem _ hmem)) middle hnext).trans
@@ -136,22 +136,22 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
   have hnative : next.native ∈
       ((app.playerStep actor execution command).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨next, hnext, rfl⟩
   rw [app.playerStep_native] at hnative
   cases command with
   | privateCommand command =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact ⟨hprivate _ _, rfl, fun _ _ hlookup => hlookup⟩
   | submit payload =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       refine ⟨hsubmit _ _, by simp only [MessagePool.submit, ite_eq_right hne], ?_⟩
       intro id message hlookup
       exact execution.native.pool.lookup_submit_of_some id message hlookup actor payload
   | replay id =>
-      simp only [PlayerCommand.toAction, step, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       refine ⟨rfl, ?_, ?_⟩
       · unfold MessagePool.replay
@@ -159,7 +159,7 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
       · intro selected message hlookup
         exact execution.native.pool.lookup_replay_of_some selected message hlookup actor id
   | wait =>
-      simp only [PlayerCommand.toAction, FinDist.mem_support_pure] at hnative
+      simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact ⟨rfl, rfl, fun _ _ hlookup => hlookup⟩
 
@@ -185,11 +185,11 @@ theorem runPolicies_other_frame {Projection : Type uProjection}
         next.native.pool.lookup id = some message := by
   induction schedule generalizing execution with
   | nil =>
-      simp only [runPolicies, FinDist.mem_support_pure] at hnext
+      simp only [runPolicies, PMF.mem_support_pure_iff _ _] at hnext
       subst next
       exact ⟨rfl, rfl, fun _ _ hlookup => hlookup⟩
   | cons invocation rest ih =>
-      simp only [runPolicies, FinDist.support_bind, Set.mem_iUnion] at hnext
+      simp only [runPolicies, PMF.support_bind, Set.mem_iUnion] at hnext
       obtain ⟨middle, hmiddle, hnext⟩ := hnext
       cases invocation with
       | environment => exact False.elim (henvironment (List.mem_cons_self ..))
@@ -198,7 +198,7 @@ theorem runPolicies_other_frame {Projection : Type uProjection}
             intro heq
             subst actor
             exact hobserver (List.mem_cons_self ..)
-          simp only [invoke, FinDist.support_bind, Set.mem_iUnion] at hmiddle
+          simp only [invoke, PMF.support_bind, Set.mem_iUnion] at hmiddle
           obtain ⟨command, _, hstep⟩ := hmiddle
           have first := app.playerStep_other_frame observer actor hne project
             (fun state command => hprivate state actor command hne)

@@ -40,7 +40,7 @@ theorem serviceStep_new_submission (runtime : EventGraphRuntime graph)
     contradiction
   cases instruction with
   | player who =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       by_cases same : who = owner
@@ -58,14 +58,14 @@ theorem serviceStep_new_submission (runtime : EventGraphRuntime graph)
             have addressed : packet.event? graph = some event := by
               simpa only [submittedAt_append_submit, notSubmitted, Bool.false_or,
                 decide_eq_true_eq] using submitted
-            rw [runtime.application.playerStep_submit_eq, FinDist.mem_support_pure] at step
+            rw [runtime.application.playerStep_submit_eq, PMF.mem_support_pure_iff _ _] at step
             subst after
             refine ⟨⟨(owner, before.native.pool.nextSerial owner), packet⟩, ?_, rfl, addressed⟩
             exact List.mem_append_right _ (List.mem_singleton_self _)
       · exact (impossible (runtime.application.playerStep_other_history who owner (Ne.symm same)
           before command after step)).elim
   | wire =>
-      simp only [serviceStep, MessageApplication.invoke, FinDist.support_bind,
+      simp only [serviceStep, MessageApplication.invoke, PMF.support_bind,
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact (impossible (congrFun (runtime.application.environmentStep_principalHistory before
@@ -109,15 +109,15 @@ theorem applicationStep_pending_or_completed (runtime : EventGraphRuntime graph)
     event ∈ after.application.config.cut.completed ∨ message ∈ after.pool.pending := by
   cases command with
   | privateCommand who command =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact Or.inr pending
   | submit who packet =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact Or.inr (List.mem_append_left _ pending)
   | replay who id =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst after
       right
       unfold MessagePool.replay
@@ -125,17 +125,17 @@ theorem applicationStep_pending_or_completed (runtime : EventGraphRuntime graph)
       · exact List.mem_append_left _ pending
       · exact pending
   | deliver who id =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst after
       right
       simpa only [MessagePool.deliver_preserves_pending] using pending
   | «include» id =>
-      simp only [MessageApplication.step, FinDist.mem_support_pure] at member
+      simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst after
       exact runtime.include_pending_or_completed native message event next pending addressed
         accepted id
   | environment command =>
-      simp only [MessageApplication.step, FinDist.support_map, Set.mem_image] at member
+      simp only [MessageApplication.step, PMF.support_map, Set.mem_image] at member
       obtain ⟨application, _, rfl⟩ := member
       exact Or.inr pending
 
@@ -270,11 +270,11 @@ theorem serviceStep_includeLatest_completes (runtime : EventGraphRuntime graph)
   have native : after.native ∈
       ((runtime.application.environmentPolicyStep before (.include selected.id)).map
         MessageInterface.PolicyExecution.native).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨after, member, rfl⟩
   rw [runtime.application.environmentStep_native] at native
   simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, FinDist.mem_support_pure] at native
+    MessageApplication.step, PMF.mem_support_pure_iff _ _] at native
   rw [native, runtime.application.includePending_accept before.native selected.id selected
     next lookup handled]
   obtain ⟨actual, address, ready, action, step⟩ :=

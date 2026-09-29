@@ -16,8 +16,8 @@ namespace Vegas.Examples.SelectiveAssociation.NamedSource
 open Vegas Interaction GameTheory.Math.Probability
 
 def runInstructions {Claim : Type} (players : Player → (application Claim).Policy) :
-    List Instruction → (application Claim).Execution → FinDist (application Claim).Execution
-  | [], execution => FinDist.pure execution
+    List Instruction → (application Claim).Execution → PMF (application Claim).Execution
+  | [], execution => PMF.pure execution
   | next :: rest, execution =>
       ((application Claim).dispatch players
         (instruction (execution.observeEnvironment (application Claim)) next) execution).bind
@@ -28,10 +28,10 @@ theorem runInstructions_append {Claim : Type} (players : Player → (application
     runInstructions players (before ++ after) execution =
       (runInstructions players before execution).bind (runInstructions players after) := by
   induction before generalizing execution with
-  | nil => exact (FinDist.pure_bind _ _).symm
+  | nil => exact (PMF.pure_bind _ _).symm
   | cons next rest ih =>
-      simp only [List.cons_append, runInstructions, FinDist.bind_bind]
-      apply FinDist.bind_congr
+      simp only [List.cons_append, runInstructions, PMF.bind_bind]
+      apply bind_congr_on_support _
       intro middle _
       exact ih middle
 
@@ -51,9 +51,9 @@ theorem segment_rounds {Claim : Type} (players : Player → (application Claim).
           (application Claim).dispatch players
             (instruction (execution.observeEnvironment (application Claim)) next) execution := by
         simp only [ReactiveApplication.round, scheduler, position, selected,
-          Option.elim_some, FinDist.pure_bind]
+          Option.elim_some, PMF.pure_bind]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInstructions]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro middle supported
       apply ih (before ++ [next])
       · simpa only [List.append_assoc, List.singleton_append] using split
@@ -69,7 +69,7 @@ theorem runInstructions_application {Claim : Type}
     runInstructions players (.application cmd :: rest) execution =
       runInstructions players rest (effect execution (.application cmd)) := by
   simp only [runInstructions, instruction, ReactiveApplication.dispatch, effect_law,
-    FinDist.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
+    PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
 
 theorem runInstructions_record {Claim : Type}
     (players : Player → (application Claim).Policy) (event : Event)
@@ -82,7 +82,7 @@ theorem runInstructions_record {Claim : Type}
     unfold latest
     split <;> rfl
   simp only [runInstructions, instruction, ReactiveApplication.dispatch, effect_law,
-    FinDist.pure_bind, passive, ReactiveApplication.resume]
+    PMF.pure_bind, passive, ReactiveApplication.resume]
 
 theorem runInstructions_ticks {Claim : Type}
     (players : Player → (application Claim).Policy) (count : Nat)

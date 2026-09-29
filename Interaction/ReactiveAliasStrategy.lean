@@ -26,7 +26,7 @@ variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication P
     raw.actions who (normal.recall who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def canonicalPolicy (who : Principal)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who) :
@@ -38,9 +38,9 @@ def aliasKernel (who : Principal) (observed : app.Info)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
     ((normal.menu raw).information initial horizon scheduler).Choice who
       (normal.info who observed) →
-        FinDist ((raw.information initial horizon scheduler).Choice who observed) := by
+        PMF ((raw.information initial horizon scheduler).Choice who observed) := by
   let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
-  exact FinDist.splitKernel
+  exact PMF.splitKernel
     (normal.choice raw stable initial horizon scheduler who observed)
     (normal.canonicalChoice raw stable closed initial horizon scheduler who observed)
     (normal.choice_canonicalChoice raw stable closed initial horizon scheduler who observed)
@@ -62,7 +62,7 @@ theorem splitPolicy_project (who : Principal)
         (normal.choice raw stable initial horizon scheduler who observed) =
       source (normal.info who observed) := by
   let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
-  exact FinDist.split_project _ _ _ _ weight nonnegative atMostOne
+  exact PMF.split_project _ _ _ _ weight nonnegative atMostOne
 
 /-- Each raw choice contributes its normalized choice probability times an
 alias factor independent of the source profile. This includes zero masses. -/
@@ -70,16 +70,15 @@ theorem splitPolicy_prob (who : Principal)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) (observed : app.Info)
     (chosen : (raw.information initial horizon scheduler).Choice who observed) :
-    ((normal.splitPolicy raw stable closed initial horizon scheduler who source
-      weight nonnegative atMostOne) observed).prob chosen =
-      (source (normal.info who observed)).prob
-          (normal.choice raw stable initial horizon scheduler who observed chosen) *
-        (normal.aliasKernel raw stable closed initial horizon scheduler who observed
+    (((normal.splitPolicy raw stable closed initial horizon scheduler who source
+      weight nonnegative atMostOne) observed) chosen).toReal =
+      ((source (normal.info who observed)) (normal.choice raw stable initial horizon scheduler who observed chosen)).toReal *
+        ((normal.aliasKernel raw stable closed initial horizon scheduler who observed
           weight nonnegative atMostOne
-          (normal.choice raw stable initial horizon scheduler who observed chosen)).prob chosen :=
+          (normal.choice raw stable initial horizon scheduler who observed chosen)) chosen).toReal :=
     by
   let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
-  exact FinDist.split_prob _ _ _ _ weight nonnegative atMostOne chosen
+  exact PMF.split_prob _ _ _ _ weight nonnegative atMostOne chosen
 
 theorem canonicalPolicy_project (who : Principal)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
@@ -87,38 +86,38 @@ theorem canonicalPolicy_project (who : Principal)
     ((normal.canonicalPolicy raw stable closed initial horizon scheduler who source)
       observed).map (normal.choice raw stable initial horizon scheduler who observed) =
         source (normal.info who observed) := by
-  rw [canonicalPolicy, FinDist.map_comp]
+  rw [canonicalPolicy, PMF.map_comp]
   change (source (normal.info who observed)).map
     (fun action => normal.choice raw stable initial horizon scheduler who observed
       (normal.canonicalChoice raw stable closed initial horizon scheduler who observed action)) = _
   simp only [choice_canonicalChoice]
-  exact FinDist.map_id _
+  exact PMF.map_id _
 
 theorem splitPolicy_fullSupport (who : Principal)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) (positive : 0 < weight)
-    (observed : app.Info) (mixed : (source (normal.info who observed)).FullSupport) :
-    ((normal.splitPolicy raw stable closed initial horizon scheduler who source
-      weight nonnegative atMostOne) observed).FullSupport := by
+    (observed : app.Info) (mixed : FullSupport (source (normal.info who observed))) :
+    FullSupport ((normal.splitPolicy raw stable closed initial horizon scheduler who source
+      weight nonnegative atMostOne) observed) := by
   let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
-  exact FinDist.split_fullSupport _ _ _ _ mixed weight nonnegative atMostOne positive
+  exact PMF.split_fullSupport _ _ _ _ mixed weight nonnegative atMostOne positive
 
 theorem splitPolicy_converges (who : Principal)
     (sequence : Nat →
       ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
     (observed : app.Info)
-    (converges : FinDistConvergesPointwise (fun n => sequence n (normal.info who observed))
+    (converges : PMFConvergesPointwise (fun n => sequence n (normal.info who observed))
       (source (normal.info who observed)))
     (weight : Nat → ℝ) (nonnegative : ∀ n, 0 ≤ weight n) (atMostOne : ∀ n, weight n ≤ 1)
     (vanishes : Tendsto weight atTop (nhds 0)) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => (normal.splitPolicy raw stable closed initial horizon scheduler who
         (sequence n) (weight n) (nonnegative n) (atMostOne n)) observed)
       ((normal.canonicalPolicy raw stable closed initial horizon scheduler who source) observed) :=
     by
   let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
-  exact FinDist.split_converges _ _ _ _ _ converges weight nonnegative atMostOne vanishes
+  exact PMF.split_converges _ _ _ _ _ converges weight nonnegative atMostOne vanishes
 
 /-- A fully mixed normalized assessment induces full support at every raw
 decision site, with one common weight across all players and information sets. -/
@@ -144,7 +143,7 @@ theorem split_strategy_converges
     (weight : Nat → ℝ) (nonnegative : ∀ n, 0 ≤ weight n) (atMostOne : ∀ n, weight n ≤ 1)
     (vanishes : Tendsto weight atTop (nhds 0)) (who : Principal)
     (original : (raw.information initial horizon scheduler).InformationSite who) :
-    FinDistConvergesPointwise
+    PMFConvergesPointwise
       (fun n => (normal.splitPolicy raw stable closed initial horizon scheduler who
         ((sequence n).strategy who) (weight n) (nonnegative n) (atMostOne n)) original.1)
       ((normal.canonicalPolicy raw stable closed initial horizon scheduler who

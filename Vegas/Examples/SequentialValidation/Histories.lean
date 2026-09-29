@@ -82,7 +82,7 @@ theorem source_guess_legal (bit : Bool) (dummy : PublicationResult Bool)
 
 theorem source_bind_step (bit : Bool) (dummy : PublicationResult Bool) :
     sourceArena.step (SourcePath.drawn bit).state
-      ⟨_, source_bind_legal bit dummy⟩ = FinDist.pure (SourcePath.bound bit dummy).state := by
+      ⟨_, source_bind_legal bit dummy⟩ = PMF.pure (SourcePath.bound bit dummy).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, boundConfig,
     OwnAction.binding_commit, ProtocolState.entry]
@@ -90,7 +90,7 @@ theorem source_bind_step (bit : Bool) (dummy : PublicationResult Bool) :
 theorem source_dummy_step (bit : Bool) (dummy : PublicationResult Bool) (first : Bool) :
     sourceArena.step (SourcePath.bound bit dummy).state
       ⟨_, source_dummy_legal bit dummy first⟩ =
-        FinDist.pure (SourcePath.dummyPublished bit dummy first).state := by
+        PMF.pure (SourcePath.dummyPublished bit dummy first).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, dummyConfig,
     OwnAction.disclosure, ProtocolState.entry]
@@ -98,7 +98,7 @@ theorem source_dummy_step (bit : Bool) (dummy : PublicationResult Bool) (first :
 theorem source_secret_step (bit : Bool) (dummy : PublicationResult Bool) (first second : Bool) :
     sourceArena.step (SourcePath.dummyPublished bit dummy first).state
       ⟨_, source_secret_legal bit dummy first second⟩ =
-        FinDist.pure (SourcePath.secretPublished bit dummy first second).state := by
+        PMF.pure (SourcePath.secretPublished bit dummy first second).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, secretConfig,
     OwnAction.disclosure, ProtocolState.entry]
@@ -107,7 +107,7 @@ theorem source_guess_step (bit : Bool) (dummy : PublicationResult Bool)
     (first second guess : Bool) :
     sourceArena.step (SourcePath.secretPublished bit dummy first second).state
       ⟨_, source_guess_legal bit dummy first second guess⟩ =
-        FinDist.pure (SourcePath.done bit dummy first second guess).state := by
+        PMF.pure (SourcePath.done bit dummy first second guess).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, finalConfig,
     OwnAction.disclosure, ProtocolState.entry]
@@ -124,24 +124,24 @@ def SourcePath.trace : (path : SourcePath) → sourceArena.Trace path.state
   | .root => .start
   | .drawn bit => Trace.extend .start (fun _ => none) source_draw_legal (by
       change (SourcePath.drawn bit).state ∈ (sourceSetup.initialLaw.map _).support
-      rw [FinDist.support_map]
+      rw [PMF.support_map]
       refine ⟨initialState bit, ?_, rfl⟩
-      rw [show sourceSetup.initialLaw = (FinDist.uniformOfFintype (α := Bool)).map initialState
-        from rfl, FinDist.support_map]
-      exact ⟨bit, FinDist.mem_support_uniformOfFintype bit, rfl⟩)
+      rw [show sourceSetup.initialLaw = (PMF.uniformOfFintype (α := Bool)).map initialState
+        from rfl, PMF.support_map]
+      exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
   | .bound bit dummy => Trace.extend (SourcePath.drawn bit).trace _ (source_bind_legal bit dummy)
-      (by rw [source_bind_step]; exact FinDist.mem_support_pure.mpr rfl)
+      (by rw [source_bind_step]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   | .dummyPublished bit dummy first => Trace.extend (SourcePath.bound bit dummy).trace _
       (source_dummy_legal bit dummy first)
-      (by rw [source_dummy_step]; exact FinDist.mem_support_pure.mpr rfl)
+      (by rw [source_dummy_step]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   | .secretPublished bit dummy first second =>
       Trace.extend (SourcePath.dummyPublished bit dummy first).trace _
       (source_secret_legal bit dummy first second)
-      (by rw [source_secret_step]; exact FinDist.mem_support_pure.mpr rfl)
+      (by rw [source_secret_step]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   | .done bit dummy first second guess =>
       Trace.extend (SourcePath.secretPublished bit dummy first second).trace _
       (source_guess_legal bit dummy first second guess)
-      (by rw [source_guess_step]; exact FinDist.mem_support_pure.mpr rfl)
+      (by rw [source_guess_step]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 termination_by path => path.depth
 decreasing_by all_goals simp [depth]
 
@@ -181,9 +181,9 @@ theorem SourcePath.step_complete (path : SourcePath)
           (sourceArena.legalOption_of_legal legal who) (by change ¬ False; exact id)
       subst joint
       change target ∈ (sourceSetup.initialLaw.map _).support at supported
-      obtain ⟨initial, member, rfl⟩ := FinDist.support_map .. ▸ supported
-      change initial ∈ ((FinDist.uniformOfFintype (α := Bool)).map initialState).support at member
-      obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ member
+      obtain ⟨initial, member, rfl⟩ := PMF.support_map .. ▸ supported
+      change initial ∈ ((PMF.uniformOfFintype (α := Bool)).map initialState).support at member
+      obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ member
       refine ⟨.drawn bit, ?_⟩
       simp only [history, trace, History.extend]
       rfl
@@ -196,7 +196,7 @@ theorem SourcePath.step_complete (path : SourcePath)
       subst joint
       change target ∈ (sourceArena.step (drawn bit).state ⟨_, legal⟩).support at supported
       rw [source_bind_step] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       refine ⟨.bound bit dummy, ?_⟩
       simp only [history, trace, History.extend]
   | bound bit dummy =>
@@ -206,7 +206,7 @@ theorem SourcePath.step_complete (path : SourcePath)
       subst joint
       change target ∈ (sourceArena.step (bound bit dummy).state ⟨_, legal⟩).support at supported
       rw [source_dummy_step] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       refine ⟨.dummyPublished bit dummy first, ?_⟩
       simp only [history, trace, History.extend]
   | dummyPublished bit dummy first =>
@@ -217,7 +217,7 @@ theorem SourcePath.step_complete (path : SourcePath)
       change target ∈ (sourceArena.step (dummyPublished bit dummy first).state
         ⟨_, legal⟩).support at supported
       rw [source_secret_step] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       refine ⟨.secretPublished bit dummy first second, ?_⟩
       simp only [history, trace, History.extend]
   | secretPublished bit dummy first second =>
@@ -228,7 +228,7 @@ theorem SourcePath.step_complete (path : SourcePath)
       change target ∈ (sourceArena.step (secretPublished bit dummy first second).state
         ⟨_, legal⟩).support at supported
       rw [source_guess_step] at supported
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       refine ⟨.done bit dummy first second guess, ?_⟩
       simp only [history, trace, History.extend]
   | done bit dummy first second guess => exact (legal.1 trivial).elim

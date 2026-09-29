@@ -28,17 +28,17 @@ theorem native_ticks_application (players : Player → (serviceApp observation).
       next.application.activatedAt = execution.application.activatedAt ∧
       next.application.clock = execution.application.clock + count := by
   induction count generalizing execution with
-  | zero => cases FinDist.mem_support_pure.mp supported; exact ⟨rfl, rfl, rfl⟩
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; exact ⟨rfl, rfl, rfl⟩
   | succ count ih =>
       rw [List.replicate_succ, runInteractionPlan] at supported
       obtain ⟨middle, middleMem, tailMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       have moved := nativeRuntime.reactive_application_support observation players .advanceClock
         execution middle (by
-          simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using middleMem)
+          simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using middleMem)
       have applicationEq : middle.application =
           { execution.application with clock := execution.application.clock + 1 } :=
-        FinDist.mem_support_pure.mp moved
+        (PMF.mem_support_pure_iff _ _).mp moved
       obtain ⟨configEq, activatedEq, clockEq⟩ := ih middle tailMem
       refine ⟨?_, ?_, ?_⟩
       · rw [configEq, applicationEq]
@@ -134,7 +134,7 @@ theorem native_before_completed (players : Player → (serviceApp observation).P
       let current : nativeGraph.EventId := ⟨count, by omega⟩
       rw [nativeBefore_succ current, runInteractionPlan_append] at reached
       obtain ⟨prior, priorMem, visitMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have earlier := ih (by omega) prior priorMem
       have invariant := native_before_invariant players count prior priorMem
       have progress := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
@@ -218,7 +218,7 @@ theorem native_segment_rounds (players : Player → (serviceApp observation).Pol
         simp only [ReactiveApplication.round, serviceScheduler, position, selected,
           interactionStep]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro next supported
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split

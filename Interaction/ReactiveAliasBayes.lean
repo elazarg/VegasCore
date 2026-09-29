@@ -28,7 +28,7 @@ variable {Principal : Type} [Fintype Principal] [DecidableEq Principal]
     raw.actions who (normal.recall who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 theorem splitBayes_projection
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
@@ -133,7 +133,7 @@ theorem splitBayes_projection
       (fun history => (⟨project history.1, maps history.1 history.2⟩ :
         N.InformationHistory who target.1)) = _
   rw [projected]
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro history
   rw [N.bayesBelief_prob]
   exact (bayes who target sourcePositive history).symm

@@ -8,7 +8,9 @@ import Vegas.Game.SourceServiceTimedLaw
 import Vegas.Game.RevealServiceRosterTiming
 import Vegas.Game.ServiceRosterClock
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Sequential equilibrium of the full-language service
 
@@ -81,7 +83,7 @@ theorem exists_native_sequentialEquilibrium
     halfNonnegative halfBounded
   have timingFull (event : (graph service.setup).EventId) (who : Player)
       (owned : (graph service.setup).actor? event = some who) :
-      (timing event who owned).FullSupport :=
+      FullSupport (timing event who owned) :=
     rosterTiming_fullSupport service.setup service.rosters service.opportunities half
       halfNonnegative halfBounded (by norm_num [half]) event who owned
   let approx (n : Nat) := TimedApproximant.ofSource service timing timingFull
@@ -96,9 +98,9 @@ theorem exists_native_sequentialEquilibrium
   have sourceGain (n : Nat) (who : Player) (deviation : sourceModel.AssessmentDeviation who) :
       let comparison := sourceModel.assessmentComparison sourceObserve
         (instructionCount service.setup.program + 1) (sourceSequence n) who deviation
-      comparison.alternative.expect (utility · who) -
-        comparison.prescribed.expect (utility · who) ≤ errors who n := by
-    simpa only [InformationModel.assessmentComparison, FinDist.expect_map, Context.value,
+      expect comparison.alternative (utility · who) -
+        expect comparison.prescribed (utility · who) ≤ errors who n := by
+    simpa only [InformationModel.assessmentComparison, expect_map, Context.value,
       InformationModel.BehavioralAssessment.continuationContext] using
         bounds who n deviation.1 deviation.2
   let comparisonError (n : Nat) : ℝ := 2 * ∑ who, errors who n
@@ -110,23 +112,23 @@ theorem exists_native_sequentialEquilibrium
         tendsto_finsetSum Finset.univ (fun who _ => vanishes who)
     simpa only [mul_zero] using total.const_mul 2
   have localComparisons (n : Nat) (who : Player) (site : service.model.InformationSite who)
-      (law : FinDist (service.model.Choice who site.1)) :
+      (law : PMF (service.model.Choice who site.1)) :
       let comparison := service.model.assessmentComparison service.readout service.fuel
         (approx n).assessment who (site, ((approx n).assessment.strategy who).withLaw site.1 law)
-      comparison.alternative.expect (utility · who) -
-          comparison.prescribed.expect (utility · who) ≤ comparisonError n ∨
-        ∃ mixture : FinDist (sourceModel.AssessmentDeviation who),
-          comparison.alternative.expect (utility · who) -
-              comparison.prescribed.expect (utility · who) ≤
-            mixture.expect (fun deviation =>
+      expect comparison.alternative (utility · who) -
+          expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
+        ∃ mixture : PMF (sourceModel.AssessmentDeviation who),
+          expect comparison.alternative (utility · who) -
+              expect comparison.prescribed (utility · who) ≤
+            expect mixture (fun deviation =>
               let sourceComparison := sourceModel.assessmentComparison sourceObserve
                 (instructionCount service.setup.program + 1) (sourceSequence n) who deviation
-              sourceComparison.alternative.expect (utility · who) -
-                sourceComparison.prescribed.expect (utility · who)) + comparisonError n := by
+              expect sourceComparison.alternative (utility · who) -
+                expect sourceComparison.prescribed (utility · who)) + comparisonError n := by
     intro comparison
     have zeroGain (same : comparison.alternative = comparison.prescribed) :
-        comparison.alternative.expect (utility · who) -
-          comparison.prescribed.expect (utility · who) ≤ comparisonError n := by
+        expect comparison.alternative (utility · who) -
+          expect comparison.prescribed (utility · who) ≤ comparisonError n := by
       rw [same, sub_self]
       exact errorNonnegative n
     obtain ⟨past, view, event, observed, granted, kind⟩ := service.exists_siteKind who site
@@ -148,7 +150,7 @@ theorem exists_native_sequentialEquilibrium
           TimedApproximant.unsent_binding_comparisons service timing timingFull
             (sourceSequence n) (full n) (sourceBayes n) (approx n) rfl who site past view
             observed outputEq granted unsent law
-        have gain := FinDist.expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedEq alternativeEq
+        have gain := expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedEq alternativeEq
           (utility · who)
         exact Or.inr ⟨mixture, gain.le.trans (le_add_of_nonneg_right (errorNonnegative n))⟩
     | recordedDisclosure payload owned outputEq recorded =>

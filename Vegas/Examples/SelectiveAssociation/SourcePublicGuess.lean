@@ -112,7 +112,7 @@ theorem carol_prescribed_publicGuess (Claim : Type) (defaultClaim : Claim)
     (execution.observe (application Claim) carol)).support at supported
   simp only [policy, show (execution.observe (application Claim) carol).application.visit =
     some 1 from visited, ↓reduceIte, Fin.val_one, one_ne_zero,
-    FinDist.mem_support_pure] at supported
+    PMF.mem_support_pure_iff _ _] at supported
   subst response
   rw [visitInput_publicGuess 2 _ carol bob]
   exact playing_binding_publicGuess defaultClaim 1 (by decide) execution serials _ carol carol

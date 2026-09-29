@@ -66,9 +66,9 @@ theorem reactive_resume_progress (runtime : EventGraphRuntime graph)
       execution).support) :
     State.ServiceProgress inputs 0 execution.application next.application := by
   cases actor with
-  | none => cases FinDist.mem_support_pure.mp reached; exact .refl invariant
+  | none => cases (PMF.mem_support_pure_iff _ _).mp reached; exact .refl invariant
   | some who =>
-      obtain ⟨action, _, rfl⟩ := FinDist.support_map .. ▸ reached
+      obtain ⟨action, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact runtime.reactive_respond_progress leaks inputs execution who action invariant
 
 def reactiveTicks (runtime : EventGraphRuntime graph)
@@ -109,20 +109,20 @@ theorem reactive_environment_progress (runtime : EventGraphRuntime graph)
       execution.application next.application := by
   cases command with
   | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact .refl invariant
   | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact .refl invariant
   | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure] at reached
-      cases FinDist.mem_support_pure.mp reached
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact runtime.reactive_include_progress leaks inputs execution id invariant
   | application command =>
-      obtain ⟨updated, supported, rfl⟩ := FinDist.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨environmentStep_invariant runtime execution.application state
         command invariant changed,
         environmentStep_completed_subset runtime execution.application state command changed,
@@ -143,7 +143,7 @@ theorem reactive_dispatch_progress (runtime : EventGraphRuntime graph)
       execution).support) :
     State.ServiceProgress inputs (runtime.reactiveTicks leaks command)
       execution.application next.application := by
-  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+  obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have environment := runtime.reactive_environment_progress leaks inputs execution middle command
     invariant supported
   have response := runtime.reactive_resume_progress leaks inputs players _ middle next
@@ -162,18 +162,18 @@ theorem interactionInstruction_ticks (runtime : EventGraphRuntime graph)
     runtime.reactiveTicks leaks command = instruction.ticks := by
   cases instruction with
   | wire =>
-      obtain ⟨choice, _, rfl⟩ := FinDist.support_map .. ▸ supported
+      obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
       cases choice with
       | activate who | wait => rfl
       | «include» id =>
           dsimp only [NetworkChoice.command, ReactiveApplication.atMostOnceCommand]
           split <;> rfl
   | includeLatest event owner =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       unfold reactiveLatest
       split <;> rfl
   | player who | grant event | sample event | tick | expire event =>
-      cases FinDist.mem_support_pure.mp supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
 
 theorem interactionStep_facts (runtime : EventGraphRuntime graph)
@@ -187,7 +187,7 @@ theorem interactionStep_facts (runtime : EventGraphRuntime graph)
     (supported : next ∈ (runtime.interactionStep leaks players network instruction
       execution).support) :
     State.ServiceProgress inputs instruction.ticks execution.application next.application := by
-  obtain ⟨command, selected, moved⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨command, selected, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have progress := runtime.reactive_dispatch_progress leaks inputs players execution next command
     invariant moved
   rwa [runtime.interactionInstruction_ticks leaks network _ _ instruction command
@@ -205,9 +205,9 @@ theorem runInteractionPlan_facts (runtime : EventGraphRuntime graph)
       execution).support) :
     State.ServiceProgress inputs (serviceTicks plan) execution.application next.application := by
   induction plan generalizing execution with
-  | nil => cases FinDist.mem_support_pure.mp supported; exact .refl invariant
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp supported; exact .refl invariant
   | cons instruction rest ih =>
-      obtain ⟨middle, moved, finished⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      obtain ⟨middle, moved, finished⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       have first := runtime.interactionStep_facts leaks inputs players network instruction
         execution middle invariant moved
       exact first.trans (ih middle first.invariant finished)
@@ -244,9 +244,9 @@ theorem runInteractionEpochs_facts (runtime : EventGraphRuntime graph)
       count execution).support) :
     State.ServiceProgress inputs count execution.application next.application := by
   induction count generalizing execution with
-  | zero => cases FinDist.mem_support_pure.mp supported; exact .refl invariant
+  | zero => cases (PMF.mem_support_pure_iff _ _).mp supported; exact .refl invariant
   | succ count ih =>
-      obtain ⟨middle, moved, finished⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+      obtain ⟨middle, moved, finished⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       have first := runtime.runInteractionPlan_facts leaks inputs players network _
         execution middle invariant moved
       rw [interactionEpoch_ticks] at first

@@ -30,7 +30,7 @@ theorem whole_policy_gain_le_of_local_gains
     (assessment : M.BehavioralAssessment) (recall : M.DecisionRecall)
     (mixed : assessment.IsFullyMixed)
     (bayes : BehavioralAssessment.IsBayesConsistent M assessment
-      recall.antichain)
+      recall.decisionInformationAntichain)
     (who : Player) [DecidableEq (M.InfoState who)]
     (alternative : M.BehavioralPolicy who)
     (clock : ∀ site : M.InformationSite who,
@@ -58,8 +58,8 @@ theorem whole_policy_gain_le_of_local_gains
   let allowance := fun info : M.InfoState who =>
     if decisionInfo info ∧ branch info then epsilon else 0
   let value := fun step : Nat =>
-    (M.runBehavioral updated (depth + step)).expect (fun history =>
-      (M.runBehavioralFrom assessment.strategy (remaining - step) history).expect payoff)
+    expect (M.runBehavioral updated (depth + step)) (fun history =>
+      expect (M.runBehavioralFrom assessment.strategy (remaining - step) history) payoff)
   have oneStep (step : Nat) (before : step < remaining) :
       value (step + 1) - value step ≤ epsilon * M.informationMass assessment.strategy who site := by
     let suffix := remaining - (step + 1)
@@ -67,13 +67,13 @@ theorem whole_policy_gain_le_of_local_gains
     have total : horizon - (depth + step) = suffix + 1 := by dsimp [suffix, remaining]; omega
     have atStep : depth + step < horizon := by dsimp [remaining] at before; omega
     have increments : value (step + 1) - value step =
-        (M.runBehavioral updated (depth + step)).expect (fun history =>
-          ((M.runBehavioralFrom updated 1 history).bind
-            (M.runBehavioralFrom assessment.strategy suffix)).expect payoff -
-          (M.runBehavioralFrom assessment.strategy (suffix + 1) history).expect payoff) := by
+        expect (M.runBehavioral updated (depth + step)) (fun history =>
+          expect ((M.runBehavioralFrom updated 1 history).bind
+            (M.runBehavioralFrom assessment.strategy suffix)) payoff -
+          expect (M.runBehavioralFrom assessment.strategy (suffix + 1) history) payoff) := by
       dsimp only [value]
       rw [show depth + (step + 1) = (depth + step) + 1 by omega]
-      change ((M.runBehavioralFrom updated ((depth + step) + 1) E.initHistory).expect _) - _ = _
+      change (expect (M.runBehavioralFrom updated ((depth + step) + 1) E.initHistory) _) - _ = _
       rw [M.runBehavioralFrom_add updated (depth + step) 1 E.initHistory,
         FinDist.expect_bind, remainder]
       simp_rw [FinDist.expect_bind]
@@ -98,7 +98,7 @@ theorem whole_policy_gain_le_of_local_gains
           rw [ite_eq_right (fun both => inside both.2)])
     apply bound.trans
     calc
-      _ ≤ (M.runBehavioral updated (depth + step)).expect (fun history =>
+      _ ≤ expect (M.runBehavioral updated (depth + step)) (fun history =>
           epsilon * (if history ∈ M.continuationBranch who site then 1 else 0)) := by
         apply FinDist.expect_mono
         intro history _
@@ -114,34 +114,33 @@ theorem whole_policy_gain_le_of_local_gains
             mul_ite, mul_one, mul_zero, le_refl]
         · simp only [allowance, decision, false_and, ite_false]
           split <;> positivity
-      _ = epsilon * (M.runBehavioral updated (depth + step)).probOf
-          (M.continuationBranch who site) := by
-        rw [FinDist.expect_smul, FinDist.expect_indicator_eq_probOf]
+      _ = epsilon * ((M.runBehavioral updated (depth + step)).toOuterMeasure (M.continuationBranch who site)).toReal := by
+        rw [FinDist.expect_smul, expect_indicator]
       _ = _ := by
         rw [M.switched_continuationBranch_probability recall assessment.strategy who site
           alternative depth sameDepth step]
   have summed := Finset.sum_le_sum (s := Finset.range remaining)
     (fun step member => oneStep step (Finset.mem_range.mp member))
   rw [Finset.sum_range_sub, Finset.sum_const, Finset.card_range, nsmul_eq_mul] at summed
-  have start : value 0 = (M.runBehavioral assessment.strategy horizon).expect payoff := by
+  have start : value 0 = expect (M.runBehavioral assessment.strategy horizon) payoff := by
     dsimp only [value]
     rw [Nat.add_zero, Nat.sub_zero,
       M.run_switchAt_prefix recall assessment.strategy who site alternative depth sameDepth,
       ← FinDist.expect_bind]
-    change ((M.runBehavioralFrom assessment.strategy depth E.initHistory).bind
-      (M.runBehavioralFrom assessment.strategy remaining)).expect payoff = _
+    change expect ((M.runBehavioralFrom assessment.strategy depth E.initHistory).bind
+      (M.runBehavioralFrom assessment.strategy remaining)) payoff = _
     rw [← M.runBehavioralFrom_add]
     have total : depth + remaining = horizon := by dsimp [remaining]; omega
     rw [total]
     rfl
-  have finish : value remaining = (M.runBehavioral updated horizon).expect payoff := by
+  have finish : value remaining = expect (M.runBehavioral updated horizon) payoff := by
     dsimp only [value]
     rw [Nat.sub_self]
     have total : depth + remaining = horizon := by dsimp [remaining]; omega
     rw [total]
-    apply FinDist.expect_congr
+    apply expect_congr_on_support
     intro history _
-    exact FinDist.expect_pure _ _
+    exact expect_pure _ _
   rw [start, finish] at summed
   have positive := mixed.informationMass_pos who site
   have gain := M.switched_root_gain_eq_mass_mul_context_gain assessment recall who site

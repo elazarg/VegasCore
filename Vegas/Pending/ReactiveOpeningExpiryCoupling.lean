@@ -49,15 +49,15 @@ private theorem expiry_readout (runtime : EventGraphRuntime graph)
     (runtime.runInteractionPlan leaks players network
       (List.replicate ticks .tick ++ [.expire event]) initial).map
         (fun next => ((runtime.reactiveApplication leaks).messageView next, next.recall focal)) =
-      FinDist.pure (expiryReadout runtime leaks event initial.application.publicView ticks
+      PMF.pure (expiryReadout runtime leaks event initial.application.publicView ticks
         ((runtime.reactiveApplication leaks).messageView initial, initial.recall focal)) := by
   induction ticks generalizing initial with
   | zero =>
       simp only [List.replicate_zero, List.nil_append, runInteractionPlan, interactionStep,
-        interactionInstruction, FinDist.pure_bind, ReactiveApplication.dispatch,
-        ReactiveApplication.Command.actor?, ReactiveApplication.resume, FinDist.bind_pure,
+        interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
+        ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.bind_pure,
         ReactiveApplication.Execution.environmentStep, reactiveApplication,
-        environmentStep, FinDist.map_pure]
+        environmentStep, PMF.pure_map]
       rfl
   | succ ticks ih =>
       let app := runtime.reactiveApplication leaks
@@ -66,13 +66,13 @@ private theorem expiry_readout (runtime : EventGraphRuntime graph)
         environmentRecall := initial.environmentRecall ++
           [⟨initial.observeEnvironment app, .application .advanceClock⟩] }
       have step : runtime.interactionStep leaks players network .tick initial =
-          FinDist.pure ticked := by
-        simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+          PMF.pure ticked := by
+        simp only [interactionStep, interactionInstruction, PMF.pure_bind,
           ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
           ReactiveApplication.resume, ReactiveApplication.Execution.environmentStep,
-          reactiveApplication, environmentStep, FinDist.map_pure]
+          reactiveApplication, environmentStep, PMF.pure_map]
         rfl
-      rw [List.replicate_succ, List.cons_append, runInteractionPlan, step, FinDist.pure_bind, ih]
+      rw [List.replicate_succ, List.cons_append, runInteractionPlan, step, PMF.pure_bind, ih]
       rfl
 
 /-- Clock/expiry suffixes preserve equality of the full message readout and
@@ -99,7 +99,7 @@ private theorem expiry_law_readout (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (event : graph.EventId) (focal : Player)
-    (ticks : Nat) (starts : FinDist (runtime.reactiveApplication leaks).Execution)
+    (ticks : Nat) (starts : PMF (runtime.reactiveApplication leaks).Execution)
     (view : PublicView graph)
     (publicView : ∀ state ∈ starts.support, state.application.publicView = view) :
     (starts.bind fun state => runtime.runInteractionPlan leaks players network
@@ -107,8 +107,8 @@ private theorem expiry_law_readout (runtime : EventGraphRuntime graph)
         (fun next => ((runtime.reactiveApplication leaks).messageView next, next.recall focal)) =
       (starts.map fun state => ((runtime.reactiveApplication leaks).messageView state,
         state.recall focal)).map (expiryReadout runtime leaks event view ticks) := by
-  rw [FinDist.map_bind, FinDist.map_comp, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [PMF.map_bind, PMF.map_comp, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro state supported
   rw [expiry_readout, publicView state supported]
   rfl
@@ -188,7 +188,7 @@ theorem openingWindow_expiry_coupling (runtime : EventGraphRuntime graph)
       (postView left leftSerials leftPublished (fun h => (meaning h).1)),
     expiry_law_readout runtime leaks _ network event focal ticks _ _
       (postView right rightSerials rightPublished (fun h => (meaning h).2)), publicAfter]
-  apply congrArg (FinDist.map _)
+  apply congrArg (PMF.map _)
   exact runtime.openingWindow_inclusion_coupling leaks owner event candidate raw roster selected
     network focal left right leftRecall rightRecall leftSerials rightSerials leftPublished
     rightPublished messages recall publicView privateView owned meaning accepted

@@ -27,13 +27,13 @@ theorem runInteractionPlan_response_conditioning (runtime : EventGraphRuntime gr
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (responses : FinDist (runtime.reactiveApplication leaks).Action)
+    (responses : PMF (runtime.reactiveApplication leaks).Action)
     (response : (runtime.reactiveApplication leaks).Action)
     (supported : response ∈ responses.support) :
     let app := runtime.reactiveApplication leaks
     let continued := fun action => runtime.runInteractionPlan leaks players network plan
       (execution.respond app who action)
-    (responses.bind continued).condOnFibre
+    fiberConditional (responses.bind continued)
       (fun final => ((final.recall who)[(execution.recall who).length]?).map
         ReactiveApplication.PlayerEntry.action) (some response) = continued response := by
   intro app continued
@@ -50,17 +50,17 @@ theorem runInteractionPlan_response_conditioning (runtime : EventGraphRuntime gr
     simp only [ List.append_assoc, List.singleton_append, List.getElem?_append_right
       (Nat.le_refl _), Nat.sub_self, List.getElem?_cons_zero, Option.map_some, chosen]
   have present : some response ∈ (responses.map some).support :=
-    FinDist.support_map .. ▸ ⟨response, supported, rfl⟩
-  have law := FinDist.conditional_bind_of_observation responses continued some observe
+    PMF.support_map .. ▸ ⟨response, supported, rfl⟩
+  have law := PMF.conditional_bind_of_observation responses continued some observe
     (fun action _ final member => recorded action final member) (some response) present
-  have fixed : responses.condOnFibre some (some response) = FinDist.pure response := by
+  have fixed : fiberConditional responses some (some response) = PMF.pure response := by
     have meets : ∃ action ∈ some ⁻¹' {some response}, action ∈ responses.support :=
       ⟨response, rfl, supported⟩
-    rw [FinDist.condOnFibre, dite_eq_left meets]
-    apply FinDist.eq_pure_of_support_subset_singleton
+    rw [fiberConditional, dite_eq_left meets]
+    apply pmf_eq_pure_of_support_subset_singleton
     intro action member
-    exact Option.some.inj (FinDist.support_condOn _ _ _ member).1
-  rw [fixed, FinDist.pure_bind] at law
+    exact Option.some.inj ((PMF.mem_support_filter_iff _).mp member).1
+  rw [fixed, PMF.pure_bind] at law
   exact law
 
 end Vegas.EventGraphRuntime

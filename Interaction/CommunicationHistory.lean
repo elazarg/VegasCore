@@ -41,7 +41,7 @@ theorem communication_step (roster : List Player) (state : channel.State)
     (allowed : outgoing.elim True (channel.allowed actor (channel.observe state actor))) :
     (channel.protocol roster).step state
       ⟨_, channel.communication_legal roster state actor rest pending running outgoing allowed⟩ =
-      FinDist.pure (channel.communicate state actor rest outgoing) := by
+      PMF.pure (channel.communicate state actor rest outgoing) := by
   dsimp only [protocol]
   unfold transition
   split
@@ -64,7 +64,7 @@ def communicateHistory (roster : List Player) (history : (channel.protocol roste
     (by
       rw [channel.communication_step roster history.state actor rest pending
         running outgoing allowed]
-      exact FinDist.mem_support_pure.mpr rfl)
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def liftedJoint (joint : ∀ who, Option (E.Action who)) : ∀ who, Option (channel.Action who) :=
   fun who => (joint who).map Sum.inl
@@ -88,7 +88,7 @@ theorem game_step (roster : List Player) (state : channel.State)
     (legal : E.Legal state.history.state joint) :
     (channel.protocol roster).step state ⟨_, channel.game_legal roster state empty joint legal⟩ =
       (E.step state.history.state ⟨joint, legal⟩).bindOnSupport fun target realized =>
-        FinDist.pure (channel.advance roster state joint legal target realized) := by
+        PMF.pure (channel.advance roster state joint legal target realized) := by
   dsimp only [protocol]
   unfold transition
   split
@@ -107,9 +107,9 @@ def advanceHistory (roster : List Player) (history : (channel.protocol roster).H
     (channel.protocol roster).History :=
   history.extend (channel.game_legal roster history.state empty joint legal)
     (target := channel.advance roster history.state joint legal target realized) (by
-      rw [channel.game_step roster history.state empty joint legal, FinDist.support_bindOnSupport]
+      rw [channel.game_step roster history.state empty joint legal, PMF.support_bindOnSupport]
       exact Set.mem_iUnion.mpr ⟨target, Set.mem_iUnion.mpr
-        ⟨realized, FinDist.mem_support_pure.mpr rfl⟩⟩)
+        ⟨realized, (PMF.mem_support_pure_iff _ _).mpr rfl⟩⟩)
 
 /-- Forgetting the communication transcript gives exactly the original game
 transition kernel. Evidence emissions do not alter even rejected game results. -/
@@ -119,11 +119,11 @@ theorem game_step_map_state (roster : List Player) (state : channel.State)
     ((channel.protocol roster).step state
       ⟨_, channel.game_legal roster state empty joint legal⟩).map (fun next => next.history.state) =
         E.step state.history.state ⟨joint, legal⟩ := by
-  rw [channel.game_step roster state empty joint legal, FinDist.map_bindOnSupport]
-  simp only [FinDist.map_pure]
+  rw [channel.game_step roster state empty joint legal, map_bindOnSupport]
+  simp only [PMF.pure_map]
   change ((E.step state.history.state ⟨joint, legal⟩).bindOnSupport
-    fun target _ => FinDist.pure target) = _
-  rw [FinDist.bindOnSupport_eq_bind, FinDist.bind_pure]
+    fun target _ => PMF.pure target) = _
+  rw [PMF.bindOnSupport_eq_bind, PMF.bind_pure]
 
 /-- The evidence emitted along a base history, independently of its game result. -/
 def emittedTranscript : {state : E.State} → E.Trace state →
@@ -144,9 +144,9 @@ def liftedTrace : {state : E.State} → (trace : E.Trace state) →
       .extend (liftedTrace prior) (channel.liftedJoint joint)
         (channel.game_legal [] (channel.liftedState prior) rfl joint legal) (by
           rw [channel.game_step [] (channel.liftedState prior) rfl joint legal,
-            FinDist.support_bindOnSupport]
+            PMF.support_bindOnSupport]
           exact Set.mem_iUnion.mpr ⟨_, Set.mem_iUnion.mpr
-            ⟨realized, FinDist.mem_support_pure.mpr rfl⟩⟩)
+            ⟨realized, (PMF.mem_support_pure_iff _ _).mpr rfl⟩⟩)
 
 def liftHistory (history : E.History) : (channel.protocol []).History :=
   ⟨channel.liftedState history.trace, channel.liftedTrace history.trace⟩

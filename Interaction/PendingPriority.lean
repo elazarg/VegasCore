@@ -19,12 +19,12 @@ open GameTheory GameTheory.Math.Probability
 
 variable {Principal Payload Action : Type} [DecidableEq Principal]
 
-def priorityPending (priorities : FinDist (LinearOrder (MessageId Principal)))
+def priorityPending (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload)) :
-    FinDist (Option (MessageId Principal)) :=
+    PMF (Option (MessageId Principal)) :=
   PriorityChoice.law priorities (eligibleIds eligible pending)
 
-theorem priorityPending_supported (priorities : FinDist (LinearOrder (MessageId Principal)))
+theorem priorityPending_supported (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload))
     (id : MessageId Principal) (supported : some id ∈
       (priorityPending priorities eligible pending).support) :
@@ -34,7 +34,7 @@ theorem priorityPending_supported (priorities : FinDist (LinearOrder (MessageId 
 /-- Insertion cannot promote any old identifier, including under randomized
 priority orders. Arrival order may inform those orders. -/
 theorem priorityPending_append_regular
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload))
     (packet : Message Principal Payload) (accepted : eligible packet = true) :
     (priorityPending priorities eligible pending).RegularAt
@@ -44,7 +44,7 @@ theorem priorityPending_append_regular
   exact PriorityChoice.law_regular_insert priorities _ packet.id
 
 theorem priorityPending_submit_regular
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
     (who : Principal) (payload : Payload)
     (accepted : eligible (network.submit who payload).1 = true) :
@@ -54,14 +54,14 @@ theorem priorityPending_submit_regular
   priorityPending_append_regular priorities eligible network.pending _ accepted
 
 theorem priorityPending_none_not_supported
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload))
     (nonempty : (eligibleIds eligible pending).Nonempty) :
     none ∉ (priorityPending priorities eligible pending).support :=
   PriorityChoice.law_none_not_supported priorities _ nonempty
 
 /-- An already pending broadcast retains its priority and candidate identity. -/
-theorem priorityPending_replay (priorities : FinDist (LinearOrder (MessageId Principal)))
+theorem priorityPending_replay (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool)
     (network next : MessageNetwork Principal Payload) (who : Principal)
     (id : MessageId Principal) (packet : Message Principal Payload)
@@ -76,14 +76,14 @@ theorem priorityPending_replay (priorities : FinDist (LinearOrder (MessageId Pri
     unfold priorityPending
     rw [eligibleIds_append_existing eligible network.pending packet pending]
 
-theorem priorityPending_learn (priorities : FinDist (LinearOrder (MessageId Principal)))
+theorem priorityPending_learn (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
     (who : Principal) (selected : Finset (MessageId Principal)) :
     priorityPending priorities eligible (network.learn who selected).pending =
       priorityPending priorities eligible network.pending := rfl
 
 theorem priorityPending_replay_of_retained
-    (priorities : FinDist (LinearOrder (MessageId Principal)))
+    (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
     (retained : network.RetainsEligible eligible) (who : Principal) (id : MessageId Principal) :
     priorityPending priorities eligible (network.replay who id).2.pending =
@@ -93,7 +93,7 @@ theorem priorityPending_replay_of_retained
 
 /-- Decode candidate identities only after selection. The decoder is total;
 the nonempty old menu excludes an invented source action for no selection. -/
-def priorityProposal (priorities : FinDist (LinearOrder (MessageId Principal)))
+def priorityProposal (priorities : PMF (LinearOrder (MessageId Principal)))
     (eligible : Message Principal Payload → Bool) (pending : List (Message Principal Payload))
     (nonempty : (eligibleIds eligible pending).Nonempty)
     (packet : Message Principal Payload) (accepted : eligible packet = true)

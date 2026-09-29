@@ -3,7 +3,9 @@
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveRoundReachability
-import GameTheoryExtensions.Math.Probability.FinDist
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Response laws of finite behavioral perturbations
 
@@ -20,7 +22,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu)
-  (initial : FinDist app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def responseChoiceEquiv (who : Principal) (past : List app.PlayerEntry)
     (view : app.PlayerView) :
@@ -47,19 +49,19 @@ theorem decode_uniformPolicy (who : Principal) (past : List app.PlayerEntry)
   let : Nonempty (menu.actions who past view) :=
     ⟨⟨(menu.nonempty who past view).choose, (menu.nonempty who past view).choose_spec⟩⟩
   let equiv := menu.responseChoiceEquiv initial horizon scheduler who past view
-  have uniform : (FinDist.uniformOfFintype : FinDist choices).map equiv =
-      FinDist.uniformOfFintype := by
-    apply FinDist.ext_of_prob
+  have uniform : (PMF.uniformOfFintype choices).map equiv =
+      PMF.uniformOfFintype := by
+    apply pmf_ext_toReal
     intro action
     obtain ⟨before, rfl⟩ := equiv.surjective action
     rw [FinDist.prob_map_of_injective equiv equiv.injective]
     simp only [FinDist.prob_uniformOfFintype, Fintype.card_congr equiv]
-  simp only [decodePolicy, embedPolicy, uniformPolicy, FinDist.map_comp]
-  change (FinDist.uniformOfFintype : FinDist choices).map
+  simp only [decodePolicy, embedPolicy, uniformPolicy, PMF.map_comp]
+  change (PMF.uniformOfFintype choices).map
     (fun choice => (equiv choice).1) = _
   calc
-    _ = ((FinDist.uniformOfFintype : FinDist choices).map equiv).map Subtype.val :=
-      (FinDist.map_comp _ _ _).symm
+    _ = ((PMF.uniformOfFintype choices).map equiv).map Subtype.val :=
+      (PMF.map_comp _ _ _).symm
     _ = _ := by rw [uniform]; rfl
 
 variable [Fintype Principal]
@@ -72,13 +74,13 @@ theorem decode_perturbedAssessment
         (menu.perturbedAssessment initial horizon scheduler profile weight positive
           atMostOne).strategy
         who past view =
-      FinDist.mix weight positive.le atMostOne (menu.uniformResponses who past view)
+      mix weight positive.le atMostOne (menu.uniformResponses who past view)
         (menu.decodeProfile initial horizon scheduler profile who past view) := by
-  change ((FinDist.mix weight positive.le atMostOne
+  change ((mix weight positive.le atMostOne
     (menu.uniformPolicy initial horizon scheduler who (some (past, view)))
     (profile who (some (past, view)))).map
       (menu.rawChoice initial horizon scheduler who (some (past, view)))).map _ = _
-  rw [FinDist.map_mix, FinDist.map_mix]
+  rw [mix_map, mix_map]
   rw [show ((menu.uniformPolicy initial horizon scheduler who (some (past, view))).map
       (menu.rawChoice initial horizon scheduler who (some (past, view)))).map _ =
         menu.uniformResponses who past view from

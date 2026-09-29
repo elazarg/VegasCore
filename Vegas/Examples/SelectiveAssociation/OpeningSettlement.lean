@@ -28,12 +28,12 @@ theorem native_publication_plan_preserves (players : Player → nativeApp.Policy
       plan execution).support) :
     (nativePublicationRef who).get? next.application.config.store = some publication := by
   induction plan generalizing execution with
-  | nil => cases FinDist.mem_support_pure.mp supported; exact stored
+  | nil => cases (PMF.mem_support_pure_iff _ _).mp supported; exact stored
   | cons instruction rest ih =>
       obtain ⟨middle, middleMem, restMem⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨command, _, stepped⟩ :=
-        Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ middleMem)
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ middleMem)
       exact ih middle ((ReactiveApplication.Invariant.policyInvariant nativeApp
         (native_publication_invariant who publication) players).dispatch
           command execution middle stored stepped) restMem
@@ -51,11 +51,11 @@ theorem native_publication_expire (players : Player → nativeApp.Policy)
   obtain ⟨checks, codeEq, node, _⟩ := native_publication_rule who
   have moved := nativeRuntime.reactive_application_support nativeLeaks players
     (.expire (nativePublicationEvent who)) execution next (by
-      simpa only [interactionStep, interactionInstruction, FinDist.pure_bind] using supported)
+      simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using supported)
   rw [environmentStep_expire_resolve_eq nativeRuntime execution.application
     (nativePublicationEvent who) ready entered activated due who .bool (nativeBindingRef who)
     checks (native_publication_output who) codeEq node] at moved
-  have stateEq := FinDist.mem_support_pure.mp moved
+  have stateEq := (PMF.mem_support_pure_iff _ _).mp moved
   rw [stateEq]
   fin_cases who <;> simp [nativePublicationRef, nativePublicationEvent, State.complete,
     EventGraph.Config.store, EventGraph.FieldRef.get?]
@@ -69,14 +69,14 @@ theorem native_publication_timeout (players : Player → nativeApp.Policy)
     (nativePublicationRef who).get? next.application.config.store = some .failure := by
   rw [nativePublicationDelay, runInteractionPlan_append] at supported
   obtain ⟨ticked, tickedMem, expiryMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have ticks := native_ticks_application players _ execution ticked tickedMem
   obtain ⟨entered, activated⟩ := valid.activatedAt_eq_some_of_ready_actor
     (nativePublicationEvent who) ready (by rw [native_actor]; rfl)
   have enteredLe := valid.activated_le _ entered activated
   have expireMem : next ∈ (nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       (.expire (nativePublicationEvent who)) ticked).support := by
-    simpa only [runInteractionPlan, FinDist.bind_pure] using expiryMem
+    simpa only [runInteractionPlan, PMF.bind_pure] using expiryMem
   apply native_publication_expire players ticked next who
     (by simpa only [ticks.1] using ready) entered
     (by simpa only [ticks.2.1] using activated) _ expireMem
@@ -125,9 +125,9 @@ theorem native_response_settlement_finish (players : Player → nativeApp.Policy
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (chooses : players who (control.execution.recall who)
-      (control.execution.observe nativeApp who) = FinDist.pure response)
+      (control.execution.observe nativeApp who) = PMF.pure response)
     (result : nativeApp.ProtocolState)
-    (supported : result ∈ (nativeApp.finish (FinDist.pure nativeInitial) nativeHorizon
+    (supported : result ∈ (nativeApp.finish (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler players (some control)).support) :
     ∃ middle ∈ (nativeRuntime.interactionStep nativeLeaks players nativeNetwork
         (.includeLatest (nativePublicationEvent who) who)
@@ -167,11 +167,11 @@ theorem native_response_settlement_finish (players : Player → nativeApp.Policy
     rw [nativeApp.respond_environmentRecall]
     simpa only [List.length_append, List.length_singleton] using position
   simp only [ReactiveApplication.finish, active, ReactiveApplication.resume,
-    ReactiveApplication.invoke, chooses, FinDist.map_pure, FinDist.pure_bind] at supported
+    ReactiveApplication.invoke, chooses, PMF.pure_map, PMF.pure_bind] at supported
   change result ∈ ((nativeApp.runRounds nativeScheduler players control.remaining responded).map
     nativeApp.finished).support at supported
   rw [runAfter] at supported
-  obtain ⟨final, finalMem, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨final, finalMem, rfl⟩ := PMF.support_map .. ▸ supported
   have afterEq : nativeAfterResponse (nativePublicationEvent who) =
       .includeLatest (nativePublicationEvent who) who ::
         (nativePublicationDelay who ++
@@ -181,10 +181,10 @@ theorem native_response_settlement_finish (players : Player → nativeApp.Policy
       List.cons_append, List.append_assoc, List.nil_append]
   rw [afterEq, runInteractionPlan] at finalMem
   obtain ⟨middle, middleMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ finalMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ finalMem)
   rw [runInteractionPlan_append] at restMem
   obtain ⟨settled, settledMem, tailMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ restMem)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ restMem)
   have respondedValid := (nativeRuntime.reactiveStateInvariant nativeLeaks nativeInputs).respond
     control.execution who response valid
   have respondedReady : responded.application.config.cut.Ready (nativePublicationEvent who) := by

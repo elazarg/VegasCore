@@ -58,7 +58,7 @@ theorem sample_comparison_eq (who : Player) (site : service.model.InformationSit
     (observed : site.1 = some (past, view))
     {event : (graph service.setup).EventId} (chance : (graph service.setup).actor? event = none)
     (granted : view.application.publicView.serviceGrant = some event)
-    (law : FinDist (service.model.Choice who site.1)) :
+    (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparison service.readout service.fuel
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by
@@ -86,8 +86,8 @@ theorem sample_comparison_eq (who : Player) (site : service.model.InformationSit
       (phase.event.val + 1)
   have applications := (law first firstAllowed).trans (law second secondAllowed).symm
   simp only [phaseConfigLaw, phaseLaw, DecisionPhase.tail, ending]
-  simpa only [FinDist.map_comp, Function.comp_def] using
-    congrArg (FinDist.map EventGraphRuntime.State.config) applications
+  simpa only [PMF.map_comp, Function.comp_def] using
+    congrArg (PMF.map EventGraphRuntime.State.config) applications
 
 end TimedApproximant
 

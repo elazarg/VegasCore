@@ -18,7 +18,7 @@ theorem policy_alice_binding_success (Claim : Type) (defaultClaim : Claim)
     ∃ bit, selectedBinding 0 response = .success bit := by
   change response ∈ (policy Claim defaultClaim (eventOwner 0) past view).support at supported
   simp only [policy, visited, ↓reduceIte, Fin.val_zero] at supported
-  obtain ⟨bit, _, rfl⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ supported
   exact ⟨bit, by simp [selectedBinding, playing]⟩
 
 theorem alice_binding_response_payoff_eq (Claim : Type) (defaultClaim : Claim)
@@ -47,26 +47,26 @@ theorem finish_alice_prescribed_binding (Claim : Type) (defaultClaim : Claim)
     (active : control.actor = some alice)
     (remaining : control.remaining = (afterResponse 0).length)
     (position : control.execution.environmentRecall.length = (beforeResponse 0).length + 1) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-      (policy Claim defaultClaim) (some control)).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+      (policy Claim defaultClaim) (some control))
         (fun state => utility (protocolResults state) alice) = 0 := by
   rw [finish_response_law (policy Claim defaultClaim) 0 control active remaining position,
-    FinDist.expect_map, FinDist.expect_bind]
+    expect_map, FinDist.expect_bind]
   calc
-    _ = (policy Claim defaultClaim alice (control.execution.recall alice)
-        (control.execution.observe (application Claim) alice)).expect (fun _ => 0) := by
-      apply FinDist.expect_congr
+    _ = expect (policy Claim defaultClaim alice (control.execution.recall alice)
+        (control.execution.observe (application Claim) alice)) (fun _ => 0) := by
+      apply expect_congr_on_support
       intro response responseMem
       calc
-        _ = (runInstructions (policy Claim defaultClaim) (afterResponse 0)
-            (control.execution.respond (application Claim) alice response)).expect
+        _ = expect (runInstructions (policy Claim defaultClaim) (afterResponse 0)
+            (control.execution.respond (application Claim) alice response))
               (fun _ => 0) := by
-          apply FinDist.expect_congr
+          apply expect_congr_on_support
           intro final supported
           exact alice_binding_response_payoff_eq Claim defaultClaim control.execution final
             response core visited serials responseMem supported
-        _ = _ := FinDist.expect_const ..
-    _ = _ := FinDist.expect_const ..
+        _ = _ := expect_constant ..
+    _ = _ := expect_constant ..
 
 theorem alice_protected_calendar_payoff_le {Claim : Type} (defaultClaim : Claim)
     (players : Player → (application Claim).Policy)
@@ -82,7 +82,7 @@ theorem alice_protected_calendar_payoff_le {Claim : Type} (defaultClaim : Claim)
     (visit 0 ++ (visit 1 ++ visit 2 ++ visit 3 ++ visit 4 ++ visit 5)) execution).support
       at supported
   rw [runInstructions_visit] at supported
-  obtain ⟨response, _, restMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨response, _, restMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   exact alice_after_binding_payoff_le defaultClaim players carolPolicy bobPolicy _ final
     (selectedBinding 0 response) (alice_binding_response (visitInput 0 execution) response rfl core)
     (remainingVisit_serials 0 _ (respond_serials _ alice response
@@ -100,7 +100,7 @@ theorem alice_protected_calendar_payoff_eq (Claim : Type) (defaultClaim : Claim)
       at supported
   rw [runInstructions_visit] at supported
   obtain ⟨response, responseMem, restMem⟩ :=
-    Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨bit, selected⟩ := policy_alice_binding_success Claim defaultClaim _ _ rfl
     response responseMem
   have boundCore := alice_binding_response (visitInput 0 execution) response rfl core
@@ -125,7 +125,7 @@ theorem alice_ambient_response_payoff_le {Claim : Type} (defaultClaim : Claim)
   change final ∈ (runInstructions players
     (.player bob :: ((List.finRange 6).flatMap visit)) (firstResponse first)).support at supported
   rw [runInstructions_player] at supported
-  obtain ⟨second, _, restMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨second, _, restMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   exact alice_protected_calendar_payoff_le defaultClaim players carolPolicy bobPolicy
     (prelude first second) final (prelude_core first second) (prelude_serials first second) restMem
 
@@ -137,7 +137,7 @@ theorem alice_ambient_response_payoff_eq (Claim : Type) (defaultClaim : Claim)
   change final ∈ (runInstructions (policy Claim defaultClaim)
     (.player bob :: ((List.finRange 6).flatMap visit)) (firstResponse first)).support at supported
   rw [runInstructions_player] at supported
-  obtain ⟨second, _, restMem⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ supported)
+  obtain ⟨second, _, restMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   exact alice_protected_calendar_payoff_eq Claim defaultClaim
     (prelude first second) final (prelude_core first second) (prelude_serials first second) restMem
 
@@ -148,10 +148,10 @@ theorem finish_alice_ambient_payoff_le {Claim : Type} (defaultClaim : Claim)
     (control : (application Claim).Control) (active : control.actor = some alice)
     (remaining : control.remaining = horizon - 1)
     (execution : control.execution = effect (root Claim) (.activate alice)) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim) players
-      (some control)).expect (fun state => utility (protocolResults state) alice) ≤ 0 := by
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
+      (some control)) (fun state => utility (protocolResults state) alice) ≤ 0 := by
   rw [finish_ambient_law players 1 (by decide) alice control active remaining
-    (by rw [execution]; rfl), FinDist.expect_map, FinDist.expect_bind]
+    (by rw [execution]; rfl), expect_map, FinDist.expect_bind]
   apply FinDist.expect_le_of_forall
   intro response _
   apply FinDist.expect_le_of_forall
@@ -164,25 +164,25 @@ theorem finish_alice_prescribed_ambient (Claim : Type) (defaultClaim : Claim)
     (control : (application Claim).Control) (active : control.actor = some alice)
     (remaining : control.remaining = horizon - 1)
     (execution : control.execution = effect (root Claim) (.activate alice)) :
-    ((application Claim).finish (FinDist.pure initial) horizon (scheduler Claim)
-      (policy Claim defaultClaim) (some control)).expect
+    expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
+      (policy Claim defaultClaim) (some control))
         (fun state => utility (protocolResults state) alice) = 0 := by
   rw [finish_ambient_law (policy Claim defaultClaim) 1 (by decide) alice control active remaining
-    (by rw [execution]; rfl), FinDist.expect_map, FinDist.expect_bind]
+    (by rw [execution]; rfl), expect_map, FinDist.expect_bind]
   calc
-    _ = (policy Claim defaultClaim alice (control.execution.recall alice)
-        (control.execution.observe (application Claim) alice)).expect (fun _ => 0) := by
-      apply FinDist.expect_congr
+    _ = expect (policy Claim defaultClaim alice (control.execution.recall alice)
+        (control.execution.observe (application Claim) alice)) (fun _ => 0) := by
+      apply expect_congr_on_support
       intro response _
       calc
-        _ = (runInstructions (policy Claim defaultClaim) (calendar.drop 1)
-            (control.execution.respond (application Claim) alice response)).expect
+        _ = expect (runInstructions (policy Claim defaultClaim) (calendar.drop 1)
+            (control.execution.respond (application Claim) alice response))
               (fun _ => 0) := by
-          apply FinDist.expect_congr
+          apply expect_congr_on_support
           intro final supported
           rw [execution] at supported
           exact alice_ambient_response_payoff_eq Claim defaultClaim response final supported
-        _ = _ := FinDist.expect_const ..
-    _ = _ := FinDist.expect_const ..
+        _ = _ := expect_constant ..
+    _ = _ := expect_constant ..
 
 end Vegas.Examples.SelectiveAssociation.NamedSource

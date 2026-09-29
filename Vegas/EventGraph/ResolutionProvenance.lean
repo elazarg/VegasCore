@@ -115,15 +115,15 @@ theorem Config.resolution_step_output
   | none => simp [resolved] at defined
   | some result =>
       have graphLaw := config.step_eq_map_of_code event ready outputEq
-        (.resolve owner payload binding checks) codeEq disclose (FinDist.pure result)
+        (.resolve owner payload binding checks) codeEq disclose (PMF.pure result)
       rw [EventCode.resolve_eval?, resolved] at graphLaw
       specialize graphLaw rfl
-      simp only [FinDist.map_pure] at graphLaw
+      simp only [PMF.pure_map] at graphLaw
       have actionRoundtrip :
           cast (congrArg EventField.Action outputEq.symm) disclose = action := by
         simp [disclose]
       rw [actionRoundtrip] at graphLaw
-      rw [graphLaw, FinDist.mem_support_pure] at member
+      rw [graphLaw, PMF.mem_support_pure_iff _ _] at member
       subst next
       rw [Config.complete_output_same]
       exact (option_value_cast_roundtrip outputEq result).symm
@@ -167,7 +167,7 @@ theorem Config.Reachable.publication_binding {inputs : graph.Inputs} {config : g
           value resolved
       · apply ih
         have storedEq : after.outputs event = before.outputs event := by
-          obtain ⟨result, _, rfl⟩ := FinDist.support_map .. ▸ reached
+          obtain ⟨result, _, rfl⟩ := PMF.support_map .. ▸ reached
           exact before.complete_output_of_ne completed event ready action result (Ne.symm same)
         have viewEq :=
           (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?_congr

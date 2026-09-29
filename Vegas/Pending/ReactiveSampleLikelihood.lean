@@ -113,14 +113,14 @@ theorem bindingTraffic_sample
     rw [environmentStep_executeSample_eq runtime execution.application event ready payload law
       outputEq codeEq node,
       execution.application.config.step_eq_map_of_code event ready outputEq (.sample payload law)
-        codeEq PUnit.unit draw evaluates, FinDist.map_comp]
+        codeEq PUnit.unit draw evaluates, PMF.map_comp]
     rfl
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_comp]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
   change (environmentStep runtime left.application (.executeSample event)).map _ =
     (environmentStep runtime right.application (.executeSample event)).map _
   rw [sampleLaw left leftReady leftLaw, sampleLaw right rightReady rightLaw,
-    FinDist.map_comp, FinDist.map_comp]
-  apply FinDist.map_congr_of_eq_on_support
+    PMF.map_comp, PMF.map_comp]
+  apply map_congr_on_support _
   intro value _
   exact runtime.bindingTraffic_sample_result leaks left right focal same event leftReady rightReady
     payload outputEq value

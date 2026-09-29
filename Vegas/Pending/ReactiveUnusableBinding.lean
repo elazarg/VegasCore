@@ -67,7 +67,7 @@ theorem rawBinding_reserved_config
     (runtime.interactionStep leaks players scheduler (.includeLatest event who)
       (execution.respond (runtime.reactiveApplication leaks) who response)).map
         (fun final => (final.application.config, final.receipts)) =
-      FinDist.pure (execution.application.config.complete event ready
+      PMF.pure (execution.application.config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) result)
         (cast (congrArg EventField.Value outputEq.symm) result),
           execution.receipts ++ [((who, execution.network.nextSerial who), true)]) := by
@@ -83,9 +83,9 @@ theorem rawBinding_reserved_config
   have selectedStep : runtime.interactionStep leaks players scheduler (.includeLatest event who)
       submitted = submitted.environmentStep app (.include id) := by
     unfold interactionStep
-    rw [interactionInstruction, selected, FinDist.pure_bind]
+    rw [interactionInstruction, selected, PMF.pure_bind]
     simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-    exact FinDist.bind_pure _
+    exact PMF.bind_pure _
   have configEq : submitted.application.config = execution.application.config := by
     change (submitStep (call.register execution.application who) who call.packet).config = _
     rw [submitStep_config, (call.register_facts who execution.application).1]
@@ -118,14 +118,14 @@ theorem rawBinding_reserved_config
   change (runtime.interactionStep leaks players scheduler (.includeLatest event who)
     submitted).map _ = _
   rw [selectedStep]
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure,
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
-  change FinDist.pure ((handle runtime submitted.application
+  change PMF.pure ((handle runtime submitted.application
     ⟨id, .commitment event (who, .prepared serial)⟩).getD submitted.application |>.config,
       submitted.receipts ++ [(id, (handle runtime submitted.application
         ⟨id, .commitment event (who, .prepared serial)⟩).isSome)]) = _
   rw [handled, Option.getD_some, Option.isSome_some]
-  change FinDist.pure (submitted.application.config.complete event submittedReady
+  change PMF.pure (submitted.application.config.complete event submittedReady
     (cast (congrArg EventField.Action outputEq.symm) (submitted.application.bindingResult _ _))
     (cast (congrArg EventField.Value outputEq.symm) (submitted.application.bindingResult _ _)),
       execution.receipts ++ [(id, true)]) = _

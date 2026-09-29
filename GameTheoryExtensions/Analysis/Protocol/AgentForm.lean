@@ -34,25 +34,25 @@ def informationAgentForm (sites : (who : ι) → Finset (M.InfoState who))
 
 def agentBehavior (sites : (who : ι) → Finset (M.InfoState who))
     (fallback : (who : ι) → M.Policy who)
-    (laws : (agent : M.InformationAgent sites) → FinDist (M.Choice agent.1 agent.2.1)) :
+    (laws : (agent : M.InformationAgent sites) → PMF (M.Choice agent.1 agent.2.1)) :
     Profile M.behavioralSignature := by
   classical
   exact fun who info =>
     if present : info ∈ sites who then laws ⟨who, ⟨info, present⟩⟩
-    else FinDist.pure (fallback who info)
+    else PMF.pure (fallback who info)
 
 @[simp] theorem agentBehavior_at (sites : (who : ι) → Finset (M.InfoState who))
     (fallback : (who : ι) → M.Policy who)
-    (laws : (agent : M.InformationAgent sites) → FinDist (M.Choice agent.1 agent.2.1))
+    (laws : (agent : M.InformationAgent sites) → PMF (M.Choice agent.1 agent.2.1))
     (agent : M.InformationAgent sites) :
     M.agentBehavior sites fallback laws agent.1 agent.2.1 = laws agent := by
   simp only [agentBehavior, dite_eq_left agent.2.2]
 
 private theorem pi_sigma [Fintype ι] {Index : ι → Type*} [∀ who, Fintype (Index who)]
     {Value : (Σ who, Index who) → Type*}
-    (laws : (agent : Σ who, Index who) → FinDist (Value agent)) :
-    (FinDist.pi laws).map (fun actions who info => actions ⟨who, info⟩) =
-      FinDist.pi (fun who => FinDist.pi (fun info => laws ⟨who, info⟩)) := by
+    (laws : (agent : Σ who, Index who) → PMF (Value agent)) :
+    (independentProduct laws).map (fun actions who info => actions ⟨who, info⟩) =
+      independentProduct (fun who => independentProduct (fun info => laws ⟨who, info⟩)) := by
   classical
   have injective : Function.Injective
       (fun (actions : (agent : Σ who, Index who) → Value agent) who info =>
@@ -60,14 +60,13 @@ private theorem pi_sigma [Fintype ι] {Index : ι → Type*} [∀ who, Fintype (
     intro first second same
     funext agent
     exact congrFun (congrFun same agent.1) agent.2
-  apply FinDist.ext_of_prob
+  apply pmf_ext_toReal
   intro actions
-  change ((FinDist.pi laws).map _).prob
-    ((fun (values : (agent : Σ who, Index who) → Value agent) who info =>
+  change (((independentProduct laws).map _) ((fun (values : (agent : Σ who, Index who) → Value agent) who info =>
         values ⟨who, info⟩)
-      (fun (agent : Σ who, Index who) => actions agent.1 agent.2)) = _
+      (fun (agent : Σ who, Index who) => actions agent.1 agent.2))).toReal = _
   calc
-    _ = (FinDist.pi laws).prob (fun agent => actions agent.1 agent.2) :=
+    _ = ((independentProduct laws) (fun agent => actions agent.1 agent.2)).toReal :=
       FinDist.prob_map_of_injective _ injective _ _
     _ = _ := by simp only [FinDist.prob_pi, Fintype.prod_sigma]
 
@@ -77,28 +76,28 @@ theorem informationAgentForm_mixed_play [Fintype ι]
     (sites : (who : ι) → Finset (M.InfoState who))
     (fallback : (who : ι) → M.Policy who) (fuel : Nat)
     (once : M.ActsOnceWhereItMatters) (covered : M.CoversInformationSites sites fuel)
-    (laws : (agent : M.InformationAgent sites) → FinDist (M.Choice agent.1 agent.2.1)) :
+    (laws : (agent : M.InformationAgent sites) → PMF (M.Choice agent.1 agent.2.1)) :
     (M.informationAgentForm sites fallback fuel).mixed.play laws =
       M.runBehavioral (M.agentBehavior sites fallback laws) fuel := by
   classical
   let assemble : ((agent : M.InformationAgent sites) → M.Choice agent.1 agent.2.1) →
       Profile M.strategicSignature := fun actions who =>
     Policy.assembleWithin M (fallback who) (sites who) (fun info => actions ⟨who, info⟩)
-  have policyLaw : (FinDist.pi laws).map assemble = FinDist.pi (fun who =>
+  have policyLaw : (independentProduct laws).map assemble = independentProduct (fun who =>
       (M.agentBehavior sites fallback laws who).toMixedWithin (sites who) (fallback who)) := by
     calc
-      _ = ((FinDist.pi laws).map (fun actions who info => actions ⟨who, info⟩)).map
+      _ = ((independentProduct laws).map (fun actions who info => actions ⟨who, info⟩)).map
           (fun plans who => Policy.assembleWithin M (fallback who) (sites who) (plans who)) := by
-            rw [FinDist.map_comp]
+            rw [PMF.map_comp]
             rfl
-      _ = (FinDist.pi (fun who => FinDist.pi (fun info => laws ⟨who, info⟩))).map
+      _ = (independentProduct (fun who => independentProduct (fun info => laws ⟨who, info⟩))).map
           (fun plans who => Policy.assembleWithin M (fallback who) (sites who) (plans who)) := by
             exact congrArg
-              (FinDist.map (fun plans who =>
+              (PMF.map (fun plans who =>
                 Policy.assembleWithin M (fallback who) (sites who) (plans who)))
               (pi_sigma (Index := fun who => {info // info ∈ sites who})
                 (Value := fun agent => M.Choice agent.1 agent.2.1) laws)
-      _ = FinDist.pi (fun who => (FinDist.pi (fun info => laws ⟨who, info⟩)).map
+      _ = independentProduct (fun who => (independentProduct (fun info => laws ⟨who, info⟩)).map
           (Policy.assembleWithin M (fallback who) (sites who))) :=
             (FinDist.pi_map _ _).symm
       _ = _ := by
@@ -110,8 +109,8 @@ theorem informationAgentForm_mixed_play [Fintype ι]
         funext info
         exact (M.agentBehavior_at sites fallback laws ⟨who, info⟩).symm
   calc
-    _ = ((FinDist.pi laws).map assemble).bind (fun profile => M.runFrom profile fuel E.initHistory)
-        := by rw [FinDist.bind_map]; rfl
+    _ = ((independentProduct laws).map assemble).bind (fun profile => M.runFrom profile fuel E.initHistory)
+        := by rw [PMF.bind_map]; rfl
     _ = M.runMixed (fun who =>
         (M.agentBehavior sites fallback laws who).toMixedWithin (sites who) (fallback who)) fuel :=
       congrArg (fun distribution => distribution.bind
@@ -124,8 +123,8 @@ theorem agentBehavior_update [DecidableEq ι]
     [∀ who, DecidableEq (M.InfoState who)]
     (sites : (who : ι) → Finset (M.InfoState who))
     (fallback : (who : ι) → M.Policy who)
-    (laws : (agent : M.InformationAgent sites) → FinDist (M.Choice agent.1 agent.2.1))
-    (agent : M.InformationAgent sites) (replacement : FinDist (M.Choice agent.1 agent.2.1)) :
+    (laws : (agent : M.InformationAgent sites) → PMF (M.Choice agent.1 agent.2.1))
+    (agent : M.InformationAgent sites) (replacement : PMF (M.Choice agent.1 agent.2.1)) :
     M.agentBehavior sites fallback
         (Profile.update (sig := (M.informationAgentForm sites fallback 0).sig.mixed)
           laws agent replacement) =

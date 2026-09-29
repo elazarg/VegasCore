@@ -63,7 +63,7 @@ theorem incompatible_maximizers (original : bitModel.BehavioralAssessment) :
 retaining a state-independent report interpretation. Beliefs cannot help. -/
 theorem merged_bits_not_sequentially_rational {Observation Coarse : Type*}
     (observe : Bool → Observation) (coarsen : Observation → Coarse)
-    (respond : Coarse → FinDist Bool) (original : bitModel.BehavioralAssessment)
+    (respond : Coarse → PMF Bool) (original : bitModel.BehavioralAssessment)
     (factors : ∀ bit, (bitDecision bit).response original.strategy =
       respond (coarsen (observe bit)))
     (merged : coarsen (observe false) = coarsen (observe true)) :
@@ -73,7 +73,7 @@ theorem merged_bits_not_sequentially_rational {Observation Coarse : Type*}
     observe coarsen respond original factors false true merged (incompatible_maximizers original)
 
 def reporting : bitModel.BehavioralAssessment :=
-  assessment biasedBit id (fun bit => FinDist.pure bit)
+  assessment biasedBit id (fun bit => PMF.pure bit)
 
 theorem reporting_sequential_equilibrium :
     reporting.IsSequentialEquilibriumFor (antichain biasedBit id)
@@ -87,7 +87,7 @@ theorem reporting_sequential_equilibrium :
   by_cases same : state = signal
   · subst state
     simp only [Set.mem_preimage, Set.mem_singleton_iff, id_eq, Set.indicator_of_mem,
-      FinDist.expect_pure, reportUtility, ite_true]
+      expect_pure, reportUtility, ite_true]
     apply FinDist.expect_le_of_forall
     intro action _
     unfold reportUtility
@@ -95,8 +95,8 @@ theorem reporting_sequential_equilibrium :
   · simp [same]
 
 theorem reporting_response (bit : Bool) :
-    (bitDecision bit).response reporting.strategy = FinDist.pure bit := by
-  change response biasedBit id (policy biasedBit id (fun bit => FinDist.pure bit))
+    (bitDecision bit).response reporting.strategy = PMF.pure bit := by
+  change response biasedBit id (policy biasedBit id (fun bit => PMF.pure bit))
     (siteSignal biasedBit id (bitDecision bit).site) = _
   rw [response_policy]
   have observed := site_signal biasedBit id (bitDecision bit).site
@@ -108,8 +108,8 @@ interpretation reads the state and emits the corresponding report. Such a
 macro does not factor the executed report law through the constant label. -/
 theorem state_aware_macro_executes_equilibrium :
     (∀ bit, (bitDecision bit).response reporting.strategy =
-      (FinDist.pure ()).bind (fun _ => FinDist.pure bit)) ∧
-      ¬ ∃ respond : Unit → FinDist Bool, ∀ bit,
+      (PMF.pure ()).bind (fun _ => PMF.pure bit)) ∧
+      ¬ ∃ respond : Unit → PMF Bool, ∀ bit,
         (bitDecision bit).response reporting.strategy = respond () := by
   refine ⟨fun bit => by simpa using reporting_response bit, ?_⟩
   rintro ⟨respond, factors⟩

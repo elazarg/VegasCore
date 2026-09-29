@@ -94,22 +94,22 @@ theorem native_watcher_available (past : List nativeApp.PlayerEntry)
     refine ⟨message, ?_, rfl⟩
     exact List.mem_append_left _ (List.mem_append_right _ (List.mem_of_find?_eq_some found))
 
-def nativeAlicePolicy : nativeApp.Policy := fun _ view => FinDist.pure (nativeAliceResponse view)
+def nativeAlicePolicy : nativeApp.Policy := fun _ view => PMF.pure (nativeAliceResponse view)
 def nativeWatcherPolicy : nativeApp.Policy :=
-  fun _ view => FinDist.pure (nativeWatcherResponse view)
-def nativeGuessPolicy (guesses : FinDist Bool) : nativeApp.Policy :=
+  fun _ view => PMF.pure (nativeWatcherResponse view)
+def nativeGuessPolicy (guesses : PMF Bool) : nativeApp.Policy :=
   fun _ _ => guesses.map nativeGuessAction
 
 theorem native_alice_admissible : nativeMenu.Admissible nativeInitialLaw nativeHorizon
     nativeScheduler alice nativeAlicePolicy := by
   intro control _ _ action supported
-  cases FinDist.mem_support_pure.mp supported
+  cases (PMF.mem_support_pure_iff _ _).mp supported
   exact native_alice_available _ _
 
 theorem native_watcher_admissible : nativeMenu.Admissible nativeInitialLaw nativeHorizon
     nativeScheduler watcher nativeWatcherPolicy := by
   intro control _ _ action supported
-  cases FinDist.mem_support_pure.mp supported
+  cases (PMF.mem_support_pure_iff _ _).mp supported
   exact native_watcher_available _ _
 
 def nativeAliceBehavior : nativeModel.BehavioralPolicy alice :=

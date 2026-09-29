@@ -50,27 +50,27 @@ theorem guessing_value (profile : Profile (model false).behavioralSignature)
       (fun history => OffPathDisclosure.payoff matchBit history true) 3).value alternative =
         1 / 2 := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value]
-  change (((FinDist.uniformOfFintype (α := Bool)).map bobInformationHistory).bind _).expect _ = _
-  rw [FinDist.expect_bind, FinDist.expect_map, FinDist.expect_eq_sum, Fintype.sum_bool]
+  change expect (((PMF.uniformOfFintype (α := Bool)).map bobInformationHistory).bind _) _ = _
+  rw [FinDist.expect_bind, expect_map, expect_eq_sum, Fintype.sum_bool]
   simp only [bobInformationHistory, assessment, OffPathDisclosure.payoff,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
     FinDist.prob_uniformOfFintype, Fintype.card_bool]
   rw [value_bob _ true (utility matchBit · true),
     value_bob _ false (utility matchBit · true)]
-  simp only [resultLaw, FinDist.expect_map, Bool.false_eq_true, ↓reduceIte]
+  simp only [resultLaw, expect_map, Bool.false_eq_true, ↓reduceIte]
   have total :
-      (choiceLaw (Profile.update profile true alternative) true (some false)).expect
+      expect (choiceLaw (Profile.update profile true alternative) true (some false))
           (fun guess => utility matchBit (.done true (some guess)) true) +
-      (choiceLaw (Profile.update profile true alternative) true (some false)).expect
+      expect (choiceLaw (Profile.update profile true alternative) true (some false))
           (fun guess => utility matchBit (.done false (some guess)) true) = 1 := by
     rw [← FinDist.expect_add]
     calc
-      _ = (choiceLaw (Profile.update profile true alternative) true (some false)).expect
+      _ = expect (choiceLaw (Profile.update profile true alternative) true (some false))
           (fun _ => (1 : ℝ)) := by
-        apply FinDist.expect_congr
+        apply expect_congr_on_support
         intro guess _
         cases matchBit <;> cases guess <;> norm_num [utility]
-      _ = _ := FinDist.expect_const _ _
+      _ = _ := expect_constant _ _
   norm_num only [Nat.cast_ofNat] at *
   linarith
 

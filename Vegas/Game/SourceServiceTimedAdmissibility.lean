@@ -23,25 +23,25 @@ open SourceProgram
 open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRuntime
 
 private theorem posterior_previous {Player Index : Type}
-    (app : ReactiveApplication Player) (timing : FinDist Index) (family : Index → app.Policy)
+    (app : ReactiveApplication Player) (timing : PMF Index) (family : Index → app.Policy)
     (past : List app.PlayerEntry) (entry : app.PlayerEntry) (index : Index)
     (supported : index ∈ ((app.policyMixture timing family).posterior (past ++ [entry])).support) :
     index ∈ ((app.policyMixture timing family).posterior past).support := by
   rw [ReactiveApplication.Implementation.posterior_snoc] at supported
-  obtain ⟨pair, conditional, same⟩ := FinDist.support_map .. ▸ supported
+  obtain ⟨pair, conditional, same⟩ := PMF.support_map .. ▸ supported
   have original : pair ∈ (((app.policyMixture timing family).posterior past).bind fun value =>
       (family value past entry.beforeView).map fun response => (response, value)).support := by
-    unfold FinDist.condOnFibre at conditional
+    unfold fiberConditional at conditional
     split at conditional
-    · exact (FinDist.support_condOn _ _ _ conditional).2
+    · exact ((PMF.mem_support_filter_iff _).mp conditional).2
     · exact conditional
-  obtain ⟨value, member, generated⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ original)
-  obtain ⟨response, _, equal⟩ := FinDist.support_map .. ▸ generated
+  obtain ⟨value, member, generated⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ original)
+  obtain ⟨response, _, equal⟩ := PMF.support_map .. ▸ generated
   have valueEq : value = index := (congrArg Prod.snd equal).trans same
   exact valueEq ▸ member
 
 private theorem posterior_prefix {Player Index : Type}
-    (app : ReactiveApplication Player) (timing : FinDist Index) (family : Index → app.Policy)
+    (app : ReactiveApplication Player) (timing : PMF Index) (family : Index → app.Policy)
     (past suffix : List app.PlayerEntry) (index : Index)
     (supported : index ∈ ((app.policyMixture timing family).posterior (past ++ suffix)).support) :
     index ∈ ((app.policyMixture timing family).posterior past).support := by
@@ -52,7 +52,7 @@ private theorem posterior_prefix {Player Index : Type}
       exact ih (posterior_previous app timing family (past ++ suffix) entry index supported)
 
 private theorem posterior_action {Player Index : Type}
-    (app : ReactiveApplication Player) (timing : FinDist Index) (family : Index → app.Policy)
+    (app : ReactiveApplication Player) (timing : PMF Index) (family : Index → app.Policy)
     (past : List app.PlayerEntry) (entry : app.PlayerEntry) (index : Index)
     (possible : entry.action ∈ ((app.policyMixture timing family).policy
       past entry.beforeView).support)
@@ -62,18 +62,18 @@ private theorem posterior_action {Player Index : Type}
     (family value past entry.beforeView).map fun response => (response, value)
   have meets : ∃ pair ∈ Prod.fst ⁻¹' {entry.action}, pair ∈ joint.support := by
     rw [app.policyMixture_policy] at possible
-    obtain ⟨value, prior, produced⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ possible)
+    obtain ⟨value, prior, produced⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ possible)
     refine ⟨(entry.action, value), rfl, ?_⟩
-    rw [FinDist.support_bind]
+    rw [PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨value, prior,
-      FinDist.support_map .. ▸ ⟨entry.action, produced, rfl⟩⟩
+      PMF.support_map .. ▸ ⟨entry.action, produced, rfl⟩⟩
   rw [ReactiveApplication.Implementation.posterior_snoc] at supported
-  change index ∈ ((joint.condOnFibre Prod.fst entry.action).map Prod.snd).support at supported
-  rw [FinDist.condOnFibre, dite_eq_left meets] at supported
-  obtain ⟨pair, conditional, same⟩ := FinDist.support_map .. ▸ supported
-  obtain ⟨observed, original⟩ := FinDist.support_condOn _ _ _ conditional
-  obtain ⟨value, _, generated⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ original)
-  obtain ⟨response, produced, equal⟩ := FinDist.support_map .. ▸ generated
+  change index ∈ ((fiberConditional joint Prod.fst entry.action).map Prod.snd).support at supported
+  rw [fiberConditional, dite_eq_left meets] at supported
+  obtain ⟨pair, conditional, same⟩ := PMF.support_map .. ▸ supported
+  obtain ⟨observed, original⟩ := (PMF.mem_support_filter_iff _).mp conditional
+  obtain ⟨value, _, generated⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ original)
+  obtain ⟨response, produced, equal⟩ := PMF.support_map .. ▸ generated
   have valueEq : value = index := (congrArg Prod.snd equal).trans same
   have responseEq : response = entry.action := (congrArg Prod.fst equal).trans observed
   simpa only [valueEq, responseEq] using produced
@@ -192,7 +192,7 @@ theorem sourceServiceTimedMixture_binding_future
     (owned : (graph setup).actor? event = some who)
     (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
-    (timing : FinDist (Fin ((rosters event).count who)))
+    (timing : PMF (Fin ((rosters event).count who)))
     (witness : Fin ((rosters event).count who)) (positive : witness ∈ timing.support)
     (future : (control.execution.recall who).length ≤
       rosterOffset setup rosters who event + witness.val) :
@@ -286,7 +286,7 @@ theorem sourceServiceTimedMixture_binding_last
     (owned : (graph setup).actor? event = some who)
     (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
-    (timing : FinDist (Fin ((rosters event).count who))) (full : timing.FullSupport)
+    (timing : PMF (Fin ((rosters event).count who))) (full : FullSupport timing)
     (last : (control.execution.recall who).length + 1 =
       rosterOffset setup rosters who event + (rosters event).count who) :
     ((application setup leaks).policyMixture timing
@@ -319,13 +319,13 @@ theorem sourceServiceTimedMixture_binding_last
   trans ((app.policyMixture timing family).posterior (control.execution.recall who)).bind
     (fun _ => sourceServiceOpportunity setup leaks profile who event (control.execution.recall who)
       (control.execution.observe app who))
-  · apply FinDist.bind_congr
+  · apply bind_congr_on_support _
     intro selected supported
     have chosen := selectedNow selected supported
     simp only [sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
       Option.map_some, chosen, offset, ↓reduceIte]
     rfl
-  · exact FinDist.bind_const _ _
+  · exact PMF.bind_const _ _
 
 /-- Shared positive timing is legal at every retained history. The final
 binding visit is forced by its actual posterior, including histories that
@@ -340,7 +340,7 @@ theorem sourceServiceTimedPolicy_admissible
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
     (timing : TimingLaw setup rosters)
-    (full : ∀ event who owned, (timing event who owned).FullSupport)
+    (full : ∀ event who owned, FullSupport (timing event who owned))
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program
       (CommitmentInterface.values setup.program))
@@ -396,7 +396,7 @@ theorem sourceServiceTimedPolicy_admissible
                 event grant owned unsent response supported).1
           · rw [app.policyMixture_policy] at supported
             obtain ⟨slot, _, produced⟩ := Set.mem_iUnion₂.mp
-              (FinDist.support_bind .. ▸ supported)
+              (PMF.support_bind .. ▸ supported)
             change response ∈ (app.scheduledPolicy (rosterOffset setup rosters who event)
               (some slot) (sourceServiceOpportunity setup leaks profile who event)
                 app.replayPolicy past view).support at produced

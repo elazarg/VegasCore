@@ -112,7 +112,7 @@ theorem scheduled_binding_window_coupling (runtime : EventGraphRuntime graph)
     let app := runtime.reactiveApplication leaks
     let players := fun result => Function.update (fun _ => app.replayPolicy) owner
       (app.scheduledPolicy offset selected
-        (fun _ _ => FinDist.pure (runtime.reactiveBinding leaks owner event payload result serial))
+        (fun _ _ => PMF.pure (runtime.reactiveBinding leaks owner event payload result serial))
         app.replayPolicy)
     (runtime.runInteractionPlan leaks (players first) network
       (roster.map ServiceInstruction.player) left).map (runtime.bindingTraffic leaks focal) =
@@ -120,17 +120,17 @@ theorem scheduled_binding_window_coupling (runtime : EventGraphRuntime graph)
       (roster.map ServiceInstruction.player) right).map (runtime.bindingTraffic leaks focal) := by
   intro app players
   induction roster generalizing left right with
-  | nil => simpa only [List.map_nil, runInteractionPlan, FinDist.map_pure] using
-      congrArg FinDist.pure same
+  | nil => simpa only [List.map_nil, runInteractionPlan, PMF.pure_map] using
+      congrArg PMF.pure same
   | cons actor rest ih =>
       have networks : left.network = right.network := congrArg Prod.fst same
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.map_bind,
-        FinDist.bind_map, FinDist.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.map_bind,
+        PMF.bind_map, PMF.bind_bind]
       rw [networks]
-      apply FinDist.bind_congr
+      apply bind_congr_on_support _
       intro sample _
       let before := left.sampledActivation app actor sample
       let after := right.sampledActivation app actor sample
@@ -154,7 +154,7 @@ theorem scheduled_binding_window_coupling (runtime : EventGraphRuntime graph)
               (rest.map ServiceInstruction.player) (after.respond app actor response)).map
                 (runtime.bindingTraffic leaks focal)) := by
         rw [firstEq, secondEq, replay]
-        apply FinDist.bind_congr
+        apply bind_congr_on_support _
         intro response supported
         apply ih _ _ (app.respond_inputRecall before actor response beforeRecall)
           (app.respond_inputRecall after actor response afterRecall)
@@ -171,29 +171,29 @@ theorem scheduled_binding_window_coupling (runtime : EventGraphRuntime graph)
         · have nextNow : selected.map (fun slot => offset + slot.val) =
               some (after.recall owner).length := activationCounts ▸ now
           have firstNow : players first owner (before.recall owner) (before.observe app owner) =
-              FinDist.pure (runtime.reactiveBinding leaks owner event payload first serial) := by
+              PMF.pure (runtime.reactiveBinding leaks owner event payload first serial) := by
             simp only [players, Function.update_self, ReactiveApplication.scheduledPolicy,
               ite_eq_left now]
           have secondNow : players second owner (after.recall owner) (after.observe app owner) =
-              FinDist.pure (runtime.reactiveBinding leaks owner event payload second serial) := by
+              PMF.pure (runtime.reactiveBinding leaks owner event payload second serial) := by
             simp only [players, Function.update_self, ReactiveApplication.scheduledPolicy,
               ite_eq_left nextNow]
-          rw [firstNow, secondNow, FinDist.pure_bind, FinDist.pure_bind]
+          rw [firstNow, secondNow, PMF.pure_bind, PMF.pure_bind]
           apply ih _ _ (app.respond_inputRecall before owner _ beforeRecall)
             (app.respond_inputRecall after owner _ afterRecall)
           · have exactResponse := runtime.binding_replay_window_coupling leaks network []
               before after beforeRecall afterRecall owner focal event payload
                 first second visible serial matched
-            simp only [List.map_nil, runInteractionPlan, FinDist.map_pure] at exactResponse
+            simp only [List.map_nil, runInteractionPlan, PMF.pure_map] at exactResponse
             have supported : runtime.bindingTraffic leaks focal
                 (before.respond app owner
                   (runtime.reactiveBinding leaks owner event payload first serial)) ∈
-                (FinDist.pure (runtime.bindingTraffic leaks focal
+                (PMF.pure (runtime.bindingTraffic leaks focal
                   (before.respond app owner
                     (runtime.reactiveBinding leaks owner event payload first serial)))).support :=
-              FinDist.mem_support_pure.mpr rfl
+              (PMF.mem_support_pure_iff _ _).mpr rfl
             rw [exactResponse] at supported
-            exact FinDist.mem_support_pure.mp supported
+            exact (PMF.mem_support_pure_iff _ _).mp supported
           · simpa only [app.respond_recall_length, ite_true] using
               congrArg (· + 1) activationCounts
         · have nextNot : selected.map (fun slot => offset + slot.val) ≠
@@ -220,13 +220,13 @@ theorem scheduled_binding_mixture_coupling (runtime : EventGraphRuntime graph)
     (owner focal : Player) (event : graph.EventId)
     (payload : L.Ty) (first second : PublicationResult (L.Val payload))
     (visible : focal = owner → first = second) (serial offset : Nat)
-    {slots : Nat} (choices : FinDist (Option (Fin slots)))
+    {slots : Nat} (choices : PMF (Option (Fin slots)))
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
     (counts : (left.recall owner).length = (right.recall owner).length)
     (before : (left.recall owner).length ≤ offset) :
     let app := runtime.reactiveApplication leaks
     let family := fun result selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure (runtime.reactiveBinding leaks owner event payload result serial))
+      (fun _ _ => PMF.pure (runtime.reactiveBinding leaks owner event payload result serial))
       app.replayPolicy
     let players := fun result => Function.update (fun _ => app.replayPolicy) owner
       (app.policyMixture choices (family result)).policy
@@ -252,8 +252,8 @@ theorem scheduled_binding_mixture_coupling (runtime : EventGraphRuntime graph)
     rw [dormant] at actual
     exact actual.symm
   rw [realize first left before, realize second right (counts ▸ before),
-    FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+    PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro selected _
   exact runtime.scheduled_binding_window_coupling leaks network roster left right
     leftRecall rightRecall owner focal event payload first second visible serial offset
@@ -273,7 +273,7 @@ private theorem scheduled_binding_packets (runtime : EventGraphRuntime graph)
     let app := runtime.reactiveApplication leaks
     let players := Function.update (fun _ => app.replayPolicy) owner
       (app.scheduledPolicy offset selected
-        (fun _ _ => FinDist.pure (runtime.reactiveBinding leaks owner event payload result serial))
+        (fun _ _ => PMF.pure (runtime.reactiveBinding leaks owner event payload result serial))
         app.replayPolicy)
     final ∈ (runtime.runInteractionPlan leaks players network
       (roster.map ServiceInstruction.player) initial).support →
@@ -283,17 +283,17 @@ private theorem scheduled_binding_packets (runtime : EventGraphRuntime graph)
   intro app players reached
   induction roster generalizing initial with
   | nil =>
-      cases FinDist.mem_support_pure.mp reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨ledger, packets⟩
   | cons actor rest ih =>
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, FinDist.bind_map,
-        FinDist.bind_bind] at reached
-      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (FinDist.support_bind .. ▸ reached)
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map,
+        PMF.bind_bind] at reached
+      obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, chosen, reached⟩ := Set.mem_iUnion₂.mp
-        (FinDist.support_bind .. ▸ reached)
+        (PMF.support_bind .. ▸ reached)
       let current := initial.sampledActivation app actor sample
       have currentPackets := packets.learn actor sample
       have data : (current.respond app actor response).network.ledger = old ∧
@@ -317,7 +317,7 @@ private theorem scheduled_binding_packets (runtime : EventGraphRuntime graph)
           simp only [players, Function.update_self] at chosen
           unfold ReactiveApplication.scheduledPolicy at chosen
           split at chosen
-          · cases FinDist.mem_support_pure.mp chosen
+          · cases (PMF.mem_support_pure_iff _ _).mp chosen
             have nextPackets := currentPackets.submit owner
               (⟨.commitment event (owner, .prepared serial), none⟩ : WitnessedPacket graph)
                 (Or.inr rfl)
@@ -367,10 +367,10 @@ private theorem bindingTraffic_reserved (runtime : EventGraphRuntime graph)
           (right.observeEnvironment (runtime.reactiveApplication leaks)) = .wait :=
         observed ▸ command
       simp only [interactionStep, interactionInstruction, command, nextCommand,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.Execution.environmentStep, ReactiveApplication.resume,
-        FinDist.map_pure]
-      apply congrArg FinDist.pure
+        PMF.pure_map]
+      apply congrArg PMF.pure
       have privateViews := congrArg (fun value => value.2.2.2) same
       refine Prod.ext networks (Prod.ext receipts (Prod.ext ?_ privateViews))
       change left.environmentRecall ++ [⟨left.observeEnvironment app, .wait⟩] = _
@@ -414,10 +414,10 @@ private theorem bindingTraffic_reserved (runtime : EventGraphRuntime graph)
       have nextReceipts := congrArg (fun value => value.2.1) nextEqual
       have nextPrivate := congrArg (fun value => value.2.2.2) nextEqual
       simp only [interactionStep, interactionInstruction, command, nextCommand,
-        FinDist.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+        PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.Execution.environmentStep, ReactiveApplication.resume,
-        FinDist.map_pure]
-      apply congrArg FinDist.pure
+        PMF.pure_map]
+      apply congrArg PMF.pure
       refine Prod.ext nextNetworks (Prod.ext nextReceipts (Prod.ext ?_ nextPrivate))
       change left.environmentRecall ++ [⟨left.observeEnvironment app, .include chosen.id⟩] = _
       rw [environments, observed]
@@ -443,7 +443,7 @@ theorem scheduled_binding_inclusion_coupling (runtime : EventGraphRuntime graph)
     let app := runtime.reactiveApplication leaks
     let players := fun result => Function.update (fun _ => app.replayPolicy) owner
       (app.scheduledPolicy offset selected
-        (fun _ _ => FinDist.pure (runtime.reactiveBinding leaks owner event payload result serial))
+        (fun _ _ => PMF.pure (runtime.reactiveBinding leaks owner event payload result serial))
         app.replayPolicy)
     let phase := roster.map ServiceInstruction.player ++ [.includeLatest event owner]
     (runtime.runInteractionPlan leaks (players first) network phase left).map
@@ -456,8 +456,8 @@ theorem scheduled_binding_inclusion_coupling (runtime : EventGraphRuntime graph)
       selected same counts
   dsimp only [phase]
   rw [runInteractionPlan_append, runInteractionPlan_append,
-    FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_eq_of_map_eq _ _ _ _ prefixLaw
+    PMF.map_bind, PMF.map_bind]
+  apply bind_eq_of_map_eq _ _ _ _ prefixLaw
   intro before beforeSupport after _afterSupport equal
   have packets := runtime.scheduled_binding_packets leaks network roster owner event payload
     first serial offset selected left.network.ledger left before rfl
@@ -470,7 +470,7 @@ theorem scheduled_binding_inclusion_coupling (runtime : EventGraphRuntime graph)
     rcases good with known | canonical
     · exact Or.inl (by rw [packets.1]; exact known)
     · exact Or.inr canonical
-  simpa only [runInteractionPlan, FinDist.bind_pure] using
+  simpa only [runInteractionPlan, PMF.bind_pure] using
     runtime.bindingTraffic_reserved leaks (players first) (players second) network focal owner
       event serial before after equal safe
 
@@ -486,7 +486,7 @@ theorem scheduled_binding_mixture_inclusion_coupling (runtime : EventGraphRuntim
     (owner focal : Player) (event : graph.EventId)
     (payload : L.Ty) (first second : PublicationResult (L.Val payload))
     (visible : focal = owner → first = second) (serial offset : Nat)
-    {slots : Nat} (choices : FinDist (Option (Fin slots)))
+    {slots : Nat} (choices : PMF (Option (Fin slots)))
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
     (counts : (left.recall owner).length = (right.recall owner).length)
     (before : (left.recall owner).length ≤ offset)
@@ -494,7 +494,7 @@ theorem scheduled_binding_mixture_inclusion_coupling (runtime : EventGraphRuntim
       message.id ∈ left.network.ledger.map Message.id) :
     let app := runtime.reactiveApplication leaks
     let family := fun result selected => app.scheduledPolicy offset selected
-      (fun _ _ => FinDist.pure (runtime.reactiveBinding leaks owner event payload result serial))
+      (fun _ _ => PMF.pure (runtime.reactiveBinding leaks owner event payload result serial))
       app.replayPolicy
     let players := fun result => Function.update (fun _ => app.replayPolicy) owner
       (app.policyMixture choices (family result)).policy
@@ -520,8 +520,8 @@ theorem scheduled_binding_mixture_inclusion_coupling (runtime : EventGraphRuntim
     rw [dormant] at actual
     exact actual.symm
   rw [realize first left before, realize second right (counts ▸ before),
-    FinDist.map_bind, FinDist.map_bind]
-  apply FinDist.bind_congr
+    PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
   intro selected _
   exact runtime.scheduled_binding_inclusion_coupling leaks network roster left right
     leftRecall rightRecall owner focal event payload first second visible serial offset

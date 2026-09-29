@@ -69,18 +69,18 @@ theorem menu_decode_reports (setup : Setup (Player := Player) (L := L))
         (application setup leaks).reportFirstUnpublished := by
   funext past view
   have deterministic : ∃ response,
-      (application setup leaks).reportFirstUnpublished past view = FinDist.pure response := by
+      (application setup leaks).reportFirstUnpublished past view = PMF.pure response := by
     unfold ReactiveApplication.reportFirstUnpublished
     split <;> exact ⟨_, rfl⟩
   obtain ⟨reported, law⟩ := deterministic
   rw [law]
-  apply FinDist.eq_pure_of_support_subset_singleton
+  apply pmf_eq_pure_of_support_subset_singleton
   intro response supported
   have allowed := (menu setup leaks bounds watcher).decode_embedPolicy_covered
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     watcher (profile watcher) past view response supported
   simpa only [menu, ↓reduceIte, law, FinDist.mem_supportFinset,
-    FinDist.mem_support_pure, Set.mem_singleton_iff] using allowed
+    PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using allowed
 
 theorem menu_decode_ordinary (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -113,8 +113,8 @@ private theorem grant_activate_state
     (ownerAt : (plan setup watcher)[cursor + 1]? = some (.player owner)) :
     (fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) players))^[2]
-        (FinDist.pure (some ⟨remaining + 2, none, execution⟩)) =
-      FinDist.pure (some ⟨remaining, some owner,
+        (PMF.pure (some ⟨remaining + 2, none, execution⟩)) =
+      PMF.pure (some ⟨remaining, some owner,
         ownerOpportunity setup leaks event owner execution⟩) := by
   let app := application setup leaks
   let granted : app.Execution := { execution with
@@ -122,35 +122,35 @@ private theorem grant_activate_state
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
   have first : (scheduler setup leaks watcher) execution.environmentRecall
-      (execution.observeEnvironment app) = FinDist.pure (.application (.grant event)) := by
+      (execution.observeEnvironment app) = PMF.pure (.application (.grant event)) := by
     simp only [scheduler, position, grantAt, interactionInstruction]
   have second : (scheduler setup leaks watcher) granted.environmentRecall
-      (granted.observeEnvironment app) = FinDist.pure (.activate owner) := by
+      (granted.observeEnvironment app) = PMF.pure (.activate owner) := by
     simp only [scheduler, granted, List.length_append, List.length_singleton, position,
       ownerAt, interactionInstruction]
   have grantLaw : execution.environmentStep app (.application (.grant event)) =
-      FinDist.pure granted := by
+      PMF.pure granted := by
     simp only [ReactiveApplication.Execution.environmentStep, app, application, reactiveApplication,
-      environmentStep, FinDist.map_pure]
+      environmentStep, PMF.pure_map]
     rfl
   have one : app.controlStep (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players (some ⟨remaining + 2, none, execution⟩) =
-      FinDist.pure (some ⟨remaining + 1, none, granted⟩) := by
+      PMF.pure (some ⟨remaining + 1, none, granted⟩) := by
     change ((scheduler setup leaks watcher) execution.environmentRecall
       (execution.observeEnvironment app)).bind _ = _
-    rw [first, FinDist.pure_bind, grantLaw, FinDist.map_pure]
+    rw [first, PMF.pure_bind, grantLaw, PMF.pure_map]
     rfl
   have two : app.controlStep (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players (some ⟨remaining + 1, none, granted⟩) =
-      FinDist.pure (some ⟨remaining, some owner,
+      PMF.pure (some ⟨remaining, some owner,
         ownerOpportunity setup leaks event owner execution⟩) := by
     change ((scheduler setup leaks watcher) granted.environmentRecall
       (granted.observeEnvironment app)).bind _ = _
-    rw [second, FinDist.pure_bind,
-      granted.activate_of_pending_published app owner pending, FinDist.map_pure]
+    rw [second, PMF.pure_bind,
+      granted.activate_of_pending_published app owner pending, PMF.pure_map]
     rfl
-  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, FinDist.pure_bind]
-  rw [one, FinDist.pure_bind, two]
+  simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind]
+  rw [one, PMF.pure_bind, two]
 
 /-- Every supported C owner history retains a concrete boundary execution
 and its source checkpoint. This quantifies over arbitrary C policies. -/
@@ -192,22 +192,22 @@ theorem owner_supported
   let depth := blockOffset event.val + 2 * event.val + 1
   change history ∈ (model.runBehavioral profile (depth + 2)).support at supported
   rw [InformationModel.runBehavioral, InformationModel.runBehavioralFrom_add,
-    FinDist.support_bind] at supported
+    PMF.support_bind] at supported
   obtain ⟨before, beforeSupport, continued⟩ := Set.mem_iUnion₂.mp supported
   have prefixes := menu_prefix_state setup leaks responses watcher reveals profile event.val
     event.isLt.le
   have seen : before.state ∈
       ((model.runBehavioral profile depth).map History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨before, beforeSupport, rfl⟩
-  rw [prefixes, FinDist.support_bind] at seen
+  rw [prefixes, PMF.support_bind] at seen
   obtain ⟨initialNative, nativeSupport, reached⟩ := Set.mem_iUnion₂.mp seen
-  obtain ⟨boundary, executed, stateEq⟩ := FinDist.support_map .. ▸ reached
+  obtain ⟨boundary, executed, stateEq⟩ := PMF.support_map .. ▸ reached
   have boundarySupport : boundary ∈ ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
         (planPrefix setup watcher event.val)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
-    rw [FinDist.support_bind]
+    rw [PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨initialNative, nativeSupport, executed⟩
   obtain ⟨initial, initialSupport, source, checkpoint, decoded, _priorView⟩ :=
     initialized_prefix_support setup leaks bounds watcher reveals observer openable players
@@ -244,7 +244,7 @@ theorem owner_supported
       prefixLength] using counted
   have stateSupport : history.state ∈
       ((model.runBehavioralFrom profile 2 before).map History.state).support := by
-    rw [FinDist.support_map]
+    rw [PMF.support_map]
     exact ⟨history, continued, rfl⟩
   rw [menu_run_control_steps, ← stateEq] at stateSupport
   have remaining : horizon setup watcher - blockOffset event.val =
@@ -255,9 +255,9 @@ theorem owner_supported
     boundary pending position grantAt ownerAt
   change history.state ∈ ((fun law => law.bind ((application setup leaks).controlStep
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher) players))^[2]
-      (FinDist.pure (some ⟨(horizon setup watcher - blockOffset event.val - 2) + 2,
+      (PMF.pure (some ⟨(horizon setup watcher - blockOffset event.val - 2) + 2,
         none, boundary⟩))).support at stateSupport
-  rw [law, FinDist.mem_support_pure] at stateSupport
+  rw [law, PMF.mem_support_pure_iff _ _] at stateSupport
   exact ⟨boundary, boundarySupport, stateSupport, initial, initialSupport, source,
     checkpoint, checkpoint.ownerOpportunity event owner, decoded⟩
 

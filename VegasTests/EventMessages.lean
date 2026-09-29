@@ -98,14 +98,14 @@ install the binding output. Inclusion is the application transition. -/
 example :
     (app.run deliveryOnly initial).map
         (fun state => state.application.config.outputs choiceEvent) =
-      FinDist.pure none := by
+      PMF.pure none := by
   simp only [deliveryOnly, MessageApplication.run, MessageApplication.step, app,
-    EventGraphRuntime.application, FinDist.pure_bind, FinDist.bind_pure,
-    FinDist.map_pure]
-  change FinDist.pure
+    EventGraphRuntime.application, PMF.pure_bind, PMF.bind_pure,
+    PMF.pure_map]
+  change PMF.pure
     ((EventGraphRuntime.State.initial
       VegasTests.SourceSemantics.mixedInitial.eventInputs).config.outputs choiceEvent) =
-        FinDist.pure none
+        PMF.pure none
   rfl
 
 private def choiceOpening : Message TestPlayer (EventGraphRuntime.Payload graph) :=
@@ -166,9 +166,9 @@ private theorem settled_eq : settled? = some seedOpened := by
   rw [handle_choice_opening]
   exact handle_seed_opening
 
-private def successfulRun : FinDist (EventGraphRuntime.State graph) :=
+private def successfulRun : PMF (EventGraphRuntime.State graph) :=
   match settled? with
-  | none => FinDist.pure prepared
+  | none => PMF.pure prepared
   | some settled => EventGraphRuntime.environmentStep runtime settled (.executeSample coinEvent)
 
 private def payout? (state : EventGraphRuntime.State graph) :
@@ -182,13 +182,13 @@ reach the compiled terminal graph and retain the source program's successful
 payoff. The fair coin is sampled once, but it does not affect this branch. -/
 example :
     successfulRun.map payout? =
-      FinDist.pure (some [(.alice, 10)]) := by
+      PMF.pure (some [(.alice, 10)]) := by
   unfold successfulRun
   rw [settled_eq]
   simp only [EventGraphRuntime.environmentStep]
-  change FinDist.map _ (FinDist.map _ (FinDist.map (fun _value : Bool => _) _)) = _
-  simp only [FinDist.map_comp]
-  change (FinDist.map (fun _ : Bool =>
+  change PMF.map _ (PMF.map _ (PMF.map (fun _value : Bool => _) _)) = _
+  simp only [PMF.map_comp]
+  change (PMF.map (fun _ : Bool =>
     some ([((VegasTests.SourceSemantics.Player.alice), 10)] :
       List (VegasTests.SourceSemantics.Player × Int))) _) = _
   exact FinDist.map_const _ _

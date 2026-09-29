@@ -46,10 +46,10 @@ def final : app.Execution := record installed (installed.includePending app ((),
   (.include ((), 1))
 
 def network : runtime.NetworkPolicy leaks := fun history _ =>
-  FinDist.pure (if history.length < 5 then .wait else .include ((), 0))
+  PMF.pure (if history.length < 5 then .wait else .include ((), 0))
 
 def players : Unit → app.Policy := fun _ history view =>
-  if history = [] then FinDist.pure first else compiled history view
+  if history = [] then PMF.pure first else compiled history view
 
 theorem ready : atBinding.application.config.cut.Ready 0 := by decide
 theorem timely : atBinding.application.WithinDeadline runtime 0 := by change 0 < 2; decide
@@ -68,49 +68,49 @@ theorem earlier_authorized :
 
 private theorem step_grant (event : graph.EventId) (execution : app.Execution) :
     runtime.interactionStep leaks players network (.grant event) execution =
-      FinDist.pure (grant event execution) := by
-  simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
+      PMF.pure (grant event execution) := by
+  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    app, reactiveApplication, environmentStep, FinDist.map_pure, FinDist.pure_bind,
+    app, reactiveApplication, environmentStep, PMF.pure_map, PMF.pure_bind,
     ReactiveApplication.Command.actor?, ReactiveApplication.resume]
   rfl
 
 private theorem idle_step (instruction : ServiceInstruction graph) (command : app.Command)
     (execution : app.Execution)
     (selected : runtime.interactionInstruction leaks network execution.environmentRecall
-      (execution.observeEnvironment app) instruction = FinDist.pure command)
+      (execution.observeEnvironment app) instruction = PMF.pure command)
     (noActor : command.actor? app = none)
     (stutter : execution.environmentStep app command =
-      FinDist.pure (record execution execution command)) :
+      PMF.pure (record execution execution command)) :
     runtime.interactionStep leaks players network instruction execution =
-      FinDist.pure (record execution execution command) := by
-  simp only [interactionStep, selected, FinDist.pure_bind, ReactiveApplication.dispatch,
-    stutter, noActor, ReactiveApplication.resume, FinDist.pure_bind]
+      PMF.pure (record execution execution command) := by
+  simp only [interactionStep, selected, PMF.pure_bind, ReactiveApplication.dispatch,
+    stutter, noActor, ReactiveApplication.resume, PMF.pure_bind]
 
 private theorem wait_step (instruction : ServiceInstruction graph) (execution : app.Execution)
     (selected : runtime.interactionInstruction leaks network execution.environmentRecall
-      (execution.observeEnvironment app) instruction = FinDist.pure .wait) :
+      (execution.observeEnvironment app) instruction = PMF.pure .wait) :
     runtime.interactionStep leaks players network instruction execution =
-      FinDist.pure (record execution execution .wait) := by
+      PMF.pure (record execution execution .wait) := by
   apply idle_step instruction .wait execution selected rfl
-  simp only [ReactiveApplication.Execution.environmentStep, FinDist.map_pure]
+  simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
 theorem side_prefix :
     runtime.runInteractionPlan leaks players network (interactionVisit 1 1 ++ [.grant 0]) root =
-      FinDist.pure atBinding := by
+      PMF.pure atBinding := by
   have firstStep : runtime.interactionStep leaks players network (.player ()) (grant 1 root) =
-      FinDist.pure sideSubmitted := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-      ReactiveApplication.dispatch, activation, FinDist.pure_bind,
+      PMF.pure sideSubmitted := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+      ReactiveApplication.dispatch, activation, PMF.pure_bind,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume,
       ReactiveApplication.invoke]
-    change (FinDist.pure first).map _ = _
-    rw [FinDist.map_pure]
+    change (PMF.pure first).map _ = _
+    rw [PMF.pure_map]
     rfl
   have firstWait := wait_step .wire sideSubmitted (by
-    change (FinDist.pure NetworkChoice.wait).map _ = _
-    rw [FinDist.map_pure]
+    change (PMF.pure NetworkChoice.wait).map _ = _
+    rw [PMF.pure_map]
     rfl)
   let afterWait := record sideSubmitted sideSubmitted .wait
   have secondWait := wait_step (.includeLatest 1 ()) afterWait rfl
@@ -118,19 +118,19 @@ theorem side_prefix :
   have sample := idle_step (.sample 1) (.application (.executeSample 1)) beforeSample rfl rfl (by
     have unready : ¬ beforeSample.application.config.cut.Ready 1 := by decide
     simp only [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
-      environmentStep_executeSample_of_not_ready runtime _ _ unready, FinDist.map_pure]
+      environmentStep_executeSample_of_not_ready runtime _ _ unready, PMF.pure_map]
     rfl)
   dsimp only [afterWait] at secondWait
   dsimp only [beforeSample, afterWait] at sample
   change runtime.runInteractionPlan leaks players network
     [.grant 1, .player (), .wire, .includeLatest 1 (), .sample 1, .grant 0] root = _
   simp only [runInteractionPlan, step_grant, firstStep, firstWait, secondWait,
-    sample, FinDist.pure_bind]
+    sample, PMF.pure_bind]
   rfl
 
 theorem compiled_response :
     compiled ((activated atBinding).recall ()) ((activated atBinding).observe app ()) =
-      FinDist.pure bindingAction := by
+      PMF.pure bindingAction := by
   have incompatible : ¬ (runtime.prescribedReactivePolicy leaks () zeroPolicy).Consistent
       ((activated atBinding).recall ()) := by
     intro consistent
@@ -148,7 +148,7 @@ theorem compiled_response :
     rw [prescribedReactivePolicy_apply] at selected
     simp only [prescribedReactiveResponse, grantOne, reactiveAlreadySubmitted, List.any_nil,
       Bool.false_eq_true, ite_false, dite_true, ite_eq_right unready,
-      FinDist.map_pure, FinDist.bind_const, FinDist.mem_support_pure] at selected
+      PMF.pure_map, PMF.bind_const, PMF.mem_support_pure_iff _ _] at selected
     cases congrArg ReactiveApplication.Action.transmission selected
   rw [compiled, compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     incompatible]
@@ -160,8 +160,8 @@ theorem compiled_response :
   rw [recoverReactivePolicy_apply]
   simp only [recoverReactiveResponse, grantZero, dite_true, ite_eq_left readyView,
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero,
-    reactiveRecoveryLaw_pure (graph := graph), FinDist.map_pure, FinDist.bind_const]
-  change FinDist.pure (ReactiveApplication.Action.mk (app := app)
+    reactiveRecoveryLaw_pure (graph := graph), PMF.pure_map, PMF.bind_const]
+  change PMF.pure (ReactiveApplication.Action.mk (app := app)
     ((reactiveFreshSlot ((activated atBinding).observe app ()).application).map _)) = _
   have slot : reactiveFreshSlot ((activated atBinding).observe app ()).application = some 1 := by
     unfold reactiveFreshSlot
@@ -180,38 +180,38 @@ theorem compiled_response :
   rfl
 
 theorem recovery_block : runtime.runInteractionPlan leaks players network
-    [.player (), .wire, .includeLatest 0 ()] atBinding = FinDist.pure final := by
+    [.player (), .wire, .includeLatest 0 ()] atBinding = PMF.pure final := by
   have playerStep : runtime.interactionStep leaks players network (.player ()) atBinding =
-      FinDist.pure recoverySubmitted := by
-    simp only [interactionStep, interactionInstruction, FinDist.pure_bind,
-      ReactiveApplication.dispatch, activation, FinDist.pure_bind,
+      PMF.pure recoverySubmitted := by
+    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
+      ReactiveApplication.dispatch, activation, PMF.pure_bind,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume,
       ReactiveApplication.invoke]
     have notEmpty : (activated atBinding).recall () ≠ [] := by decide
-    simp only [players, notEmpty, ↓reduceIte, compiled_response, FinDist.map_pure]
+    simp only [players, notEmpty, ↓reduceIte, compiled_response, PMF.pure_map]
     rfl
   have wireCommand : runtime.interactionInstruction leaks network
       recoverySubmitted.environmentRecall (recoverySubmitted.observeEnvironment app) .wire =
-        FinDist.pure (.include ((), 0)) := by
-    change (FinDist.pure (NetworkChoice.include ((), 0))).map _ = _
-    rw [FinDist.map_pure]
+        PMF.pure (.include ((), 0)) := by
+    change (PMF.pure (NetworkChoice.include ((), 0))).map _ = _
+    rw [PMF.pure_map]
     rfl
   have wireStep : runtime.interactionStep leaks players network .wire recoverySubmitted =
-      FinDist.pure installed := by
-    simp only [interactionStep, wireCommand, FinDist.pure_bind, ReactiveApplication.dispatch,
-      ReactiveApplication.Execution.environmentStep, FinDist.map_pure, FinDist.pure_bind,
+      PMF.pure installed := by
+    simp only [interactionStep, wireCommand, PMF.pure_bind, ReactiveApplication.dispatch,
+      ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
       ReactiveApplication.Command.actor?, ReactiveApplication.resume]
     rfl
   have select : runtime.reactiveLatest leaks 0 () (installed.observeEnvironment app) =
       .include ((), 1) := rfl
   have includeStep : runtime.interactionStep leaks players network (.includeLatest 0 ()) installed =
-      FinDist.pure final := by
-    simp only [interactionStep, interactionInstruction, select, FinDist.pure_bind,
+      PMF.pure final := by
+    simp only [interactionStep, interactionInstruction, select, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      FinDist.map_pure, FinDist.pure_bind, ReactiveApplication.Command.actor?,
+      PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
       ReactiveApplication.resume]
     rfl
-  simp only [runInteractionPlan, playerStep, wireStep, includeStep, FinDist.pure_bind]
+  simp only [runInteractionPlan, playerStep, wireStep, includeStep, PMF.pure_bind]
 
 theorem installed_value : installed.application.config.outputs 0 = some (.success 1) := by
   have application : installed.application = (included true false).application := rfl
@@ -234,10 +234,10 @@ def servicePrefix : List (ServiceInstruction graph) :=
   interactionVisit 1 1 ++ [.grant 0, .player (), .wire, .includeLatest 0 ()]
 
 theorem prefix_law : runtime.runInteractionPlan leaks players network servicePrefix root =
-    FinDist.pure final := by
+    PMF.pure final := by
   change runtime.runInteractionPlan leaks players network
     ((interactionVisit 1 1 ++ [.grant 0]) ++ [.player (), .wire, .includeLatest 0 ()]) root = _
-  rw [runInteractionPlan_append, side_prefix, FinDist.pure_bind, recovery_block]
+  rw [runInteractionPlan_append, side_prefix, PMF.pure_bind, recovery_block]
 
 theorem epoch_split : interactionEpoch (ServiceOrder.decreasing graph) 1 =
     servicePrefix ++ [.sample 0, .tick, .expire 0, .expire 1] := rfl
@@ -246,7 +246,7 @@ theorem epoch_stores_earlier (next : app.Execution)
     (reached : next ∈ (runtime.runInteractionPlan leaks players network
       (interactionEpoch (ServiceOrder.decreasing graph) 1) root).support) :
     next.application.config.outputs 0 = some (.success 1) := by
-  rw [epoch_split, runInteractionPlan_append, prefix_law, FinDist.pure_bind] at reached
+  rw [epoch_split, runInteractionPlan_append, prefix_law, PMF.pure_bind] at reached
   rw [← runtime.interactionSuffix_rounds leaks (ServiceOrder.decreasing graph) 1 players network
     servicePrefix [.sample 0, .tick, .expire 0, .expire 1] epoch_split 0 final (by rfl)] at reached
   have preserved := ReactiveApplication.Invariant.policyInvariant app
@@ -259,14 +259,14 @@ theorem recurring_result :
     (app.runRounds (runtime.interactionScheduler leaks (ServiceOrder.decreasing graph) 1 network)
       players (interactionEpoch (ServiceOrder.decreasing graph) 1).length root).map
         (fun execution => execution.application.config.outputs 0) =
-          FinDist.pure (some (.success 1)) := by
+          PMF.pure (some (.success 1)) := by
   rw [runtime.interactionSuffix_rounds leaks (ServiceOrder.decreasing graph) 1 players network
     [] (interactionEpoch (ServiceOrder.decreasing graph) 1) (by simp) 0 root (by rfl)]
   calc
     _ = (runtime.runInteractionPlan leaks players network
         (interactionEpoch (ServiceOrder.decreasing graph) 1) root).map
           (fun _ => some (.success (1 : Int))) :=
-      FinDist.map_congr_of_eq_on_support epoch_stores_earlier
+      map_congr_on_support _ epoch_stores_earlier
     _ = _ := FinDist.map_const _ _
 
 end Vegas.Examples.CommunicationServiceRecovery

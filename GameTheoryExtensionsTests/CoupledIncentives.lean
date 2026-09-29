@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Core.IncentiveCone
+import GameTheory.Analysis.IncentiveCone
 
 /-! # Incentive implication can use a joint restriction on players' utilities
 
@@ -36,17 +36,17 @@ def zeroSumUtilities : Submodule ℝ (EuclideanSpace ℝ Coordinate) where
     rw [← mul_add, zeroSum outcome, mul_zero]
 
 def source : Unit → IncentiveComparison Coordinate :=
-  fun _ => ⟨FinDist.pure (1, false), FinDist.pure (1, true)⟩
+  fun _ => ⟨PMF.pure (1, false), PMF.pure (1, true)⟩
 
 def target : IncentiveComparison Coordinate :=
-  ⟨FinDist.pure (0, true), FinDist.pure (0, false)⟩
+  ⟨PMF.pure (0, true), PMF.pure (0, false)⟩
 
 theorem projected_differences_equal :
     zeroSumUtilities.orthogonalProjectionOnto target.difference =
       zeroSumUtilities.orthogonalProjectionOnto (source ()).difference := by
   rw [IncentiveComparison.projected_difference_eq_iff]
   intro utility
-  simp only [target, source, FinDist.expect_pure]
+  simp only [target, source, expect_pure]
   have atFalse := utility.property false
   have atTrue := utility.property true
   change utility.val (0, true) - utility.val (0, false) =

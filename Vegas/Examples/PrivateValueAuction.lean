@@ -40,7 +40,7 @@ def initial (values : Player → Int) : State simpleExpr context :=
   Env.cons (values .alice) (Env.cons (values .bob) (Env.empty (CellVal simpleExpr)))
 
 /-- A joint prior over valuations, with no independence assumption. -/
-def setup (prior : FinDist (Player → Int)) : Setup (Player := Player) (L := simpleExpr) where
+def setup (prior : PMF (Player → Int)) : Setup (Player := Player) (L := simpleExpr) where
   context := context
   namesNodup := by decide
   initialLaw := prior.map initial
@@ -53,16 +53,16 @@ def values (state : State simpleExpr context) : Player → Int
   | .bob => state.get (.there .here)
 
 def alicePolicy (report : Int → Int) : BehavioralPolicy Player.alice program :=
-  (fun _ view => FinDist.pure (.success (report ((view.1.cells.get .here).getD 0))),
+  (fun _ view => PMF.pure (.success (report ((view.1.cells.get .here).getD 0))),
     ((fun h => nomatch h),
-      (fun _ _ => FinDist.pure true, ((fun h => nomatch h), PUnit.unit))))
+      (fun _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
 
 def bobPolicy (report : Int → Int) : BehavioralPolicy Player.bob program :=
   ((fun h => nomatch h),
-    (fun _ view => FinDist.pure
+    (fun _ view => PMF.pure
       (.success (report ((view.1.cells.get (.there (.there .here))).getD 0))),
       ((fun h => nomatch h),
-        (fun _ _ => FinDist.pure true, PUnit.unit))))
+        (fun _ _ => PMF.pure true, PUnit.unit))))
 
 /-- Reports may be arbitrary functions of the reporting player's own type. -/
 def profile (report : Player → Int → Int) : BehavioralProfile program
@@ -82,28 +82,28 @@ theorem profile_valueBinding (report : Player → Int → Int) (who : Player) :
 /-- The public bids are precisely the owners' chosen functions of their inputs. -/
 theorem publicRun_initial (report : Player → Int → Int) (types : Player → Int) :
     (program.run (profile report) (initial types)).map (publicOutcome program) =
-      FinDist.pure (result (report .alice (types .alice)) (report .bob (types .bob))) := by
+      PMF.pure (result (report .alice (types .alice)) (report .bob (types .bob))) := by
   simp only [SourceProgram.run, program, profile, alicePolicy, bobPolicy, initial,
-    runWith, commitKernel, revealKernel, afterCommit, afterReveal, FinDist.pure_bind,
-    FinDist.map_pure]
+    runWith, commitKernel, revealKernel, afterCommit, afterReveal, PMF.pure_bind,
+    PMF.pure_map]
   rfl
 
 /-- Truthful reports preserve their correlation with the actual private types. -/
-theorem truthful_parameterRun (prior : FinDist (Player → Int)) :
+theorem truthful_parameterRun (prior : PMF (Player → Int)) :
     (setup prior).parameterRun values truthful =
       prior.map (fun types => (types, result (types .alice) (types .bob))) := by
   unfold Setup.parameterRun
   dsimp only [setup]
-  rw [FinDist.bind_map, FinDist.map_eq_bind]
-  apply FinDist.bind_congr
+  rw [PMF.bind_map, ← PMF.bind_pure_comp, Function.comp_def]
+  apply bind_congr_on_support _
   intro types _
-  have law := congrArg (FinDist.map fun outcome => (types, outcome))
+  have law := congrArg (PMF.map fun outcome => (types, outcome))
     (publicRun_initial (fun _ => id) types)
   have retained : values (initial types) = types := by
     funext who
     cases who <;> rfl
-  simpa only [truthful, retained, FinDist.map_comp, Function.comp_def,
-    FinDist.map_pure, id_eq] using law
+  simpa only [truthful, retained, PMF.map_comp, Function.comp_def,
+    PMF.pure_map, id_eq] using law
 
 /-- Type-dependent utility reuses the same public second-price settlement. -/
 def utility (forfeiture : ℝ) (outcome : (Player → Int) × PublicOutcome program) : Player → ℝ :=
