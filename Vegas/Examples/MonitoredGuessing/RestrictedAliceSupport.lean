@@ -136,7 +136,7 @@ theorem alice_control (control : nativeApp.Control)
     left
     change prior ∈ (nativeInitialLaw.bind fun initial =>
       PMF.pure (ReactiveApplication.Execution.initial nativeApp initial)).support at priorMem
-    rw [← ← PMF.bind_pure_comp, Function.comp_def, nativeInitialLaw, PMF.map_comp, PMF.support_map] at priorMem
+    rw [← PMF.bind_pure_comp, Function.comp_def, nativeInitialLaw, PMF.map_comp, PMF.support_map] at priorMem
     obtain ⟨bit, _, rfl⟩ := priorMem
     have commandEq : command = .activate alice := (PMF.mem_support_pure_iff _ _).mp selected
     subst command

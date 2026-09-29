@@ -144,6 +144,7 @@ theorem splitRaw_historyLaw
 /-- Native response bounds discharge every operational premise of the
 consistency lift. Beliefs project correctly even at off-path raw sites. -/
 theorem exists_canonicalRaw_consistent
+    [(runtime.reactiveApplication leaks).FiniteNature initial scheduler]
     (source : BehavioralAssessment
       ((bounds.menu runtime leaks).information initial horizon scheduler))
     (consistent : source.IsSequentiallyConsistent
@@ -170,6 +171,7 @@ theorem exists_canonicalRaw_consistent
 bounded raw response alias is available. The source-language interpretation
 of this native game is a separate obligation. -/
 theorem exists_canonicalRaw_sequentialEquilibrium
+    [(runtime.reactiveApplication leaks).FiniteNature initial scheduler]
     (source : BehavioralAssessment
       ((bounds.menu runtime leaks).information initial horizon scheduler))
     (payoff : Player → (runtime.reactiveApplication leaks).ProtocolState → ℝ)

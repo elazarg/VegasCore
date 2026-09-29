@@ -110,7 +110,7 @@ private theorem successor_counterpart
       have witness : matched (some ⟨count, nextActor, right⟩) :=
         ⟨count, nextActor, left, right, reached, rfl, related⟩
       rw [decide_eq_true witness])
-  rw [PMF.bind_const, ← ← PMF.bind_pure_comp, Function.comp_def] at coupling
+  rw [PMF.bind_const, ← PMF.bind_pure_comp, Function.comp_def] at coupling
   have inMap : decide (matched next) ∈
       (PMF.pure true).support := by
     rw [coupling, PMF.support_map]

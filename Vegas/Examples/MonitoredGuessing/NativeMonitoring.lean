@@ -160,7 +160,7 @@ theorem watcher_step (players : Player → nativeApp.Policy)
     ReactiveApplication.Execution.environmentStep, PMF.bind_map,
     ReactiveApplication.resume, ReactiveApplication.invoke, reports, nativeWatcherPolicy,
     PMF.pure_map]
-  rw [← ← PMF.bind_pure_comp, Function.comp_def]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
   rfl
 
 /-- This is the actual player-activation and wire suffix, with every later
@@ -172,7 +172,7 @@ theorem monitoring_plan (players : Player → nativeApp.Policy)
   simp only [runInteractionPlan, PMF.bind_pure]
   rw [watcher_step players reports, PMF.bind_map]
   simp only [report_step]
-  rw [← ← PMF.bind_pure_comp, Function.comp_def]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
   rfl
 
 theorem initial_response_cases (bit : Bool) (action : nativeApp.Action)

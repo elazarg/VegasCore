@@ -264,7 +264,7 @@ theorem initialized_prefix_source_law
     count setup.initialLaw
     (fun initial => PMF.pure
       (some (ProtocolState.entry setup.program (setup.initialConfig initial))))
-  rw [← ← PMF.bind_pure_comp, Function.comp_def] at split
+  rw [← PMF.bind_pure_comp, Function.comp_def] at split
   rw [split, initialLaw, PMF.bind_map, PMF.map_bind]
   apply bind_congr_on_support _
   intro initial supported

@@ -113,7 +113,7 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
         sourceSetup, sourceProgram, ProtocolState.step, ProtocolState.entry,
         Sum.elim_inl, Sum.elim_inr, PMF.pure_map]
   all_goals
-    conv_lhs => rw [← ← PMF.bind_pure_comp, Function.comp_def]
+    conv_lhs => rw [← PMF.bind_pure_comp, Function.comp_def]
   all_goals
     dsimp only [sourceKernel]
   · exact project false (fun choice => some (.inr (.inl

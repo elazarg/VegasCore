@@ -238,7 +238,7 @@ theorem initialized_sourceService_prefix_conformance
   induction count generalizing final with
   | zero =>
       simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-        ← ← PMF.bind_pure_comp, Function.comp_def] at reached
+        ← PMF.bind_pure_comp, Function.comp_def] at reached
       obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ reached
       simp [ReactiveApplication.executionTraffic, ReactiveApplication.Execution.initial,
         ReactiveApplication.trafficViews]

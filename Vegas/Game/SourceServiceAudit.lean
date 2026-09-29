@@ -140,7 +140,7 @@ theorem sourceServiceCompiledProfile_settlement_law
         (fun payoffs => (sourceReadout setup leaks final.state, payoffs))) =
       executions.map (fun final =>
         (sourceReadout setup leaks final.state, baseUtility setup leaks utility final.state)) := by
-    simp only [clean, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def]
+    simp only [clean, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def]
   rw [settled]
   have terminal := sourceServiceCompiledProfile_readout_law setup leaks bounds values initialValues
     capacity rosters opportunities network original permitted

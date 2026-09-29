@@ -23,6 +23,15 @@ def continuationLaw (setup : Setup (Player := Player) (L := L))
   | none => setup.run profile
   | some state => SourceProgram.ProtocolState.continuationLaw setup.program profile state
 
+/-- A finitely branching profile has a finitely supported continuation at every
+setup protocol state, the initial draw included when it is finitely supported. -/
+theorem continuationLaw_support_finite (setup : Setup (Player := Player) (L := L))
+    (initialFinite : setup.initialLaw.support.Finite) (profile : BehavioralProfile setup.program)
+    (finite : BehavioralProfile.FiniteSupport setup.program profile) :
+    (state : setup.ProtocolState) → (setup.continuationLaw profile state).support.Finite
+  | none => setup.run_support_finite initialFinite profile finite
+  | some state => SourceProgram.ProtocolState.continuationLaw_support_finite _ profile finite state
+
 def protocolReadout (setup : Setup (Player := Player) (L := L))
     (state : setup.ProtocolState) : Option (State L setup.program.terminalCtx) :=
   state.bind (SourceProgram.ProtocolState.readout setup.program)

@@ -119,7 +119,7 @@ theorem sourceService_prefix_state_law
             (rosterPlanPrefix setup rosters 0)
             (ReactiveApplication.Execution.initial app state)).map (readout 0) = _
         simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-          Nat.zero_add, Function.iterate_one, PMF.pure_bind, ← ← PMF.bind_pure_comp, Function.comp_def,
+          Nat.zero_add, Function.iterate_one, PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def,
           PMF.map_comp]
         change (initialLaw setup).map (fun state => sourceServicePrefix? setup 0
           (ReactiveApplication.Execution.initial app state).application.config) =

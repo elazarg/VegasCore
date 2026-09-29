@@ -109,26 +109,27 @@ theorem completeChoiceAssessment_converges
   rw [equal]
   exact converges.1 who site
 
-theorem completeChoices_historyReachProbability [Fintype Player]
+theorem completeChoices_historyReachWeight [Fintype Player]
     (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
     (profile : Profile (setup.informationModel admission).behavioralSignature)
     (history : (setup.executionProtocol admission).History) :
-    ((setup.informationModel admission).historyReachWeight (setup.completeChoices finite admission profile) history).toReal =
-        ((setup.informationModel admission).historyReachWeight profile history).toReal := by
-  unfold ((InformationModel.historyReachWeight InformationModel.runBehavioral rw).toReal) [setup.completeChoices_runBehavioralFrom]
+    (setup.informationModel admission).historyReachWeight
+      (setup.completeChoices finite admission profile) history =
+        (setup.informationModel admission).historyReachWeight profile history := by
+  unfold InformationModel.historyReachWeight InformationModel.runBehavioral
+  rw [setup.completeChoices_runBehavioralFrom]
 
 theorem completeChoices_informationMass [Fintype Player]
     (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
     (profile : Profile (setup.informationModel admission).behavioralSignature)
-    (who : Player) (site : (setup.informationModel admission).InformationSite who)
-    [Fintype ((setup.informationModel admission).InformationHistory who site.1)] :
+    (who : Player) (site : (setup.informationModel admission).InformationSite who) :
     (setup.informationModel admission).informationMass
       (setup.completeChoices finite admission profile) who site =
         (setup.informationModel admission).informationMass profile who site := by
   unfold InformationModel.informationMass
-  simp_rw [setup.completeChoices_historyReachProbability]
+  simp_rw [setup.completeChoices_historyReachWeight]
 
 /-- Completing unreachable choices preserves Bayes' rule, including the
 positive-mass condition at every actual information site. -/
@@ -137,8 +138,6 @@ theorem completeChoiceAssessment_bayes [Fintype Player]
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (antichain : (setup.informationModel admission).DecisionInformationAntichain)
-    [∀ who (site : (setup.informationModel admission).InformationSite who),
-      Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (setup.informationModel admission) assessment antichain) :
     InformationModel.BehavioralAssessment.IsBayesConsistent
@@ -148,11 +147,12 @@ theorem completeChoiceAssessment_bayes [Fintype Player]
   change 0 < (setup.informationModel admission).informationMass
     (setup.completeChoices finite admission assessment.strategy) who site at positive
   rw [setup.completeChoices_informationMass] at positive
-  change ((assessment.belief who site) history).toReal = _
-  change _ = ((setup.informationModel admission).historyReachWeight (setup.completeChoices finite admission assessment.strategy) history).toReal /
+  change assessment.belief who site history =
+    (setup.informationModel admission).historyReachWeight
+      (setup.completeChoices finite admission assessment.strategy) history /
       (setup.informationModel admission).informationMass
         (setup.completeChoices finite admission assessment.strategy) who site
-  rw [setup.completeChoices_historyReachProbability, setup.completeChoices_informationMass]
+  rw [setup.completeChoices_historyReachWeight, setup.completeChoices_informationMass]
   exact bayes who site positive history
 
 /-- The original consistent assessment admits one Bayes sequence with full
@@ -163,8 +163,6 @@ theorem exists_complete_consistent_sequence [Fintype Player]
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (antichain : (setup.informationModel admission).DecisionInformationAntichain)
-    [∀ who (site : (setup.informationModel admission).InformationSite who),
-      Fintype ((setup.informationModel admission).InformationHistory who site.1)]
     (consistent : assessment.IsSequentiallyConsistent antichain) :
     ∃ sequence : Nat → (setup.informationModel admission).BehavioralAssessment,
       (∀ n who info, FullSupport ((sequence n).strategy who info)) ∧

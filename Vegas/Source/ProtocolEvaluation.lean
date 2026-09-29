@@ -2,6 +2,7 @@
 
 import Vegas.Source.ProtocolPolicy
 import Vegas.Source.ProtocolTermination
+import Vegas.Source.FiniteSupport
 
 /-! # Agreement with source execution
 
@@ -62,6 +63,26 @@ def readout : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .sample _ _ _ next => Sum.elim (fun _ => none) (readout next)
   | _, _, .commit _ _ _ _ next => Sum.elim (fun _ => none) (readout next)
   | _, _, .reveal _ _ _ _ _ _ next => Sum.elim (fun _ => none) (readout next)
+
+/-- A finitely branching profile has a finitely supported continuation at every
+protocol state. -/
+theorem continuationLaw_support_finite : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →
+    BehavioralProfile.FiniteSupport program profile → (state : ProtocolState program) →
+    (continuationLaw program profile state).support.Finite
+  | _, _, .ret _, _, _, config => by simp [continuationLaw]
+  | _, _, .sample _ _ _ next, profile, finite, state => by
+      cases state with
+      | inl config => exact runFrom_support_finite _ profile finite config
+      | inr rest => exact continuationLaw_support_finite next profile finite rest
+  | _, _, .commit _ _ _ _ next, profile, finite, state => by
+      cases state with
+      | inl config => exact runFrom_support_finite _ profile finite config
+      | inr rest => exact continuationLaw_support_finite next _ finite.2 rest
+  | _, _, .reveal _ _ _ _ _ _ next, profile, finite, state => by
+      cases state with
+      | inl config => exact runFrom_support_finite _ profile finite config
+      | inr rest => exact continuationLaw_support_finite next _ finite rest
 
 theorem continuationLaw_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →

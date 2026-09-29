@@ -232,7 +232,7 @@ theorem runServicePlan_compiled_bind_block
       change execution.native.application.serviceGrant = some event
       exact grant) notSubmitted rfl
     initialReady actor stage]
-  rw [PMF.bind_map, PMF.bind_bind]
+  rw [PMF.bind_map, Function.comp_def, PMF.bind_bind]
   apply bind_congr_on_support _
   intro action _
   rw [runtime.application.playerStep_private_eq execution who (.remember event action),

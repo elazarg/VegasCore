@@ -42,8 +42,8 @@ def behavioralStateStep
   if state.elim False (SourceProgram.ProtocolState.terminal setup.program) then
     PMF.pure state
   else
-    (independentProduct fun who => profile who (setup.protocolObserve who state)).bind fun choices =>
-      setup.protocolStep state (fun who => (choices who).1)
+    (independentProduct fun who => profile who (setup.protocolObserve who state)).bind
+      fun choices => setup.protocolStep state (fun who => (choices who).1)
 
 /-- Forgetting history commutes with ordinary iteration of the actual source
 step law. The history runner remains the defining execution semantics. -/
@@ -106,11 +106,13 @@ theorem runBehavioralFrom_value
         history.state) utility := by
   have law := congrArg (fun distribution => expect distribution (fun state => state.elim 0 utility))
     (setup.runBehavioralFrom_readout admission profile fuel history enough)
-  simpa only [expect_map, Option.elim_some] using law
+  simpa only [expect_map, Function.comp_def, Option.elim_some] using law
 
 /-- The original assessment and its whole-policy deviations are retained.
-Only the belief is pushed to the actual source state for evaluating utility. -/
+Only the belief is pushed to the actual source state for evaluating utility.
+Finitely many legal histories make every utility integrable. -/
 theorem continuationContext_value_stateBelief
+    [Finite (setup.executionProtocol admission).History]
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
     (alternative : (setup.informationModel admission).BehavioralPolicy who)
@@ -124,7 +126,8 @@ theorem continuationContext_value_stateBelief
           (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
             assessment.strategy who alternative)) state) utility) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, InformationModel.BehavioralAssessment.stateBelief, expect_map]
+    expect_bind_of_finite, InformationModel.BehavioralAssessment.stateBelief, expect_map,
+    Function.comp_def]
   apply expect_congr_on_support
   intro history _supported
   exact setup.runBehavioralFrom_value admission _ utility fuel history.1 (enough history)

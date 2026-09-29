@@ -117,7 +117,7 @@ private theorem disintegratesDisclosure_zero {Γ : SourceCtx Player L} {O : Fins
         (PMF.pure (ProtocolState.entry program config))).bind
           (policy.disclosureMemory program config.registry config.revelations remember) := by
   simp only [Function.iterate_zero_apply, PMF.pure_bind,
-    BehavioralPolicy.disclosureMemory_entry, ← ← PMF.bind_pure_comp, Function.comp_def]
+    BehavioralPolicy.disclosureMemory_entry, ← PMF.bind_pure_comp, Function.comp_def]
 
 private theorem disintegratesDisclosure_sample {Γ : SourceCtx Player L} {O : Finset VarId}
     (name : VarId) {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)

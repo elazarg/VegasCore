@@ -72,6 +72,33 @@ def step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
           (revealSuccessor published source config (OwnAction.disclosure (joint owner))))))
         (fun rest => (step next rest joint).map Sum.inr) state
 
+/-- A source step draws only at chance, and chance laws are exact finite
+tables, so every step law is finitely supported. -/
+theorem step_support_finite : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
+    (joint : Player → Option (OwnAction Player L)) → (step program state joint).support.Finite
+  | _, _, .ret _, _, _ => by simp [step]
+  | _, _, .sample _ _ _ next, state, joint => by
+      cases state with
+      | inl config =>
+          simp only [step, Sum.elim_inl, PMF.support_map]
+          exact (L.evalDist_support_finite _ _).image _
+      | inr rest =>
+          simp only [step, Sum.elim_inr, PMF.support_map]
+          exact (step_support_finite next rest joint).image _
+  | _, _, .commit _ _ _ _ next, state, joint => by
+      cases state with
+      | inl config => simp [step]
+      | inr rest =>
+          simp only [step, Sum.elim_inr, PMF.support_map]
+          exact (step_support_finite next rest joint).image _
+  | _, _, .reveal _ _ _ _ _ _ next, state, joint => by
+      cases state with
+      | inl config => simp [step]
+      | inr rest =>
+          simp only [step, Sum.elim_inr, PMF.support_map]
+          exact (step_support_finite next rest joint).image _
+
 /-- A value or a withholding decision is always available. Guards constrain
 publication, not the admission of a binding action. -/
 theorem progress : {Γ : SourceCtx Player L} → {O : Finset VarId} →

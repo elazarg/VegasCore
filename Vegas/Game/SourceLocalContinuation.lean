@@ -40,7 +40,7 @@ theorem run_one_choice_state
   rw [model.runBehavioralFrom_succ_of_not_terminal profile 0 running,
     model.behavioralJoint_eq_map_of_at_most_one_active profile history.trace running who
       (fun player acts => setup.protocol_singleMover admission history.state acts active),
-    PMF.map_bind, PMF.bind_map]
+    PMF.map_bind, PMF.bind_map, Function.comp_def]
   apply bind_congr_on_support _
   intro choice _supported
   rw [map_bindOnSupport]
@@ -109,7 +109,9 @@ theorem run_local_law_readout
       exact setup.runBehavioralFrom_readout admission profile fuel next (further next supported)
     _ = ((model.runBehavioralFrom updated 1 history).map History.state).bind (fun state =>
         (setup.continuationLaw (setup.decodeBehavioralProfile admission profile) state).map
-          some) := by rw [PMF.bind_map]
+          some) := by
+      rw [PMF.bind_map]
+      rfl
     _ = _ := by
       rw [setup.run_one_choice_state admission updated history who running active]
       simp only [updated, Profile.update_same, alternative, model,
@@ -118,8 +120,10 @@ theorem run_local_law_readout
 
 open Classical in
 /-- The source continuation context after a local law replacement depends only
-on the original assessment's posterior source state and its baseline policy. -/
+on the original assessment's posterior source state and its baseline policy.
+Finitely many legal histories make every utility integrable. -/
 theorem continuationContext_local_value_stateBelief
+    [Finite (setup.executionProtocol admission).History]
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
     (nonterminal : site.AllNonterminal)
@@ -131,18 +135,28 @@ theorem continuationContext_local_value_stateBelief
       (fun final => (setup.protocolReadout final.state).elim 0 utility) (fuel + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
       expect (assessment.stateBelief who site) (fun state => expect law (fun choice =>
-        expect ((setup.protocolStep state (fun player => if player = who then choice.1 else none)).bind
+        expect ((setup.protocolStep state
+          (fun player => if player = who then choice.1 else none)).bind
           (setup.continuationLaw
             (setup.decodeBehavioralProfile admission assessment.strategy))) utility)) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, InformationModel.BehavioralAssessment.stateBelief, expect_map]
+    expect_bind_of_finite, InformationModel.BehavioralAssessment.stateBelief, expect_map,
+    Function.comp_def]
   apply expect_congr_on_support
   intro history _supported
   have lawEq := setup.run_local_law_readout admission assessment.strategy history.1 who
     (nonterminal history) (InformationModel.InformationSite.active _ site history)
     history.2 law fuel (enough history)
+  have finiteLaw : (law.bind (fun choice =>
+      ((setup.protocolStep history.1.state
+        (fun player => if player = who then choice.1 else none)).bind
+          (setup.continuationLaw (setup.decodeBehavioralProfile admission
+            assessment.strategy))).map some)).support.Finite := by
+    rw [← lawEq, PMF.support_map]
+    exact (Set.toFinite _).image _
   have value := congrArg (fun distribution => expect distribution
     (fun result => result.elim 0 utility)) lawEq
-  simpa only [expect_map, FinDist.expect_bind, Option.elim_some] using value
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _ finiteLaw)] at value
+  simpa only [expect_map, Function.comp_def, Option.elim_some] using value
 
 end Vegas.SourceProgram.Setup

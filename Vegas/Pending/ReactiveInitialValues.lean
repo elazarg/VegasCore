@@ -26,17 +26,23 @@ variable {Player : Type} [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 open Classical in
+/-- The opening values of the initialized handles across a finitely supported
+initial law. A law of infinite support contributes none; coverage below assumes
+finite support. -/
 def initialValues (initial : PMF (State graph)) : Finset (Raw L) :=
-  initial.supportFinset.biUnion fun state => Finset.univ.biUnion fun who =>
-    Finset.univ.biUnion fun input : graph.InputId =>
-      ((state.candidates.lookup (who, .initial input)).opening?).toList.toFinset
+  if finite : initial.support.Finite then
+    finite.toFinset.biUnion fun state => Finset.univ.biUnion fun who =>
+      Finset.univ.biUnion fun input : graph.InputId =>
+        ((state.candidates.lookup (who, .initial input)).opening?).toList.toFinset
+  else ∅
 
-theorem mem_initialValues (initial : PMF (State graph)) (raw : Raw L) :
+theorem mem_initialValues (initial : PMF (State graph)) (finite : initial.support.Finite)
+    (raw : Raw L) :
     raw ∈ initialValues initial ↔
       ∃ state ∈ initial.support, ∃ who input,
         state.candidates.lookup (who, .initial input) = .openable raw := by
   classical
-  simp [initialValues]
+  simp [initialValues, finite]
 
 open Classical in
 def withInitialValues (bounds : MessageBounds graph) (initial : PMF (State graph)) :
@@ -44,7 +50,8 @@ def withInitialValues (bounds : MessageBounds graph) (initial : PMF (State graph
   { bounds with values := bounds.values ∪ initialValues initial }
 
 theorem withInitialValues_preserves_values (bounds : MessageBounds graph)
-    (initial : PMF (State graph)) : bounds.values ⊆ (bounds.withInitialValues initial).values :=
+    (initial : PMF (State graph)) :
+    bounds.values ⊆ (bounds.withInitialValues initial).values :=
   Finset.subset_union_left
 
 theorem withInitialValues_candidateCount (bounds : MessageBounds graph)
@@ -52,13 +59,13 @@ theorem withInitialValues_candidateCount (bounds : MessageBounds graph)
     (bounds.withInitialValues initial).candidateCount = bounds.candidateCount := rfl
 
 theorem initial_value_covered (bounds : MessageBounds graph) (initial : PMF (State graph))
-    (state : State graph) (supported : state ∈ initial.support) (who : Player)
-    (input : graph.InputId) (raw : Raw L)
+    (finite : initial.support.Finite) (state : State graph) (supported : state ∈ initial.support)
+    (who : Player) (input : graph.InputId) (raw : Raw L)
     (fixed : state.candidates.lookup (who, .initial input) = .openable raw) :
     raw ∈ (bounds.withInitialValues initial).values := by
   classical
   apply Finset.mem_union_right
-  exact (mem_initialValues initial raw).mpr ⟨state, supported, who, input, fixed⟩
+  exact (mem_initialValues initial finite raw).mpr ⟨state, supported, who, input, fixed⟩
 
 /-- Completing the alphabet retains every previously admitted raw response,
 including malformed traffic and independently attached evidence. -/
@@ -102,7 +109,7 @@ theorem withInitialValues_rawMenu [DecidableEq Player] (bounds : MessageBounds g
 /-- Every initialized opening remains an available normalized response at every
 local view. Availability does not assert that the packet will be accepted. -/
 theorem initialized_opening_available [DecidableEq Player] (bounds : MessageBounds graph)
-    (initial : PMF (State graph)) (state : State graph)
+    (initial : PMF (State graph)) (finite : initial.support.Finite) (state : State graph)
     (supported : state ∈ initial.support) (who : Player) (input : graph.InputId) (raw : Raw L)
     (fixed : state.candidates.lookup (who, .initial input) = .openable raw)
     (runtime : EventGraphRuntime graph)
@@ -112,7 +119,8 @@ theorem initialized_opening_available [DecidableEq Player] (bounds : MessageBoun
     (runtime.reactiveNormalization leaks).action who past view
         ⟨some (.submit (disclosureSubmission (.opening event (who, .initial input) raw)))⟩ ∈
       ((bounds.withInitialValues initial).menu runtime leaks).actions who past view := by
-  have covered := bounds.initial_value_covered initial state supported who input raw fixed
+  have covered := bounds.initial_value_covered initial finite state supported who input raw
+    fixed
   apply (bounds.withInitialValues initial).normalized_submission_available runtime leaks who
     past view _
   · exact ⟨trivial, covered⟩

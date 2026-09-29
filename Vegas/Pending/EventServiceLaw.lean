@@ -92,9 +92,12 @@ theorem serviceStep_native_step (runtime : EventGraphRuntime graph)
         right
         exact ⟨action, by simpa only [actionEq] using native⟩
   cases instruction with
-  | player who | wire =>
+  | player who =>
       exact runtime.application.invoke_native_step players
-        (runtime.application.wireEnvironment wire) before after _ member
+        (runtime.application.wireEnvironment wire) before after (.player who) member
+  | wire =>
+      exact runtime.application.invoke_native_step players
+        (runtime.application.wireEnvironment wire) before after .environment member
   | grant event | includeLatest event owner | sample event | tick | expire event =>
       exact environment _ member
 
@@ -107,9 +110,12 @@ theorem serviceStep_native_support (runtime : EventGraphRuntime graph)
     ∃ suffix, after.nativeTrace = before.nativeTrace ++ suffix ∧
       after.native ∈ (runtime.application.run suffix before.native).support := by
   cases instruction with
-  | player who | wire =>
+  | player who =>
       exact runtime.application.invoke_native_support players
-        (runtime.application.wireEnvironment wire) before after _ member
+        (runtime.application.wireEnvironment wire) before after (.player who) member
+  | wire =>
+      exact runtime.application.invoke_native_support players
+        (runtime.application.wireEnvironment wire) before after .environment member
   | grant event | includeLatest event owner | sample event | tick | expire event =>
       exact runtime.application.environmentStep_native_support before _ after member
 

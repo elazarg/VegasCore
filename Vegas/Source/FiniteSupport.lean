@@ -42,6 +42,18 @@ theorem FiniteBindingTypes.profileFiniteSupport :
   | _, _, .reveal _ _ _ _ _ _ k, finite, profile =>
       profileFiniteSupport k finite (afterReveal profile)
 
+/-- A profile of pure policies branches only at chance. -/
+theorem PurePolicy.profileFiniteSupport :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
+    (profile : ∀ who, PurePolicy who p) →
+    BehavioralProfile.FiniteSupport p (fun who => (profile who).toBehavioral p)
+  | _, _, .ret _, _ => trivial
+  | _, _, .sample _ _ _ k, profile => profileFiniteSupport k profile
+  | _, _, .commit _ _ _ _ k, profile =>
+      ⟨fun _ => by simp [commitKernel, PurePolicy.toBehavioral],
+        profileFiniteSupport k fun who => (profile who).2⟩
+  | _, _, .reveal _ _ _ _ _ _ k, profile => profileFiniteSupport k fun who => (profile who).2
+
 /-- A finitely branching profile has a finitely supported run from every
 configuration. -/
 theorem runFrom_support_finite : {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -72,5 +84,24 @@ theorem Setup.run_support_finite (setup : Setup (Player := Player) (L := L))
   rw [Setup.run, PMF.support_bind]
   exact initialFinite.biUnion fun initial _ => runFrom_support_finite _ _ finite
     ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩
+
+/-- The public result law of a finitely branching setup run is finitely
+supported. -/
+theorem Setup.publicRun_support_finite (setup : Setup (Player := Player) (L := L))
+    (initialFinite : setup.initialLaw.support.Finite) (profile : BehavioralProfile setup.program)
+    (finite : BehavioralProfile.FiniteSupport setup.program profile) :
+    (setup.publicRun profile).support.Finite := by
+  rw [Setup.publicRun, PMF.support_map]
+  exact (setup.run_support_finite initialFinite profile finite).image _
+
+/-- Under finite fresh-binding alphabets and a finitely supported initial law,
+every profile of the source game has a finitely supported outcome law. -/
+theorem Setup.gameForm_play_support_finite (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes)
+    (initialFinite : setup.initialLaw.support.Finite)
+    (profile : BehavioralProfile setup.program) :
+    (setup.gameForm.play profile).support.Finite :=
+  setup.publicRun_support_finite initialFinite profile
+    (FiniteBindingTypes.profileFiniteSupport _ finite profile)
 
 end Vegas.SourceProgram

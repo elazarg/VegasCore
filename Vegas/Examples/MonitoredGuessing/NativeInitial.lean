@@ -222,7 +222,7 @@ theorem native_alice_initial_representation (control : nativeApp.Control)
       nativeMenu.uniformResponses 0 =
         (PMF.uniformOfFintype Bool).map nativeStart := by
     simp only [ReactiveApplication.roundsFrom, ReactiveApplication.runRounds, nativeInitialLaw,
-      ← ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp]
+      ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp]
     rfl
   rw [roots] at priorMem
   obtain ⟨bit, _, same⟩ := PMF.support_map .. ▸ priorMem

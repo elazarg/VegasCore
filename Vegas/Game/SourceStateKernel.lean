@@ -60,7 +60,7 @@ theorem behavioralStateStep_sample_tail
       (behavioralStateStep next (afterSample profile) state).map Sum.inr := by
   classical
   by_cases stopped : terminal next state
-  · simp [behavioralStateStep, terminal, stopped]
+  · simp [behavioralStateStep, terminal, stopped, PMF.pure_map]
   · simp only [behavioralStateStep, terminal, stopped, ite_false, observe,
       BehavioralPolicy.protocolAction, Sum.elim_inr, afterSample, step, PMF.map_bind]
 
@@ -79,7 +79,8 @@ theorem behavioralStatePrefix_sample
   | zero =>
       simp only [entry]
       rw [Function.iterate_one, PMF.pure_bind, behavioralStateStep_sample_entry]
-      simp only [Function.iterate_zero_apply, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def]
+      simp only [Function.iterate_zero_apply, ← PMF.bind_pure_comp, Function.comp_def,
+          PMF.pure_bind]
       rfl
   | succ count ih =>
       rw [Function.iterate_succ_apply', ih, PMF.bind_bind]
@@ -113,7 +114,6 @@ theorem behavioralStateStep_commit_entry
       (entry next (commitSuccessor name guard config (OwnAction.binding owner name payload action)))
   simp only [behavioralStateStep, terminal, ite_false, step, Sum.elim_inl]
   change ((independentProduct laws).bind fun joint => PMF.pure (advance (joint owner))) = _
-  rw [← ← PMF.bind_pure_comp, Function.comp_def]
   change (independentProduct laws).map (advance ∘ fun joint => joint owner) = _
   rw [← PMF.map_comp, independentProduct_map_eval]
   simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
@@ -126,7 +126,7 @@ theorem behavioralStateStep_commit_tail
       (behavioralStateStep next (afterCommit profile) state).map Sum.inr := by
   classical
   by_cases stopped : terminal next state
-  · simp [behavioralStateStep, terminal, stopped]
+  · simp [behavioralStateStep, terminal, stopped, PMF.pure_map]
   · simp only [behavioralStateStep, terminal, stopped, ite_false, observe,
       BehavioralPolicy.protocolAction, Sum.elim_inr, afterCommit, step, PMF.map_bind]
 
@@ -145,7 +145,8 @@ theorem behavioralStatePrefix_commit
   | zero =>
       simp only [entry]
       rw [Function.iterate_one, PMF.pure_bind, behavioralStateStep_commit_entry]
-      simp only [Function.iterate_zero_apply, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def]
+      simp only [Function.iterate_zero_apply, ← PMF.bind_pure_comp, Function.comp_def,
+          PMF.pure_bind]
       rfl
   | succ count ih =>
       rw [Function.iterate_succ_apply', ih, PMF.bind_bind]
@@ -176,7 +177,6 @@ theorem behavioralStateStep_reveal_entry
       (entry next (revealSuccessor published source config (OwnAction.disclosure action)))
   simp only [behavioralStateStep, terminal, ite_false, step, Sum.elim_inl]
   change ((independentProduct laws).bind fun joint => PMF.pure (advance (joint owner))) = _
-  rw [← ← PMF.bind_pure_comp, Function.comp_def]
   change (independentProduct laws).map (advance ∘ fun joint => joint owner) = _
   rw [← PMF.map_comp, independentProduct_map_eval]
   simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
@@ -190,7 +190,7 @@ theorem behavioralStateStep_reveal_tail
       (behavioralStateStep next (afterReveal profile) state).map Sum.inr := by
   classical
   by_cases stopped : terminal next state
-  · simp [behavioralStateStep, terminal, stopped]
+  · simp [behavioralStateStep, terminal, stopped, PMF.pure_map]
   · simp only [behavioralStateStep, terminal, stopped, ite_false, observe,
       BehavioralPolicy.protocolAction, Sum.elim_inr, afterReveal, step, PMF.map_bind]
 
@@ -210,7 +210,8 @@ theorem behavioralStatePrefix_reveal
   | zero =>
       simp only [entry]
       rw [Function.iterate_one, PMF.pure_bind, behavioralStateStep_reveal_entry]
-      simp only [Function.iterate_zero_apply, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def]
+      simp only [Function.iterate_zero_apply, ← PMF.bind_pure_comp, Function.comp_def,
+          PMF.pure_bind]
       rfl
   | succ count ih =>
       rw [Function.iterate_succ_apply', ih, PMF.bind_bind]
@@ -247,7 +248,7 @@ theorem behavioralStateStep_encoded_some
       (ProtocolState.behavioralStateStep setup.program profile state).map some := by
   classical
   by_cases stopped : ProtocolState.terminal setup.program state
-  · simp [behavioralStateStep, ProtocolState.behavioralStateStep, stopped]
+  · simp [behavioralStateStep, ProtocolState.behavioralStateStep, stopped, PMF.pure_map]
   · simp only [behavioralStateStep, Option.elim_some, stopped, ite_false, protocolStep,
       ProtocolState.behavioralStateStep, PMF.map_bind]
     let choices who := setup.toProtocolBehavioralPolicy admission who
@@ -256,12 +257,13 @@ theorem behavioralStateStep_encoded_some
         independentProduct (fun who => (profile who).protocolAction setup.program
           (ProtocolState.observe who setup.program state)) =
         (independentProduct choices).map (fun selected who => (selected who).1) := by
-      rw [← independentProduct_map]
+      rw [independentProduct_map]
       congr 1
       funext who
       exact (setup.toProtocolBehavioralPolicy_map_val admission who (profile who)
         (permitted who) (some (ProtocolState.observe who setup.program state))).symm
     rw [factors, PMF.bind_map]
+    rfl
 
 end Setup
 

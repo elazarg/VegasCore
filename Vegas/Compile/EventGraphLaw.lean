@@ -131,7 +131,7 @@ theorem runWith_option_law
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least ownerless, suppliedAction]
       rw [sample_step config event ready outputEq refs law codeEq state refsAgree]
-      simp only [PMF.bind_map, PMF.map_bind, runWith]
+      simp only [PMF.bind_map, PMF.map_bind, runWith, Function.comp_def]
       apply bind_congr_on_support _
       intro value valueMem
       let action := cast (congrArg Vegas.EventGraph.EventField.Action outputEq.symm)
@@ -225,7 +225,7 @@ theorem runWith_option_law
       rw [Vegas.EventGraph.runPlan_canonical_actor
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
-      simp only [PMF.bind_map, PMF.map_bind, runWith]
+      simp only [PMF.bind_map, PMF.map_bind, runWith, Function.comp_def]
       apply bind_congr_on_support _
       intro binding bindingMem
       let action := cast
@@ -335,7 +335,7 @@ theorem runWith_option_law
       rw [Vegas.EventGraph.runPlan_canonical_actor
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
-      simp only [PMF.bind_map, PMF.map_bind, runWith]
+      simp only [PMF.bind_map, PMF.map_bind, runWith, Function.comp_def]
       apply bind_congr_on_support _
       intro (disclose : Bool) discloseMem
       let proposal : PublicationResult _ :=

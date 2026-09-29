@@ -649,7 +649,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
           rw [show ProtocolState.step service.setup.program (lift (ProtocolState.entry _ source)) =
             fun joint : Player → Option (OwnAction Player L) => PMF.pure (advance
               (OwnAction.disclosure (joint siteOwner))) from funext stepped,
-                ← ← PMF.bind_pure_comp, Function.comp_def]
+                ← PMF.bind_pure_comp, Function.comp_def]
           change (independentProduct _).map ((fun action => advance (OwnAction.disclosure action)) ∘
               fun joint : Player → Option (OwnAction Player L) => joint siteOwner) = _
           rw [← PMF.map_comp, independentProduct_map_eval]

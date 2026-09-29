@@ -289,7 +289,7 @@ theorem openingWindow_coupling (runtime : EventGraphRuntime graph)
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.map_bind,
-        PMF.bind_map, PMF.bind_bind]
+        PMF.bind_map, PMF.bind_bind, Function.comp_def]
       rw [networks]
       apply bind_congr_on_support _
       intro ids _
@@ -404,7 +404,7 @@ theorem openingWindow_posterior (runtime : EventGraphRuntime graph)
         intro start supported
         rw [same start supported]
       _ = _ := by
-        simp only [FinDist.product, ← PMF.bind_pure_comp, Function.comp_def]
+        simp only [bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def]
         rw [PMF.bind_comm]
   change ((fiberConditional (initial.bind fun start =>
     (kernel start).map fun output => (output, start)) Prod.fst observed).map

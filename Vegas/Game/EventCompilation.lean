@@ -85,20 +85,34 @@ deviation by a finite mixture of source policies: the compiler's edge to the
 canonical graph composed with the scheduler's edge above it. The mixture is the
 scheduler's contribution. -/
 def eventSimulation (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
     (scheduler : setup.eventGraph.PublicScheduler) :
     GameForm.MixtureSimulationOn setup.gameForm (setup.eventGame scheduler) id
       setup.eventPublicOutcome (fun _ _ => True) :=
   setup.canonicalEventSimulation.trans
     (setup.eventGraph.eventSchedulingSimulationOn
       (toEventGraph_barrierOrdered setup.program)
-      (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
+      (toEventGraph_finiteActions setup.program finite)
+      (setup.initialLaw.map fun initial => setup.eventInputs initial)
+      (by rw [PMF.support_map]; exact initialFinite.image _) scheduler
       setup.eventPublicOutcome setup.eventPublicDecode setup.eventPublicDecode_terminalStore)
     (fun _ _ => trivial)
+
+/-- Every compiled event game has finitely supported outcome laws under finite
+fresh-binding alphabets and a finitely supported initial law. -/
+theorem eventGame_play_support_finite (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (scheduler : setup.eventGraph.PublicScheduler) (profile : setup.eventGraph.BehavioralProfile) :
+    ((setup.eventGame scheduler).play profile).support.Finite :=
+  setup.eventGraph.gameForm_play_support_finite _
+    (by rw [PMF.support_map]; exact initialFinite.image _) scheduler _
+    ((toEventGraph_finiteActions setup.program finite).profileFiniteSupport _)
 
 /-- Same-error Nash preservation and reflection at compiled source profiles
 for every real-valued utility of the public source result. -/
 theorem eventGame_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
     (scheduler : setup.eventGraph.PublicScheduler)
     (utility : PublicOutcome setup.program → Player → ℝ)
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
@@ -106,25 +120,31 @@ theorem eventGame_approximate_nash_iff
         (fun outcome who => utility (setup.eventPublicOutcome outcome) who)
         ε (compileEventProfile setup.program profile) ↔
       IsεNash setup.gameForm utility ε profile :=
-  (setup.eventSimulation scheduler).isεNash_compileProfile_iff utility ε profile
-    (fun _ _ => trivial)
+  ((setup.eventSimulation finite initialFinite scheduler).isεNash_compileProfile_iff utility ε
+    profile (fun _ _ => trivial)).trans (and_iff_left fun _ _ =>
+      payoffIntegrable_of_finite_support _ _
+        (setup.eventGame_play_support_finite finite initialFinite scheduler _))
 
 /-- Every source lower bound against unilateral deviations holds against
 arbitrary asynchronous graph replacements as well. -/
 theorem eventGame_deviation_guarantee
     (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : BehavioralProfile setup.program) (who : Player)
     (value : PublicOutcome setup.program → ℝ) (bound : ℝ)
     (sourceBound : ∀ alternative : BehavioralPolicy who setup.program,
-      bound ≤ expect (setup.publicRun (Profile.update (sig := SourceProgram.gameSignature setup.program)
-        profile who alternative)) value)
+      bound ≤ expect (setup.publicRun
+        (Profile.update (sig := SourceProgram.gameSignature setup.program)
+          profile who alternative)) value)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
     bound ≤ expect ((setup.eventGame scheduler).play
       (Profile.update (sig := setup.eventGraph.gameSignature)
         (compileEventProfile setup.program profile) who replacement))
           (fun outcome => value (setup.eventPublicOutcome outcome)) :=
-  (setup.eventSimulation scheduler).guarantee profile who value bound sourceBound replacement
-    trivial
+  (setup.eventSimulation finite initialFinite scheduler).guarantee profile who value bound
+    (fun alternative _ => sourceBound alternative) replacement trivial
+    (payoffIntegrable_of_finite_support _ _
+      (setup.eventGame_play_support_finite finite initialFinite scheduler _))
 
 end Vegas.SourceProgram.Setup

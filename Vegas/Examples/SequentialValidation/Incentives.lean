@@ -38,7 +38,7 @@ theorem source_bob_run (profile : Profile sourceModel.behavioralSignature)
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     SourcePath.history_state, SourcePath.state, sourceKernel, PMF.pure_bind,
     PMF.bind_map, PMF.bind_bind, sourceGuessLaw, PMF.map_comp]
-  rw [← ← PMF.bind_pure_comp, Function.comp_def]
+  rw [← PMF.bind_pure_comp, Function.comp_def]
   simp only [sourceBobSite, InformationModel.informationSite, source_info]
   rfl
 

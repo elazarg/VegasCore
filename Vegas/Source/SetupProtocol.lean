@@ -162,4 +162,18 @@ theorem protocol_bounded (setup : Setup (Player := Player) (L := L))
       exact (SourceProgram.ProtocolState.remaining_zero_iff_terminal setup.program state).mp
         (by change trace.length + SourceProgram.ProtocolState.remaining _ _ = _ at count; omega)
 
+/-- Only the initial draw and chance steps randomize; with a finitely supported
+initial law every protocol step is finitely supported. -/
+theorem protocolStep_support_finite (setup : Setup (Player := Player) (L := L))
+    (initialFinite : setup.initialLaw.support.Finite) (state : setup.ProtocolState)
+    (joint : Player → Option (OwnAction Player L)) :
+    (setup.protocolStep state joint).support.Finite := by
+  cases state with
+  | none =>
+      rw [protocolStep, PMF.support_map]
+      exact initialFinite.image _
+  | some state =>
+      rw [protocolStep, PMF.support_map]
+      exact (SourceProgram.ProtocolState.step_support_finite _ state joint).image _
+
 end Vegas.SourceProgram.Setup

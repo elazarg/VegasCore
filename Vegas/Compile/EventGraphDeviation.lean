@@ -106,20 +106,28 @@ theorem canonical_setup_deviation_law
         profile who
           (backtranslateEventPolicy setup.program who replacement)) := by
   unfold Vegas.EventGraph.canonicalGame Vegas.EventGraph.gameForm Setup.run
-  simp only [PMF.map_bind, PMF.bind_map]
+  simp only [PMF.map_bind, PMF.bind_map, Function.comp_def]
   apply bind_congr_on_support _
   intro initial _
   exact canonical_deviation_terminalState_law setup.program profile who
     replacement initial
 
+/-- The compiled graph of a program with finite fresh-binding alphabets has
+finitely many actions at every event. -/
+theorem toEventGraph_finiteActions {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (finite : program.FiniteBindingTypes) :
+    (toEventGraph program).FiniteActions := fun event =>
+  outputLayout_action_finite program finite event
+
 /-- Read the graph-local scheduler mixture through the compiler's total
 terminal-state decoder, retaining a single mixture across private setup. -/
 private theorem scheduled_canonical_deviation_mixture
     (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
-    ∃ mixture : PMF (setup.eventGraph.BehavioralPolicy who),
+    ∃ mixture : PMF (setup.eventGraph.BehavioralPolicy who), mixture.support.Finite ∧
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
@@ -135,28 +143,31 @@ private theorem scheduled_canonical_deviation_mixture
                 (terminalState setup.program) := by
   dsimp only [Setup.eventGraph] at *
   let ordered := toEventGraph_barrierOrdered setup.program
-  obtain ⟨mixture, law⟩ := ordered.exists_deviation_mixture
-      (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
+  obtain ⟨mixture, mixtureFinite, law⟩ := ordered.exists_deviation_mixture
+      (toEventGraph_finiteActions setup.program finite)
+      (setup.initialLaw.map fun initial => setup.eventInputs initial)
+      (by rw [PMF.support_map]; exact initialFinite.image _) scheduler
       (compileEventProfile setup.program profile) who replacement
   rw [normalizeProfile_compileEventProfile] at law
-  refine ⟨mixture, ?_⟩
+  refine ⟨mixture, mixtureFinite, ?_⟩
   apply pmf_map_injective (f := some) (Option.some_injective _)
   simp only [PMF.map_bind]
   simp_rw [terminalOutcomes_map_decode]
   have decoded := congrArg
     (fun distribution => distribution.map
       (decodeState? (terminalRefs setup.program))) law
-  simpa only [PMF.map_bind, PMF.bind_map] using decoded
+  simpa only [PMF.map_bind, PMF.bind_map, Function.comp_def] using decoded
 
 /-- Every unilateral asynchronous graph deviation has the law of a finite
 mixture of source deviations, against unchanged source opponents. The mixture
 is chosen before the private initial state is sampled. -/
 theorem scheduled_setup_deviation_law
     (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
     (scheduler : setup.eventGraph.PublicScheduler)
     (profile : BehavioralProfile setup.program) (who : Player)
     (replacement : setup.eventGraph.BehavioralPolicy who) :
-    ∃ mixture : PMF (BehavioralPolicy who setup.program),
+    ∃ mixture : PMF (BehavioralPolicy who setup.program), mixture.support.Finite ∧
       (setup.initialLaw.bind fun initial =>
         (setup.eventGraph.terminalOutcomes scheduler
           (Profile.update (sig := setup.eventGraph.gameSignature)
@@ -166,9 +177,10 @@ theorem scheduled_setup_deviation_law
         mixture.bind fun alternative =>
           setup.run (Profile.update (sig := SourceProgram.gameSignature setup.program)
             profile who alternative) := by
-  obtain ⟨mixture, law⟩ := scheduled_canonical_deviation_mixture setup scheduler
-    profile who replacement
-  refine ⟨mixture.map (backtranslateEventPolicy setup.program who), ?_⟩
+  obtain ⟨mixture, mixtureFinite, law⟩ := scheduled_canonical_deviation_mixture setup finite
+    initialFinite scheduler profile who replacement
+  refine ⟨mixture.map (backtranslateEventPolicy setup.program who),
+    by rw [PMF.support_map]; exact mixtureFinite.image _, ?_⟩
   rw [law, PMF.bind_map]
   apply bind_congr_on_support _
   intro alternative _

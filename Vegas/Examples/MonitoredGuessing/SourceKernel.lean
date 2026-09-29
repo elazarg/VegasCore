@@ -62,7 +62,7 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
       simp only [sourceArena, Setup.executionProtocol, Setup.protocolStep,
         sourceSetup, sourceProgram, ProtocolState.step, ProtocolState.entry,
         Sum.elim_inl, Sum.elim_inr, PMF.pure_map]
-  all_goals conv_lhs => rw [← ← PMF.bind_pure_comp, Function.comp_def]
+  all_goals conv_lhs => rw [← PMF.bind_pure_comp, Function.comp_def]
   all_goals dsimp only [sourceKernel]
   · exact project bob (fun choice => some (.inr (.inl
       (revealSuccessor 2 (.there .here) config (OwnAction.disclosure choice)))))

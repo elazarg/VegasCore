@@ -142,6 +142,29 @@ def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
           before (code_isPublic_of_mem_readFields _ member)
   payoffs := payoffs program
 
+/-- Every compiled action is a binding choice, a disclosure, or trivial, so
+finite fresh-binding alphabets give finitely many actions at every event. -/
+theorem outputLayout_action_finite : {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
+    (program : SourceProgram Player L Γ openNames) → program.FiniteBindingTypes →
+    ∀ event, Finite (Vegas.EventGraph.EventField.Action (outputLayout program event))
+  | _, _, .ret _, _, event => Fin.elim0 event
+  | _, _, .sample _ _ _ next, finite, event => by
+      refine Fin.cases ?_ (fun later => ?_) event
+      · change Finite PUnit
+        infer_instance
+      · exact outputLayout_action_finite next finite later
+  | _, _, .commit (payload := payload) _ _ _ _ next, finite, event => by
+      refine Fin.cases ?_ (fun later => ?_) event
+      · have := finite.1
+        change Finite (PublicationResult (L.Val payload))
+        infer_instance
+      · exact outputLayout_action_finite next finite.2 later
+  | _, _, .reveal _ _ _ _ _ _ next, finite, event => by
+      refine Fin.cases ?_ (fun later => ?_) event
+      · change Finite Bool
+        infer_instance
+      · exact outputLayout_action_finite next finite later
+
 /-- The compiled graph contains the public-barrier dependency policy. -/
 theorem toEventGraph_barrierOrdered {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :

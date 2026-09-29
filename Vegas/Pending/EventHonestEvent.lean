@@ -81,7 +81,7 @@ private theorem append_sample (runtime : EventGraphRuntime graph)
         intro next member
         exact (sample_completed runtime inputs profile wire next
           (boundaryLaw next member) event (middleCompleted next member)).1
-      _ = _ := by rw [← ← PMF.bind_pure_comp, Function.comp_def]; exact configLaw
+      _ = _ := by rw [← PMF.bind_pure_comp, Function.comp_def]; exact configLaw
   · intro next member
     rw [PMF.support_bind] at member
     simp only [Set.mem_iUnion] at member

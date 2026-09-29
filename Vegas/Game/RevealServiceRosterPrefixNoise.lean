@@ -100,7 +100,7 @@ theorem run_roster_source_prefix_noise
         exact decodePrefix?_zero_of_agrees _ refs embedding.ref (source seed)
           (checkpoint seed).emptyRegistry _ (checkpoint seed).agrees
       simpa only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-        PMF.pure_map, decoded, ← ← PMF.bind_pure_comp, Function.comp_def] using law
+        PMF.pure_map, decoded, ← PMF.bind_pure_comp, Function.comp_def] using law
   | sample name fresh distribution next ih =>
       intro impossible
       exact impossible.elim
@@ -128,7 +128,7 @@ theorem run_roster_source_prefix_noise
             exact decodePrefix?_zero_of_agrees _ refs embedding.ref (source seed)
               (checkpoint seed).emptyRegistry _ (checkpoint seed).agrees
           simpa only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-            PMF.pure_map, decoded, ← ← PMF.bind_pure_comp, Function.comp_def] using law
+            PMF.pure_map, decoded, ← PMF.bind_pure_comp, Function.comp_def] using law
       | succ count =>
           let index : Fin (eventCount
             (.reveal published owner name fresh selected unresolved next)) :=
@@ -180,7 +180,7 @@ theorem run_roster_source_prefix_noise
           obtain ⟨grantNoise, grantFactor⟩ := roster_grant_observation_kernel setup leaks refs
             offset prior initial source execution (fun seed _ => checkpoint seed) event focal
               players network grant (fun seed _ => granted seed) noise factor
-          simp only [grantLaw, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
+          simp only [grantLaw, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
           have opportunityRecall (seed : Seed) :
               (opportunity seed).InputRecall (application setup leaks) :=
             (runtime setup).runInteractionPlan_inputRecall leaks players network [.grant event]
@@ -338,7 +338,7 @@ theorem run_roster_source_prefix_noise
                   (revealKernel profile (config.view owner)).map
                     (revealSuccessor published selected config)) := by
               simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def,
-                PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+                PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
             rw [sourceLaw]
             rw [← nextFactor]
             simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def]
@@ -489,7 +489,7 @@ theorem roster_compiled_prefix_noise
       ((application setup leaks).messageView (execution seed), (execution seed).recall focal))) =
       (prior.map source).bind fun config => (PMF.pure emptyExtra).map fun extra =>
         (config, extra) := by
-    simp only [PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp, Function.comp_def]
+    simp only [PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp, Function.comp_def]
     rfl
   obtain ⟨noise, factor⟩ := run_roster_source_prefix_noise setup leaks rosters timing network
     profile focal setup.program reveals profile

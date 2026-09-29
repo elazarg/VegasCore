@@ -111,7 +111,7 @@ theorem serviceStep_focalHistory_length (runtime : EventGraphRuntime graph)
         simp [ServiceInstruction.isFocalPlayer, same]
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion, Function.comp_def] at supported
       obtain ⟨command, _, step⟩ := supported
       rw [congrFun (runtime.application.environmentStep_principalHistory execution
         (WireCommand.toEnvironmentCommand runtime.application command) next step) focal]
@@ -144,7 +144,7 @@ theorem serviceStep_environmentHistory_length (runtime : EventGraphRuntime graph
       rfl
   | wire =>
       simp only [serviceStep, MessageApplication.invoke, MessageApplication.wireEnvironment,
-        PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
+        PMF.bind_map, PMF.support_bind, Set.mem_iUnion, Function.comp_def] at supported
       obtain ⟨command, _, step⟩ := supported
       simpa [ServiceInstruction.isEnvironment] using
         runtime.application.environmentStep_history_length execution
@@ -304,7 +304,8 @@ theorem runServiceControlSteps_map_execution_eq_bind (runtime : EventGraphRuntim
       induction plan with
       | nil =>
           intro execution
-          simp [serviceControlFuel, runServiceControlSteps, runService, runServicePlan]
+          simp [serviceControlFuel, runServiceControlSteps, runService, runServicePlan,
+              PMF.pure_map]
       | cons instruction rest ih =>
           intro execution
           have fuelEq : runtime.serviceControlFuel roster reactionRounds 0
@@ -313,7 +314,7 @@ theorem runServiceControlSteps_map_execution_eq_bind (runtime : EventGraphRuntim
             simp [serviceControlFuel]
           rw [fuelEq]
           simp only [runServiceControlSteps, serviceControlStep, PMF.map_bind,
-            PMF.bind_map, runServicePlan, runService, PMF.bind_pure]
+            PMF.bind_map, runServicePlan, runService, PMF.bind_pure, Function.comp_def]
           apply bind_congr_on_support _
           intro next _
           simpa only [serviceControlFuel, Nat.zero_mul, Nat.add_zero, runService,
@@ -330,7 +331,7 @@ theorem runServiceControlSteps_map_execution_eq_bind (runtime : EventGraphRuntim
             omega
           rw [fuelEq]
           simp only [runServiceControlSteps, serviceControlStep, PMF.map_bind,
-            PMF.bind_map, runServicePlan, PMF.bind_bind]
+            PMF.bind_map, runServicePlan, PMF.bind_bind, Function.comp_def]
           apply bind_congr_on_support _
           intro next _
           simpa only [serviceControlFuel] using ih next
@@ -346,7 +347,7 @@ theorem runServiceControlSteps_map_execution_eq_bind (runtime : EventGraphRuntim
           rw [fuelEq]
           simp only [runServiceControlSteps, serviceControlStep, PMF.map_bind,
             PMF.bind_map, runServicePlan, PMF.pure_bind, runService, serviceEpoch,
-            PMF.bind_bind]
+            PMF.bind_bind, Function.comp_def]
           apply bind_congr_on_support _
           intro chosen _
           have chosenLength := runtime.epochPlan_length_eq_epochInstructionCount roster

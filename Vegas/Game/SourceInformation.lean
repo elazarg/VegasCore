@@ -2,6 +2,7 @@
 
 import Vegas.Source.ObservationRecall
 import Vegas.Source.SetupProtocolBehavioral
+import Vegas.Source.ProtocolChoiceFiniteness
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheoryExtensions.Math.Probability.Uniform
@@ -87,6 +88,15 @@ def uniformPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .reveal _ _ _ _ _ _ next, reveals =>
       (fun _ _ => PMF.uniformOfFintype Bool, uniformPolicy who next reveals)
 
+/-- A reveal-only program binds nothing, so its fresh-binding alphabets are
+vacuously finite. -/
+theorem finiteBindingTypes : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → program.RevealOnly → program.FiniteBindingTypes
+  | _, _, .ret _, _ => trivial
+  | _, _, .sample .., impossible => impossible.elim
+  | _, _, .commit .., impossible => impossible.elim
+  | _, _, .reveal _ _ _ _ _ _ next, reveals => finiteBindingTypes next reveals
+
 theorem uniformPolicy_admitted (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (reveals : program.RevealOnly) →
@@ -162,12 +172,19 @@ theorem revealReference_fullyMixed (setup : Setup (Player := Player) (L := L))
         choice.2
 
 /-- Finiteness includes every legal source history, regardless of the support
-of a later chosen equilibrium. Correlated private initialization is retained. -/
+of a later chosen equilibrium. Correlated private initialization is retained;
+it must be finitely supported. -/
 theorem reveal_finite_history [Finite Player] (setup : Setup (Player := Player) (L := L))
-    (reveals : setup.program.RevealOnly) (admission : CommitmentInterface setup.program) :
+    (reveals : setup.program.RevealOnly) (admission : CommitmentInterface setup.program)
+    (initialFinite : setup.initialLaw.support.Finite) :
     Finite (setup.executionProtocol admission).History :=
   (setup.revealReference_fullyMixed reveals admission).finite_history
     (setup.protocol_bounded admission)
+    (fun who info =>
+      have := setup.finite_choice (RevealOnly.finiteBindingTypes setup.program reveals)
+        admission who info
+      Set.toFinite _)
+    (fun draw => setup.protocolStep_support_finite initialFinite _ draw.1)
 
 end Setup
 

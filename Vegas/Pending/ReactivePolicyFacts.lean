@@ -182,28 +182,44 @@ theorem reactiveRecoveryLaw_remembered (intentions : List (Option graph.Completi
     reactiveRecoveryLaw (intentions ++ [some ⟨event, action⟩]) event law =
       PMF.pure action := by
   classical
-  simp [reactiveRecoveryLaw, supported]
+  have positive : law action ≠ 0 := supported
+  simp [reactiveRecoveryLaw, positive]
 
 omit [DecidableEq Player] in
 /-- The actual recovery lottery satisfies the local inclusion incentive law.
 The fixed downstream kernel premise still has to be proved for a service;
-this result alone does not assert native SPE. -/
+this result alone does not assert native SPE. The utility must be integrable
+under every compared continuation. -/
 theorem reactiveRecoveryLaw_optimal_response (intentions : List (Option graph.Completion))
     (event : graph.EventId) (law retained : PMF (graph.Action event))
     {Outcome : Type} (continuation : graph.Action event → PMF Outcome)
     (utility : Outcome → ℝ) (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
+    (actionIntegrable : ∀ action, PayoffIntegrable (continuation action) utility)
+    (lawIntegrable : PayoffIntegrable (law.bind continuation) utility)
+    (retainedIntegrable : PayoffIntegrable (retained.bind continuation) utility)
     (optimal : ∀ action, expect (continuation action) utility ≤
       expect (law.bind continuation) utility)
-    (alternative : PMF (Option (graph.Action event))) :
-    expect ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained alternative).bind
-      continuation) utility ≤
+    (alternative : PMF (Option (graph.Action event)))
+    (alternativeIntegrable : PayoffIntegrable
+      ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained
+        alternative).bind continuation) utility) :
+    expect ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained
+      alternative).bind continuation) utility ≤
     expect ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained
       ((reactiveRecoveryLaw intentions event law).map some)).bind continuation)
-        utility :=
-  GameTheory.PendingChoice.optimal_response_of_support weight nonnegative atMostOne retained law
-    _ continuation utility optimal
+        utility := by
+  have recoveredIntegrable :
+      PayoffIntegrable ((reactiveRecoveryLaw intentions event law).bind continuation) utility := by
+    simp only [reactiveRecoveryLaw]
+    split
+    · rw [PMF.pure_bind]
+      exact actionIntegrable _
+    · exact lawIntegrable
+  exact GameTheory.PendingChoice.optimal_response_of_support weight nonnegative atMostOne
+    retained law _ continuation utility actionIntegrable lawIntegrable recoveredIntegrable
+    retainedIntegrable optimal
     (fun _ supported => reactiveRecoveryLaw_support intentions event law _ supported)
-    alternative
+    alternative alternativeIntegrable
 
 /-- Policy completion preserves initialized canonical state laws playerwise.
 The opponents and the observation-local scheduler remain arbitrary. -/

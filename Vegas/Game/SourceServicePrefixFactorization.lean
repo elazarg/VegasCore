@@ -194,7 +194,7 @@ theorem sourceService_reveal_prefix_factorization
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
     simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -349,7 +349,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
     simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -484,7 +484,7 @@ theorem sourceService_sample_prefix_factorization
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
     simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -695,7 +695,7 @@ private theorem reconstruct_phase
       (fun _ _ equal => injective (Option.some.inj equal))
     have projected := congrArg (PMF.map Prod.fst) (mapped.trans factor)
     simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def] using projected
+      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def] using projected
   refine ⟨source, ?_, fun _ => rfl, fun _ => rfl, decoded, marginalEq, ?_⟩
   · intro point
     exact ⟨decodeState?_agrees refs point.val.2.application.config.store _
@@ -780,7 +780,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
       dsimp only at nextFactor
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan,
         PMF.pure_map, (checkpoint _).decode program embedding.ref,
-        Function.iterate_zero, id_eq, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def]
+        Function.iterate_zero, id_eq, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def]
       simpa only [PMF.map_comp, Function.comp_def] using nextFactor
   | succ count ih =>
       intro Γ names program profile refs embedding refsBefore offset Seed prior source execution
@@ -829,7 +829,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
         change (prior.bind fun seed =>
           ((execution seed).environmentStep app (.application (.grant event))).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks focal final)) = _ at grantFactor
-        simpa only [grantEnvironment, PMF.pure_map, ← ← PMF.bind_pure_comp, Function.comp_def] using grantFactor
+        simpa only [grantEnvironment, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def] using grantFactor
       have nextPhysical (seed : Seed) (final : app.Execution)
           (moved : final ∈ ((runtime setup).runInteractionPlan leaks players network
             (rosterBlock setup rosters event) (execution seed)).support) :
@@ -1448,7 +1448,7 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
         (rosterPlanPrefix setup rosters 0)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
     simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-      ← ← PMF.bind_pure_comp, Function.comp_def, initialLaw, PMF.map_comp, PMF.support_map]
+      ← PMF.bind_pure_comp, Function.comp_def, initialLaw, PMF.map_comp, PMF.support_map]
     exact ⟨seed.val, seed.property, rfl⟩
   obtain ⟨noise, law⟩ := sourceServiceTimedPolicy_prefix_joint_factorization setup leaks
     bounds values capacity rosters opportunities timing network profile covered focal count
