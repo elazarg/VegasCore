@@ -3,6 +3,7 @@
 import GameTheory.Protocol.DecisionRecall
 import GameTheoryExtensions.Protocol.RestrictionExecution
 import GameTheory.Analysis.Protocol.CounterfactualRegret
+import GameTheory.Protocol.BehavioralMixture
 
 /-! # Incentives at information sites retained by an action restriction
 
@@ -51,8 +52,30 @@ theorem extends_withLaw (source : ∀ who, M.BehavioralPolicy who)
   · rw [Profile.update_of_ne _ _ samePlayer, Profile.update_of_ne _ _ samePlayer]
     exact agrees other current
 
-/-- The history-level execution law transports continuation values, including
+/-- The history-level execution law transports continuation laws, including
 off-path beliefs, whenever the compared updated profiles are compliant. -/
+theorem context_outcome_eq (source : M.BehavioralAssessment) (target : N.BehavioralAssessment)
+    (who : Player) (site : M.InformationSite who)
+    (belief : target.belief who (restriction.site who site) =
+      (source.belief who site).map (restriction.informationHistory who site))
+    (original : M.BehavioralPolicy who) (translated : N.BehavioralPolicy who)
+    (agrees : restriction.ExtendsProfile
+      (Profile.update (sig := M.behavioralSignature) source.strategy who original)
+      (Profile.update (sig := N.behavioralSignature) target.strategy who translated))
+    (sourcePayoff : E.History → ℝ) (targetPayoff : T.History → ℝ) (fuel : Nat) :
+    (target.continuationContext (restriction.site who site) targetPayoff fuel).outcome
+        translated =
+      ((source.continuationContext site sourcePayoff fuel).outcome original).map
+        restriction.history := by
+  change (target.belief who (restriction.site who site)).bind _ =
+    ((source.belief who site).bind _).map restriction.history
+  rw [belief, PMF.bind_map, PMF.map_bind]
+  apply bind_congr_on_support
+  intro history _
+  simp only [Function.comp_apply, informationHistory_val]
+  exact (restriction.runFrom_law _ _ agrees fuel history.1).symm
+
+/-- Corresponding continuation values agree when the payoffs correspond. -/
 theorem context_value_eq (source : M.BehavioralAssessment) (target : N.BehavioralAssessment)
     (who : Player) (site : M.InformationSite who)
     (belief : target.belief who (restriction.site who site) =
@@ -66,13 +89,10 @@ theorem context_value_eq (source : M.BehavioralAssessment) (target : N.Behaviora
     (fuel : Nat) :
     (target.continuationContext (restriction.site who site) targetPayoff fuel).value translated =
       (source.continuationContext site sourcePayoff fuel).value original := by
-  simp only [BehavioralAssessment.continuationContext_value, belief,
-    FinDist.expect_bind, expect_map]
-  apply expect_congr_on_support
-  intro history _
-  rw [informationHistory_val, ← restriction.runFrom_law _ _ agrees,
-    expect_map]
-  exact expect_congr_on_support fun next _ => payoff next
+  unfold Context.value
+  rw [restriction.context_outcome_eq source target who site belief original translated agrees
+    sourcePayoff targetPayoff fuel, expect_map]
+  exact expect_congr_on_support fun history _ => payoff history
 
 /-- In particular, an arbitrary lawful one-site deviation has exactly its
 source continuation value. -/
@@ -96,46 +116,55 @@ theorem context_withLaw_value_eq
     (restriction.extends_withLaw source.strategy target.strategy agrees who site law)
     sourcePayoff targetPayoff payoff fuel
 
+/-- At a decision-recall site the continuation law after a local response law
+is the mixture, over that response, of the laws with one committed choice. -/
+private theorem context_outcome_withLaw
+    (target : N.BehavioralAssessment) (recall : N.DecisionRecall) (who : Player)
+    [DecidableEq (N.InfoState who)] (site : N.InformationSite who) (payoff : T.History → ℝ)
+    (fuel : Nat) (law : PMF (N.Choice who site.1)) :
+    (target.continuationContext site payoff fuel).outcome
+        ((target.strategy who).withLaw site.1 law) =
+      law.bind fun choice => (target.continuationContext site payoff fuel).outcome
+        ((target.strategy who).commit site.1 choice) := by
+  change (target.belief who site).bind _ = law.bind fun choice => (target.belief who site).bind _
+  rw [← PMF.bind_comm]
+  apply bind_congr_on_support
+  intro history _
+  cases fuel with
+  | zero =>
+      simp only [runBehavioralFrom, runRandomizedFor_zero, PMF.bind_const]
+  | succ fuel =>
+      by_cases stopped : T.terminal history.1.state
+      · simp only [N.runBehavioralFrom_of_terminal _ _ stopped, PMF.bind_const]
+      · exact N.runBehavioralFrom_update_withLaw_eq_bind recall.actsOnceWhereItMatters
+          target.strategy who (target.strategy who) site.1 law history.1 history.2 stopped
+          (InformationSite.active N site history) fuel
+
 private theorem context_withLaw_affine (target : N.BehavioralAssessment)
     (recall : N.DecisionRecall) (who : Player) [DecidableEq (N.InfoState who)]
     (site : N.InformationSite who) (payoff : T.History → ℝ) (fuel : Nat)
-    (law : PMF (N.Choice who site.1)) :
+    (law : PMF (N.Choice who site.1))
+    (integrable : (target.continuationContext site payoff fuel).IntegrableAt
+      ((target.strategy who).withLaw site.1 law)) :
     (target.continuationContext site payoff fuel).value
         ((target.strategy who).withLaw site.1 law) =
       expect law (fun choice => (target.continuationContext site payoff fuel).value
+        ((target.strategy who).commit site.1 choice)) ∧
+    PayoffIntegrable law (fun choice => (target.continuationContext site payoff fuel).value
         ((target.strategy who).commit site.1 choice)) := by
-  simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-  have each (history : N.InformationHistory who site.1) :
-      expect (N.runBehavioralFrom
-        (Profile.update (sig := N.behavioralSignature) target.strategy who
-          ((target.strategy who).withLaw site.1 law)) fuel history.1) payoff =
-      expect law (fun choice => expect (N.runBehavioralFrom
-        (Profile.update (sig := N.behavioralSignature) target.strategy who
-          ((target.strategy who).commit site.1 choice)) fuel history.1) payoff) := by
-    cases fuel with
-    | zero =>
-        simp only [runBehavioralFrom, runRandomizedFor_zero,
-          expect_pure, expect_constant]
-    | succ fuel =>
-        by_cases stopped : T.terminal history.1.state
-        · simp only [N.runBehavioralFrom_of_terminal _ _ stopped,
-            expect_pure, expect_constant]
-        · exact N.behavioralContinuationValue_withLaw_eq_expect
-            recall.actsOnceWhereItMatters target.strategy who site
-            (target.strategy who) law history stopped payoff fuel
-  calc
-    _ = expect (target.belief who site) (fun history => expect law (fun choice =>
-        expect (N.runBehavioralFrom
-          (Profile.update (sig := N.behavioralSignature) target.strategy who
-            ((target.strategy who).commit site.1 choice)) fuel history.1) payoff)) :=
-      expect_congr_on_support fun history _ => each history
-    _ = _ := FinDist.expect_comm _ _ _
+  unfold Context.IntegrableAt at integrable
+  rw [context_outcome_withLaw target recall who site payoff fuel law] at integrable
+  refine ⟨?_, payoffIntegrable_bind_conditionalExpectation _ _ _ integrable⟩
+  unfold Context.value
+  rw [context_outcome_withLaw target recall who site payoff fuel law]
+  exact expect_bind_tower _ _ _ integrable
 
 /-- Each extra target choice can be compared with an entire legal source
 continuation, uniformly over the current posterior. The replacement may change
 future source choices; sequential rationality bounds the whole policy. It need
 not be the same comparator at different beliefs, but cannot use the actual
-hidden history when selecting its policy. -/
+hidden history when selecting its policy. Every target continuation deviation
+at the site must have a finite expected payoff. -/
 theorem retained_localOptimal_of_continuation
     (source : M.BehavioralAssessment) (target : N.BehavioralAssessment)
     (agrees : restriction.ExtendsProfile source.strategy target.strategy)
@@ -149,6 +178,9 @@ theorem retained_localOptimal_of_continuation
     (fuel : Nat)
     (rational : source.IsSequentiallyRationalAt site
       (source.continuationContext site sourcePayoff fuel))
+    (targetIntegrable : ∀ policy,
+      (target.continuationContext (restriction.site who site) targetPayoff fuel).IntegrableAt
+        policy)
     (comparison : ∀ action : N.Choice who (restriction.site who site).1,
       action ∉ Set.range (restriction.choice who site.1) →
       ∃ alternative : M.BehavioralPolicy who,
@@ -177,16 +209,20 @@ theorem retained_localOptimal_of_continuation
       change (target.continuationContext _ targetPayoff fuel).value
           ((target.strategy who).withLaw _ (PMF.pure _)) ≤ _
       rw [equality, baseline]
-      exact rational ((source.strategy who).withLaw site.1 (PMF.pure original)) (Set.mem_univ _)
+      exact rational.2.2 ((source.strategy who).withLaw site.1 (PMF.pure original))
+        (Set.mem_univ _)
     · obtain ⟨alternative, bound⟩ := comparison action permitted
-      exact bound.trans ((rational alternative (Set.mem_univ _)).trans_eq baseline.symm)
-  rw [context_withLaw_affine target recall who (restriction.site who site) targetPayoff fuel law]
-  exact (FinDist.expect_mono fun action _ => pureOptimal action).trans_eq (expect_constant _ _)
+      exact bound.trans ((rational.2.2 alternative (Set.mem_univ _)).trans_eq baseline.symm)
+  obtain ⟨affine, valueIntegrable⟩ := context_withLaw_affine target recall who
+    (restriction.site who site) targetPayoff fuel law (targetIntegrable _)
+  rw [affine]
+  exact expect_le_const _ _ valueIntegrable _ fun action _ => pureOptimal action
 
 /-- Each forbidden action is bounded by one legal source lottery, shared by
 all hidden histories in the information set. The comparison concerns actual
 execution under the same remaining paired profiles, so it cannot select a
-comparator using hidden state or future opponents' random draws. -/
+comparator using hidden state or future opponents' random draws. Every target
+continuation deviation at the site must have a finite expected payoff. -/
 theorem retained_localOptimal_of_comparator
     (source : M.BehavioralAssessment) (target : N.BehavioralAssessment)
     (agrees : restriction.ExtendsProfile source.strategy target.strategy)
@@ -200,6 +236,9 @@ theorem retained_localOptimal_of_comparator
     (fuel : Nat)
     (rational : source.IsSequentiallyRationalAt site
       (source.continuationContext site sourcePayoff fuel))
+    (targetIntegrable : ∀ policy,
+      (target.continuationContext (restriction.site who site) targetPayoff fuel).IntegrableAt
+        policy)
     (comparator : N.Choice who (restriction.site who site).1 → PMF (M.Choice who site.1))
     (comparison : ∀ action : N.Choice who (restriction.site who site).1,
       action ∉ Set.range (restriction.choice who site.1) →
@@ -218,11 +257,23 @@ theorem retained_localOptimal_of_comparator
       (target.continuationContext (restriction.site who site) targetPayoff fuel).value
         (target.strategy who) := by
   apply restriction.retained_localOptimal_of_continuation source target agrees recall who site
-    belief sourcePayoff targetPayoff payoff fuel rational _ law
+    belief sourcePayoff targetPayoff payoff fuel rational targetIntegrable _ law
   intro action extra
-  refine ⟨(source.strategy who).withLaw site.1 (comparator action), ?_⟩
-  simp only [BehavioralAssessment.continuationContext_value, belief,
-    FinDist.expect_bind, expect_map, informationHistory_val]
-  exact FinDist.expect_mono fun history _ => comparison action extra history
+  let alternative := (source.strategy who).withLaw site.1 (comparator action)
+  refine ⟨alternative, ?_⟩
+  have targetLaw := targetIntegrable ((target.strategy who).commit (restriction.site who site).1
+    action)
+  have sourceLaw := rational.2.1 alternative (Set.mem_univ _)
+  unfold Context.IntegrableAt at targetLaw sourceLaw
+  unfold Context.value
+  change PayoffIntegrable ((target.belief who (restriction.site who site)).bind _) _ at targetLaw
+  change expect ((target.belief who (restriction.site who site)).bind _) _ ≤
+    expect ((source.belief who site).bind _) _
+  rw [belief, PMF.bind_map] at targetLaw ⊢
+  rw [expect_bind_tower _ _ _ targetLaw, expect_bind_tower _ _ _ sourceLaw]
+  apply expect_mono _ (payoffIntegrable_bind_conditionalExpectation _ _ _ targetLaw)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ sourceLaw)
+  intro history _
+  exact comparison action extra history
 
 end GameTheory.Protocol.InformationModel.ActionRestriction
