@@ -112,45 +112,50 @@ theorem LastDecision.run_eq_bind_choices {who : ι} (last : LastDecision (E := E
       (last history active draw.1 draw.2 target realized fuel later reached)
   · rw [Profile.update_of_ne _ _ own, Profile.update_of_ne _ _ own]
 
+/-- At a last decision, a deviation's continuation law is a lottery over the
+current choice. Its value is therefore the average of the committed choices'
+values whenever the deviation has a finite expected payoff. -/
 theorem LastDecision.context_value_eq_expect {who : ι} (last : LastDecision (E := E) who)
     (assessment : M.BehavioralAssessment) [DecidableEq (M.InfoState who)]
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who) :
+    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who)
+    (integrable : (assessment.continuationContext site payoff (fuel + 1)).IntegrableAt
+      alternative) :
     (assessment.continuationContext site payoff (fuel + 1)).value alternative =
       expect (alternative site.1) (fun choice =>
         (assessment.continuationContext site payoff (fuel + 1)).value
           ((assessment.strategy who).commit site.1 choice)) := by
-  simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-  calc
-    _ = expect (assessment.belief who site) (fun history =>
-          expect (alternative site.1) (fun choice =>
-            expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-              assessment.strategy who ((assessment.strategy who).commit site.1 choice))
-                (fuel + 1) history.1) payoff)) := by
-      apply expect_congr_on_support
-      intro history _
-      rw [last.run_eq_bind_choices assessment.strategy alternative history.1
-        site.1 history.2
-        (nonterminal history) (InformationSite.active M site history) fuel, FinDist.expect_bind]
-    _ = _ := FinDist.expect_comm _ _ _
+  let context := assessment.continuationContext site payoff (fuel + 1)
+  have factored : context.outcome alternative = (alternative site.1).bind fun choice =>
+      context.outcome ((assessment.strategy who).commit site.1 choice) := by
+    change (assessment.belief who site).bind _ = (alternative site.1).bind fun choice =>
+      (assessment.belief who site).bind _
+    rw [← PMF.bind_comm]
+    apply bind_congr_on_support
+    intro history _
+    exact last.run_eq_bind_choices assessment.strategy alternative history.1 site.1 history.2
+      (nonterminal history) (InformationSite.active M site history) fuel
+  change PayoffIntegrable (context.outcome alternative) context.continuation at integrable
+  change expect (context.outcome alternative) context.continuation = _
+  rw [factored] at integrable ⊢
+  exact expect_bind_tower _ _ _ integrable
 
 section Finite
 
-variable [∀ player (site : M.InformationSite player),
-    Fintype (M.InformationHistory player site.1)]
-  (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
+variable (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
   (antichain : M.DecisionInformationAntichain) (who : ι)
+  [∀ site : M.InformationSite who, Finite (M.Choice who site.1)]
   (payoff : E.History → ℝ) (fuel : Nat)
 
 def lastChoiceValue (site : M.InformationSite who) (choice : M.Choice who site.1) : ℝ := by
   classical
-  exact ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext site payoff (fuel + 1)).value
-    ((reference.strategy who).commit site.1 choice)
+  exact ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+    site payoff (fuel + 1)).value ((reference.strategy who).commit site.1 choice)
 
 def bestLastChoice (site : M.InformationSite who) : M.Choice who site.1 := by
   classical
-  let := mixed.finite_choice who site
-  let : Nonempty (M.Choice who site.1) := ⟨(reference.strategy who site.1).support_nonempty.choose⟩
+  let : Nonempty (M.Choice who site.1) :=
+    ⟨(reference.strategy who site.1).support_nonempty.choose⟩
   exact Classical.choose (Finite.exists_max
     (lastChoiceValue reference mixed antichain who payoff fuel site))
 
@@ -159,61 +164,66 @@ theorem lastChoiceValue_le_best (site : M.InformationSite who) (choice : M.Choic
       lastChoiceValue reference mixed antichain who payoff fuel site
         (bestLastChoice reference mixed antichain who payoff fuel site) := by
   classical
-  let := mixed.finite_choice who site
-  let : Nonempty (M.Choice who site.1) := ⟨(reference.strategy who site.1).support_nonempty.choose⟩
+  let : Nonempty (M.Choice who site.1) :=
+    ⟨(reference.strategy who site.1).support_nonempty.choose⟩
   exact Classical.choose_spec (Finite.exists_max
     (lastChoiceValue reference mixed antichain who payoff fuel site)) choice
 
 def bestLastPolicy : M.BehavioralPolicy who := by
   classical
   exact fun info =>
-    if decision : ∃ history : M.InformationHistory who info,
-        ¬ E.terminal history.1.state ∧ ∃ action : E.Action who, some action ∈ M.menu who info
-    then PMF.pure (bestLastChoice reference mixed antichain who payoff fuel ⟨info, decision⟩)
+    if decision : M.IsDecisionInfo who info then
+      PMF.pure (bestLastChoice reference mixed antichain who payoff fuel ⟨info, decision⟩)
     else reference.strategy who info
 
 theorem bestLastPolicy_at (site : M.InformationSite who) :
     bestLastPolicy reference mixed antichain who payoff fuel site.1 =
       PMF.pure (bestLastChoice reference mixed antichain who payoff fuel site) := by
   classical
-  simp only [bestLastPolicy, dite_eq_left site.2]; rfl
+  simp only [bestLastPolicy, site.2, ↓reduceDIte]; rfl
 
+/-- The maximizing last choice is optimal against every deviation with a
+finite expected payoff. -/
 theorem bestLastPolicy_optimal (last : LastDecision (E := E) who)
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (alternative : M.BehavioralPolicy who) :
-    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext site payoff (fuel + 1)).value
-      alternative ≤
-    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext site payoff (fuel + 1)).value
-      (bestLastPolicy reference mixed antichain who payoff fuel) := by
+    (alternative : M.BehavioralPolicy who)
+    (alternativeIntegrable : ((InformationModel.bayesAssessment _ reference.strategy mixed
+      antichain).continuationContext site payoff (fuel + 1)).IntegrableAt alternative)
+    (bestIntegrable : ((InformationModel.bayesAssessment _ reference.strategy mixed
+      antichain).continuationContext site payoff (fuel + 1)).IntegrableAt
+        (bestLastPolicy reference mixed antichain who payoff fuel)) :
+    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+      site payoff (fuel + 1)).value alternative ≤
+    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+      site payoff (fuel + 1)).value (bestLastPolicy reference mixed antichain who payoff fuel) := by
   classical
-  rw [last.context_value_eq_expect _ site nonterminal payoff fuel alternative,
+  rw [last.context_value_eq_expect _ site nonterminal payoff fuel alternative
+      alternativeIntegrable,
     last.context_value_eq_expect _ site nonterminal payoff fuel
-      (bestLastPolicy reference mixed antichain who payoff fuel),
+      (bestLastPolicy reference mixed antichain who payoff fuel) bestIntegrable,
     bestLastPolicy_at, expect_pure]
-  apply FinDist.expect_le_of_forall
-  intro choice _
-  exact lastChoiceValue_le_best reference mixed antichain who payoff fuel site choice
+  exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun choice _ =>
+    lastChoiceValue_le_best reference mixed antichain who payoff fuel site choice
 
 end Finite
 
 section Consistency
 
-variable [∀ player (site : M.InformationSite player),
-    Fintype (M.InformationHistory player site.1)]
-
 /-- When one player's policy cannot affect any decision-history reach
-probability, replacing it preserves the reference Bayes beliefs. One common
+weight, replacing it preserves the reference Bayes beliefs. One common
 fully mixed sequence witnesses consistency of the replaced profile. -/
 theorem consistent_update_of_reach_invariant
     (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
     (antichain : M.DecisionInformationAntichain) (who : ι)
     (reach : ∀ (alternative : M.BehavioralPolicy who) (player : ι)
       (site : M.InformationSite player) (history : M.InformationHistory player site.1),
-      (M.historyReachWeight (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative) history.1).toReal = (M.historyReachWeight reference.strategy history.1).toReal)
+      M.historyReachWeight
+        (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative)
+          history.1 = M.historyReachWeight reference.strategy history.1)
     (policy : M.BehavioralPolicy who) :
     (⟨Profile.update (sig := M.behavioralSignature) reference.strategy who policy,
-      (InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief⟩ : M.BehavioralAssessment).IsSequentiallyConsistent
-        antichain := by
+      (InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief⟩ :
+        M.BehavioralAssessment).IsSequentiallyConsistent antichain := by
   classical
   let weight (n : Nat) : ℝ := 1 / ((n : ℝ) + 1)
   have positive (n : Nat) : 0 < weight n := by dsimp [weight]; positivity
@@ -247,10 +257,9 @@ theorem consistent_update_of_reach_invariant
       have mass : M.informationMass (sequence n).strategy player site =
           M.informationMass reference.strategy player site := by
         unfold informationMass
-        apply Finset.sum_congr rfl
-        intro next _
-        exact reach (response n) player site next
-      change (((InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief player site) history).toReal = _
+        exact tsum_congr fun next => reach (response n) player site next
+      change (InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief
+        player site history = _
       rw [InformationModel.bayesAssessment, bayesBelief_apply, mass]
       exact congrArg (fun value => value / M.informationMass reference.strategy player site)
         (reach (response n) player site history).symm
@@ -258,12 +267,13 @@ theorem consistent_update_of_reach_invariant
     · intro player site
       by_cases own : player = who
       · subst player
+        change PMFConvergesPointwise
+          (fun n => Profile.update (sig := M.behavioralSignature)
+            reference.strategy who (response n) who site.1)
+          (Profile.update (sig := M.behavioralSignature)
+            reference.strategy who policy who site.1)
+        rw [pmfConvergesPointwise_iff_toReal]
         intro choice
-        change Tendsto (fun n =>
-          ((Profile.update (sig := M.behavioralSignature)
-            reference.strategy who (response n) who site.1) choice).toReal) atTop
-          (nhds (((Profile.update (sig := M.behavioralSignature)
-            reference.strategy who policy who site.1) choice).toReal))
         simp only [Profile.update_same]
         simp only [response, mix_apply_toReal]
         have first := vanishes.mul_const (((reference.strategy who site.1) choice).toReal)
@@ -282,17 +292,25 @@ theorem consistent_update_of_reach_invariant
 
 /-- One final decision maker, with indifferent other participants, has a
 sequential equilibrium whenever its policy does not change the reach law of
-any decision site. The conclusion uses all continuation-policy deviations. -/
+any decision site, its menus are finite, and each of its continuation
+deviations has a finite expected payoff. The conclusion uses all
+continuation-policy deviations. -/
 theorem exists_sequential_equilibrium_of_last_decision
     (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
     (antichain : M.DecisionInformationAntichain) (who : ι)
+    [∀ site : M.InformationSite who, Finite (M.Choice who site.1)]
     (last : LastDecision (E := E) who)
     (nonterminal : ∀ site : M.InformationSite who, site.AllNonterminal)
     (reach : ∀ (alternative : M.BehavioralPolicy who) (player : ι)
       (site : M.InformationSite player) (history : M.InformationHistory player site.1),
-      (M.historyReachWeight (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative) history.1).toReal = (M.historyReachWeight reference.strategy history.1).toReal)
+      M.historyReachWeight
+        (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative)
+          history.1 = M.historyReachWeight reference.strategy history.1)
     (payoff : ι → E.History → ℝ) (neutral : ∀ player, player ≠ who → payoff player = fun _ => 0)
-    (fuel : Nat) :
+    (fuel : Nat)
+    (integrable : ∀ (site : M.InformationSite who) (alternative : M.BehavioralPolicy who),
+      ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+        site (payoff who) (fuel + 1)).IntegrableAt alternative) :
     ∃ assessment : M.BehavioralAssessment,
       assessment.strategy = Profile.update (sig := M.behavioralSignature) reference.strategy who
         (bestLastPolicy reference mixed antichain who (payoff who) fuel) ∧
@@ -305,7 +323,9 @@ theorem exists_sequential_equilibrium_of_last_decision
       (InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief⟩
   refine ⟨assessment, rfl, ?_,
     consistent_update_of_reach_invariant reference mixed antichain who reach policy⟩
-  intro player site alternative _
+  intro player site
+  change (assessment.continuationContext site (payoff player) (fuel + 1)).IsLocallyOptimal
+    Set.univ (assessment.strategy player)
   by_cases own : player = who
   · subst player
     have overwrite (response : M.BehavioralPolicy who) :
@@ -319,23 +339,28 @@ theorem exists_sequential_equilibrium_of_last_decision
         change Profile.update (sig := M.behavioralSignature)
           reference.strategy who policy player = _
         exact Profile.update_of_ne _ _ same
-    have value (response : M.BehavioralPolicy who) :
-        (assessment.continuationContext site (payoff who) (fuel + 1)).value response =
-          ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
-            site (payoff who) (fuel + 1)).value response := by
-      simp only [BehavioralAssessment.continuationContext_value, overwrite]
+    have same : assessment.continuationContext site (payoff who) (fuel + 1) =
+        (InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+          site (payoff who) (fuel + 1) := by
+      simp only [BehavioralAssessment.continuationContext, overwrite]
       rfl
-    change (assessment.continuationContext site (payoff who) (fuel + 1)).value alternative ≤ _
-    rw [value, value]
     have chosen : assessment.strategy who = policy := by
       change Profile.update (sig := M.behavioralSignature) reference.strategy who policy who = _
       exact Profile.update_same (sig := M.behavioralSignature) reference.strategy who policy
-    rw [chosen]
-    exact bestLastPolicy_optimal reference mixed antichain who (payoff who) fuel last
-      site (nonterminal site) alternative
+    rw [same, chosen]
+    exact ⟨integrable site policy, fun alternative _ => integrable site alternative,
+      fun alternative _ => bestLastPolicy_optimal reference mixed antichain who (payoff who) fuel
+        last site (nonterminal site) alternative (integrable site alternative)
+        (integrable site policy)⟩
   · have zero := neutral player own
-    change (assessment.continuationContext site (payoff player) (fuel + 1)).value alternative ≤ _
-    simp [BehavioralAssessment.continuationContext, Context.value, zero]
+    have constant (response : M.BehavioralPolicy player) :
+        (assessment.continuationContext site (payoff player) (fuel + 1)).IntegrableAt response ∧
+          (assessment.continuationContext site (payoff player) (fuel + 1)).value response = 0 := by
+      simp only [Context.IntegrableAt, Context.value, BehavioralAssessment.continuationContext,
+        Context.ofBelief, zero, expect_constant]
+      exact ⟨payoffIntegrable_constant _ 0, trivial⟩
+    exact ⟨(constant _).1, fun alternative _ => (constant alternative).1,
+      fun alternative _ => by rw [(constant alternative).2, (constant _).2]⟩
 
 end Consistency
 

@@ -63,7 +63,7 @@ import Vegas.Examples.MonitoredGuessing.DeclaredCompilation
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import Interaction.MessageMonitoringProbability
 import Vegas.Pending.ReactiveConformance
-import GameTheoryExtensions.Analysis.Protocol.Sequential
+import GameTheory.Analysis.Protocol.Incentives
 
 /-! # Paper theorem audit
 
@@ -1012,10 +1012,10 @@ The restricted native equilibrium is a separate, open proof obligation.
 #print axioms
   GameTheory.Protocol.InformationModel.ContinuationDecision.rationalAt_of_omitted_dominated
 
-/-- info: 'GameTheory.Math.Probability.PMF.condOn_observation_probOf_le' depends on axioms:
+/-- info: 'PMF.condOn_observation_probOf_le' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms GameTheory.Math.Probability.PMF.condOn_observation_probOf_le
+#print axioms PMF.condOn_observation_probOf_le
 
 /-- info: 'GameTheory.Math.Probability.PMFConvergesPointwise.probOf_le' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1097,11 +1097,11 @@ open Vegas.SourceProgram.Setup in
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.IncentiveComparison.regret_le_norm_comparison_residual
 
-/-- info: 'GameTheory.Protocol.InformationModel.sequential_equilibrium_preservation_iff_coneWithin' depends on axioms:
+/-- info: 'GameTheory.Protocol.InformationModel.sequentialEquilibrium_preservation_iff_coneWithin' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
-#print axioms sequential_equilibrium_preservation_iff_coneWithin
+#print axioms sequentialEquilibrium_preservation_iff_coneWithin
 
 /-- info: 'GameTheory.CorrelationPayoff.preserves_marginals_iff_additive' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

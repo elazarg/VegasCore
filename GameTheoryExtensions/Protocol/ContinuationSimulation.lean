@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.Protocol.Sequential
-import GameTheoryExtensions.Protocol.SequentialIncentives
+import GameTheory.Analysis.Protocol.Incentives
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Continuation simulation by finite mixtures
@@ -160,9 +160,9 @@ theorem sequentialRationality
       (fun who history => utility (sourceObserve history) who) sourceFuel) :
     targetAssessment.IsSequentiallyRationalWithin
       (fun who history => utility (targetObserve history) who) targetFuel := by
-  rw [N.isSequentiallyRationalWithin_iff_comparisons targetObserve targetFuel]
+  rw [N.isSequentiallyRationalWithin_iff_holds targetObserve targetFuel]
   apply simulation.preserves utility
-  exact (M.isSequentiallyRationalWithin_iff_comparisons sourceObserve sourceFuel
+  exact (M.isSequentiallyRationalWithin_iff_holds sourceObserve sourceFuel
     sourceAssessment utility).mp rational
 
 variable
