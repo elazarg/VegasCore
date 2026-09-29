@@ -21,7 +21,6 @@ open GameTheory.Math.Probability Filter
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} {M : InformationModel E} [Finite E.History]
   [∀ who, DecidableEq (M.InfoState who)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
 
 /-- Local optimality at every future information site rules out arbitrary
 whole-policy deviations, including at off-path sites. Consistency is essential
@@ -46,16 +45,20 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.rationalAt_of_localOptimal
     assessment.IsSequentiallyRationalAt site
       (assessment.continuationContext site payoff (horizon - depth)) := by
   obtain ⟨sequence, approximates, converges⟩ := consistent
-  intro alternative _
+  have transitions := ExecutionProtocol.FiniteTransitions.of_finite_history E
+  refine ⟨continuationContext_integrableAt_of_finite transitions assessment site payoff _ _,
+    fun alternative _ =>
+      continuationContext_integrableAt_of_finite transitions assessment site payoff _ _,
+    fun alternative _ => ?_⟩
   obtain ⟨error, nonnegative, vanishes, localBound⟩ :=
-    converges.exists_vanishing_local_gain_bound (sequence 0) (approximates 0).1
+    converges.exists_vanishing_local_gain_bound transitions
       who clock horizon payoff alternative
       (fun current atDepth uniformDepth before =>
         localOptimal current atDepth uniformDepth before (alternative current.1))
-  have first := converges.context_value (sequence 0) (approximates 0).1 site payoff
+  have first := converges.context_value transitions site payoff
     (horizon - depth) (fun _ => alternative) alternative
     (fun _ => pmfConvergesPointwise_const _)
-  have second := converges.context_value (sequence 0) (approximates 0).1 site payoff
+  have second := converges.context_value transitions site payoff
     (horizon - depth) (fun n => (sequence n).strategy who) (assessment.strategy who)
     (converges.strategy who)
   have boundLimit : Tendsto (fun n => (horizon - depth : Nat) * error n) atTop (nhds 0) := by

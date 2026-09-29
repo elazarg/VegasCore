@@ -5,9 +5,10 @@ import GameTheory.Protocol.DecisionRecall
 
 /-! # Finite decision information
 
-Finite legal histories imply finite decision sites and finitely many outcomes
-of every reachable transition. The ambient information carrier may remain
-infinite: unreachable information values are irrelevant.
+Finite legal histories imply finite decision sites, finite menus at each of
+them, and finitely many outcomes of every reachable transition. The ambient
+information carrier may remain infinite: unreachable information values are
+irrelevant.
 -/
 
 noncomputable section
@@ -50,6 +51,41 @@ instance InformationSite.finite [Finite E.History] (who : ι) :
   exact first.2.choose.2.symm.trans
     ((congrArg (fun history : E.History => M.infoOf who history.trace) same).trans
       second.2.choose.2)
+
+/-- The last joint action recorded by a history, if any. -/
+private def lastJoint : E.History → Option (∀ i, Option (E.Action i))
+  | ⟨_, .start⟩ => none
+  | ⟨_, .extend _ joint _ _⟩ => some joint
+
+/-- Finitely many legal histories allow only finitely many legal choices at a
+decision site: distinct choices extend one site history to distinct histories. -/
+instance InformationSite.finite_choice [Finite E.History] (who : ι)
+    (site : M.InformationSite who) : Finite (M.Choice who site.1) := by
+  classical
+  obtain ⟨history, running, _⟩ := site.2
+  obtain ⟨base, baseLegal⟩ := E.exists_legal running
+  let joint (choice : M.Choice who site.1) : ∀ player, Option (E.Action player) :=
+    Function.update base who choice.1
+  have legal (choice : M.Choice who site.1) : E.Legal history.1.state (joint choice) := by
+    apply E.legal_of_legalOption running
+    intro player
+    by_cases same : player = who
+    · subst player
+      simp only [joint, Function.update_self]
+      apply (M.menu_adequate _ history.1.trace choice.1).mp
+      rw [history.2]
+      exact choice.2
+    · simp only [joint, Function.update_of_ne same]
+      exact E.legalOption_of_legal baseLegal player
+  let extend (choice : M.Choice who site.1) : E.History :=
+    history.1.extend (legal choice)
+      (E.step history.1.state ⟨joint choice, legal choice⟩).support_nonempty.choose_spec
+  apply Finite.of_injective extend
+  intro first second same
+  have joints := congrArg lastJoint same
+  simp only [extend, ExecutionProtocol.History.extend, lastJoint, Option.some.injEq] at joints
+  apply Subtype.ext
+  simpa only [joint, Function.update_self] using congrFun joints who
 
 /-- A pure plan records only legal decision sites, retaining each site's menu. -/
 abbrev DecisionPlan (who : ι) :=

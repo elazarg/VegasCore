@@ -19,7 +19,6 @@ open GameTheory.Math.Probability Filter
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} {M : InformationModel E} [Finite E.History]
-  [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
 
 omit [Fintype Player] [DecidableEq Player] in
 private theorem policy_subsequence (who : Player) (policies : ℕ → M.BehavioralPolicy who) :
@@ -112,9 +111,8 @@ private theorem uniform_gain_at_site
     linarith
 
 /-- Sequential rationality of a finite assessment controls every whole
-continuation policy uniformly along any convergent assessment sequence.
-Reachable decision menus must be finite; the sequence itself need not be fully
-mixed, Bayesian, or sequentially rational. -/
+continuation policy uniformly along any convergent assessment sequence. The
+sequence itself need not be fully mixed, Bayesian, or sequentially rational. -/
 theorem BehavioralAssessmentConvergesPointwise.exists_uniform_policy_gain_bound
     {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
