@@ -102,12 +102,13 @@ theorem finite_current_choice [∀ who (site : M.InformationSite who), Finite (M
   · let _ := M.subsingleton_choice_of_not_active history.trace active
     infer_instance
 
-/-- Finite decision menus and finitely supported transitions give every
-finite-horizon behavioral run a finite support. -/
-theorem runBehavioralFrom_support_finite
-    [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
-    (transitions : E.FiniteTransitions)
-    (profile : ∀ who, M.BehavioralPolicy who) (fuel : ℕ) (history : E.History) :
+/-- Finitely supported current choices and finitely supported transitions give
+every finite-horizon behavioral run a finite support. -/
+theorem runBehavioralFrom_support_finite_of_choices (transitions : E.FiniteTransitions)
+    (profile : ∀ who, M.BehavioralPolicy who)
+    (choices : ∀ current : E.History, ¬ E.terminal current.state → ∀ who,
+      (profile who (M.infoOf who current.trace)).support.Finite)
+    (fuel : ℕ) (history : E.History) :
     (M.runBehavioralFrom profile fuel history).support.Finite := by
   induction fuel generalizing history with
   | zero =>
@@ -117,18 +118,42 @@ theorem runBehavioralFrom_support_finite
       by_cases terminal : E.terminal history.state
       · rw [M.runBehavioralFrom_of_terminal _ _ terminal]
         simpa only [PMF.support_pure] using Set.finite_singleton history
-      · let _ (who : ι) : Finite (M.Choice who (M.infoOf who history.trace)) :=
-          finite_current_choice history terminal who
-        rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal, PMF.support_bind]
+      · rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal, PMF.support_bind]
         have joint : (M.behavioralJoint profile history.trace terminal).support.Finite := by
           unfold InformationModel.behavioralJoint
           rw [PMF.support_map]
-          exact (Set.toFinite _).image _
+          exact ((Set.Finite.pi' fun who => choices history terminal who).subset
+            fun draws supported => (independentProduct_support_iff _ draws).1 supported).image _
         apply joint.biUnion
         intro draw _
         rw [PMF.support_bindOnSupport]
         exact (transitions history terminal draw).biUnion' fun target realized =>
           induction (history.extend draw.2 realized)
+
+/-- Finite decision menus and finitely supported transitions give every
+finite-horizon behavioral run a finite support. -/
+theorem runBehavioralFrom_support_finite
+    [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
+    (transitions : E.FiniteTransitions)
+    (profile : ∀ who, M.BehavioralPolicy who) (fuel : ℕ) (history : E.History) :
+    (M.runBehavioralFrom profile fuel history).support.Finite :=
+  runBehavioralFrom_support_finite_of_choices transitions profile
+    (fun current running who => by
+      have := finite_current_choice (M := M) current running who
+      exact Set.toFinite _)
+    fuel history
+
+omit [Fintype ι] in
+/-- Pure policies need only finitely supported transitions for a finite-horizon
+run to have finite support. -/
+theorem runFrom_support_finite [Finite ι] (transitions : E.FiniteTransitions)
+    (profile : ∀ who, M.Policy who) (fuel : ℕ) (history : E.History) :
+    (M.runFrom profile fuel history).support.Finite := by
+  let _ := Fintype.ofFinite ι
+  rw [← M.runBehavioralFrom_toBehavioral]
+  exact runBehavioralFrom_support_finite_of_choices transitions _
+    (fun _ _ _ => by simp [Policy.toBehavioral]) fuel history
+
 
 theorem runBehavioralFrom_expect_tendsto
     [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]

@@ -4,6 +4,7 @@ import GameTheoryExtensions.Analysis.ConstrainedNash
 import GameTheoryExtensions.Analysis.Protocol.AgentForm
 import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
 import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
@@ -26,13 +27,16 @@ open GameTheory.Math.Probability
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} (M : InformationModel E)
   [∀ who, DecidableEq (M.InfoState who)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
+  [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)]
 
 /-- Each positive tremble admits one fully mixed Bayes assessment whose free
 agents' residual responses are optimal at every common-depth decision site.
-The pinning and mandatory trembles are exact, not equilibrium assumptions. -/
+The pinning and mandatory trembles are exact, not equilibrium assumptions.
+Agent menus and reachable transitions must be finite. -/
 theorem exists_pinned_agent_completion
     (sites : (who : Player) → Finset (M.InfoState who))
+    [∀ agent : M.InformationAgent sites, Finite (M.Choice agent.1 agent.2.1)]
+    (transitions : E.FiniteTransitions)
     (fallback : (who : Player) → M.Policy who) (horizon : Nat)
     (decisionRecall : M.DecisionRecall) (covered : M.CoversInformationSites sites horizon)
     (decisionCovered : ∀ who (site : M.InformationSite who), site.1 ∈ sites who)
@@ -61,11 +65,19 @@ theorem exists_pinned_agent_completion
   classical
   let form := M.informationAgentForm sites fallback horizon
   let _ (agent : M.InformationAgent sites) : Finite (form.sig.Strategy agent) :=
-    (referenceFull agent).finite
+    inferInstanceAs (Finite (M.Choice agent.1 agent.2.1))
+  have siteFinite (who : Player) (site : M.InformationSite who) :
+      Finite (M.Choice who site.1) :=
+    inferInstanceAs (Finite (M.Choice
+      (⟨who, ⟨site.1, decisionCovered who site⟩⟩ : M.InformationAgent sites).1 site.1))
+  have formIntegrable : form.HasIntegrableUtility (fun history agent => utility history agent.1) :=
+    fun _ _ => payoffIntegrable_of_finite_support _ _
+      (M.runFrom_support_finite transitions _ _ _)
   let _ (agent : M.InformationAgent sites) : Nonempty (form.sig.Strategy agent) :=
     ⟨(reference agent).support_nonempty.choose⟩
   obtain ⟨residual, optimal⟩ := exists_pinned_tremble_bestResponses (F := form)
-    (fun history agent => utility history agent.1) free pinned reference epsilon positive.le small
+    (fun history agent => utility history agent.1) formIntegrable free pinned reference epsilon
+    positive.le small
   let played := pinnedTremble (F := form) free pinned reference residual
     epsilon positive.le small.le
   let original := BehavioralAssessment.ofStrategy (M.agentBehavior sites fallback played)
@@ -100,11 +112,19 @@ theorem exists_pinned_agent_completion
   have nativeBound := first.symm.trans_le (bound.trans_eq second)
   rw [M.agentBehavior_update sites fallback played agent alternative,
     M.agentBehavior_update sites fallback played agent (residual agent)] at nativeBound
+  have positiveMass := M.informationMass_pos_of_fullSupport _ mixed who site
+  have runIntegrable (profile : ∀ who, M.BehavioralPolicy who) (steps : Nat)
+      (start : E.History) :
+      PayoffIntegrable (M.runBehavioralFrom profile steps start)
+        (fun history => utility history who) :=
+    payoffIntegrable_of_finite_support _ _
+      (runBehavioralFrom_support_finite transitions profile steps start)
   apply (M.local_law_root_comparison_iff_context_comparison assessment decisionRecall
-    who site depth fuel
-    sameDepth (mixed.informationMass_pos who site)
-    (bayes who site (mixed.informationMass_pos who site)) (fun history => utility history who)
-    alternative (residual agent)).mp
+    who site depth fuel sameDepth positiveMass (bayes who site positiveMass)
+    (fun history => utility history who) alternative (residual agent)
+    (runIntegrable _ _ _) (runIntegrable _ _ _) (runIntegrable _ _ _)
+    (fun _ _ => runIntegrable _ _ _) (fun _ _ => runIntegrable _ _ _)
+    (fun _ _ => runIntegrable _ _ _)).mp
   simpa only [total, assessment, InformationModel.bayesAssessment, original,
     BehavioralAssessment.ofStrategy, agent] using nativeBound
 
