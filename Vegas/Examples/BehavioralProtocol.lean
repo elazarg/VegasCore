@@ -89,7 +89,7 @@ example (replacement : BehavioralProfile program) (value : PublicationResult Boo
       (Sum.inr (Sum.inl (commitSuccessor 0 guard initial value)))).map
         (fun state => state.get (.there .here)) = PMF.pure value := by
   simp [ProtocolState.continuationLaw, program, runFrom, runWith,
-    PMF.map_bind, commitSuccessor, Env.get, Env.cons]
+    PMF.map_bind, PMF.pure_map, PMF.bind_const, commitSuccessor, Env.get, Env.cons]
 
 /-- The semantic horizon can be enlarged without changing behavioral SPE. -/
 example (policies : GameTheory.Profile model.behavioralSignature)

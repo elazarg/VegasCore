@@ -81,7 +81,7 @@ theorem source_guess_step (bit guess : Bool) :
       PMF.pure (SourcePath.guessed bit guess).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, guessConfig,
-    OwnAction.disclosure, ProtocolState.entry]
+    OwnAction.disclosure, ProtocolState.entry, PMF.pure_map]
 
 theorem source_opening_step (bit guess disclose : Bool) :
     sourceArena.step (SourcePath.guessed bit guess).state
@@ -89,7 +89,7 @@ theorem source_opening_step (bit guess disclose : Bool) :
       PMF.pure (SourcePath.done bit guess disclose).state := by
   simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, finalConfig,
-    OwnAction.disclosure, ProtocolState.entry]
+    OwnAction.disclosure, ProtocolState.entry, PMF.pure_map]
 
 def SourcePath.depth : SourcePath → Nat
   | .root => 0

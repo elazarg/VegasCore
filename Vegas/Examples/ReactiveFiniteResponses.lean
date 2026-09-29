@@ -38,6 +38,8 @@ private def runtime : EventGraphRuntime graph where
 private def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket graph) :=
   fun _ _ => PMF.pure ∅
 
+private instance : leaks.FiniteSupport := ⟨fun _ _ => by simp [leaks]⟩
+
 private abbrev app := runtime.reactiveApplication leaks
 
 private def initial : app.Execution :=
@@ -256,8 +258,11 @@ theorem unknown_forward_retains_call (id : MessageId Bool) :
     MessageBounds.unknown_forward_normalizes runtime leaks false [] (initial.observe app false)
       ⟨.malformed ⟨.bool, true⟩, none⟩ id unknown
 
-theorem complete_menu_finite_histories (horizon : Nat) (scheduler : app.Scheduler) :
+theorem complete_menu_finite_histories (horizon : Nat) (scheduler : app.Scheduler)
+    (schedulerFinite : ∀ recall view, (scheduler recall view).support.Finite) :
     Finite (menu.protocol (PMF.pure initial.application) horizon scheduler).History :=
+  have : app.FiniteNature (PMF.pure initial.application) scheduler :=
+    { initial_finite := by simp, scheduler_finite := schedulerFinite }
   inferInstance
 
 theorem complete_menu_consistent_assessment (horizon : Nat) (scheduler : app.Scheduler) :
@@ -302,6 +307,7 @@ theorem compiled_perturbation_fullyMixed (scheduler : app.Scheduler)
 /-- The completion retains the actual compiled profile, including recovery.
 The menu still contains all of the malformed and unopenable choices above. -/
 theorem compiled_consistent_assessment (scheduler : app.Scheduler)
+    (schedulerFinite : ∀ recall view, (scheduler recall view).support.Finite)
     (profile : graph.BehavioralProfile) :
     ∃ assessment : ((bounds.rawMenu runtime leaks).information (PMF.pure initial.application)
         2 scheduler).BehavioralAssessment,
@@ -311,6 +317,8 @@ theorem compiled_consistent_assessment (scheduler : app.Scheduler)
       assessment.IsSequentiallyConsistent
         ((bounds.rawMenu runtime leaks).decisionInformationAntichain
           (PMF.pure initial.application) 2 scheduler) :=
+  have : app.FiniteNature (PMF.pure initial.application) scheduler :=
+    { initial_finite := by simp, scheduler_finite := schedulerFinite }
   (bounds.rawMenu runtime leaks).exists_consistent_assessment _ _ _ _
 
 private def usedZero : app.Execution :=

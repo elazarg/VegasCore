@@ -180,7 +180,7 @@ example (choice : PublicationResult Bool) :
     runtime.compilePlayerPolicy false (fixedPolicy choice) [] (observed granted) =
       PMF.pure (.privateCommand (.remember 0 choice)) := by
   have actor : pairGraph.actor? 0 = some false := rfl
-  simp [EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,
+  simp [PMF.pure_map, EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,
     EventGraphRuntime.stagingCount, observed, granted,
     Interaction.MessageApplication.State.observe,
     Interaction.MessageApplication.State.initial,

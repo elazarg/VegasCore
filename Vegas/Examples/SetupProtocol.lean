@@ -114,7 +114,7 @@ example (profile : BehavioralProfile program) (bit : Bool) :
       (fun state => state.get (.there (.there .here))) = PMF.pure bit := by
   simp [Setup.continuationLaw, drawHistory, afterSetup, setup, ProtocolState.continuationLaw,
     ProtocolState.entry, program, runFrom, runWith, Setup.initialConfig, initial,
-    PMF.map_bind, Env.get, Env.cons]
+    PMF.map_bind, PMF.pure_map, PMF.bind_const, Env.get, Env.cons]
 
 example : model.IsSubgameRoot game.initHistory := model.initHistory_isSubgameRoot
 

@@ -44,6 +44,8 @@ private def runtime : EventGraphRuntime graph where
 private def leaks : MessageNetwork.ObservationRule Bool (WitnessedPacket graph) :=
   fun _ _ => PMF.pure ∅
 
+private instance : leaks.FiniteSupport := ⟨fun _ _ => by simp [leaks]⟩
+
 private abbrev app := runtime.reactiveApplication leaks
 private abbrev candidate : Handle graph := (false, .prepared 0)
 
@@ -70,8 +72,11 @@ private def bindingMenu : app.ResponseMenu := by
         runtime.reactiveDecision leaks who 0 .failure view.application}
     nonempty := fun _ _ _ => ⟨⟨none⟩, by simp⟩ }
 
-theorem finite_binding_histories (horizon : Nat) (scheduler : app.Scheduler) :
+theorem finite_binding_histories (horizon : Nat) (scheduler : app.Scheduler)
+    (schedulerFinite : ∀ recall view, (scheduler recall view).support.Finite) :
     Finite (bindingMenu.protocol (PMF.pure initial.application) horizon scheduler).History :=
+  have : app.FiniteNature (PMF.pure initial.application) scheduler :=
+    { initial_finite := by simp, scheduler_finite := schedulerFinite }
   inferInstance
 
 theorem binding_menu_all_meanings (who : Bool) (past : List app.PlayerEntry)
