@@ -50,7 +50,7 @@ theorem owner_choice_ordinary
 
 open Classical in
 theorem owner_local_law_readout
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher who : Player)
     (reveals : setup.program.RevealOnly)

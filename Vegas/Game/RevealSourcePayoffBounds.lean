@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player] [Finite Player]
 
 open Classical in
 theorem reveal_boolean_value_range
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (admission : CommitmentInterface setup.program) (reveals : setup.program.RevealOnly)
     (utility : State L setup.program.terminalCtx → Player → ℝ) :
     ∃ bound : ℝ, 0 ≤ bound ∧
@@ -61,13 +61,11 @@ theorem reveal_boolean_value_range
     rw [← equal, InformationModel.BehavioralAssessment.continuationContext_value]
     constructor
     · rw [← expect_constant _ (lower who)]
-      apply FinDist.expect_mono
-      intro history _
-      exact FinitePayoffBounds.lower_le (payoff who) history
+      exact expect_mono (fun history _ => FinitePayoffBounds.lower_le (payoff who) history)
+        (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
     · rw [← expect_constant _ (upper who)]
-      apply FinDist.expect_mono
-      intro history _
-      exact FinitePayoffBounds.le_upper (payoff who) history
+      exact expect_mono (fun history _ => FinitePayoffBounds.le_upper (payoff who) history)
+        (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
   have first := valueBound true
   have second := valueBound false
   have difference : |value true - value false| ≤ range who := by

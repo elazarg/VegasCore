@@ -66,7 +66,7 @@ include reveals observer openable nonnegative below above sufficient sampling in
 /-- Fixed utility bounds, deposits and observation coverage suffice for every
 retained SE. The conclusion includes its policies and beliefs at retained
 information sets and its full initialized history/net-payoff law. -/
-theorem ordinary_equilibrium_extends
+theorem ordinary_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (source : (information setup leaks bounds watcher).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       ((menu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)
@@ -179,8 +179,12 @@ theorem ordinary_equilibrium_extends
         intro final supported
         obtain ⟨reached, member, rfl⟩ := PMF.support_map .. ▸ supported
         exact clean reached member)
-      (by rw [FinDist.probOf_map]; exact collected) (sufficient who isWatcher)
-    simpa only [expect_map] using compared
+      (payoffIntegrable_of_finite_support _ _
+        (by rw [PMF.support_map]; exact (Set.toFinite _).image _))
+      (payoffIntegrable_of_finite_support _ _
+        (by rw [PMF.support_map]; exact (Set.toFinite _).image _))
+      (by rw [PMF.toOuterMeasure_map_apply]; exact collected) (sufficient who isWatcher)
+    simpa only [expect_map, Function.comp_def] using compared
   obtain ⟨target, targetRemaining, agrees, beliefs, historyLaw, joint, _terminal⟩ :=
     restriction.sequential_equilibrium_extends_of_comparator
       (retained.decisionInformationAntichain initial count service)
@@ -202,7 +206,7 @@ include reveals observer openable nonnegative below above sufficient sampling in
 /-- The composed extension restores every bounded raw response of the same
 service. Source policies may randomize, withhold, or replay public envelopes;
 the target construction supplies consistent rational off-path play. -/
-theorem ordinary_raw_equilibrium_extends
+theorem ordinary_raw_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     {Observation : Type} (observe : (application setup leaks).ProtocolState → Observation)
     (observationInvariant : ∀ state,
       observe (((runtime setup).reactiveNormalization leaks).state state) = observe state)

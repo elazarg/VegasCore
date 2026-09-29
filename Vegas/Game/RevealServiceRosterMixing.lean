@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 theorem roster_owner_choice_data
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup))
     (reveals : setup.program.RevealOnly) (admission : CommitmentInterface setup.program)
@@ -75,7 +75,7 @@ theorem roster_owner_choice_data
 /-- The physical response law has exactly the retained support at every legal
 decision, not merely at histories reached by the compiled profile. -/
 theorem roster_policy_support_exact
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -169,7 +169,7 @@ theorem roster_policy_support_exact
 /-- Every fresh response at a legal decision fits the effective finite menu,
 using the initialized commitment values and actual certificate provenance. -/
 theorem roster_fresh_available
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -225,7 +225,8 @@ variable (setup : Setup (Player := Player) (L := L))
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
 
 include reveals openable in
-theorem rosterLimitPolicy_admissible (profile : BehavioralProfile setup.program) (who : Player) :
+theorem rosterLimitPolicy_admissible [setup.FiniteInitialLaw]
+    (profile : BehavioralProfile setup.program) (who : Player) :
     (rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters).Admissible
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) who
@@ -271,7 +272,7 @@ variable (setup : Setup (Player := Player) (L := L))
   (timingFull : ∀ event who owned, FullSupport (timing event who owned))
 
 include reveals openable mixed timingFull in
-theorem rosterPolicy_admissible (who : Player) :
+theorem rosterPolicy_admissible [setup.FiniteInitialLaw] (who : Player) :
     (rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters).Admissible
       (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) who
@@ -296,7 +297,7 @@ def rosterPerturbedProfile :
       (setup.decodeBehavioralProfile admission source.strategy) who)
 
 include reveals openable mixed timingFull in
-theorem rosterPerturbedProfile_fullyMixed :
+theorem rosterPerturbedProfile_fullyMixed [setup.FiniteInitialLaw] :
     (InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)).IsFullyMixed := by

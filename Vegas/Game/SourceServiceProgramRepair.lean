@@ -241,7 +241,7 @@ theorem binding_phase_stopped_coupling
         exact (existsTail next member).choose_spec.1
       _ = (window.map Prod.fst).bind (fun execution => (app.invoke players owner execution).bind
           ((runtime setup).runInteractionPlan leaks players network suffix)) := by
-        rw [PMF.bind_map]
+        rw [PMF.bind_map]; rfl
       _ = _ := by
         rw [first, PMF.bind_bind, roster, List.map_append, List.map_cons,
           List.append_assoc, (runtime setup).runInteractionPlan_append]
@@ -274,7 +274,7 @@ theorem binding_phase_stopped_coupling
       _ = (window.map Prod.snd).bind (fun next =>
           (strategy.resume owner players (some owner) next.1 next.2).bind (fun middle =>
             strategy.runJoint owner players scheduler suffix.length middle.1 middle.2)) := by
-        rw [PMF.bind_map]
+        rw [PMF.bind_map]; rfl
       _ = _ := by
         rw [second, PMF.bind_bind]
         simp only [PMF.bind_map, List.length_map]

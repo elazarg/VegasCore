@@ -84,7 +84,8 @@ variable [Fintype Player]
 
 /-- Every envelope actually known at a retained activation passes the current
 phase checker. The envelope may still be pending and may have a different author. -/
-theorem roster_known_permitted (bounds : MessageBounds (graph setup))
+theorem roster_known_permitted [setup.FiniteInitialLaw]
+    (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
@@ -156,7 +157,8 @@ theorem roster_known_permitted (bounds : MessageBounds (graph setup))
 
 /-- A fresh admitted response creates its authentic current opening with the
 publicly expected serial. -/
-theorem roster_fresh_traffic (bounds : MessageBounds (graph setup))
+theorem roster_fresh_traffic [setup.FiniteInitialLaw]
+    (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
@@ -230,7 +232,8 @@ theorem roster_fresh_traffic (bounds : MessageBounds (graph setup))
   exact admitted
 
 /-- Every actual retained response emits only permitted signed envelopes. -/
-theorem roster_response_traffic (bounds : MessageBounds (graph setup))
+theorem roster_response_traffic [setup.FiniteInitialLaw]
+    (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
@@ -283,7 +286,8 @@ theorem roster_response_traffic (bounds : MessageBounds (graph setup))
       who control trace active response fresh
 
 /-- Player and environment transitions preserve traffic conformance. -/
-theorem roster_step_traffic (bounds : MessageBounds (graph setup))
+theorem roster_step_traffic [setup.FiniteInitialLaw]
+    (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
@@ -347,7 +351,8 @@ theorem roster_step_traffic (bounds : MessageBounds (graph setup))
 
 /-- Every authentic partial sample of a retained history contains only
 permitted envelopes. In particular, off-path retained histories are not framed. -/
-theorem roster_history_traffic (bounds : MessageBounds (graph setup))
+theorem roster_history_traffic [setup.FiniteInitialLaw]
+    (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)

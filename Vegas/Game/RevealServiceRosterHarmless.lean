@@ -211,6 +211,6 @@ theorem roster_harmless_response_source_law
   have mapped := congrArg (fun law : PMF Bool =>
     (law.bind fun disclose => (ProtocolState.step setup.program source (joint disclose)).bind
       (ProtocolState.continuationLaw setup.program profile)).map some) same
-  simpa only [PMF.bind_map] using mapped
+  simpa only [PMF.bind_map, Function.comp_def] using mapped
 
 end Vegas

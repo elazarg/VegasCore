@@ -31,13 +31,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
   (admission : CommitmentInterface setup.program)
-  [Finite (setup.executionProtocol admission).History]
-  [∀ who (site : (setup.informationModel admission).InformationSite who),
-    Fintype ((setup.informationModel admission).InformationHistory who site.1)]
 
-omit [Finite (setup.executionProtocol admission).History]
-  [∀ who (site : (setup.informationModel admission).InformationSite who),
-    Fintype ((setup.informationModel admission).InformationHistory who site.1)] in
 include reveals observer openable in
 /-- A source site recovered from an actual owner checkpoint has the source
 instruction depth corresponding to that checkpoint. -/
@@ -77,7 +71,7 @@ theorem owner_source_common_depth
 
 /-- The native fully mixed Bayes posterior has exactly the original source
 state posterior at the recovered source site, for every private alias fiber. -/
-theorem owner_bayes_state
+theorem owner_bayes_state [setup.FiniteInitialLaw]
     (source : (setup.informationModel admission).BehavioralAssessment)
     (sourceMixed : source.IsFullyMixed)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (small : weight ≤ 1) (positive : 0 < weight)
@@ -178,6 +172,8 @@ theorem owner_bayes_state
     (responses.commonPlayerReachAt _ _ _ compiled.strategy who site)
     (responses.commonPlayerReachAt _ _ _ selected who site)
     (antichain who site) (setup.decision_antichain admission who sourceSite)
-    (mixed.informationMass_pos who site) (sourceMixed.informationMass_pos who sourceSite)
+    (model.informationMass_pos_of_fullSupport compiled.strategy mixed who site)
+    ((setup.informationModel admission).informationMass_pos_of_fullSupport source.strategy
+      sourceMixed who sourceSite)
 
 end Vegas

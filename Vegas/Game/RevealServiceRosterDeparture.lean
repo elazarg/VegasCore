@@ -119,7 +119,8 @@ variable [Fintype Player]
 /-- Every first additional effective response in the real roster protocol
 creates a forbidden record signed by its acting player. This includes a second
 fresh canonical opening; known-envelope replays remain admitted. -/
-theorem roster_extra_traffic (bounds : MessageBounds (graph setup))
+theorem roster_extra_traffic [setup.FiniteInitialLaw]
+    (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
