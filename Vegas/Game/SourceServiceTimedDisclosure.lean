@@ -68,7 +68,7 @@ theorem resolutionOrigins_replay_window
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, supported, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -207,15 +207,15 @@ theorem sourceServiceOpportunity_reveal
         cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
         disclosureSubmission_normalize_withhold]
       rfl
-    rw [silent]
+    rw [Function.comp_apply, silent]
     rfl
   · obtain ⟨candidate, associated, _, _, opening⟩ := guarded_rosterOpening_success setup leaks
       published binding source refs execution agree valid event outputEq codeEq node value success
     have resolved := compiled_disclosure_result (graph := graph setup) published binding source refs
       execution.application.config.store agree true
     rw [success, EventCode.resolveOutput?_playerStore] at resolved
-    rw [successful_opening_of_origins setup leaks execution valid recalled origins owner event
-      payload (refs.get binding)
+    rw [Function.comp_apply, successful_opening_of_origins setup leaks execution valid recalled
+      origins owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       outputEq codeEq node candidate value associated resolved unsent]
     simp only [↓reduceIte, opening, windowOpening, reduceCtorEq]
@@ -344,7 +344,8 @@ theorem sourceServiceTimedFamily_reveal_law
   simp only [List.cons_append, runInteractionPlan, interactionStep, interactionInstruction,
     PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke,
-    ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+    ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+    Function.comp_def]
   conv_rhs => rw [PMF.bind_comm]
   apply bind_congr_on_support _
   intro sample _

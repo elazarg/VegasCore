@@ -249,7 +249,9 @@ theorem remaining_events_stopped_coupling
             intro next member
             exact (existsTail next member).choose_spec.1
           _ = _ := by
-            rw [← PMF.bind_map, first, ← (runtime setup).runInteractionPlan_append]
+            refine (PMF.bind_map step Prod.fst
+              ((runtime setup).runInteractionPlan leaks players network suffix)).symm.trans ?_
+            rw [first, ← (runtime setup).runInteractionPlan_append]
             rfl
       have rightLaw : coupling.map Prod.snd = strategy.runJoint owner players scheduler
           ((event :: rest).flatMap (rosterBlock setup rosters)).length repaired memory := by
@@ -263,7 +265,7 @@ theorem remaining_events_stopped_coupling
             exact (existsTail next member).choose_spec.2.1
           _ = (step.map Prod.snd).bind (fun next =>
               strategy.runJoint owner players scheduler suffix.length next.1 next.2) := by
-            rw [PMF.bind_map]
+            rw [PMF.bind_map]; rfl
           _ = _ := by rw [second]
       refine ⟨coupling, leftLaw, rightLaw, ?_⟩
       intro final supported

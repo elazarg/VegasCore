@@ -150,7 +150,7 @@ theorem required_binding_final_block_coupling
     intro next supported
     left
     apply evidence
-    rw [← bindPairLaw_map_fst (leftRun response) (rightRun response), PMF.support_map]
+    rw [← bindPairLaw_map_fst (leftRun response) (fun _ => rightRun response), PMF.support_map]
     exact ⟨next, supported, rfl⟩
   have existsBranch (response : app.Action) (member : response ∈ law.support) :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),

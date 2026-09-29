@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- The concrete split-response compiler has the exact complete typed source
 law, for every alias weight including the canonical zero-weight compiler. -/
 theorem compiled_plan_source_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)
@@ -84,7 +84,7 @@ theorem compiled_plan_source_law
 readout law. It quantifies over every source policy and every alias weight,
 without an equilibrium or independent-types premise. -/
 theorem compiled_behavioral_source_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)
@@ -121,7 +121,7 @@ theorem compiled_behavioral_source_law
 /-- The original source behavioral profile is preserved through the actual
 history evaluators on both sides, not only through a syntactic policy law. -/
 theorem compiled_profile_readout_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)
@@ -145,7 +145,7 @@ theorem compiled_profile_readout_law
 /-- Initial private data, all public results, and the complete utility vector
 are retained jointly because they are read from the same typed terminal state. -/
 theorem compiled_profile_joint_utility_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)

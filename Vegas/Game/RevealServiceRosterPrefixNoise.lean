@@ -100,7 +100,7 @@ theorem run_roster_source_prefix_noise
         exact decodePrefix?_zero_of_agrees _ refs embedding.ref (source seed)
           (checkpoint seed).emptyRegistry _ (checkpoint seed).agrees
       simpa only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-        PMF.pure_map, decoded, ← PMF.bind_pure_comp, Function.comp_def] using law
+        PMF.pure_map, PMF.pure_bind, decoded, ← PMF.bind_pure_comp, Function.comp_def] using law
   | sample name fresh distribution next ih =>
       intro impossible
       exact impossible.elim
@@ -128,7 +128,8 @@ theorem run_roster_source_prefix_noise
             exact decodePrefix?_zero_of_agrees _ refs embedding.ref (source seed)
               (checkpoint seed).emptyRegistry _ (checkpoint seed).agrees
           simpa only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-            PMF.pure_map, decoded, ← PMF.bind_pure_comp, Function.comp_def] using law
+            PMF.pure_map, PMF.pure_bind, decoded, ← PMF.bind_pure_comp, Function.comp_def]
+            using law
       | succ count =>
           let index : Fin (eventCount
             (.reveal published owner name fresh selected unresolved next)) :=
@@ -180,7 +181,8 @@ theorem run_roster_source_prefix_noise
           obtain ⟨grantNoise, grantFactor⟩ := roster_grant_observation_kernel setup leaks refs
             offset prior initial source execution (fun seed _ => checkpoint seed) event focal
               players network grant (fun seed _ => granted seed) noise factor
-          simp only [grantLaw, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
+          simp only [grantLaw, PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def]
+            at grantFactor
           have opportunityRecall (seed : Seed) :
               (opportunity seed).InputRecall (application setup leaks) :=
             (runtime setup).runInteractionPlan_inputRecall leaks players network [.grant event]
@@ -337,8 +339,8 @@ theorem run_roster_source_prefix_noise
                 (prior.map source).bind (fun config =>
                   (revealKernel profile (config.view owner)).map
                     (revealSuccessor published selected config)) := by
-              simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def,
-                PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+              simp only [advanced, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
+                PMF.pure_bind, PMF.bind_const]
             rw [sourceLaw]
             rw [← nextFactor]
             simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def]
@@ -414,7 +416,9 @@ theorem run_roster_source_prefix_noise
                     (setup.eventGraph.fromModeCompletion .sequential)))),
                   ((application setup leaks).messageView final, final.recall focal))
             change _ = nextPrior.bind (fun point => continuePoint point.val)
-            rw [← PMF.bind_map Subtype.val nextPrior continuePoint]
+            rw [show (nextPrior.bind fun point => continuePoint point.val) =
+                (nextPrior.map Subtype.val).bind continuePoint from
+              (PMF.bind_map nextPrior Subtype.val continuePoint).symm]
             change _ = ((pmfToSubtype advanced _).map Subtype.val).bind continuePoint
             rw [map_val_pmfToSubtype]
             simp only [advanced, PMF.bind_bind, PMF.bind_map, continuePoint]
@@ -489,8 +493,7 @@ theorem roster_compiled_prefix_noise
       ((application setup leaks).messageView (execution seed), (execution seed).recall focal))) =
       (prior.map source).bind fun config => (PMF.pure emptyExtra).map fun extra =>
         (config, extra) := by
-    simp only [PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp,
-        Function.comp_def]
+    simp only [PMF.pure_map, PMF.bind_map]
     rfl
   obtain ⟨noise, factor⟩ := run_roster_source_prefix_noise setup leaks rosters timing network
     profile focal setup.program reveals profile
@@ -511,7 +514,7 @@ theorem roster_compiled_prefix_noise
       fun final => (sourcePrefix? setup count final.application.config,
         ((application setup leaks).messageView final, final.recall focal))
   have joint : prior.bind (fun seed => combined seed.val) = setup.initialLaw.bind combined := by
-    rw [← PMF.bind_map Subtype.val prior combined]
+    refine (PMF.bind_map prior Subtype.val combined).symm.trans ?_
     exact congrArg (fun law => law.bind combined) (map_val_pmfToSubtype _ _)
   change (prior.bind fun seed => combined seed.val) =
     ((prior.bind fun seed => combined seed.val).map Prod.fst).bind fun state =>

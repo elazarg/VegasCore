@@ -287,7 +287,10 @@ theorem active_nonbinding_block_stopped_coupling
         apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (existsTail next member).choose_spec.1
-      _ = _ := by rw [← PMF.bind_map, first]
+      _ = _ := by
+        refine (PMF.bind_map step Prod.fst
+          ((runtime setup).runInteractionPlan leaks players network suffix)).symm.trans ?_
+        rw [first]
   · rw [map_bindOnSupport]
     calc
       _ = step.bind (fun next => strategy.runJoint owner players scheduler suffix.length
@@ -296,7 +299,7 @@ theorem active_nonbinding_block_stopped_coupling
         intro next member
         exact (existsTail next member).choose_spec.2.1
       _ = (step.map Prod.snd).bind (fun next => strategy.runJoint owner players scheduler
-          suffix.length next.1 next.2) := by rw [PMF.bind_map]
+          suffix.length next.1 next.2) := by rw [PMF.bind_map]; rfl
       _ = _ := by rw [second]
   · intro final supported
     obtain ⟨next, member, reached⟩ :=

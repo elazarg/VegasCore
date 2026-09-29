@@ -63,7 +63,7 @@ theorem menu_prefix_readout (setup : Setup (Player := Player) (L := L))
 /-- The actual finite C-game compiler preserves the complete source-state
 law at every source boundary, for every legal source behavioral profile. -/
 theorem compiled_behavioral_prefix_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)
@@ -86,7 +86,7 @@ theorem compiled_behavioral_prefix_law
 /-- The focal alias selector also preserves actual source-state prefix laws.
 This is the distributional premise used by the belief projection theorem. -/
 theorem focal_behavioral_prefix_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)

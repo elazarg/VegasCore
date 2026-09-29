@@ -52,7 +52,8 @@ private theorem source_prefix_terminal_readout
       (PMF.pure (ProtocolState.entry program source))).map (ProtocolState.readout program) =
       (runFrom program profile source).map some := by
   induction program with
-  | ret payoffs => simp [eventCount, runFrom, runWith, ProtocolState.readout, ProtocolState.entry]
+  | ret payoffs =>
+      simp [eventCount, runFrom, runWith, ProtocolState.readout, ProtocolState.entry, PMF.pure_map]
   | sample name fresh law next ih => exact reveals.elim
   | commit name owner fresh guard next ih => exact reveals.elim
   | reveal published owner name fresh selected unresolved next ih =>

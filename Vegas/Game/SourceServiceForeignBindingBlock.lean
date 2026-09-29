@@ -199,7 +199,10 @@ theorem foreign_binding_block_stopped_coupling
         apply bindOnSupport_eq_bind_of_eq_on_support _
         intro next member
         exact (existsTail next member).choose_spec.1
-      _ = _ := by rw [← PMF.bind_map, first, ← (runtime setup).runInteractionPlan_append]
+      _ = _ := by
+        refine (PMF.bind_map window Prod.fst
+          ((runtime setup).runInteractionPlan leaks players network ending)).symm.trans ?_
+        rw [first, ← (runtime setup).runInteractionPlan_append]
   have rightLaw : coupling.map Prod.snd = strategy.runJoint owner players scheduler
       (visits.map ServiceInstruction.player ++ ending).length repaired memory := by
     rw [List.length_append, List.length_map, ReactiveApplication.Implementation.runJoint_add,
@@ -212,7 +215,7 @@ theorem foreign_binding_block_stopped_coupling
         exact (existsTail next member).choose_spec.2.1
       _ = (window.map Prod.snd).bind (fun next =>
           strategy.runJoint owner players scheduler ending.length next.1 next.2) := by
-        rw [PMF.bind_map]
+        rw [PMF.bind_map]; rfl
       _ = _ := by rw [second]
   refine ⟨coupling, leftLaw, rightLaw, ?_⟩
   intro final supported

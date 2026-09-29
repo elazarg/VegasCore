@@ -85,7 +85,7 @@ variable [Fintype Player]
 /-- At every legal retained decision a fresh opening is already normalized.
 All prerequisites follow from actual source and network history. -/
 theorem roster_fresh_normal
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)

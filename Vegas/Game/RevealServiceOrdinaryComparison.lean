@@ -174,7 +174,8 @@ open Classical in
 continuation is arbitrary and the legal continuation may use any C profile,
 including future withholding. The source transcript induction supplies its
 cleanliness; the finite payoff carrier supplies the two payoff bounds. -/
-theorem ordinary_extra_comparison (watcher owner : Player) (different : owner ≠ watcher)
+theorem ordinary_extra_comparison [setup.FiniteInitialLaw] [leaks.FiniteSupport]
+    (watcher owner : Player) (different : owner ≠ watcher)
     (reveals : setup.program.RevealOnly)
     (legalProfile : Profile (information setup leaks bounds watcher).behavioralSignature)
     (targetProfile : Profile (watchedInformation setup leaks bounds watcher).behavioralSignature)
@@ -255,7 +256,11 @@ theorem ordinary_extra_comparison (watcher owner : Player) (different : owner �
       intro final supported
       obtain ⟨reached, member, rfl⟩ := PMF.support_map .. ▸ supported
       exact clean reached member)
-    (by rw [FinDist.probOf_map]; exact collected) sufficient
-  simpa only [expect_map] using compared
+    (payoffIntegrable_of_finite_support _ _
+      (by rw [PMF.support_map]; exact (Set.toFinite _).image _))
+    (payoffIntegrable_of_finite_support _ _
+      (by rw [PMF.support_map]; exact (Set.toFinite _).image _))
+    (by rw [PMF.toOuterMeasure_map_apply]; exact collected) sufficient
+  simpa only [expect_map, Function.comp_def] using compared
 
 end Vegas

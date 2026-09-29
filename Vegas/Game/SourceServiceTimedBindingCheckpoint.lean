@@ -112,7 +112,7 @@ theorem scheduledBindingWindow_config
     PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke,
     ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-    PMF.bind_bind] at continued
+    PMF.bind_bind, Function.comp_def] at continued
   obtain ⟨sample, _observed, continued⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ continued)
   let activated := current.sampledActivation app owner sample

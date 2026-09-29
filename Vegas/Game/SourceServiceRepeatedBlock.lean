@@ -147,7 +147,7 @@ theorem repeated_binding_block_coupling
       obtain ⟨record, present, authored, rejected⟩ := bad
       refine ⟨record, ?_, authored, rejected⟩
       have reached : final.1 ∈ leftLaw.support := by
-        rw [← bindPairLaw_map_fst leftLaw rightLaw, PMF.support_map]
+        rw [← bindPairLaw_map_fst leftLaw (fun _ => rightLaw), PMF.support_map]
         exact ⟨final, member, rfl⟩
       exact ((runtime setup).executionTraffic_runInteractionPlan leaks players network ending
         next.1 final.1 reached).subset present
@@ -261,8 +261,8 @@ theorem repeated_binding_block_coupling
         intro next supported
         exact (existsTail next supported).choose_spec.1
       _ = (window.map Prod.fst).bind
-          ((runtime setup).runInteractionPlan leaks players network ending) :=
-        (PMF.bind_map ..).symm
+          ((runtime setup).runInteractionPlan leaks players network ending) := by
+        rw [PMF.bind_map]; rfl
       _ = _ := by rw [first, ← (runtime setup).runInteractionPlan_append]
   · rw [roster_runJoint_append_reserved setup leaks rosters network strategy owner players
       before (visits.map ServiceInstruction.player) ending after split
@@ -277,7 +277,7 @@ theorem repeated_binding_block_coupling
         exact (existsTail next supported).choose_spec.2.1
       _ = (window.map Prod.snd).bind (fun next =>
           ((runtime setup).runInteractionPlan leaks players network ending next.1).map
-            fun final => (final, next.2)) := by rw [PMF.bind_map]
+            fun final => (final, next.2)) := by rw [PMF.bind_map]; rfl
       _ = _ := by rw [second]
   · intro final member
     obtain ⟨next, supported, reached⟩ :=
