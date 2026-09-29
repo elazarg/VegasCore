@@ -38,7 +38,7 @@ include reveals observer openable in
 /-- One fixed replay-extended game implements every retained SE, with the same
 complete initialized history law and application-state payoff law. In particular,
 the reporter may have arbitrary preferences over application outcomes. -/
-theorem replay_equilibrium_extends
+theorem replay_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (source : (information setup leaks bounds watcher).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       ((menu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)

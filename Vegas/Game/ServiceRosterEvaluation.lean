@@ -109,8 +109,8 @@ theorem roster_restrict_activation_state
   have remaining : (rosterPlan setup rosters).length - count =
       ((rosterPlan setup rosters).length - count - 1) + 1 := by omega
   conv_lhs => rw [remaining]
-  simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-    ReactiveApplication.transition, rosterScheduler, countEq, selected,
+  simp only [Function.comp_apply, ReactiveApplication.controlStep, ReactiveApplication.actor,
+    Option.bind_some, ReactiveApplication.transition, rosterScheduler, countEq, selected,
     interactionInstruction, PMF.pure_bind, ReactiveApplication.Command.actor?]
 
 omit [Fintype Player] in

@@ -145,13 +145,13 @@ theorem owner_context_local_value
       ((setup.protocolStep (prefixReadout setup leaks event.val history.1.state)
         (joint (sourceChoice setup leaks (choice.1.getD ⟨none⟩)))).bind
           (setup.continuationLaw profile))).support.Finite :=
-    bind_support_finite (Set.toFinite _) fun choice _ => by
-    rw [PMF.support_map]
-    exact (bind_support_finite (setup.protocolStep_support_finite _ _) fun state _ =>
-      setup.continuationLaw_support_finite profile
-        (FiniteBindingTypes.profileFiniteSupport _
-          (RevealOnly.finiteBindingTypes setup.program reveals) profile) state).image
-      (some : State L setup.program.terminalCtx → _)
+    bind_support_finite (Set.toFinite _) fun _ _ => by
+      rw [PMF.support_map]
+      exact (bind_support_finite (setup.protocolStep_support_finite _ _) fun state _ =>
+        setup.continuationLaw_support_finite profile
+          (FiniteBindingTypes.profileFiniteSupport _
+            (RevealOnly.finiteBindingTypes setup.program reveals) profile) state).image
+        (some : State L setup.program.terminalCtx → _)
   rw [Function.comp_apply, value,
     expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _ supportFinite)]
   simp only [expect_map, Function.comp_def, Option.elim_some]

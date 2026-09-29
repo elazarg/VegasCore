@@ -340,7 +340,9 @@ theorem active_history_stopped_coupling
         intro next member
         exact (existsTail next member).choose_spec.1
       _ = _ := by
-        rw [← PMF.bind_map, first, PMF.bind_bind]
+        refine (PMF.bind_map firstBlock Prod.fst
+          ((runtime setup).runInteractionPlan leaks players network future)).symm.trans ?_
+        rw [first, PMF.bind_bind]
         apply bind_congr_on_support _
         intro afterResponse _
         exact ((runtime setup).runInteractionPlan_append leaks players network current future
@@ -357,7 +359,7 @@ theorem active_history_stopped_coupling
         exact (existsTail next member).choose_spec.2.1
       _ = (firstBlock.map Prod.snd).bind (fun next =>
           strategy.runJoint owner players scheduler future.length next.1 next.2) := by
-        rw [PMF.bind_map]
+        rw [PMF.bind_map]; rfl
       _ = _ := by
         rw [second, PMF.bind_bind, remainingEq]
         apply bind_congr_on_support _

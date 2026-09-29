@@ -110,11 +110,11 @@ private theorem successor_counterpart
       have witness : matched (some ⟨count, nextActor, right⟩) :=
         ⟨count, nextActor, left, right, reached, rfl, related⟩
       rw [decide_eq_true witness])
-  rw [PMF.bind_const, ← PMF.bind_pure_comp, Function.comp_def] at coupling
+  rw [PMF.bind_const] at coupling
   have inMap : decide (matched next) ∈
       (PMF.pure true).support := by
-    rw [coupling, PMF.support_map]
-    exact ⟨next, supported, rfl⟩
+    rw [coupling, PMF.support_bind]
+    exact Set.mem_iUnion₂.mpr ⟨next, supported, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   have witness : matched next := of_decide_eq_true ((PMF.mem_support_pure_iff _ _).mp inMap)
   obtain ⟨count, nextActor, left, right, reached, nextEq, related⟩ := witness
   have prefixLaw := sourceMenu.run_map_controlSteps (initialLaw setup) (horizon setup watcher)
