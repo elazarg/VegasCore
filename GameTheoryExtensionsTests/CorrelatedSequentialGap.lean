@@ -123,7 +123,8 @@ theorem reference_mixed (sequential : Bool) : (reference sequential).IsFullyMixe
   exact PMF.mem_support_uniformOfFintype choice
 
 instance (sequential : Bool) : Finite (arena sequential).History :=
-  (reference_mixed sequential).finite_history (bounded sequential)
+  (reference_mixed sequential).finite_history (bounded sequential) (fun _ _ => Set.toFinite _)
+    (fun _ => by simp)
 
 instance (sequential : Bool) : Fintype (arena sequential).History := Fintype.ofFinite _
 
@@ -190,7 +191,8 @@ theorem context_value {sequential : Bool}
     (assessment.continuationContext site (reward who ·.state) 2).value alternative =
       expect (stateLaw (Profile.update assessment.strategy who alternative) site.1)
         (reward who) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+    expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
   calc
     _ = expect (assessment.belief who site) (fun _ =>
         expect (stateLaw (Profile.update assessment.strategy who alternative) site.1)
@@ -200,7 +202,7 @@ theorem context_value {sequential : Bool}
       have same : history.1.state = site.1 := by simpa using history.2
       have laws := congrArg (fun law => expect law (reward who))
         (run_states (Profile.update assessment.strategy who alternative) 2 history.1)
-      simpa only [expect_map, same, stateLaw] using laws
+      simpa only [expect_map, Function.comp_def, same, stateLaw] using laws
     _ = _ := expect_constant _ _
 
 theorem canonical_root_outcome (sequential : Bool) (actions : Bool → Bool) :
@@ -208,7 +210,7 @@ theorem canonical_root_outcome (sequential : Bool) (actions : Bool → Bool) :
       PMF.pure (if actions false then some (actions true) else none) := by
   cases entrant : actions false <;> cases incumbent : actions true <;> cases sequential <;>
     simp [stateLaw, Function.iterate_succ_apply', kernel, canonical, choose,
-      running, active, next, entrant, incumbent, outcome]
+      running, active, next, entrant, incumbent, outcome, independentProduct_pure, PMF.pure_map]
 
 theorem source_root_law (profile : Profile (model false).behavioralSignature) :
     stateLaw profile [] =
@@ -226,15 +228,16 @@ theorem prescribed_root_value (sequential who : Bool) :
     (canonical_root_outcome sequential (fun _ => false))
   change expect (stateLaw (canonical sequential fun _ => false) [])
     (fun state => utility who (outcome state)) = _
-  simpa only [expect_map, Bool.false_eq_true, ↓reduceIte, expect_pure,
+  simpa only [expect_map, Function.comp_def, Bool.false_eq_true, ↓reduceIte, expect_pure,
     utility] using law
 
 theorem source_deviation_bound (who : Bool) (alternative : (model false).BehavioralPolicy who) :
     expect (stateLaw (Profile.update (prescribed false) who alternative) []) (reward who) ≤
       if who then 2 else 1 := by
   rw [source_root_law, expect_map]
-  apply FinDist.expect_le_of_forall
+  apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
   intro joint supported
+  simp only [Function.comp_apply]
   have opponent := ((independentProduct_support_iff _ _).mp supported) (!who)
   have opponentChoice : joint (!who) = choose false false (!who) [] := by
     cases who <;> simpa [Profile.update, prescribed, canonical] using opponent
@@ -254,7 +257,9 @@ theorem source_deviation_bound (who : Bool) (alternative : (model false).Behavio
 theorem source_rational (assessment : (model false).BehavioralAssessment)
     (strategy : assessment.strategy = prescribed false) :
     assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2 := by
-  intro who site alternative _
+  intro who site
+  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+    fun alternative _ => ?_⟩
   obtain ⟨history, _, _⟩ := site.2
   have acts := InformationModel.InformationSite.active (model false) site history
   have same : history.1.state = site.1 := by simpa using history.2
@@ -285,7 +290,7 @@ theorem branch_kernel (profile : Profile (model true).behavioralSignature) :
     kernel profile [(true, false)] =
       (actionLaw profile true [(true, false)]).map
         (fun action => [(true, action), (true, false)]) := by
-  have marginal := independentProduct_map_eval true (fun who => profile who [(true, false)])
+  have marginal := independentProduct_map_eval (fun who => profile who [(true, false)]) true
   have mapped := congrArg (fun law => law.map
     (fun choice : (model true).Choice true [(true, false)] =>
       [(true, choice.val.getD false), (true, false)])) marginal
@@ -298,7 +303,7 @@ theorem root_kernel (profile : Profile (model true).behavioralSignature) :
   have idle (choice : (model true).Choice true []) : choice.val = none := by
     have permitted := choice.property
     cases value : choice.val <;> simp_all [model, active]
-  have marginal := independentProduct_map_eval false (fun who => profile who [])
+  have marginal := independentProduct_map_eval (fun who => profile who []) false
   have mapped := congrArg (fun law => law.map
     (fun choice : (model true).Choice false [] => [(choice.val.getD false, false)])) marginal
   simpa only [kernel, running, true_or, ite_true, next, ↓reduceIte,
@@ -321,8 +326,11 @@ theorem target_root_law (profile : Profile (model true).behavioralSignature) :
   intro action _
   cases action
   · simp [kernel, running]
-  · rw [branch_kernel, PMF.bind_map]
-    simp [kernel, running, ← PMF.bind_pure_comp, Function.comp_def]
+  · simp only [Function.comp_apply, ↓reduceIte]
+    rw [branch_kernel, PMF.bind_map, ← PMF.bind_pure_comp]
+    apply bind_congr_on_support
+    intro action _
+    simp [kernel, running]
 
 def branchHistory : (arena true).History :=
   (arena true).initHistory.extend (joint := fun who => if who then none else some true)
@@ -347,12 +355,14 @@ theorem branch_deviation_value (profile : Profile (model true).behavioralSignatu
     expect (stateLaw (Profile.update profile true ((canonical true (fun _ => true)) true))
       [(true, false)]) (reward true) = 1 := by
   rw [branch_law]
-  simp [actionLaw, canonical, choose, active, reward, outcome, utility]
+  simp [actionLaw, canonical, choose, active, reward, outcome, utility, PMF.pure_map,
+    expect_pure]
 
 theorem rational_branch_value (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2) :
     1 ≤ expect (stateLaw assessment.strategy [(true, false)]) (reward true) := by
-  have improves := rational true branchSite ((canonical true fun _ => true) true) (Set.mem_univ _)
+  have improves := (rational true branchSite).2.2 ((canonical true fun _ => true) true)
+    (Set.mem_univ _)
   rw [context_value, context_value, Profile.update_eq_self] at improves
   change expect (stateLaw _ [(true, false)]) _ ≤ _ at improves
   rw [branch_deviation_value] at improves
@@ -368,7 +378,7 @@ theorem branch_payoff_relation (profile : Profile (model true).behavioralSignatu
       apply expect_congr_on_support
       intro action _
       cases action <;> norm_num [reward, outcome, utility]
-    _ = _ := by rw [FinDist.expect_add, expect_constant, FinDist.expect_smul]
+    _ = _ := by rw [expect_add_of_finite, expect_constant, expect_const_mul]; rfl
 
 theorem enter_deviation_value (profile : Profile (model true).behavioralSignature) :
     expect (stateLaw (Profile.update profile false ((canonical true (fun _ => true)) false)) [])
@@ -385,7 +395,8 @@ theorem rational_root_value (assessment : (model true).BehavioralAssessment)
     2 ≤ expect (stateLaw assessment.strategy []) (reward false) := by
   have incumbent := rational_branch_value assessment rational
   have relation := branch_payoff_relation assessment.strategy
-  have improves := rational false rootSite ((canonical true fun _ => true) false) (Set.mem_univ _)
+  have improves := (rational false rootSite).2.2 ((canonical true fun _ => true) false)
+    (Set.mem_univ _)
   rw [context_value, context_value, Profile.update_eq_self] at improves
   change expect (stateLaw _ []) _ ≤ _ at improves
   rw [enter_deviation_value] at improves
@@ -464,7 +475,8 @@ theorem threat_nash (sequential : Bool) :
   intro who replacement
   rw [euPreference_apply, normalForm_play, normalForm_play,
     expectedUtility_pure, expectedUtility_pure]
-  cases who <;> cases replacement <;> norm_num [Profile.update, utility]
+  cases who <;> cases replacement <;>
+    norm_num [Profile.update, utility, UtilityIntegrable, payoffIntegrable_pure]
 
 theorem threat_correlated (sequential : Bool) :
     IsCorrelatedEq (normalForm sequential) (euPreference (fun result who => utility who result))

@@ -437,9 +437,14 @@ theorem run_root_leave (profile : ∀ who, (model true).BehavioralPolicy who)
 theorem response_charge (profile : ∀ who, (model true).BehavioralPolicy who) :
     expect ((model true).runBehavioralFrom profile 1 (responseHistory true rfl))
       (fun history => charge history false) = 1 := by
-  rw [(model true).runBehavioralFrom_succ_localStep]
-  simp only [InformationModel.runBehavioralFrom, runRandomizedFor_zero,
-    FinDist.expect_bind, expect_pure]
+  have bounded (law : PMF (arena true).History) :
+      PayoffIntegrable law (fun history => charge history false) :=
+    payoffIntegrable_of_bounded _ _ (C := 1) fun history => by
+      unfold charge
+      split <;> (try split) <;> norm_num
+  have zero : (model true).runBehavioralFrom profile 0 = PMF.pure := funext fun _ => rfl
+  rw [(model true).runBehavioralFrom_succ_localStep, zero, PMF.bind_pure,
+    expect_bind_tower _ _ _ (bounded _)]
   calc
     _ = expect (independentProduct fun who => profile who
         ((model true).infoOf who (responseHistory true rfl).trace)) (fun _ => 1) := by
@@ -449,7 +454,7 @@ theorem response_charge (profile : ∀ who, (model true).BehavioralPolicy who) :
         | .response | .done (some _) => 1
         | _ => 0
       change expect ((model true).localStep (responseHistory true rfl) choices)
-        (fun history => cost history.state) = 1
+        (cost ∘ fun history => history.state) = 1
       rw [← expect_map, localStep_state]
       simp [responseHistory, terminal, transition, cost, joint, expect_pure]
     _ = _ := expect_constant _ _

@@ -112,7 +112,8 @@ theorem reference_mixed (split : Bool) : (reference split).IsFullyMixed := by
   exact PMF.mem_support_uniformOfFintype choice
 
 instance (split : Bool) : Finite (arena split).History :=
-  (reference_mixed split).finite_history (bounded split)
+  (reference_mixed split).finite_history (bounded split) (fun _ _ => Set.toFinite _)
+    (fun _ => by simp)
 
 instance (split : Bool) : Fintype (arena split).History := Fintype.ofFinite _
 
@@ -190,7 +191,8 @@ theorem terminal_reward (split goal : Bool) (history : (arena split).History)
         rw [selected] at authorized
         exact authorized.2
       have next : state = action :: before := by
-        simpa only [arena, selected, Option.getD_some] using (PMF.mem_support_pure_iff _ _).mp realized
+        simpa only [arena, selected, Option.getD_some] using
+          (PMF.mem_support_pure_iff _ _).mp realized
       subst state
       cases action with
       | none =>
@@ -205,6 +207,12 @@ theorem reward_le_two (goal : Bool) (state : State) : reward goal state ≤ 2 :=
   unfold reward
   split <;> norm_num
   split <;> norm_num
+
+/-- Rewards are bounded, so every law over states integrates them. -/
+theorem reward_integrable (goal : Bool) (law : PMF State) : PayoffIntegrable law (reward goal) :=
+  payoffIntegrable_of_bounded _ _ (C := 2) fun state => by
+    unfold reward
+    split_ifs <;> norm_num
 
 theorem canonical_source (goal : Bool) : canonical false goal = canonical false false := by
   funext who state
@@ -245,7 +253,7 @@ theorem canonical_state_root (split goal : Bool) :
 theorem canonical_state_branch (goal : Bool) :
     stateLaw (canonical true goal) [some false] = PMF.pure [some goal, some false] := by
   rw [branch_law]
-  simp [canonical, active]
+  simp [canonical, active, PMF.pure_map]
 
 theorem reward_pair_le_one (goal : Bool) (action : Outcome) :
     reward goal [action, some false] ≤ 1 := by
@@ -259,7 +267,8 @@ theorem context_value {split : Bool} (assessment : (model split).BehavioralAsses
     (assessment.continuationContext site (fun h => reward goal h.state) 2).value alternative =
       expect (stateLaw (Profile.update assessment.strategy () alternative) site.1)
         (reward goal) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+    expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
   calc
     _ = expect (assessment.belief () site) (fun _ =>
         expect (stateLaw (Profile.update assessment.strategy () alternative) site.1)
@@ -269,7 +278,7 @@ theorem context_value {split : Bool} (assessment : (model split).BehavioralAsses
       have same : history.1.state = site.1 := by simpa using history.2
       have laws := congrArg (fun law => expect law (reward goal))
         (run_states (Profile.update assessment.strategy () alternative) 2 history.1)
-      simpa only [expect_map, same, stateLaw] using laws
+      simpa only [expect_map, Function.comp_def, same, stateLaw] using laws
     _ = _ := expect_constant _ _
 
 theorem update_own (split : Bool) (profile : Profile (model split).behavioralSignature) :
@@ -282,8 +291,10 @@ theorem canonical_rational (split goal : Bool)
     (assessment : (model split).BehavioralAssessment)
     (strategy : assessment.strategy = canonical split goal) :
     assessment.IsSequentiallyRationalWithin (fun _ h => reward goal h.state) 2 := by
-  intro who site alternative _
+  intro who site
   cases who
+  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+    fun alternative _ => ?_⟩
   rw [context_value, context_value, update_own, strategy]
   obtain ⟨history, _, _⟩ := site.2
   have acts := InformationModel.InformationSite.active (model split) site history
@@ -292,11 +303,11 @@ theorem canonical_rational (split goal : Bool)
   rcases acts with root | ⟨rfl, branch⟩
   · rw [root, canonical_state_root, expect_pure]
     change _ ≤ 2
-    exact FinDist.expect_le_of_forall _ _ _ (fun state _ => reward_le_two goal state)
+    exact expect_le_const _ _ (reward_integrable _ _) _ (fun state _ => reward_le_two goal state)
   · rw [branch, canonical_state_branch, expect_pure]
     have value : reward goal [some goal, some false] = 1 := by simp [reward]
     rw [value, branch_law, expect_map]
-    apply FinDist.expect_le_of_forall
+    apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
     intro choice _
     exact reward_pair_le_one goal _
 
@@ -346,7 +357,7 @@ theorem update_unit {split : Bool}
 theorem rational_branch_value (goal : Bool) (assessment : (model true).BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin (fun _ h => reward goal h.state) 2) :
     1 ≤ expect (stateLaw assessment.strategy [some false]) (reward goal) := by
-  have bound := rational () branchSite ((canonical true goal) ()) (Set.mem_univ _)
+  have bound := (rational () branchSite).2.2 ((canonical true goal) ()) (Set.mem_univ _)
   rw [context_value, context_value, update_own, update_unit, branch_site_value] at bound
   change expect (stateLaw (canonical true goal) [some false]) (reward goal) ≤ _ at bound
   rw [canonical_state_branch, expect_pure] at bound
@@ -356,9 +367,10 @@ theorem rational_branch_value (goal : Bool) (assessment : (model true).Behaviora
 theorem branch_opposite_reward_bound (profile : Profile (model true).behavioralSignature) :
     expect (stateLaw profile [some false]) (reward false) +
       expect (stateLaw profile [some false]) (reward true) ≤ 1 := by
-  rw [← FinDist.expect_add, branch_law, expect_map]
-  apply FinDist.expect_le_of_forall
+  rw [← expect_add (reward_integrable _ _) (reward_integrable _ _), branch_law, expect_map]
+  apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
   intro choice _
+  simp only [Function.comp_apply]
   cases action : choice.val.getD none with
   | none => norm_num [reward]
   | some bit => cases bit <;> norm_num [reward]
