@@ -112,6 +112,12 @@ omit [DecidableEq Player] in
   funext who event actor observation
   simp [fromModeProfile, fromModePolicy]
 
+omit [DecidableEq Player] in
+/-- An execution mode changes only dependency order, not actions. -/
+theorem FiniteActions.withMode {graph : Vegas.EventGraph Player L} (finite : graph.FiniteActions)
+    (mode : ExecutionMode) : (graph.withMode mode).FiniteActions :=
+  finite
+
 /-- Canonical execution has the same typed terminal-store law in either
 dependency mode after forgetting the mode from the behavioral profile. -/
 theorem runPolicies_withMode_store (graph : Vegas.EventGraph Player L)

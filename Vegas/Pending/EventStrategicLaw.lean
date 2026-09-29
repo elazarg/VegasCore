@@ -16,16 +16,20 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-/-- Every native focal replacement has the terminal store law of a finite
-mixture of graph-policy replacements against the unchanged opponents. -/
+/-- Every finitely branching native focal replacement has the terminal store
+law of a finite mixture of graph-policy replacements against the unchanged
+opponents. -/
 theorem exists_deviation_mixture_store_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
-    (ordered : graph.BarrierOrdered)
-    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
+    (ordered : graph.BarrierOrdered) (finite : graph.FiniteActions)
+    (inputs : PMF graph.Inputs) (inputsFinite : inputs.support.Finite)
+    (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (focal : Player) (replacement : runtime.application.PlayerPolicy)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
-    ∃ mixture : PMF (graph.BehavioralPolicy focal),
+    (replacementFinite : replacement.FiniteSupport)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport) :
+    ∃ mixture : PMF (graph.BehavioralPolicy focal), mixture.support.Finite ∧
       ((runtime.servicedEventGame inputs roster reactionRounds wire order).play
         (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
           (runtime.compileProfile profile) focal replacement)).map
@@ -67,8 +71,9 @@ theorem exists_deviation_mixture_store_law
       players response.wirePure response.orderPure focal response.player fixedFocal response.wire
       fixedWire response.order fixedOrder opponentCompiled event observation left right
       leftReached rightReached
-  apply runtime.exists_reachedPolicy_mixture_store_law feasible ordered inputs profile roster
-    reactionRounds focal replacement wire order functional
+  apply runtime.exists_reachedPolicy_mixture_store_law feasible ordered finite inputs
+    inputsFinite profile roster reactionRounds focal replacement replacementFinite wire
+    wireFinite order orderFinite functional
   intro response
   dsimp only
   intro control reachable owner different event actor entered activated unfinished

@@ -176,7 +176,7 @@ of a later chosen equilibrium. Correlated private initialization is retained;
 it must be finitely supported. -/
 theorem reveal_finite_history [Finite Player] (setup : Setup (Player := Player) (L := L))
     (reveals : setup.program.RevealOnly) (admission : CommitmentInterface setup.program)
-    (initialFinite : setup.initialLaw.support.Finite) :
+    [setup.FiniteInitialLaw] :
     Finite (setup.executionProtocol admission).History :=
   (setup.revealReference_fullyMixed reveals admission).finite_history
     (setup.protocol_bounded admission)
@@ -184,7 +184,7 @@ theorem reveal_finite_history [Finite Player] (setup : Setup (Player := Player) 
       have := setup.finite_choice (RevealOnly.finiteBindingTypes setup.program reveals)
         admission who info
       Set.toFinite _)
-    (fun draw => setup.protocolStep_support_finite initialFinite _ draw.1)
+    (fun draw => setup.protocolStep_support_finite _ draw.1)
 
 end Setup
 

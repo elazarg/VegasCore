@@ -47,6 +47,11 @@ abbrev ServiceOrderPolicy (runtime : EventGraphRuntime graph) :=
   List runtime.application.EnvironmentEntry → runtime.application.EnvironmentObservation →
     PMF (ServiceOrder graph)
 
+/-- An adaptive order policy draws finitely many orders at every input. -/
+def ServiceOrderPolicy.FiniteSupport {runtime : EventGraphRuntime graph}
+    (order : runtime.ServiceOrderPolicy) : Prop :=
+  ∀ past view, (order past view).support.Finite
+
 /-- A service instruction reserves an opportunity, never a player command. -/
 inductive ServiceInstruction (graph : Vegas.EventGraph Player L) where
   | player (who : Player)
@@ -101,6 +106,25 @@ def serviceStep (runtime : EventGraphRuntime graph)
   | .tick => runtime.application.environmentPolicyStep execution (.application .advanceClock)
   | .expire event => runtime.application.environmentPolicyStep execution
       (.application (.expire event))
+
+/-- Finitely branching player and wire policies make every service step
+finitely supported; the runtime's own chance is always finite. -/
+theorem serviceStep_support_finite (runtime : EventGraphRuntime graph)
+    {players : Player → runtime.application.PlayerPolicy}
+    {wire : runtime.application.WirePolicy}
+    (playersFinite : ∀ who, (players who).FiniteSupport) (wireFinite : wire.FiniteSupport)
+    (instruction : ServiceInstruction graph) (execution : runtime.application.PolicyExecution) :
+    (runtime.serviceStep players wire instruction execution).support.Finite := by
+  have finite := runtime.application_finiteEnvironment
+  have environmentFinite := MessageApplication.wireEnvironment_finiteSupport wireFinite
+  cases instruction with
+  | player who =>
+      exact MessageApplication.invoke_support_finite finite playersFinite environmentFinite
+        execution (.player who)
+  | wire =>
+      exact MessageApplication.invoke_support_finite finite playersFinite environmentFinite
+        execution .environment
+  | _ => exact MessageApplication.environmentPolicyStep_support_finite finite _ _
 
 /-- Sequence concrete service opportunities without projecting away histories,
 packets, receipts, private commands, or native chance. -/
@@ -216,5 +240,55 @@ def servicedEventGame (runtime : EventGraphRuntime graph)
     runtime.runService roster reactionRounds players wire order runtime.serviceEpochs
       (MessageApplication.PolicyExecution.initial _
         (MessageApplication.State.initial _ (State.initial input)))
+
+section Finiteness
+
+variable (runtime : EventGraphRuntime graph) (roster : List Player) (reactionRounds : Nat)
+  {players : Player → runtime.application.PlayerPolicy}
+  {wire : runtime.application.WirePolicy} {order : runtime.ServiceOrderPolicy}
+  (playersFinite : ∀ who, (players who).FiniteSupport) (wireFinite : wire.FiniteSupport)
+
+include playersFinite wireFinite in
+theorem runServicePlan_support_finite :
+    ∀ (plan : List (ServiceInstruction graph)) (execution : runtime.application.PolicyExecution),
+      (runtime.runServicePlan players wire plan execution).support.Finite
+  | [], _ => by simp [runServicePlan]
+  | instruction :: rest, execution => by
+      rw [runServicePlan, PMF.support_bind]
+      exact (runtime.serviceStep_support_finite playersFinite wireFinite _ _).biUnion
+        fun _ _ => runServicePlan_support_finite rest _
+
+include playersFinite wireFinite in
+theorem serviceEpoch_support_finite (orderFinite : order.FiniteSupport)
+    (execution : runtime.application.PolicyExecution) :
+    (runtime.serviceEpoch roster reactionRounds players wire order execution).support.Finite := by
+  rw [serviceEpoch, PMF.support_bind]
+  exact (orderFinite _ _).biUnion fun _ _ =>
+    runtime.runServicePlan_support_finite playersFinite wireFinite _ _
+
+include playersFinite wireFinite in
+theorem runService_support_finite (orderFinite : order.FiniteSupport) :
+    ∀ (count : Nat) (execution : runtime.application.PolicyExecution),
+      (runtime.runService roster reactionRounds players wire order count execution).support.Finite
+  | 0, _ => by simp [runService]
+  | count + 1, execution => by
+      rw [runService, PMF.support_bind]
+      exact (runtime.serviceEpoch_support_finite roster reactionRounds playersFinite wireFinite
+        orderFinite _).biUnion fun _ _ => runService_support_finite orderFinite count _
+
+include playersFinite wireFinite in
+/-- A finitely supported input law and finitely branching players, wire, and order
+give a finitely supported serviced play. -/
+theorem servicedEventGame_play_support_finite (orderFinite : order.FiniteSupport)
+    (inputs : PMF graph.Inputs) (inputsFinite : inputs.support.Finite) :
+    ((runtime.servicedEventGame inputs roster reactionRounds wire order).play
+      players).support.Finite := by
+  change (inputs.bind _).support.Finite
+  rw [PMF.support_bind]
+  exact inputsFinite.biUnion fun _ _ =>
+    runtime.runService_support_finite roster reactionRounds playersFinite wireFinite
+      orderFinite _ _
+
+end Finiteness
 
 end Vegas.EventGraphRuntime

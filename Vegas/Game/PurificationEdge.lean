@@ -37,7 +37,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- The pure-strategy game simulates the source game, under any reading of the
 outcome and with no restriction on the deviations considered. -/
 def pureSimulationOn {Observation : Type} (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (observe : SourceProgram.PublicOutcome setup.program → Observation) :
     GameForm.MixtureSimulationOn setup.pureGame setup.gameForm observe observe
       (fun _ _ => True) where
@@ -46,7 +46,7 @@ def pureSimulationOn {Observation : Type} (setup : Setup (Player := Player) (L :
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
     obtain ⟨mixture, _, hmixture⟩ :=
-      exists_pureMixture_publicRun setup finite initialFinite (pureProfile profile) replacement
+      exists_pureMixture_publicRun setup finite (pureProfile profile) replacement
     refine ⟨mixture, ?_⟩
     change (setup.publicRun (Function.update (pureProfile profile) who replacement)).map
       observe = _
@@ -56,57 +56,57 @@ def pureSimulationOn {Observation : Type} (setup : Setup (Player := Player) (L :
 
 /-- The edge read on the source outcome itself. -/
 def pureSimulation (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite) :
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw] :
     GameForm.MixtureSimulationOn setup.pureGame setup.gameForm id id (fun _ _ => True) :=
-  setup.pureSimulationOn finite initialFinite id
+  setup.pureSimulationOn finite id
 
 /-- Every source deviation from a compiled pure profile has integrable utility,
 because its outcome law is finitely supported. -/
 theorem pureSimulation_deviation_integrable (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (profile : Profile setup.pureGame.sig) (who : Player)
     (replacement : setup.gameForm.sig.Strategy who) :
     UtilityIntegrable (fun outcome player => utility (id outcome) player) who
       (setup.gameForm.play (Profile.update
-        ((setup.pureSimulation finite initialFinite).compileProfile profile) who replacement)) :=
+        ((setup.pureSimulation finite ).compileProfile profile) who replacement)) :=
   payoffIntegrable_of_finite_support _ _
-    (setup.gameForm_play_support_finite finite initialFinite _)
+    (setup.gameForm_play_support_finite finite _)
 
 /-- Randomizing buys a deviator nothing: a pure profile is ε-Nash in the full
 source game exactly when it is ε-Nash among pure policies. This is a statement
 about one profile, not about the restricted game: it does not say a pure
 equilibrium exists. -/
 theorem isεNash_pureGame_iff (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (value : SourceProgram.PublicOutcome setup.program → Player → ℝ) (ε : ℝ)
     (profile : Profile setup.pureGame.sig) :
     IsεNash setup.gameForm value ε (pureProfile profile) ↔
       IsεNash setup.pureGame value ε profile :=
-  ((setup.pureSimulation finite initialFinite).isεNash_compileProfile_iff value ε profile
+  ((setup.pureSimulation finite ).isεNash_compileProfile_iff value ε profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.pureSimulation_deviation_integrable finite initialFinite value profile who
+      setup.pureSimulation_deviation_integrable finite value profile who
         replacement)
 
 /-- The same at ε zero. -/
 theorem isNash_pureGame_iff (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (value : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (profile : Profile setup.pureGame.sig) :
     IsNash setup.gameForm (euPreference value) (pureProfile profile) ↔
       IsNash setup.pureGame (euPreference value) profile :=
-  ((setup.pureSimulation finite initialFinite).isNash_compileProfile_iff value profile
+  ((setup.pureSimulation finite ).isNash_compileProfile_iff value profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.pureSimulation_deviation_integrable finite initialFinite value profile who
+      setup.pureSimulation_deviation_integrable finite value profile who
         replacement)
 
 /-- The edge in the composable interface, at one-player coalitions. -/
 def pureUtilitySimulation (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ) :
     GameForm.UtilitySimulation setup.pureGame setup.gameForm utility utility
       (GameTheory.singletonGroups Player) :=
-  (setup.pureSimulation finite initialFinite).toUtilitySimulation utility (fun _ _ => trivial)
-    (setup.pureSimulation_deviation_integrable finite initialFinite utility)
+  (setup.pureSimulation finite ).toUtilitySimulation utility (fun _ _ => trivial)
+    (setup.pureSimulation_deviation_integrable finite utility)
 
 end Vegas.SourceProgram.Setup

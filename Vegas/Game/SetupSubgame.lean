@@ -56,7 +56,7 @@ finitely supported initial law every canonical continuation law of a pure
 profile is finitely supported and every utility is integrable. -/
 theorem protocol_backwardLaw_integrable (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program)
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (profile : Profile (admittedPureSignature setup.program admission))
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (history : (setup.executionProtocol admission).History) (who : Player) :
@@ -78,7 +78,7 @@ theorem protocol_backwardLaw_integrable (setup : Setup (Player := Player) (L := 
         (instructionCount setup.program + 1) history).map
           (fun final => setup.protocolReadout final.state)).support.Finite := by
     rw [law, PMF.support_map]
-    exact (setup.continuationLaw_support_finite initialFinite _
+    exact (setup.continuationLaw_support_finite _
       (PurePolicy.profileFiniteSupport setup.program fun who => (profile who).1) _).image _
   have integrable := (payoffIntegrable_map_iff _ _ (fun state => state.elim 0 (utility · who))).mp
     (payoffIntegrable_of_finite_support _ _ finite)
@@ -91,7 +91,7 @@ theorem protocol_backwardLaw_integrable (setup : Setup (Player := Player) (L := 
 the payoff and the retained prefix are never resampled for a deviation. -/
 theorem protocol_isSubgamePerfect_iff (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program)
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (profile : Profile (admittedPureSignature setup.program admission))
     (utility : State L setup.program.terminalCtx → Player → ℝ) :
     (setup.informationModel admission).IsSubgamePerfect
@@ -117,8 +117,8 @@ theorem protocol_isSubgamePerfect_iff (setup : Setup (Player := Player) (L := L)
   · intro optimal history proper who alternative
     obtain ⟨sourceAlternative, rfl⟩ := (setup.purePolicyEquiv admission who).surjective alternative
     rw [← Profile.map_update]
-    refine ⟨setup.protocol_backwardLaw_integrable admission initialFinite _ utility history who,
-      setup.protocol_backwardLaw_integrable admission initialFinite profile utility history who,
+    refine ⟨setup.protocol_backwardLaw_integrable admission _ utility history who,
+      setup.protocol_backwardLaw_integrable admission profile utility history who,
       ?_⟩
     rw [protocol_continuationValue_eq, protocol_continuationValue_eq]
     exact optimal history proper who sourceAlternative

@@ -16,6 +16,7 @@ import Interaction.MessageApplication
 import Interaction.MessageApplicationLaws
 import Interaction.MessageApplicationPolicies
 import Interaction.MessageApplicationWirePolicy
+import Interaction.MessageApplicationFiniteness
 import Interaction.MessageApplicationLocality
 import Interaction.MessageApplicationPending
 import Interaction.MessageApplicationPolicyLaws

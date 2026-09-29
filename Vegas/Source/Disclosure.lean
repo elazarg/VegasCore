@@ -214,14 +214,14 @@ so one comparison per decision serves every branch. -/
 theorem forceDisclose_run_expect_le {who : Player} (setup : Setup (Player := Player) (L := L))
     (utility : State L (terminalCtx setup.program) → ℝ)
     (profile : BehavioralProfile setup.program)
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (finite : BehavioralProfile.FiniteSupport setup.program profile)
     (premise : DisclosesProfitably setup.program utility profile (profile who)) :
     expect (setup.run profile) utility ≤
       expect (setup.run (Function.update profile who
         ((profile who).forceDisclose setup.program))) utility := by
-  have before := setup.run_support_finite initialFinite profile finite
-  have after := setup.run_support_finite initialFinite _
+  have before := setup.run_support_finite profile finite
+  have after := setup.run_support_finite _
     (forceDisclose_finiteSupport (who := who) setup.program profile finite)
   simp only [Setup.run] at before after ⊢
   exact expect_bind_mono_on_support _ _ _ _
@@ -237,7 +237,7 @@ opening at every decision loses nothing by being held to it. -/
 theorem exists_disclosing_expect_le {who : Player} (setup : Setup (Player := Player) (L := L))
     (utility : State L (terminalCtx setup.program) → ℝ)
     (profile : BehavioralProfile setup.program)
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (finite : BehavioralProfile.FiniteSupport setup.program profile)
     (premise : DisclosesProfitably setup.program utility profile (profile who)) :
     ∃ alternative : BehavioralPolicy who setup.program,
@@ -246,6 +246,6 @@ theorem exists_disclosing_expect_le {who : Player} (setup : Setup (Player := Pla
           expect (setup.run (Function.update profile who alternative)) utility :=
   ⟨(profile who).forceDisclose setup.program,
     disclosing_forceDisclose setup.program (profile who),
-    forceDisclose_run_expect_le setup utility profile initialFinite finite premise⟩
+    forceDisclose_run_expect_le setup utility profile finite premise⟩
 
 end Vegas.SourceProgram

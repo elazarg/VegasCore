@@ -283,7 +283,7 @@ theorem serviceControlStep_reached_deviationContinuation
       cases epochs with
       | zero => simp [serviceControlStep]
       | succ epochs =>
-          simp only [serviceControlStep, PMF.bind_map]
+          simp only [serviceControlStep, PMF.bind_map, Function.comp_def]
           exact PMF.bind_const _ _
   | cons instruction rest =>
       rw [show runtime.serviceControlStep roster reactionRounds players wire order
@@ -691,15 +691,19 @@ theorem servicedEventGame_reached_store_law
   exact runtime.runService_reached_store_law feasible ordered inputs input inputMem profile roster
     reactionRounds players wire order focal functional opponentCompiled environmentState
 
-/-- Joint predrawing of the focal player, wire, and adaptive order turns the
-native deviation into a finite mixture of graph-policy deviations. -/
+/-- Joint predrawing of the focal player, wire, and adaptive order turns a
+finitely branching native deviation into a finite mixture of graph-policy
+deviations. -/
 theorem exists_reachedPolicy_mixture_store_law
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
-    (ordered : graph.BarrierOrdered)
-    (inputs : PMF graph.Inputs) (profile : graph.BehavioralProfile)
+    (ordered : graph.BarrierOrdered) (finite : graph.FiniteActions)
+    (inputs : PMF graph.Inputs) (inputsFinite : inputs.support.Finite)
+    (profile : graph.BehavioralProfile)
     (roster : List Player) (reactionRounds : Nat)
     (focal : Player) (replacement : runtime.application.PlayerPolicy)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
+    (replacementFinite : replacement.FiniteSupport)
+    (wire : runtime.application.WirePolicy) (wireFinite : wire.FiniteSupport)
+    (order : runtime.ServiceOrderPolicy) (orderFinite : order.FiniteSupport)
     (functional : ∀ (response : PureServiceResponses runtime) (event : graph.EventId)
       (observation : graph.PlayerObservation focal) (left right : graph.Action event),
       let players := Profile.update
@@ -720,7 +724,7 @@ theorem exists_reachedPolicy_mixture_store_law
           control.execution.native.application.activatedAt event = some entered →
           event ∉ control.execution.native.application.config.cut.completed →
           control.execution.native.application.clock - entered ≤ 1) :
-    ∃ mixture : PMF (graph.BehavioralPolicy focal),
+    ∃ mixture : PMF (graph.BehavioralPolicy focal), mixture.support.Finite ∧
       ((runtime.servicedEventGame inputs roster reactionRounds wire order).play
         (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
           (runtime.compileProfile profile) focal replacement)).map
@@ -731,8 +735,11 @@ theorem exists_reachedPolicy_mixture_store_law
               (graph.normalizeProfile
                 (Profile.update (sig := graph.gameSignature) profile focal alternative))
               input).map (fun config => config.store) := by
-  obtain ⟨responses, responseLaw⟩ := runtime.exists_pureServiceResponses_mixture inputs roster
-    reactionRounds (runtime.compileProfile profile) wire order focal replacement
+  obtain ⟨responses, responsesFinite, responseLaw⟩ :=
+    runtime.exists_pureServiceResponses_mixture inputs roster reactionRounds
+      (runtime.compileProfile profile) wire order focal replacement inputsFinite
+      (runtime.compileProfile_finiteSupport (finite.profileFiniteSupport profile)) wireFinite
+      orderFinite replacementFinite
   let nativePlayers : PureServiceResponses runtime →
       Player → runtime.application.PlayerPolicy := fun response =>
     Profile.update (sig := MessageApplication.policySignature Player runtime.application)
@@ -741,7 +748,7 @@ theorem exists_reachedPolicy_mixture_store_law
     fun response => runtime.reachedFocalPolicy inputs roster reactionRounds
       (nativePlayers response) response.wirePure response.orderPure focal
   let mixture : PMF (graph.BehavioralPolicy focal) := responses.map alternative
-  refine ⟨mixture, ?_⟩
+  refine ⟨mixture, by rw [PMF.support_map]; exact responsesFinite.image _, ?_⟩
   have projected := congrArg
     (fun measure : PMF runtime.application.PolicyExecution =>
       measure.map fun next => next.native.application.config.store) responseLaw
@@ -768,6 +775,6 @@ theorem exists_reachedPolicy_mixture_store_law
               (graph.normalizeProfile
                 (Profile.update (sig := graph.gameSignature) profile focal alternative))
               input).map (fun config => config.store)) := by
-        simp only [mixture, PMF.bind_map]
+        simp only [mixture, PMF.bind_map, Function.comp_def]
 
 end Vegas.EventGraphRuntime

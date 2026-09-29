@@ -29,7 +29,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 equilibrium is selected. Preserving the initial tables suffices for coverage of
 every authentic local opening, including normalized forwarding aliases. -/
 theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup))
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support)
     (execution : (application setup leaks).Execution)
     (accepted : execution.application.accepted =
@@ -61,7 +61,7 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
     exact ⟨initial, supported, rfl⟩
   rw [same]
   exact bounds.initialized_opening_available (initialLaw setup)
-    (by rw [initialLaw, PMF.support_map]; exact initialFinite.image _)
+    (by rw [initialLaw, PMF.support_map]; exact setup.initialLaw_support_finite.image _)
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
     initialized who input raw fixed
     (runtime setup) leaks (execution.recall who)
@@ -69,7 +69,7 @@ theorem opening_available_of_initial_tables (bounds : MessageBounds (graph setup
 
 /-- Initial handle provenance supplies both components of raw opening coverage. -/
 theorem opening_data_covered (bounds : MessageBounds (graph setup))
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support)
     (execution : (application setup leaks).Execution)
     (accepted : execution.application.accepted =
@@ -90,7 +90,7 @@ theorem opening_data_covered (bounds : MessageBounds (graph setup))
   rw [same]
   refine ⟨True.intro, ?_⟩
   apply bounds.initial_value_covered (initialLaw setup)
-    (by rw [initialLaw, PMF.support_map]; exact initialFinite.image _)
+    (by rw [initialLaw, PMF.support_map]; exact setup.initialLaw_support_finite.image _)
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial))
       _ owner input raw fixed
   rw [initialLaw, PMF.support_map]

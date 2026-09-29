@@ -38,7 +38,7 @@ the reading is a parameter: at `id` it is the edge itself, and at whatever map a
 later edge observes it is the left half of a composition. -/
 def valueBindingSimulationOn {Observation : Type}
     (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (observe : SourceProgram.PublicOutcome setup.program → Observation) :
     GameForm.MixtureSimulationOn setup.valueBindingGame setup.gameForm observe observe
       (fun _ _ => True) where
@@ -46,7 +46,7 @@ def valueBindingSimulationOn {Observation : Type}
   honest_law _ := rfl
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
-    obtain ⟨mixture, _, hmixture⟩ := exists_pureMixture_publicRun setup finite initialFinite
+    obtain ⟨mixture, _, hmixture⟩ := exists_pureMixture_publicRun setup finite
       (valueBindingProfile profile) replacement
     refine ⟨mixture.map fun choice =>
       ⟨PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program choice),
@@ -61,59 +61,59 @@ def valueBindingSimulationOn {Observation : Type}
 
 /-- The edge read on the source outcome itself. -/
 def valueBindingSimulation (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite) :
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw] :
     GameForm.MixtureSimulationOn setup.valueBindingGame setup.gameForm id id
       (fun _ _ => True) :=
-  setup.valueBindingSimulationOn finite initialFinite id
+  setup.valueBindingSimulationOn finite id
 
 /-- Every source deviation from a value-binding profile has integrable utility,
 because its outcome law is finitely supported. -/
 theorem valueBindingSimulation_deviation_integrable (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (profile : Profile setup.valueBindingGame.sig) (who : Player)
     (replacement : setup.gameForm.sig.Strategy who) :
     UtilityIntegrable (fun outcome player => utility (id outcome) player) who
       (setup.gameForm.play (Profile.update
-        ((setup.valueBindingSimulation finite initialFinite).compileProfile profile) who
+        ((setup.valueBindingSimulation finite ).compileProfile profile) who
           replacement)) :=
   payoffIntegrable_of_finite_support _ _
-    (setup.gameForm_play_support_finite finite initialFinite _)
+    (setup.gameForm_play_support_finite finite _)
 
 /-- Binding an unopenable candidate is worth nothing: a value-binding profile is
 ε-Nash in the full source game exactly when it is ε-Nash among policies that
 always bind a value. -/
 theorem isεNash_valueBindingGame_iff (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (value : SourceProgram.PublicOutcome setup.program → Player → ℝ) (ε : ℝ)
     (profile : Profile setup.valueBindingGame.sig) :
     IsεNash setup.gameForm value ε (valueBindingProfile profile) ↔
       IsεNash setup.valueBindingGame value ε profile :=
-  ((setup.valueBindingSimulation finite initialFinite).isεNash_compileProfile_iff value ε profile
+  ((setup.valueBindingSimulation finite ).isεNash_compileProfile_iff value ε profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.valueBindingSimulation_deviation_integrable finite initialFinite value profile who
+      setup.valueBindingSimulation_deviation_integrable finite value profile who
         replacement)
 
 /-- The same at ε zero. -/
 theorem isNash_valueBindingGame_iff (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (value : SourceProgram.PublicOutcome setup.program → Player → ℝ)
     (profile : Profile setup.valueBindingGame.sig) :
     IsNash setup.gameForm (euPreference value) (valueBindingProfile profile) ↔
       IsNash setup.valueBindingGame (euPreference value) profile :=
-  ((setup.valueBindingSimulation finite initialFinite).isNash_compileProfile_iff value profile
+  ((setup.valueBindingSimulation finite ).isNash_compileProfile_iff value profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.valueBindingSimulation_deviation_integrable finite initialFinite value profile who
+      setup.valueBindingSimulation_deviation_integrable finite value profile who
         replacement)
 
 /-- The edge in the composable interface, at one-player coalitions. -/
 def valueBindingUtilitySimulation (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (utility : SourceProgram.PublicOutcome setup.program → Player → ℝ) :
     GameForm.UtilitySimulation setup.valueBindingGame setup.gameForm utility utility
       (GameTheory.singletonGroups Player) :=
-  (setup.valueBindingSimulation finite initialFinite).toUtilitySimulation utility
+  (setup.valueBindingSimulation finite ).toUtilitySimulation utility
     (fun _ _ => trivial)
-    (setup.valueBindingSimulation_deviation_integrable finite initialFinite utility)
+    (setup.valueBindingSimulation_deviation_integrable finite utility)
 
 end Vegas.SourceProgram.Setup

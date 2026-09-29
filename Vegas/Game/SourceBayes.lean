@@ -147,7 +147,7 @@ uniform over information sites and admitted whole syntactic policies. Thus a
 finite mixture may choose different original private histories and deviations
 at each perturbation without assuming rationality of normalized source play. -/
 theorem exists_uniform_prefix_gain_bound
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (source : (setup.informationModel admission).BehavioralAssessment)
     (sequence : ℕ → (setup.informationModel admission).BehavioralAssessment)
     (mixed : ∀ n, (sequence n).IsFullyMixed)
@@ -178,7 +178,7 @@ theorem exists_uniform_prefix_gain_bound
       (fun who info =>
         have := setup.finite_choice finite admission who info
         Set.toFinite _)
-      (fun draw => setup.protocolStep_support_finite initialFinite _ draw.1)
+      (fun draw => setup.protocolStep_support_finite _ draw.1)
   obtain ⟨error, nonnegative, vanishes, bound⟩ :=
     converges.exists_uniform_policy_gain_bound who
       (fun final => (setup.protocolReadout final.state).elim 0 utility)

@@ -2,6 +2,8 @@
 
 import Vegas.Pending.EventServiceProtocol
 import GameTheory.Protocol.Information
+import GameTheory.Protocol.Predraw
+import GameTheoryExtensions.Protocol.FiniteMixing
 
 /-! # Probability presentation of bounded event service
 
@@ -610,6 +612,56 @@ def serviceBehavioral (runtime : EventGraphRuntime graph)
       (order history view).map fun chosen =>
         ⟨some (.order chosen), ⟨.order chosen, rfl, chosen, rfl⟩⟩
 
+/-- The initial draw, finitely branching opponents and wire, and the runtime's
+finite chance make every service transition finitely supported. -/
+private theorem serviceProtocolTransition_support_finite (runtime : EventGraphRuntime graph)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (wire : runtime.application.WirePolicy) (focal : Player)
+    (inputsFinite : inputs.support.Finite)
+    (playersFinite : ∀ who, (players who).FiniteSupport) (wireFinite : wire.FiniteSupport)
+    (state : ServiceProtocolState runtime) (decision : Option (ServiceDecision runtime)) :
+    (serviceProtocolTransition runtime inputs roster reactionRounds players wire focal state
+      decision).support.Finite := by
+  have finite := runtime.application_finiteEnvironment
+  rcases state with _ | ⟨epochs, plan, execution⟩
+  · simp only [serviceProtocolTransition, PMF.support_map]
+    exact inputsFinite.image _
+  · cases plan with
+    | nil =>
+        simp only [serviceProtocolTransition]
+        split <;> simp
+    | cons instruction rest =>
+        simp only [serviceProtocolTransition, PMF.support_map]
+        apply Set.Finite.image
+        split
+        · split
+          · exact MessageApplication.playerStep_support_finite finite _ _ _
+          · exact runtime.serviceStep_support_finite playersFinite wireFinite _ _
+        · exact MessageApplication.environmentPolicyStep_support_finite finite _ _
+        · exact runtime.serviceStep_support_finite playersFinite wireFinite _ _
+
+/-- Finitely branching focal, wire, and order policies give a finitely branching
+behavioral protocol policy at every information value. -/
+private theorem serviceBehavioral_support_finite (runtime : EventGraphRuntime graph)
+    (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
+    (players : Player → runtime.application.PlayerPolicy)
+    (modelWire behaviorWire : runtime.application.WirePolicy)
+    (order : runtime.ServiceOrderPolicy)
+    (focal : Player) (replacement : runtime.application.PlayerPolicy)
+    (replacementFinite : replacement.FiniteSupport) (wireFinite : behaviorWire.FiniteSupport)
+    (orderFinite : order.FiniteSupport) (info) :
+    (runtime.serviceBehavioral inputs roster reactionRounds players modelWire behaviorWire order
+      focal replacement info).support.Finite := by
+  rcases info with _ | (⟨history, view⟩ | ⟨history, view⟩ | ⟨history, view⟩)
+  · simp [serviceBehavioral]
+  all_goals
+    simp only [serviceBehavioral, PMF.support_map]
+    apply Set.Finite.image
+  · exact replacementFinite _ _
+  · exact wireFinite _ _
+  · exact orderFinite _ _
+
 /-- Deterministic responses in the three original policy interfaces. -/
 structure PureServiceResponses (runtime : EventGraphRuntime graph) where
   player : List runtime.application.PlayerEntry → runtime.application.View →
@@ -1073,13 +1125,19 @@ private theorem service_runPure_execution (runtime : EventGraphRuntime graph)
 /-- The focal player, wire, and adaptive order can be predrawn jointly before
 private setup.  The resulting finite law is over total deterministic response
 functions, while every opponent policy and every native transition kernel is
-left unchanged. -/
+left unchanged. The predraw needs every policy and the initial inputs to branch
+finitely: native commands range over unbounded replay identifiers and raw
+values, so an arbitrary deviation could reach infinitely many information
+values. -/
 theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)
     (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (focal : Player) (replacement : runtime.application.PlayerPolicy) :
-    ∃ mixture : PMF (PureServiceResponses runtime),
+    (focal : Player) (replacement : runtime.application.PlayerPolicy)
+    (inputsFinite : inputs.support.Finite)
+    (playersFinite : ∀ who, (players who).FiniteSupport) (wireFinite : wire.FiniteSupport)
+    (orderFinite : order.FiniteSupport) (replacementFinite : replacement.FiniteSupport) :
+    ∃ mixture : PMF (PureServiceResponses runtime), mixture.support.Finite ∧
       (runtime.servicedEventGame inputs roster reactionRounds wire order).play
           (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
             players focal replacement) =
@@ -1096,15 +1154,28 @@ theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)
   let behavioral : (i : Unit) → M.BehavioralPolicy i := fun _ =>
     runtime.serviceBehavioral inputs roster reactionRounds players wire wire order focal
       replacement
-  obtain ⟨mixed, mixedLaw⟩ :=
-    InformationModel.exists_mixed_runMixedFrom_eq_runBehavioralFrom
+  have branches (i : Unit) (info) : (behavioral i info).support.Finite :=
+    runtime.serviceBehavioral_support_finite inputs roster reactionRounds players wire wire order
+      focal replacement replacementFinite wireFinite orderFinite info
+  have sites (i : Unit) :
+      (M.behavioralSupportSitesFrom behavioral (fuel + 1) E.initHistory i).Finite :=
+    M.behavioralSupportSitesFrom_finite_of_finite_branching behavioral (fuel + 1) E.initHistory
+      (fun _ _ i => branches i _)
+      (fun draw => runtime.serviceProtocolTransition_support_finite inputs roster reactionRounds
+        players wire focal inputsFinite playersFinite wireFinite _ _) i
+  obtain ⟨mixed, mixedFinite, mixedLaw⟩ :=
+    InformationModel.exists_finite_mixed_runMixed_eq_runBehavioral
       (M := M) (runtime.service_actsOnceWhereItMatters inputs roster reactionRounds players wire
-        focal) behavioral (fuel + 1) history
+        focal) behavioral (fuel + 1) sites branches
   let response (pureProfile : (i : Unit) → M.Policy i) : PureServiceResponses runtime :=
     runtime.pureServiceResponsesOfPolicy inputs roster reactionRounds players wire focal
       (pureProfile ())
   let mixture : PMF (PureServiceResponses runtime) := (independentProduct mixed).map response
-  refine ⟨mixture, ?_⟩
+  refine ⟨mixture, ?_, ?_⟩
+  · rw [PMF.support_map]
+    refine Set.Finite.image _ ((Set.Finite.pi fun i => mixedFinite i).subset ?_)
+    intro draw supported
+    exact fun i _ => (independentProduct_support_iff _ draw).mp supported i
   apply pmf_map_injective (Option.some_injective runtime.application.PolicyExecution)
   rw [PMF.map_bind]
   have behavioralExecution := runtime.service_runBehavioral_execution inputs roster
@@ -1115,7 +1186,7 @@ theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)
         (Profile.update (sig := MessageApplication.policySignature Player runtime.application)
           players focal response.playerPure)).map some)
   rw [← behavioralExecution]
-  change (M.runBehavioralFrom behavioral (fuel + 1) history).map
+  change (M.runBehavioral behavioral (fuel + 1)).map
       (fun result => serviceExecution? runtime result.state) = _
   rw [← mixedLaw]
   simp only [mixture, PMF.bind_map]

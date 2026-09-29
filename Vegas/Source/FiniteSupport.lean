@@ -78,30 +78,30 @@ theorem runFrom_support_finite : {Γ : SourceCtx Player L} → {O : Finset VarId
 /-- A finitely supported initial law and a finitely branching profile give a
 finitely supported setup run. -/
 theorem Setup.run_support_finite (setup : Setup (Player := Player) (L := L))
-    (initialFinite : setup.initialLaw.support.Finite) (profile : BehavioralProfile setup.program)
+    [setup.FiniteInitialLaw] (profile : BehavioralProfile setup.program)
     (finite : BehavioralProfile.FiniteSupport setup.program profile) :
     (setup.run profile).support.Finite := by
   rw [Setup.run, PMF.support_bind]
-  exact initialFinite.biUnion fun initial _ => runFrom_support_finite _ _ finite
+  exact setup.initialLaw_support_finite.biUnion fun initial _ => runFrom_support_finite _ _ finite
     ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩
 
 /-- The public result law of a finitely branching setup run is finitely
 supported. -/
 theorem Setup.publicRun_support_finite (setup : Setup (Player := Player) (L := L))
-    (initialFinite : setup.initialLaw.support.Finite) (profile : BehavioralProfile setup.program)
+    [setup.FiniteInitialLaw] (profile : BehavioralProfile setup.program)
     (finite : BehavioralProfile.FiniteSupport setup.program profile) :
     (setup.publicRun profile).support.Finite := by
   rw [Setup.publicRun, PMF.support_map]
-  exact (setup.run_support_finite initialFinite profile finite).image _
+  exact (setup.run_support_finite profile finite).image _
 
 /-- Under finite fresh-binding alphabets and a finitely supported initial law,
 every profile of the source game has a finitely supported outcome law. -/
 theorem Setup.gameForm_play_support_finite (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes)
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (profile : BehavioralProfile setup.program) :
     (setup.gameForm.play profile).support.Finite :=
-  setup.publicRun_support_finite initialFinite profile
+  setup.publicRun_support_finite profile
     (FiniteBindingTypes.profileFiniteSupport _ finite profile)
 
 end Vegas.SourceProgram

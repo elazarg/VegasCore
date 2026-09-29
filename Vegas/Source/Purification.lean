@@ -232,7 +232,7 @@ theorem exists_pureMixture {who : Player} :
 law across a whole setup, against unchanged opponents. The draw precedes the
 private initial law, which is what a deviation certificate needs. -/
 theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
     ∃ mixture : PMF (PurePolicy who setup.program), mixture.support.Finite ∧
       setup.run (Function.update profile who policy) =
@@ -241,7 +241,7 @@ theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) 
             (PurePolicy.toBehavioral setup.program choice)) := by
   obtain ⟨mixture, mixtureFinite, hmixture⟩ :=
     exists_pureMixture setup.program finite profile policy
-    ((supportList setup.initialLaw initialFinite).map fun initial =>
+    ((supportList setup.initialLaw setup.initialLaw_support_finite).map fun initial =>
       ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩)
   refine ⟨mixture, mixtureFinite, ?_⟩
   have hrun : ∀ initial ∈ setup.initialLaw.support,
@@ -257,7 +257,7 @@ theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) 
 /-- The public result law is a pushforward of that one, so the same mixture
 serves it. -/
 theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) (initialFinite : setup.initialLaw.support.Finite)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (profile : BehavioralProfile setup.program) (policy : BehavioralPolicy who setup.program) :
     ∃ mixture : PMF (PurePolicy who setup.program), mixture.support.Finite ∧
       setup.publicRun (Function.update profile who policy) =
@@ -265,7 +265,7 @@ theorem exists_pureMixture_publicRun {who : Player} (setup : Setup (Player := Pl
           setup.publicRun (Function.update profile who
             (PurePolicy.toBehavioral setup.program choice)) := by
   obtain ⟨mixture, mixtureFinite, hmixture⟩ :=
-    exists_pureMixture_run setup finite initialFinite profile policy
+    exists_pureMixture_run setup finite profile policy
   exact ⟨mixture, mixtureFinite, by simp only [Setup.publicRun, hmixture, PMF.map_bind]⟩
 
 /-! ## The pure-strategy game

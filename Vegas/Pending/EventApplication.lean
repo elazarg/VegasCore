@@ -3,6 +3,7 @@
 import Vegas.EventGraph.Validation
 import Interaction.CommitmentCandidates
 import Interaction.MessageApplication
+import Interaction.MessageApplicationFiniteness
 
 /-! # Event-addressed pending-message application
 
@@ -2002,6 +2003,29 @@ def application (runtime : EventGraphRuntime graph) : MessageApplication Player 
   handle := handle runtime
   observePlayer := State.playerView
   observeEnvironment := State.publicView
+
+omit [DecidableEq Player] in
+/-- Only a sample execution randomizes, and graph chance laws are exact finite
+tables, so every environment step is finitely supported. -/
+theorem environmentStep_support_finite (runtime : EventGraphRuntime graph) (state : State graph)
+    (command : EnvironmentCommand graph) :
+    (environmentStep runtime state command).support.Finite := by
+  cases command with
+  | executeSample event =>
+      change (executeSample state event).support.Finite
+      unfold executeSample
+      split
+      · split
+        · rw [PMF.support_map]
+          exact (Vegas.EventGraph.Config.step_support_finite _ _ _ _).image _
+        · simp
+        · simp
+      · simp
+  | _ => simp [environmentStep]
+
+theorem application_finiteEnvironment (runtime : EventGraphRuntime graph) :
+    runtime.application.FiniteEnvironment :=
+  runtime.environmentStep_support_finite
 
 end EventGraphRuntime
 end Vegas

@@ -145,7 +145,7 @@ every behavioral continuation law finitely supported. -/
 theorem protocol_behavioralRun_integrable (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes)
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (profile : Profile (admittedBehavioralSignature setup.program admission))
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (history : (setup.executionProtocol admission).History) (who : Player) :
@@ -164,7 +164,7 @@ theorem protocol_behavioralRun_integrable (setup : Setup (Player := Player) (L :
       (instructionCount setup.program + 1) history).map
         (fun final => setup.protocolReadout final.state)).support.Finite := by
     rw [law, PMF.support_map]
-    exact (setup.continuationLaw_support_finite initialFinite _
+    exact (setup.continuationLaw_support_finite _
       (FiniteBindingTypes.profileFiniteSupport _ finite _) _).image _
   have integrable := (payoffIntegrable_map_iff _ _ (fun state => state.elim 0 (utility · who))).mp
     (payoffIntegrable_of_finite_support _ _ mapped)
@@ -176,7 +176,7 @@ theorem protocol_behavioralRun_integrable (setup : Setup (Player := Player) (L :
 theorem protocol_isBehavioralSubgamePerfect_iff (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes)
-    (initialFinite : setup.initialLaw.support.Finite)
+    [setup.FiniteInitialLaw]
     (profile : Profile (admittedBehavioralSignature setup.program admission))
     (utility : State L setup.program.terminalCtx → Player → ℝ) :
     (setup.informationModel admission).IsSingleMoverBehavioralSubgamePerfect
@@ -203,8 +203,8 @@ theorem protocol_isBehavioralSubgamePerfect_iff (setup : Setup (Player := Player
     obtain ⟨sourceAlternative, rfl⟩ :=
       (setup.behavioralPolicyEquiv admission who).surjective alternative
     rw [← Profile.map_update]
-    refine ⟨setup.protocol_behavioralRun_integrable admission finite initialFinite profile utility
-      history who, setup.protocol_behavioralRun_integrable admission finite initialFinite _
+    refine ⟨setup.protocol_behavioralRun_integrable admission finite profile utility
+      history who, setup.protocol_behavioralRun_integrable admission finite _
       utility history who, ?_⟩
     simp only [expectedUtility]
     rw [protocol_behavioralContinuationValue_eq, protocol_behavioralContinuationValue_eq]

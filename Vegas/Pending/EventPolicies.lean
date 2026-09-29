@@ -276,4 +276,22 @@ def compileProfile (runtime : EventGraphRuntime graph)
     (profile : graph.BehavioralProfile) : Player → runtime.application.PlayerPolicy :=
   fun who => runtime.compilePlayerPolicy who (profile who)
 
+/-- A compiled policy only relays its graph policy's law or a fixed command, so
+it branches finitely whenever the graph policy does. -/
+theorem compilePlayerPolicy_finiteSupport (runtime : EventGraphRuntime graph) {who : Player}
+    {policy : graph.BehavioralPolicy who}
+    (finite : ∀ event actor observation, (policy event actor observation).support.Finite) :
+    (runtime.compilePlayerPolicy who policy).FiniteSupport := by
+  intro history view
+  simp only [compilePlayerPolicy]
+  repeat' split
+  all_goals first
+    | (simp; done)
+    | (simp only [PMF.support_map]; exact (finite _ _ _).image _)
+
+theorem compileProfile_finiteSupport (runtime : EventGraphRuntime graph)
+    {profile : graph.BehavioralProfile} (finite : graph.ProfileFiniteSupport profile)
+    (who : Player) : (runtime.compileProfile profile who).FiniteSupport :=
+  runtime.compilePlayerPolicy_finiteSupport (finite who)
+
 end Vegas.EventGraphRuntime

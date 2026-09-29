@@ -36,6 +36,16 @@ structure Setup where
 
 namespace Setup
 
+/-- The private initial draw has finitely many outcomes. A mixture drawn before
+it, or a finite message alphabet read from it, needs this; a probability mass
+function need not satisfy it. -/
+class FiniteInitialLaw (setup : Setup (Player := Player) (L := L)) : Prop where
+  support_finite : setup.initialLaw.support.Finite
+
+theorem initialLaw_support_finite (setup : Setup (Player := Player) (L := L))
+    [setup.FiniteInitialLaw] : setup.initialLaw.support.Finite :=
+  FiniteInitialLaw.support_finite
+
 def run (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
     PMF (State L setup.program.terminalCtx) :=
