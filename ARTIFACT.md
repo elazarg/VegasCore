@@ -34,7 +34,7 @@ the subsequent kernel-checked build.
 | Source pure SPE characterization, including private setup | `Vegas/Game/SourceSubgame.lean`, `Vegas/Game/SetupSubgame.lean` |
 | Source behavioral policies, continuation laws, and SPE characterization | `Vegas/Source/ProtocolBehavioralPolicy.lean`, `Vegas/Source/SetupProtocolBehavioral.lean`, `Vegas/Game/BehavioralSubgame.lean` |
 | Conditional behavioral SPE preservation and reflection at proper roots | `GameTheoryExtensions/Protocol/BehavioralContinuation.lean` |
-| Conditional pure SPE preservation and reflection at proper roots | `GameTheoryExtensions/Protocol/Continuation.lean` |
+| Conditional pure SPE preservation and reflection at proper roots | `GameTheory/GameTheory/Protocol/Continuation.lean` |
 | Proper reactive subgames after two deterministic initial responses | `Interaction/ReactiveSubgamePrefix.lean` |
 | Honest source SPE whose compiled graph policy fails SPE under uniform, at-most-once inclusion | `Vegas/Examples/ReactiveEarlyOpeningSPE.lean` |
 | Immutable authorization at original submission, with conditional exclusion at every legal continuation | `Interaction/ReactiveAuthorization.lean`, `Vegas/Pending/ReactiveAuthorization.lean` |
@@ -64,13 +64,13 @@ the subsequent kernel-checked build.
 | Exact stopped repair of arbitrary off-turn roster responses, with persistent signed evidence or unchanged observations and legal repaired endpoint traces | `Vegas/Pending/ReactiveOffTurnRepair.lean`, `Vegas/Pending/ReactiveOffTurnWindow.lean`, `Vegas/Game/SourceServiceOffTurnWindow.lean` |
 | Every certificate in a permitted network execution originates in a recorded successful resolution; actual guarded opening aliases agree at an unsent source opportunity | `Vegas/Pending/ReactiveResolutionEvidence.lean`, `Vegas/Game/SourceServiceEvidence.lean` |
 | Initial-parameter/public-result joint laws and Bayesian Nash correspondence | `Vegas/Source/InitialState.lean`, `Vegas/Game/ParameterOutcomes.lean` |
-| Two-player zero-sum source Nash value equals every native coarse-correlated value under the paper service | `Vegas/Game/ZeroSum.lean`, `GameTheoryExtensions/Core/ZeroSum.lean` |
+| Two-player zero-sum source Nash value equals every native coarse-correlated value under the paper service | `Vegas/Game/ZeroSum.lean`, `GameTheory/GameTheory/Core/ZeroSum.lean` |
 | Finite decision tables preserve every legal continuation law | `GameTheoryExtensions/Protocol/FiniteInformation.lean` |
 | Correlated mixtures of independently trembled finite plans retain an action-probability floor after recall conditioning | `GameTheoryExtensions/Protocol/TremblingPlans.lean`, `GameTheoryExtensions/Math/Probability/Tremble.lean` |
 | Finite zero-sum saddle existence with L1 feature penalties and a security-based penalty bound | `GameTheoryExtensions/Analysis/ZeroSumRegularization.lean` |
 | Identical normal-form CE correspondence does not imply SE outcome preservation | `GameTheoryExtensionsTests/CorrelatedSequentialGap.lean` |
 | Zero-sum Nash equilibria can have equal expected payouts and different payout laws | `GameTheoryExtensionsTests/ZeroSumOutcomeLaws.lean` |
-| Exact payoff-subspace incentive criteria and component-based bounds on deviation gains | `GameTheoryExtensions/Core/IncentiveCone.lean`, `GameTheoryExtensions/Protocol/SequentialIncentives.lean`, `GameTheoryExtensions/Analysis/Protocol/Sequential.lean` |
+| Exact payoff-subspace incentive criteria and component-based bounds on deviation gains | `GameTheory/GameTheory/Analysis/IncentiveCone.lean`, `GameTheory/GameTheory/Analysis/Protocol/Incentives.lean`, `GameTheoryExtensions/Analysis/Protocol/Sequential.lean` |
 | Additive payoffs are exactly those preserved by every change of correlation with fixed marginals | `GameTheoryExtensions/Analysis/CorrelationPayoff.lean` |
 | Communication can make source nonstrategic payoffs strategic; coupled zero-sum constraints give strictly stronger incentive implications | `GameTheoryExtensionsTests/ComponentCommunication.lean`, `GameTheoryExtensionsTests/CoupledIncentives.lean` |
 | Conditional sanction bounds, sufficient local sequential rationality, and the exact detection limit for alarms with zero false positives | `GameTheoryExtensions/Analysis/Enforcement.lean` |
@@ -134,7 +134,7 @@ the subsequent kernel-checked build.
 | Restoring watcher choices and every bounded raw private alias preserves the joint observation/payoff law, for normalization-invariant readouts and identically zero watcher utility | `Vegas/Examples/MonitoredGuessing/WatcherRaw.lean`, `GameTheoryExtensions/Protocol/ContinuationHorizon.lean` |
 | Every final raw Alice response has a local legal comparator at the source checkpoints, for arbitrary declared payoff tables and nonnegative rejection charges | `Vegas/Examples/MonitoredGuessing/RestrictedFinalComparison.lean` |
 | Unselected Bob packets leave Alice's entire next input equal to the silent source branch under the fixture's empty Alice passive sample | `Vegas/Examples/MonitoredGuessing/BobContinuation.lean` |
-| Global recall can fail at inactive states while decision recall and the generic SE existence theorem still apply | `GameTheoryExtensions/Protocol/DecisionRecall.lean`, `GameTheoryExtensionsTests/DecisionRecall.lean` |
+| Global recall can fail at inactive states while decision recall and the generic SE existence theorem still apply | `GameTheory/GameTheory/Protocol/DecisionRecall.lean`, `GameTheoryExtensionsTests/DecisionRecall.lean` |
 | Nonvacuous general-theorem instance: Alice's departure creates a new Bob decision; deposit one preserves every source SE and the exact zero-payoff law | `GameTheoryExtensionsTests/RestrictionEnforcement.lean` |
 | Declared integer return tables share operational graph execution; inferred charges deter every raw early submission; prescribed native play retains the exact type/result/net-payoff law | `Vegas/EventGraph/PayoffTransport.lean`, `Vegas/Examples/MonitoredGuessing/Payoffs.lean`, `Vegas/Examples/MonitoredGuessing/PayoffInference.lean`, `Vegas/Examples/MonitoredGuessing/PayoffLaw.lean` |
 | Exact caught/missed continuation criterion; forcing the sender's future actions to fail cannot repair disclosure when it has no remaining source actions | `GameTheoryExtensions/Analysis/FailureEnforcement.lean`, `GameTheoryExtensionsTests/ForcedFailureEnforcement.lean` |
@@ -279,7 +279,7 @@ obligations. No authorization-enforcing backend or native SPE preservation
 theorem is claimed by these conditional results.
 `Vegas/Examples/SourceProtocol.lean` and
 `Vegas/Examples/SetupProtocol.lean` check information-set closure on hidden source
-prefixes; `GameTheoryExtensionsTests/ContinuationTransfer.lean` proves that the
+prefixes; `GameTheory/GameTheory/Tests/ContinuationTransfer.lean` proves that the
 atomic irreversible-failure example has no uniform continuation-law certificate.
 `Vegas/Examples/BehavioralProtocol.lean` checks mixed binding admission with an
 infinite player universe and retention of bindings after a prefix.

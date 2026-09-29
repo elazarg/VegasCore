@@ -24,7 +24,7 @@ alone do not discharge multiplayer runtime obligations.
 
 ## Checked results and their boundaries
 
-- The [incentive-cone criterion](../GameTheoryExtensions/Protocol/SequentialIncentives.lean)
+- The [incentive-cone criterion](../GameTheory/GameTheory/Analysis/Protocol/Incentives.lean)
   and [SE criterion](../GameTheoryExtensions/Analysis/Protocol/Sequential.lean)
   characterize utility-uniform preservation between supplied assessments.
 - [Continuation simulation](../GameTheoryExtensions/Protocol/ContinuationSimulation.lean)
@@ -191,7 +191,7 @@ equilibrium outcomes do not prevent preserving every source equilibrium.
 
 ### Two-player zero-sum and correlation
 
-The checked [zero-sum value theorem](../GameTheoryExtensions/Core/ZeroSum.lean)
+The checked [zero-sum value theorem](../GameTheory/GameTheory/Core/ZeroSum.lean)
 applies to arbitrary strategy carriers, including behavioral policies. An
 existing two-player zero-sum Nash profile fixes every coarse correlated
 equilibrium's expected utility. The

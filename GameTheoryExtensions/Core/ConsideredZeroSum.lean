@@ -4,7 +4,7 @@ import GameTheory.Core.ZeroSum
 
 /-! # Zero-sum values against a considered deviation class
 
-`GameTheory.IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum` fixes the value
+`GameTheory.IsCoarseCorrelatedEq.extendedExpectedUtility_eq_of_zeroSum` fixes the value
 of every coarse correlated equilibrium from a Nash profile. Its security step
 only deviates to strategies that the correlation device actually recommends.
 So a profile that is Nash only against a class of considered deviations still

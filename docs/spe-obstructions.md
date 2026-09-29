@@ -42,7 +42,7 @@ Three evidence levels must remain distinct:
 
 O1 and O2 illustrate a common obstruction: a source policy can select its best
 option without encoding a ranking of alternatives that the target later forces
-it to compare. The checked [continuation-menu example](../GameTheoryExtensionsTests/ContinuationMenus.lean)
+it to compare. The checked [continuation-menu example](../GameTheory/GameTheory/Tests/ContinuationMenus.lean)
 isolates that argument. It is an explanation of these mechanisms, rather than an
 additional native counterexample.
 
@@ -69,7 +69,7 @@ unopenable A. Successful A gives the same best payoff regardless of B, so one
 source policy is SPE for two utilities. After unopenable A, those utilities
 require opposite choices of B. No common target pure SPE exists.
 
-[IrreversibleFailure.lean](../GameTheoryExtensionsTests/IrreversibleFailure.lean)
+[IrreversibleFailure.lean](../GameTheory/GameTheory/Tests/IrreversibleFailure.lean)
 proves source SPE, proper roots, and impossibility of a utility-independent
 pure-SPE compiler for these atomic protocols. It also proves a local bound
 against randomized completion. This is not a serviced Vegas runtime theorem.
@@ -330,7 +330,7 @@ These are gaps to discharge, not additional proved counterexamples.
    each isolated inclusion is insufficient, as O4 demonstrates. Exact law matching
    is a sufficient certificate, not a necessary characterization of SPE
    preservation. For finite observed outcomes, the checked
-   [incentive-cone theorem](../GameTheoryExtensions/Protocol/BehavioralIncentives.lean)
+   [incentive-cone theorem](../GameTheory/GameTheory/Analysis/Protocol/Incentives.lean)
    gives a necessary and sufficient alternative: every target comparison must
    belong to the closed cone of source comparisons for that player. Finite
    nonnegative combinations supply sufficient certificates. Instantiating this

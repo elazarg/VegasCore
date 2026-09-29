@@ -276,7 +276,7 @@ An unresolved lottery may correspond to an old commitment having taken effect
 in some branches and a fresh source decision in another. Requiring a single
 matching source history would unnecessarily exclude such a correspondence.
 
-[`isBehavioralSubgamePerfect_of_root_mixture_laws`](../GameTheoryExtensions/Protocol/BehavioralContinuation.lean)
+[`isSingleMoverBehavioralSubgamePerfect_of_root_mixture_laws`](../GameTheoryExtensions/Protocol/BehavioralContinuation.lean)
 proves preservation using a finite law over **proper source roots**. At every
 proper target root `k`, the certificate fixes `mu` before choosing a deviator:
 

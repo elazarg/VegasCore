@@ -9,7 +9,7 @@ import GameTheoryExtensions.Math.Probability.Support
 Full support is required only at legal decision sites. Inactive players have
 singleton menus. Thus every complete legal history is in the support of play.
 The canonical Bayes assessment of a fully mixed strategy is upstream's
-`bayesAssessment`.
+`GameTheory.Protocol.InformationModel.bayesAssessment`.
 -/
 
 noncomputable section

@@ -123,7 +123,7 @@ start of the event's phase (`TimedApproximant.decodedState`):
 It concludes that the native prescribed and alternative laws are the
 prescribed and alternative laws of one mixture of original source assessment
 comparisons, via `sourceService_owner_assessment_comparisons`.
-`FinDist.expect_sub_eq_of_eq_bind` turns this into the mixture branch of the
+`expect_sub_eq_of_eq_bind` turns this into the mixture branch of the
 limit theorem's local comparison.
 
 The caller supplies the alternative, from `exists_admitted_local_law` at the

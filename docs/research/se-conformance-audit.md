@@ -35,7 +35,7 @@ Deleting departures from the menu does not establish the monitored theorem.
 3. **Account for early irreversible failure.** Start with source forfeiture,
    or prove its omission for the selected program/backend. The source's later
    withholding opportunity does not supply the earlier continuation identified
-   by [IrreversibleFailure](../../GameTheoryExtensionsTests/IrreversibleFailure.lean).
+   by [IrreversibleFailure](../../GameTheory/GameTheory/Tests/IrreversibleFailure.lean).
    A watcher cannot certify a private candidate's valid hidden value just by
    inspecting its opaque handle. A validity-proof backend is a separate premise.
 4. **Remove representation channels from permitted play.** Fix game instance,

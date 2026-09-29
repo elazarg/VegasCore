@@ -231,7 +231,7 @@ or eliminated by a separate correspondence proof. This is an obligation in
 connecting the ordinary source protocol to the native service calendar.
 
 The recall compatibility proof is checked. The capstone uses
-[decision-site recall](../GameTheoryExtensions/Protocol/DecisionRecall.lean),
+[decision-site recall](../GameTheory/GameTheory/Protocol/DecisionRecall.lean),
 and every reactive menu satisfies it with the existing native observations.
 Inactive information may remain empty. Common decision depth must separately
 follow from the service calendar and existing observations.

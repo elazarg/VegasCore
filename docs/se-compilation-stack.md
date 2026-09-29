@@ -669,7 +669,7 @@ certificate extractor. Their outcomes determine the backend contract.
 ### G1. Recall required by the theorem
 
 **Checked.** The native model uses an empty information value while a player is
-inactive. [DecisionRecall](../GameTheoryExtensions/Protocol/DecisionRecall.lean)
+inactive. [DecisionRecall](../GameTheory/GameTheory/Protocol/DecisionRecall.lean)
 requires equal own-play records only at genuine decision sites. The generic
 completion, switching, one-shot and extension proofs use this premise, and
 [every reactive response menu](../Interaction/ReactiveOwnPlay.lean) satisfies it

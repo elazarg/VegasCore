@@ -15,8 +15,8 @@ The separate initialized correctness requirement also remains necessary: SPE
 preservation alone does not require the compiler to produce the intended result.
 
 The implementation is in
-[IncentiveCone.lean](../GameTheoryExtensions/Core/IncentiveCone.lean) and
-[BehavioralIncentives.lean](../GameTheoryExtensions/Protocol/BehavioralIncentives.lean).
+[IncentiveCone.lean](../GameTheory/GameTheory/Analysis/IncentiveCone.lean) and
+[Incentives.lean](../GameTheory/GameTheory/Analysis/Protocol/Incentives.lean).
 It uses the canonical proper subgames, whole behavioral replacements, and
 bounded history runner. The GameTheory submodule is unchanged.
 
@@ -53,7 +53,9 @@ its closure also contains limits of those combinations. The generator family
 can be infinite even though outcomes are finite. No finite enumeration of
 behavioral policies or native histories is assumed.
 
-`behavioral_spe_preservation_iff_cone` proves both directions. For necessity,
+Upstream `isContinuationNash_preservation_iff_cone` proves both directions;
+single-mover behavioral subgame perfection is one instance of continuation Nash.
+For necessity,
 one can vary one player's utility and set every other player's utility to zero.
 `separating_utility` supplies an offending scalar utility when an individual
 target comparison lies outside the source cone: every source comparison is

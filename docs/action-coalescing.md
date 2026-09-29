@@ -58,8 +58,8 @@ The generic Lean theorem
 [`LocalResponse.transcript_eq_iteration`](../GameTheoryExtensions/Protocol/Coalescing.lean)
 samples a finite transcript from the entry view and proves that applying it
 has exactly the same full endpoint distribution as successive policy calls.
-`continuation_eq` extends the equality through any continuation kernel.
-`transcript_length` retains the number of constituent action slots.
+`LocalResponse.continuation_eq` extends the equality through any continuation kernel.
+`LocalResponse.transcript_length` retains the number of constituent action slots.
 
 The converse needs enough own recall to reproduce the conditional law of the
 next action given the already executed prefix. The locality equation alone
@@ -257,7 +257,7 @@ At the proper target root, `u` requires command zero and `v` requires command
 one. No single complete target strategy can be SPE for both. Randomization
 cannot solve this: each utility can attain two, whereas their sum is at most
 three for every possible residual outcome and hence for every residual law.
-[`InterleavedMenus.no_common_randomized_completion`](../GameTheoryExtensionsTests/InterleavedMenus.lean)
+[`InterleavedMenus.no_common_randomized_completion`](../GameTheory/GameTheory/Tests/InterleavedMenus.lean)
 checks this local argument in Lean. It is not a canonical native SPE theorem.
 
 ### Why this response cannot move before Bob's reply

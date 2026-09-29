@@ -343,7 +343,7 @@ disclosure probability. Exact equality with the original source action law at
 every approximant is therefore not a valid premise. The checked
 [local comparison theorem](../../GameTheoryExtensions/Analysis/Protocol/LocalSimulationLimit.lean)
 allows a uniform incentive error tending to zero, retaining one common sequence.
-`FinDist.deferredRemaining_error` bounds the conditional probability change by
+`deferredRemaining_error` bounds the conditional probability change by
 the timing mass already passed, uniformly even when the source probability tends
 to one. The [owner incentive comparison](../../Vegas/Game/RevealServiceRosterOwnerIncentives.lean)
 bounds each local native gain by one actual original-source deviation's gain,

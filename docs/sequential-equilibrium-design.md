@@ -36,7 +36,7 @@ claim follows from expected-value equality alone.
 Complete finite native equilibrium examples and an isolated observation
 comparison are checked below:
 
-- [SequentialIncentives.lean](../GameTheoryExtensions/Protocol/SequentialIncentives.lean):
+- [Incentives.lean](../GameTheory/GameTheory/Analysis/Protocol/Incentives.lean):
   exact, utility-independent transport of sequential rationality between fixed
   assessments, for finite observed outcomes.
 - [Sequential.lean](../GameTheoryExtensions/Analysis/Protocol/Sequential.lean):

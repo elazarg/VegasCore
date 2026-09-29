@@ -261,7 +261,7 @@ scope; it is not a finite test for multiplayer imperfect-information SPE.
 Both interfaces require a value at B's binding; withholding B later is allowed.
 The same source profile can be optimal for both utilities while no expanded
 profile is optimal for both. The canonical Lean proof in
-[IrreversibleFailure.lean](../GameTheoryExtensionsTests/IrreversibleFailure.lean)
+[IrreversibleFailure.lean](../GameTheory/GameTheory/Tests/IrreversibleFailure.lean)
 establishes the corresponding impossibility using the actual SPE definitions;
 the script independently explores all finite pure policies.
 
@@ -388,7 +388,7 @@ stochastic source chance. Behavioral policies are covered by E6 below.
 **Question.** Can named continuation-law hypotheses yield the existing SPE
 predicate without an adequacy hierarchy or a second evaluator?
 
-[Continuation.lean](../GameTheoryExtensions/Protocol/Continuation.lean)
+[Continuation.lean](../GameTheory/GameTheory/Protocol/Continuation.lean)
 constructs ordinary continuation game forms from the existing history runner.
 With a certified horizon, canonical pure SPE is exactly Nash in every proper
 continuation game. Preservation fixes one playerwise map, matches each proper
@@ -398,7 +398,7 @@ Reflection has its own source-root coverage and compiled-policy law premises.
 These are direct theorem arguments; no property registry is introduced.
 
 The checked boundary test in
-[ContinuationTransfer.lean](../GameTheoryExtensionsTests/ContinuationTransfer.lean)
+[ContinuationTransfer.lean](../GameTheory/GameTheory/Tests/ContinuationTransfer.lean)
 accepts identity and refutes uniform public continuation laws for **any**
 playerwise map of the atomic irreversible-failure example. The refutation holds
 already at the common source SPE for its two utilities. Thus the theorem cannot
@@ -417,7 +417,7 @@ without changing observations, weakening legality, or adding another runner?
 requires admission of every supported local binding choice. Its translation
 preserves probabilities exactly; its inverse covers every canonical behavioral
 policy. The same equivalence holds across private setup draws.
-[SingleMover.lean](../GameTheoryExtensions/Protocol/SingleMover.lean) samples only
+[SingleMover.lean](../GameTheory/GameTheory/Protocol/SingleMover.lean) samples only
 the active player's finite-support law. It gives each player's exact marginal
 and agrees with the existing finite-player behavioral product where applicable.
 

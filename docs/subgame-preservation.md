@@ -141,12 +141,12 @@ with inequalities over those source continuation laws. The tests in
 forfeiture prefix and a hidden private-type draw, respectively, are not proper
 subgame roots when another player's information set crosses them.
 
-[Continuation.lean](../GameTheoryExtensions/Protocol/Continuation.lean) proves
+[Continuation.lean](../GameTheory/GameTheory/Protocol/Continuation.lean) proves
 the generic pure transfer theorem from prescribed and unilateral-mixture laws
 at matching proper roots, plus a separate reflection theorem. The laws are
 explicit hypotheses about one playerwise map. The canonical irreversible-
 failure example refutes uniform certificates for that proposed abstraction in
-[ContinuationTransfer.lean](../GameTheoryExtensionsTests/ContinuationTransfer.lean).
+[ContinuationTransfer.lean](../GameTheory/GameTheory/Tests/ContinuationTransfer.lean).
 This code is in VegasCore; it requires no GameTheory submodule changes.
 
 [BehavioralSubgame.lean](../Vegas/Game/BehavioralSubgame.lean) characterizes
@@ -266,7 +266,7 @@ continuation the utilities require different choices. Randomization does not
 help: the two expected utilities always sum to three, whereas optimality for
 both would require each to be at least two.
 
-[`GameTheoryExtensionsTests/ContinuationMenus.lean`](../GameTheoryExtensionsTests/ContinuationMenus.lean)
+[`GameTheory/GameTheory/Tests/ContinuationMenus.lean`](../GameTheory/GameTheory/Tests/ContinuationMenus.lean)
 checks this using the canonical `GameForm` and `IsεNash`, including the explicit
 nonexistence of a utility-independent completion function for this plan and
 menu. It is an abstract continuation obstruction, not a theorem that every
@@ -361,7 +361,7 @@ message identifiers or packet pools in the abstract language.
 
 ### Early irreversible failure is strategically observable
 
-[`GameTheoryExtensionsTests/IrreversibleFailure.lean`](../GameTheoryExtensionsTests/IrreversibleFailure.lean)
+[`GameTheory/GameTheory/Tests/IrreversibleFailure.lean`](../GameTheory/GameTheory/Tests/IrreversibleFailure.lean)
 uses the canonical `InformationModel.IsSubgamePerfect`, its history evaluator,
 and its definition of proper subgames. One player takes four atomic decisions:
 seal A, choose B, disclose A, disclose B. The source requires A to be openable;
@@ -387,7 +387,7 @@ either utility.
 The target has a proper subgame after an unopenable A is sealed but before B is
 chosen. A's failure is now unavoidable. The two utilities require opposite B
 choices. The module proves
-`GameTheoryExtensionsTests.IrreversibleFailure.no_utility_independent_spe_compiler`:
+`GameTheory.Tests.IrreversibleFailure.no_utility_independent_spe_compiler`:
 no single translation of that common source plan is SPE for both utilities. A separate
 finite-distribution bound proves that randomization cannot supply a common
 optimal continuation either.
@@ -408,7 +408,7 @@ prove the remaining native continuation correspondence.
 ### One continuation semantics
 
 The pure and behavioral continuation game forms in
-[Continuation.lean](../GameTheoryExtensions/Protocol/Continuation.lean) and
+[Continuation.lean](../GameTheory/GameTheory/Protocol/Continuation.lean) and
 [BehavioralContinuation.lean](../GameTheoryExtensions/Protocol/BehavioralContinuation.lean)
 use the existing pure and randomized history runners. Behavioral SPE is Nash
 optimality at each existing proper root. A proved bound on every legal history
@@ -429,7 +429,7 @@ theorem's freshness premise covers all histories of different lengths, which
 is stronger than merely having perfect recall or fresh genuine decision sites.
 Do not make the adapters reveal an invisible service cursor to satisfy it.
 
-[SingleMover.lean](../GameTheoryExtensions/Protocol/SingleMover.lean) constructs
+[SingleMover.lean](../GameTheory/GameTheory/Protocol/SingleMover.lean) constructs
 behavioral joint actions when at most one player acts. Each player's marginal
 is exactly its local policy law; idle players have singleton menus. This agrees
 with the canonical finite product when a finite player instance is available.
@@ -491,7 +491,7 @@ L_T((compile sigma)[i := tau], k)
 These equations are equalities of distributions; the expectations denote
 finite mixture. A single matching source root is the point-mass case. The
 behavioral root-mixture theorem is implemented as
-`InformationModel.isBehavioralSubgamePerfect_of_root_mixture_laws` in
+`InformationModel.isSingleMoverBehavioralSubgamePerfect_of_root_mixture_laws` in
 [BehavioralContinuation.lean](../GameTheoryExtensions/Protocol/BehavioralContinuation.lean).
 Its native law and root-coverage premises still need to be discharged.
 

@@ -75,7 +75,7 @@ from it.
 
 Existing `LocalResponse.transcript_eq_iteration` handles execution coalescing
 when there is no incoming information. It does not erase other players' recall
-or prove SE preservation. `FinDist.splitKernel_project` and `split_prob` supply
+or prove SE preservation. `splitKernel_project` and `split_prob` supply
 the finite action-splitting algebra. The concrete one-phase transcript and
 posterior factorization below do not yet establish the multi-phase SE result.
 

@@ -22,16 +22,17 @@ claim and does not construct an equilibrium.
 
 ## Checked expected-value theorem
 
-[GameTheoryExtensions/Core/ZeroSum.lean](../GameTheoryExtensions/Core/ZeroSum.lean)
-works with arbitrary strategy carriers, including behavioral policies:
+Upstream [ZeroSum.lean](../GameTheory/GameTheory/Core/ZeroSum.lean) works with
+arbitrary strategy carriers, including behavioral policies. Expected utilities
+are extended reals, so payoffs need not be integrable:
 
 - `GameTheory.IsNash.zeroSum_security` turns a two-player zero-sum Nash profile
   into security guarantees against every opposing strategy.
-- `GameTheory.IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum` gives equality
-  of expected utilities between any coarse correlated equilibrium and an
-  existing Nash equilibrium of that same game.
-- `GameTheory.IsNash.expectedUtility_eq_of_zeroSum` specializes the comparison
-  to two Nash profiles without adding another mixed-strategy layer.
+- `GameTheory.IsCoarseCorrelatedEq.extendedExpectedUtility_eq_of_zeroSum` gives
+  equality of extended expected utilities between any coarse correlated
+  equilibrium and an existing Nash equilibrium of that same game.
+- `GameTheory.IsNash.extendedExpectedUtility_eq_of_zeroSum` specializes the
+  comparison to two Nash profiles without adding another mixed-strategy layer.
 
 The actual compiler capstone is
 `Vegas.SourceProgram.Setup.valueBindingParameterPendingGame_coarseCorrelated_value`
@@ -106,8 +107,8 @@ finite reactive theorem.
 
 This atomic protocol still permits an arbitrary finite list of private memory
 data in each action, as well as unbounded identifiers. Its unrestricted legal
-menus are infinite. With the repository's finite-support distributions, an
-infinite menu has no fully mixed law:
+menus are infinite. An infinite menu has no finitely supported fully mixed
+law:
 `BehavioralAssessment.not_isFullyMixed_of_infinite_choice` in
 [Sequential.lean](../GameTheoryExtensions/Analysis/Protocol/Sequential.lean).
 There is no checked finite-menu adapter for this atomic service that also

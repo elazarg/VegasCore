@@ -145,7 +145,7 @@ development can use them with its own bounds; bundling them into
 bundle for the bounds alone is possible but was not needed by any proof.
 
 **Roster timing.** `Vegas.rosterTiming` repeats the construction of the
-generic `FinDist.finalTiming`. The two are indexed differently
+generic `finalTiming`. The two are indexed differently
 (`Fin ((rosters event).count owner)` against `Fin (last + 1)`), so defining one
 through the other adds a cast to every use; the duplication is three short
 lemmas.
