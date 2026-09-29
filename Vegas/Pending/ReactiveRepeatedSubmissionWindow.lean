@@ -384,7 +384,7 @@ theorem run_repeated_stopped_coupling
             refine ⟨record, ?_, authored, rejected⟩
             have reached : final.1 ∈ (app.runRounds scheduler players count next.1).support := by
               rw [← bindPairLaw_map_fst (app.runRounds scheduler players count next.1)
-                (strategy.runJoint owner players scheduler count next.2.1 next.2.2),
+                (fun _ => strategy.runJoint owner players scheduler count next.2.1 next.2.2),
                 PMF.support_map]
               exact ⟨final, supported, rfl⟩
             exact (app.executionTraffic_runRounds scheduler players count next.1 final.1
@@ -430,7 +430,7 @@ theorem run_repeated_stopped_coupling
               apply bindOnSupport_eq_bind_of_eq_on_support _
               intro next member
               exact (existsTail next member).choose_spec.1
-            _ = _ := by rw [← PMF.bind_map, first]
+            _ = _ := by rw [← first, PMF.bind_map]; rfl
         · rw [map_bindOnSupport]
           calc
             _ = step.bind (fun next =>
@@ -440,7 +440,7 @@ theorem run_repeated_stopped_coupling
               exact (existsTail next member).choose_spec.2.1
             _ = (step.map Prod.snd).bind (fun next =>
                 strategy.runJoint owner players scheduler count next.1 next.2) := by
-              rw [PMF.bind_map]
+              rw [PMF.bind_map]; rfl
             _ = _ := by rw [second]; rfl
         · intro final supported
           obtain ⟨next, member, reached⟩ :=
