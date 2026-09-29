@@ -278,7 +278,7 @@ theorem MessageBounds.compiled_resolutionEvidence (bounds : MessageBounds graph)
       · simp only [Finset.mem_singleton] at chosen
         cases chosen
   · have transport := (runtime.reactiveApplication leaks).replayPolicy_cases _ _ _
-      (FinDist.mem_supportFinset.mp replay)
+      (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp replay)
     rcases transport with impossible | ⟨_, impossible⟩ <;> cases impossible
 
 theorem resolutionEvidenceOrigins_respond (bounds : MessageBounds graph)

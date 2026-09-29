@@ -49,11 +49,12 @@ theorem reportNetwork_instruction (runtime : EventGraphRuntime graph)
   cases latest : view.network.inputs.getLast? with
   | none =>
       simp [interactionInstruction, reportNetwork, ReactiveApplication.includeReported,
-        latest, NetworkChoice.command, ReactiveApplication.atMostOnceCommand]
+        latest, NetworkChoice.command, ReactiveApplication.atMostOnceCommand, PMF.pure_map]
   | some input =>
       by_cases reported : input.broadcaster = watcher ∧ input.envelope.sender ≠ watcher <;>
         simp [interactionInstruction, reportNetwork, ReactiveApplication.includeReported,
-          latest, reported, NetworkChoice.command, ReactiveApplication.atMostOnceCommand]
+          latest, reported, NetworkChoice.command, ReactiveApplication.atMostOnceCommand,
+          PMF.pure_map]
 
 /-- The generic monitoring proof is the actual two-instruction native service
 block, not a separately assumed report-delivery mechanism. -/
@@ -115,7 +116,8 @@ theorem sampling_out_of_phase_receipt_lower
     (scheduler : (runtime.reactiveApplication leaks).Scheduler) (count : Nat) :
     ((leaks watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
       ((((runtime.reactiveApplication leaks).reportInclusion players watcher execution).bind
-        ((runtime.reactiveApplication leaks).runRounds scheduler players count)).toOuterMeasure {final | (id, false) ∈ final.receipts}).toReal := by
+        ((runtime.reactiveApplication leaks).runRounds scheduler players count)).toOuterMeasure
+            {final | (id, false) ∈ final.receipts}).toReal := by
   apply (runtime.reactiveApplication leaks).sampling_rejected_receipt_lower players watcher
     execution id message found foreign unknown fresh reports _ scheduler count
   exact runtime.handle_eq_none_of_other_event_ready_public ordered execution.application current

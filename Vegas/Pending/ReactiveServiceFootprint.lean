@@ -123,11 +123,30 @@ theorem reactive_instruction_unfinished (runtime : EventGraphRuntime graph)
             exact handle_unfinished runtime _ state _ query
               (by rw [addressed]; exact fun same => different (Option.some.inj same))
               unfinished handled
-  | grant event | tick | sample event | expire event =>
+  | grant event =>
       cases (PMF.mem_support_pure_iff _ _).mp selected
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      apply maintenance_unfinished runtime _ state _ query _ unfinished changed
+      apply maintenance_unfinished runtime _ state (.grant event) query _ unfinished changed
+      all_goals simp_all [ServiceInstruction.targets]
+  | tick =>
+      cases (PMF.mem_support_pure_iff _ _).mp selected
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      apply maintenance_unfinished runtime _ state .advanceClock query _ unfinished changed
+      all_goals simp_all [ServiceInstruction.targets]
+  | sample event =>
+      cases (PMF.mem_support_pure_iff _ _).mp selected
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      apply maintenance_unfinished runtime _ state (.executeSample event) query _ unfinished
+        changed
+      all_goals simp_all [ServiceInstruction.targets]
+  | expire event =>
+      cases (PMF.mem_support_pure_iff _ _).mp selected
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      apply maintenance_unfinished runtime _ state (.expire event) query _ unfinished changed
       all_goals simp_all [ServiceInstruction.targets]
 
 end Vegas.EventGraphRuntime

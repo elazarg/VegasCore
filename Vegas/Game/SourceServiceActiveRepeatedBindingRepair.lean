@@ -454,10 +454,10 @@ theorem recorded_binding_history_response_block_coupling
     · let left := (runtime setup).runInteractionPlan leaks players network tail next.1
       let right := strategy.runJoint owner players scheduler tail.length next.2.1 next.2.2
       refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
-        FinDist.map_snd_product .., ?_⟩
+        bindPairLaw_const_map_snd .., ?_⟩
       intro final supported
       have reached : final.1 ∈ left.support := by
-        rw [← bindPairLaw_map_fst left right, PMF.support_map]
+        rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
         exact ⟨final, supported, rfl⟩
       exact Or.inl ⟨record, ((runtime setup).executionTraffic_runInteractionPlan leaks players
         network tail next.1 final.1 reached).subset (badRecord next member record step),

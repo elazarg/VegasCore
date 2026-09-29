@@ -109,7 +109,7 @@ theorem watcher_extra_traffic
   have nonempty : response ≠ ⟨none⟩ := by
     intro same
     apply excluded
-    simp only [menu, ↓reduceIte, silent, FinDist.mem_supportFinset,
+    simp only [menu, ↓reduceIte, silent, Set.Finite.mem_toFinset,
       PMF.mem_support_pure_iff _ _, same]
   rcases response with ⟨transmission⟩
   cases transmission with

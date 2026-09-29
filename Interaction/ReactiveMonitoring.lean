@@ -49,6 +49,13 @@ def reportFirstUnpublished : app.Policy := fun _ view =>
     | none => ⟨none⟩
     | some message => ⟨some (.replay message.id)⟩
 
+/-- The reporting policy is pure, so it has finitely many possible responses. -/
+theorem reportFirstUnpublished_support_finite (past : List app.PlayerEntry)
+    (view : app.PlayerView) : (app.reportFirstUnpublished past view).support.Finite := by
+  unfold reportFirstUnpublished
+  rw [PMF.support_pure]
+  exact Set.finite_singleton _
+
 theorem reportFirstUnpublished_silent (past : List app.PlayerEntry) (view : app.PlayerView)
     (published : ∀ message ∈ view.messages.leaked,
       message.id ∈ view.messages.ledger.map Message.id) :

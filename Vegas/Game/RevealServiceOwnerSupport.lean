@@ -79,7 +79,7 @@ theorem menu_decode_reports (setup : Setup (Player := Player) (L := L))
   have allowed := (menu setup leaks bounds watcher).decode_embedPolicy_covered
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     watcher (profile watcher) past view response supported
-  simpa only [menu, ↓reduceIte, law, FinDist.mem_supportFinset,
+  simpa only [menu, ↓reduceIte, law, Set.Finite.mem_toFinset,
     PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using allowed
 
 theorem menu_decode_ordinary (setup : Setup (Player := Player) (L := L))

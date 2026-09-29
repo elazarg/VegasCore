@@ -52,7 +52,8 @@ def BehavioralPolicy.disclosureMemory {who : Player} :
         (fun rest => (disclosureMemory next registry.weaken
           (revelations.reveal (published := published) selected)
           (fun view => if own : owner = who then
-            (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations remember
+            (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations
+                remember
                 (policy.1 own) (view.back true)) Prod.fst
               (OwnAction.disclosure view.2.getLast?)).map Prod.snd
           else remember (view.back false)) policy.2 rest).map Sum.inr) state
@@ -141,7 +142,7 @@ private theorem disintegratesDisclosure_sample {Γ : SourceCtx Player L} {O : Fi
       simp only [Config.restoreMemory,
         PMF.bind_map, Config.withOwnHistory, afterSample_update,
         BehavioralPolicy.normalizeDisclosureFrom, PMF.bind_bind,
-        BehavioralPolicy.disclosureMemory, Sum.elim_inr]
+        BehavioralPolicy.disclosureMemory, Sum.elim_inr, Function.comp_def]
       rw [PMF.bind_comm]
       apply bind_congr_on_support _
       intro value _
@@ -150,7 +151,7 @@ private theorem disintegratesDisclosure_sample {Γ : SourceCtx Player L} {O : Fi
           (sampleSuccessor name config value) count)
       simpa only [Config.restoreMemory, PMF.bind_map, Config.withOwnHistory,
         Config.view, sampleSuccessor, back_sourceObserve, Bool.false_eq_true, ite_false,
-        PMF.map_bind] using nextLaw
+        PMF.map_bind, Function.comp_def] using nextLaw
 
 private theorem disintegratesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset VarId}
     (name : VarId) (owner : Player) {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
@@ -176,7 +177,7 @@ private theorem disintegratesDisclosure_commit {Γ : SourceCtx Player L} {O : Fi
         simp only [Config.restoreMemory, PMF.bind_map, commitKernel, Function.update_self,
           Config.withOwnHistory_view, afterCommit_update,
           BehavioralPolicy.normalizeDisclosureFrom, PMF.bind_bind,
-          BehavioralPolicy.disclosureMemory, Sum.elim_inr]
+          BehavioralPolicy.disclosureMemory, Sum.elim_inr, Function.comp_def]
         have localLaw := bindingMemoryLaw_disintegrate name payload remember (policy.1 rfl)
           (config.view owner) (fun binding past =>
             ((fun distribution => distribution.bind (ProtocolState.behavioralStateStep next
@@ -186,7 +187,7 @@ private theorem disintegratesDisclosure_commit {Γ : SourceCtx Player L} {O : Fi
                   (Sum.inr (α := Config Player L Γ)))
         simp only [Config.view, ← commitSuccessor_withOwnHistory] at localLaw
         erw [localLaw]
-        simp only [PMF.bind_map]
+        simp only [PMF.bind_map, Function.comp_def]
         apply bind_congr_on_support _
         rintro ⟨binding, _⟩ _
         have observed : (sourceObserve owner (Env.cons (x := name) binding config.state)).cells.get
@@ -205,11 +206,11 @@ private theorem disintegratesDisclosure_commit {Γ : SourceCtx Player L} {O : Fi
         simpa only [Config.restoreMemory, PMF.bind_map, Config.view, commitSuccessor,
           Config.withOwnHistory, Function.update_self, Function.update_idem,
           dite_true, back_sourceObserve, ite_true, List.dropLast_concat, observed,
-          Option.getD_some, PMF.map_bind] using nextLaw
+          Option.getD_some, PMF.map_bind, Function.comp_def] using nextLaw
       · simp only [Config.restoreMemory, PMF.bind_map, commitKernel,
           Function.update_of_ne owned, Config.withOwnHistory_foreign_view _ _ owned,
           afterCommit_update, BehavioralPolicy.normalizeDisclosureFrom, PMF.bind_bind,
-          BehavioralPolicy.disclosureMemory, Sum.elim_inr]
+          BehavioralPolicy.disclosureMemory, Sum.elim_inr, Function.comp_def]
         rw [PMF.bind_comm]
         apply bind_congr_on_support _
         intro binding _
@@ -225,7 +226,8 @@ private theorem disintegratesDisclosure_commit {Γ : SourceCtx Player L} {O : Fi
           Config.view, commitSuccessor, dite_eq_right owned,
           Function.update_of_ne (Ne.symm owned), Function.update_of_ne owned,
           back_sourceObserve, Bool.false_eq_true,
-          ite_false, Function.update_comm (Ne.symm owned), PMF.map_bind] using nextLaw
+          ite_false, Function.update_comm (Ne.symm owned), PMF.map_bind,
+              Function.comp_def] using nextLaw
 
 private theorem disintegratesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset VarId}
     (published : VarId) (owner : Player) (name : VarId) {payload : L.Ty}
@@ -253,7 +255,7 @@ private theorem disintegratesDisclosure_reveal {Γ : SourceCtx Player L} {O : Fi
         simp only [Config.restoreMemory, PMF.bind_map, revealKernel, Function.update_self,
           Config.withOwnHistory_view, afterReveal_update,
           BehavioralPolicy.normalizeDisclosureFrom, PMF.bind_bind,
-          BehavioralPolicy.disclosureMemory, Sum.elim_inr]
+          BehavioralPolicy.disclosureMemory, Sum.elim_inr, Function.comp_def]
         have localLaw := disclosureMemoryLaw_disintegrate published selected config.registry
           config.revelations remember (policy.1 rfl) (config.view owner)
           (fun disclose past =>
@@ -265,13 +267,14 @@ private theorem disintegratesDisclosure_reveal {Γ : SourceCtx Player L} {O : Fi
         simp only [Config.view, effectiveDisclosureView_observe,
           revealSuccessor_effective_withOwnHistory, ← revealSuccessor_withOwnHistory] at localLaw
         erw [localLaw]
-        simp only [PMF.bind_map]
+        simp only [PMF.bind_map, Function.comp_def]
         apply bind_congr_on_support _
         rintro ⟨disclose, _⟩ _
         have nextLaw := congrArg (PMF.map (Sum.inr (α := Config Player L Γ)))
           (ih (afterReveal profile) policy.2
             (fun nextView => if own : owner = owner then
-              (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry config.revelations
+              (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+                  config.revelations
                   remember (policy.1 own) (nextView.back true)) Prod.fst
                 (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
             else remember (nextView.back false))
@@ -281,18 +284,19 @@ private theorem disintegratesDisclosure_reveal {Γ : SourceCtx Player L} {O : Fi
         simpa only [Config.restoreMemory, PMF.bind_map, Config.view, revealSuccessor,
           Config.withOwnHistory, Function.update_self, Function.update_idem,
           dite_true, back_sourceObserve, ite_true, List.dropLast_concat,
-          List.getLast?_concat, recalled, PMF.map_bind] using nextLaw
+          List.getLast?_concat, recalled, PMF.map_bind, Function.comp_def] using nextLaw
       · simp only [Config.restoreMemory, PMF.bind_map, revealKernel,
           Function.update_of_ne owned, Config.withOwnHistory_foreign_view _ _ owned,
           afterReveal_update, BehavioralPolicy.normalizeDisclosureFrom, PMF.bind_bind,
-          BehavioralPolicy.disclosureMemory, Sum.elim_inr]
+          BehavioralPolicy.disclosureMemory, Sum.elim_inr, Function.comp_def]
         rw [PMF.bind_comm]
         apply bind_congr_on_support _
         intro disclose _
         have nextLaw := congrArg (PMF.map (Sum.inr (α := Config Player L Γ)))
           (ih (afterReveal profile) policy.2
             (fun nextView => if own : owner = who then
-              (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry config.revelations
+              (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+                  config.revelations
                   remember (policy.1 own) (nextView.back true)) Prod.fst
                 (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
             else remember (nextView.back false))
@@ -301,7 +305,8 @@ private theorem disintegratesDisclosure_reveal {Γ : SourceCtx Player L} {O : Fi
           Config.view, revealSuccessor, dite_eq_right owned,
           Function.update_of_ne (Ne.symm owned), Function.update_of_ne owned,
           back_sourceObserve, Bool.false_eq_true,
-          ite_false, Function.update_comm (Ne.symm owned), PMF.map_bind] using nextLaw
+          ite_false, Function.update_comm (Ne.symm owned), PMF.map_bind,
+              Function.comp_def] using nextLaw
 
 /-- Every finite prefix retains an exact conditional law of the original
 owner's intentions. The other players' entire private histories and all game
@@ -461,7 +466,8 @@ theorem BehavioralPolicy.disclosureMemory_observation_congr {who : Player} :
               have recur := policy.2.disclosureMemory_observation_congr next registry.weaken
                 (revelations.reveal (published := published) selected)
                 (fun view => if own : owner = who then
-                  (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations remember
+                  (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry
+                      revelations remember
                       (policy.1 own) (view.back true)) Prod.fst
                     (OwnAction.disclosure view.2.getLast?)).map Prod.snd
                 else remember (view.back false)) left right equal

@@ -185,7 +185,7 @@ theorem openingWindow_owner_posterior {Observation : Type}
         intro start supported
         rw [same start supported]
       _ = _ := by
-        simp only [FinDist.product, ← PMF.bind_pure_comp, Function.comp_def]
+        simp only [bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def]
         rw [PMF.bind_comm]
   change ((fiberConditional (prior.bind fun start =>
     (kernel start).map fun output => (output, start)) Prod.fst observed).map

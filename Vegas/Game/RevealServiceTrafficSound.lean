@@ -155,7 +155,7 @@ theorem retained_step_traffic (bounds : MessageBounds (graph setup))
                 have quiet := watcher_history_silent setup leaks bounds watcher reveals
                   observer openable history control state actor
                 simp only [menu, ↓reduceIte] at allowed
-                rw [quiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _] at allowed
+                rw [quiet, Set.Finite.mem_toFinset, PMF.mem_support_pure_iff _ _] at allowed
                 subst response
                 cases control with
                 | mk remaining owner execution =>

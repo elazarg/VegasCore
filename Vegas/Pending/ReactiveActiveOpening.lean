@@ -92,7 +92,8 @@ theorem openingWindow_active_expiry (runtime : EventGraphRuntime graph)
   intro app players reached
   have start := OpeningWindowFrame.initial_at runtime leaks owner event candidate ⟨payload, value⟩
     offset selected visits initial counted unpassed serials published
-  simp only [ReactiveApplication.invoke, PMF.bind_map, PMF.support_bind] at reached
+  simp only [ReactiveApplication.invoke, PMF.bind_map, PMF.support_bind,
+      Function.comp_def] at reached
   obtain ⟨response, chosen, reached⟩ := Set.mem_iUnion₂.mp reached
   rw [runtime.runInteractionPlan_append, PMF.support_bind] at reached
   obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp reached

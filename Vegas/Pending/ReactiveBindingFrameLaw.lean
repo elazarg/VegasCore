@@ -126,14 +126,14 @@ theorem binding_response_coupling
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
     simp only [responsePair, law, app, frame.observed]
   refine ⟨coupling, ?_, ?_, ?_⟩
-  · simp only [coupling, PMF.map_comp, ReactiveApplication.invoke, PMF.bind_map]
+  · simp only [coupling, PMF.map_comp, ReactiveApplication.invoke, PMF.bind_map, Function.comp_def]
     change law.map (fun response => finish (original.respond app owner response)) = _
     rw [← PMF.bind_pure_comp, Function.comp_def]
     apply bind_congr_on_support _
     intro response member
     exact (originalStep response member).symm
   · simp only [coupling, PMF.map_comp, ReactiveApplication.Implementation.resume,
-      ↓reduceIte, PMF.bind_map]
+      ↓reduceIte, PMF.bind_map, Function.comp_def]
     change law.map (fun response =>
       (finish (repaired.respond app owner (responsePair response).1),
         (responsePair response).2)) =
@@ -145,6 +145,7 @@ theorem binding_response_coupling
     rw [← PMF.bind_pure_comp, Function.comp_def]
     apply bind_congr_on_support _
     intro response member
+    simp only [Function.comp_apply]
     rw [repairedStep response member, PMF.pure_map]
   · intro next member
     obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member

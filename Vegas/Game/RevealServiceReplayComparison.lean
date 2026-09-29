@@ -137,9 +137,9 @@ theorem replay_extra_continuation_law
     obtain ⟨chosen, legal, selectedChoice⟩ := choice.2
     have silence : chosen = ⟨none⟩ := by
       simp only [menu, reduceIte] at legal
-      change chosen ∈ (app.reportFirstUnpublished (execution.recall watcher)
-        (execution.observe app watcher)).supportFinset at legal
-      simpa only [quiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _] using legal
+      change chosen ∈ (app.reportFirstUnpublished_support_finite (execution.recall watcher)
+        (execution.observe app watcher)).toFinset at legal
+      simpa only [quiet, Set.Finite.mem_toFinset, PMF.mem_support_pure_iff _ _] using legal
     simpa only [selectedChoice, silence, Option.getD_some, Set.mem_singleton_iff]
       using equal.symm
   let native := restriction.history history.1

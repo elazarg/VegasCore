@@ -143,7 +143,8 @@ theorem MessageBounds.compiled_resolution_cases (bounds : MessageBounds graph)
       · exact Or.inr (Or.inr ⟨candidate, value, evidence, active.1, active.2,
           result, associated, owned, first, response⟩)
     · exact Or.inl (Finset.mem_singleton.mp chosen)
-  · exact Or.inr (Or.inl (FinDist.mem_supportFinset.mp replay))
+  · exact Or.inr (Or.inl (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp
+      replay))
 
 /-- This phase law applies to every retained response, not just the compiler's
 selected strategy. No private registration occurs during resolution. -/
@@ -200,7 +201,7 @@ theorem MessageBounds.compiled_resolution_run_application (bounds : MessageBound
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)

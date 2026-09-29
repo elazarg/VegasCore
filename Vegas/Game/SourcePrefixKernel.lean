@@ -37,7 +37,7 @@ theorem encoded_prefix_state (setup : Setup (Player := Player) (L := L))
   induction count with
   | zero =>
       simp only [Nat.zero_add, Function.iterate_one, PMF.pure_bind,
-        setup.behavioralStateStep_none, Function.iterate_zero_apply, PMF.pure_map,
+        setup.behavioralStateStep_none, Function.iterate_zero_apply,
         ← PMF.bind_pure_comp, Function.comp_def]
   | succ count ih =>
       rw [show count + 1 + 1 = (count + 1) + 1 from rfl,

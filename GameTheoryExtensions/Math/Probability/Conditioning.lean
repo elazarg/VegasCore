@@ -104,6 +104,11 @@ theorem eq_bind_fst_conditional_snd (law : PMF (α × β)) :
       exact Prod.ext (mem_support_fiberConditional meets member).1.symm rfl
     _ = _ := PMF.map_id _
 
+/-- The second marginal of an independent pair law is its second factor. -/
+theorem bindPairLaw_const_map_snd (first : PMF α) (second : PMF β) :
+    (bindPairLaw first fun _ => second).map Prod.snd = second := by
+  rw [bindPairLaw_map_snd, PMF.bind_const]
+
 /-- Observing one independent coordinate leaves the other law unchanged.
 This also respects the fallback at an impossible observation. -/
 theorem conditional_snd_bindPairLaw_const (first : PMF α) (second : PMF β) (observed : α) :

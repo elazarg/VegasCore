@@ -56,7 +56,7 @@ theorem HonestBoundary.ready_block_continuationLaw
       intro next member
       exact (boundaryLaw next member).continuationLaw_eq runtime inputs profile next
     _ = (law.map (fun next => next.native.application.config)).bind
-          (graph.canonicalContinuation profile) := by rw [PMF.bind_map]
+          (graph.canonicalContinuation profile) := by rw [PMF.bind_map, Function.comp_def]
     _ = (graph.normalizedPolicyStep profile execution.native.application.config event ready).bind
           (graph.canonicalContinuation profile) := by rw [configLaw]
     _ = graph.canonicalContinuation profile execution.native.application.config :=
@@ -89,7 +89,7 @@ theorem HonestBoundary.unready_block_continuationLaw
     _ = ((runtime.runServicePlan (runtime.compileProfile profile) wire
           (eventServicePlan roster reactionRounds event) execution).map
             (fun next => next.native.application.config)).bind
-          (graph.canonicalContinuation profile) := by rw [PMF.bind_map]
+          (graph.canonicalContinuation profile) := by rw [PMF.bind_map, Function.comp_def]
     _ = _ := by rw [block.1, PMF.pure_bind]
 
 theorem runEventSweep

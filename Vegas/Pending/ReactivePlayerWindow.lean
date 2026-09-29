@@ -43,7 +43,7 @@ theorem player_window_application (runtime : EventGraphRuntime graph)
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have remaining := ih _ reached
@@ -71,7 +71,7 @@ theorem player_window_ledger (runtime : EventGraphRuntime graph)
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       exact (ih _ reached).trans (app.respond_ledger (initial.sampledActivation app who sample)

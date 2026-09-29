@@ -275,13 +275,13 @@ and published replay aliases. Source value coverage remains a proof obligation.
 The watcher follows the existing reporting policy at every local input. -/
 def menu (watcher : Player) : (application setup leaks).ResponseMenu where
   actions who past view := if who = watcher then
-      ((application setup leaks).reportFirstUnpublished past view).supportFinset
+      ((application setup leaks).reportFirstUnpublished_support_finite past view).toFinset
     else ordinaryActions setup leaks bounds who past view
   nonempty who past view := by
     split
     · obtain ⟨action, supported⟩ :=
         ((application setup leaks).reportFirstUnpublished past view).support_nonempty
-      exact ⟨action, FinDist.mem_supportFinset.mpr supported⟩
+      exact ⟨action, (Set.Finite.mem_toFinset _).mpr supported⟩
     · exact ⟨⟨none⟩, silence_ordinary setup leaks bounds who past view⟩
 
 theorem report_effective (who : Player) (past : List (application setup leaks).PlayerEntry)
@@ -311,7 +311,7 @@ theorem menu_in_effective (watcher : Player) :
   change response ∈ (if who = watcher then _ else _) at member
   split at member
   · exact report_effective setup leaks bounds who past view response
-      (FinDist.mem_supportFinset.mp member)
+      ((Set.Finite.mem_toFinset _).mp member)
   · exact ordinary_effective setup leaks bounds who past view member
 
 abbrev protocol (watcher : Player) :=

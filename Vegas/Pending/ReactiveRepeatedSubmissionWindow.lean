@@ -376,7 +376,7 @@ theorem run_repeated_stopped_coupling
                     repaired.application.playerView owner := by
           by_cases bad : departed runtime leaks owner next.1
           · let coupling := bindPairLaw (app.runRounds scheduler players count next.1) (fun _ => (strategy.runJoint owner players scheduler count next.2.1 next.2.2))
-            refine ⟨coupling, bindPairLaw_map_fst .., FinDist.map_snd_product .., ?_⟩
+            refine ⟨coupling, bindPairLaw_map_fst .., bindPairLaw_const_map_snd .., ?_⟩
             intro final supported
             left
             obtain ⟨record, present, authored, rejected⟩ := bad

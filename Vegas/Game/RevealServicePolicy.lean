@@ -152,7 +152,7 @@ theorem policy_covered (watcher : Player) (profile : BehavioralProfile setup.pro
   split at supported
   · rename_i same
     rw [ite_eq_left same]
-    exact FinDist.mem_supportFinset.mpr supported
+    exact (Set.Finite.mem_toFinset _).mpr supported
   · rename_i different
     rw [ite_eq_right different]
     exact ordinaryPolicy_covered setup leaks bounds profile weight nonnegative atMostOne

@@ -491,7 +491,7 @@ theorem binding_window_stopped_coupling
             · exact Or.inr (Or.inr framed)
         · obtain ⟨record, emitted, author, forbidden⟩ := departure
           refine ⟨bindPairLaw (leftRun response) (fun _ => (rightRun response)),
-            bindPairLaw_map_fst .., FinDist.map_snd_product .., ?_⟩
+            bindPairLaw_map_fst .., bindPairLaw_const_map_snd .., ?_⟩
           intro next supported
           have reached : next.1 ∈ (leftRun response).support := by
             rw [← bindPairLaw_map_fst (leftRun response) (rightRun response),

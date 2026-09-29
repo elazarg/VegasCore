@@ -68,7 +68,7 @@ theorem replay_menu_watcher
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) :
     (replayMenu setup leaks bounds watcher).actions watcher past view =
-      ((application setup leaks).reportFirstUnpublished past view).supportFinset ∪
+      ((application setup leaks).reportFirstUnpublished_support_finite past view).toFinset ∪
         publishedReplays setup leaks view := by
   classical
   simp only [replayMenu, menu, ↓reduceIte]

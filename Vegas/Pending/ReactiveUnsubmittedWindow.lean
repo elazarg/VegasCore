@@ -77,7 +77,7 @@ theorem MessageBounds.compiled_current_response (bounds : MessageBounds graph)
           · exact Or.inr ⟨active.1, by rw [physical]; rfl⟩
     · cases Finset.mem_singleton.mp chosen
       exact Or.inl silent
-  · exact Or.inl (FinDist.mem_supportFinset.mp replay)
+  · exact Or.inl (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp replay)
 
 /-- An actual retained prefix with no owner submission is an actual replay
 window. This retains the exact execution, including all local observations. -/
@@ -105,7 +105,7 @@ theorem compiled_unsubmitted_window (runtime : EventGraphRuntime graph)
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached ⊢
+        PMF.bind_bind, Function.comp_def] at reached ⊢
       obtain ⟨sample, sampled, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, chosen, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       let activated := initial.sampledActivation app actor sample

@@ -79,7 +79,7 @@ def rosterActions (setup : Setup (Player := Player) (L := L))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) : Finset (application setup leaks).Action :=
-  (((application setup leaks).replayPolicy past view).supportFinset ∪
+  ((application setup leaks).replayActions past view ∪
     (rosterFresh? setup leaks rosters who past view).toList.toFinset) ∩
       (bounds.menu (runtime setup) leaks).actions who past view
 
@@ -91,7 +91,7 @@ theorem silence_roster (setup : Setup (Player := Player) (L := L))
     (⟨none⟩ : (application setup leaks).Action) ∈
       rosterActions setup leaks bounds rosters who past view := by
   classical
-  refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _ (FinDist.mem_supportFinset.mpr ?_), ?_⟩
+  refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _ (((application setup leaks).mem_replayActions_iff _ _ _).mpr ?_), ?_⟩
   · exact (application setup leaks).replayPolicy_support past view none
       (Finset.mem_insert_self _ _)
   · rw [bounds.menu_mem]
@@ -108,9 +108,9 @@ theorem replay_roster (setup : Setup (Player := Player) (L := L))
     action ∈ rosterActions setup leaks bounds rosters who past view := by
   classical
   refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _
-    (FinDist.mem_supportFinset.mpr member), ?_⟩
+    (((application setup leaks).mem_replayActions_iff _ _ _).mpr member), ?_⟩
   obtain ⟨selected, supported, rfl⟩ := PMF.support_map .. ▸ member
-  have eligible := (PMF.mem_support_uniformOfFinset_iff _ _ _).mp supported
+  have eligible := (PMF.mem_support_uniformOfFinset_iff _ _).mp supported
   cases selected with
   | none =>
       rw [bounds.menu_mem]
@@ -158,7 +158,7 @@ theorem roster_response_cases (setup : Setup (Player := Player) (L := L))
       rosterFresh? setup leaks rosters who past view = some action := by
   classical
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with waiting | opening
-  · exact Or.inl (FinDist.mem_supportFinset.mp waiting)
+  · exact Or.inl (((application setup leaks).mem_replayActions_iff _ _ _).mp waiting)
   · exact Or.inr (by simpa only [List.mem_toFinset, Option.mem_toList] using opening)
 
 omit [Fintype Player] in

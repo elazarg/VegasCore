@@ -39,13 +39,13 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 open Classical in
 def watchedMenu (watcher : Player) : (application setup leaks).ResponseMenu where
   actions who past view := if who = watcher then
-      ((application setup leaks).reportFirstUnpublished past view).supportFinset
+      ((application setup leaks).reportFirstUnpublished_support_finite past view).toFinset
     else (bounds.menu (runtime setup) leaks).actions who past view
   nonempty who past view := by
     split
     · obtain ⟨response, supported⟩ :=
         ((application setup leaks).reportFirstUnpublished past view).support_nonempty
-      exact ⟨response, FinDist.mem_supportFinset.mpr supported⟩
+      exact ⟨response, (Set.Finite.mem_toFinset _).mpr supported⟩
     · exact (bounds.menu (runtime setup) leaks).nonempty who past view
 
 theorem menu_in_watched (watcher : Player) :
@@ -62,7 +62,7 @@ theorem watched_in_effective (watcher : Player) :
   change response ∈ (if who = watcher then _ else _) at member
   split at member
   · exact report_effective setup leaks bounds who past view response
-      (FinDist.mem_supportFinset.mp member)
+      ((Set.Finite.mem_toFinset _).mp member)
   · exact member
 
 abbrev watchedInformation (watcher : Player) :=
@@ -122,7 +122,7 @@ theorem watched_decode_reports (watcher : Player)
   have allowed := (watchedMenu setup leaks bounds watcher).decode_embedPolicy_covered
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     watcher (profile watcher) past view response supported
-  simpa only [watchedMenu, ↓reduceIte, law, FinDist.mem_supportFinset,
+  simpa only [watchedMenu, ↓reduceIte, law, Set.Finite.mem_toFinset,
     PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using allowed
 
 /-- Every equilibrium with prescribed reporting extends to the full bounded

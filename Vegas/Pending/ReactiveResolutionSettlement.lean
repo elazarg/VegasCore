@@ -168,7 +168,8 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
               fun result => (result.application, result.network.ledger,
                 result.receipts, result.network.nextSerial)).support :=
           PMF.support_map .. ▸ ⟨final, tail, rfl⟩
-        rw [law, handled, Option.getD_some, Option.isSome_some, PMF.mem_support_pure_iff _ _] at mapped
+        rw [law, handled, Option.getD_some, Option.isSome_some,
+            PMF.mem_support_pure_iff _ _] at mapped
         refine ⟨Or.inr ⟨value, resolved, congrArg Prod.fst mapped⟩, ?_⟩
         have ledger := congrArg (fun result => result.2.1) mapped
         have counters := congrArg (fun result => result.2.2.2) mapped

@@ -267,7 +267,7 @@ theorem sourceServiceTimedPolicy_supported
         · have denied := (runtime setup).firstSubmission_false_of_recorded leaks past event
             recorded response submitted
           simp only [denied, Bool.false_eq_true] at first
-      · exact FinDist.mem_supportFinset.mp replay
+      · exact ((application setup leaks).mem_replayActions_iff _ _ _).mp replay
     · have unsent : (runtime setup).eventRecorded leaks past event = false :=
         Bool.eq_false_iff.mpr recorded
       obtain ⟨current, count, ready⟩ := current_slot setup leaks bounds values capacity rosters

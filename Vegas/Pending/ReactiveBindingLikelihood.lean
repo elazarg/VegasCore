@@ -120,7 +120,7 @@ theorem replay_window_focal_law (runtime : EventGraphRuntime graph)
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.map_bind,
-        PMF.bind_map, PMF.bind_bind]
+        PMF.bind_map, PMF.bind_bind, Function.comp_def]
       rw [networks]
       apply bind_congr_on_support _
       intro sample _

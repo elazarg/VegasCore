@@ -808,7 +808,7 @@ private theorem serviceBehavioral_choice_law (runtime : EventGraphRuntime graph)
           (fun chosen => some (.order chosen)) := by
   rw [runtime.serviceSignals_infoOf inputs roster reactionRounds players modelWire focal trace]
   cases siteEq : runtime.serviceProtocolSite? focal state with
-  | none => simp [serviceBehavioral]
+  | none => simp [serviceBehavioral, PMF.pure_map]
   | some site =>
       cases site <;> rw [serviceBehavioral, PMF.map_comp] <;> rfl
 
@@ -864,30 +864,30 @@ private theorem serviceBehavioral_step (runtime : EventGraphRuntime graph)
                   · subst who
                     simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
                       serviceControlStep, serviceStep, MessageApplication.invoke,
-                      PMF.map_bind, PMF.bind_map, Function.comp_def]
+                      PMF.map_bind, PMF.bind_map, PMF.map_comp, Function.comp_def]
                   · simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
                       serviceControlStep, serviceStep, MessageApplication.invoke, same,
-                      PMF.map_bind, Function.comp_def]
+                      PMF.map_bind, PMF.map_comp, Function.comp_def]
               | wire =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
                     serviceControlStep, serviceStep, MessageApplication.invoke,
                     MessageApplication.wireEnvironment, PMF.map_bind, PMF.bind_map,
-                    Function.comp_def]
+                    PMF.map_comp, Function.comp_def]
               | grant event =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
-                    serviceControlStep, serviceStep, Function.comp_def]
+                    serviceControlStep, serviceStep, PMF.map_comp, Function.comp_def]
               | includeLatest event owner =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
-                    serviceControlStep, serviceStep, Function.comp_def]
+                    serviceControlStep, serviceStep, PMF.map_comp, Function.comp_def]
               | sample event =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
-                    serviceControlStep, serviceStep, Function.comp_def]
+                    serviceControlStep, serviceStep, PMF.map_comp, Function.comp_def]
               | tick =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
-                    serviceControlStep, serviceStep, Function.comp_def]
+                    serviceControlStep, serviceStep, PMF.map_comp, Function.comp_def]
               | expire event =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
-                    serviceControlStep, serviceStep, Function.comp_def]
+                    serviceControlStep, serviceStep, PMF.map_comp, Function.comp_def]
 
 private def serviceControlRun (runtime : EventGraphRuntime graph)
     (inputs : PMF graph.Inputs) (roster : List Player) (reactionRounds : Nat)
@@ -931,7 +931,7 @@ private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
       intro history
       rcases history with ⟨state, trace⟩
       cases state <;> simp [InformationModel.runBehavioralFrom, serviceControlRun,
-        runServiceControlSteps]
+        runServiceControlSteps, PMF.pure_map]
   | succ fuel ih =>
       intro history
       let E := runtime.serviceProtocol inputs roster reactionRounds players modelWire focal
@@ -947,7 +947,7 @@ private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
         | some control =>
             rcases control with ⟨epochs, plan, execution⟩
             cases epochs <;> cases plan <;>
-              simp [E, serviceControlRun, runServiceControlSteps] at *
+              simp [E, serviceControlRun, runServiceControlSteps, PMF.pure_map] at *
       · rw [InformationModel.runBehavioralFrom_succ_of_not_terminal (M := M) policies fuel
           terminal, PMF.map_bind]
         calc
@@ -968,7 +968,7 @@ private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
                 rw [InformationModel.behavioralJoint_eq_pure_of_no_active (M := M) policies
                   trace terminal (fun _ => by simp), PMF.pure_bind]
                 simp only [E, serviceProtocol, serviceProtocolTransition, serviceControlRun,
-                  PMF.bind_map]
+                  PMF.bind_map, Function.comp_def]
             | some control =>
                 dsimp only [M, E, policies]
                 rw [← PMF.bind_bind]
@@ -977,9 +977,9 @@ private theorem service_runBehavioralFrom (runtime : EventGraphRuntime graph)
                 rcases control with ⟨epochs, plan, execution⟩
                 cases epochs <;> cases plan
                 · exact False.elim (terminal trivial)
-                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind]
-                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind]
-                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind]
+                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind, Function.comp_def]
+                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind, Function.comp_def]
+                · simp [serviceControlRun, runServiceControlSteps, PMF.map_bind, Function.comp_def]
 
 private def serviceExecution? (runtime : EventGraphRuntime graph) :
     ServiceProtocolState runtime → Option runtime.application.PolicyExecution

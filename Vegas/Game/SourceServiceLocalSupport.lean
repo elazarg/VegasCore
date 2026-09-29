@@ -210,7 +210,7 @@ theorem sourceService_response_supported
     · exact Or.inr (sourceService_decision_supported setup leaks bounds values capacity rosters
         opportunities network profile full who control trace active event granted owned response
         (Finset.mem_filter.mp decision).1)
-    · exact Or.inl (FinDist.mem_supportFinset.mp replay)
+    · exact Or.inl (((application setup leaks).mem_replayActions_iff _ _ _).mp replay)
   · exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks who
       (control.execution.recall who) (control.execution.observe app who)
       event granted owned response member)

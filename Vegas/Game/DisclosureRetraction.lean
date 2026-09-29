@@ -151,7 +151,8 @@ private theorem retractsDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
               (config.view owner)).map Prod.fst).support := by
             simpa only [commitKernel, Function.update_self,
               BehavioralPolicy.normalizeDisclosureFrom] using selected
-          have remembered' : past ∈ ((fiberConditional (bindingMemoryLaw name payload remember (policy.1 rfl)
+          have remembered' : past ∈ ((fiberConditional (bindingMemoryLaw name payload remember
+              (policy.1 rfl)
               (config.view owner)) Prod.fst binding).map Prod.snd).support := by
             simpa only [posterior, dite_true, Config.view, commitSuccessor,
               Function.update_self, back_sourceObserve, ite_true, List.dropLast_concat,
@@ -195,7 +196,8 @@ private theorem retractsDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
       let posterior : DecisionView who ((published, .publication payload) :: Γ) →
           PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry config.revelations
+          (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+              config.revelations
               remember (policy.1 own) (view.back true)) Prod.fst
             (OwnAction.disclosure view.2.getLast?)).map Prod.snd
         else remember (view.back false)
@@ -217,7 +219,8 @@ private theorem retractsDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
                 Prod.fst).support :=
             by simpa only [revealKernel, Function.update_self,
               BehavioralPolicy.normalizeDisclosureFrom] using chosen
-          have remembered' : past ∈ ((fiberConditional (disclosureMemoryLaw published selected config.registry
+          have remembered' : past ∈ ((fiberConditional (disclosureMemoryLaw published selected
+              config.registry
               config.revelations remember (policy.1 rfl) (config.view owner))
               Prod.fst disclose).map Prod.snd).support := by
             have recalled : OwnAction.disclosure (L := L)

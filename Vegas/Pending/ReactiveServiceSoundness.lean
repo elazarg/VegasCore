@@ -393,7 +393,8 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
       owner event payload binding checks outputEq codeEq node granted ready timely counted choice
         first
   · exact runtime.service_transport_traffic leaks execution remaining owner response
-      (app.replayPolicy_cases _ _ response (FinDist.mem_supportFinset.mp replay)) known
+      (app.replayPolicy_cases _ _ response (((runtime.reactiveApplication
+          leaks).mem_replayActions_iff _ _ _).mp replay)) known
 
 /-- Other participants can wait or replay during this event. The statement also
 covers every participant at a chance event, whose actor is absent. -/

@@ -60,10 +60,10 @@ theorem watcher_choice_subsingleton (info : (application setup leaks).Info) :
       obtain ⟨left, leftMember, leftEq⟩ := first.2
       obtain ⟨right, rightMember, rightEq⟩ := second.2
       have leftChoice : left = response := by
-        simpa only [menu, ↓reduceIte, chosen, FinDist.mem_supportFinset,
+        simpa only [menu, ↓reduceIte, chosen, Set.Finite.mem_toFinset,
           PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using leftMember
       have rightChoice : right = response := by
-        simpa only [menu, ↓reduceIte, chosen, FinDist.mem_supportFinset,
+        simpa only [menu, ↓reduceIte, chosen, Set.Finite.mem_toFinset,
           PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using rightMember
       exact leftEq.trans ((congrArg some (leftChoice.trans rightChoice.symm)).trans rightEq.symm)
 

@@ -43,6 +43,18 @@ def replayPolicy : app.Policy := fun past view =>
   (PMF.uniformOfFinset (app.replayOptions past view) (Finset.insert_nonempty ..)).map
     (fun selected => ⟨selected.map Transmission.replay⟩)
 
+open Classical in
+/-- The finitely many responses the replay policy can draw. -/
+def replayActions (past : List app.PlayerEntry) (view : app.PlayerView) : Finset app.Action :=
+  (app.replayOptions past view).image fun selected => ⟨selected.map Transmission.replay⟩
+
+theorem mem_replayActions_iff (past : List app.PlayerEntry) (view : app.PlayerView)
+    (action : app.Action) :
+    action ∈ app.replayActions past view ↔ action ∈ (app.replayPolicy past view).support := by
+  classical
+  rw [replayActions, Finset.mem_image, replayPolicy, PMF.support_map]
+  simp only [PMF.support_uniformOfFinset, Finset.mem_coe, Set.mem_image]
+
 theorem replayPolicy_cases (past : List app.PlayerEntry) (view : app.PlayerView)
     (action : app.Action) (supported : action ∈ (app.replayPolicy past view).support) :
     action = ⟨none⟩ ∨ ∃ id, action = ⟨some (.replay id)⟩ := by

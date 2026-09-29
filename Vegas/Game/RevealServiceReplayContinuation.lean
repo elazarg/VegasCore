@@ -167,7 +167,7 @@ theorem replay_control_bind_eq {Outcome : Type}
         have related : ReplayAgreement setup leaks watcher
             (first.respond app watcher ⟨none⟩) (second.respond app watcher response) := by
           rcases Finset.mem_union.mp allowed with prescribedResponse | replayed
-          · rw [secondQuiet, FinDist.mem_supportFinset, PMF.mem_support_pure_iff _ _]
+          · rw [secondQuiet, Set.Finite.mem_toFinset, PMF.mem_support_pure_iff _ _]
               at prescribedResponse
             subst response
             exact same.respond_watcher_silent

@@ -146,7 +146,7 @@ theorem required_binding_final_block_coupling
         ∀ next ∈ coupling.support,
           bad next.1 ∨ Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
     refine ⟨bindPairLaw (leftRun response) (fun _ => (rightRun response)),
-      bindPairLaw_map_fst .., FinDist.map_snd_product .., ?_⟩
+      bindPairLaw_map_fst .., bindPairLaw_const_map_snd .., ?_⟩
     intro next supported
     left
     apply evidence

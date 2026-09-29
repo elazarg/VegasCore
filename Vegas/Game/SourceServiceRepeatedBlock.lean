@@ -141,7 +141,7 @@ theorem repeated_binding_block_coupling
       let rightLaw := ((runtime setup).runInteractionPlan leaks players network ending next.2.1).map
         fun final => (final, next.2.2)
       refine ⟨bindPairLaw leftLaw (fun _ => rightLaw), bindPairLaw_map_fst ..,
-        FinDist.map_snd_product .., ?_⟩
+        bindPairLaw_const_map_snd .., ?_⟩
       intro final member
       left
       obtain ⟨record, present, authored, rejected⟩ := bad

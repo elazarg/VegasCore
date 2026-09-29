@@ -93,8 +93,9 @@ theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
   | some control =>
       simp only [Option.map_some, Option.elim_some]
       by_cases missing : control.execution.application.publicView.missedBindingBy who = true
-      · simp only [missing, Bool.or_true, ↓reduceIte,
-          PMF.map_const, FinDist.prob_pure_self]
+      · simp only [missing, Bool.or_true, ↓reduceIte]
+        erw [PMF.map_const]
+        simp [PMF.pure_apply]
       · have clear : control.execution.application.publicView.missedBindingBy who = false :=
           Bool.eq_false_iff.mpr missing
         simp only [clear, Bool.or_false, Bool.false_eq_true, ↓reduceIte]
@@ -139,7 +140,8 @@ theorem serviceAudit_collection_ge_traffic (runtime : EventGraphRuntime graph)
         (runtime.serviceAudit leaks trafficAudit)).map
           (fun verdict => verdict who)) true).toReal) := by
   rw [TerminalAudit.collection_probability, TerminalAudit.collection_probability]
-  apply FinDist.expect_mono
+  refine expect_mono ?_ (TerminalAudit.payoffIntegrable_charge _ _ _ _)
+    (TerminalAudit.payoffIntegrable_charge _ _ _ _)
   intro state _supported
   exact runtime.serviceAudit_charge_ge_traffic leaks trafficAudit state who
 

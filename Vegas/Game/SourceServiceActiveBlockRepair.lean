@@ -169,13 +169,13 @@ theorem active_nonbinding_block_stopped_coupling
     · let left := (runtime setup).runInteractionPlan leaks players network suffix next.1
       let right := strategy.runJoint owner players scheduler suffix.length next.2.1 next.2.2
       refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
-        FinDist.map_snd_product .., ?_⟩
+        bindPairLaw_const_map_snd .., ?_⟩
       intro final supported
       have leftSupport : final.1 ∈ left.support := by
-        rw [← bindPairLaw_map_fst left right, PMF.support_map]
+        rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
         exact ⟨final, supported, rfl⟩
       have rightSupport : final.2 ∈ right.support := by
-        rw [← FinDist.map_snd_product left right, PMF.support_map]
+        rw [← bindPairLaw_const_map_snd left right, PMF.support_map]
         exact ⟨final, supported, rfl⟩
       refine ⟨?_, ?_⟩
       · apply menu.trace_implementation_runJoint (initialLaw setup)

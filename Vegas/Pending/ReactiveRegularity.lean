@@ -25,15 +25,23 @@ theorem reactiveRecoveryLaw_regular_optimal (intentions : List (Option graph.Com
     (selection : PendingChoice.RegularSelection (graph.Action event))
     {Outcome : Type} (continuation : graph.Action event → PMF Outcome)
     (utility : Outcome → ℝ)
+    (actionIntegrable : ∀ action, PayoffIntegrable (continuation action) utility)
+    (lawIntegrable : PayoffIntegrable (law.bind continuation) utility)
     (optimal : ∀ action, expect (continuation action) utility ≤
       expect (law.bind continuation) utility)
-    (alternative : PMF (Option (graph.Action event))) :
+    (submittedIntegrable : PayoffIntegrable ((selection.responseLaw
+      ((reactiveRecoveryLaw intentions event law).map some)).bind continuation) utility)
+    (alternative : PMF (Option (graph.Action event)))
+    (alternativeIntegrable : PayoffIntegrable
+      ((selection.responseLaw alternative).bind continuation) utility) :
     expect ((selection.responseLaw alternative).bind continuation) utility ≤
       expect ((selection.responseLaw
         ((reactiveRecoveryLaw intentions event law).map some)).bind
           continuation) utility :=
-  selection.optimal_response_of_support law _ continuation utility optimal
+  selection.optimal_response_of_support law _ continuation utility lawIntegrable
+    (reactiveRecoveryLaw_bind_integrable intentions event law continuation utility
+      actionIntegrable lawIntegrable) optimal
     (fun _ supported => reactiveRecoveryLaw_support intentions event law _ supported)
-    alternative
+    submittedIntegrable alternative alternativeIntegrable
 
 end Vegas.EventGraphRuntime

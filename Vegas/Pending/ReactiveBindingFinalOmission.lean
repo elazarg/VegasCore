@@ -77,7 +77,7 @@ theorem foreign_window_owner_published
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have preserved := runtime.foreign_response_published leaks
@@ -306,10 +306,11 @@ theorem omitted_binding_continuation_coupling
   let right := (strategy.resume owner players (some owner) repaired memory).bind fun next =>
     (runtime.runInteractionPlan leaks players network plan next.1).map
       fun execution => (execution, next.2)
-  refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst .., FinDist.map_snd_product .., ?_⟩
+  refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
+    bindPairLaw_const_map_snd .., ?_⟩
   intro next supported
   have leftSupported : next.1 ∈ left.support := by
-    rw [← bindPairLaw_map_fst left right, PMF.support_map]
+    rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
     exact ⟨next, supported, rfl⟩
   change next.1 ∈ (((players owner (original.recall owner) (original.observe app owner)).map
     (original.respond app owner)).bind

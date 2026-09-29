@@ -34,7 +34,8 @@ private theorem disclosure_continuation_entry {Γ : SourceCtx Player L} {O : Fin
           (policy.normalizeDisclosureFrom program config.registry config.revelations remember))
         (ProtocolState.entry program config) := by
   rw [BehavioralPolicy.disclosureMemory_entry, PMF.bind_map]
-  simp only [ProtocolState.continuationLaw_entry, Config.restoreMemory, PMF.bind_map]
+  simp only [ProtocolState.continuationLaw_entry, Config.restoreMemory, PMF.bind_map,
+      Function.comp_def]
   exact normalizeDisclosureFrom_realize program profile policy config.registry
     config.revelations remember config.state config.history
 
@@ -72,7 +73,7 @@ private theorem disclosurePrefixRealizes_sample {Γ : SourceCtx Player L} {O : F
         (sampleSuccessor name config value) count state reached
       simpa only [BehavioralPolicy.disclosureMemory, Sum.elim_inr, PMF.bind_map,
         BehavioralPolicy.normalizeDisclosureFrom, ProtocolState.continuationLaw,
-        sampleSuccessor, afterSample] using result
+        sampleSuccessor, afterSample, Function.comp_def] using result
 
 private theorem disclosurePrefixRealizes_commit {Γ : SourceCtx Player L} {O : Finset VarId}
     (name : VarId) (owner : Player) {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
@@ -134,7 +135,8 @@ private theorem disclosurePrefixRealizes_reveal {Γ : SourceCtx Player L} {O : F
       let posterior : DecisionView who ((published, .publication payload) :: Γ) →
           PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry config.revelations
+          (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+              config.revelations
               remember (policy.1 own) (view.back true)) Prod.fst
                 (OwnAction.disclosure view.2.getLast?)).map Prod.snd
         else remember (view.back false)

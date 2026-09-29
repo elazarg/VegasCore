@@ -43,8 +43,9 @@ theorem informationSite_nonterminal (who : Player)
 open Classical in
 /-- Any Boolean section of joint actions computes the original source local
 value, provided it has the chosen disclosure at the active owner. No section
-legality premise is necessary: the actual local law remains source-legal. -/
-theorem reveal_local_value
+legality premise is necessary: the actual local law remains source-legal.
+Finitely many legal histories make every utility integrable. -/
+theorem reveal_local_value [Finite (setup.executionProtocol admission).History]
     (reveals : setup.program.RevealOnly)
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
@@ -89,11 +90,12 @@ theorem reveal_local_value
             (fun player => if player = who then choice.1 else none)
             (joint (OwnAction.disclosure choice.1)) (by simp only [↓reduceIte, chosen]))
   rw [same]
+  rfl
 
 open Classical in
 /-- Binary source action probabilities multiply the two original conditional
 continuation values, with the same source belief for each action. -/
-theorem reveal_local_value_binary
+theorem reveal_local_value_binary [Finite (setup.executionProtocol admission).History]
     (reveals : setup.program.RevealOnly)
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
@@ -119,8 +121,12 @@ theorem reveal_local_value_binary
     (fun state => expect choice (fun disclose =>
       expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
         (setup.decodeBehavioralProfile admission assessment.strategy))) utility)) = _
-  simp only [expect_eq_sum choice, Fintype.sum_bool, complement,
-    FinDist.expect_add, FinDist.expect_smul]
-  rfl
+  have beliefFinite : (assessment.stateBelief who site).support.Finite := by
+    rw [InformationModel.BehavioralAssessment.stateBelief, PMF.support_map]
+    exact (Set.toFinite _).image _
+  simp only [expect_eq_sum choice, Fintype.sum_bool, complement]
+  rw [expect_add (payoffIntegrable_of_finite_support _ _ beliefFinite)
+      (payoffIntegrable_of_finite_support _ _ beliefFinite),
+    expect_const_mul, expect_const_mul]
 
 end Vegas.SourceProgram.Setup

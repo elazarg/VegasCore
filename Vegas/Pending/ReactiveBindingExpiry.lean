@@ -224,13 +224,13 @@ theorem public_clock_tail_coupling
   let right := runtime.runInteractionPlan leaks players network
     (List.replicate ticks .tick ++ [.expire event]) repaired
   refine ⟨bindPairLaw left (fun _ => right), bindPairLaw_map_fst ..,
-    FinDist.map_snd_product .., ?_⟩
+    bindPairLaw_const_map_snd .., ?_⟩
   intro next supported
   have first : next.1 ∈ left.support := by
-    rw [← bindPairLaw_map_fst left right, PMF.support_map]
+    rw [← bindPairLaw_map_fst left (fun _ => right), PMF.support_map]
     exact ⟨next, supported, rfl⟩
   have second : next.2 ∈ right.support := by
-    rw [← FinDist.map_snd_product left right, PMF.support_map]
+    rw [← bindPairLaw_const_map_snd left right, PMF.support_map]
     exact ⟨next, supported, rfl⟩
   exact frame.clock_tail_unmodified players network event
     (onlyBindings.public_value_none (.inr event) visible)

@@ -186,6 +186,21 @@ theorem reactiveRecoveryLaw_remembered (intentions : List (Option graph.Completi
   simp [reactiveRecoveryLaw, positive]
 
 omit [DecidableEq Player] in
+/-- Recovery either repeats one remembered action or keeps the decision law, so
+its continuation is integrable when every action's and the law's are. -/
+theorem reactiveRecoveryLaw_bind_integrable (intentions : List (Option graph.Completion))
+    (event : graph.EventId) (law : PMF (graph.Action event))
+    {Outcome : Type} (continuation : graph.Action event → PMF Outcome) (utility : Outcome → ℝ)
+    (actionIntegrable : ∀ action, PayoffIntegrable (continuation action) utility)
+    (lawIntegrable : PayoffIntegrable (law.bind continuation) utility) :
+    PayoffIntegrable ((reactiveRecoveryLaw intentions event law).bind continuation) utility := by
+  simp only [reactiveRecoveryLaw]
+  split
+  · rw [PMF.pure_bind]
+    exact actionIntegrable _
+  · exact lawIntegrable
+
+omit [DecidableEq Player] in
 /-- The actual recovery lottery satisfies the local inclusion incentive law.
 The fixed downstream kernel premise still has to be proved for a service;
 this result alone does not assert native SPE. The utility must be integrable
@@ -207,16 +222,11 @@ theorem reactiveRecoveryLaw_optimal_response (intentions : List (Option graph.Co
       alternative).bind continuation) utility ≤
     expect ((GameTheory.PendingChoice.responseLaw weight nonnegative atMostOne retained
       ((reactiveRecoveryLaw intentions event law).map some)).bind continuation)
-        utility := by
-  have recoveredIntegrable :
-      PayoffIntegrable ((reactiveRecoveryLaw intentions event law).bind continuation) utility := by
-    simp only [reactiveRecoveryLaw]
-    split
-    · rw [PMF.pure_bind]
-      exact actionIntegrable _
-    · exact lawIntegrable
-  exact GameTheory.PendingChoice.optimal_response_of_support weight nonnegative atMostOne
-    retained law _ continuation utility actionIntegrable lawIntegrable recoveredIntegrable
+        utility :=
+  GameTheory.PendingChoice.optimal_response_of_support weight nonnegative atMostOne
+    retained law _ continuation utility actionIntegrable lawIntegrable
+    (reactiveRecoveryLaw_bind_integrable intentions event law continuation utility
+      actionIntegrable lawIntegrable)
     retainedIntegrable optimal
     (fun _ supported => reactiveRecoveryLaw_support intentions event law _ supported)
     alternative alternativeIntegrable

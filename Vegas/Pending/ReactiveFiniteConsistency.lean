@@ -28,6 +28,7 @@ theorem compileFinitePolicy_exists_consistent_assessment
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    [(runtime.reactiveApplication leaks).FiniteNature (inputs.map State.initial) scheduler]
     (profile : graph.BehavioralProfile) :
     ∃ assessment : ((bounds.rawMenu runtime leaks).information (inputs.map State.initial)
         horizon scheduler).BehavioralAssessment,

@@ -38,6 +38,7 @@ open Classical in
 /-- Operational trace certificates suffice for standard SE with the actual
 randomized settlement law. Audit randomness and player verdicts may be correlated. -/
 theorem audited_raw_sequential_equilibrium
+    [(runtime.reactiveApplication leaks).FiniteNature initial service]
     (depth : ∀ who,
       ((bounds.menu runtime leaks).information initial count service).InformationSite who → Nat)
     (clock : ∀ who site, InformationModel.InformationSite.CommonDepth
@@ -200,7 +201,8 @@ theorem audited_raw_sequential_equilibrium
   · simpa only [utilityInvariant] using targetSE
   · have rawJoint := congrArg (fun law => law.bind fun state =>
         (settle state).map (fun payoffs => (observe state, payoffs))) stateLaw
-    simp only [PMF.bind_map, settlementInvariant, observationInvariant] at rawJoint
+    simp only [PMF.bind_map, Function.comp_def, settlementInvariant, observationInvariant]
+      at rawJoint
     rw [rawJoint]
     have projected := congrArg (fun law => law.map fun result =>
       (observe result.1.state, result.2)) joint

@@ -74,7 +74,7 @@ theorem MessageBounds.compiled_submitted_event (bounds : MessageBounds graph)
     · cases Finset.mem_singleton.mp chosen
       exact Or.inl rfl
   · rcases (runtime.reactiveApplication leaks).replayPolicy_cases past view response
-        (FinDist.mem_supportFinset.mp transport) with rfl | ⟨id, rfl⟩ <;> exact Or.inl rfl
+        (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport) with rfl | ⟨id, rfl⟩ <;> exact Or.inl rfl
 
 /-- An arbitrary retained response roster changes no player's submission
 record for another event. Passive samples and all replay choices remain in

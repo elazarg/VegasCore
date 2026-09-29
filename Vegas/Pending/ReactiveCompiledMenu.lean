@@ -146,7 +146,7 @@ def compiledActions (who : Player)
     Finset (runtime.reactiveApplication leaks).Action :=
   ((bounds.decisionActions runtime leaks who past view).filter
     (fun response => runtime.firstSubmission leaks past response) ∪
-      ((runtime.reactiveApplication leaks).replayPolicy past view).supportFinset) ∩
+      (runtime.reactiveApplication leaks).replayActions past view) ∩
         (bounds.menu runtime leaks).actions who past view
 
 open Classical in
@@ -168,7 +168,8 @@ theorem silence_compiled (who : Player)
       bounds.compiledActions runtime leaks who past view := by
   classical
   apply Finset.mem_inter.mpr
-  refine ⟨Finset.mem_union_right _ (FinDist.mem_supportFinset.mpr ?_), ?_⟩
+  refine ⟨Finset.mem_union_right _ (((runtime.reactiveApplication leaks).mem_replayActions_iff past
+      view _).mpr ?_), ?_⟩
   · exact (runtime.reactiveApplication leaks).replayPolicy_support past view none
       (Finset.mem_insert_self _ _)
   · rw [bounds.menu_mem]
@@ -184,10 +185,11 @@ theorem replay_compiled (who : Player)
     response ∈ bounds.compiledActions runtime leaks who past view := by
   classical
   apply Finset.mem_inter.mpr
-  refine ⟨Finset.mem_union_right _ (FinDist.mem_supportFinset.mpr supported), ?_⟩
+  refine ⟨Finset.mem_union_right _ (((runtime.reactiveApplication leaks).mem_replayActions_iff past
+      view _).mpr supported), ?_⟩
   let app := runtime.reactiveApplication leaks
   obtain ⟨selected, member, rfl⟩ := PMF.support_map .. ▸ supported
-  have selectedIn := (PMF.mem_support_uniformOfFinset_iff _ _ _).mp member
+  have selectedIn := (PMF.mem_support_uniformOfFinset_iff _ _).mp member
   cases selected with
   | none =>
       rw [bounds.menu_mem]
@@ -256,7 +258,7 @@ theorem compiledActions_firstSubmission (who : Player)
   classical
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | replayed
   · exact (Finset.mem_filter.mp decision).2
-  · have supported := FinDist.mem_supportFinset.mp replayed
+  · have supported := ((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp replayed
     rcases (runtime.reactiveApplication leaks).replayPolicy_cases past view response
         supported with rfl | ⟨id, rfl⟩ <;> rfl
 
@@ -489,7 +491,7 @@ theorem ordinary_binding_cases
     simp only [firstSubmission, submittedEvent?, reactiveBinding, Payload.event?,
       Bool.not_eq_true_eq_eq_false] at first
     exact Or.inr ⟨value, admitted, first, shape⟩
-  · exact Or.inl (FinDist.mem_supportFinset.mp transport)
+  · exact Or.inl (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport)
 
 /-- A pending first binding does not permit another fresh binding during the
 same phase, even though reserved inclusion has not settled the event yet. -/
@@ -530,7 +532,7 @@ theorem ordinary_binding_recorded
         rw [← same, silent]
         exact (runtime.reactiveApplication leaks).replayPolicy_support past view none
           (Finset.mem_insert_self _ _)
-      · exact FinDist.mem_supportFinset.mp transport
+      · exact ((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport
 
 /-- Other players retain transport responses at a granted event. They are not
 silently deprived of known pending-envelope retransmission. -/
@@ -552,7 +554,7 @@ theorem compiled_foreign_transport
     cases chosen
     exact (runtime.reactiveApplication leaks).replayPolicy_support past view none
       (Finset.mem_insert_self _ _)
-  · exact FinDist.mem_supportFinset.mp transport
+  · exact ((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport
 
 end MessageBounds
 

@@ -197,16 +197,15 @@ theorem dispatch_transport_coupling
     · rw [PMF.map_bind]
       simp only [left]
       simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-        PMF.map_comp, PMF.bind_map, ReactiveApplication.Command.actor?]
+        PMF.map_comp, PMF.bind_map, ReactiveApplication.Command.actor?, Function.comp_def]
       rfl
     · rw [PMF.map_bind]
       simp only [right]
       simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp,
-        PMF.bind_map, ReactiveApplication.Command.actor?]
+        PMF.bind_map, ReactiveApplication.Command.actor?, Function.comp_def]
       change sample.bind _ = (leaks actor repaired.network.pending).bind _
       rw [show leaks actor repaired.network.pending = sample from
         congrArg (fun network => leaks actor network.pending) frame.network.symm]
-      rfl
     · intro next member
       obtain ⟨selected, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
       exact (existsStep selected).choose_spec.2.2 next reached
@@ -312,6 +311,7 @@ theorem run_transport_coupling
           _ = (step.map Prod.snd).bind (fun next =>
               strategy.run owner players scheduler count next.1 next.2) := by
             rw [PMF.bind_map]
+            rfl
           _ = _ := by rw [second, ReactiveApplication.Implementation.run_succ]
       · intro final member
         obtain ⟨next, chosen, reached⟩ :=
