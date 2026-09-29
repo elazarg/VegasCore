@@ -45,8 +45,7 @@ def signaling (secret : Bool) : PMF (Bool × Bool) :=
 def decode (packet : Bool × Bool) : Bool := xor packet.2 packet.1
 
 theorem honest_public_law : honest.map Prod.snd = fairBit := by
-  simp only [honest, FinDist.product, PMF.map_bind, PMF.map_comp]
-  simp
+  rw [honest, bindPairLaw_map_snd, PMF.bind_const]
 
 theorem signaling_public_law (secret : Bool) :
     (signaling secret).map Prod.snd = fairBit := by
@@ -109,8 +108,13 @@ theorem honest_decoded_law : honest.map decode = fairBit := by
   apply pmf_ext_toReal
   intro guess
   cases guess <;>
-    norm_num [honest, decode, fairBit, FinDist.product, ← PMF.bind_pure_comp, Function.comp_def,
+    norm_num [honest, decode, fairBit, bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def,
       mix_bind, mix_apply_toReal, toReal_pure_apply]
+  all_goals
+    rw [ENNReal.toReal_add (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top)
+      (ENNReal.mul_ne_top ENNReal.ofReal_ne_top ENNReal.ofReal_ne_top), ENNReal.toReal_mul,
+      ENNReal.toReal_ofReal (by norm_num)]
+    norm_num
 
 theorem signaling_correct (secret : Bool) :
     expect (signaling secret) (fun packet => if decode packet = secret then (1 : ℝ) else 0) =
@@ -118,15 +122,15 @@ theorem signaling_correct (secret : Bool) :
   have decoded := congrArg (fun law : PMF Bool =>
     expect law (fun guess => if guess = secret then (1 : ℝ) else 0))
     (signaling_decoded_law secret)
-  simpa only [expect_map, expect_pure, ite_true] using decoded
+  simpa only [expect_map, Function.comp_def, expect_pure, ite_true] using decoded
 
 theorem honest_correct (secret : Bool) :
     expect honest (fun packet => if decode packet = secret then (1 : ℝ) else 0) = 1 / 2 := by
   have decoded := congrArg (fun law : PMF Bool =>
     expect law (fun guess => if guess = secret then (1 : ℝ) else 0)) honest_decoded_law
-  rw [expect_map] at decoded
+  simp only [expect_map, Function.comp_def] at decoded
   rw [decoded]
-  cases secret <;> norm_num [fairBit, FinDist.expect_mix]
+  cases secret <;> norm_num [fairBit, expect_mix_of_finite, expect_pure]
 
 /-- Public secret, allowed message field, and Bob's independent honest guess. -/
 def honestInteraction (secret : Bool) : PMF (Bool × Bool × Bool) :=
@@ -140,7 +144,7 @@ theorem honest_interaction_support (secret message guess : Bool) :
     (secret, message, guess) ∈ (honestInteraction secret).support := by
   rw [honestInteraction, PMF.support_map]
   refine ⟨(message, guess), ?_, rfl⟩
-  rw [← pmf_toReal_pos_iff, FinDist.prob_product]
+  rw [← pmf_toReal_pos_iff, bindPairLaw_apply, ENNReal.toReal_mul]
   cases message <;> cases guess <;>
     norm_num [fairBit, mix_apply_toReal, toReal_pure_apply]
 
@@ -159,12 +163,13 @@ theorem interaction_laws_differ (secret : Bool) :
   let score : Bool × Bool × Bool → ℝ := fun transcript =>
     if transcript.1 = transcript.2.2 then 1 else 0
   have signaling_score : expect (signalingInteraction secret) score = 1 := by
-    simpa only [signalingInteraction, expect_map, score, eq_comm] using
+    simpa only [signalingInteraction, expect_map, Function.comp_def, score, eq_comm] using
       signaling_correct secret
   have honest_score : expect (honestInteraction secret) score = 1 / 2 := by
+    rw [honestInteraction, expect_map,
+      expect_bindPairLaw_tower _ _ _ (payoffIntegrable_of_finite _ _)]
     cases secret <;>
-      norm_num [honestInteraction, expect_map, FinDist.expect_product,
-        fairBit, FinDist.expect_mix, score]
+      norm_num [Function.comp_def, fairBit, expect_mix_of_finite, expect_pure, score]
   rw [same, honest_score] at signaling_score
   norm_num at signaling_score
 
@@ -199,25 +204,40 @@ theorem honest_interaction_mixture (secret : Bool) :
   rintro ⟨actualSecret, message, guess⟩
   cases secret <;> cases actualSecret <;> cases message <;> cases guess <;>
     norm_num [honestInteraction, signalingInteraction, signaling, decode, fairBit,
-      FinDist.product, ← PMF.bind_pure_comp, Function.comp_def, mix_bind, mix_apply_toReal,
+      bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def, mix_bind, mix_apply_toReal,
       toReal_pure_apply]
 
 /-- With the receiver's action visible, detecting signaling requires accepting
 false positives: any nonnegative expected sanction is at most twice its honest
-expectation. The monitor may randomize and see the eventual secret as well. -/
+expectation, when that expectation is finite. The monitor may randomize and see
+the eventual secret as well. -/
 theorem interaction_sanction_le_twice_honest {Report : Type*} (secret : Bool)
     (monitor : Bool × Bool × Bool → PMF Report) (sanction : Report → ℝ)
-    (nonnegative : ∀ report, 0 ≤ sanction report) :
+    (nonnegative : ∀ report, 0 ≤ sanction report)
+    (integrable : PayoffIntegrable ((honestInteraction secret).bind monitor) sanction) :
     expect ((signalingInteraction secret).bind monitor) sanction ≤
       2 * expect ((honestInteraction secret).bind monitor) sanction := by
-  have opposite_nonnegative :
-      0 ≤ expect ((fairBit.map fun message => (secret, message, !secret)).bind monitor)
-        sanction := by
-    have bound := FinDist.expect_mono
-      (μ := (fairBit.map fun message => (secret, message, !secret)).bind monitor)
-      (fun report _ => nonnegative report)
-    simpa only [expect_constant] using bound
-  rw [honest_interaction_mixture, mix_bind, FinDist.expect_mix]
+  let signaled := (signalingInteraction secret).bind monitor
+  let opposite := (fairBit.map fun message => (secret, message, !secret)).bind monitor
+  rw [honest_interaction_mixture, mix_bind] at integrable ⊢
+  have signaledIntegrable : PayoffIntegrable signaled sanction :=
+    payoffIntegrable_of_scaled_weight_le _ _ _ (1 / 2) (by norm_num) (fun report => by
+      rw [mix_apply_toReal]
+      exact le_add_of_nonneg_right
+        (mul_nonneg (by norm_num) (ENNReal.toReal_nonneg (a := opposite report))))
+      integrable
+  have oppositeIntegrable : PayoffIntegrable opposite sanction :=
+    payoffIntegrable_of_scaled_weight_le _ _ _ (1 / 2) (by norm_num) (fun report => by
+      rw [mix_apply_toReal]
+      have := mul_nonneg (by norm_num : (0 : ℝ) ≤ 1 / 2)
+        (ENNReal.toReal_nonneg (a := signaled report))
+      linarith)
+      integrable
+  have opposite_nonnegative : 0 ≤ expect opposite sanction :=
+    (expect_constant opposite 0).symm.trans_le
+      (expect_mono (fun report _ => nonnegative report) (payoffIntegrable_constant _ _)
+        oppositeIntegrable)
+  rw [expect_mix _ _ _ _ _ _ signaledIntegrable oppositeIntegrable]
   linarith
 
 end GameTheoryExtensionsTests.MonitoredSignaling
