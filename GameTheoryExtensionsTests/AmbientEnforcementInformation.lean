@@ -171,7 +171,7 @@ theorem value_bob {ambient : Bool} (profile : Profile (model ambient).behavioral
       (bobHistory ambient bit disclose)) (fun h => utility h.state) =
         expect (resultLaw profile bit (ambient && disclose)) utility := by
   have mapped := congrArg (fun law => expect law utility) (run_bob profile bit disclose)
-  simpa only [expect_map] using mapped
+  simpa only [expect_map, Function.comp_def] using mapped
 
 theorem value_alice {ambient : Bool} (profile : Profile (model ambient).behavioralSignature)
     (bit : Bool) (utility : State → ℝ) :
@@ -180,6 +180,7 @@ theorem value_alice {ambient : Bool} (profile : Profile (model ambient).behavior
         expect (choiceLaw profile false (some (some bit)))
           (fun disclose => expect (resultLaw profile bit (ambient && disclose)) utility) := by
   have mapped := congrArg (fun law => expect law utility) (run_alice profile bit)
-  simpa only [expect_map, FinDist.expect_bind] using mapped
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)] at mapped
+  simpa only [expect_map, Function.comp_def] using mapped
 
 end GameTheoryExtensionsTests.AmbientEnforcement

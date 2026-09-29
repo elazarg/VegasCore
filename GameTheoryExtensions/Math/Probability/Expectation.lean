@@ -61,6 +61,16 @@ theorem expect_mix_of_finite {α : Type*} [Finite α] (t : ℝ) (h0 : 0 ≤ t) (
     expect (mix t h0 h1 μ ν) f = t * expect μ f + (1 - t) * expect ν f :=
   expect_mix t h0 h1 μ ν f (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
 
+/-- On a finite carrier the tower rule needs no integrability premise. -/
+theorem expect_bind_of_finite {α β : Type*} [Finite β] (p : PMF α) (q : α → PMF β)
+    (f : β → ℝ) : expect (p.bind q) f = expect p (fun a => expect (q a) f) :=
+  expect_bind_tower p q f (payoffIntegrable_of_finite _ _)
+
+/-- On a finite carrier expectation is additive without integrability premises. -/
+theorem expect_add_of_finite {α : Type*} [Finite α] (μ : PMF α) (f g : α → ℝ) :
+    expect μ (fun a => f a + g a) = expect μ f + expect μ g :=
+  expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+
 /-- A constant factor on the right leaves the expectation. -/
 theorem expect_mul_const {α : Type*} (μ : PMF α) (f : α → ℝ) (c : ℝ) :
     expect μ (fun a => f a * c) = expect μ f * c := by

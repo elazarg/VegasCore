@@ -109,16 +109,17 @@ theorem run_initial {disclose : Bool}
     ExecutionProtocol.initHistory, PMF.pure_bind, kernel, PMF.bind_map, PMF.bind_bind]
   apply bind_congr_on_support _
   intro bit _
+  simp only [Function.comp_apply, kernel, PMF.bind_map]
   apply bind_congr_on_support _
   intro ask _
-  cases ask <;> simp [resultLaw]
+  cases ask <;> simp [resultLaw, kernel]
 
 theorem value_bob {disclose : Bool}
     (profile : Profile (model disclose).behavioralSignature) (bit : Bool) (u : State → ℝ) :
     expect ((model disclose).runSingleMoverBehavioralFrom single profile 3 (bobHistory bit))
       (fun h => u h.state) = expect (resultLaw profile bit) u := by
   have values := congrArg (fun law => expect law u) (run_bob profile bit)
-  simpa only [expect_map] using values
+  simpa only [expect_map, Function.comp_def] using values
 
 theorem value_initial {disclose : Bool}
     (profile : Profile (model disclose).behavioralSignature) (u : State → ℝ) :
@@ -127,7 +128,7 @@ theorem value_initial {disclose : Bool}
         (choiceLaw profile false (some bit)).bind fun ask =>
           if ask then resultLaw profile bit else PMF.pure (.done bit none)) u := by
   have values := congrArg (fun law => expect law u) (run_initial profile)
-  simpa only [expect_map] using values
+  simpa only [expect_map, Function.comp_def] using values
 
 /-- A utility depends on the original private bit and public result. -/
 def utility (matchBit : Bool) : State → Bool → ℝ
@@ -137,6 +138,13 @@ def utility (matchBit : Bool) : State → Bool → ℝ
 def payoff (matchBit : Bool) (history : arena.History) (who : Bool) : ℝ :=
   utility matchBit history.state who
 
+/-- Payoffs are bounded, so every law over histories integrates them. -/
+theorem payoff_integrable (matchBit : Bool) (law : PMF arena.History) (who : Bool) :
+    PayoffIntegrable law (payoff matchBit · who) :=
+  payoffIntegrable_of_bounded _ _ (C := 1) fun history => by
+    unfold payoff utility
+    split <;> (try split) <;> norm_num
+
 theorem initial_bob_zero (disclose matchBit : Bool)
     (replacement : (model disclose).BehavioralPolicy true) :
     expect ((model disclose).runSingleMoverBehavioralFrom single
@@ -144,7 +152,8 @@ theorem initial_bob_zero (disclose matchBit : Bool)
       (payoff matchBit · true) = 0 := by
   unfold payoff
   rw [value_initial (disclose := disclose) _ (utility matchBit · true)]
-  simp [choiceLaw, Profile.update, prescribed, choose, utility, FinDist.expect_bind]
+  simp [choiceLaw, Profile.update, prescribed, choose, utility, expect_bind_of_finite,
+    expect_pure, expect_constant]
 
 theorem prescribed_bob_zero (disclose matchBit : Bool) :
     expect ((model disclose).runSingleMoverBehavioralFrom single (prescribed disclose)
@@ -159,9 +168,11 @@ theorem source_spe (matchBit : Bool) :
       (payoff matchBit) := by
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff]
   intro history proper who alternative
+  refine ⟨payoff_integrable _ _ _, payoff_integrable _ _ _, ?_⟩
+  unfold expectedUtility
   rcases source_proper_initial_or_terminal history proper with rfl | stopped
   · cases who
-    · simp [payoff, utility]
+    · simp [payoff, utility, expect_constant]
     · rw [initial_bob_zero, prescribed_bob_zero]
   · simp only [InformationModel.runSingleMoverBehavioralFrom,
       runRandomizedFor_of_terminal _ _ stopped, expect_pure]
@@ -174,7 +185,8 @@ theorem bob_deviation_value (matchBit : Bool)
       (payoff matchBit · true) = 1 := by
   unfold payoff
   rw [value_bob (disclose := true) _ false (utility matchBit · true)]
-  cases matchBit <;> simp [resultLaw, choiceLaw, Profile.update, choose, utility]
+  cases matchBit <;> simp [resultLaw, choiceLaw, Profile.update, choose, utility, PMF.pure_map,
+    expect_pure]
 
 theorem bob_utility_sum (profile : Profile (model true).behavioralSignature) :
     expect ((model true).runSingleMoverBehavioralFrom single profile 3 (bobHistory false))
@@ -183,7 +195,7 @@ theorem bob_utility_sum (profile : Profile (model true).behavioralSignature) :
         (payoff false · true) = 1 := by
   unfold payoff
   rw [value_bob profile false (utility true · true), value_bob profile false (utility false · true)]
-  simp only [resultLaw, expect_map, ← FinDist.expect_add]
+  simp only [resultLaw, expect_map, Function.comp_def, ← expect_add_of_finite]
   have constant : (fun guess => utility true (.done false (some guess)) true +
       utility false (.done false (some guess)) true) = fun _ => (1 : ℝ) := by
     funext guess
@@ -195,8 +207,11 @@ theorem no_common_target_spe : ¬ ∃ profile : Profile (model true).behavioralS
       (model true).IsSingleMoverBehavioralSubgamePerfect single bounded profile (payoff false) := by
   rintro ⟨profile, matchOptimal, mismatchOptimal⟩
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at matchOptimal mismatchOptimal
-  have first := matchOptimal (bobHistory false) (bob_proper false) true (choose true true false)
-  have second := mismatchOptimal (bobHistory false) (bob_proper false) true (choose true true true)
+  have first := (matchOptimal (bobHistory false) (bob_proper false) true
+    (choose true true false)).2.2
+  have second := (mismatchOptimal (bobHistory false) (bob_proper false) true
+    (choose true true true)).2.2
+  unfold expectedUtility at first second
   have firstValue := bob_deviation_value true profile
   have secondValue := bob_deviation_value false profile
   have total := bob_utility_sum profile
@@ -206,9 +221,10 @@ theorem no_common_target_spe : ¬ ∃ profile : Profile (model true).behavioralS
 /-- Failure already holds for an arbitrary whole-profile translator. -/
 theorem no_utility_independent_spe_translation : ¬ ∃ translate :
     Profile (model false).behavioralSignature → Profile (model true).behavioralSignature,
-    ∀ matchBit, (model false).IsSingleMoverBehavioralSubgamePerfect single bounded (prescribed false)
-      (payoff matchBit) → (model true).IsSingleMoverBehavioralSubgamePerfect single bounded
-        (translate (prescribed false)) (payoff matchBit) := by
+    ∀ matchBit, (model false).IsSingleMoverBehavioralSubgamePerfect single bounded
+      (prescribed false) (payoff matchBit) →
+        (model true).IsSingleMoverBehavioralSubgamePerfect single bounded
+          (translate (prescribed false)) (payoff matchBit) := by
   rintro ⟨translate, preserves⟩
   exact no_common_target_spe ⟨translate (prescribed false),
     preserves true (source_spe true), preserves false (source_spe false)⟩

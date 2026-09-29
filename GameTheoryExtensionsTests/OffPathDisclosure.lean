@@ -27,7 +27,7 @@ inductive State where
   | alice (bit : Bool)
   | bob (bit : Bool)
   | done (bit : Bool) (guess : Option Bool)
-  deriving DecidableEq
+  deriving DecidableEq, Fintype
 
 def actor : State → Option Bool
   | .alice _ => some false
