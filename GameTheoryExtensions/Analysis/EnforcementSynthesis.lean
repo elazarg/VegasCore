@@ -128,13 +128,18 @@ theorem rejected_deposit_infeasible (rows : Finset Index) (gain collection : Ind
   have positive : (0 : ℝ) < (gain index : ℝ) := by exact_mod_cast profitable
   exact not_le.mpr positive bound
 
-/-- A successfully checked table certifies actual finite-distribution
-comparisons when its rational entries bound gain and additional collection. -/
+/-- A successfully checked table certifies actual comparisons when its
+rational entries bound gain and additional collection, and the base utility has
+finite expectation under every compared law. -/
 theorem inferred_deposit_holds (rows : Finset Index) (gain collection : Index → ℚ)
     (nonnegative : ∀ index ∈ rows, 0 ≤ collection index)
     {deposit : ℚ} (inferred : inferScalarDeposit rows gain collection = some deposit)
     (comparisons : Index → IncentiveComparison Outcome) (base : Outcome → ℝ)
     (sanction : Set Outcome)
+    (prescribedIntegrable : ∀ index ∈ rows,
+      PayoffIntegrable (comparisons index).prescribed base)
+    (alternativeIntegrable : ∀ index ∈ rows,
+      PayoffIntegrable (comparisons index).alternative base)
     (gain_bound : ∀ index ∈ rows,
       expect ((comparisons index).alternative) base -
         expect ((comparisons index).prescribed) base ≤ (gain index : ℝ))
@@ -145,7 +150,8 @@ theorem inferred_deposit_holds (rows : Finset Index) (gain collection : Index �
     (comparisons index).Holds (sanctionedUtility base sanction deposit) := by
   obtain ⟨nonnegative_deposit, deters⟩ :=
     inferred_deposit_sound rows gain collection nonnegative inferred
-  rw [holds_iff_incremental_sanction]
+  rw [holds_iff_incremental_sanction _ _ _ _ (prescribedIntegrable index member)
+    (alternativeIntegrable index member)]
   refine (gain_bound index member).trans ((deters index member).trans ?_)
   apply mul_le_mul_of_nonneg_right (collection_bound index member)
   exact_mod_cast nonnegative_deposit
