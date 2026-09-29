@@ -42,7 +42,11 @@ theorem detection_le_outside_admitted (admitted : Set Observation)
     ((law.bind alarm) true).toReal ≤ (law.toOuterMeasure admittedᶜ).toReal := by
   classical
   rw [toReal_bind_apply, ← expect_indicator]
-  apply FinDist.expect_mono
+  apply expect_mono _
+    (payoffIntegrable_of_bounded _ _ (C := 1) fun observation => by
+      rw [abs_of_nonneg ENNReal.toReal_nonneg]
+      exact pmf_toReal_apply_le_one _ _)
+    (payoffIntegrable_of_bounded _ _ (C := 1) fun observation => by split <;> simp)
   intro observation _
   by_cases allowed : observation ∈ admitted
   · rw [sound observation allowed]
@@ -57,7 +61,7 @@ def outsideAlarm (admitted : Set Observation) (observation : Observation) : PMF 
 theorem outsideAlarm_sound (admitted : Set Observation) :
     ∀ observation ∈ admitted, ((outsideAlarm admitted observation) true).toReal = 0 := by
   intro observation allowed
-  simp [outsideAlarm, allowed, toReal_pure_apply]
+  simp [outsideAlarm, allowed]
 
 theorem outsideAlarm_probability (admitted : Set Observation) (law : PMF Observation) :
     ((law.bind (outsideAlarm admitted)) true).toReal = (law.toOuterMeasure admittedᶜ).toReal := by
@@ -66,7 +70,7 @@ theorem outsideAlarm_probability (admitted : Set Observation) (law : PMF Observa
   apply expect_congr_on_support
   intro observation _
   by_cases allowed : observation ∈ admitted <;>
-    simp [outsideAlarm, allowed, toReal_pure_apply]
+    simp [outsideAlarm, allowed]
 
 /-- Expected utility after a terminal randomized alarm and automatic collection.
 The monitor only sees the projection `observe` of the underlying outcome. -/
@@ -75,34 +79,52 @@ def monitoredUtility (base : Outcome → ℝ) (observe : Outcome → Observation
   expect ((alarm (observe outcome)).map (fun charged =>
     base outcome - if charged then penalty else 0)) id
 
+/-- Collection subtracts the penalty times the probability that the alarm
+fires at the observed outcome. -/
+theorem monitoredUtility_eq (base : Outcome → ℝ) (observe : Outcome → Observation)
+    (alarm : Observation → PMF Bool) (penalty : ℝ) :
+    monitoredUtility base observe alarm penalty =
+      fun outcome => base outcome - ((alarm (observe outcome)) true).toReal * penalty := by
+  funext outcome
+  unfold monitoredUtility
+  rw [expect_map, expect_eq_sum]
+  simp only [Fintype.sum_bool, Function.comp_apply, id_eq, ↓reduceIte, Bool.false_eq_true,
+    sub_zero]
+  have total := pmf_sum_toReal_eq_one (alarm (observe outcome))
+  simp only [Fintype.sum_bool] at total
+  linear_combination (base outcome) * total
+
+/-- The charge is bounded, so it preserves integrability of the base utility. -/
+theorem payoffIntegrable_monitoredUtility {law : PMF Outcome} {base : Outcome → ℝ}
+    (integrable : PayoffIntegrable law base) (observe : Outcome → Observation)
+    (alarm : Observation → PMF Bool) (penalty : ℝ) :
+    PayoffIntegrable law (monitoredUtility base observe alarm penalty) := by
+  rw [monitoredUtility_eq]
+  exact payoffIntegrable_sub integrable
+    (payoffIntegrable_of_bounded _ _ (C := |penalty|) fun outcome => by
+      rw [abs_mul, abs_of_nonneg ENNReal.toReal_nonneg]
+      exact mul_le_of_le_one_left (abs_nonneg _) (pmf_toReal_apply_le_one _ _))
+
 theorem expect_monitoredUtility (law : PMF Outcome) (base : Outcome → ℝ)
-    (observe : Outcome → Observation) (alarm : Observation → PMF Bool) (penalty : ℝ) :
+    (observe : Outcome → Observation) (alarm : Observation → PMF Bool) (penalty : ℝ)
+    (integrable : PayoffIntegrable law base) :
     expect law (monitoredUtility base observe alarm penalty) =
       expect law base - (((law.map observe).bind alarm) true).toReal * penalty := by
-  have pointwise (outcome : Outcome) : monitoredUtility base observe alarm penalty outcome =
-      base outcome - ((alarm (observe outcome)) true).toReal * penalty := by
-    unfold monitoredUtility
-    rw [expect_map]
-    simp only [id_eq]
-    rw [FinDist.expect_sub, expect_constant]
-    have same : (fun charged : Bool => if charged then penalty else 0) =
-        (fun charged : Bool => (if charged = true then (1 : ℝ) else 0) * penalty) := by
-      funext charged
-      cases charged <;> simp
-    rw [same, FinDist.expect_mul_const]
-    change base outcome - (expect (alarm (observe outcome))
-      (fun charged => if charged ∈ ({true} : Set Bool) then 1 else 0)) * penalty = _
-    rw [expect_indicator, FinDist.probOf_singleton]
-  rw [show monitoredUtility base observe alarm penalty =
-    (fun outcome => base outcome - ((alarm (observe outcome)) true).toReal * penalty) from
-      funext pointwise]
-  rw [FinDist.expect_sub, FinDist.expect_mul_const, toReal_bind_apply, expect_map]
+  rw [monitoredUtility_eq, expect_sub integrable
+    (payoffIntegrable_of_bounded _ _ (C := |penalty|) fun outcome => by
+      rw [abs_mul, abs_of_nonneg ENNReal.toReal_nonneg]
+      exact mul_le_of_le_one_left (abs_nonneg _) (pmf_toReal_apply_le_one _ _))]
+  simp_rw [mul_comm _ penalty]
+  rw [expect_const_mul, toReal_bind_apply, expect_map]
+  rfl
 
 /-- The optimal sound alarm deters a comparison at a specified nonnegative
 penalty exactly when the detectable mass times that penalty covers the gain. -/
 theorem exists_sound_alarm_for_penalty_iff (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (observe : Outcome → Observation) (admitted : Set Observation)
     (permitted : (comparison.prescribed.map observe).support ⊆ admitted)
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
     (penalty : ℝ) (nonnegative : 0 ≤ penalty) :
     (∃ alarm : Observation → PMF Bool,
       (∀ observation ∈ admitted, ((alarm observation) true).toReal = 0) ∧
@@ -117,8 +139,11 @@ theorem exists_sound_alarm_for_penalty_iff (comparison : IncentiveComparison Out
     have bounded := mul_le_mul_of_nonneg_right
       (detection_le_outside_admitted admitted (comparison.alternative.map observe) alarm sound)
       nonnegative
+    replace deters := deters.2.2
     change expect comparison.alternative _ ≤ expect comparison.prescribed _ at deters
-    rw [expect_monitoredUtility, expect_monitoredUtility, silent, zero_mul, sub_zero] at deters
+    rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
+      expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero]
+      at deters
     linarith
   · intro sufficient
     have silent :
@@ -126,8 +151,11 @@ theorem exists_sound_alarm_for_penalty_iff (comparison : IncentiveComparison Out
       (alarm_zero_iff _ _).mpr (fun observation supported =>
         outsideAlarm_sound admitted observation (permitted supported))
     refine ⟨outsideAlarm admitted, outsideAlarm_sound admitted, ?_⟩
+    refine ⟨payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _,
+      payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _, ?_⟩
     change expect comparison.alternative _ ≤ expect comparison.prescribed _
-    rw [expect_monitoredUtility, expect_monitoredUtility, silent, zero_mul, sub_zero,
+    rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
+      expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero,
       outsideAlarm_probability]
     linarith
 
@@ -137,6 +165,8 @@ the admitted set. This does not give a uniform penalty for a family of deviation
 theorem exists_sound_deterrent_iff (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (observe : Outcome → Observation) (admitted : Set Observation)
     (permitted : (comparison.prescribed.map observe).support ⊆ admitted)
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
     (profitable : expect comparison.prescribed base < expect comparison.alternative base) :
     (∃ alarm : Observation → PMF Bool, ∃ penalty : ℝ,
       0 ≤ penalty ∧
@@ -150,10 +180,14 @@ theorem exists_sound_deterrent_iff (comparison : IncentiveComparison Outcome)
         sound observation (permitted supported))
     have bounded := detection_le_outside_admitted admitted
       (comparison.alternative.map observe) alarm sound
-    have detected_nonnegative :=
+    have detected_nonnegative :
+        0 ≤ (((comparison.alternative.map observe).bind alarm) true).toReal :=
       ENNReal.toReal_nonneg
+    replace deters := deters.2.2
     change expect comparison.alternative _ ≤ expect comparison.prescribed _ at deters
-    rw [expect_monitoredUtility, expect_monitoredUtility, silent, zero_mul, sub_zero] at deters
+    rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
+      expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero]
+      at deters
     have detected : 0 < (((comparison.alternative.map observe).bind alarm) true).toReal := by
       by_contra impossible
       have zero : (((comparison.alternative.map observe).bind alarm) true).toReal = 0 :=
@@ -173,8 +207,11 @@ theorem exists_sound_deterrent_iff (comparison : IncentiveComparison Outcome)
     refine ⟨outsideAlarm admitted, gain / probability,
       (div_pos gain_positive probability_positive).le,
       outsideAlarm_sound admitted, ?_⟩
+    refine ⟨payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _,
+      payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _, ?_⟩
     change expect comparison.alternative _ ≤ expect comparison.prescribed _
-    rw [expect_monitoredUtility, expect_monitoredUtility, silent, zero_mul, sub_zero,
+    rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
+      expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero,
       outsideAlarm_probability]
     change expect comparison.alternative base - probability * (gain / probability) ≤ _
     rw [mul_div_cancel₀ _ probability_positive.ne']
