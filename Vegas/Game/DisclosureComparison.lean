@@ -155,7 +155,7 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
         (fun view => PMF.pure view.2) config count
       rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at realized
       exact (realized state reached).symm
-    · conv_lhs => arg 1; rw [restored.eq_bind_condOnFibre observe]
+    · conv_lhs => arg 1; rw [eq_bind_fiberConditional restored observe]
       rw [PMF.bind_bind]
       exact bind_congr_on_support _ fun oldView supported =>
         congrArg (PMF.bind · _) (originalFibers oldView supported)

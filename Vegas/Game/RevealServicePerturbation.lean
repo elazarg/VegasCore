@@ -180,18 +180,17 @@ theorem compiledProfile_converges_at
         ordinaryPolicy_converges setup leaks bounds sequence profile weight nonnegative
           atMostOne vanishes who past view (choices watches)
   intro choice
+  obtain ⟨response, _member, value⟩ := choice.2
   have probabilities (current : BehavioralProfile setup.program) (w : ℝ)
       (nonneg : 0 ≤ w) (small : w ≤ 1) :
-      ((compiledProfile setup leaks bounds watcher current w nonneg small who
-        (some (past, view))) choice).toReal =
-        (((policy setup leaks bounds watcher current w nonneg small who past view).map
-          some) choice.1).toReal := by
-    rw [← compiledProfile_map_val setup leaks bounds watcher current w nonneg small who past view,
-      FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
-  simp_rw [probabilities]
-  obtain ⟨response, _member, value⟩ := choice.2
-  rw [value]
-  simp only [FinDist.prob_map_of_injective _ (Option.some_injective _)]
-  exact physical response
+      compiledProfile setup leaks bounds watcher current w nonneg small who
+        (some (past, view)) choice =
+        policy setup leaks bounds watcher current w nonneg small who past view response := by
+    refine (pmf_map_apply_of_injective _ Subtype.val_injective choice).symm.trans ?_
+    rw [compiledProfile_map_val setup leaks bounds watcher current w nonneg small who past view,
+      value]
+    exact pmf_map_apply_of_injective _ (Option.some_injective _) _
+  rw [probabilities]
+  exact (physical response).congr fun n => (probabilities ..).symm
 
 end Vegas

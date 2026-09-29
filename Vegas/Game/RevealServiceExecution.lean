@@ -28,7 +28,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 execution law. The bounds are extended once from the setup, not from a strategy
 or its support. No continuation correspondence is a hypothesis. -/
 theorem run_source_suffix_option_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
@@ -157,6 +157,7 @@ theorem run_source_suffix_option_law
         activeCheckpoint.reveal_response (bounds.withInitialValues (initialLaw setup)) players
           watcher watcherPolicy published selected event eventRank actor outputEq codeEq node
           (fun ref => refsBefore ref index) decoded granted response member
+      simp only [Function.comp_apply]
       rw [runInteractionPlan_append, afterLaw, PMF.pure_bind]
       have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
           (afterReveal profile) tailRefs

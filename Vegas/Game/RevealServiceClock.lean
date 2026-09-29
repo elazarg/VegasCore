@@ -261,11 +261,13 @@ theorem instruction_actor (watcher : Player)
     command.actor? (application setup leaks) = instructionActor instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
-      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
+        at supported
       subst command
       rfl
   | includeLatest event owner =>
-      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
+        at supported
       subst command
       unfold reactiveLatest
       split <;> rfl
@@ -290,11 +292,13 @@ private theorem instruction_grant (watcher : Player)
     commandGrant setup leaks command = instructionGrant instruction := by
   cases instruction with
   | player who | grant event | sample event | tick | expire event =>
-      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
+        at supported
       subst command
       rfl
   | includeLatest event owner =>
-      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
+        at supported
       subst command
       unfold reactiveLatest
       split <;> rfl

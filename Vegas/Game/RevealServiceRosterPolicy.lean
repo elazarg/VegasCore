@@ -65,8 +65,10 @@ theorem rosterSelection_projects {slots : Nat} (choice : PMF Bool)
   conv_rhs => rw [← PMF.bind_pure choice]
   apply bind_congr_on_support _
   intro disclose _
-  cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, PMF.pure_map,
-    Option.isSome_none, PMF.map_comp, Function.comp_def, Option.isSome_some, PMF.map_const]
+  cases disclose
+  · simp only [Bool.false_eq_true, ↓reduceIte, PMF.pure_map, Option.isSome_none]
+  · simp only [↓reduceIte, PMF.map_comp, Function.comp_def, Option.isSome_some]
+    exact PMF.map_const _ _
 
 theorem rosterSelection_fullSupport {slots : Nat} (choice : PMF Bool)
     (timing : PMF (Fin slots)) (choiceFull : FullSupport choice)
@@ -240,7 +242,7 @@ theorem rosterPolicy_run_application (setup : Setup (Player := Player) (L := L))
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -348,7 +350,7 @@ theorem rosterPolicy_window_eq (setup : Setup (Player := Player) (L := L))
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind]
+        PMF.bind_bind, Function.comp_def]
       apply bind_congr_on_support _
       intro sample _
       let activated := current.sampledActivation app who sample

@@ -76,10 +76,6 @@ theorem sourceService_consistent_supported_sequence [Fintype Player]
       (CommitmentInterface.values setup.program)).BehavioralAssessment)
     (antichain : (setup.informationModel
       (CommitmentInterface.values setup.program)).DecisionInformationAntichain)
-    [∀ who (site : (setup.informationModel
-      (CommitmentInterface.values setup.program)).InformationSite who),
-      Fintype ((setup.informationModel
-        (CommitmentInterface.values setup.program)).InformationHistory who site.1)]
     (consistent : assessment.IsSequentiallyConsistent antichain) :
     ∃ sequence : Nat → (setup.informationModel
         (CommitmentInterface.values setup.program)).BehavioralAssessment,
