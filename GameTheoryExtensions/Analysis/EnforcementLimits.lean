@@ -26,13 +26,27 @@ variable {Outcome Index : Type*}
 
 /-- The utility gain is offset precisely by the increase in collection risk. -/
 theorem holds_iff_incremental_sanction (comparison : IncentiveComparison Outcome)
-    (base : Outcome → ℝ) (sanction : Set Outcome) (penalty : ℝ) :
+    (base : Outcome → ℝ) (sanction : Set Outcome) (penalty : ℝ)
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base) :
     comparison.Holds (sanctionedUtility base sanction penalty) ↔
       expect comparison.alternative base - expect comparison.prescribed base ≤
-        ((comparison.alternative.toOuterMeasure sanction).toReal - (comparison.prescribed.toOuterMeasure sanction).toReal) *
-          penalty := by
-  rw [IncentiveComparison.Holds, ← sub_nonpos, regret_eq]
-  exact sub_nonpos
+        ((comparison.alternative.toOuterMeasure sanction).toReal -
+          (comparison.prescribed.toOuterMeasure sanction).toReal) * penalty := by
+  have regret := regret_eq comparison base sanction penalty prescribedIntegrable
+    alternativeIntegrable
+  constructor
+  · intro holds
+    have compared := holds.2.2
+    change expect comparison.alternative _ ≤ expect comparison.prescribed _ at compared
+    rw [← sub_nonpos, regret] at compared
+    exact sub_nonpos.mp compared
+  · intro bound
+    refine ⟨payoffIntegrable_sanctionedUtility prescribedIntegrable _ _,
+      payoffIntegrable_sanctionedUtility alternativeIntegrable _ _, ?_⟩
+    change expect comparison.alternative _ ≤ expect comparison.prescribed _
+    rw [← sub_nonpos, regret]
+    exact sub_nonpos.mpr bound
 
 /-- A decrease in collection risk eventually outweighs any fixed base loss. -/
 theorem incremental_nonneg_of_eventually_deters (gain increment cutoff : ℝ)
@@ -53,7 +67,9 @@ is exactly nonnegative incremental collection and no profitable undetectable
 comparison. The prescribed plan may itself already face collection. -/
 theorem exists_uniform_sanction_iff [Finite Index]
     (comparisons : Index → IncentiveComparison Outcome)
-    (base : Outcome → ℝ) (sanction : Set Outcome) :
+    (base : Outcome → ℝ) (sanction : Set Outcome)
+    (prescribedIntegrable : ∀ index, PayoffIntegrable (comparisons index).prescribed base)
+    (alternativeIntegrable : ∀ index, PayoffIntegrable (comparisons index).alternative base) :
     (∃ cutoff : ℝ, 0 ≤ cutoff ∧ ∀ penalty, cutoff ≤ penalty → ∀ index,
       (comparisons index).Holds (sanctionedUtility base sanction penalty)) ↔
     ∀ index,
@@ -67,13 +83,14 @@ theorem exists_uniform_sanction_iff [Finite Index]
   constructor
   · rintro ⟨cutoff, _, deters⟩ index
     have bound (penalty : ℝ) (large : cutoff ≤ penalty) :=
-      (holds_iff_incremental_sanction (comparisons index) base sanction penalty).mp
+      (holds_iff_incremental_sanction (comparisons index) base sanction penalty
+        (prescribedIntegrable index) (alternativeIntegrable index)).mp
         (deters penalty large index)
     refine ⟨incremental_nonneg_of_eventually_deters _ _ cutoff bound, ?_⟩
     intro equal
     have atCutoff := bound cutoff le_rfl
     rw [equal, sub_self, zero_mul] at atCutoff
-    exact sub_nonpos.mp atCutoff
+    exact ⟨prescribedIntegrable index, alternativeIntegrable index, sub_nonpos.mp atCutoff⟩
   · intro condition
     let gain (index : Index) :=
       expect ((comparisons index).alternative) base - expect ((comparisons index).prescribed) base
@@ -85,7 +102,8 @@ theorem exists_uniform_sanction_iff [Finite Index]
     have amount_nonneg (index : Index) : 0 ≤ amount index := le_max_left ..
     refine ⟨cutoff, Finset.sum_nonneg (fun index _ => amount_nonneg index), ?_⟩
     intro penalty large index
-    rw [holds_iff_incremental_sanction]
+    rw [holds_iff_incremental_sanction _ _ _ _ (prescribedIntegrable index)
+      (alternativeIntegrable index)]
     change gain index ≤ increment index * penalty
     have nonnegative : 0 ≤ increment index := (condition index).1
     by_cases zero : increment index = 0
@@ -93,7 +111,7 @@ theorem exists_uniform_sanction_iff [Finite Index]
           ((comparisons index).prescribed.toOuterMeasure sanction).toReal := sub_eq_zero.mp zero
       have noGain := (condition index).2 equal
       rw [zero, zero_mul]
-      exact sub_nonpos.mpr noGain
+      exact sub_nonpos.mpr noGain.2.2
     · have positive : 0 < increment index := lt_of_le_of_ne nonnegative (Ne.symm zero)
       have bound : gain index / increment index ≤ penalty :=
         (le_max_right _ _).trans
@@ -105,23 +123,37 @@ theorem exists_uniform_sanction_iff [Finite Index]
 regardless of its magnitude. This includes a binary charge already certain. -/
 theorem not_holds_of_equal_collection (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome) (penalty : ℝ)
-    (equal : (comparison.alternative.toOuterMeasure sanction).toReal = (comparison.prescribed.toOuterMeasure sanction).toReal)
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
+    (equal : (comparison.alternative.toOuterMeasure sanction).toReal =
+      (comparison.prescribed.toOuterMeasure sanction).toReal)
     (profitable : expect comparison.prescribed base < expect comparison.alternative base) :
     ¬ comparison.Holds (sanctionedUtility base sanction penalty) := by
-  rw [holds_iff_incremental_sanction, equal, sub_self, zero_mul]
+  rw [holds_iff_incremental_sanction _ _ _ _ prescribedIntegrable alternativeIntegrable, equal,
+    sub_self, zero_mul]
   exact not_le.mpr (sub_pos.mpr profitable)
 
-/-- A finite pure-comparison certificate also covers mixtures of those
+/-- A finite pure-comparison certificate also covers finite mixtures of those
 comparisons. Its application to behavioral deviations requires a separate
 realization theorem identifying their conditional outcome laws. -/
 theorem holds_mixture (comparisons : Index → IncentiveComparison Outcome)
-    (weights : PMF Index) (utility : Outcome → ℝ)
+    (weights : PMF Index) (finite : weights.support.Finite) (utility : Outcome → ℝ)
     (holds : ∀ index ∈ weights.support, (comparisons index).Holds utility) :
     (IncentiveComparison.mk
       (weights.bind (fun index => (comparisons index).prescribed))
       (weights.bind (fun index => (comparisons index).alternative))).Holds utility := by
-  simp only [IncentiveComparison.Holds, FinDist.expect_bind]
-  exact FinDist.expect_mono holds
+  have prescribed := payoffIntegrable_bind_of_finite_support weights
+    (fun index => (comparisons index).prescribed) utility finite
+    fun index supported => (holds index supported).1
+  have alternative := payoffIntegrable_bind_of_finite_support weights
+    (fun index => (comparisons index).alternative) utility finite
+    fun index supported => (holds index supported).2.1
+  refine ⟨prescribed, alternative, ?_⟩
+  change expect (weights.bind _) utility ≤ expect (weights.bind _) utility
+  rw [expect_bind_tower _ _ _ prescribed, expect_bind_tower _ _ _ alternative]
+  exact expect_mono (fun index supported => (holds index supported).2.2)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ alternative)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ prescribed)
 
 /-- A first-departure comparison scales both its possible gain and its added
 collection risk by the probability of departing. Thus arbitrarily rare mixed
@@ -129,15 +161,18 @@ departures do not require unbounded fines when detection is conditional on the
 departure. The probabilistic coupling establishing these two bounds is external. -/
 theorem holds_of_departure_bound (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome)
+    (prescribedIntegrable : PayoffIntegrable comparison.prescribed base)
+    (alternativeIntegrable : PayoffIntegrable comparison.alternative base)
     (departure gain detection penalty : ℝ)
     (departure_nonnegative : 0 ≤ departure) (penalty_nonnegative : 0 ≤ penalty)
     (gain_bound : expect comparison.alternative base - expect comparison.prescribed base ≤
       departure * gain)
     (collection_bound : departure * detection ≤
-      (comparison.alternative.toOuterMeasure sanction).toReal - (comparison.prescribed.toOuterMeasure sanction).toReal)
+      (comparison.alternative.toOuterMeasure sanction).toReal -
+        (comparison.prescribed.toOuterMeasure sanction).toReal)
     (sufficient : gain ≤ detection * penalty) :
     comparison.Holds (sanctionedUtility base sanction penalty) := by
-  rw [holds_iff_incremental_sanction]
+  rw [holds_iff_incremental_sanction _ _ _ _ prescribedIntegrable alternativeIntegrable]
   calc
     _ ≤ departure * gain := gain_bound
     _ ≤ departure * (detection * penalty) :=
