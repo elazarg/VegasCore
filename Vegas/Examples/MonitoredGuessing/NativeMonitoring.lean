@@ -123,7 +123,7 @@ theorem submission_detection_probability (bit : Bool)
     (((monitoredPrefixLaw bit (submissionAction submission)).map
       (fun execution => rejectedAlice execution.receipts)) true).toReal = 1 / 2 := by
   rw [submission_monitoring_law]
-  simp [mix_apply_toReal, toReal_pure_apply]
+  simp
 
 theorem report_step (players : Player → nativeApp.Policy) (execution : nativeApp.Execution) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork .wire execution =
@@ -159,7 +159,7 @@ theorem watcher_step (players : Player → nativeApp.Policy)
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     ReactiveApplication.Execution.environmentStep, PMF.bind_map,
     ReactiveApplication.resume, ReactiveApplication.invoke, reports, nativeWatcherPolicy,
-    PMF.pure_map]
+    PMF.pure_map, Function.comp_def]
   rw [← PMF.bind_pure_comp, Function.comp_def]
   rfl
 
@@ -172,7 +172,6 @@ theorem monitoring_plan (players : Player → nativeApp.Policy)
   simp only [runInteractionPlan, PMF.bind_pure]
   rw [watcher_step players reports, PMF.bind_map]
   simp only [report_step]
-  rw [← PMF.bind_pure_comp, Function.comp_def]
   rfl
 
 theorem initial_response_cases (bit : Bool) (action : nativeApp.Action)

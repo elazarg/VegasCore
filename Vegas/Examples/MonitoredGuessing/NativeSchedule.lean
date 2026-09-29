@@ -64,7 +64,7 @@ theorem native_finish_initial (players : Player → nativeApp.Policy) :
       (PMF.uniformOfFintype Bool).bind (fun bit =>
         (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan
           (nativeStart bit)).map nativeApp.finished) := by
-  simp only [ReactiveApplication.finish, nativeInitialLaw, PMF.bind_map]
+  simp only [ReactiveApplication.finish, nativeInitialLaw, PMF.bind_map, Function.comp_def]
   apply bind_congr_on_support _
   intro bit _
   congr 1

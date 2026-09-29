@@ -163,7 +163,8 @@ private theorem control_step_player (players : Player → nativeApp.Policy)
       (players who (execution.recall who) (execution.observe nativeApp who)).map fun action =>
         some ⟨remaining, none, execution.respond nativeApp who action⟩ := by
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-    ReactiveApplication.transition, ite_true, Option.getD_some, ← PMF.bind_pure_comp, Function.comp_def]
+    ReactiveApplication.transition, ite_true, Option.getD_some, ← PMF.bind_pure_comp,
+        Function.comp_def]
 
 private theorem quiet_step_initial (players : Player → nativeApp.Policy) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players none =
@@ -239,7 +240,8 @@ theorem quiet_bob_control_law (players : Player → nativeApp.Policy)
       (PMF.uniformOfFintype Bool).map
         (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    PMF.pure_bind, quiet_step_initial, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, quiet_step_alice,
+    PMF.pure_bind, quiet_step_initial, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
+        quiet_step_alice,
     quiet_step_alice_response players alicePolicy, quiet_step_watcher,
     quiet_step_watcher_response players watcherPolicy, quiet_step_wire, quiet_step_grant,
     quiet_step_bob]

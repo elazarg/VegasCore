@@ -109,10 +109,11 @@ private theorem idle_step_probability
     (inactive : ¬ nativeArena.active state bob) :
     nativeModel.playerStepProb profile bob trace joint = 1 := by
   let := nativeModel.subsingleton_choice_of_not_active trace inactive
-  change ((profile bob (nativeModel.infoOf bob trace)) (nativeModel.choicesOfLegal trace joint bob)).toReal = 1
+  change ((profile bob (nativeModel.infoOf bob trace))
+      (nativeModel.choicesOfLegal trace joint bob)).toReal = 1
   rw [eq_pure_of_subsingleton (profile bob (nativeModel.infoOf bob trace))
     (nativeModel.choicesOfLegal trace joint bob)]
-  exact FinDist.prob_pure_self _
+  rw [PMF.pure_apply_self, ENNReal.toReal_one]
 
 private def beforeBob : nativeApp.ProtocolState → Prop
   | none => True
@@ -134,7 +135,8 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
             have position := (native_bob_remaining control prior same).1
             change _ ∈ (nativeApp.transition nativeInitialLaw nativeHorizon nativeScheduler
               (some control) joint).support at reached
-            simp only [ReactiveApplication.transition, same, PMF.mem_support_pure_iff _ _] at reached
+            simp only [ReactiveApplication.transition, same,
+                PMF.mem_support_pure_iff _ _] at reached
             subst_vars
             simp only [beforeBob, nativeApp.respond_environmentRecall, position,
               Nat.reduceLeDiff, reduceCtorEq, and_false, or_self] at early

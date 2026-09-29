@@ -105,6 +105,26 @@ theorem resolution_finish_retains (players : Player → nativeApp.Policy)
     (invariant.resume control.actor control.execution resumed ⟨valid, stored, by rfl⟩ resumedMem)
     finalMem⟩
 
+/-- Native payoffs are bounded by the source payoffs plus the deposit, so every
+continuation law has an integrable payoff. -/
+private theorem nativeUtility_abs_le (deposit : ℝ) (who : Player)
+    (state : nativeApp.ProtocolState) : |nativeUtility deposit who state| ≤ 5 + |deposit| := by
+  have correct (a b : PublicationResult Bool) : 0 ≤ correctness a b ∧ correctness a b ≤ 1 := by
+    cases a <;> simp only [correctness] <;> (try split_ifs) <;> norm_num
+  have penalty (a : PublicationResult Bool) : 0 ≤ openingPenalty a ∧ openingPenalty a ≤ 4 := by
+    cases a <;> simp only [openingPenalty] <;> norm_num
+  have base (result : Results) : |utility result who| ≤ 5 := by
+    unfold utility
+    have := correct result.alice result.bob
+    have := penalty result.alice
+    split_ifs <;> rw [abs_le] <;> constructor <;> linarith
+  cases state with
+  | none => simp only [nativeUtility, Option.elim_none, abs_zero]; positivity
+  | some control =>
+      simp only [nativeUtility, Option.elim_some, nativeExecutionUtility]
+      refine (abs_sub _ _).trans (add_le_add (base _) ?_)
+      split_ifs <;> simp
+
 /-- The upper bound quantifies all continuation policies and all earlier
 rejection histories. The charge already incurred is subtracted from both the
 prescribed benchmark and every deviation; it supplies no fresh deterrence. -/
@@ -116,7 +136,8 @@ theorem resolution_finish_payoff_upper (deposit : ℝ) (nonnegative : 0 ≤ depo
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players (some control))
       (nativeUtility deposit alice) ≤ correctness (.success bit) guess -
         if rejectedAlice control.execution.receipts then deposit else 0 := by
-  apply FinDist.expect_le_of_forall
+  refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _ (C := 5 + |deposit|)
+    (nativeUtility_abs_le deposit alice)) _ ?_
   intro result supported
   obtain ⟨final, rfl, fixed, bound, receipts⟩ :=
     resolution_finish_retains players control bit guess valid stored result supported
