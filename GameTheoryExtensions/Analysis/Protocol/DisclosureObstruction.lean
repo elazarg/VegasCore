@@ -24,7 +24,7 @@ namespace GameTheory.Protocol.InformationModel
 open GameTheory.Math.Probability
 
 variable {ι : Type} [Fintype ι] [DecidableEq ι]
-  {E : ExecutionProtocol ι} {M : InformationModel E}
+  {E : ExecutionProtocol ι} {M : InformationModel E} [Finite E.History]
 
 /-- An information-local, controllable binary continuation with opposite
 utilities. The history law must hold at every compatible history, including
@@ -55,11 +55,13 @@ def toContinuationDecision (goal : Bool) :
   site := decision.site
   state _ := ()
   response := decision.outcome
+  response_finite _ := Set.toFinite _
   reward _ result := if result = goal then 1 else 0
   policy := decision.policy
   history_value profile history := decision.history_value profile goal history
   realize := decision.force
 
+omit [Finite E.History] in
 private theorem expectedReward_eq (assessment : M.BehavioralAssessment) (goal : Bool) :
     (decision.toContinuationDecision goal).expectedReward assessment =
       fun result => if result = goal then 1 else 0 := by
@@ -104,7 +106,7 @@ theorem no_common_rational_strategy : ¬ ∃ first second : M.BehavioralAssessme
       expect (decision.outcome first.strategy) (fun result => if result = true then 1 else 0) +
         expect (decision.outcome first.strategy)
           (fun result => if result = false then (1 : ℝ) else 0) = 1 := by
-    rw [← FinDist.expect_add]
+    rw [← expect_add_of_finite]
     calc
       _ = expect (decision.outcome first.strategy) (fun _ => (1 : ℝ)) := by
         apply expect_congr_on_support
@@ -114,8 +116,6 @@ theorem no_common_rational_strategy : ¬ ∃ first second : M.BehavioralAssessme
   linarith
 
 variable {S : ExecutionProtocol ι} {N : InformationModel S}
-  [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
 
 include decision in
 /-- An implementation-class obstruction: any target supplying this decision

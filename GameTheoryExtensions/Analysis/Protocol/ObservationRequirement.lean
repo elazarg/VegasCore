@@ -24,10 +24,11 @@ namespace GameTheory.Protocol.InformationModel.ContinuationDecision
 open GameTheory.Math.Probability
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
-  {E : ExecutionProtocol Player} {M : InformationModel E}
+  {E : ExecutionProtocol Player} {M : InformationModel E} [Finite E.History]
   {utility : Player → E.History → ℝ} {fuel : Nat}
   {State Action Index Observation Coarse : Type*}
 
+omit [Finite E.History] in
 /-- Knowledge fixes the posterior reward for every assessment, including
 off-path assessments with otherwise unrestricted compatible-history beliefs. -/
 theorem expectedReward_of_known

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.Protocol.Sequential
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Decisions inside actual continuation games
 
@@ -13,7 +14,9 @@ and provide legal policies realizing each pure decision.
 The resulting support criterion uses the fixed utility of the game. It needs
 neither a pair of conflicting utilities nor a utility-independent compiler.
 It is local: consistency, the posterior itself, and any connection to an
-initialized outcome law remain obligations of the enclosing game.
+initialized outcome law remain obligations of the enclosing game. The protocol
+has finitely many histories and each response law is finitely supported, so
+every continuation value and posterior reward is a finite average.
 -/
 
 noncomputable section
@@ -23,18 +26,21 @@ namespace GameTheory.Protocol.InformationModel
 open GameTheory.Math.Probability
 
 variable {ι : Type} [Fintype ι] [DecidableEq ι]
-  {E : ExecutionProtocol ι} {M : InformationModel E}
+  {E : ExecutionProtocol ι} {M : InformationModel E} [Finite E.History]
 
 /-- A whole continuation factors through a state-dependent terminal reward.
 The response law is common to the histories in this information set, but the
 reward need not be. Every pure action has a legal whole-policy implementation;
-randomized alternatives already arise from arbitrary behavioral policies. -/
+randomized alternatives already arise from arbitrary behavioral policies. The
+response laws are finitely supported, as behavioral responses of a finite
+protocol are. -/
 structure ContinuationDecision (M : InformationModel E)
     (utility : ι → E.History → ℝ) (fuel : Nat) (State Action : Type*) where
   player : ι
   site : M.InformationSite player
   state : M.InformationHistory player site.1 → State
   response : Profile M.behavioralSignature → PMF Action
+  response_finite : ∀ profile, (response profile).support.Finite
   reward : State → Action → ℝ
   policy : Action → M.BehavioralPolicy player
   history_value : ∀ profile (history : M.InformationHistory player site.1),
@@ -65,7 +71,7 @@ theorem continuation_value (assessment : M.BehavioralAssessment)
       expect (decision.response (Profile.update (sig := M.behavioralSignature)
         assessment.strategy decision.player alternative))
           (decision.expectedReward assessment) := by
-  rw [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   calc
     _ = expect (assessment.belief decision.player decision.site) (fun history =>
           expect (decision.response (Profile.update (sig := M.behavioralSignature)
@@ -75,7 +81,8 @@ theorem continuation_value (assessment : M.BehavioralAssessment)
       intro history _
       exact decision.history_value _ history
     _ = _ := by
-      rw [FinDist.expect_comm]
+      rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (decision.response_finite _)
+        fun history action => decision.reward (decision.state history) action]
       apply expect_congr_on_support
       intro action _
       exact (expect_map decision.state (assessment.belief decision.player decision.site)
@@ -90,24 +97,24 @@ theorem rationalAt_iff (assessment : M.BehavioralAssessment) :
         expect (decision.response assessment.strategy) (decision.expectedReward assessment) := by
   constructor
   · intro rational action
-    have bound := rational (decision.policy action) (Set.mem_univ _)
+    have bound := rational.2.2 (decision.policy action) (Set.mem_univ _)
     change (assessment.continuationContext decision.site (utility decision.player) fuel).value
         (decision.policy action) ≤
       (assessment.continuationContext decision.site (utility decision.player) fuel).value
         (assessment.strategy decision.player) at bound
     simpa only [decision.continuation_value, decision.realize, expect_pure,
       Profile.update_eq_self] using bound
-  · intro optimal alternative _
-    change (assessment.continuationContext decision.site (utility decision.player) fuel).value
-        alternative ≤
-      (assessment.continuationContext decision.site (utility decision.player) fuel).value
-        (assessment.strategy decision.player)
+  · intro optimal
+    refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+      fun alternative _ => ?_⟩
     rw [decision.continuation_value, decision.continuation_value, Profile.update_eq_self]
-    exact FinDist.expect_le_of_forall _ _ _ fun action _ => optimal action
+    exact expect_le_const _ _ (payoffIntegrable_of_finite_support _ _ (decision.response_finite _))
+      _ fun action _ => optimal action
 
 /-- Exact fixed-payoff criterion: a rational response assigns positive mass
 only to actions maximizing expected reward under this information-set belief.
-No finiteness of the action carrier is needed because laws have finite support. -/
+No finiteness of the action carrier is needed because response laws have finite
+support. -/
 theorem rationalAt_iff_support_maximal (assessment : M.BehavioralAssessment) :
     assessment.IsSequentiallyRationalAt decision.site
         (assessment.continuationContext decision.site (utility decision.player) fuel) ↔
@@ -117,16 +124,18 @@ theorem rationalAt_iff_support_maximal (assessment : M.BehavioralAssessment) :
   rw [decision.rationalAt_iff]
   constructor
   · intro optimal action supported alternative
-    have attained := FinDist.eq_of_expect_eq_of_le
+    have attained := expect_eq_const_of_le_on_support
       (decision.response assessment.strategy) (decision.expectedReward assessment)
       (expect (decision.response assessment.strategy) (decision.expectedReward assessment))
-      (fun candidate _ => optimal candidate) rfl supported
+      (payoffIntegrable_of_finite_support _ _ (decision.response_finite _))
+      (fun candidate _ => optimal candidate) rfl action supported
     rw [attained]
     exact optimal alternative
   · intro maximal alternative
-    have bound := FinDist.expect_mono
-      (μ := decision.response assessment.strategy)
+    have bound := expect_mono (μ := decision.response assessment.strategy)
       (fun action supported => maximal action supported alternative)
+      (payoffIntegrable_constant _ _)
+      (payoffIntegrable_of_finite_support _ _ (decision.response_finite _))
     simpa only [expect_constant] using bound
 
 theorem rational_support_maximal (assessment : M.BehavioralAssessment)
@@ -168,7 +177,8 @@ theorem rational_value_eq_maximum [Finite Action] [Nonempty Action]
         decision.expectedReward assessment best := by
   obtain ⟨best, maximal⟩ := Finite.exists_max (decision.expectedReward assessment)
   exact ⟨best, maximal, le_antisymm
-    (FinDist.expect_le_of_forall _ _ _ fun action _ => maximal action)
+    (expect_le_const _ _ (payoffIntegrable_of_finite_support _ _ (decision.response_finite _))
+      _ fun action _ => maximal action)
     (decision.rational_value_bound assessment rational best)⟩
 
 /-- Once retained alternatives have been checked, extending a local menu
@@ -211,7 +221,8 @@ theorem rationalAt_of_omitted_dominated (assessment : M.BehavioralAssessment)
   obtain ⟨replacement, kept, dominates⟩ := dominated action omitted
   apply le_trans _ (optimal replacement kept)
   simp only [expectedReward, posterior, expect_map]
-  exact FinDist.expect_mono fun history _ => dominates history
+  exact expect_mono (fun history _ => dominates history) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
 
 variable {OtherState : Type*}
 
