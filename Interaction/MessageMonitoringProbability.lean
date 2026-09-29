@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.MessageMonitoring
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Sampling and reporting at one network snapshot
 
@@ -74,7 +75,7 @@ theorem reportLaw_eq_pure_nil_of_compliant (network : MessageNetwork Principal P
       · exact ledger message included
     rw [compliant] at offending
     cases offending
-  simp only [reportLaw, quiet, FinDist.map_const]
+  simp only [reportLaw, quiet, PMF.map_const]
 
 /-- Zero false positives at the specified compliant snapshot; this alone does
 not establish that every legal source execution has compliant snapshots. -/

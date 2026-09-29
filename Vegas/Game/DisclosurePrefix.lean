@@ -2,6 +2,7 @@
 
 import Vegas.Source.DisclosurePosterior
 import Vegas.Game.SourceStateKernel
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Original private intentions at every source protocol prefix
 

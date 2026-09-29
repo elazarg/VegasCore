@@ -35,12 +35,10 @@ def splitBayes
     (mixed : source.IsFullyMixed) (weight : ℝ) (positive : 0 < weight)
     (atMostOne : weight ≤ 1) :
     (raw.information initial horizon scheduler).BehavioralAssessment :=
-  (BehavioralAssessment.ofStrategy fun who =>
+  InformationModel.bayesAssessment _ (BehavioralAssessment.ofStrategy fun who =>
     normal.splitPolicy raw stable closed initial horizon scheduler who (source.strategy who)
-      weight positive.le atMostOne).bayes
-        (normal.split_fullyMixed raw stable closed initial horizon scheduler
-          source mixed weight positive.le atMostOne positive)
-        (raw.decisionInformationAntichain initial horizon scheduler)
+      weight positive.le atMostOne).strategy (normal.split_fullyMixed raw stable closed initial horizon scheduler
+          source mixed weight positive.le atMostOne positive) (raw.decisionInformationAntichain initial horizon scheduler)
 
 theorem splitBayes_fullyMixed
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
@@ -59,7 +57,7 @@ theorem splitBayes_bayes
       (normal.splitBayes raw stable closed initial horizon scheduler
         source mixed weight positive atMostOne)
       (raw.decisionInformationAntichain initial horizon scheduler) :=
-  BehavioralAssessment.bayes_isBayesConsistent _ _ _
+  InformationModel.bayesAssessment_isBayesConsistent _ _ _ _
 
 /-- The compatibility premise is required at every raw information site for
 every perturbation, including sites outside the limiting profile's support. -/

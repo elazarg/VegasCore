@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheoryExtensions.Core.RegularChoice
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Regular priority mixtures need not preserve relative odds
 

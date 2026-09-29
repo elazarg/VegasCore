@@ -234,7 +234,7 @@ theorem source_deviation_bound (who : Bool) (alternative : (model false).Behavio
   rw [source_root_law, expect_map]
   apply FinDist.expect_le_of_forall
   intro joint supported
-  have opponent := (FinDist.mem_support_pi.mp supported) (!who)
+  have opponent := ((independentProduct_support_iff _ _).mp supported) (!who)
   have opponentChoice : joint (!who) = choose false false (!who) [] := by
     cases who <;> simpa [Profile.update, prescribed, canonical] using opponent
   cases who
@@ -284,7 +284,7 @@ theorem branch_kernel (profile : Profile (model true).behavioralSignature) :
     kernel profile [(true, false)] =
       (actionLaw profile true [(true, false)]).map
         (fun action => [(true, action), (true, false)]) := by
-  have marginal := FinDist.map_apply_pi true (fun who => profile who [(true, false)])
+  have marginal := independentProduct_map_eval true (fun who => profile who [(true, false)])
   have mapped := congrArg (fun law => law.map
     (fun choice : (model true).Choice true [(true, false)] =>
       [(true, choice.val.getD false), (true, false)])) marginal
@@ -297,7 +297,7 @@ theorem root_kernel (profile : Profile (model true).behavioralSignature) :
   have idle (choice : (model true).Choice true []) : choice.val = none := by
     have permitted := choice.property
     cases value : choice.val <;> simp_all [model, active]
-  have marginal := FinDist.map_apply_pi false (fun who => profile who [])
+  have marginal := independentProduct_map_eval false (fun who => profile who [])
   have mapped := congrArg (fun law => law.map
     (fun choice : (model true).Choice false [] => [(choice.val.getD false, false)])) marginal
   simpa only [kernel, running, true_or, ite_true, next, ↓reduceIte,

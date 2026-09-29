@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceDisclosurePosterior
 import Vegas.Source.DisclosurePosterior
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Actual native response and original disclosure-memory coupling
 

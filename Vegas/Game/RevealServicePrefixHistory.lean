@@ -5,6 +5,7 @@ import Interaction.ReactiveScheduleEvaluation
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Counted native histories at service-prefix boundaries
 

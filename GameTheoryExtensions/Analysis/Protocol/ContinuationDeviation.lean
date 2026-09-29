@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Implementing a whole continuation deviation at one information site
 
@@ -246,7 +247,7 @@ theorem switched_root_gain_eq_mass_mul_context_gain
       M.bayesBelief assessment.strategy who site antichain positive := by
     apply pmf_ext_toReal
     intro history
-    rw [M.bayesBelief_prob]
+    rw [M.bayesBelief_apply]
     exact bayes history
   have context (policy : M.BehavioralPolicy who) :
       (assessment.continuationContext site payoff fuel).value policy =

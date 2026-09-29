@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.SetupProtocolBehavioral
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Finite source choices at arbitrary decision views
 

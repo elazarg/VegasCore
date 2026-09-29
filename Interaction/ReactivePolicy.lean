@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveProtocol
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # All information-local response policies
 
@@ -53,7 +54,7 @@ theorem encode_decodePolicy (policy : (info : app.Info) →
         _ = (policy none).map id := (PMF.map_id _).symm
         _ = (policy none).map (fun _ => ⟨none, rfl⟩) :=
           map_congr_on_support _ (fun choice _ => unique choice)
-        _ = _ := FinDist.map_const _ _
+        _ = _ := PMF.map_const _ _
   | some arguments =>
       rcases arguments with ⟨history, view⟩
       rw [encodePolicy, decodePolicy, PMF.map_comp]

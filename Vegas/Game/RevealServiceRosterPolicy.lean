@@ -66,7 +66,7 @@ theorem rosterSelection_projects {slots : Nat} (choice : PMF Bool)
   apply bind_congr_on_support _
   intro disclose _
   cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte, PMF.pure_map,
-    Option.isSome_none, PMF.map_comp, Function.comp_def, Option.isSome_some, FinDist.map_const]
+    Option.isSome_none, PMF.map_comp, Function.comp_def, Option.isSome_some, PMF.map_const]
 
 theorem rosterSelection_fullSupport {slots : Nat} (choice : PMF Bool)
     (timing : PMF (Fin slots)) (choiceFull : FullSupport choice)

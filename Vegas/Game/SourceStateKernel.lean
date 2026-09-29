@@ -115,7 +115,7 @@ theorem behavioralStateStep_commit_entry
   change ((independentProduct laws).bind fun joint => PMF.pure (advance (joint owner))) = _
   rw [← ← PMF.bind_pure_comp, Function.comp_def]
   change (independentProduct laws).map (advance ∘ fun joint => joint owner) = _
-  rw [← PMF.map_comp, FinDist.map_apply_pi]
+  rw [← PMF.map_comp, independentProduct_map_eval]
   simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
     dite_true, PMF.map_comp, Function.comp_def, advance, OwnAction.binding_commit, commitKernel]
 
@@ -178,7 +178,7 @@ theorem behavioralStateStep_reveal_entry
   change ((independentProduct laws).bind fun joint => PMF.pure (advance (joint owner))) = _
   rw [← ← PMF.bind_pure_comp, Function.comp_def]
   change (independentProduct laws).map (advance ∘ fun joint => joint owner) = _
-  rw [← PMF.map_comp, FinDist.map_apply_pi]
+  rw [← PMF.map_comp, independentProduct_map_eval]
   simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
     dite_true, PMF.map_comp, Function.comp_def, advance, OwnAction.disclosure, revealKernel]
 
@@ -256,7 +256,7 @@ theorem behavioralStateStep_encoded_some
         independentProduct (fun who => (profile who).protocolAction setup.program
           (ProtocolState.observe who setup.program state)) =
         (independentProduct choices).map (fun selected who => (selected who).1) := by
-      rw [← FinDist.pi_map]
+      rw [← independentProduct_map]
       congr 1
       funext who
       exact (setup.toProtocolBehavioralPolicy_map_val admission who (profile who)

@@ -1,12 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheory.Analysis.Protocol.Sequential
+import GameTheory.Analysis.Protocol.BehavioralBayes
+import GameTheory.Protocol.Predraw
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Full mixing reaches every legal decision history
 
 Full support is required only at legal decision sites. Inactive players have
-singleton menus. Thus every complete legal history has positive reach mass,
-and finite information fibers admit canonical Bayes beliefs without fallbacks.
+singleton menus. Thus every complete legal history is in the support of play.
+The canonical Bayes assessment of a fully mixed strategy is upstream's
+`bayesAssessment`.
 -/
 
 noncomputable section
@@ -71,31 +74,19 @@ theorem BehavioralAssessment.IsFullyMixed.terminal_supported
   rw [M.runBehavioralFrom_of_terminal assessment.strategy _ terminal]
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
-theorem BehavioralAssessment.IsFullyMixed.historyReachProbability_pos
-    {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    (history : E.History) : 0 < M.historyReachProbability assessment.strategy history :=
-  pmf_toReal_pos_iff.mpr (mixed.history_supported history.trace)
-
-theorem BehavioralAssessment.IsFullyMixed.informationMass_pos
-    {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    (who : ι) (site : M.InformationSite who)
-    [Fintype (M.InformationHistory who site.1)] :
-    0 < M.informationMass assessment.strategy who site := by
-  classical
-  obtain ⟨history, _⟩ := site.2
-  apply lt_of_lt_of_le (mixed.historyReachProbability_pos history.1)
-  exact Finset.single_le_sum
-    (f := fun other : M.InformationHistory who site.1 =>
-      M.historyReachProbability assessment.strategy other.1)
-    (fun other _ => ENNReal.toReal_nonneg) (Finset.mem_univ history)
-
 omit [Fintype ι] in
 /-- A bounded protocol admitting full mixing has only finitely many legal
-histories, even when its ambient state carrier is infinite. -/
+histories when its choices and transitions branch finitely, even when its
+ambient state carrier is infinite. -/
 theorem BehavioralAssessment.IsFullyMixed.finite_history
     [Finite ι]
     {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed)
-    {bound : Nat} (bounded : E.BoundedHorizon bound) : Finite E.History := by
+    {bound : Nat} (bounded : E.BoundedHorizon bound)
+    (finiteChoices : ∀ who info, (assessment.strategy who info).support.Finite)
+    (finiteSteps : ∀ {state : E.State}
+      (draw : { joint : ∀ i, Option (E.Action i) // E.Legal state joint }),
+      (E.step state draw).support.Finite) : Finite E.History := by
+  classical
   let : Fintype ι := Fintype.ofFinite _
   have lengths : ∀ history : E.History, history.trace.length ≤ bound := by
     intro ⟨state, trace⟩
@@ -107,34 +98,20 @@ theorem BehavioralAssessment.IsFullyMixed.finite_history
           exact legal.1 (bounded _ prior (by omega))
         exact Nat.succ_le_of_lt before
   have cover := Set.finite_iUnion fun index : Fin (bound + 1) =>
-    (M.runBehavioral assessment.strategy index.val).support_finite
+    M.runBehavioralFrom_support_finite_of_finite_branching assessment.strategy index.val
+      E.initHistory (fun history _ who => finiteChoices who _) finiteSteps
   apply Set.finite_univ_iff.mp
   apply cover.subset
   intro history _
   exact Set.mem_iUnion.mpr ⟨⟨history.trace.length, by have := lengths history; omega⟩,
     mixed.history_supported history.trace⟩
 
-variable [∀ who (site : M.InformationSite who),
-  Fintype (M.InformationHistory who site.1)]
-
-/-- Normalize actual reach probabilities at every site of a fully mixed
-profile. The input assessment contributes only its strategy, not its beliefs. -/
-def BehavioralAssessment.bayes (assessment : M.BehavioralAssessment)
-    (mixed : assessment.IsFullyMixed) (antichain : M.DecisionInformationAntichain) :
-    M.BehavioralAssessment where
-  strategy := assessment.strategy
-  belief who site := M.bayesBelief assessment.strategy who site (antichain who site)
-    (mixed.informationMass_pos who site)
-
-theorem BehavioralAssessment.bayes_isFullyMixed (assessment : M.BehavioralAssessment)
-    (mixed : assessment.IsFullyMixed) (antichain : M.DecisionInformationAntichain) :
-    (assessment.bayes mixed antichain).IsFullyMixed := mixed
-
-theorem BehavioralAssessment.bayes_isBayesConsistent (assessment : M.BehavioralAssessment)
-    (mixed : assessment.IsFullyMixed) (antichain : M.DecisionInformationAntichain) :
-    BehavioralAssessment.IsBayesConsistent M (assessment.bayes mixed antichain) antichain := by
-  intro who site _ history
-  exact M.bayesBelief_prob assessment.strategy who site (antichain who site)
-    (mixed.informationMass_pos who site) history
+/-- The canonical Bayes assessment of a fully mixed strategy is fully mixed. -/
+theorem bayesAssessment_isFullyMixed (strategy : (who : ι) → M.BehavioralPolicy who)
+    (mixed : ∀ who (site : M.InformationSite who) (choice : M.Choice who site.1),
+      choice ∈ (strategy who site.1).support)
+    (antichain : M.DecisionInformationAntichain) :
+    (M.bayesAssessment strategy mixed antichain).IsFullyMixed :=
+  mixed
 
 end GameTheory.Protocol.InformationModel

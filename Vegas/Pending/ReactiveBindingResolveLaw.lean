@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveBindingGuardedStep
 import Vegas.Pending.ReactiveBindingFrameRounds
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The actual mixed disclosure response under binding repair
 

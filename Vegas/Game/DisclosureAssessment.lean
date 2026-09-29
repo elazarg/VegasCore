@@ -4,6 +4,7 @@ import Vegas.Game.DisclosureProfileComparison
 import Vegas.Game.SourceBayes
 import Vegas.Game.SourcePrefixKernel
 import GameTheoryExtensions.Protocol.SequentialIncentives
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Private disclosure comparisons against actual source assessments
 

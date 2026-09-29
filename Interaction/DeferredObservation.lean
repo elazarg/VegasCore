@@ -64,7 +64,7 @@ theorem ReactiveApplication.Execution.activate_of_foreign_pending_published
         [⟨execution.observeEnvironment app, .activate who⟩] } := by
   simp only [ReactiveApplication.Execution.environmentStep,
     MessageNetwork.learn_of_foreign_pending_published _ _ _ published,
-    FinDist.map_const, PMF.pure_map]
+    PMF.map_const, PMF.pure_map]
 
 /-- A single inclusion publishes the identifier of every remaining replay.
 No pending-copy erasure or restriction on who rebroadcast it is assumed. -/

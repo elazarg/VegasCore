@@ -69,8 +69,11 @@ def DecisionPlan.extend {who : ι} (plan : M.DecisionPlan who)
 theorem DecisionPlan.extend_site {who : ι} (plan : M.DecisionPlan who)
     (fallback : M.Policy who) (site : M.InformationSite who) :
     plan.extend fallback site.1 = plan site := by
-  simp only [DecisionPlan.extend, dite_eq_left site.2]
-  rfl
+  unfold DecisionPlan.extend
+  split
+  · rfl
+  · rename_i unavailable
+    exact absurd site.2 unavailable
 
 @[simp]
 theorem DecisionPlan.restrict_extend {who : ι} (plan : M.DecisionPlan who)
@@ -127,8 +130,11 @@ def BehavioralDecisionPlan.extend {who : ι} (plan : M.BehavioralDecisionPlan wh
 theorem BehavioralDecisionPlan.extend_site {who : ι} (plan : M.BehavioralDecisionPlan who)
     (fallback : M.BehavioralPolicy who) (site : M.InformationSite who) :
     plan.extend fallback site.1 = plan site := by
-  simp only [BehavioralDecisionPlan.extend, dite_eq_left site.2]
-  rfl
+  unfold BehavioralDecisionPlan.extend
+  split
+  · rfl
+  · rename_i unavailable
+    exact absurd site.2 unavailable
 
 @[simp]
 theorem BehavioralDecisionPlan.restrict_extend {who : ι}

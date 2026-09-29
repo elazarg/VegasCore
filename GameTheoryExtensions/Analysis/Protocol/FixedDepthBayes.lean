@@ -2,6 +2,8 @@
 
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Bayes beliefs at a fixed decision depth
 
@@ -38,7 +40,7 @@ theorem informationMass_eq_fixedDepth_probOf :
   · unfold informationMass
     apply Finset.sum_congr rfl
     intro history _
-    rw [historyReachProbability, sameDepth history]
+    rw [historyReachWeight, sameDepth history]
 
 include sameDepth in
 theorem bayesBelief_map_eq_condOn (antichain : site.IsHistoryAntichain)
@@ -56,10 +58,10 @@ theorem bayesBelief_map_eq_condOn (antichain : site.IsHistoryAntichain)
     have mapped := FinDist.prob_map_of_injective
       (Subtype.val : M.InformationHistory who site.1 → E.History) Subtype.val_injective
       (M.bayesBelief strategy who site antichain positive) compatible
-    rw [mapped, M.bayesBelief_prob, toReal_filter_apply,
+    rw [mapped, M.bayesBelief_apply, toReal_filter_apply,
       ite_eq_left (show history ∈ {history | M.infoOf who history.trace = site.1} from observed),
       M.informationMass_eq_fixedDepth_probOf strategy who site depth sameDepth]
-    rw [historyReachProbability, sameDepth compatible]
+    rw [historyReachWeight, sameDepth compatible]
   · rw [toReal_filter_apply,
       ite_eq_right (show history ∉ {history | M.infoOf who history.trace = site.1} from observed)]
     apply FinDist.prob_eq_zero_iff.mpr
@@ -105,7 +107,7 @@ theorem BehavioralAssessment.belief_map_eq_run_of_full_reach
       M.bayesBelief assessment.strategy who site (antichain who site) positive := by
     apply pmf_ext_toReal
     intro history
-    rw [M.bayesBelief_prob]
+    rw [M.bayesBelief_apply]
     exact consistent.isBayesConsistent antichain who site positive history
   have conditioned := M.bayesBelief_map_eq_condOn assessment.strategy who site depth
     sameDepth (antichain who site) positive meet

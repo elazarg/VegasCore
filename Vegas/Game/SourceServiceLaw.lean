@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServicePhaseLaw
 import Vegas.Game.SourceServiceCompiledExecution
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Initialized source laws of the full native service
 

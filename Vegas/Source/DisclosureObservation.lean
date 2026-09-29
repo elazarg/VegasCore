@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DisclosurePosterior
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Effective disclosure recall is determined by source observations
 

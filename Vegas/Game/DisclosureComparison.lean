@@ -2,6 +2,7 @@
 
 import Vegas.Game.DisclosureContinuation
 import Vegas.Game.DisclosureRealization
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Exact conditional comparisons after private disclosure aggregation
 

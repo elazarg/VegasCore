@@ -4,6 +4,7 @@ import Vegas.Examples.SelectiveAssociation.SourcePrefixSymmetry
 import Vegas.Examples.SelectiveAssociation.SourcePublishedEvidence
 import GameTheoryExtensions.Math.Probability.ConditionalSymmetry
 import Interaction.ReactiveAssessmentDecoding
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Conditional hidden-bit fairness in the source response prefixes
 

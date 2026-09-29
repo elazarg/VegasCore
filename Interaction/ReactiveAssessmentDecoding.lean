@@ -6,6 +6,7 @@ import Interaction.ReactiveRoundReachability
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Response laws of finite behavioral perturbations
 

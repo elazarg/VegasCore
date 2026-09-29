@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.DisclosureComparison
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Other players' continuation comparisons under private alias erasure
 

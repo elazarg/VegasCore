@@ -2,6 +2,8 @@
 
 import Vegas.Game.SourceServiceDisclosure
 import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Private intentions behind a failed native disclosure
 

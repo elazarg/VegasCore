@@ -77,7 +77,7 @@ theorem sourceStep_continuation
   · rename_i running
     exact ProtocolState.continuationLaw_behavioral_step program profile state running
       (independentProduct fun who => (profile who).protocolAction program
-        (ProtocolState.observe who program state)) (fun who => FinDist.map_apply_pi who _)
+        (ProtocolState.observe who program state)) (fun who => independentProduct_map_eval who _)
 
 private theorem liftedPrefix_continuation
     {Γ Δ : SourceCtx Player L} {names restNames : Finset VarId}
@@ -187,7 +187,7 @@ theorem sourceServiceTimedPolicy_suffix_state_law
       List.finRange (eventCount program) :=
     List.take_of_length_le (by rw [List.length_finRange])
   simp only [PMF.pure_bind, all, PMF.map_bind, PMF.map_comp, Function.comp_def,
-    FinDist.map_const, PMF.bind_pure] at marginal
+    PMF.map_const, PMF.bind_pure] at marginal
   exact marginal
 
 /-- At any supported typed boundary, all remaining actual timed service blocks

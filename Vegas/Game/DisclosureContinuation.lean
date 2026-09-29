@@ -2,6 +2,7 @@
 
 import Vegas.Source.DisclosureContinuation
 import Vegas.Game.DisclosureBeliefs
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Uniform legal deviations at actual source information fibers
 

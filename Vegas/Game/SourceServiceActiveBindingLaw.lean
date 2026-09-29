@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceTimedBinding
 import Vegas.Game.SourceServiceTimedAdmissibility
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source binding laws from an active native decision
 

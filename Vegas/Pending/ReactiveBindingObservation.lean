@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveResponseObservation
 import Vegas.Pending.EventHandleObservation
 import Interaction.MessageNetworkCounters
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Foreign observations of an opaque binding prefix
 

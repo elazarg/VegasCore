@@ -6,6 +6,7 @@ import Vegas.Game.SourceServiceTimingPosterior
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The owner's disclosure with an available opening
 
@@ -651,7 +652,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
                 ← ← PMF.bind_pure_comp, Function.comp_def]
           change (independentProduct _).map ((fun action => advance (OwnAction.disclosure action)) ∘
               fun joint : Player → Option (OwnAction Player L) => joint siteOwner) = _
-          rw [← PMF.map_comp, FinDist.map_apply_pi]
+          rw [← PMF.map_comp, independentProduct_map_eval]
         have injective : Function.Injective advance := by
           intro first second same
           have successor := commutes.2.2 same

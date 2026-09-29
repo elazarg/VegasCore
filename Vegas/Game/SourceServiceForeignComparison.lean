@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceRecordedContinuation
 import Vegas.Game.SourceServiceTimedBindingCheckpoint
 import Vegas.Pending.ReactiveRevealBlock
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Foreign visits during a binding phase
 
@@ -182,7 +183,7 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
       (some slot) (fun _ _ => PMF.pure ((runtime setup).reactiveBinding leaks owner
         (embedding.event ⟨0, by simp [eventCount]⟩) payload choice serial))
       (application setup leaks).replayPolicy)
-  refine (map_congr_on_support _ (g := fun _ => _) ?_).trans (FinDist.map_const _ _)
+  refine (map_congr_on_support _ (g := fun _ => _) ?_).trans (PMF.map_const _ _)
   intro final reached
   obtain ⟨current, prior, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   rw [servicePlan_players_eq setup leaks _ raw network _ (by simp) (by intro who; simp) current]

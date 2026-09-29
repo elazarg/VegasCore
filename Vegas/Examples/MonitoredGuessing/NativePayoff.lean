@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.NativeLaw
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Joint preservation of the private bit, public results, and actual utilities
 

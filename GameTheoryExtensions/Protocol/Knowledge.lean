@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Protocol.BehavioralAssessment
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Facts determined by an information set
 
@@ -35,6 +36,6 @@ theorem Knows.belief_map_eq_pure {who : Player} {info : M.InfoState who}
   calc
     _ = belief.map (fun _ => value) := map_congr_on_support _
       (fun history _ => known history)
-    _ = _ := FinDist.map_const _ _
+    _ = _ := PMF.map_const _ _
 
 end GameTheory.Protocol.InformationModel

@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import GameTheory.Protocol.PolicyRandomization
 import GameTheory.Protocol.Strategic
 import GameTheoryExtensions.Protocol.FiniteInformation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The finite agent normal form uses the original protocol evaluator
 
@@ -28,8 +30,9 @@ def informationAgentForm (sites : (who : ι) → Finset (M.InfoState who))
   sig := {
     Strategy := fun agent => M.Choice agent.1 agent.2.1
     Outcome := E.History }
-  play actions := M.runFrom
-    (fun who => Policy.assembleWithin M (fallback who) (sites who)
+  play actions := by
+    classical
+    exact M.runFrom (fun who => FiniteAssignment.resolve (fallback who) (sites who)
       (fun info => actions ⟨who, info⟩)) fuel E.initHistory
 
 def agentBehavior (sites : (who : ι) → Finset (M.InfoState who))
@@ -60,15 +63,10 @@ private theorem pi_sigma [Fintype ι] {Index : ι → Type*} [∀ who, Fintype (
     intro first second same
     funext agent
     exact congrFun (congrFun same agent.1) agent.2
-  apply pmf_ext_toReal
-  intro actions
-  change (((independentProduct laws).map _) ((fun (values : (agent : Σ who, Index who) → Value agent) who info =>
-        values ⟨who, info⟩)
-      (fun (agent : Σ who, Index who) => actions agent.1 agent.2))).toReal = _
-  calc
-    _ = ((independentProduct laws) (fun agent => actions agent.1 agent.2)).toReal :=
-      FinDist.prob_map_of_injective _ injective _ _
-    _ = _ := by simp only [FinDist.prob_pi, Fintype.prod_sigma]
+  ext actions
+  refine (pmf_map_apply_of_injective (independentProduct laws) injective
+    (fun agent => actions agent.1 agent.2)).trans ?_
+  simp only [independentProduct_apply, Fintype.prod_sigma]
 
 /-- The mixed agent game and behavioral play have the same complete history
 law, with no conditioning or equilibrium premise. -/
@@ -82,37 +80,40 @@ theorem informationAgentForm_mixed_play [Fintype ι]
   classical
   let assemble : ((agent : M.InformationAgent sites) → M.Choice agent.1 agent.2.1) →
       Profile M.strategicSignature := fun actions who =>
-    Policy.assembleWithin M (fallback who) (sites who) (fun info => actions ⟨who, info⟩)
+    FiniteAssignment.resolve (fallback who) (sites who) (fun info => actions ⟨who, info⟩)
   have policyLaw : (independentProduct laws).map assemble = independentProduct (fun who =>
-      (M.agentBehavior sites fallback laws who).toMixedWithin (sites who) (fallback who)) := by
+      (M.agentBehavior sites fallback laws who).toMixedWithin M (sites who) (fallback who)) := by
     calc
       _ = ((independentProduct laws).map (fun actions who info => actions ⟨who, info⟩)).map
-          (fun plans who => Policy.assembleWithin M (fallback who) (sites who) (plans who)) := by
+          (fun plans who => FiniteAssignment.resolve (fallback who) (sites who) (plans who)) := by
             rw [PMF.map_comp]
             rfl
       _ = (independentProduct (fun who => independentProduct (fun info => laws ⟨who, info⟩))).map
-          (fun plans who => Policy.assembleWithin M (fallback who) (sites who) (plans who)) := by
+          (fun plans who => FiniteAssignment.resolve (fallback who) (sites who) (plans who)) := by
             exact congrArg
               (PMF.map (fun plans who =>
-                Policy.assembleWithin M (fallback who) (sites who) (plans who)))
+                FiniteAssignment.resolve (fallback who) (sites who) (plans who)))
               (pi_sigma (Index := fun who => {info // info ∈ sites who})
                 (Value := fun agent => M.Choice agent.1 agent.2.1) laws)
       _ = independentProduct (fun who => (independentProduct (fun info => laws ⟨who, info⟩)).map
-          (Policy.assembleWithin M (fallback who) (sites who))) :=
-            (FinDist.pi_map _ _).symm
+          (FiniteAssignment.resolve (fallback who) (sites who))) :=
+            (independentProduct_map (fun who => independentProduct fun info => laws ⟨who, info⟩)
+              (fun who => FiniteAssignment.resolve (fallback who) (sites who)))
       _ = _ := by
         congr 1
         funext who
-        rw [BehavioralPolicy.toMixedWithin_eq_map_pi]
+        rw [BehavioralPolicy.toMixedWithin_eq_sampleOn, FiniteAssignment.sampleOn]
         congr 1
         congr 1
         funext info
         exact (M.agentBehavior_at sites fallback laws ⟨who, info⟩).symm
   calc
-    _ = ((independentProduct laws).map assemble).bind (fun profile => M.runFrom profile fuel E.initHistory)
+    _ = ((independentProduct laws).map assemble).bind (fun profile => M.runFrom profile fuel
+        E.initHistory)
         := by rw [PMF.bind_map]; rfl
     _ = M.runMixed (fun who =>
-        (M.agentBehavior sites fallback laws who).toMixedWithin (sites who) (fallback who)) fuel :=
+        (M.agentBehavior sites fallback laws who).toMixedWithin M (sites who) (fallback who))
+          fuel :=
       congrArg (fun distribution => distribution.bind
         (fun profile => M.runFrom profile fuel E.initHistory)) policyLaw
     _ = _ := M.runMixed_toMixedWithin once sites _ fallback fuel covered

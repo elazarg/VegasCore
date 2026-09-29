@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceChoiceCompletion
 import Vegas.Game.SourceServiceAdmission
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source choice support for the concrete full-source service
 

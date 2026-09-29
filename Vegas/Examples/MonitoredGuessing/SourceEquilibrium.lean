@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.SourceEvaluation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # All sequential equilibria of the actual source guessing game
 

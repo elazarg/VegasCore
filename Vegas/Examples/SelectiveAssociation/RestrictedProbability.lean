@@ -4,6 +4,7 @@ import Vegas.Examples.SelectiveAssociation.RestrictedPrefix
 import Vegas.Examples.SelectiveAssociation.RestrictedSymmetry
 import Interaction.ReactiveAssessmentDecoding
 import GameTheoryExtensions.Math.Probability.ConditionalComparison
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact native prefix probabilities
 

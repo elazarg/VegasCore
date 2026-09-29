@@ -4,6 +4,7 @@ import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveResponseObservation
 import Vegas.Pending.EvidenceNormalization
 import Interaction.ReactiveRounds
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Opponent responses during a private binding repair
 

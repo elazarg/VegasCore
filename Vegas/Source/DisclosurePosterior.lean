@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DisclosureBehavioral
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Restoring private intentions at actual source successors
 

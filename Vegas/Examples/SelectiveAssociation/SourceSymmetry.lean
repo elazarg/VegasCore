@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.SourceCalendar
 import Interaction.ReactiveRoundReachability
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The local symmetry used by the common source perturbations
 

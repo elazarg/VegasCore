@@ -5,6 +5,7 @@ import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Regularity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Inclusion proposals sampled over distinct pending identifiers
 

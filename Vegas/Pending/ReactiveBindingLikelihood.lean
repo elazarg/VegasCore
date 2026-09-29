@@ -5,6 +5,7 @@ import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactivePolicyMixture
 import Vegas.Pending.ReactiveReplaySettlement
 import Interaction.ReactiveReplayPolicy
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual communication likelihood during an opaque binding window
 

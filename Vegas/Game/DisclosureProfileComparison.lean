@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.DisclosureForeign
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Simultaneous private-disclosure comparison for every player
 

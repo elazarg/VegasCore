@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveHiddenResponse
 import Vegas.Pending.EventSampleObservation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Common passive samples and maintenance during a private binding repair
 

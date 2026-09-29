@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.DisclosurePrefix
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Whole prescribed continuations at normalized source prefixes
 

@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceSampleFactorization
 import Vegas.Pending.ReactiveReplaySettlement
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual public sampling under the timed source policy
 

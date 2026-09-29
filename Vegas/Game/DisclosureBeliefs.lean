@@ -2,6 +2,7 @@
 
 import Vegas.Game.DisclosureRetraction
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Actual prefix posteriors after private disclosure aggregation
 

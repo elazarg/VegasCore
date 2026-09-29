@@ -4,6 +4,7 @@ import Vegas.Pending.NativeLocality
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # One player response with a fixed number of packet opportunities
 

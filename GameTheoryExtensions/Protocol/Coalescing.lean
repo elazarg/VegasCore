@@ -102,7 +102,7 @@ theorem transcript_eq_iteration (policy : View → PMF Action) (count : Nat) (st
         _ = (fun law => law.bind (fun current =>
               (policy (response.observe current)).map (response.step current)))^[count]
                 ((policy (response.observe state)).map (response.step state)) := by
-          rw [iterate_bind, PMF.bind_map]
+          rw [iterate_bind, PMF.bind_map, Function.comp_def]
         _ = _ := by rw [Function.iterate_succ_apply, PMF.pure_bind]
 
 /-- Every continuation kernel sees exactly the same complete endpoint law. -/

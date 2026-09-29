@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveQuiescent
 import Interaction.ReactiveRounds
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Arbitrary response windows containing only published replays
 
@@ -126,6 +127,6 @@ theorem runRounds_published_application (scheduler : app.Scheduler)
       intro next supported
       exact (app.runRounds_published scheduler players commands responses count
         execution next published supported).1
-    _ = _ := FinDist.map_const _ _
+    _ = _ := PMF.map_const _ _
 
 end Interaction.ReactiveApplication

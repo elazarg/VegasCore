@@ -7,6 +7,7 @@ Authors: VegasCore contributors
 import Vegas.Foundation.Context
 import Vegas.Foundation.Probability
 import Vegas.Foundation.Result
+import GameTheoryExtensions.Math.Probability.Support
 
 /-!
 # The embedded expression-language interface `IExpr`

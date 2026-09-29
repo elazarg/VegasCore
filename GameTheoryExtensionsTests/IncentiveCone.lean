@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.IncentiveCone
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Incentive preservation without prescribed-law matching
 

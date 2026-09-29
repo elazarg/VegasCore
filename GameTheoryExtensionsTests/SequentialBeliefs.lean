@@ -3,6 +3,8 @@
 import GameTheoryExtensionsTests.SequentialCredibility
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.Examples
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A genuine off-path information set with consistent beliefs
 
@@ -136,7 +138,7 @@ theorem state_injective : Function.Injective (History.state (E := arena)) :=
   Function.LeftInverse.injective historyOfState_state
 
 theorem reach_alice (profile : Profile (model false).behavioralSignature) (bit : Bool) :
-    (model false).historyReachProbability profile (aliceHistory bit) = 1 / 2 := by
+    ((model false).historyReachWeight profile (aliceHistory bit)).toReal = 1 / 2 := by
   classical
   change (((model false).runBehavioralFrom profile 1 arena.initHistory) (aliceHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
@@ -147,7 +149,7 @@ theorem reach_alice (profile : Profile (model false).behavioralSignature) (bit :
   norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
 
 theorem reach_bob (n : Nat) (bit : Bool) :
-    (model false).historyReachProbability (perturbedProfile n) (bobHistory bit) =
+    ((model false).historyReachWeight (perturbedProfile n) (bobHistory bit)).toReal =
       trembleWeight n / 2 := by
   classical
   change (((model false).runBehavioralFrom (perturbedProfile n) 2 arena.initHistory) (bobHistory bit)).toReal = _
@@ -181,8 +183,7 @@ theorem mass_bob (n : Nat) :
     (model false).informationMass (perturbedProfile n) true bobSite = trembleWeight n := by
   unfold InformationModel.informationMass
   rw [← bobHistories.sum_comp]
-  change (∑ bit : Bool, (model false).historyReachProbability (perturbedProfile n)
-    (bobHistory bit)) = _
+  change (∑ bit : Bool, ((model false).historyReachWeight (perturbedProfile n) (bobHistory bit)).toReal) = _
   simp only [reach_bob, Finset.sum_const, Finset.card_univ, Fintype.card_bool, nsmul_eq_mul]
   ring
 
@@ -209,14 +210,13 @@ theorem perturbed_bayes (n : Nat) :
       exact (eq_pure_of_subsingleton _ history).trans
         (eq_pure_of_subsingleton _ history).symm
     rw [equal]
-    exact InformationModel.bayesBelief_prob _ _ _ _ _ _ _
+    exact InformationModel.bayesBelief_apply _ _ _ _ _ _ _
   · have same := bob_site_eq site
     subst site
     obtain ⟨bit, same⟩ := history_at_bob history
     have historyEq : history = bobInformationHistory bit := Subtype.ext same
     subst history
-    change (((assessment (perturbedProfile n)).belief true bobSite) (bobInformationHistory bit)).toReal = (model false).historyReachProbability (perturbedProfile n)
-        (bobHistory bit) / (model false).informationMass (perturbedProfile n) true bobSite
+    change (((assessment (perturbedProfile n)).belief true bobSite) (bobInformationHistory bit)).toReal = ((model false).historyReachWeight (perturbedProfile n) (bobHistory bit)).toReal / (model false).informationMass (perturbedProfile n) true bobSite
     rw [belief_bob_prob, reach_bob, mass_bob]
     field_simp [(trembleWeight_pos n).ne']
 
@@ -241,7 +241,7 @@ theorem consistent : (assessment limitProfile).IsSequentiallyConsistent antichai
     fun n => ⟨perturbed_full n, perturbed_bayes n⟩, assessment_converges⟩
 
 theorem reach_bob_limit (bit : Bool) :
-    (model false).historyReachProbability limitProfile (bobHistory bit) = 0 := by
+    ((model false).historyReachWeight limitProfile (bobHistory bit)).toReal = 0 := by
   classical
   change (((model false).runBehavioralFrom limitProfile 2 arena.initHistory) (bobHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
@@ -256,7 +256,7 @@ theorem reach_bob_limit (bit : Bool) :
 theorem bob_off_path : (model false).informationMass limitProfile true bobSite = 0 := by
   unfold InformationModel.informationMass
   rw [← bobHistories.sum_comp]
-  change (∑ bit : Bool, (model false).historyReachProbability limitProfile (bobHistory bit)) = _
+  change (∑ bit : Bool, ((model false).historyReachWeight limitProfile (bobHistory bit)).toReal) = _
   simp [reach_bob_limit]
 
 end GameTheoryExtensionsTests.SequentialBeliefs

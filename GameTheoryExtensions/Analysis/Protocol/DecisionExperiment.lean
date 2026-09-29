@@ -4,6 +4,8 @@ import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheory.Protocol.StateKernel
 import GameTheory.Protocol.SingleMover
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Terminal decision experiments as protocol games
 
@@ -356,8 +358,7 @@ theorem antichain : (model (Action := Action) prior observe).DecisionInformation
 theorem reach_decision
     (profile : Profile (model (Action := Action) prior observe).behavioralSignature)
     (state : State) (supported : state ∈ prior.support) :
-    (model prior observe).historyReachProbability profile
-      (decisionHistory (Action := Action) prior state supported) = (prior state).toReal := by
+    ((model prior observe).historyReachWeight profile (decisionHistory (Action := Action) prior state supported)).toReal = (prior state).toReal := by
   classical
   change (((model prior observe).runBehavioralFrom profile 1 (arena prior).initHistory) (decisionHistory prior state supported)).toReal = _
   rw [← FinDist.prob_map_of_injective History.state (state_injective prior), run_states]
@@ -433,16 +434,15 @@ theorem decision_reach_invariant
     (first second : Profile (model (Action := Action) prior observe).behavioralSignature)
     (original : (model (Action := Action) prior observe).InformationSite ())
     (history : (model prior observe).InformationHistory () original.1) :
-    (model prior observe).historyReachProbability first history.1 =
-      (model prior observe).historyReachProbability second history.1 := by
+    ((model prior observe).historyReachWeight first history.1).toReal =
+      ((model prior observe).historyReachWeight second history.1).toReal := by
   obtain ⟨state, supported, same, _⟩ := history_at_site prior observe original history
   rw [same, reach_decision, reach_decision]
 
 def assessment (original : Signal → PMF Action) :
     (model (Action := Action) prior observe).BehavioralAssessment where
   strategy _ := policy prior observe original
-  belief := ((reference prior observe).bayes (reference_mixed prior observe)
-    (antichain prior observe)).belief
+  belief := (InformationModel.bayesAssessment _ (reference prior observe).strategy (reference_mixed prior observe) (antichain prior observe)).belief
 
 theorem assessment_consistent (original : Signal → PMF Action) :
     (assessment prior observe original).IsSequentiallyConsistent (antichain prior observe) := by
@@ -491,7 +491,7 @@ theorem information_mass
   let : Fintype State := Fintype.ofFinite _
   unfold InformationModel.informationMass
   have reach (history : (model prior observe).InformationHistory () original.1) :
-      (model prior observe).historyReachProbability profile history.1 =
+      ((model prior observe).historyReachWeight profile history.1).toReal =
         (prior (latent prior history.1.state)).toReal := by
     obtain ⟨state, supported, same, _⟩ := history_at_site prior observe original history
     rw [same, reach_decision]
@@ -515,12 +515,11 @@ theorem consistent_beliefs_unique
   funext who site
   cases who
   have equal (n : Nat) : (sequence n).belief () site =
-      ((reference prior observe).bayes (reference_mixed prior observe)
-        (antichain prior observe)).belief () site := by
+      (InformationModel.bayesAssessment _ (reference prior observe).strategy (reference_mixed prior observe) (antichain prior observe)).belief () site := by
     apply pmf_ext_toReal
     intro history
     rw [(approximates n).2 () site ((approximates n).1.informationMass_pos () site) history,
-      InformationModel.BehavioralAssessment.bayes, InformationModel.bayesBelief_prob]
+      InformationModel.bayesAssessment, InformationModel.bayesBelief_apply]
     congr 1
     · exact decision_reach_invariant prior observe _ _ site history
     · unfold InformationModel.informationMass
@@ -587,9 +586,8 @@ theorem continuation_value (original : Signal → PMF Action)
       (((assessment prior observe original).belief () site) history).toReal =
         (prior (latent prior history.1.state)).toReal /
           (prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe site})).toReal := by
-    change ((((reference prior observe).bayes (reference_mixed prior observe)
-      (antichain prior observe)).belief () site) history).toReal = _
-    rw [InformationModel.BehavioralAssessment.bayes, InformationModel.bayesBelief_prob,
+    change (((InformationModel.bayesAssessment _ (reference prior observe).strategy (reference_mixed prior observe) (antichain prior observe)).belief () site) history).toReal = _
+    rw [InformationModel.bayesAssessment, InformationModel.bayesBelief_apply,
       information_mass]
     obtain ⟨state, supported, same, _⟩ := history_at_site prior observe site history
     rw [same, reach_decision]

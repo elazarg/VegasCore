@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterWindowContinuation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Conditional disclosure values inside an actual revelation phase
 

@@ -8,6 +8,7 @@ import Vegas.EventGraph.PolicyCongruence
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Canonical policy backtranslation law
 

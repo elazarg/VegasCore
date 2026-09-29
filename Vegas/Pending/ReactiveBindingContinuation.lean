@@ -2,6 +2,8 @@
 
 import Vegas.Pending.ReactiveBindingShadowStep
 import Vegas.Pending.ReactiveCompiledMenu
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A legal retained continuation from private binding repair
 

@@ -118,7 +118,7 @@ theorem behavioralJoint_projection {before}
     _ = independentProduct (fun who =>
         ((native who ((raw.information initial horizon scheduler).infoOf who prior)).map
           Subtype.val).map (fun action => normal.joint before (fun _ => action) who)) := by
-      conv_rhs => rw [FinDist.pi_map]
+      conv_rhs => rw [independentProduct_map]
       congr 1
       funext choices who
       cases before <;> rfl

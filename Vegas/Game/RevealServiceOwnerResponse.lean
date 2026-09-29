@@ -5,6 +5,7 @@ import Vegas.Game.RevealServicePayoffs
 import Vegas.Game.RevealServiceOwnerSupport
 import Vegas.Game.RevealServicePrefixLaw
 import Vegas.Game.RevealServiceCollection
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Terminal typed laws after an actual owner response
 

@@ -6,6 +6,7 @@ import Vegas.Game.SourceServiceTimedBindingCheckpoint
 import Vegas.Game.SourceServiceBoundary
 import Vegas.Game.SourceServicePrefix
 import Vegas.Pending.ReactiveOpeningExpiry
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source successors in conditional timed executions
 

@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceActiveBindingCheckpoint
 import Vegas.Game.SourceServiceTimedReachability
 import Vegas.Pending.ReactiveResponseConditioning
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # The source continuation selected by a native binding response
 

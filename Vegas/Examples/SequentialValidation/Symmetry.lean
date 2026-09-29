@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.SequentialValidation.Information
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The source posterior is symmetric in the unrevealed type -/
 

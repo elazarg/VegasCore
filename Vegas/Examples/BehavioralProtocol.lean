@@ -2,6 +2,7 @@
 
 import Vegas.Game.BehavioralSubgame
 import Vegas.Expr.Simple
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Randomized source play with an infinite player universe
 

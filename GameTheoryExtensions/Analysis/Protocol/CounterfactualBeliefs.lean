@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.Protocol.CounterfactualRegret
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A player's own strategy cancels from its Bayes beliefs
 
@@ -23,7 +24,6 @@ variable {Player : Type*} [Fintype Player]
 theorem bayesBelief_eq_of_eq_off
     (first second : ∀ who, M.BehavioralPolicy who)
     (who : Player) (site : M.InformationSite who)
-    [Fintype (M.InformationHistory who site.1)]
     (antichain : site.IsHistoryAntichain)
     (agree : ∀ other, other ≠ who → first other = second other)
     (firstCommon : M.CommonPlayerReachAt first who site)
@@ -40,13 +40,15 @@ theorem bayesBelief_eq_of_eq_off
   have factor (profile : ∀ player, M.BehavioralPolicy player) (reach : ℝ)
       (common : ∀ history : M.InformationHistory who site.1,
         M.playerReachProbability profile who history.1.trace = reach) :
-      M.informationMass profile who site = reach *
-        ∑ history : M.InformationHistory who site.1,
+      (M.informationMass profile who site).toReal = reach *
+        ∑' history : M.InformationHistory who site.1,
           M.counterfactualReachProbability profile who history.1.trace := by
     unfold informationMass
-    rw [Finset.mul_sum]
-    apply Finset.sum_congr rfl
-    intro history _
+    rw [ENNReal.tsum_toReal_eq (f := fun history : M.InformationHistory who site.1 =>
+      M.historyReachWeight profile history.1) fun history => PMF.apply_ne_top _ _,
+      ← tsum_mul_left]
+    apply tsum_congr
+    intro history
     rw [M.historyReachProbability_eq_player_mul_counterfactual profile who history.1.trace,
       common history]
   have firstMass := factor first firstReach firstCommon
@@ -54,8 +56,9 @@ theorem bayesBelief_eq_of_eq_off
   simp_rw [← M.counterfactualReachProbability_eq_of_eq_off agree] at secondMass
   apply pmf_ext_toReal
   intro history
-  rw [M.bayesBelief_prob first who site antichain firstPositive history,
-    M.bayesBelief_prob second who site antichain secondPositive history,
+  rw [M.bayesBelief_apply first who site antichain firstPositive history,
+    M.bayesBelief_apply second who site antichain secondPositive history,
+    ENNReal.toReal_div, ENNReal.toReal_div,
     M.historyReachProbability_eq_player_mul_counterfactual first who history.1.trace,
     M.historyReachProbability_eq_player_mul_counterfactual second who history.1.trace,
     firstCommon history, secondCommon history, firstMass, secondMass,

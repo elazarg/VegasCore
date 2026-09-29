@@ -6,6 +6,7 @@ import Interaction.MessageMonitoring
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Detecting the native candidate leak through an ordinary sampled view
 

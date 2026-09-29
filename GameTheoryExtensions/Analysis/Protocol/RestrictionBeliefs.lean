@@ -4,6 +4,7 @@ import GameTheoryExtensions.Protocol.RestrictionExecution
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
 import GameTheoryExtensions.Math.Probability.ConditionalDomination
 import GameTheoryExtensions.Math.Probability.Convergence
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Beliefs preserved by a structural action restriction
 
@@ -41,7 +42,7 @@ private theorem bayes_belief_eq (assessment : M.BehavioralAssessment)
     assessment.belief who site = M.bayesBelief assessment.strategy who site antichain positive := by
   apply pmf_ext_toReal
   intro history
-  rw [M.bayesBelief_prob]
+  rw [M.bayesBelief_apply]
   exact bayes history
 
 namespace ActionRestriction

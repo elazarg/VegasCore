@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactivePolicyMixture
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # A scheduled mixture stops after its first opening
 

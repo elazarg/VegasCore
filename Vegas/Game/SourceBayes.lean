@@ -5,6 +5,8 @@ import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source assessment beliefs are actual conditional prefix laws
 
@@ -55,7 +57,7 @@ theorem stateBelief_eq_conditional_prefix
         (setup.decision_antichain admission who site) positive := by
     apply pmf_ext_toReal
     intro history
-    rw [M.bayesBelief_prob]
+    rw [M.bayesBelief_apply]
     exact bayes who site positive history
   obtain ⟨history, _running, _active⟩ := site.2
   have supported : history.1 ∈ prefixLaw.support := by

@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceEvidence
 import Vegas.Game.SourceServiceDecisionResources
 import Vegas.Pending.ReactiveResolutionWindowState
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Foreign visits during a disclosure phase
 
@@ -178,7 +179,7 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
         simp only [Function.update_self, ReactiveApplication.scheduledPolicy,
           openingWindowPlayers, ↓reduceIte, firing]
       · simp only [Function.update_of_ne same, openingWindowPlayers, same, ↓reduceIte]
-  refine (map_congr_on_support _ (g := fun _ => _) ?_).trans (FinDist.map_const _ _)
+  refine (map_congr_on_support _ (g := fun _ => _) ?_).trans (PMF.map_const _ _)
   intro final reached
   obtain ⟨current, prior, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   rw [servicePlan_players_eq setup leaks _ guardedPlayers network _ (by simp)

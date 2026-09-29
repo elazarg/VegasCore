@@ -3,6 +3,7 @@
 import Vegas.EventGraph.SchedulerPredraw
 import Vegas.EventGraph.SchedulerDeviation
 import Vegas.EventGraph.CanonicalNormalization
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Setup-wide asynchronous deviation simulation
 

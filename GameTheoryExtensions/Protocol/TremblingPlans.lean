@@ -2,6 +2,8 @@
 
 import GameTheoryExtensions.Math.Probability.Tremble
 import GameTheoryExtensions.Protocol.FiniteInformation
+import GameTheory.Protocol.PolicyRandomization
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Independent local trembles on finite decision plans
 
@@ -150,7 +152,7 @@ theorem DecisionPlan.tremble_marginal (plan : M.DecisionPlan who) (epsilon : ℝ
     (plan.tremble epsilon nonnegative small).map (fun realized => realized site) =
       (PMF.pure (plan site)).tremble epsilon nonnegative (small site) := by
   classical
-  exact FinDist.map_apply_pi site _
+  exact independentProduct_map_eval _ site
 
 theorem DecisionPlan.mem_support_tremble (plan : M.DecisionPlan who) (epsilon : ℝ)
     (positive : 0 < epsilon)
@@ -158,7 +160,7 @@ theorem DecisionPlan.mem_support_tremble (plan : M.DecisionPlan who) (epsilon : 
       epsilon * Fintype.card (M.Choice who site.1) ≤ 1)
     (realized : M.DecisionPlan who) :
     realized ∈ (plan.tremble epsilon positive.le small).support := by
-  apply FinDist.mem_support_pi.mpr
+  apply (independentProduct_support_iff _ _).mpr
   intro site
   apply pmf_toReal_pos_iff.mp
   exact positive.trans_le
@@ -228,20 +230,21 @@ theorem le_prob_trembledMixedPolicy_toBehavioralWith (recall : M.PerfectRecall)
     obtain ⟨plan, present, rfl⟩ := present
     refine ⟨plan, ?_, present⟩
     exact (plan.consistentAt_extend_iff recall fallback current).mp compatible
-  have lower := FinDist.le_prob_condOn_mixture_pi plans
+  have lower := PMF.le_prob_filter_mixture_independentProduct plans
     (fun plan site => (PMF.pure (plan site)).tremble epsilon positive.le (small site))
     current.recordChoices current (current.recordChoices_self recall) action epsilon
     (fun plan _ => PMF.le_prob_tremble _ epsilon positive.le (small current) action)
     table_positive
-  rw [FinDist.prob_map_eq_probOf_preimage_singleton,
-    FinDist.probOf_condOn_eq_inter] at lower
+  rw [← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply,
+    toOuterMeasure_filter_apply] at lower
   change epsilon ≤ ((MixedPolicy.toBehavioralWith (M := M)
     (law.map extend) fallback current.1) action).toReal
   change ∃ policy ∈ M.ConsistentAt who current.1,
     policy ∈ (law.map extend).support at supported
   rw [MixedPolicy.toBehavioralWith, dite_eq_left supported,
-    FinDist.prob_map_eq_probOf_preimage_singleton, FinDist.probOf_condOn_eq_inter,
-    FinDist.probOf_map, FinDist.probOf_map, Set.preimage_inter, event_eq, answer_eq]
+    ← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply,
+    toOuterMeasure_filter_apply, PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply,
+    Set.preimage_inter, event_eq, answer_eq]
   exact lower
 
 /-- Independent residual prescriptions for a behavioral table with a uniform
@@ -264,7 +267,7 @@ theorem BehavioralDecisionPlan.residualPlans_tremble (policy : M.BehavioralDecis
     (policy.residualPlans epsilon small floor).bind
         (fun plan => plan.tremble epsilon nonnegative (fun site => (small site).le)) =
       independentProduct policy := by
-  exact (FinDist.pi_bind
+  exact (independentProduct_bind
     (fun site : M.InformationSite who =>
       (policy site).removeTremble epsilon (small site) (floor site))
     (fun (site : M.InformationSite who) (choice : M.Choice who site.1) =>

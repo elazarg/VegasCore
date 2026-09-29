@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterSupport
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The common policy limit at every permitted roster prefix
 

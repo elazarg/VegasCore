@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveBindingLikelihood
 import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Conditional laws for actual opaque binding phases
 

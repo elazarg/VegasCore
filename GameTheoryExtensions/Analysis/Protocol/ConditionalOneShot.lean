@@ -3,6 +3,8 @@
 import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
 import GameTheoryExtensions.Analysis.Protocol.CounterfactualBeliefs
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Averaging local deviation bounds after an arbitrary own-policy prefix
 
@@ -50,7 +52,7 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
       M.bayesBelief assessment.strategy who site antichain originalPositive := by
     apply pmf_ext_toReal
     intro history
-    rw [M.bayesBelief_prob]
+    rw [M.bayesBelief_apply]
     exact bayes who site originalPositive history
   have sameBelief := M.bayesBelief_eq_of_eq_off updated assessment.strategy who site antichain
     (fun player different => Profile.update_of_ne _ _ different)

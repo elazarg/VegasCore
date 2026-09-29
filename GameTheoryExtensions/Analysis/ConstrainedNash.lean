@@ -2,6 +2,8 @@
 
 import GameTheory.Analysis.Nash
 import GameTheoryExtensions.Math.Probability.Tremble
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Simultaneous best responses with fixed agents and mandatory trembles
 
@@ -66,7 +68,7 @@ private theorem response_game_law (free : Finset ι)
     (independentProduct fun who =>
       responseKernel free pinned reference epsilon nonnegative small who (profile who)).bind
         F.play) = _
-  rw [← PMF.bind_bind, FinDist.pi_bind]
+  rw [← PMF.bind_bind, independentProduct_bind]
   simp only [response_kernel_law]
 
 omit [Fintype ι] in

@@ -132,15 +132,15 @@ theorem runBehavioralFrom_expect_tendsto
         intro target realized
         exact induction _
 
-theorem BehavioralAssessmentConvergesPointwise.historyReachProbability
+theorem BehavioralAssessmentConvergesPointwise.historyReachWeight
     (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
     {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     (history : E.History) :
-    Tendsto (fun n => M.historyReachProbability (sequence n).strategy history) atTop
-      (nhds (M.historyReachProbability assessment.strategy history)) := by
+    Tendsto (fun n => (M.historyReachWeight (sequence n).strategy history).toReal) atTop
+      (nhds ((M.historyReachWeight assessment.strategy history).toReal)) := by
   simpa only [GameTheory.Math.Probability.FinDist.expect_prob_pure,
-    InformationModel.historyReachProbability, InformationModel.runBehavioral] using
+    InformationModel.historyReachWeight, InformationModel.runBehavioral] using
     runBehavioralFrom_expect_tendsto reference mixed (fun n => (sequence n).strategy)
       assessment.strategy converges.strategy
       (fun outcome => ((PMF.pure outcome) history).toReal) history.trace.length E.initHistory
@@ -155,7 +155,7 @@ theorem BehavioralAssessmentConvergesPointwise.informationMass
       (nhds (M.informationMass assessment.strategy who site)) := by
   unfold InformationModel.informationMass
   exact tendsto_finsetSum Finset.univ fun history _ =>
-    converges.historyReachProbability reference mixed history.1
+    converges.historyReachWeight reference mixed history.1
 
 /-- Sequential consistency enforces ordinary Bayes conditioning at every
 positive-mass information set of the limit strategy. Off-path beliefs remain
@@ -169,14 +169,14 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.isBayesConsistent
   obtain ⟨sequence, approximates, converges⟩ := consistent
   intro who site positive history
   have ratios :=
-    (converges.historyReachProbability (sequence 0) (approximates 0).1 history.1).div
+    (converges.historyReachWeight (sequence 0) (approximates 0).1 history.1).div
       (converges.informationMass (sequence 0) (approximates 0).1 who site) positive.ne'
   have equality (n : ℕ) : (((sequence n).belief who site) history).toReal =
-      M.historyReachProbability (sequence n).strategy history.1 /
+      (M.historyReachWeight (sequence n).strategy history.1).toReal /
         M.informationMass (sequence n).strategy who site :=
     (approximates n).2 who site ((approximates n).1.informationMass_pos who site) history
   have beliefs : Tendsto (fun n => (((sequence n).belief who site) history).toReal) atTop
-      (nhds (M.historyReachProbability assessment.strategy history.1 /
+      (nhds ((M.historyReachWeight assessment.strategy history.1).toReal /
         M.informationMass assessment.strategy who site)) :=
     ratios.congr' (Filter.Eventually.of_forall fun n => (equality n).symm)
   exact tendsto_nhds_unique (converges.belief who site history) beliefs

@@ -5,6 +5,7 @@ import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveOpeningLikelihood
 import GameTheoryExtensions.Math.Probability.ConditionalNoise
 import Vegas.Source.ObservationRecall
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Public chance and the original source-memory factorization
 

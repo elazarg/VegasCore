@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Enforcement
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Undetectable signaling through an allowed public field
 
@@ -102,7 +103,7 @@ theorem signaling_decoded_law (secret : Bool) :
   rw [signaling, PMF.map_comp]
   change fairBit.map (fun pad => decode (pad, xor secret pad)) = PMF.pure secret
   simp_rw [decode_signaling]
-  exact FinDist.map_const _ _
+  exact PMF.map_const _ _
 
 theorem honest_decoded_law : honest.map decode = fairBit := by
   apply pmf_ext_toReal

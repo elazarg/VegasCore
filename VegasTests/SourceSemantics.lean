@@ -6,6 +6,7 @@ Authors: VegasCore contributors
 
 import Vegas.Source.Semantics
 import Vegas.Expr.Simple
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! Mixed fixtures and execution regressions for the source language.
 
@@ -280,7 +281,7 @@ example :
       mixedProgram.evaluatePayoffs = PMF.pure [(.alice, 10)] := by
   rw [successful_run, PMF.map_comp]
   change fairBool.denote.map (fun _ => ([(Player.alice, 10)] : List (Player × Int))) = _
-  exact FinDist.map_const _ _
+  exact PMF.map_const _ _
 
 example :
     (mixedProgram.run (mixedProfile (.success (some false)) true) initialState).map

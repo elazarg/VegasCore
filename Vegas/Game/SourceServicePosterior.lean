@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServicePrefixInformation
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Decoded source posteriors at actual native inputs
 

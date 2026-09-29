@@ -72,7 +72,7 @@ theorem resultLaw_fst (prior : PMF State) (observe : State → Signal)
     (fact : State → Fact) (policy : Signal → PMF Action) :
     (resultLaw prior observe fact policy).map Prod.fst = prior.map fact := by
   rw [resultLaw_eq_bind]
-  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, FinDist.map_const]
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, PMF.map_const]
   rfl
 
 theorem value_eq_resultLaw (prior : PMF State) (observe : State → Signal)

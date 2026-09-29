@@ -22,7 +22,7 @@ theorem InformationModel.behavioralJoint_map_val (M : InformationModel E) [Finty
     (running : ¬ E.terminal state) :
     (M.behavioralJoint profile history running).map Subtype.val =
       independentProduct (fun who => (profile who (M.infoOf who history)).map Subtype.val) := by
-  rw [InformationModel.behavioralJoint, PMF.map_comp, FinDist.pi_map]
+  rw [InformationModel.behavioralJoint, PMF.map_comp, ← independentProduct_map]
   rfl
 
 theorem ExecutionProtocol.runRandomizedFor_map_of_oneStep

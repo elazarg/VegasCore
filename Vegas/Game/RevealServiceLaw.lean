@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServiceExecution
 import Vegas.Game.RevealServicePayoffs
 import Vegas.Game.SourceContinuation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Initialized law of the actual revelation compiler
 

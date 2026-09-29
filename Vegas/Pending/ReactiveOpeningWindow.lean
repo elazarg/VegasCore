@@ -4,6 +4,7 @@ import Interaction.ReactiveReplayPolicy
 import Interaction.ScheduledOpening
 import Vegas.Pending.ReactivePolicyMixture
 import Vegas.Pending.ReactivePolicy
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Coupling scheduled openings through a finite observation window
 

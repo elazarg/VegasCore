@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Protocol.ContinuationSimulation
 import GameTheoryExtensionsTests.IncentiveCone
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Mixing continuation comparisons and its limits
 

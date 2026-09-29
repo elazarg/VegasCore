@@ -3,6 +3,8 @@
 import Interaction.ReactiveFiniteAssessment
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Native Bayes beliefs are conditional execution laws
 
@@ -44,7 +46,7 @@ theorem stateBelief_eq_conditional_prefix
         (menu.decisionInformationAntichain initial horizon scheduler who site) positive := by
     apply pmf_ext_toReal
     intro history
-    rw [M.bayesBelief_prob]
+    rw [M.bayesBelief_apply]
     exact bayes who site positive history
   obtain ⟨history, _running, _active⟩ := site.2
   have supported : history.1 ∈ prefixLaw.support := by

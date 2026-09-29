@@ -161,9 +161,9 @@ theorem decision_reach_invariant (profile : Profile nativeModel.behavioralSignat
     (alternative : nativeModel.BehavioralPolicy true) (who : Bool)
     (site : nativeModel.InformationSite who)
     (history : nativeModel.InformationHistory who site.1) :
-    nativeModel.historyReachProbability (Profile.update (sig := nativeModel.behavioralSignature)
-      profile true alternative) history.1 =
-      nativeModel.historyReachProbability profile history.1 := by
+    (nativeModel.historyReachWeight (Profile.update (sig := nativeModel.behavioralSignature)
+      profile true alternative) history.1).toReal =
+      (nativeModel.historyReachWeight profile history.1).toReal := by
   rw [nativeModel.historyReachProbability_eq_player_mul_counterfactual _ true history.1.trace,
     nativeModel.historyReachProbability_eq_player_mul_counterfactual _ true history.1.trace,
     decision_player_reach _ who site history, decision_player_reach _ who site history]

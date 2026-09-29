@@ -6,6 +6,7 @@ import Vegas.Compile.EventGraphPolicyLaw
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source decisions in the existing sequential native service
 

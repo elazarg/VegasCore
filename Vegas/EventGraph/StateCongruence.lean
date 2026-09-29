@@ -2,6 +2,7 @@
 
 import Vegas.EventGraph.PolicyCommutation
 import Vegas.EventGraph.CanonicalStep
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Semantic-state congruence for normalized graph execution -/
 

@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveBindingSchedule
 import Vegas.Pending.ReactiveOpeningSettlement
 import Vegas.Pending.ReactiveRevealBlock
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Opening windows after private binding histories
 

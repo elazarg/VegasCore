@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceTimedSupport
 import Vegas.Game.SourceServiceCompiledExecution
 import Interaction.ReactiveRecallEntries
 import GameTheoryExtensions.Protocol.TremblingPlans
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Legal shared timing at full-source decisions
 

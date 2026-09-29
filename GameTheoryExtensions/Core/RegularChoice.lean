@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Math.Probability.Regularity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Optimal proposals under regular selection
 

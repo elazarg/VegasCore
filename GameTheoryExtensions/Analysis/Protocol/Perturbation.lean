@@ -41,6 +41,7 @@ theorem BehavioralAssessment.perturb_strategy_converges (reference : M.Behaviora
     PMFConvergesPointwise
       (fun n => (reference.perturb profile (weight n) (nonnegative n)
         (atMostOne n)).strategy who info) (profile who info) := by
+  rw [pmfConvergesPointwise_iff_toReal]
   intro choice
   change Tendsto (fun n => ((mix (weight n) (nonnegative n) (atMostOne n)
     (reference.strategy who info) (profile who info)) choice).toReal) atTop _

@@ -6,6 +6,7 @@ import Vegas.Pending.EventPolicies
 import Vegas.Pending.EventService
 import Vegas.Pending.EventServiceCompletion
 import Vegas.Pending.EventHonestLaw
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The full-source compiler's pending-message target
 

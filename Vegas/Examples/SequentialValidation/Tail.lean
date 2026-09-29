@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SequentialValidation.Guess
 import Vegas.Pending.ReactiveContinuationObservation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The deterministic service tail contains no further player decisions -/
 

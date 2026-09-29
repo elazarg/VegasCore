@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingLikelihood
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Scheduled opaque bindings under passive observation
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.Setup
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Initial parameters and public results
 

@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.Payoffs
 import Vegas.Examples.MonitoredGuessing.NativePayoff
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Native settlement readout for the source return-table family
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceFactorization
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Conditional traffic laws for guarded disclosure
 

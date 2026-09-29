@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveOpeningWindow
 import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Source-result posterior through an actual opening window
 

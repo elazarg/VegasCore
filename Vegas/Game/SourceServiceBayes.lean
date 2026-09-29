@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServicePrefixPosterior
 import Interaction.ReactiveBayes
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Full-source native Bayes beliefs
 

@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServiceRosterPrefixNoise
 import Vegas.Game.RevealServicePrefixInformation
 import Interaction.ReactiveObservation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Owner information during a revelation roster
 

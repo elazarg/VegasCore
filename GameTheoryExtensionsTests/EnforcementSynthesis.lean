@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact finite sanction inference
 

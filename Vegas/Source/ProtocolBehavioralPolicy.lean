@@ -4,6 +4,7 @@ import Vegas.Source.ProtocolPolicy
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Information-local behavioral policies at a commitment interface
 

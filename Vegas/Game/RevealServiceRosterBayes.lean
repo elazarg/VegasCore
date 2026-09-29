@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServiceRosterOwnerPosterior
 import Vegas.Game.SourceBayes
 import Interaction.ReactiveBayes
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Actual native Bayes posteriors during an owner's roster phase
 
@@ -133,10 +134,8 @@ theorem roster_owner_bayes_posterior
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)
-    let native := assessment.bayes
-      (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-        admission source mixed timing timingFull)
-      (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+    let native := InformationModel.bayesAssessment _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+        admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
     reference ∈ executions.support →
     ∀ site : model.InformationSite owner,
       site.1 = some (reference.recall owner, reference.observe (application setup leaks) owner) →
@@ -191,10 +190,8 @@ theorem roster_owner_bayes_posterior
     (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
       admission source mixed timing timingFull)
     (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
-  have bayesNative := assessment.bayes_isBayesConsistent
-    (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-      admission source mixed timing timingFull)
-    (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+  have bayesNative := InformationModel.bayesAssessment_isBayesConsistent _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+      admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
   have conditioned := menu.stateBelief_eq_conditional_prefix (initialLaw setup) horizon scheduler
     native mixedNative bayesNative owner site depth clockAt
   rw [law, siteInput] at conditioned
@@ -254,10 +251,8 @@ theorem roster_owner_bayes_at_history
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)
-    let native := assessment.bayes
-      (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-        admission source mixed timing timingFull)
-      (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+    let native := InformationModel.bayesAssessment _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+        admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
     ∀ (site : model.InformationSite owner) (history : model.InformationHistory owner site.1)
       (control : (application setup leaks).Control),
       history.1.state = some control →
@@ -351,10 +346,8 @@ theorem roster_owner_bayes_source_state
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)
-    let native := assessment.bayes
-      (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-        admission source mixed timing timingFull)
-      (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+    let native := InformationModel.bayesAssessment _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+        admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
     ∀ (site : model.InformationSite owner) (history : model.InformationHistory owner site.1)
       (control : (application setup leaks).Control),
       history.1.state = some control →

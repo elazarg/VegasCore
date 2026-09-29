@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
 import GameTheoryExtensions.Analysis.Protocol.DecisionExperiment
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Partial information at an actual protocol decision
 
@@ -74,13 +75,10 @@ theorem canonical_posterior (original : Unit → PMF Bool) :
       exact FinDist.prob_map_of_injective guess.state
         (information_state_injective biasedBit (fun _ => ()) hiddenSite) _ (hiddenHistory bit)
     _ = (biasedBit bit).toReal := by
-      change ((((reference biasedBit (fun _ => ())).bayes
-        (reference_mixed biasedBit (fun _ => ()))
-        (antichain biasedBit (fun _ => ()))).belief () hiddenSite) (hiddenHistory bit)).toReal = _
-      rw [InformationModel.BehavioralAssessment.bayes, InformationModel.bayesBelief_prob,
+      change (((InformationModel.bayesAssessment _ (reference biasedBit (fun _ => ())).strategy (reference_mixed biasedBit (fun _ => ())) (antichain biasedBit (fun _ => ()))).belief () hiddenSite) (hiddenHistory bit)).toReal = _
+      rw [InformationModel.bayesAssessment, InformationModel.bayesBelief_apply,
         information_mass]
-      change (model biasedBit (fun _ => ())).historyReachProbability _
-        (decisionHistory biasedBit bit (biasedBit_full bit)) /
+      change ((model biasedBit (fun _ => ())).historyReachWeight _ (decisionHistory biasedBit bit (biasedBit_full bit))).toReal /
           (biasedBit.toOuterMeasure ((fun _ : Bool => ()) ⁻¹'
             {siteSignal biasedBit (fun _ => ()) hiddenSite})).toReal = _
       rw [reach_decision]

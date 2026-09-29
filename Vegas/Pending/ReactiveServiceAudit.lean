@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveBindingOmission
 import Interaction.ReactiveAuditCollection
 import Interaction.ReactiveTrafficState
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Collected charges from traffic evidence and public binding omissions
 
@@ -93,7 +94,7 @@ theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
       simp only [Option.map_some, Option.elim_some]
       by_cases missing : control.execution.application.publicView.missedBindingBy who = true
       · simp only [missing, Bool.or_true, ↓reduceIte,
-          FinDist.map_const, FinDist.prob_pure_self]
+          PMF.map_const, FinDist.prob_pure_self]
       · have clear : control.execution.application.publicView.missedBindingBy who = false :=
           Bool.eq_false_iff.mpr missing
         simp only [clear, Bool.or_false, Bool.false_eq_true, ↓reduceIte]

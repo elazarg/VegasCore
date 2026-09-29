@@ -9,6 +9,7 @@ import Vegas.Game.SourceLocalPolicy
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The owner's unsent binding
 
@@ -678,7 +679,7 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
           change (independentProduct _).map ((fun action =>
             advance (OwnAction.binding siteOwner name sitePayload action)) ∘
               fun joint : Player → Option (OwnAction Player L) => joint siteOwner) = _
-          rw [← PMF.map_comp, FinDist.map_apply_pi]
+          rw [← PMF.map_comp, independentProduct_map_eval]
         have injective : Function.Injective advance := by
           intro first second same
           have successor := commutes.2.2 same

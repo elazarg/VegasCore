@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveServiceRecall
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Selecting a local response by conditioning the actual continuation
 

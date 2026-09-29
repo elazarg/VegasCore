@@ -2,6 +2,9 @@
 
 import Interaction.ScheduledOpeningSupport
 import GameTheoryExtensions.Math.Probability.DeferredChoice
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The exact posterior after waiting for an opening
 

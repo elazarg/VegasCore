@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.SequentialValidation.Kernel
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Reach probabilities and source information in the validation example -/
 
@@ -70,11 +71,9 @@ theorem card_publication_bool : Fintype.card (PublicationResult Bool) = 3 := by
   decide
 
 theorem source_reach_secret (bit : Bool) (dummy : PublicationResult Bool) (first second : Bool) :
-    sourceModel.historyReachProbability uniformSourceProfile
-      (SourcePath.secretPublished bit dummy first second).history = 1 / 24 := by
+    (sourceModel.historyReachWeight uniformSourceProfile (SourcePath.secretPublished bit dummy first second).history).toReal = 1 / 24 := by
   classical
-  unfold InformationModel.historyReachProbability
-  rw [source_path_length]
+  unfold ((InformationModel.historyReachWeight rw [source_path_length]).toReal)
   change ((sourceModel.runBehavioral uniformSourceProfile 4) _).toReal = _
   rw [← FinDist.prob_map_of_injective History.state source_state_injective,
     uniform_source_run, SourcePath.history_state,

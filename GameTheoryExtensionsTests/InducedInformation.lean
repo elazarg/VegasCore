@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.InducedInformation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Partial signals in an induced information advantage
 

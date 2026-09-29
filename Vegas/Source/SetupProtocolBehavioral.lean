@@ -2,6 +2,7 @@
 
 import Vegas.Source.SetupProtocolEvaluation
 import Vegas.Source.ProtocolBehavioralEvaluation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Behavioral play with private setup
 

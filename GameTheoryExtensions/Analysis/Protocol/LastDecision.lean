@@ -144,7 +144,7 @@ variable [∀ player (site : M.InformationSite player),
 
 def lastChoiceValue (site : M.InformationSite who) (choice : M.Choice who site.1) : ℝ := by
   classical
-  exact ((reference.bayes mixed antichain).continuationContext site payoff (fuel + 1)).value
+  exact ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext site payoff (fuel + 1)).value
     ((reference.strategy who).commit site.1 choice)
 
 def bestLastChoice (site : M.InformationSite who) : M.Choice who site.1 := by
@@ -181,9 +181,9 @@ theorem bestLastPolicy_at (site : M.InformationSite who) :
 theorem bestLastPolicy_optimal (last : LastDecision (E := E) who)
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
     (alternative : M.BehavioralPolicy who) :
-    ((reference.bayes mixed antichain).continuationContext site payoff (fuel + 1)).value
+    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext site payoff (fuel + 1)).value
       alternative ≤
-    ((reference.bayes mixed antichain).continuationContext site payoff (fuel + 1)).value
+    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext site payoff (fuel + 1)).value
       (bestLastPolicy reference mixed antichain who payoff fuel) := by
   classical
   rw [last.context_value_eq_expect _ site nonterminal payoff fuel alternative,
@@ -209,12 +209,10 @@ theorem consistent_update_of_reach_invariant
     (antichain : M.DecisionInformationAntichain) (who : ι)
     (reach : ∀ (alternative : M.BehavioralPolicy who) (player : ι)
       (site : M.InformationSite player) (history : M.InformationHistory player site.1),
-      M.historyReachProbability
-        (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative)
-          history.1 = M.historyReachProbability reference.strategy history.1)
+      (M.historyReachWeight (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative) history.1).toReal = (M.historyReachWeight reference.strategy history.1).toReal)
     (policy : M.BehavioralPolicy who) :
     (⟨Profile.update (sig := M.behavioralSignature) reference.strategy who policy,
-      (reference.bayes mixed antichain).belief⟩ : M.BehavioralAssessment).IsSequentiallyConsistent
+      (InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief⟩ : M.BehavioralAssessment).IsSequentiallyConsistent
         antichain := by
   classical
   let weight (n : Nat) : ℝ := 1 / ((n : ℝ) + 1)
@@ -230,7 +228,7 @@ theorem consistent_update_of_reach_invariant
       (reference.strategy who info) (policy info)
   let sequence (n : Nat) : M.BehavioralAssessment :=
     ⟨Profile.update (sig := M.behavioralSignature) reference.strategy who (response n),
-      (reference.bayes mixed antichain).belief⟩
+      (InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief⟩
   refine ⟨sequence, ?_, ?_⟩
   · intro n
     constructor
@@ -252,8 +250,8 @@ theorem consistent_update_of_reach_invariant
         apply Finset.sum_congr rfl
         intro next _
         exact reach (response n) player site next
-      change (((reference.bayes mixed antichain).belief player site) history).toReal = _
-      rw [BehavioralAssessment.bayes, bayesBelief_prob, mass]
+      change (((InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief player site) history).toReal = _
+      rw [InformationModel.bayesAssessment, bayesBelief_apply, mass]
       exact congrArg (fun value => value / M.informationMass reference.strategy player site)
         (reach (response n) player site history).symm
   · constructor
@@ -292,9 +290,7 @@ theorem exists_sequential_equilibrium_of_last_decision
     (nonterminal : ∀ site : M.InformationSite who, site.AllNonterminal)
     (reach : ∀ (alternative : M.BehavioralPolicy who) (player : ι)
       (site : M.InformationSite player) (history : M.InformationHistory player site.1),
-      M.historyReachProbability
-        (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative)
-          history.1 = M.historyReachProbability reference.strategy history.1)
+      (M.historyReachWeight (Profile.update (sig := M.behavioralSignature) reference.strategy who alternative) history.1).toReal = (M.historyReachWeight reference.strategy history.1).toReal)
     (payoff : ι → E.History → ℝ) (neutral : ∀ player, player ≠ who → payoff player = fun _ => 0)
     (fuel : Nat) :
     ∃ assessment : M.BehavioralAssessment,
@@ -306,7 +302,7 @@ theorem exists_sequential_equilibrium_of_last_decision
   let policy := bestLastPolicy reference mixed antichain who (payoff who) fuel
   let assessment : M.BehavioralAssessment :=
     ⟨Profile.update (sig := M.behavioralSignature) reference.strategy who policy,
-      (reference.bayes mixed antichain).belief⟩
+      (InformationModel.bayesAssessment _ reference.strategy mixed antichain).belief⟩
   refine ⟨assessment, rfl, ?_,
     consistent_update_of_reach_invariant reference mixed antichain who reach policy⟩
   intro player site alternative _
@@ -325,7 +321,7 @@ theorem exists_sequential_equilibrium_of_last_decision
         exact Profile.update_of_ne _ _ same
     have value (response : M.BehavioralPolicy who) :
         (assessment.continuationContext site (payoff who) (fuel + 1)).value response =
-          ((reference.bayes mixed antichain).continuationContext
+          ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
             site (payoff who) (fuel + 1)).value response := by
       simp only [BehavioralAssessment.continuationContext_value, overwrite]
       rfl

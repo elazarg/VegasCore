@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.NativeProtocol
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Native policies and protocol policies
 

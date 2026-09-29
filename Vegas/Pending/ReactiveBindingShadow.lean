@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveBindingRepair
 import Interaction.ReactiveImplementationContinuation
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Owner-local memory for repairing hidden bindings
 

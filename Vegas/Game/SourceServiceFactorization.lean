@@ -10,6 +10,8 @@ import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.ServiceObservation
 import Vegas.Pending.ReactiveBindingTranscript
 import Vegas.Pending.ReactiveResponseRecall
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source memory and actual service-channel factorization
 

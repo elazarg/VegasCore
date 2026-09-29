@@ -4,6 +4,7 @@ import GameTheory.Math.Probability.Bounds
 import GameTheory.Math.Probability.ExpectationAlgebra
 import GameTheory.Math.Probability.ExpectationBind
 import GameTheory.Math.Probability.ExpectationMap
+import GameTheory.Math.Probability.ExpectationMixture
 
 /-! # Expectations of composed laws -/
 
@@ -53,6 +54,25 @@ theorem expect_ite_eq {α : Type*} [DecidableEq α] (μ : PMF α) (a : α) (c : 
   unfold expect
   rw [tsum_eq_single a fun b different => by simp [Ne.symm different]]
   simp
+
+/-- A finitely supported law's expectation is a finite sum over its support. -/
+theorem expect_eq_sum_of_support_finite {α : Type*} (μ : PMF α) (finite : μ.support.Finite)
+    (f : α → ℝ) : expect μ f = ∑ a ∈ finite.toFinset, (μ a).toReal * f a := by
+  unfold expect
+  apply tsum_eq_sum
+  intro a absent
+  rw [Set.Finite.mem_toFinset, PMF.mem_support_iff, not_not] at absent
+  simp [absent]
+
+/-- Independent expectations under finitely supported laws commute. -/
+theorem expect_comm_of_support_finite {α β : Type*} (μ : PMF α) (ν : PMF β)
+    (μFinite : μ.support.Finite) (νFinite : ν.support.Finite) (g : α → β → ℝ) :
+    expect μ (fun a => expect ν (fun b => g a b)) =
+      expect ν (fun b => expect μ (fun a => g a b)) := by
+  simp_rw [expect_eq_sum_of_support_finite _ μFinite, expect_eq_sum_of_support_finite _ νFinite,
+    Finset.mul_sum]
+  rw [Finset.sum_comm]
+  exact Finset.sum_congr rfl fun b _ => Finset.sum_congr rfl fun a _ => by ring
 
 /-- Two laws that bind one mixture into the prescribed and alternative laws of
 its components have, for every integrable utility, the mixture's average gain

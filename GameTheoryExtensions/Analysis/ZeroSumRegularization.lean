@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheory.Analysis.Minimax
+import GameTheory.Analysis.MatrixValue
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Finite zero-sum saddle points with feature penalties
 
@@ -64,36 +65,22 @@ private theorem signed_best {Coord : Type} [Fintype Coord] (vector : Coord → �
   · simp [bestSigns, sign, positive, abs_of_nonneg positive]
   · simp [bestSigns, sign, positive, abs_of_neg (lt_of_not_ge positive)]
 
-private theorem expect_signed {Plan Coord : Type} [Fintype Coord]
+private theorem expect_signed {Plan Coord : Type} [Fintype Coord] [Finite Plan]
     (law : PMF Plan) (feature : Plan → Coord → ℝ) (reference : Coord → ℝ)
     (signs : Coord → Bool) :
     expect law (fun plan => signed signs (fun coordinate =>
       feature plan coordinate - reference coordinate)) =
       signed signs (fun coordinate =>
         expect law (fun plan => feature plan coordinate) - reference coordinate) := by
-  simp only [signed, ← FinDist.expect_sum_comm, FinDist.expect_smul,
-    FinDist.expect_sub, expect_constant]
+  unfold signed
+  rw [expect_sum law _ fun _ => payoffIntegrable_of_finite _ _]
+  apply Finset.sum_congr rfl
+  intro coordinate _
+  rw [expect_const_mul, expect_sub (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _), expect_constant]
 
-private def matrix {First Second : Type} (payoff : First → Second → ℝ) :
-    GameForm (Fin 2) where
-  sig := { Strategy := fun _ => First × Second, Outcome := ℝ }
-  play profile := PMF.pure (payoff (profile 0).1 (profile 1).2)
-
-private def matrixUtility (outcome : ℝ) (who : Fin 2) : ℝ :=
-  if who = 0 then outcome else -outcome
-
-private theorem matrix_expected {First Second : Type} (payoff : First → Second → ℝ)
-    (profile : Profile (matrix payoff).sig.mixed) :
-    expectedUtility matrixUtility 0 ((matrix payoff).mixed.play profile) =
-      expect (profile 0) (fun first => expect (profile 1) (fun second =>
-        payoff first.1 second.2)) := by
-  change expect ((independentProduct profile).bind fun pure =>
-    PMF.pure (payoff (pure 0).1 (pure 1).2)) _ = _
-  rw [← FinDist.piFin_eq_pi]
-  simp [FinDist.piFin, FinDist.expect_bind, expect_map,
-    FinDist.expect_product, matrixUtility]
-  rfl
-
+/-- The finite minimax theorem in the form used below: a row strategy and a
+column strategy that are mutual best responses for the row payoff. -/
 private theorem matrix_saddle {First Second : Type}
     [Finite First] [Nonempty First] [Finite Second] [Nonempty Second]
     (payoff : First → Second → ℝ) :
@@ -104,33 +91,19 @@ private theorem matrix_saddle {First Second : Type}
         expect first (fun row => expect other (payoff row))) := by
   let := Fintype.ofFinite First
   let := Fintype.ofFinite Second
-  let : (who : Fin 2) → Fintype ((matrix payoff).sig.Strategy who) :=
-    fun _ => show Fintype (First × Second) from inferInstance
-  let : (who : Fin 2) → Nonempty ((matrix payoff).sig.Strategy who) :=
-    fun _ => show Nonempty (First × Second) from inferInstance
-  obtain ⟨profile, saddle⟩ := exists_isSaddlePoint (F := matrix payoff) matrixUtility
-    (by intro outcome; simp [matrixUtility, Fin.sum_univ_two])
-  refine ⟨(profile 0).map Prod.fst, (profile 1).map Prod.snd, ?_, ?_⟩
-  · intro other
-    let deviation := other.map fun first => (first, Classical.ofNonempty (α := Second))
-    have bound := saddle.1 deviation
-    change expectedUtility matrixUtility 0
-      ((matrix payoff).mixed.play (Profile.update profile 0 deviation)) ≤
-        expectedUtility matrixUtility 0 ((matrix payoff).mixed.play profile) at bound
-    rw [matrix_expected, matrix_expected] at bound
-    simp only [deviation, expect_map, Profile.update_same,
-      Profile.update_of_ne _ _ (by decide : (1 : Fin 2) ≠ 0)] at bound ⊢
-    convert bound using 1 <;> rfl
-  · intro other
-    let deviation := other.map fun second => (Classical.ofNonempty (α := First), second)
-    have bound := saddle.2 deviation
-    change expectedUtility matrixUtility 0 ((matrix payoff).mixed.play profile) ≤
-      expectedUtility matrixUtility 0
-        ((matrix payoff).mixed.play (Profile.update profile 1 deviation)) at bound
-    rw [matrix_expected, matrix_expected] at bound
-    simp only [deviation, expect_map, Profile.update_same,
-      Profile.update_of_ne _ _ (by decide : (0 : Fin 2) ≠ 1)] at bound ⊢
-    convert bound using 1 <;> rfl
+  have rows (row : PMF First) (col : PMF Second) :
+      MatrixGame.expectedPayoff payoff row col =
+        expect row (fun current => expect col (payoff current)) :=
+    (MatrixGame.expectedPayoff_eq_expect_rows payoff row col
+      (payoffIntegrable_of_finite (α := First × Second) _ _)).2
+  have guarantees := MatrixGame.valueRow_guarantees payoff
+  have caps := MatrixGame.valueColumn_caps payoff
+  refine ⟨MatrixGame.valueRow payoff, MatrixGame.valueColumn payoff,
+    fun other => ?_, fun other => ?_⟩
+  · rw [← rows, ← rows]
+    exact (caps other).2.trans (guarantees _).2
+  · rw [← rows, ← rows]
+    exact (caps _).2.trans (guarantees other).2
 
 section Signs
 
@@ -147,7 +120,7 @@ private def signedPayoff (row : Row × (ColCoord → Bool))
     weight * signed row.2 (fun coordinate => colFeature col.1 coordinate -
       colReference coordinate)
 
-private theorem signedPayoff_expect
+private theorem signedPayoff_expect [Finite Row] [Finite Col]
     (row : PMF (Row × (ColCoord → Bool))) (col : PMF (Col × (RowCoord → Bool))) :
     expect row (fun first => expect col
       (signedPayoff payoff rowFeature rowReference colFeature colReference weight first)) =
@@ -159,10 +132,10 @@ private theorem signedPayoff_expect
           expect (col.map Prod.fst) (fun second => colFeature second coordinate) -
             colReference coordinate)) := by
   unfold signedPayoff
-  simp only [FinDist.expect_add, FinDist.expect_sub,
-    FinDist.expect_smul, expect_map]
+  simp only [expect_add, expect_sub, expect_const_mul, expect_map, Function.comp_def,
+    payoffIntegrable_of_finite]
   congr 2
-  · rw [FinDist.expect_comm]
+  · rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
     apply congrArg (weight * ·)
     apply expect_congr_on_support
     intro second _
@@ -181,7 +154,7 @@ private def colLift (col : PMF Col) (row : PMF Row) :
   col.map fun second => (second, bestSigns (fun coordinate =>
     expect row (fun first => rowFeature first coordinate) - rowReference coordinate))
 
-private theorem row_deviation_bound (nonnegative : 0 ≤ weight)
+private theorem row_deviation_bound [Finite Row] [Finite Col] (nonnegative : 0 ≤ weight)
     (row : PMF Row) (col : PMF (Col × (RowCoord → Bool))) :
     objective payoff rowFeature rowReference colFeature colReference weight row
         (col.map Prod.fst) ≤
@@ -194,11 +167,12 @@ private theorem row_deviation_bound (nonnegative : 0 ≤ weight)
   have bound : expect col (fun second => signed second.2 (fun coordinate =>
       expect row (fun first => rowFeature first coordinate) - rowReference coordinate)) ≤
       featureDistance rowFeature rowReference row :=
-    FinDist.expect_le_of_forall _ _ _ fun second _ => signed_le second.2 _
-  simp only [objective, expectedPayoff, featureDistance, expect_map] at bound ⊢
+    expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun second _ =>
+      signed_le second.2 _
+  simp only [objective, expectedPayoff, featureDistance, expect_map, Function.comp_def] at bound ⊢
   nlinarith
 
-private theorem col_deviation_bound (nonnegative : 0 ≤ weight)
+private theorem col_deviation_bound [Finite Row] [Finite Col] (nonnegative : 0 ≤ weight)
     (row : PMF (Row × (ColCoord → Bool))) (col : PMF Col) :
     expect row (fun first =>
         expect (colLift rowFeature rowReference col (row.map Prod.fst))
@@ -211,8 +185,9 @@ private theorem col_deviation_bound (nonnegative : 0 ≤ weight)
   have bound : expect row (fun first => signed first.2 (fun coordinate =>
       expect col (fun second => colFeature second coordinate) - colReference coordinate)) ≤
       featureDistance colFeature colReference col :=
-    FinDist.expect_le_of_forall _ _ _ fun first _ => signed_le first.2 _
-  simp only [objective, expectedPayoff, featureDistance, expect_map] at bound ⊢
+    expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun first _ =>
+      signed_le first.2 _
+  simp only [objective, expectedPayoff, featureDistance, expect_map, Function.comp_def] at bound ⊢
   nlinarith
 
 /-- Finite mixed strategies admit an exact saddle for the L1-regularized

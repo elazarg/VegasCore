@@ -2,6 +2,8 @@
 
 import Vegas.Game.DisclosurePrefix
 import Vegas.Source.DisclosureObservation
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Information-fiber retraction along normalized source prefixes
 
@@ -311,7 +313,7 @@ theorem normalized_disclosure_prefix_map {Γ : SourceCtx Player L} {O : Finset V
               (fun view => PMF.pure view.2) (fun view => view.2) config
               (fun past supported => (PMF.mem_support_pure_iff _ _).mp supported)
               count state reached original member
-      _ = PMF.pure state := FinDist.map_const _ _
+      _ = PMF.pure state := PMF.map_const _ _
   · exact PMF.bind_pure _
 
 /-- The prefix projection preserves arbitrary correlated initial parameters

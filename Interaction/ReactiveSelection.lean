@@ -3,6 +3,7 @@
 import Interaction.PendingPriority
 import Interaction.ReactiveAllocation
 import GameTheoryExtensions.Core.RegularChoiceSimulation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Regular selection after arbitrary atomic responses
 

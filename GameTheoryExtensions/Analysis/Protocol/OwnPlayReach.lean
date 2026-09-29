@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.Protocol.CounterfactualRegret
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Legality and support of recorded own actions -/
 
@@ -94,7 +95,7 @@ under the player's behavioral policy at its recorded information state. -/
 theorem ownPlay_supported_of_historyReach_pos
     (profile : ∀ who, M.BehavioralPolicy who) (who : Player)
     {state} (trace : E.Trace state)
-    (positive : 0 < M.historyReachProbability profile ⟨state, trace⟩)
+    (positive : 0 < (M.historyReachWeight profile ⟨state, trace⟩).toReal)
     {observed : M.InfoState who} {action : E.Action who}
     (member : (observed, action) ∈ M.ownPlay who trace) :
     some action ∈ ((profile who observed).map Subtype.val).support := by

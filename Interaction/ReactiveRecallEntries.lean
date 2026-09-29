@@ -59,8 +59,7 @@ theorem recall_entry_supported [Fintype Principal]
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal) (history : (menu.protocol initial horizon scheduler).History)
-    (positive : 0 < (menu.information initial horizon scheduler).historyReachProbability
-      profile history)
+    (positive : 0 < ((menu.information initial horizon scheduler).historyReachWeight profile history).toReal)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (observed : (menu.information initial horizon scheduler).infoOf who history.trace =
       some (past, view)) (index : Nat) (inside : index < past.length) :

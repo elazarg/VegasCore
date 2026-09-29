@@ -3,6 +3,7 @@
 import Interaction.ReactiveRounds
 import Interaction.ReactiveRecall
 import GameTheoryExtensions.Protocol.PrivateStrategy
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Private implementations of reactive behavioral policies
 

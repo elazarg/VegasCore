@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveResponseMenu
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Finite assessments for explicitly bounded response menus
 
@@ -71,16 +72,14 @@ variable [Fintype Principal]
 
 /-- Canonical Bayes beliefs for a fully mixed profile of this finite instance. -/
 def bayesAssessment : (menu.information initial horizon scheduler).BehavioralAssessment :=
-  (menu.uniformAssessment initial horizon scheduler).bayes
-    (menu.uniform_fullyMixed initial horizon scheduler)
-    (menu.decisionInformationAntichain initial horizon scheduler)
+  InformationModel.bayesAssessment _ (menu.uniformAssessment initial horizon scheduler).strategy (menu.uniform_fullyMixed initial horizon scheduler) (menu.decisionInformationAntichain initial horizon scheduler)
 
 theorem bayesAssessment_consistent :
     (menu.bayesAssessment initial horizon scheduler).IsSequentiallyConsistent
       (menu.decisionInformationAntichain initial horizon scheduler) := by
   apply InformationModel.BehavioralAssessment.IsSequentiallyConsistent.of_fullyMixed_bayes
   · exact menu.uniform_fullyMixed initial horizon scheduler
-  · exact InformationModel.BehavioralAssessment.bayes_isBayesConsistent _ _ _
+  · exact InformationModel.bayesAssessment_isBayesConsistent _ _ _ _
 
 /-- One perturbation uses the same positive weight at every player and site.
 The resulting beliefs are computed from the native execution probabilities. -/
@@ -88,12 +87,10 @@ def perturbedAssessment
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
     (menu.information initial horizon scheduler).BehavioralAssessment :=
-  ((menu.uniformAssessment initial horizon scheduler).perturb profile weight
-    positive.le atMostOne).bayes
-      ((menu.uniformAssessment initial horizon scheduler).perturb_fullyMixed
+  InformationModel.bayesAssessment _ ((menu.uniformAssessment initial horizon scheduler).perturb profile weight
+    positive.le atMostOne).strategy ((menu.uniformAssessment initial horizon scheduler).perturb_fullyMixed
         (menu.uniform_fullyMixed initial horizon scheduler) profile weight
-        positive.le atMostOne positive)
-      (menu.decisionInformationAntichain initial horizon scheduler)
+        positive.le atMostOne positive) (menu.decisionInformationAntichain initial horizon scheduler)
 
 theorem perturbedAssessment_fullyMixed
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
@@ -111,7 +108,7 @@ theorem perturbedAssessment_bayes
       (menu.information initial horizon scheduler)
       (menu.perturbedAssessment initial horizon scheduler profile weight positive atMostOne)
       (menu.decisionInformationAntichain initial horizon scheduler) :=
-  InformationModel.BehavioralAssessment.bayes_isBayesConsistent _ _ _
+  InformationModel.bayesAssessment_isBayesConsistent _ _ _ _
 
 theorem perturbedAssessment_strategy_converges
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)

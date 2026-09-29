@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveBindingLikelihood
 import Vegas.Pending.EventSampleObservation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Public sampling preserves the focal traffic correspondence
 

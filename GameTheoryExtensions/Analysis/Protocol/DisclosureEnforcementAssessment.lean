@@ -5,6 +5,7 @@ import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import Mathlib.Analysis.SpecificLimits.Basic
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Common consistent beliefs for a private finite decision problem
 
@@ -124,9 +125,7 @@ private theorem perturb_source_sender_law (decisions : PMF Decision)
 private theorem reach_silent (ambient : Bool) (decisions : PMF Decision)
     (response : Secret → Decision)
     (n : Nat) (secret : Secret) :
-    (model prior ambient).historyReachProbability
-        (perturbProfile prior ambient decisions response n)
-        (receiverHistory prior full ambient secret false) =
+    ((model prior ambient).historyReachWeight (perturbProfile prior ambient decisions response n) (receiverHistory prior full ambient secret false)).toReal =
       (prior secret).toReal * (if ambient then 1 - trembleWeight n / 2 else 1) := by
   classical
   change (((model prior ambient).runBehavioralFrom
@@ -205,7 +204,7 @@ private theorem perturb_bayes (ambient : Bool) (decisions : PMF Decision)
         (eq_pure_of_subsingleton _ history).trans
           (eq_pure_of_subsingleton _ history).symm
       rw [equal]
-      exact InformationModel.bayesBelief_prob _ _ _ _ _ _ _
+      exact InformationModel.bayesBelief_apply _ _ _ _ _ _ _
   · rcases receiver_site_cases prior full ambient decision with rfl | ⟨secret, rfl, same⟩
     · obtain ⟨secret, same⟩ := history_at_silent prior full ambient history
       have historyEq : history = silentHistory prior full ambient secret := Subtype.ext same
@@ -213,9 +212,7 @@ private theorem perturb_bayes (ambient : Bool) (decisions : PMF Decision)
       change (((assessment prior full ambient
         (perturbProfile prior ambient decisions response n)).belief true
           (receiverSilentSite prior full ambient)) (silentHistory prior full ambient secret)).toReal =
-        (model prior ambient).historyReachProbability
-            (perturbProfile prior ambient decisions response n)
-            (receiverHistory prior full ambient secret false) /
+        ((model prior ambient).historyReachWeight (perturbProfile prior ambient decisions response n) (receiverHistory prior full ambient secret false)).toReal /
           (model prior ambient).informationMass (perturbProfile prior ambient decisions response n)
             true (receiverSilentSite prior full ambient)
       rw [belief_silent_prob, reach_silent, mass_silent]
@@ -237,7 +234,7 @@ private theorem perturb_bayes (ambient : Bool) (decisions : PMF Decision)
         (eq_pure_of_subsingleton _ history).trans
           (eq_pure_of_subsingleton _ history).symm
       rw [equal]
-      exact InformationModel.bayesBelief_prob _ _ _ _ _ _ _
+      exact InformationModel.bayesBelief_apply _ _ _ _ _ _ _
 
 private theorem converges (ambient : Bool) (decisions : PMF Decision)
     (response : Secret → Decision) :

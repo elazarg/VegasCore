@@ -91,7 +91,7 @@ theorem openingWindowMixture_continuation_expiry (runtime : EventGraphRuntime gr
     (finish selected).map fun final => (selected, final)
   refine ⟨coupling, ?_, ?_, ?_⟩
   · simp only [coupling, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      FinDist.map_const, PMF.bind_pure]
+      PMF.map_const, PMF.bind_pure]
   · simp only [coupling, PMF.map_bind, PMF.map_comp, Function.comp_def]
     change (posterior.bind fun selected => (finish selected).map id) = _
     simp only [PMF.map_id]

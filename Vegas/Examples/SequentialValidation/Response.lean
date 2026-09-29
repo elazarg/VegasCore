@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SequentialValidation.Selection
 import Vegas.Examples.SequentialValidation.Tail
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The complete effect of Bob's last response -/
 
@@ -183,6 +184,6 @@ theorem native_tail_guess (bit guess : Bool) :
       unfold nativeGuess
       rw [stored]
       cases guess <;> rfl
-    _ = _ := FinDist.map_const _ _
+    _ = _ := PMF.map_const _ _
 
 end Vegas.Examples.SequentialValidation

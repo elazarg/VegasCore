@@ -3,6 +3,8 @@
 import Vegas.Game.RevealServiceRosterOwnerNoise
 import Vegas.Game.ServiceRosterEvaluation
 import GameTheoryExtensions.Math.Probability.ObservationRetraction
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Initialized owner information inside a revelation phase
 

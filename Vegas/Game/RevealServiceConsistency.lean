@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealServiceBayes
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # One consistent assessment for all native replay fibers
 
@@ -80,7 +81,7 @@ theorem exists_compiled_consistent
   have mixed (n : Nat) : (original n).IsFullyMixed :=
     compiledProfile_fullyMixed setup leaks bounds watcher reveals observer openable admission
       (sourceSequence n) (approximates n).1 (weight n) (positive n).le (small n) (positive n)
-  let sequence (n : Nat) := (original n).bayes (mixed n) antichain
+  let sequence (n : Nat) := InformationModel.bayesAssessment _ (original n).strategy (mixed n) antichain
   let compiled := compiledProfile setup leaks extended watcher
     (setup.decodeBehavioralProfile admission source.strategy) 0 le_rfl (by norm_num)
   have strategies (who : Player) (site : model.InformationSite who) :
@@ -92,7 +93,7 @@ theorem exists_compiled_consistent
   obtain ⟨target, profile, index, increasing, targetConverges, targetConsistent⟩ :=
     InformationModel.BehavioralAssessment.exists_consistent_completion_subsequence antichain
       compiled sequence (fun n => (original n).bayes_isFullyMixed (mixed n) antichain)
-      (fun n => (original n).bayes_isBayesConsistent (mixed n) antichain) strategies
+      (fun n => InformationModel.bayesAssessment_isBayesConsistent _ (original n).strategy (mixed n) antichain) strategies
   refine ⟨target, profile, targetConsistent, ?_⟩
   intro who site reference event owned history supported length sourceSite sourceView
   have law (n : Nat) :
@@ -102,13 +103,12 @@ theorem exists_compiled_consistent
     have result := owner_bayes_state setup leaks bounds watcher reveals observer openable admission
       (sourceSequence n) (approximates n).1 (weight n) (positive n).le (small n) (positive n)
       who site reference event owned history supported length sourceSite sourceView
-    have belief : ((sourceSequence n).bayes (approximates n).1
-        (setup.decision_antichain admission)).belief who sourceSite =
+    have belief : (InformationModel.bayesAssessment _ (sourceSequence n).strategy (approximates n).1 (setup.decision_antichain admission)).belief who sourceSite =
           (sourceSequence n).belief who sourceSite := by
       apply pmf_ext_toReal
       intro current
-      rw [InformationModel.BehavioralAssessment.bayes,
-        (setup.informationModel admission).bayesBelief_prob]
+      rw [InformationModel.bayesAssessment,
+        (setup.informationModel admission).bayesBelief_apply]
       exact ((approximates n).2 who sourceSite
         ((approximates n).1.informationMass_pos who sourceSite) current).symm
     rw [belief] at result

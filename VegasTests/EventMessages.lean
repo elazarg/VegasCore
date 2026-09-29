@@ -191,7 +191,7 @@ example :
   change (PMF.map (fun _ : Bool =>
     some ([((VegasTests.SourceSemantics.Player.alice), 10)] :
       List (VegasTests.SourceSemantics.Player × Int))) _) = _
-  exact FinDist.map_const _ _
+  exact PMF.map_const _ _
 
 end
 

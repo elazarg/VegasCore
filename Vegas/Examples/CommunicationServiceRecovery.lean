@@ -2,6 +2,7 @@
 
 import Vegas.Examples.ReactiveEarlyOpeningPolicy
 import Vegas.Pending.ReactiveAuthorization
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # An earlier own proposal can defeat a fresh recovery proposal
 
@@ -267,6 +268,6 @@ theorem recurring_result :
         (interactionEpoch (ServiceOrder.decreasing graph) 1) root).map
           (fun _ => some (.success (1 : Int))) :=
       map_congr_on_support _ epoch_stores_earlier
-    _ = _ := FinDist.map_const _ _
+    _ = _ := PMF.map_const _ _
 
 end Vegas.Examples.CommunicationServiceRecovery

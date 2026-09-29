@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServiceRosterOwnerValue
 import Vegas.Game.RevealServiceRosterOwnerHazard
 import Vegas.Game.RevealSourcePayoffBounds
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Owner deviations compare to the original source assessment
 

@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.Restricted
 import Interaction.ReactiveRoundReachability
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Flipping one hidden native candidate
 

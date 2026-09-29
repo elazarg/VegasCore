@@ -2,6 +2,8 @@
 
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.ObservableEnforcement
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Sequential equilibrium under a terminal audit
 

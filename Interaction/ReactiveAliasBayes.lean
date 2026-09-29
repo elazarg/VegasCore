@@ -4,6 +4,7 @@ import Interaction.ReactiveAliasSelector
 import Interaction.ReactiveAliasConsistency
 import GameTheoryExtensions.Analysis.Protocol.HistoryBayesProjection
 import GameTheoryExtensions.Analysis.Protocol.CounterfactualBeliefs
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact Bayes beliefs under private response aliases
 
@@ -95,7 +96,7 @@ theorem splitBayes_projection
     intro history belongs
     exact (normal.history_info raw stable initial horizon scheduler who history).trans
       (congrArg (normal.info who) belongs)
-  have reflects : ∀ history, 0 < M.historyReachProbability selected history →
+  have reflects : ∀ history, 0 < (M.historyReachWeight selected history).toReal →
       N.infoOf who (project history).trace = target.1 →
         M.infoOf who history.trace = original.1 := by
     intro history reached belongs
@@ -135,7 +136,7 @@ theorem splitBayes_projection
   rw [projected]
   apply pmf_ext_toReal
   intro history
-  rw [N.bayesBelief_prob]
+  rw [N.bayesBelief_apply]
   exact (bayes who target sourcePositive history).symm
 
 /-- Every consistent normalized assessment has consistent raw beliefs for the

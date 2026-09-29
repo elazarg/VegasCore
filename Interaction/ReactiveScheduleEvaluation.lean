@@ -5,6 +5,7 @@ import Interaction.ReactiveResponseEvaluation
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact protocol prefixes under a fixed activation schedule
 

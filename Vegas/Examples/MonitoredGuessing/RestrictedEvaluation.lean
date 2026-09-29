@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.RestrictedPolicy
 import Vegas.Examples.MonitoredGuessing.SourceEvaluation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact decision lotteries of arbitrary restricted policies
 

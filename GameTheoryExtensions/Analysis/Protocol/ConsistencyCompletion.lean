@@ -136,13 +136,12 @@ theorem BehavioralAssessment.exists_consistent_completion
   have vanishes : Tendsto weight atTop (nhds 0) :=
     tendsto_one_div_add_atTop_nhds_zero_nat
   let sequence (n : ℕ) :=
-    (reference.perturb profile (weight n) (positive n).le (atMostOne n)).bayes
-      (reference.perturb_fullyMixed mixed profile (weight n) (positive n).le
+    InformationModel.bayesAssessment _ (reference.perturb profile (weight n) (positive n).le (atMostOne n)).strategy (reference.perturb_fullyMixed mixed profile (weight n) (positive n).le
         (atMostOne n) (positive n)) antichain
   obtain ⟨assessment, strategy, index, _increasing, _limit, consistent⟩ :=
     BehavioralAssessment.exists_consistent_completion_subsequence antichain profile sequence
-      (fun n => BehavioralAssessment.bayes_isFullyMixed _ _ _)
-      (fun n => BehavioralAssessment.bayes_isBayesConsistent _ _ _)
+      (fun n => InformationModel.bayesAssessment_isFullyMixed _ _ _ _)
+      (fun n => InformationModel.bayesAssessment_isBayesConsistent _ _ _ _)
       (fun who site => reference.perturb_strategy_converges profile weight
         (fun n => (positive n).le) atMostOne vanishes who site.1)
   exact ⟨assessment, strategy, consistent⟩

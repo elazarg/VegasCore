@@ -3,6 +3,7 @@
 import Vegas.Game.RevealServiceEquilibrium
 import Vegas.Game.RevealServiceOrdinaryExtension
 import Vegas.Game.RevealServiceDeposits
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source-to-raw sequential equilibrium preservation
 

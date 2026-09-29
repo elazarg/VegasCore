@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.RevealServiceRosterLaw
 import Vegas.Game.SourceServiceBindingPhase
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Binding lotteries at arbitrary scheduled owner visits
 

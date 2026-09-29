@@ -34,7 +34,7 @@ theorem ReactiveApplication.Execution.activate_of_pending_published
         [⟨execution.observeEnvironment app, .activate who⟩] } := by
   simp only [ReactiveApplication.Execution.environmentStep,
     MessageNetwork.learn_of_pending_published _ _ _ published,
-    FinDist.map_const, PMF.pure_map]
+    PMF.map_const, PMF.pure_map]
 
 theorem ReactiveApplication.Execution.activate_of_pending_nil
     (app : ReactiveApplication Principal) (execution : app.Execution) (who : Principal)
@@ -43,6 +43,6 @@ theorem ReactiveApplication.Execution.activate_of_pending_nil
       PMF.pure { execution with environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .activate who⟩] } := by
   simp only [ReactiveApplication.Execution.environmentStep,
-    MessageNetwork.learn_of_pending_nil _ _ _ empty, FinDist.map_const, PMF.pure_map]
+    MessageNetwork.learn_of_pending_nil _ _ _ empty, PMF.map_const, PMF.pure_map]
 
 end Interaction

@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceBayes
 import Vegas.Game.DisclosureAssessment
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Original assessment comparisons under actual native beliefs
 
@@ -151,7 +152,7 @@ theorem sourceService_owner_assessment_comparisons
       event owner owned visits
   have marginal := congrArg (PMF.map Prod.fst) factor
   simp only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-    FinDist.map_const, PMF.bind_pure] at marginal
+    PMF.map_const, PMF.bind_pure] at marginal
   have executionMarginal : executions.map (fun execution =>
       sourceServicePrefix? setup event.val execution.application.config) =
         (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map

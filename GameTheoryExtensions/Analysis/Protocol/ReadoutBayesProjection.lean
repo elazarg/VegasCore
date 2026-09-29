@@ -3,6 +3,8 @@
 import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
 import GameTheoryExtensions.Analysis.Protocol.CounterfactualBeliefs
 import Mathlib.Algebra.BigOperators.Field
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Bayes projection to a common state or readout
 
@@ -53,7 +55,7 @@ private theorem informationReadout_prob (readout : E.History → X) (value : X) 
     (((M.runBehavioral strategy depth).map
       (M.informationReadout who site readout)) (some value)).toReal =
       ∑ history : M.InformationHistory who site.1,
-        M.historyReachProbability strategy history.1 *
+        (M.historyReachWeight strategy history.1).toReal *
           (if value = readout history.1 then 1 else 0) := by
   classical
   let := Fintype.ofFinite E.History
@@ -72,7 +74,7 @@ private theorem informationReadout_prob (readout : E.History → X) (value : X) 
     (by intro history; simp) _]
   apply Finset.sum_congr rfl
   intro history _
-  rw [historyReachProbability, sameDepth history]
+  rw [historyReachWeight, sameDepth history]
 
 include sameDepth in
 /-- The posterior probability of a state is its joint probability with the
@@ -91,7 +93,7 @@ theorem bayesBelief_readout_prob (readout : E.History → X)
     Finset.sum_div]
   apply Finset.sum_congr rfl
   intro history _
-  rw [M.bayesBelief_prob]
+  rw [M.bayesBelief_apply]
   ring
 
 variable [Finite T.History]

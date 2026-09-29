@@ -5,6 +5,7 @@ import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheory.Analysis.Protocol.Examples
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Common consistent beliefs with optional ambient disclosure
 
@@ -81,7 +82,7 @@ theorem targetPerturb_full (guesses : PMF Bool) (n : Nat) :
     (trembleWeight n) (trembleWeight_nonneg n) (trembleWeight_le_one n) (trembleWeight_pos n)
 
 theorem target_reach_silent (guesses : PMF Bool) (n : Nat) (bit : Bool) :
-    (model true).historyReachProbability (targetPerturb guesses n) (bobHistory true bit false) =
+    ((model true).historyReachWeight (targetPerturb guesses n) (bobHistory true bit false)).toReal =
       (1 - trembleWeight n / 2) / 2 := by
   classical
   change (((model true).runBehavioralFrom (targetPerturb guesses n) 2
@@ -106,8 +107,7 @@ theorem target_mass_silent (guesses : PMF Bool) (n : Nat) :
       1 - trembleWeight n / 2 := by
   unfold InformationModel.informationMass
   rw [← (silentHistories true).sum_comp]
-  change (∑ bit : Bool, (model true).historyReachProbability (targetPerturb guesses n)
-    (bobHistory true bit false)) = _
+  change (∑ bit : Bool, ((model true).historyReachWeight (targetPerturb guesses n) (bobHistory true bit false)).toReal) = _
   simp only [target_reach_silent, Finset.sum_const, Finset.card_univ, Fintype.card_bool,
     nsmul_eq_mul]
   ring
@@ -131,14 +131,13 @@ theorem targetPerturb_bayes (guesses : PMF Bool) (n : Nat) :
       exact (eq_pure_of_subsingleton _ history).trans
         (eq_pure_of_subsingleton _ history).symm
     rw [equal]
-    exact InformationModel.bayesBelief_prob _ _ _ _ _ _ _
+    exact InformationModel.bayesBelief_apply _ _ _ _ _ _ _
   · rcases target_bob_site_eq decision with rfl | ⟨bit, rfl⟩
     · obtain ⟨bit, same⟩ := history_at_silent true history
       have historyEq : history = silentHistory true bit := Subtype.ext same
       subst history
       change (((targetAssessment (targetPerturb guesses n)).belief true (bobSilentSite true)) (silentHistory true bit)).toReal =
-          (model true).historyReachProbability (targetPerturb guesses n)
-            (bobHistory true bit false) /
+          ((model true).historyReachWeight (targetPerturb guesses n) (bobHistory true bit false)).toReal /
           (model true).informationMass (targetPerturb guesses n) true (bobSilentSite true)
       rw [target_belief_silent_prob, target_reach_silent, target_mass_silent]
       have nonzero : 1 - trembleWeight n / 2 ≠ 0 := by
@@ -155,7 +154,7 @@ theorem targetPerturb_bayes (guesses : PMF Bool) (n : Nat) :
         exact (eq_pure_of_subsingleton _ history).trans
           (eq_pure_of_subsingleton _ history).symm
       rw [equal]
-      exact InformationModel.bayesBelief_prob _ _ _ _ _ _ _
+      exact InformationModel.bayesBelief_apply _ _ _ _ _ _ _
 
 theorem target_converges (guesses : PMF Bool) :
     InformationModel.BehavioralAssessmentConvergesPointwise

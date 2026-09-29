@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.NativeLaw
 import Vegas.Examples.MonitoredGuessing.NativeResolutionFinal
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Every type prefers the source-compatible silent initial response
 

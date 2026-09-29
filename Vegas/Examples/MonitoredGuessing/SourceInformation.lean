@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.SourceKernel
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The receiver's fair prior and the sender's observed final decision -/
 
@@ -127,11 +128,10 @@ def sourceBobHistories : Bool ≃ sourceModel.InformationHistory bob sourceBobSi
     exact ⟨bit, Subtype.ext same.symm⟩⟩
 
 theorem source_reach_bob (profile : Profile sourceModel.behavioralSignature) (bit : Bool) :
-    sourceModel.historyReachProbability profile (SourcePath.drawn bit).history = 1 / 2 := by
+    (sourceModel.historyReachWeight profile (SourcePath.drawn bit).history).toReal = 1 / 2 := by
   classical
-  unfold InformationModel.historyReachProbability
-  rw [show (SourcePath.drawn bit).history.trace.length = 1 by
-    simp [SourcePath.history, SourcePath.trace, Trace.length]]
+  unfold ((InformationModel.historyReachWeight rw [show (SourcePath.drawn bit).history.trace.length = 1 by
+    simp [SourcePath.history, SourcePath.trace, Trace.length]]).toReal)
   rw [← FinDist.prob_map_of_injective History.state source_state_injective]
   change (((sourceModel.runBehavioralFrom profile 1 sourceArena.initHistory).map
     History.state) _).toReal = _
@@ -154,8 +154,7 @@ theorem source_mass_bob (profile : Profile sourceModel.behavioralSignature) :
     sourceModel.informationMass profile bob sourceBobSite = 1 := by
   unfold InformationModel.informationMass
   rw [← sourceBobHistories.sum_comp]
-  change (∑ bit : Bool, sourceModel.historyReachProbability profile
-    (SourcePath.drawn bit).history) = _
+  change (∑ bit : Bool, (sourceModel.historyReachWeight profile (SourcePath.drawn bit).history).toReal) = _
   simp only [source_reach_bob, Fintype.sum_bool]
   norm_num
 
@@ -173,8 +172,7 @@ theorem source_consistent_bob (assessment : sourceModel.BehavioralAssessment)
   have each (n : Nat) :
       (((sequence n).belief bob sourceBobSite) (sourceBobHistory bit)).toReal = 1 / 2 := by
     rw [(approximates n).2 bob sourceBobSite (by rw [source_mass_bob]; norm_num)]
-    change sourceModel.historyReachProbability (sequence n).strategy
-      (SourcePath.drawn bit).history / sourceModel.informationMass
+    change (sourceModel.historyReachWeight (sequence n).strategy (SourcePath.drawn bit).history).toReal / sourceModel.informationMass
         (sequence n).strategy bob sourceBobSite = _
     rw [source_reach_bob, source_mass_bob, div_one]
   rw [FinDist.prob_map_of_injective _ sourceBobHistory_injective,

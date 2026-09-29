@@ -28,8 +28,8 @@ theorem joint_law (source : ∀ who, M.BehavioralPolicy who)
         (fun draws who => restriction.choiceAt who original (draws who)) := by
   have localLaws := funext (restriction.extends_at_history source target agrees original running)
   rw [localLaws]
-  exact (FinDist.pi_map (fun who => restriction.choiceAt who original)
-    (fun who => source who (M.infoOf who original.trace)))
+  exact (independentProduct_map (fun who => source who (M.infoOf who original.trace))
+    (fun who => ⇑(restriction.choiceAt who original))).symm
 
 /-- Complete behavioral laws follow from the local structural square. -/
 theorem runFrom_law (source : ∀ who, M.BehavioralPolicy who)
@@ -46,7 +46,7 @@ theorem runFrom_law (source : ∀ who, M.BehavioralPolicy who)
           PMF.pure_map]
       · rw [M.runBehavioralFrom_succ_localStep, N.runBehavioralFrom_succ_localStep,
           restriction.joint_law source target agrees original stopped,
-          PMF.map_bind, PMF.bind_bind, PMF.bind_map, PMF.bind_bind]
+          PMF.map_bind, PMF.bind_bind, PMF.bind_map, Function.comp_def, PMF.bind_bind]
         apply bind_congr_on_support _
         intro draws _
         have one := restriction.step original draws

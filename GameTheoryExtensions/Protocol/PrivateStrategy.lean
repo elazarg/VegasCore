@@ -38,7 +38,8 @@ def posterior (strategy : Strategy Memory Input Output) :
     Transcript Input Output → PMF Memory
   | [] => strategy.initial
   | (input, output) :: past =>
-      (fiberConditional ((posterior strategy past).bind (fun memory => strategy.respond memory input))
+      (fiberConditional ((posterior strategy past).bind (fun memory => strategy.respond memory
+          input))
         Prod.fst output).map Prod.snd
 
 /-- This policy is independent of the environment and of utilities. -/
@@ -92,7 +93,7 @@ theorem realize (strategy : Strategy Memory Input Output) (observe : Environment
                 runPrivate strategy observe advance count ((observe state, output) :: past)
                   next memory := by
             conv_lhs => arg 1; rw [eq_bind_fst_conditional_snd law]
-            simp only [PMF.bind_bind, PMF.bind_map, behavioral, posterior, law]
+            simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def, behavioral, posterior, law]
         _ = (behavioral strategy past (observe state)).bind fun output =>
             (advance state output).bind fun next =>
               (posterior strategy ((observe state, output) :: past)).bind

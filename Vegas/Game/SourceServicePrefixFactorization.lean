@@ -9,6 +9,7 @@ import Vegas.Source.ObservationRecall
 import Vegas.Compile.EventGraphParameterReadout
 import Vegas.Game.SourcePrefixKernel
 import Vegas.Game.SourceServiceTimedAdmissibility
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Joint source-state and traffic laws of service prefixes
 
@@ -193,7 +194,7 @@ theorem sourceService_reveal_prefix_factorization
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
     simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -348,7 +349,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
     simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -483,7 +484,7 @@ theorem sourceService_sample_prefix_factorization
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
     simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -694,7 +695,7 @@ private theorem reconstruct_phase
       (fun _ _ equal => injective (Option.some.inj equal))
     have projected := congrArg (PMF.map Prod.fst) (mapped.trans factor)
     simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-      FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def] using projected
+      PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def] using projected
   refine ⟨source, ?_, fun _ => rfl, fun _ => rfl, decoded, marginalEq, ?_⟩
   · intro point
     exact ⟨decodeState?_agrees refs point.val.2.application.config.store _
@@ -977,7 +978,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
         have tailMarginal : tailJoint.map Prod.fst = tailSource := by
           have projected := congrArg (PMF.map Prod.fst) tailLaw
           simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
-            FinDist.map_const, PMF.bind_pure] at projected
+            PMF.map_const, PMF.bind_pure] at projected
           simpa only [tailJoint, tailSource, PMF.map_bind, PMF.map_comp,
             Function.comp_def] using projected
         have tailFactor : tailJoint = (tailJoint.map Prod.fst).bind fun state =>

@@ -79,9 +79,9 @@ theorem exists_pinned_agent_completion
     rw [law]
     exact playedFull ⟨who, ⟨site.1, decisionCovered who site⟩⟩ choice
   let antichain := decisionRecall.decisionInformationAntichain
-  let assessment := original.bayes mixed antichain
+  let assessment := InformationModel.bayesAssessment _ original.strategy mixed antichain
   have bayes : BehavioralAssessment.IsBayesConsistent M assessment antichain :=
-    original.bayes_isBayesConsistent mixed antichain
+    InformationModel.bayesAssessment_isBayesConsistent _ original.strategy mixed antichain
   refine ⟨residual, assessment, rfl, mixed, bayes, ?_⟩
   intro who site present freeSite depth fuel sameDepth total alternative
   let agent : M.InformationAgent sites := ⟨who, ⟨site.1, present⟩⟩
@@ -105,7 +105,7 @@ theorem exists_pinned_agent_completion
     sameDepth (mixed.informationMass_pos who site)
     (bayes who site (mixed.informationMass_pos who site)) (fun history => utility history who)
     alternative (residual agent)).mp
-  simpa only [total, assessment, BehavioralAssessment.bayes, original,
+  simpa only [total, assessment, InformationModel.bayesAssessment, original,
     BehavioralAssessment.ofStrategy, agent] using nativeBound
 
 end GameTheory.Protocol.InformationModel

@@ -3,6 +3,7 @@
 import Interaction.ReactiveTrafficAudit
 import Interaction.ReactiveResponseMenu
 import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Conditional collection from persistent traffic evidence
 

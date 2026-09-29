@@ -4,6 +4,7 @@ import Vegas.Examples.SequentialValidation.Native
 import Vegas.Pending.ReactiveOpeningEvidence
 import Vegas.Pending.ReactiveStateInvariant
 import Interaction.ReactiveResponseMenu
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # An accepted opening identifies the type throughout an information set
 
@@ -146,6 +147,6 @@ theorem native_belief_type
       apply map_congr_on_support _
       intro history _
       exact native_information_type leaks menu horizon scheduler who bit past view observed history
-    _ = _ := FinDist.map_const _ _
+    _ = _ := PMF.map_const _ _
 
 end Vegas.Examples.SequentialValidation

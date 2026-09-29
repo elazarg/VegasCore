@@ -3,6 +3,7 @@
 import Vegas.EventGraph.SchedulerMixture
 import Vegas.EventGraph.ExecutionMode
 import GameTheory.Core.MixtureSimulation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Strategic equivalence of canonical and publicly scheduled EventGraphs -/
 

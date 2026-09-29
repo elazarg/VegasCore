@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealServiceRosterGrantNoise
 import Vegas.Game.RevealServiceRosterPrefixLaw
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Conditional traffic laws across actual source prefixes
 
@@ -337,7 +338,7 @@ theorem run_roster_source_prefix_noise
                   (revealKernel profile (config.view owner)).map
                     (revealSuccessor published selected config)) := by
               simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def,
-                FinDist.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+                PMF.map_const, ← ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
             rw [sourceLaw]
             rw [← nextFactor]
             simp only [advanced, PMF.map_bind, PMF.map_comp, Function.comp_def]

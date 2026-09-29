@@ -12,14 +12,12 @@ open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Pr
 open GameTheory.Protocol.ExecutionProtocol
 
 def sourceAssessment : sourceModel.BehavioralAssessment :=
-  (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).bayes
-    uniformSourceProfile_fullyMixed sourceAntichain
+  InformationModel.bayesAssessment _ (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).strategy uniformSourceProfile_fullyMixed sourceAntichain
 
 theorem source_consistent : sourceAssessment.IsSequentiallyConsistent sourceAntichain :=
   InformationModel.BehavioralAssessment.IsSequentiallyConsistent.of_fullyMixed_bayes
     sourceAntichain uniformSourceProfile_fullyMixed
-    ((InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).bayes_isBayesConsistent
-      uniformSourceProfile_fullyMixed sourceAntichain)
+    (InformationModel.bayesAssessment_isBayesConsistent _ (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).strategy uniformSourceProfile_fullyMixed sourceAntichain)
 
 def sourceBobSite (bit : Bool) (dummy : PublicationResult Bool) (first second : Bool) :
     sourceModel.InformationSite true :=
@@ -108,10 +106,10 @@ theorem source_belief_prob (site : sourceModel.InformationSite true)
     (history : sourceModel.InformationHistory true site.1) :
     ((sourceAssessment.belief true site) history).toReal =
       (1 / 24) / sourceModel.informationMass uniformSourceProfile true site := by
-  rw [sourceAssessment, InformationModel.BehavioralAssessment.bayes,
-    InformationModel.bayesBelief_prob]
+  rw [sourceAssessment, InformationModel.bayesAssessment,
+    InformationModel.bayesBelief_apply]
   obtain ⟨bit, dummy, first, second, same⟩ := source_bob_history site history
-  change sourceModel.historyReachProbability uniformSourceProfile history.1 / _ = _
+  change (sourceModel.historyReachWeight uniformSourceProfile history.1).toReal / _ = _
   rw [same, source_reach_secret]
   rfl
 

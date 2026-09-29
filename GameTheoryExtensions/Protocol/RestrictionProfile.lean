@@ -6,6 +6,7 @@ import GameTheoryExtensions.Math.Probability.Convergence
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Retained decision laws and their vanishing perturbations
 

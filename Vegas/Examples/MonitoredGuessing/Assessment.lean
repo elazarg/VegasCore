@@ -4,6 +4,7 @@ import Vegas.Examples.MonitoredGuessing.NativeHistory
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveResponseEvaluation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A common consistent native completion of receiver responses
 
@@ -125,15 +126,13 @@ private theorem responseProfile_mixed (baseline : Profile nativeModel.behavioral
 private def sequence (baseline : Profile nativeModel.behavioralSignature)
     (quiet : nativeModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ) (n : ℕ) :
     nativeModel.BehavioralAssessment :=
-  (BehavioralAssessment.ofStrategy (responseProfile baseline quiet payoff n)).bayes
-    (responseProfile_mixed baseline quiet payoff n) nativeAntichain
+  InformationModel.bayesAssessment _ (BehavioralAssessment.ofStrategy (responseProfile baseline quiet payoff n)).strategy (responseProfile_mixed baseline quiet payoff n) nativeAntichain
 
 private theorem bob_belief (baseline : Profile nativeModel.behavioralSignature)
     (quiet : nativeModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ) (n : ℕ)
     (site : nativeModel.InformationSite bob) :
     (sequence baseline quiet payoff n).belief bob site =
-      ((baseTremble baseline n).bayes (baseTremble_mixed baseline n)
-        nativeAntichain).belief bob site := by
+      (InformationModel.bayesAssessment _ (baseTremble baseline n).strategy (baseTremble_mixed baseline n) nativeAntichain).belief bob site := by
   apply pmf_ext_toReal
   intro history
   have mass : nativeModel.informationMass (responseProfile baseline quiet payoff n) bob site =
@@ -143,8 +142,8 @@ private theorem bob_belief (baseline : Profile nativeModel.behavioralSignature)
     intro next _
     exact bob_decision_reach_invariant (baseTremble baseline n).strategy
       (responseLaw baseline quiet payoff n) site next
-  simp only [sequence, BehavioralAssessment.bayes, BehavioralAssessment.ofStrategy_strategy,
-    bayesBelief_prob, mass]
+  simp only [sequence, InformationModel.bayesAssessment, BehavioralAssessment.ofStrategy_strategy,
+    bayesBelief_apply, mass]
   exact congrArg (fun value => value /
     nativeModel.informationMass (baseTremble baseline n).strategy bob site)
     (bob_decision_reach_invariant (baseTremble baseline n).strategy
@@ -156,8 +155,7 @@ private theorem bob_value (baseline : Profile nativeModel.behavioralSignature)
     ((sequence baseline quiet payoff n).continuationContext site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)).value
         alternative =
-      (((baseTremble baseline n).bayes (baseTremble_mixed baseline n)
-        nativeAntichain).continuationContext
+      ((InformationModel.bayesAssessment _ (baseTremble baseline n).strategy (baseTremble_mixed baseline n) nativeAntichain).continuationContext
         site (fun history => payoff history.state)
           (2 * nativeHorizon + 1)).value alternative := by
   have profiles : Profile.update (sig := nativeModel.behavioralSignature)
@@ -214,10 +212,10 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
           (fun history => payoff history.state) (2 * nativeHorizon + 1)) := by
   classical
   have mixed (n : ℕ) : (sequence baseline quiet payoff n).IsFullyMixed :=
-    BehavioralAssessment.bayes_isFullyMixed _ _ _
+    InformationModel.bayesAssessment_isFullyMixed _ _ _ _
   have bayes (n : ℕ) : BehavioralAssessment.IsBayesConsistent nativeModel
       (sequence baseline quiet payoff n) nativeAntichain :=
-    BehavioralAssessment.bayes_isBayesConsistent _ _ _
+    InformationModel.bayesAssessment_isBayesConsistent _ _ _ _
   obtain ⟨original, index, increasing, originalConverges, _⟩ :=
     BehavioralAssessment.exists_sequentiallyConsistent_subsequence nativeAntichain
       (sequence baseline quiet payoff) mixed bayes

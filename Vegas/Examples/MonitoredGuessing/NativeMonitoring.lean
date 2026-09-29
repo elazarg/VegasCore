@@ -2,6 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.NativeResponses
 import Vegas.Pending.ReactiveServiceEvaluation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Ordinary passive observation detects every ambient submission
 

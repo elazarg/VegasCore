@@ -72,7 +72,7 @@ private theorem grant_activate_readout
   rw [one, PMF.pure_bind, two, PMF.map_comp]
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp, Function.comp_def,
     prefixReadout, granted]
-  exact FinDist.map_const _ _
+  exact PMF.map_const _ _
 
 /-- The actual owner decision has the same source-state marginal as its
 preceding source boundary. The two intervening native transitions grant the

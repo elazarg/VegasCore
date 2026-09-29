@@ -6,6 +6,7 @@ import Vegas.Game.SourceStateKernel
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source-state laws at every revelation prefix
 

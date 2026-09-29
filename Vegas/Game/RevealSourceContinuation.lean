@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceLocalContinuation
 import Vegas.Source.RevealSequence
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Binary local continuation values in the original revelation source
 

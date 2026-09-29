@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveImplementation
+import GameTheoryExtensions.Math.Probability.Conditioning
 
 /-! # Behavioral realization of a finite family of response policies
 

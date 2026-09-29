@@ -3,6 +3,7 @@
 import GameTheoryExtensions.Math.Probability.Conditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Sequential sampling of correlated responses
 
@@ -55,7 +56,7 @@ theorem run_next (law : PMF (List Action)) (count : Nat)
   | zero =>
       change PMF.pure [] = law
       calc
-        _ = law.map (fun _ => []) := (FinDist.map_const _ _).symm
+        _ = law.map (fun _ => []) := (PMF.map_const _ _).symm
         _ = law.map id := map_congr_on_support _ fun actions member => by
           have length := lengths actions member
           cases actions <;> simp_all

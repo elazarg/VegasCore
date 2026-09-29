@@ -29,7 +29,7 @@ def sourceAssessment (profile : Profile (model false).behavioralSignature) :
         ⟨bobHistory false bit false, by rw [source_bob_site_eq site]; rfl⟩
 
 theorem source_reach_bob (profile : Profile (model false).behavioralSignature) (bit : Bool) :
-    (model false).historyReachProbability profile (bobHistory false bit false) = 1 / 2 := by
+    ((model false).historyReachWeight profile (bobHistory false bit false)).toReal = 1 / 2 := by
   classical
   change (((model false).runBehavioralFrom profile 2 (arena false).initHistory) (bobHistory false bit false)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
@@ -37,7 +37,7 @@ theorem source_reach_bob (profile : Profile (model false).behavioralSignature) (
     ← FinDist.prob_map_of_injective History.state (state_injective false), run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, initHistory, kernel, PMF.bind_map, Bool.false_and,
-    FinDist.map_const]
+    PMF.map_const]
   change (((PMF.uniformOfFintype (α := Bool)).map (fun x => State.bob x false)) (.bob bit false)).toReal = _
   rw [FinDist.prob_map_of_injective _ (fun _ _ same => (State.bob.inj same).1)]
   norm_num [FinDist.prob_uniformOfFintype, Fintype.card_bool]
@@ -62,8 +62,7 @@ theorem source_mass_bob (profile : Profile (model false).behavioralSignature) :
     (model false).informationMass profile true (bobSilentSite false) = 1 := by
   unfold InformationModel.informationMass
   rw [← (silentHistories false).sum_comp]
-  change (∑ bit : Bool, (model false).historyReachProbability profile
-    (bobHistory false bit false)) = _
+  change (∑ bit : Bool, ((model false).historyReachWeight profile (bobHistory false bit false)).toReal) = _
   simp only [source_reach_bob, Finset.sum_const, Finset.card_univ,
     Fintype.card_bool, nsmul_eq_mul]
   norm_num
@@ -87,8 +86,7 @@ theorem source_bayes (profile : Profile (model false).behavioralSignature) :
     obtain ⟨bit, same⟩ := history_at_silent false history
     have historyEq : history = silentHistory false bit := Subtype.ext same
     subst history
-    change (((sourceAssessment profile).belief true (bobSilentSite false)) (silentHistory false bit)).toReal = (model false).historyReachProbability profile
-        (bobHistory false bit false) /
+    change (((sourceAssessment profile).belief true (bobSilentSite false)) (silentHistory false bit)).toReal = ((model false).historyReachWeight profile (bobHistory false bit false)).toReal /
           (model false).informationMass profile true (bobSilentSite false)
     rw [source_belief_bob_prob, source_reach_bob, source_mass_bob, div_one]
 

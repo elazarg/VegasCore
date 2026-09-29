@@ -3,6 +3,8 @@
 import Vegas.Game.SourceServicePrefixFactorization
 import Vegas.Game.SourceServicePosterior
 import Vegas.Pending.ReactiveOwnerWindow
+import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual full-source owner posteriors
 
@@ -154,7 +156,7 @@ theorem sourceService_owner_information_law [Fintype Player]
   have marginal : prefixLaw.map read = prior := by
     have result := congrArg (PMF.map Prod.fst) factor
     simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-      FinDist.map_const, PMF.bind_pure] using result
+      PMF.map_const, PMF.bind_pure] using result
   have recalls (execution : app.Execution) (supported : execution ∈ prefixLaw.support) :
       execution.InputRecall app := by
     obtain ⟨initial, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
@@ -241,7 +243,7 @@ theorem sourceService_owner_information_law [Fintype Player]
   have windowMarginal : window.map read = prior := by
     have result := congrArg (PMF.map Prod.fst) windowFactor'
     simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-      FinDist.map_const, PMF.bind_pure] using result
+      PMF.map_const, PMF.bind_pure] using result
   obtain ⟨channel, inputFactor⟩ := source_activation_input_factorization setup leaks owner
     window read (setup.protocolObserve owner) (fun execution => execution) windowNoise
       (by rw [windowMarginal]; exact windowFactor')

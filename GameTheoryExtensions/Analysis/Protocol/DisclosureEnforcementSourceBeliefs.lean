@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.DisclosureEnforcementInformation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Reach probabilities and unique consistent beliefs in the source
 
@@ -22,8 +23,7 @@ variable (prior : PMF Secret) (full : ∀ secret, secret ∈ prior.support)
 theorem source_reach_receiver
     (profile : Profile (model (Decision := Decision) prior false).behavioralSignature)
     (secret : Secret) :
-    (model prior false).historyReachProbability profile
-      (receiverHistory prior full false secret false) = (prior secret).toReal := by
+    ((model prior false).historyReachWeight profile (receiverHistory prior full false secret false)).toReal = (prior secret).toReal := by
   classical
   change (((model prior false).runBehavioralFrom profile 2 (arena prior false).initHistory) (receiverHistory prior full false secret false)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
@@ -31,7 +31,7 @@ theorem source_reach_receiver
     ← FinDist.prob_map_of_injective History.state (state_injective prior full false), run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, initHistory, kernel, PMF.bind_map, Bool.false_and,
-    FinDist.map_const]
+    PMF.map_const]
   change ((prior.map (fun secret => State.receiver (Decision := Decision) secret false)) (.receiver secret false)).toReal = _
   exact FinDist.prob_map_of_injective _ (fun _ _ same => (State.receiver.inj same).1) _ _
 
@@ -46,8 +46,7 @@ theorem source_mass_receiver
       (receiverSilentSite prior full false).1) (silentHistories prior full false).symm
   unfold InformationModel.informationMass
   rw [← (silentHistories (Decision := Decision) prior full false).sum_comp]
-  change (∑ secret, (model prior false).historyReachProbability profile
-    (receiverHistory prior full false secret false)) = _
+  change (∑ secret, ((model prior false).historyReachWeight profile (receiverHistory prior full false secret false)).toReal) = _
   simp only [source_reach_receiver, pmf_sum_toReal_eq_one]
 
 theorem source_consistent_belief
@@ -67,8 +66,7 @@ theorem source_consistent_belief
     rw [(approximates n).2 true (receiverSilentSite prior full false) (by
       rw [source_mass_receiver prior full]
       norm_num)]
-    change (model prior false).historyReachProbability (sequence n).strategy
-      (receiverHistory prior full false secret false) /
+    change ((model prior false).historyReachWeight (sequence n).strategy (receiverHistory prior full false secret false)).toReal /
         (model prior false).informationMass (sequence n).strategy true
           (receiverSilentSite prior full false) = _
     rw [source_reach_receiver, source_mass_receiver, div_one]

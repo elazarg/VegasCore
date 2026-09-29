@@ -29,10 +29,9 @@ theorem caught_continuation_value (detected : PMF Bool) (failure missed : ℝ) :
     expect (caughtContinuation detected failure missed) id =
       (detected true).toReal * failure + (1 - (detected true).toReal) * missed := by
   rw [caughtContinuation, expect_map, expect_eq_sum, Fintype.sum_bool]
-  have total : (detected false).toReal + (detected true).toReal = 1 := by
-    have total := expect_constant detected (1 : ℝ)
-    simpa [expect_eq_sum, Fintype.sum_bool, add_comm] using total
-  simp only [Bool.false_eq_true, ↓reduceIte, id_eq]
+  have total := pmf_sum_toReal_eq_one detected
+  rw [Fintype.sum_bool] at total
+  simp only [Function.comp_apply, Bool.false_eq_true, ↓reduceIte, id_eq]
   rw [show (detected false).toReal = 1 - (detected true).toReal by linarith]
 
 /-- A probability-weighted *loss relative to the missed continuation* must
@@ -52,7 +51,7 @@ theorem failure_without_loss_insufficient (detected : PMF Bool)
     (imperfect : (detected true).toReal < 1) :
     lawful < expect (caughtContinuation detected failure missed) id := by
   rw [caught_continuation_value]
-  have nonnegative := ENNReal.toReal_nonneg
+  have nonnegative : 0 ≤ (detected true).toReal := ENNReal.toReal_nonneg
   have weightedLoss := mul_nonneg nonnegative (sub_nonneg.mpr noLoss)
   have weightedGain := mul_pos (sub_pos.mpr imperfect) (sub_pos.mpr gain)
   nlinarith
@@ -62,7 +61,7 @@ obligation and has greater utility than its lawful continuation. -/
 theorem certain_failure_can_reward (failure lawful : ℝ) (avoidsCost : lawful < failure)
     (missed : ℝ) :
     lawful < expect (caughtContinuation (PMF.pure true) failure missed) id := by
-  simpa [caughtContinuation] using avoidsCost
+  simpa [caughtContinuation, PMF.pure_map, expect_pure] using avoidsCost
 
 /-- With certain detection, deterrence holds exactly when the failure
 continuation is no better than compliance. Nothing about the missed branch
@@ -70,7 +69,7 @@ matters, and equality permits additional equilibria by indifference. -/
 theorem certain_failure_deterrence_iff (failure missed lawful : ℝ) :
     expect (caughtContinuation (PMF.pure true) failure missed) id ≤ lawful ↔
       failure ≤ lawful := by
-  simp [caughtContinuation]
+  simp [caughtContinuation, PMF.pure_map, expect_pure]
 
 /-- The detection probability need not be one: any sufficiently bad finite
 failure payoff works when there is a positive detection probability. -/

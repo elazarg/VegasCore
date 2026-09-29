@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterMixing
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Immediate opening probability at actual owner information sites
 

@@ -427,7 +427,7 @@ theorem run_root_leave (profile : ∀ who, (model true).BehavioralPolicy who)
         (fun _ => PMF.pure (responseHistory true rfl)) := by
       apply bind_congr_on_support _
       intro choices supported
-      have own := FinDist.mem_support_pi.mp supported false
+      have own := (independentProduct_support_iff _ _).mp supported false
       simp only [played, Profile.update_same, InformationModel.BehavioralPolicy.commit_self] at own
       have selected : choices false = action := (PMF.mem_support_pure_iff _ _).mp own
       exact localStep_leave choices (selected ▸ leaves)
