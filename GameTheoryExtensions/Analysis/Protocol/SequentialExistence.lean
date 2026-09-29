@@ -21,12 +21,12 @@ open GameTheory.Math.Probability Filter
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} (M : InformationModel E) [Finite E.History]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
 
-/-- Finite decision-recall protocols with finite decision menus admit a
-sequential equilibrium in these remaining-horizon contexts for arbitrary real
-payoffs. The fully mixed reference supplies finite supported menus and need
-not satisfy any incentive condition. Adequacy for terminal payoffs is separate. -/
+/-- Finite decision-recall protocols admit a sequential equilibrium in these
+remaining-horizon contexts for arbitrary real payoffs. Finitely many histories
+make every decision menu finite. The fully mixed reference supplies default and
+full-support local laws and need not satisfy any incentive condition. Adequacy
+for terminal payoffs is separate. -/
 theorem exists_sequential_equilibrium
     (reference : M.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
     (decisionRecall : M.DecisionRecall) (horizon : Nat)
@@ -67,6 +67,16 @@ theorem exists_sequential_equilibrium
       obtain ⟨witness, supported⟩ :=
         (reference.strategy agent.1 (M.infoOf agent.1 history.1.trace)).support_nonempty
       simpa only [Subsingleton.elim witness choice] using supported
+  have _ (agent : M.InformationAgent sites) : Finite (M.Choice agent.1 agent.2.1) := by
+    obtain ⟨history, _, observed⟩ := Finset.mem_image.mp agent.2.2
+    rw [← observed]
+    by_cases active : E.active history.1.state agent.1
+    · obtain ⟨site, same⟩ := M.exists_informationSite_of_active
+        agent.1 history.1 history.2 active
+      rw [← same]
+      infer_instance
+    · let _ := M.subsingleton_choice_of_not_active history.1.trace active
+      infer_instance
   let epsilon (n : ℕ) : ℝ := (1 / 2) * (1 / ((n : ℝ) + 1))
   have positive (n : ℕ) : 0 < epsilon n := by dsimp only [epsilon]; positivity
   have small (n : ℕ) : epsilon n < 1 := by
@@ -80,7 +90,8 @@ theorem exists_sequential_equilibrium
     simpa only [mul_zero] using
       (tendsto_one_div_add_atTop_nhds_zero_nat (𝕜 := ℝ)).const_mul (1 / 2 : ℝ)
   obtain ⟨_, _, assessment, _, _, _, _, _, _, consistent, localOptimal⟩ :=
-    exists_consistent_free_agent_completion sites fallback horizon decisionRecall covered
+    exists_consistent_free_agent_completion sites (.of_finite_history E) fallback horizon
+      decisionRecall covered
       decisionCovered (fun history who => payoff who history) Finset.univ
       (fun _ => laws) laws (fun _ agent _ => full agent) full
       epsilon positive small vanishes

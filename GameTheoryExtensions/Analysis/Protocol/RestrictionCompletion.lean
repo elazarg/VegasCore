@@ -25,8 +25,6 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   [Finite T.History]
   [∀ who, DecidableEq (N.InfoState who)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
-  [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
   (restriction : M.ActionRestriction N)
 
 /-- Preserve a prescribed consistent source assessment and solve all new
@@ -57,10 +55,13 @@ theorem exists_consistent_extension
   let _ := Fintype.ofFinite T.History
   let _ := Fintype.ofFinite (Σ who, M.InformationSite who)
   obtain ⟨sourceSequence, sourceApproximates, sourceConverges⟩ := sourceConsistent
-  let mass (n : ℕ) (entry : Σ who, M.InformationSite who) :=
-    M.informationMass (sourceSequence n).strategy entry.1 entry.2
+  let mass (n : ℕ) (entry : Σ who, M.InformationSite who) : ℝ :=
+    (M.informationMass (sourceSequence n).strategy entry.1 entry.2).toReal
   have massPositive (n : ℕ) (entry : Σ who, M.InformationSite who) : 0 < mass n entry :=
-    (sourceApproximates n).1.informationMass_pos entry.1 entry.2
+    ENNReal.toReal_pos
+      (M.informationMass_pos_of_fullSupport _ (sourceApproximates n).1 entry.1 entry.2).ne'
+      (ne_top_of_le_ne_top ENNReal.one_ne_top
+        (M.informationMass_le_one _ entry.1 entry.2 (sourceAntichain entry.1 entry.2)))
   let reach (n : ℕ) : ℝ := ∏ entry, min (1 : ℝ) (mass n entry)
   have reachPositive (n : ℕ) : 0 < reach n :=
     Finset.prod_pos fun entry _ => lt_min zero_lt_one (massPositive n entry)
@@ -102,6 +103,16 @@ theorem exists_consistent_extension
       obtain ⟨witness, supported⟩ :=
         (reference.strategy agent.1 (N.infoOf agent.1 history.1.trace)).support_nonempty
       simpa only [Subsingleton.elim witness choice] using supported
+  have _ (agent : N.InformationAgent sites) : Finite (N.Choice agent.1 agent.2.1) := by
+    obtain ⟨history, _, observed⟩ := Finset.mem_image.mp agent.2.2
+    rw [← observed]
+    by_cases active : T.active history.1.state agent.1
+    · obtain ⟨site, same⟩ := N.exists_informationSite_of_active
+        agent.1 history.1 history.2 active
+      rw [← same]
+      infer_instance
+    · let _ := N.subsingleton_choice_of_not_active history.1.trace active
+      infer_instance
   let pinned (n : ℕ) (agent : N.InformationAgent sites) :=
     restriction.perturbProfile (sourceSequence n).strategy reference.strategy
       (epsilon n) (positive n).le (small n).le agent.1 agent.2.1
@@ -112,7 +123,8 @@ theorem exists_consistent_extension
     Finset.univ.filter fun agent => ¬ restriction.Retained agent.1 agent.2.1
   obtain ⟨residual, sequence, target, index, played, mixed, bayes,
       increasing, converges, consistent, freeOptimal⟩ :=
-    exists_consistent_free_agent_completion sites fallback horizon decisionRecall covered
+    exists_consistent_free_agent_completion sites (.of_finite_history T) fallback horizon
+      decisionRecall covered
       decisionCovered payoff free pinned referenceLaws (fun n agent _ => pinnedFull n agent)
       referenceFull epsilon positive small vanishes
   have perturbs (n : ℕ) : restriction.PerturbsProfile (sourceSequence n).strategy
@@ -153,12 +165,12 @@ theorem exists_consistent_extension
     have factorBound (n : ℕ) : factor n ≤ 1 :=
       pow_le_one₀ (sub_pos.mpr (small n)).le (by linarith [positive n])
     have negligible : Tendsto (fun n => (1 - factor n) /
-        (factor n * M.informationMass (sourceSequence n).strategy who site)) atTop (nhds 0) := by
+        (factor n * (M.informationMass (sourceSequence n).strategy who site).toReal)) atTop
+          (nhds 0) := by
       apply squeeze_zero
       · intro n
         exact div_nonneg (sub_nonneg.mpr (factorBound n))
-          (mul_nonneg (factorPositive n).le
-            ((sourceApproximates n).1.informationMass_pos who site).le)
+          (mul_nonneg (factorPositive n).le ENNReal.toReal_nonneg)
       · intro n
         exact div_le_div_of_nonneg_left (sub_nonneg.mpr (factorBound n))
           (mul_pos (factorPositive n) (reachPositive n))
@@ -173,7 +185,7 @@ theorem exists_consistent_extension
         (perturbs n) elapsed history)
       negligible (source.belief who site) (sourceConverges.belief who site)
     exact (converges.belief who (restriction.site who site)).unique
-      (beliefs.subsequence increasing)
+      (beliefs.subseq increasing)
   · intro who site newSite law
     have member :
         (⟨who, ⟨site.1, decisionCovered who site⟩⟩ : N.InformationAgent sites) ∈ free := by
