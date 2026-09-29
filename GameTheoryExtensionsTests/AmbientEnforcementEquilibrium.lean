@@ -28,11 +28,12 @@ theorem silent_branch_value (guesses : PMF Bool) (deposit : ℝ) (bit disclose :
   unfold correct
   cases disclose <;>
     simp [resultLaw, choiceLaw, silentProfile, bobRespond, choose, decisionInfo,
-      expect_map, payoff]
+      expect_map, payoff, expect_bind_of_finite, expect_pure, Function.comp_def, PMF.pure_map]
 
 theorem disclosed_bob_value (guesses : PMF Bool) (deposit : ℝ) (bit : Bool) :
     expect (resultLaw (silentProfile guesses) bit true) (payoff deposit · true) = 1 := by
-  simp [resultLaw, choiceLaw, silentProfile, bobRespond, choose, decisionInfo, payoff]
+  simp [resultLaw, choiceLaw, silentProfile, bobRespond, choose, decisionInfo, payoff,
+    PMF.pure_map, expect_pure]
 
 theorem resultLaw_update_alice (profile : Profile (model true).behavioralSignature)
     (alternative : (model true).BehavioralPolicy false) (bit disclose : Bool) :
@@ -43,7 +44,9 @@ theorem target_rational (guesses : PMF Bool) (deposit : ℝ)
     (deterrence : ∀ bit, 1 - deposit ≤ expect guesses (correct bit)) :
     (targetAssessment (silentProfile guesses)).IsSequentiallyRationalWithin
       (fun who h => payoff deposit h.state who) 3 := by
-  intro who decision alternative _
+  intro who decision
+  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+    fun alternative _ => ?_⟩
   cases who
   · obtain ⟨bit, rfl⟩ := alice_site_eq decision
     rw [alice_context _ bit (payoff deposit · false) alternative,
@@ -59,10 +62,10 @@ theorem target_rational (guesses : PMF Bool) (deposit : ℝ)
     simp_rw [Bool.true_and, resultLaw_update_alice, silent_branch_value]
     have stops : choiceLaw (silentProfile guesses) false (some (some bit)) =
         PMF.pure false := by
-      simp [choiceLaw, silentProfile, choose, decisionInfo]
+      simp [choiceLaw, silentProfile, choose, decisionInfo, PMF.pure_map]
     rw [stops, expect_pure]
     simp only [Bool.false_eq_true, ite_false]
-    apply FinDist.expect_le_of_forall
+    apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
     intro disclose _
     cases disclose
     · exact le_rfl
@@ -78,8 +81,8 @@ theorem target_rational (guesses : PMF Bool) (deposit : ℝ)
         (payoff deposit · true) ≤
           expect (resultLaw (silentProfile guesses) bit true) (payoff deposit · true)
       rw [disclosed_bob_value]
-      simp only [resultLaw, expect_map, payoff, Bool.not_true, Bool.false_and]
-      apply FinDist.expect_le_of_forall
+      simp only [resultLaw, expect_map, Function.comp_def, payoff, Bool.not_true, Bool.false_and]
+      apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
       intro guess _
       split <;> norm_num
 
@@ -94,10 +97,10 @@ theorem target_sequential_equilibrium (guesses : PMF Bool) (deposit : ℝ)
 
 theorem correct_nonnegative (guesses : PMF Bool) (bit : Bool) :
     0 ≤ expect guesses (correct bit) := by
-  have nonnegative := FinDist.expect_mono (μ := guesses)
-    (u := fun _ => 0) (v := correct bit) (fun guess _ => by
+  have nonnegative := expect_mono (μ := guesses)
+    (f := fun _ => 0) (g := correct bit) (fun guess _ => by
       unfold correct
-      split <;> norm_num)
+      split <;> norm_num) (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
   simpa only [expect_constant] using nonnegative
 
 theorem universal_deposit_sequential_equilibrium (guesses : PMF Bool) (deposit : ℝ)
@@ -149,7 +152,7 @@ theorem compile_initialized_law (profile : Profile (model false).behavioralSigna
     (((model false).runSingleMoverBehavioralFrom (single false) profile 3
       (arena false).initHistory).map History.state).map retained := by
   rw [compiled_profile, target_initialized_law, source_initialized_law]
-  simp [FinDist.product, ← PMF.bind_pure_comp, Function.comp_def]
+  simp [bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def]
 
 theorem target_initialized_state_law (guesses : PMF Bool) :
     ((model true).runSingleMoverBehavioralFrom (single true) (silentProfile guesses) 3
@@ -216,20 +219,21 @@ theorem all_source_profiles_implemented (deposit : ℝ) (enforced : 1 ≤ deposi
 theorem silent_reward_nonnegative (deposit : ℝ)
     (profile : Profile (model true).behavioralSignature) (bit : Bool) :
     0 ≤ expect (resultLaw profile bit false) (payoff deposit · false) := by
-  simp only [resultLaw, Bool.false_eq_true, ite_false, expect_map, payoff,
+  simp only [resultLaw, Bool.false_eq_true, ite_false, expect_map, Function.comp_def, payoff,
     Bool.not_false, Bool.and_false, sub_zero]
-  have nonnegative := FinDist.expect_mono
-    (μ := choiceLaw profile true (some none)) (u := fun _ => 0)
-    (v := fun guess => if guess = bit then (1 : ℝ) else 0)
-    (fun guess _ => by split <;> norm_num)
+  have nonnegative := expect_mono
+    (μ := choiceLaw profile true (some none)) (f := fun _ => 0)
+    (g := fun guess => if guess = bit then (1 : ℝ) else 0)
+    (fun guess _ => by split <;> norm_num) (payoffIntegrable_constant _ _)
+    (payoffIntegrable_of_finite _ _)
   simpa only [expect_constant] using nonnegative
 
 theorem disclosed_reward_upper (deposit : ℝ)
     (profile : Profile (model true).behavioralSignature) (bit : Bool) :
     expect (resultLaw profile bit true) (payoff deposit · false) ≤ 1 - deposit := by
-  simp only [resultLaw, ite_true, expect_map, payoff, Bool.not_false,
+  simp only [resultLaw, ite_true, expect_map, Function.comp_def, payoff, Bool.not_false,
     Bool.true_and]
-  apply FinDist.expect_le_of_forall
+  apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
   intro guess _
   split <;> simp
 
@@ -240,7 +244,7 @@ theorem strict_deposit_silence (deposit : ℝ) (strict : 1 < deposit)
     (rational : assessment.IsSequentiallyRationalWithin
       (fun who h => payoff deposit h.state who) 3) (bit : Bool) :
     choiceLaw assessment.strategy false (some (some bit)) = PMF.pure false := by
-  have best := rational false (aliceSite bit) (choose true false false) (Set.mem_univ _)
+  have best := (rational false (aliceSite bit)).2.2 (choose true false false) (Set.mem_univ _)
   rw [alice_context assessment bit (payoff deposit · false) (choose true false false),
     alice_context assessment bit (payoff deposit · false) (assessment.strategy false),
     Profile.update_eq_self,
@@ -249,7 +253,7 @@ theorem strict_deposit_silence (deposit : ℝ) (strict : 1 < deposit)
   have silence : choiceLaw
       (Profile.update (sig := (model true).behavioralSignature) assessment.strategy false
         (choose true false false)) false (some (some bit)) = PMF.pure false := by
-    simp [choiceLaw, Profile.update, choose, decisionInfo]
+    simp [choiceLaw, Profile.update, choose, decisionInfo, PMF.pure_map]
   rw [silence, expect_pure] at best
   have worse : expect (resultLaw assessment.strategy bit true) (payoff deposit · false) <
       expect (resultLaw assessment.strategy bit false) (payoff deposit · false) := by
@@ -260,14 +264,17 @@ theorem strict_deposit_silence (deposit : ℝ) (strict : 1 < deposit)
   intro disclose supported
   cases disclose
   · exact Set.mem_singleton false
-  · have loses := FinDist.expect_lt_of_mem_support
-      (choiceLaw assessment.strategy false (some (some bit)))
-      (fun disclose => expect (resultLaw assessment.strategy bit disclose) (payoff deposit · false))
-      (expect (resultLaw assessment.strategy bit false) (payoff deposit · false))
+  · have loses := expect_lt_of_mem_support
+      (μ := choiceLaw assessment.strategy false (some (some bit)))
+      (f := fun disclose =>
+        expect (resultLaw assessment.strategy bit disclose) (payoff deposit · false))
+      (g := fun _ => expect (resultLaw assessment.strategy bit false) (payoff deposit · false))
+      (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
       (fun disclose _ => by
         cases disclose
         · exact le_rfl
-        · exact worse.le) supported worse
+        · exact worse.le) true supported worse
+    rw [expect_constant] at loses
     exact (not_lt_of_ge best loses).elim
 
 def reflectedProfile (profile : Profile (model true).behavioralSignature) :

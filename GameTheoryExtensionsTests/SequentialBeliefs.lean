@@ -35,15 +35,16 @@ theorem perturbed_full (n : Nat) :
     (perturbedProfile n who info).support
   rw [perturbedProfile]
   simp only [choose]
-  rw [FinDist.mem_support_mix_pure_iff _ _ _ (trembleWeight_pos n) (trembleWeight_lt_one n)]
+  rw [mem_support_mix_pure_iff _ _ _ (trembleWeight_pos n) (trembleWeight_lt_one n)]
   simp only [Subtype.mk.injEq]
   change value.isSome = info.isSome at legal
   cases info <;> cases value <;> cases who
   all_goals simp_all only [Option.isSome_none, Option.isSome_some, Bool.false_eq_true,
     Bool.true_eq_false, Bool.not_false, Bool.not_true, ite_true, ite_false]
-  all_goals first | trivial | (rename_i value; cases value <;> simp)
+  all_goals first | trivial | simp
 
-instance : Finite arena.History := (perturbed_full 0).finite_history bounded
+instance : Finite arena.History :=
+  (perturbed_full 0).finite_history bounded (fun _ _ => Set.toFinite _) (fun _ => Set.toFinite _)
 
 instance : Fintype arena.History := Fintype.ofFinite _
 
@@ -141,21 +142,23 @@ theorem state_injective : Function.Injective (History.state (E := arena)) :=
 theorem reach_alice (profile : Profile (model false).behavioralSignature) (bit : Bool) :
     ((model false).historyReachWeight profile (aliceHistory bit)).toReal = 1 / 2 := by
   classical
-  change (((model false).runBehavioralFrom profile 1 arena.initHistory) (aliceHistory bit)).toReal = _
+  change (((model false).runBehavioralFrom profile 1 arena.initHistory)
+    (aliceHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
-    ← FinDist.prob_map_of_injective History.state state_injective, run_states]
+    ← pmf_map_apply_of_injective _ state_injective, run_states]
   simp only [Function.iterate_one, PMF.pure_bind]
-  change (((PMF.uniformOfFintype Bool).map State.alice) (.alice bit)).toReal = _
-  rw [FinDist.prob_map_of_injective State.alice (fun _ _ same => State.alice.inj same)]
+  change (((PMF.uniformOfFintype Bool).map State.alice) (State.alice bit)).toReal = _
+  rw [pmf_map_apply_of_injective _ (fun _ _ same => State.alice.inj same)]
   norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 theorem reach_bob (n : Nat) (bit : Bool) :
     ((model false).historyReachWeight (perturbedProfile n) (bobHistory bit)).toReal =
       trembleWeight n / 2 := by
   classical
-  change (((model false).runBehavioralFrom (perturbedProfile n) 2 arena.initHistory) (bobHistory bit)).toReal = _
+  change (((model false).runBehavioralFrom (perturbedProfile n) 2 arena.initHistory)
+    (bobHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
-    ← FinDist.prob_map_of_injective History.state state_injective, run_states]
+    ← pmf_map_apply_of_injective _ state_injective, run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, initHistory, kernel, PMF.bind_map, toReal_bind_apply]
   change expect (PMF.uniformOfFintype Bool) (fun hidden =>
@@ -163,8 +166,9 @@ theorem reach_bob (n : Nat) (bit : Bool) :
       (fun ask => if ask then State.bob hidden else .done hidden none)) (.bob bit)).toReal) = _
   rw [expect_eq_sum, Fintype.sum_bool]
   cases bit <;>
-    simp [choiceLaw, perturbedProfile, choose, mix_map, mix_apply_toReal,
-      toReal_uniformOfFintype_apply, Fintype.card_bool, toReal_pure_apply] <;> ring
+    simp only [choiceLaw, perturbedProfile, choose, mix_map, PMF.pure_map, mix_apply_toReal,
+      toReal_uniformOfFintype_apply, Fintype.card_bool, toReal_pure_apply] <;>
+    norm_num <;> ring
 
 def bobInformationHistory (bit : Bool) : (model false).InformationHistory true bobSite.1 :=
   ⟨bobHistory bit, rfl⟩
@@ -181,18 +185,25 @@ def bobHistories : Bool ≃ (model false).InformationHistory true bobSite.1 :=
     exact ⟨bit, Subtype.ext same.symm⟩⟩
 
 theorem mass_bob (n : Nat) :
-    (model false).informationMass (perturbedProfile n) true bobSite = trembleWeight n := by
+    ((model false).informationMass (perturbedProfile n) true bobSite).toReal =
+      trembleWeight n := by
   unfold InformationModel.informationMass
-  rw [← bobHistories.sum_comp]
-  change (∑ bit : Bool, ((model false).historyReachWeight (perturbedProfile n) (bobHistory bit)).toReal) = _
+  rw [← bobHistories.tsum_eq, tsum_fintype]
+  change (∑ bit : Bool, (model false).historyReachWeight (perturbedProfile n)
+    (bobHistory bit)).toReal = _
+  have finiteWeight (bit : Bool) :
+      (model false).historyReachWeight (perturbedProfile n) (bobHistory bit) ≠ ⊤ :=
+    PMF.apply_ne_top _ _
+  rw [ENNReal.toReal_sum fun bit _ => finiteWeight bit]
   simp only [reach_bob, Finset.sum_const, Finset.card_univ, Fintype.card_bool, nsmul_eq_mul]
   ring
 
 theorem belief_bob_prob (profile : Profile (model false).behavioralSignature) (bit : Bool) :
     (((assessment profile).belief true bobSite) (bobInformationHistory bit)).toReal = 1 / 2 := by
   classical
-  change (((PMF.uniformOfFintype Bool).map bobInformationHistory) (bobInformationHistory bit)).toReal = _
-  rw [FinDist.prob_map_of_injective _ bobInformationHistory_injective]
+  change (((PMF.uniformOfFintype Bool).map bobInformationHistory)
+    (bobInformationHistory bit)).toReal = _
+  rw [pmf_map_apply_of_injective _ bobInformationHistory_injective]
   norm_num [toReal_uniformOfFintype_apply, Fintype.card_bool]
 
 instance (bit : Bool) : Subsingleton ((model false).InformationHistory false (aliceSite bit).1) :=
@@ -217,14 +228,24 @@ theorem perturbed_bayes (n : Nat) :
     obtain ⟨bit, same⟩ := history_at_bob history
     have historyEq : history = bobInformationHistory bit := Subtype.ext same
     subst history
-    change (((assessment (perturbedProfile n)).belief true bobSite) (bobInformationHistory bit)).toReal = ((model false).historyReachWeight (perturbedProfile n) (bobHistory bit)).toReal / (model false).informationMass (perturbedProfile n) true bobSite
-    rw [belief_bob_prob, reach_bob, mass_bob]
+    change (assessment (perturbedProfile n)).belief true bobSite (bobInformationHistory bit) =
+      (model false).historyReachWeight (perturbedProfile n) (bobHistory bit) /
+        (model false).informationMass (perturbedProfile n) true bobSite
+    have weightNe : (model false).historyReachWeight (perturbedProfile n) (bobHistory bit) ≠ ⊤ :=
+      PMF.apply_ne_top _ _
+    have massNe : (model false).informationMass (perturbedProfile n) true bobSite ≠ 0 :=
+      positive.ne'
+    rw [← ENNReal.toReal_eq_toReal_iff' (PMF.apply_ne_top _ _)
+        (ENNReal.div_ne_top weightNe massNe), ENNReal.toReal_div,
+      belief_bob_prob, reach_bob, mass_bob]
     field_simp [(trembleWeight_pos n).ne']
 
 theorem assessment_converges : InformationModel.BehavioralAssessmentConvergesPointwise
     (fun n => assessment (perturbedProfile n)) (assessment limitProfile) := by
   constructor
-  · intro who site choice
+  · intro who site
+    rw [pmfConvergesPointwise_iff_toReal]
+    intro choice
     change Tendsto (fun n => ((perturbedProfile n who site.1) choice).toReal) atTop
       (nhds (((limitProfile who site.1) choice).toReal))
     simp only [perturbedProfile, mix_apply_toReal]
@@ -244,20 +265,23 @@ theorem consistent : (assessment limitProfile).IsSequentiallyConsistent antichai
 theorem reach_bob_limit (bit : Bool) :
     ((model false).historyReachWeight limitProfile (bobHistory bit)).toReal = 0 := by
   classical
-  change (((model false).runBehavioralFrom limitProfile 2 arena.initHistory) (bobHistory bit)).toReal = _
+  change (((model false).runBehavioralFrom limitProfile 2 arena.initHistory)
+    (bobHistory bit)).toReal = _
   rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model false) single,
-    ← FinDist.prob_map_of_injective History.state state_injective, run_states]
+    ← pmf_map_apply_of_injective _ state_injective, run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, initHistory, kernel, PMF.bind_map, toReal_bind_apply]
   change expect (PMF.uniformOfFintype Bool) (fun hidden =>
     (((choiceLaw limitProfile false (some hidden)).map
       (fun ask => if ask then State.bob hidden else .done hidden none)) (.bob bit)).toReal) = _
-  simp [choiceLaw, limitProfile, choose, toReal_pure_apply]
+  simp [choiceLaw, limitProfile, choose, PMF.pure_map, expect_constant]
 
 theorem bob_off_path : (model false).informationMass limitProfile true bobSite = 0 := by
   unfold InformationModel.informationMass
-  rw [← bobHistories.sum_comp]
-  change (∑ bit : Bool, ((model false).historyReachWeight limitProfile (bobHistory bit)).toReal) = _
-  simp [reach_bob_limit]
+  rw [← bobHistories.tsum_eq, tsum_fintype]
+  change (∑ bit : Bool, (model false).historyReachWeight limitProfile (bobHistory bit)) = _
+  have zero (bit : Bool) : (model false).historyReachWeight limitProfile (bobHistory bit) = 0 :=
+    (ENNReal.toReal_eq_zero_iff _).mp (reach_bob_limit bit) |>.resolve_right (PMF.apply_ne_top _ _)
+  simp [zero]
 
 end GameTheoryExtensionsTests.SequentialBeliefs
