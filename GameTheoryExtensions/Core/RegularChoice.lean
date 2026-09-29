@@ -68,44 +68,85 @@ theorem ofInsertion_submit {Candidate : Type*} [DecidableEq Candidate]
   intro candidate _
   by_cases same : candidate = fresh <;> simp [same]
 
+/-- Submitting a sampled action is selecting first and then resolving the fresh
+candidate by the sample. -/
+theorem responseLaw_submitted (rule : RegularSelection Action) (law : PMF Action) :
+    rule.responseLaw (law.map some) =
+      rule.selection.bind fun selected => selected.elim law PMF.pure := by
+  rw [responseLaw, PMF.bind_map]
+  simp only [Function.comp_def, includeLaw, ← PMF.bind_pure_comp]
+  rw [PMF.bind_comm]
+  apply bind_congr_on_support _
+  intro selected _
+  cases selected with
+  | none => exact PMF.bind_pure law
+  | some action =>
+      simp only [Option.getD_some, Option.elim_some]
+      exact PMF.bind_const law _
+
 /-- Averaging the submitted action commutes with the independent selection. -/
 theorem submitted_value (rule : RegularSelection Action) (law : PMF Action)
-    (value : Action → ℝ) :
+    (value : Action → ℝ)
+    (integrable : PayoffIntegrable (rule.responseLaw (law.map some)) value) :
     expect (rule.responseLaw (law.map some)) value =
       expect rule.selection (fun selected => selected.elim (expect law value) value) := by
-  simp only [responseLaw, FinDist.expect_bind, expect_map, includeLaw]
-  rw [FinDist.expect_comm]
+  rw [responseLaw_submitted] at integrable ⊢
+  rw [expect_bind_tower _ _ _ integrable]
   apply expect_congr_on_support
   intro selected _
-  cases selected <;> simp
+  cases selected <;> simp [expect_pure]
 
-/-- Regularity suffices to compare silence and every randomized proposal. -/
+/-- Regularity suffices to compare silence and every randomized proposal.
+The compared laws must have finite expected utility. -/
 theorem optimal_response (rule : RegularSelection Action) (prescribed : PMF Action)
     (continuation : Action → PMF Outcome) (utility : Outcome → ℝ)
+    (prescribedIntegrable : PayoffIntegrable (prescribed.bind continuation) utility)
     (optimal : ∀ action, expect (continuation action) utility ≤
       expect (prescribed.bind continuation) utility)
-    (alternative : PMF (Option Action)) :
+    (submittedIntegrable : PayoffIntegrable
+      ((rule.responseLaw (prescribed.map some)).bind continuation) utility)
+    (alternative : PMF (Option Action))
+    (alternativeIntegrable : PayoffIntegrable
+      ((rule.responseLaw alternative).bind continuation) utility) :
     expect ((rule.responseLaw alternative).bind continuation) utility ≤
       expect ((rule.responseLaw (prescribed.map some)).bind continuation) utility := by
   let value := fun action => expect (continuation action) utility
   have best (action : Action) : value action ≤ expect prescribed value := by
-    simpa only [FinDist.expect_bind] using optimal action
-  rw [FinDist.expect_bind, FinDist.expect_bind, submitted_value]
-  rw [responseLaw, FinDist.expect_bind]
-  change expect alternative (fun response => expect (rule.includeLaw response) value) ≤ _
-  apply FinDist.expect_le_of_forall
-  intro response _
+    simpa only [expect_bind_tower _ _ _ prescribedIntegrable] using optimal action
+  have submittedValue := payoffIntegrable_bind_conditionalExpectation _ _ _ submittedIntegrable
+  have selectionValue : PayoffIntegrable rule.selection
+      (fun selected => selected.elim (expect prescribed value) value) := by
+    have conditional := submittedValue
+    rw [responseLaw_submitted] at conditional
+    have mapped := payoffIntegrable_bind_conditionalExpectation _ _ _ conditional
+    refine payoffIntegrable_congr_on_support (fun selected _ => ?_) mapped
+    cases selected <;> simp [expect_pure, value]
+  rw [expect_bind_tower _ _ _ submittedIntegrable, submitted_value _ _ _ submittedValue,
+    expect_bind_tower _ _ _ alternativeIntegrable]
+  have alternativeValue := payoffIntegrable_bind_conditionalExpectation _ _ _ alternativeIntegrable
+  rw [responseLaw] at alternativeValue ⊢
+  rw [expect_bind_tower _ _ _ alternativeValue]
+  apply expect_le_const _ _
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ alternativeValue)
+  intro response supported
+  have branch := payoffIntegrable_bind_conditional_on_support _ _ _ alternativeValue response
+    supported
   cases response with
   | none =>
+      have retained : PayoffIntegrable (rule.retained.map some)
+          (fun selected => selected.elim (expect prescribed value) value) := by
+        rw [payoffIntegrable_map_iff]
+        exact branch
       have bound := rule.regular.expect_le
         (fun selected => selected.elim (expect prescribed value) value)
         (fun selected => by cases selected with
           | none => exact le_rfl
-          | some action => exact best action)
-      simpa only [expect_map, Option.elim_some, includeLaw] using bound
+          | some action => exact best action) retained selectionValue
+      simpa only [expect_map, Function.comp_def, Option.elim_some, includeLaw] using bound
   | some action =>
       rw [includeLaw, expect_map]
-      apply FinDist.expect_mono
+      rw [includeLaw, payoffIntegrable_map_iff] at branch
+      apply expect_mono _ branch selectionValue
       intro selected _
       cases selected with
       | none => exact best action
@@ -114,26 +155,35 @@ theorem optimal_response (rule : RegularSelection Action) (prescribed : PMF Acti
 theorem optimal_response_of_support (rule : RegularSelection Action)
     (prescribed recovered : PMF Action) (continuation : Action → PMF Outcome)
     (utility : Outcome → ℝ)
+    (prescribedIntegrable : PayoffIntegrable (prescribed.bind continuation) utility)
+    (recoveredIntegrable : PayoffIntegrable (recovered.bind continuation) utility)
     (optimal : ∀ action, expect (continuation action) utility ≤
       expect (prescribed.bind continuation) utility)
     (supported : recovered.support ⊆ prescribed.support)
-    (alternative : PMF (Option Action)) :
+    (submittedIntegrable : PayoffIntegrable
+      ((rule.responseLaw (recovered.map some)).bind continuation) utility)
+    (alternative : PMF (Option Action))
+    (alternativeIntegrable : PayoffIntegrable
+      ((rule.responseLaw alternative).bind continuation) utility) :
     expect ((rule.responseLaw alternative).bind continuation) utility ≤
       expect ((rule.responseLaw (recovered.map some)).bind continuation) utility := by
   let value := fun action => expect (continuation action) utility
+  have prescribedValue := expect_bind_tower _ _ _ prescribedIntegrable
   have best (action : Action) : value action ≤ expect prescribed value := by
-    simpa only [FinDist.expect_bind] using optimal action
-  have equal (action : Action) (member : action ∈ prescribed.support) :
-      value action = expect prescribed value :=
-    prescribed.eq_of_expect_eq_of_le value _ (fun action _ => best action) rfl member
+    simpa only [prescribedValue] using optimal action
+  have equal := expect_eq_const_of_le_on_support prescribed value _
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ prescribedIntegrable)
+    (fun action _ => best action) rfl
   have sameValue : expect recovered value = expect prescribed value := by
     calc
       expect recovered value = expect recovered (fun _ => expect prescribed value) :=
         expect_congr_on_support fun action member => equal action (supported member)
       _ = _ := expect_constant ..
-  apply rule.optimal_response recovered continuation utility ?_ alternative
+  apply rule.optimal_response recovered continuation utility recoveredIntegrable ?_
+    submittedIntegrable alternative alternativeIntegrable
   intro action
-  simpa only [FinDist.expect_bind, ← sameValue] using best action
+  rw [expect_bind_tower _ _ _ recoveredIntegrable]
+  simpa only [← sameValue] using best action
 
 /-- Independent fixed mixtures instantiate regular selection. -/
 def ofMixture (retained : PMF Action) (weight : ℝ)
@@ -161,19 +211,28 @@ def game (rule : RegularSelection Action) (continuation : Action → PMF Outcome
   sig := { Strategy := fun _ => PMF (Option Action), Outcome := Outcome }
   play profile := (rule.responseLaw (profile ())).bind continuation
 
+/-- Nash equilibrium of the source choice carries over whenever every
+response deviation has a finite expected utility. Every finitely supported
+instance satisfies that premise. -/
 theorem nash_preserved (rule : RegularSelection Action)
     (continuation : Action → PMF Outcome) (utility : Outcome → Unit → ℝ)
     (prescribed : PMF Action)
-    (optimal : IsNash (sourceGame continuation) (euPreference utility) (fun _ => prescribed)) :
+    (optimal : IsNash (sourceGame continuation) (euPreference utility) (fun _ => prescribed))
+    (integrable : ∀ alternative : PMF (Option Action), PayoffIntegrable
+      ((rule.responseLaw alternative).bind continuation) (utility · ())) :
     IsNash (rule.game continuation) (euPreference utility) (fun _ => prescribed.map some) := by
   rw [isNash_iff] at optimal ⊢
   intro who alternative
   cases who
-  apply rule.optimal_response prescribed continuation (utility · ()) ?_ alternative
+  have base := optimal () prescribed
+  simp only [euPreference_apply, sourceGame, Profile.update_same] at base
+  refine ⟨integrable _, integrable _, ?_⟩
+  apply rule.optimal_response prescribed continuation (utility · ()) base.1 ?_ (integrable _)
+    alternative (integrable _)
   intro action
   have bound := optimal () (PMF.pure action)
-  simpa only [euPreference, expectedUtility, sourceGame, Profile.update_same,
-    PMF.pure_bind] using bound
+  simp only [euPreference_apply, sourceGame, Profile.update_same, PMF.pure_bind] at bound
+  exact bound.2.2
 
 end RegularSelection
 end GameTheory.PendingChoice
