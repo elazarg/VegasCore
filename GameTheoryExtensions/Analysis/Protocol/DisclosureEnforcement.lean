@@ -490,17 +490,27 @@ theorem reference_full [Fintype Decision] (prior : PMF Secret) (ambient : Bool) 
   change choice.val.isSome = decisionInfo ambient who site.1 at legal
   cases value : choice.val <;> simp_all
 
-instance [Finite Decision] (prior : PMF Secret) (ambient : Bool) :
+/-- Finitely many secrets make every transition finitely supported. -/
+theorem transition_support_finite [Finite Secret] (prior : PMF Secret) (ambient : Bool)
+    (state : State Secret Decision) (joint : (who : Bool) → Option (PlayerAction Decision who)) :
+    (transition prior ambient state joint).support.Finite := by
+  cases state <;> simp only [transition, PMF.support_map, PMF.support_pure]
+  · exact (Set.toFinite _).image _
+  all_goals exact Set.finite_singleton _
+
+/-- Finitely many secrets and decisions give finitely many legal histories. -/
+instance [Finite Secret] [Finite Decision] (prior : PMF Secret) (ambient : Bool) :
     Finite (arena (Decision := Decision) prior ambient).History := by
   classical
   let := Fintype.ofFinite Decision
   exact (reference_full (Decision := Decision) prior ambient).finite_history
-    (bounded prior ambient)
+    (bounded prior ambient) (fun _ _ => Set.toFinite _)
+    (fun draw => transition_support_finite prior ambient _ draw.1)
 
-instance [Finite Decision] (prior : PMF Secret) (ambient : Bool) :
+instance [Finite Secret] [Finite Decision] (prior : PMF Secret) (ambient : Bool) :
     Fintype (arena (Decision := Decision) prior ambient).History := Fintype.ofFinite _
 
-instance [Finite Decision] (prior : PMF Secret) (ambient who : Bool)
+instance [Finite Secret] [Finite Decision] (prior : PMF Secret) (ambient who : Bool)
     (site : (model (Decision := Decision) prior ambient).InformationSite who) :
     Fintype ((model (Decision := Decision) prior ambient).InformationHistory who site.1) := by
   classical
