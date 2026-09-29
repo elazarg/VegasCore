@@ -22,14 +22,14 @@ open GameTheory.Math.Probability Filter
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} {M : InformationModel E}
   [∀ who, DecidableEq (M.InfoState who)]
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
+  [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)]
 
-omit [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)] in
+omit [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)] in
 /-- Conditional optimality of residual local responses survives a common
 assessment limit when their mandatory tremble vanishes. -/
 theorem BehavioralAssessmentConvergesPointwise.local_optimal_of_responses
-    (referenceAssessment : M.BehavioralAssessment)
-    (referenceMixed : referenceAssessment.IsFullyMixed)
+    [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
+    (transitions : E.FiniteTransitions)
     {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     {who : Player} (site : M.InformationSite who)
@@ -55,7 +55,7 @@ theorem BehavioralAssessmentConvergesPointwise.local_optimal_of_responses
       (assessment.strategy who site.1) epsilon (fun n => (positive n).le) small vanishes
     simpa only [← played] using converges.strategy who site
   intro alternative
-  have leftLimit := converges.context_value referenceAssessment referenceMixed site payoff fuel
+  have leftLimit := converges.context_value transitions site payoff fuel
     (fun n => ((sequence n).strategy who).withLaw site.1 alternative)
     ((assessment.strategy who).withLaw site.1 alternative) (by
       intro decision
@@ -66,7 +66,7 @@ theorem BehavioralAssessmentConvergesPointwise.local_optimal_of_responses
       · have different : decision.1 ≠ site.1 := fun equal => same (Subtype.ext equal)
         simpa only [BehavioralPolicy.withLaw_of_ne _ _ _ different] using
           converges.strategy who decision)
-  have rightLimit := converges.context_value referenceAssessment referenceMixed site payoff fuel
+  have rightLimit := converges.context_value transitions site payoff fuel
     (fun n => ((sequence n).strategy who).withLaw site.1 (responses n))
     (assessment.strategy who) (by
       intro decision
@@ -85,6 +85,8 @@ not converge here: their limit and retained beliefs can be identified from the
 exposed sequence using game-specific restriction and contamination facts. -/
 theorem exists_consistent_free_agent_completion
     (sites : (who : Player) → Finset (M.InfoState who))
+    [∀ agent : M.InformationAgent sites, Finite (M.Choice agent.1 agent.2.1)]
+    (transitions : E.FiniteTransitions)
     (fallback : (who : Player) → M.Policy who) (horizon : Nat)
     (decisionRecall : M.DecisionRecall) (covered : M.CoversInformationSites sites horizon)
     (decisionCovered : ∀ who (site : M.InformationSite who), site.1 ∈ sites who)
@@ -127,8 +129,11 @@ theorem exists_consistent_free_agent_completion
         (⟨site.1, decisionCovered who site⟩ : {info // info ∈ sites who}))
       (fun _ _ equal => Subtype.ext
         (congrArg (fun entry : {info // info ∈ sites who} => entry.1) equal))
+  have _ (who : Player) (site : M.InformationSite who) : Finite (M.Choice who site.1) :=
+    inferInstanceAs (Finite (M.Choice
+      (⟨who, ⟨site.1, decisionCovered who site⟩⟩ : M.InformationAgent sites).1 site.1))
   choose residual sequence played mixed bayes optimal using fun n =>
-    M.exists_pinned_agent_completion sites fallback horizon decisionRecall covered
+    M.exists_pinned_agent_completion sites transitions fallback horizon decisionRecall covered
       decisionCovered utility free (pinned n) reference (pinnedFull n) referenceFull
       (epsilon n) (positive n) (small n)
   obtain ⟨assessment, index, increasing, converges, consistent⟩ :=
@@ -139,7 +144,7 @@ theorem exists_consistent_free_agent_completion
   intro who site present freeSite depth fuel sameDepth total
   let agent : M.InformationAgent sites := ⟨who, ⟨site.1, present⟩⟩
   have freeAgent : agent ∈ free := freeSite
-  apply converges.local_optimal_of_responses (sequence 0) (mixed 0) site
+  apply converges.local_optimal_of_responses transitions site
     (fun history => utility history who) fuel (reference agent)
     (fun n => residual (index n) agent) (fun n => epsilon (index n))
     (fun n => positive (index n)) (fun n => small (index n))
