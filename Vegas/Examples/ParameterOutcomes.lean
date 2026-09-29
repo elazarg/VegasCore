@@ -96,20 +96,23 @@ theorem public_marginals_equal : setup.publicRun (profile false) =
   rw [← setup.parameterRun_map_snd parameter, ← setup.parameterRun_map_snd parameter]
   simp only [parameterRun_law, ← PMF.bind_pure_comp, Function.comp_def, mix_bind,
     PMF.pure_bind, Bool.false_eq_true, ↓reduceIte]
-  convert (mix_swap (1 / 2) (by norm_num) (by norm_num)
-    (PMF.pure (result false)) (PMF.pure (result true))) using 1 <;>
-    first | rfl | norm_num
+  ext outcome
+  rw [mix_apply, mix_apply]
+  norm_num
+  ring
 
 /-- The correct joint interpretation assigns payoff one to copying. -/
 theorem copying_utility :
     expect (setup.parameterRun parameter (profile false)) guessingUtility = 1 := by
-  rw [parameterRun_law, FinDist.expect_mix, expect_pure, expect_pure]
+  rw [parameterRun_law, expect_mix _ _ _ _ _ _ (payoffIntegrable_pure _ _)
+    (payoffIntegrable_pure _ _), expect_pure, expect_pure]
   norm_num [guessingUtility, result, Env.get, Env.cons]
 
 /-- The same public marginal can give payoff zero when correlation is reversed. -/
 theorem negating_utility :
     expect (setup.parameterRun parameter (profile true)) guessingUtility = 0 := by
-  rw [parameterRun_law, FinDist.expect_mix, expect_pure, expect_pure]
+  rw [parameterRun_law, expect_mix _ _ _ _ _ _ (payoffIntegrable_pure _ _)
+    (payoffIntegrable_pure _ _), expect_pure, expect_pure]
   norm_num [guessingUtility, result, Env.get, Env.cons]
 
 /-- In particular, the terminal-store readout recovers the joint law, not the

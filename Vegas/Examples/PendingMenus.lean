@@ -567,14 +567,19 @@ theorem no_common_residual_law (law : PMF app.State)
     ¬ (2 ≤ expect law (fun final => publicUtility true (final.application.config.outputs 1)) ∧
       2 ≤ expect law (fun final => publicUtility false (final.application.config.outputs 1))) := by
   intro both
+  have bounded (preferOne : Bool) : PayoffIntegrable law
+      (fun final => publicUtility preferOne (final.application.config.outputs 1)) :=
+    payoffIntegrable_of_bounded _ _ (C := 3) fun final => by
+      unfold publicUtility
+      split <;> (try split_ifs) <;> norm_num
   have sumBound : expect law (fun final =>
       publicUtility true (final.application.config.outputs 1) +
         publicUtility false (final.application.config.outputs 1)) ≤ 3 := by
-    apply FinDist.expect_le_of_forall
+    refine expect_le_const _ _ (payoffIntegrable_add (bounded true) (bounded false)) _ ?_
     intro final member
     obtain ⟨action, actions, reached⟩ := supported final member
     exact residual_utility_sum_le action actions final reached
-  rw [FinDist.expect_add] at sumBound
+  rw [expect_add (bounded true) (bounded false)] at sumBound
   linarith [both.1, both.2]
 
 end Vegas.Examples.PendingMenus

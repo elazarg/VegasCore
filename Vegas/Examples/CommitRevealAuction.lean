@@ -132,7 +132,7 @@ theorem truthful_not_dominant (values : Player → ℝ) (forfeiture : ℝ)
   intro dominant
   have bound := dominant (aliceStrategy 6) (profile 5)
   rw [euPreference_apply, update_profile, update_profile] at bound
-  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) bound
+  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) bound.2.2
 
 universe uStrategy uOutcome
 
@@ -156,6 +156,6 @@ theorem translated_truthful_not_dominant
     (Profile.map compile (profile 5))
   rw [euPreference_apply, ← Profile.map_update, ← Profile.map_update,
     preserves, preserves, update_profile, update_profile] at bound
-  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) bound
+  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) bound.2.2
 
 end Vegas.Examples.CommitRevealAuction
