@@ -182,7 +182,13 @@ theorem exists_canonical_sequentialEquilibrium [app.FiniteNature initial schedul
       source target strategy beliefs).sequentialEquilibrium
         ((normal.menu raw).decisionInformationAntichain initial horizon scheduler)
         (raw.decisionInformationAntichain initial horizon scheduler) consistent
-          (fun state who => payoff who state) equilibrium
+          (fun state who => payoff who state) equilibrium fun _ _ =>
+            ⟨payoffIntegrable_of_finite_support _ _ (by
+              simp only [InformationModel.assessmentComparison, PMF.support_map]
+              exact (Set.toFinite _).image _),
+            payoffIntegrable_of_finite_support _ _ (by
+              simp only [InformationModel.assessmentComparison, PMF.support_map]
+              exact (Set.toFinite _).image _)⟩
   · rw [strategy]
     exact normal.canonical_initial_stateLaw raw stable closed initial horizon scheduler
       source.strategy (2 * horizon + 1)

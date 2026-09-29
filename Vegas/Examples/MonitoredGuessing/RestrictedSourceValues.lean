@@ -102,7 +102,10 @@ theorem source_disclosure_optimal (reward : Results → Player → ℝ)
       expect (sourceDisclosures assessment.strategy bit guess) fun decision =>
         reward (decisionResult bit guess decision) alice := by
   let alternative := (sourceProfile (PMF.pure false) (PMF.pure disclose)) alice
-  have optimal := (rational alice (sourceAliceSite bit guess)).2.2 alternative (Set.mem_univ _)
+  have optimal := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp
+        (rational alice (sourceAliceSite bit guess)) alternative
+      (Set.mem_univ _)
   change (assessment.continuationContext (sourceAliceSite bit guess)
     (sourceResultPayoff reward alice) 3).value alternative ≤ _ at optimal
   rw [source_result_alice_context, source_result_alice_context,
@@ -128,7 +131,9 @@ theorem source_guess_optimal (reward : Results → Player → ℝ)
           expect (sourceDisclosures assessment.strategy bit decision) fun disclose =>
             reward (decisionResult bit decision disclose) bob) := by
   let alternative := (sourceProfile (PMF.pure guess) (PMF.pure false)) bob
-  have optimal := (rational bob sourceBobSite).2.2 alternative (Set.mem_univ _)
+  have optimal := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp (rational bob sourceBobSite) alternative
+      (Set.mem_univ _)
   change (assessment.continuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
     alternative ≤ _ at optimal
   rw [source_result_bob_context reward assessment consistent,

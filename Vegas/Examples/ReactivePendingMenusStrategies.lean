@@ -371,6 +371,18 @@ theorem no_common_spe :
   have right := (two (secondHistory first second) contested_isSubgameRoot ()
     (app.encodePolicy (recovery false))).2.2
   rw [deviation, profileEq] at left right
+  have runIntegrable (preferOne : Bool) (policy : app.Policy) :
+      UtilityIntegrable (payoff preferOne) () (run policy) :=
+    payoffIntegrable_of_bounded (run policy) _ fun final =>
+      PendingMenus.publicUtility_abs_le preferOne (result final.state)
+  change extendedExpectedUtility (payoff true) () (run (recovery true)) ≤
+    extendedExpectedUtility (payoff true) () (run policy) at left
+  change extendedExpectedUtility (payoff false) () (run (recovery false)) ≤
+    extendedExpectedUtility (payoff false) () (run policy) at right
+  replace left := (extendedExpectedUtility_le_iff (runIntegrable true _)
+    (runIntegrable true _)).mp left
+  replace right := (extendedExpectedUtility_le_iff (runIntegrable false _)
+    (runIntegrable false _)).mp right
   change expect (run (recovery true)) (fun final => PendingMenus.publicUtility true
     (result final.state)) ≤ expect (run policy)
       (fun final => PendingMenus.publicUtility true (result final.state)) at left

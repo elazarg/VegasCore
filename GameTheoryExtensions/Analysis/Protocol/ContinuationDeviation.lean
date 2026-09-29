@@ -364,8 +364,8 @@ theorem sequentiallyRationalAt_of_root_optimal
   have contextIntegrable (policy : M.BehavioralPolicy who) :=
     M.context_integrableAt_of_root assessment recall who site depth fuel sameDepth positive bayes
       payoff policy (integrable _) baseline
-  refine ⟨contextIntegrable _, fun alternative _ => contextIntegrable alternative,
-    fun alternative _ => ?_⟩
+  refine (Context.isLocallyOptimal_iff_of_integrable (contextIntegrable _)
+    fun alternative _ => contextIntegrable alternative).mpr fun alternative _ => ?_
   have bound := optimal ((assessment.strategy who).switchAt M alternative site)
   have exactGain := M.switched_root_gain_eq_mass_mul_context_gain assessment recall who site
     depth fuel sameDepth positive bayes payoff alternative (integrable _) baseline

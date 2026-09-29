@@ -126,15 +126,19 @@ theorem protocol_isBehavioralSubgamePerfect_iff (program : SourceProgram Player 
   · intro perfect history proper who alternative
     have bound := (perfect history proper who
       (behavioralPolicyEquiv program admission initial who alternative)).2.2
+    rw [← Profile.map_update, extendedExpectedUtility_le_iff (integrable _ history who)
+      (integrable profile history who)] at bound
     simp only [expectedUtility] at bound
-    rw [← Profile.map_update, protocol_behavioralContinuationValue_eq,
-      protocol_behavioralContinuationValue_eq] at bound
+    rw [protocol_behavioralContinuationValue_eq, protocol_behavioralContinuationValue_eq] at bound
     exact bound
   · intro optimal history proper who alternative
     obtain ⟨sourceAlternative, rfl⟩ :=
       (behavioralPolicyEquiv program admission initial who).surjective alternative
     rw [← Profile.map_update]
-    refine ⟨integrable profile history who, integrable _ history who, ?_⟩
+    refine ⟨(integrable profile history who).hasExpectation,
+      (integrable _ history who).hasExpectation,
+      (extendedExpectedUtility_le_iff (integrable _ history who)
+        (integrable profile history who)).mpr ?_⟩
     simp only [expectedUtility]
     rw [protocol_behavioralContinuationValue_eq, protocol_behavioralContinuationValue_eq]
     exact optimal history proper who sourceAlternative
@@ -218,17 +222,23 @@ theorem protocol_isBehavioralSubgamePerfect_iff (setup : Setup (Player := Player
   · intro perfect history proper who alternative
     have bound :=
       (perfect history proper who (setup.behavioralPolicyEquiv admission who alternative)).2.2
+    rw [← Profile.map_update, extendedExpectedUtility_le_iff
+      (setup.protocol_behavioralRun_integrable admission finite _ utility history who)
+      (setup.protocol_behavioralRun_integrable admission finite profile utility history who)]
+      at bound
     simp only [expectedUtility] at bound
-    rw [← Profile.map_update, protocol_behavioralContinuationValue_eq,
-      protocol_behavioralContinuationValue_eq] at bound
+    rw [protocol_behavioralContinuationValue_eq, protocol_behavioralContinuationValue_eq] at bound
     exact bound
   · intro optimal history proper who alternative
     obtain ⟨sourceAlternative, rfl⟩ :=
       (setup.behavioralPolicyEquiv admission who).surjective alternative
     rw [← Profile.map_update]
-    refine ⟨setup.protocol_behavioralRun_integrable admission finite profile utility
-      history who, setup.protocol_behavioralRun_integrable admission finite _
-      utility history who, ?_⟩
+    refine ⟨(setup.protocol_behavioralRun_integrable admission finite profile utility
+      history who).hasExpectation, (setup.protocol_behavioralRun_integrable admission finite _
+      utility history who).hasExpectation, (extendedExpectedUtility_le_iff
+        (setup.protocol_behavioralRun_integrable admission finite _ utility history who)
+        (setup.protocol_behavioralRun_integrable admission finite profile utility history who)).mpr
+          ?_⟩
     simp only [expectedUtility]
     rw [protocol_behavioralContinuationValue_eq, protocol_behavioralContinuationValue_eq]
     exact optimal history proper who sourceAlternative

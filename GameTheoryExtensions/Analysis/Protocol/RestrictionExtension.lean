@@ -103,11 +103,13 @@ theorem sequential_equilibrium_extends_of_continuation
     · obtain ⟨original, observed⟩ := retained
       have same : restriction.site who original = site := Subtype.ext observed
       subst site
+      have _ : Finite E.History :=
+        Finite.of_injective restriction.history restriction.history.injective
       apply restriction.retained_localOptimal_of_continuation source target agrees decisionRecall
         who original (beliefs who original) (fun history => sourcePayoff history who)
         (fun history => targetPayoff history who) (fun history => matching history who)
         (horizon - depth who (restriction.site who original)) (sourceEquilibrium.1 who original)
-        (fun _ => payoffIntegrable_of_finite _ _) _ law
+        (fun _ => payoffIntegrable_of_finite _ _) (fun _ => payoffIntegrable_of_finite _ _) _ law
       intro action extra
       obtain ⟨alternative, bound⟩ := comparison source.strategy target.strategy agrees who original
         action extra (source.belief who original)

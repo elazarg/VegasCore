@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Enforcement
+import GameTheoryExtensions.Analysis.IncentiveComparison
 
 /-! # When sufficiently large finite sanctions work
 
@@ -37,14 +38,16 @@ theorem holds_iff_incremental_sanction (comparison : IncentiveComparison Outcome
     alternativeIntegrable
   constructor
   · intro holds
-    have compared := holds.2.2
+    have compared := (IncentiveComparison.holds_iff_of_integrable _ _
+      (payoffIntegrable_sanctionedUtility prescribedIntegrable sanction penalty)
+      (payoffIntegrable_sanctionedUtility alternativeIntegrable sanction penalty)).mp holds
     change expect comparison.alternative _ ≤ expect comparison.prescribed _ at compared
     rw [← sub_nonpos, regret] at compared
     exact sub_nonpos.mp compared
   · intro bound
-    refine ⟨payoffIntegrable_sanctionedUtility prescribedIntegrable _ _,
-      payoffIntegrable_sanctionedUtility alternativeIntegrable _ _, ?_⟩
-    change expect comparison.alternative _ ≤ expect comparison.prescribed _
+    refine (IncentiveComparison.holds_iff_of_integrable _ _
+      (payoffIntegrable_sanctionedUtility prescribedIntegrable sanction penalty)
+      (payoffIntegrable_sanctionedUtility alternativeIntegrable sanction penalty)).mpr ?_
     rw [← sub_nonpos, regret]
     exact sub_nonpos.mpr bound
 
@@ -90,7 +93,9 @@ theorem exists_uniform_sanction_iff [Finite Index]
     intro equal
     have atCutoff := bound cutoff le_rfl
     rw [equal, sub_self, zero_mul] at atCutoff
-    exact ⟨prescribedIntegrable index, alternativeIntegrable index, sub_nonpos.mp atCutoff⟩
+    exact (IncentiveComparison.holds_iff_of_integrable _ base (prescribedIntegrable index)
+        (alternativeIntegrable index)).mpr
+      (sub_nonpos.mp atCutoff)
   · intro condition
     let gain (index : Index) :=
       expect ((comparisons index).alternative) base - expect ((comparisons index).prescribed) base
@@ -111,7 +116,9 @@ theorem exists_uniform_sanction_iff [Finite Index]
           ((comparisons index).prescribed.toOuterMeasure sanction).toReal := sub_eq_zero.mp zero
       have noGain := (condition index).2 equal
       rw [zero, zero_mul]
-      exact sub_nonpos.mpr noGain.2.2
+      exact sub_nonpos.mpr
+          ((IncentiveComparison.holds_iff_of_integrable _ base (prescribedIntegrable index)
+        (alternativeIntegrable index)).mp noGain)
     · have positive : 0 < increment index := lt_of_le_of_ne nonnegative (Ne.symm zero)
       have bound : gain index / increment index ≤ penalty :=
         (le_max_right _ _).trans
@@ -134,24 +141,33 @@ theorem not_holds_of_equal_collection (comparison : IncentiveComparison Outcome)
   exact not_le.mpr (sub_pos.mpr profitable)
 
 /-- A finite pure-comparison certificate also covers finite mixtures of those
-comparisons. Its application to behavioral deviations requires a separate
-realization theorem identifying their conditional outcome laws. -/
+comparisons, when every mixed law is integrable. Its application to behavioral
+deviations requires a separate realization theorem identifying their conditional
+outcome laws. -/
 theorem holds_mixture (comparisons : Index → IncentiveComparison Outcome)
     (weights : PMF Index) (finite : weights.support.Finite) (utility : Outcome → ℝ)
-    (holds : ∀ index ∈ weights.support, (comparisons index).Holds utility) :
+    (holds : ∀ index ∈ weights.support, (comparisons index).Holds utility)
+    (integrable : ∀ index ∈ weights.support,
+      PayoffIntegrable (comparisons index).prescribed utility ∧
+        PayoffIntegrable (comparisons index).alternative utility) :
     (IncentiveComparison.mk
       (weights.bind (fun index => (comparisons index).prescribed))
       (weights.bind (fun index => (comparisons index).alternative))).Holds utility := by
   have prescribed := payoffIntegrable_bind_of_finite_support weights
     (fun index => (comparisons index).prescribed) utility finite
-    fun index supported => (holds index supported).1
+    fun index supported => (integrable index supported).1
   have alternative := payoffIntegrable_bind_of_finite_support weights
     (fun index => (comparisons index).alternative) utility finite
-    fun index supported => (holds index supported).2.1
-  refine ⟨prescribed, alternative, ?_⟩
+    fun index supported => (integrable index supported).2
+  refine (IncentiveComparison.holds_iff_of_integrable (IncentiveComparison.mk
+    (weights.bind fun index => (comparisons index).prescribed)
+    (weights.bind fun index => (comparisons index).alternative)) utility prescribed
+      alternative).mpr ?_
   change expect (weights.bind _) utility ≤ expect (weights.bind _) utility
   rw [expect_bind_tower _ _ _ prescribed, expect_bind_tower _ _ _ alternative]
-  exact expect_mono (fun index supported => (holds index supported).2.2)
+  exact expect_mono (fun index supported => (IncentiveComparison.holds_iff_of_integrable _ utility
+      (integrable index supported).1 (integrable index supported).2).mp
+      (holds index supported))
     (payoffIntegrable_bind_conditionalExpectation _ _ _ alternative)
     (payoffIntegrable_bind_conditionalExpectation _ _ _ prescribed)
 

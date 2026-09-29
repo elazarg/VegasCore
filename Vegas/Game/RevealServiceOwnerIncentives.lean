@@ -261,6 +261,8 @@ theorem owner_local_optimal [setup.FiniteInitialLaw] [leaks.FiniteSupport]
   rw [InformationModel.BehavioralPolicy.withLaw_eq_self,
     InformationModel.BehavioralPolicy.withLaw_eq_self] at baseline
   rw [changed, baseline]
-  exact optimal.2.2 _ (Set.mem_univ _)
+  have := setup.reveal_finite_history reveals admission
+  exact (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
+      (payoffIntegrable_of_finite _ _)).mp optimal _ (Set.mem_univ _)
 
 end Vegas

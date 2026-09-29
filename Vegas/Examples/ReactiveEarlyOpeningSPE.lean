@@ -129,6 +129,13 @@ theorem compiled_not_spe :
     cases who
     simp [Profile.update]
   rw [updated] at improves
+  have runIntegrable (policy : app.Policy) : UtilityIntegrable payoff () (run policy) :=
+    payoffIntegrable_of_bounded (run policy) _ fun final =>
+      PendingMenus.publicUtility_abs_le true (result final.state)
+  change extendedExpectedUtility payoff () (run earlyPolicy) ≤
+    extendedExpectedUtility payoff () (run compiled) at improves
+  replace improves := (extendedExpectedUtility_le_iff (runIntegrable _)
+    (runIntegrable _)).mp improves
   change expect (run earlyPolicy) (fun final => PendingMenus.publicUtility true
     (result final.state)) ≤ expect (run compiled) (fun final => PendingMenus.publicUtility true
       (result final.state)) at improves

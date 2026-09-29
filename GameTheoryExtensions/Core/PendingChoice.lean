@@ -158,21 +158,23 @@ theorem nash_preserved (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : 
     (optimal : IsNash (sourceGame continuation) (euPreference utility) (fun _ => prescribed))
     (integrable : ∀ alternative : PMF (Option Action), PayoffIntegrable
       ((responseLaw weight nonnegative atMostOne retained alternative).bind continuation)
-        (utility · ())) :
+        (utility · ()))
+    (sourceIntegrable : ∀ action, PayoffIntegrable (continuation action) (utility · ()))
+    (prescribedIntegrable : PayoffIntegrable (prescribed.bind continuation) (utility · ())) :
     IsNash (responseGame weight nonnegative atMostOne retained continuation)
       (euPreference utility) (fun _ => prescribed.map some) := by
   rw [isNash_iff] at optimal ⊢
   intro who alternative
   cases who
   have pure (action : Action) := optimal () (PMF.pure action)
-  simp only [euPreference_apply, sourceGame, Profile.update_same, PMF.pure_bind] at pure
-  have base := optimal () prescribed
-  simp only [euPreference_apply, sourceGame, Profile.update_same] at base
+  simp only [sourceGame, Profile.update_same, PMF.pure_bind] at pure
   have retainedIntegrable := integrable (PMF.pure none)
   rw [responseLaw, PMF.pure_bind] at retainedIntegrable
-  refine ⟨integrable _, integrable _, ?_⟩
+  refine (euPreference_iff utility () _ _ (integrable _) (integrable _)).mpr ?_
   exact optimal_response weight nonnegative atMostOne retained prescribed continuation
-    (utility · ()) (fun action => (pure action).2.1) base.1
-    retainedIntegrable (fun action => (pure action).2.2) alternative (integrable _)
+    (utility · ()) sourceIntegrable prescribedIntegrable retainedIntegrable
+    (fun action => (euPreference_iff utility () _ _ prescribedIntegrable
+        (sourceIntegrable action)).mp
+      (pure action)) alternative (integrable _)
 
 end GameTheory.PendingChoice

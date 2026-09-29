@@ -64,8 +64,10 @@ theorem native_equilibrium_certified_value (matchBit : Bool) :
   obtain ⟨assessment, equilibrium⟩ := native_sequential_equilibrium_exists matchBit
   refine ⟨assessment, equilibrium, ?_⟩
   intro bit
-  have optimal := (equilibrium.1 true (nativeBobSite bit)).2.2
-    (evidencePolicy (winningAnswer matchBit)) (Set.mem_univ _)
+  have optimal := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mp
+    (equilibrium.1 true (nativeBobSite bit)) (evidencePolicy (winningAnswer matchBit))
+      (Set.mem_univ _)
   change (assessment.continuationContext (nativeBobSite bit)
       (nativePayoff matchBit true) 113).value (evidencePolicy (winningAnswer matchBit)) ≤
     (assessment.continuationContext (nativeBobSite bit)

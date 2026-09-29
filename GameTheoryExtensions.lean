@@ -40,6 +40,7 @@ import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.ObservationPayoff
 import GameTheoryExtensions.Analysis.CorrelationPayoff
 import GameTheoryExtensions.Analysis.Enforcement
+import GameTheoryExtensions.Analysis.IncentiveComparison
 import GameTheoryExtensions.Analysis.ConstrainedNash
 import GameTheoryExtensions.Analysis.EnforcementLimits
 import GameTheoryExtensions.Analysis.EnforcementSynthesis

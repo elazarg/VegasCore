@@ -27,56 +27,45 @@ theorem zeroSum_security_of_considered (hzero : IsZeroSum utility)
     (hnash : ∀ who replacement, Considered who replacement →
       euPreference utility who (F.play profile) (F.play (Profile.update profile who replacement)))
     (other : Profile F.sig) (other₀ : Considered 0 (other 0)) (other₁ : Considered 1 (other 1)) :
-    expectedUtility utility 0 (F.play profile) ≤
-        expectedUtility utility 0 (F.play (Profile.update other 0 (profile 0))) ∧
-      expectedUtility utility 0 (F.play (Profile.update other 1 (profile 1))) ≤
-        expectedUtility utility 0 (F.play profile) := by
+    euPreference utility 0 (F.play (Profile.update other 0 (profile 0))) (F.play profile) ∧
+      euPreference utility 0 (F.play profile)
+        (F.play (Profile.update other 1 (profile 1))) := by
   constructor
-  · obtain ⟨_, _, hle⟩ := hnash 1 (other 1) other₁
-    have hlaw := congrArg F.play (update_one_eq_update_zero profile other)
-    rw [hzero.expectedUtility_one _, hzero.expectedUtility_one _] at hle
-    have hrow := expectedUtility_congr_law utility 0 hlaw
-    linarith
-  · obtain ⟨_, _, hle⟩ := hnash 0 (other 0) other₀
-    have hlaw := congrArg F.play (update_one_eq_update_zero other profile)
-    rw [expectedUtility_congr_law utility 0 hlaw]
-    exact hle
+  · have hle := hnash 1 (other 1) other₁
+    rwa [hzero.euPreference_one_iff, update_one_eq_update_zero profile other] at hle
+  · have hle := hnash 0 (other 0) other₀
+    rwa [← update_one_eq_update_zero other profile] at hle
 
 /-- **Coarse correlation over considered recommendations cannot change a
 zero-sum value.** If no considered unilateral deviation improves on a profile,
 every coarse correlated equilibrium that recommends only considered strategies
-gives each player exactly that profile's payoff. -/
-theorem IsCoarseCorrelatedEq.expectedUtility_eq_of_zeroSum_considered
+gives each player exactly that profile's extended expected payoff. The payoffs
+need not be integrable. -/
+theorem IsCoarseCorrelatedEq.extendedExpectedUtility_eq_of_zeroSum_considered
     (hzero : IsZeroSum utility) {law : PMF (Profile F.sig)}
     (hcce : IsCoarseCorrelatedEq F (euPreference utility) law)
     (hnash : ∀ who replacement, Considered who replacement →
       euPreference utility who (F.play profile) (F.play (Profile.update profile who replacement)))
     (recommended : ∀ other ∈ law.support, ∀ who, Considered who (other who)) (who : Fin 2) :
-    expectedUtility utility who (F.outcomeLaw law) =
-      expectedUtility utility who (F.play profile) := by
-  have hvalue := payoffIntegrable_constant law (expectedUtility utility 0 (F.play profile))
+    extendedExpectedUtility utility who (F.outcomeLaw law) =
+      extendedExpectedUtility utility who (F.play profile) := by
   have security (other : Profile F.sig) (hother : other ∈ law.support) :=
     zeroSum_security_of_considered hzero hnash other (recommended other hother 0)
       (recommended other hother 1)
-  have lower : expectedUtility utility 0 (F.play profile) ≤
-      expectedUtility utility 0 (F.outcomeLaw law) := by
-    obtain ⟨_, hbind, hle⟩ := (isCoarseCorrelatedEq_iff law).1 hcce 0 (profile 0)
-    rw [expectedUtility_bind utility 0 law _ hbind] at hle
-    rw [← expect_constant law (expectedUtility utility 0 (F.play profile))]
-    exact (expect_mono (fun other hother => (security other hother).1)
-      hvalue (payoffIntegrable_bind_conditionalExpectation law _ _ hbind)).trans hle
-  have upper : expectedUtility utility 0 (F.outcomeLaw law) ≤
-      expectedUtility utility 0 (F.play profile) := by
-    obtain ⟨_, hbind, hle⟩ := (isCoarseCorrelatedEq_iff law).1 hcce 1 (profile 1)
-    have hbindZero := hzero.utilityIntegrable_zero_of_one _ hbind
-    rw [hzero.expectedUtility_one _, hzero.expectedUtility_one _, neg_le_neg_iff,
-      expectedUtility_bind utility 0 law _ hbindZero] at hle
-    rw [← expect_constant law (expectedUtility utility 0 (F.play profile))]
-    exact hle.trans (expect_mono (fun other hother => (security other hother).2)
-      (payoffIntegrable_bind_conditionalExpectation law _ _ hbindZero) hvalue)
-  have hsame := le_antisymm upper lower
+  have lower : euPreference utility 0 (F.outcomeLaw law) (F.play profile) := by
+    have hdev := (isCoarseCorrelatedEq_iff law).1 hcce 0 (profile 0)
+    exact euPreference_transitive utility 0 _ _ _
+      hdev (euPreference_bind_left law _ (fun other hother => (security other hother).1)
+        hdev.2.1)
+  have upper : euPreference utility 0 (F.play profile) (F.outcomeLaw law) := by
+    have hdev := (isCoarseCorrelatedEq_iff law).1 hcce 1 (profile 1)
+    rw [hzero.euPreference_one_iff] at hdev
+    exact euPreference_transitive utility 0 _ _ _
+      (euPreference_bind law _ (fun other hother => (security other hother).2) hdev.1) hdev
+  have hsame := le_antisymm upper.2.2 lower.2.2
   rcases (by decide : ∀ i : Fin 2, i = 0 ∨ i = 1) who with rfl | rfl
   · exact hsame
-  · rw [hzero.expectedUtility_one, hzero.expectedUtility_one, hsame]
+  · rw [hzero.extendedExpectedUtility_one lower.1,
+      hzero.extendedExpectedUtility_one upper.1, hsame]
 
 end GameTheory

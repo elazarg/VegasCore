@@ -348,10 +348,11 @@ theorem exists_sequential_equilibrium_of_last_decision
       change Profile.update (sig := M.behavioralSignature) reference.strategy who policy who = _
       exact Profile.update_same (sig := M.behavioralSignature) reference.strategy who policy
     rw [same, chosen]
-    exact ⟨integrable site policy, fun alternative _ => integrable site alternative,
-      fun alternative _ => bestLastPolicy_optimal reference mixed antichain who (payoff who) fuel
-        last site (nonterminal site) alternative (integrable site alternative)
-        (integrable site policy)⟩
+    exact (Context.isLocallyOptimal_iff_of_integrable (integrable site policy)
+      fun alternative _ => integrable site alternative).mpr fun alternative _ =>
+        bestLastPolicy_optimal reference mixed antichain who (payoff who) fuel
+          last site (nonterminal site) alternative (integrable site alternative)
+          (integrable site policy)
   · have zero := neutral player own
     have constant (response : M.BehavioralPolicy player) :
         (assessment.continuationContext site (payoff player) (fuel + 1)).IntegrableAt response ∧
@@ -359,8 +360,9 @@ theorem exists_sequential_equilibrium_of_last_decision
       simp only [Context.IntegrableAt, Context.value, BehavioralAssessment.continuationContext,
         Context.ofBelief, zero, expect_constant]
       exact ⟨payoffIntegrable_constant _ 0, trivial⟩
-    exact ⟨(constant _).1, fun alternative _ => (constant alternative).1,
-      fun alternative _ => by rw [(constant alternative).2, (constant _).2]⟩
+    exact (Context.isLocallyOptimal_iff_of_integrable (constant _).1 fun alternative _ =>
+        (constant alternative).1).mpr
+      fun alternative _ => by rw [(constant alternative).2, (constant _).2]
 
 end Consistency
 

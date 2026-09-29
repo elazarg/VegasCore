@@ -97,7 +97,9 @@ theorem rationalAt_iff (assessment : M.BehavioralAssessment) :
         expect (decision.response assessment.strategy) (decision.expectedReward assessment) := by
   constructor
   · intro rational action
-    have bound := rational.2.2 (decision.policy action) (Set.mem_univ _)
+    have bound := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+      fun _ _ => payoffIntegrable_of_finite _ _).mp rational (decision.policy action)
+        (Set.mem_univ _)
     change (assessment.continuationContext decision.site (utility decision.player) fuel).value
         (decision.policy action) ≤
       (assessment.continuationContext decision.site (utility decision.player) fuel).value
@@ -105,8 +107,8 @@ theorem rationalAt_iff (assessment : M.BehavioralAssessment) :
     simpa only [decision.continuation_value, decision.realize, expect_pure,
       Profile.update_eq_self] using bound
   · intro optimal
-    refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-      fun alternative _ => ?_⟩
+    refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+      fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
     rw [decision.continuation_value, decision.continuation_value, Profile.update_eq_self]
     exact expect_le_const _ _ (payoffIntegrable_of_finite_support _ _ (decision.response_finite _))
       _ fun action _ => optimal action

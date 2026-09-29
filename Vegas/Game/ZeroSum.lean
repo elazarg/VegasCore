@@ -51,11 +51,11 @@ theorem valueBindingParameterPendingGame_coarseCorrelated_value
     (recommendedFinite : ∀ recommended ∈ target.support, ∀ who,
       Interaction.MessageApplication.PlayerPolicy.FiniteSupport (recommended who))
     (who : Fin 2) :
-    expect ((setup.eventPendingGame mode runtime roster reactionRounds wire order).outcomeLaw
-      target) (fun outcome =>
+    extendedExpect ((setup.eventPendingGame mode runtime roster reactionRounds wire order
+      ).outcomeLaw target) (fun outcome =>
         (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
           0 (fun result => utility result who)) =
-      expect ((setup.valueBindingParameterGame parameter).play source)
+      extendedExpect ((setup.valueBindingParameterGame parameter).play source)
         (fun result => utility result who) := by
   let nativeUtility := fun outcome player =>
     (setup.eventPendingParameterOutcome parameter mode runtime outcome).elim
@@ -70,14 +70,14 @@ theorem valueBindingParameterPendingGame_coarseCorrelated_value
   have nativeNash := (setup.valueBindingParameterPendingGame_nash_iff finite parameter mode
     runtime feasible roster reactionRounds wire wireFinite order orderFinite utility
     (fun _ => 0) source).mpr sourceNash
-  have same := targetCorrelated.expectedUtility_eq_of_zeroSum_considered nativeZeroSum
+  have same := targetCorrelated.extendedExpectedUtility_eq_of_zeroSum_considered nativeZeroSum
     nativeNash recommendedFinite who
   have honest := (setup.valueBindingParameterPendingSimulation finite parameter mode runtime
     feasible roster reactionRounds wire wireFinite order orderFinite).honest_law source
-  have value := congrArg (fun law => expect law
+  have value := congrArg (fun law => extendedExpect law
     (fun outcome => outcome.elim 0 (fun result => utility result who))) honest
   refine same.trans ?_
-  simp only [expectedUtility, expect_map] at value ⊢
+  simp only [extendedExpectedUtility, extendedExpect_map] at value ⊢
   exact value
 
 end Vegas.SourceProgram.Setup

@@ -178,6 +178,8 @@ theorem retained_localOptimal_of_continuation
     (fuel : Nat)
     (rational : source.IsSequentiallyRationalAt site
       (source.continuationContext site sourcePayoff fuel))
+    (sourceIntegrable : ∀ policy,
+      (source.continuationContext site sourcePayoff fuel).IntegrableAt policy)
     (targetIntegrable : ∀ policy,
       (target.continuationContext (restriction.site who site) targetPayoff fuel).IntegrableAt
         policy)
@@ -193,6 +195,8 @@ theorem retained_localOptimal_of_continuation
       (target.continuationContext (restriction.site who site) targetPayoff fuel).value
         (target.strategy who) := by
   classical
+  have real := (Context.isLocallyOptimal_iff_of_integrable (sourceIntegrable _)
+    fun alternative _ => sourceIntegrable alternative).mp rational
   have baseline := restriction.context_value_eq source target who site belief
     (source.strategy who) (target.strategy who)
     (by simpa only [Profile.update_eq_self] using agrees) sourcePayoff targetPayoff payoff fuel
@@ -209,10 +213,9 @@ theorem retained_localOptimal_of_continuation
       change (target.continuationContext _ targetPayoff fuel).value
           ((target.strategy who).withLaw _ (PMF.pure _)) ≤ _
       rw [equality, baseline]
-      exact rational.2.2 ((source.strategy who).withLaw site.1 (PMF.pure original))
-        (Set.mem_univ _)
+      exact real ((source.strategy who).withLaw site.1 (PMF.pure original)) (Set.mem_univ _)
     · obtain ⟨alternative, bound⟩ := comparison action permitted
-      exact bound.trans ((rational.2.2 alternative (Set.mem_univ _)).trans_eq baseline.symm)
+      exact bound.trans ((real alternative (Set.mem_univ _)).trans_eq baseline.symm)
   obtain ⟨affine, valueIntegrable⟩ := context_withLaw_affine target recall who
     (restriction.site who site) targetPayoff fuel law (targetIntegrable _)
   rw [affine]
@@ -236,6 +239,8 @@ theorem retained_localOptimal_of_comparator
     (fuel : Nat)
     (rational : source.IsSequentiallyRationalAt site
       (source.continuationContext site sourcePayoff fuel))
+    (sourceIntegrable : ∀ policy,
+      (source.continuationContext site sourcePayoff fuel).IntegrableAt policy)
     (targetIntegrable : ∀ policy,
       (target.continuationContext (restriction.site who site) targetPayoff fuel).IntegrableAt
         policy)
@@ -257,13 +262,13 @@ theorem retained_localOptimal_of_comparator
       (target.continuationContext (restriction.site who site) targetPayoff fuel).value
         (target.strategy who) := by
   apply restriction.retained_localOptimal_of_continuation source target agrees recall who site
-    belief sourcePayoff targetPayoff payoff fuel rational targetIntegrable _ law
+    belief sourcePayoff targetPayoff payoff fuel rational sourceIntegrable targetIntegrable _ law
   intro action extra
   let alternative := (source.strategy who).withLaw site.1 (comparator action)
   refine ⟨alternative, ?_⟩
   have targetLaw := targetIntegrable ((target.strategy who).commit (restriction.site who site).1
     action)
-  have sourceLaw := rational.2.1 alternative (Set.mem_univ _)
+  have sourceLaw := sourceIntegrable alternative
   unfold Context.IntegrableAt at targetLaw sourceLaw
   unfold Context.value
   change PayoffIntegrable ((target.belief who (restriction.site who site)).bind _) _ at targetLaw

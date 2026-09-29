@@ -46,7 +46,7 @@ theorem native_supported_certified_guess
     (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler bob ⟨some (past, view), isSite⟩)
     (fun outcome => nativeUtility bob outcome.state) (2 * nativeHorizon)
-    (rational bob ⟨some (past, view), isSite⟩) choice
+    (rational bob ⟨some (past, view), isSite⟩) (fun _ => (payoffIntegrable_of_finite _ _)) choice
     ((assessment.strategy bob).commit (some (past, view)) (bobCorrectiveChoice bit past view))
     0 1 (by norm_num) _ _) chosen
   · intro other

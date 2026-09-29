@@ -85,8 +85,8 @@ theorem isεNash_pureGame_iff (setup : Setup (Player := Player) (L := L))
       IsεNash setup.pureGame value ε profile :=
   ((setup.pureSimulation finite ).isεNash_compileProfile_iff value ε profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.pureSimulation_deviation_integrable finite value profile who
-        replacement)
+      (setup.pureSimulation_deviation_integrable finite value profile who
+        replacement).hasExpectation)
 
 /-- The same at ε zero. -/
 theorem isNash_pureGame_iff (setup : Setup (Player := Player) (L := L))
@@ -97,8 +97,8 @@ theorem isNash_pureGame_iff (setup : Setup (Player := Player) (L := L))
       IsNash setup.pureGame (euPreference value) profile :=
   ((setup.pureSimulation finite ).isNash_compileProfile_iff value profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.pureSimulation_deviation_integrable finite value profile who
-        replacement)
+      (setup.pureSimulation_deviation_integrable finite value profile who
+        replacement).hasExpectation)
 
 /-- The edge in the composable interface, at one-player coalitions. -/
 def pureUtilitySimulation (setup : Setup (Player := Player) (L := L))

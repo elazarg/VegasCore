@@ -46,10 +46,11 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.rationalAt_of_localOptimal
       (assessment.continuationContext site payoff (horizon - depth)) := by
   obtain ⟨sequence, approximates, converges⟩ := consistent
   have transitions := ExecutionProtocol.FiniteTransitions.of_finite_history E
-  refine ⟨continuationContext_integrableAt_of_finite transitions assessment site payoff _ _,
+  refine (Context.isLocallyOptimal_iff_of_integrable
+    (continuationContext_integrableAt_of_finite transitions assessment site payoff _ _)
     fun alternative _ =>
-      continuationContext_integrableAt_of_finite transitions assessment site payoff _ _,
-    fun alternative _ => ?_⟩
+      continuationContext_integrableAt_of_finite transitions assessment site payoff _ _).mpr
+    fun alternative _ => ?_
   obtain ⟨error, nonnegative, vanishes, localBound⟩ :=
     converges.exists_vanishing_local_gain_bound transitions
       who clock horizon payoff alternative

@@ -91,8 +91,8 @@ theorem isεNash_valueBindingGame_iff (setup : Setup (Player := Player) (L := L)
       IsεNash setup.valueBindingGame value ε profile :=
   ((setup.valueBindingSimulation finite ).isεNash_compileProfile_iff value ε profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.valueBindingSimulation_deviation_integrable finite value profile who
-        replacement)
+      (setup.valueBindingSimulation_deviation_integrable finite value profile who
+        replacement).hasExpectation)
 
 /-- The same at ε zero. -/
 theorem isNash_valueBindingGame_iff (setup : Setup (Player := Player) (L := L))
@@ -103,8 +103,8 @@ theorem isNash_valueBindingGame_iff (setup : Setup (Player := Player) (L := L))
       IsNash setup.valueBindingGame (euPreference value) profile :=
   ((setup.valueBindingSimulation finite ).isNash_compileProfile_iff value profile
     fun _ _ => trivial).trans (and_iff_left fun who replacement =>
-      setup.valueBindingSimulation_deviation_integrable finite value profile who
-        replacement)
+      (setup.valueBindingSimulation_deviation_integrable finite value profile who
+        replacement).hasExpectation)
 
 /-- The edge in the composable interface, at one-player coalitions. -/
 def valueBindingUtilitySimulation (setup : Setup (Player := Player) (L := L))

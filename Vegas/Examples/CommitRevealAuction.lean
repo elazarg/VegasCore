@@ -131,8 +131,10 @@ theorem truthful_not_dominant (values : Player → ℝ) (forfeiture : ℝ)
       Player.alice (aliceStrategy 5) := by
   intro dominant
   have bound := dominant (aliceStrategy 6) (profile 5)
-  rw [euPreference_apply, update_profile, update_profile] at bound
-  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) bound.2.2
+  rw [update_profile, update_profile] at bound
+  have real := (euPreference_iff _ _ _ _ (by rw [play_truthful]; exact payoffIntegrable_pure _ _)
+    (by rw [play_misreport]; exact payoffIntegrable_pure _ _)).mp bound
+  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) real
 
 universe uStrategy uOutcome
 
@@ -148,14 +150,17 @@ theorem translated_truthful_not_dominant
     (preserves : ∀ players : Profile setup.valueBindingGame.sig,
       expectedUtility targetUtility Player.alice (target.play (Profile.map compile players)) =
         expectedUtility (utility values forfeiture) Player.alice
-          (setup.valueBindingGame.play players)) :
+          (setup.valueBindingGame.play players))
+    (targetIntegrable : ∀ players : Profile setup.valueBindingGame.sig,
+      UtilityIntegrable targetUtility Player.alice (target.play (Profile.map compile players))) :
     ¬ IsDominant target (euPreference targetUtility) Player.alice
       (compile Player.alice (aliceStrategy 5)) := by
   intro dominant
   have bound := dominant (compile Player.alice (aliceStrategy 6))
     (Profile.map compile (profile 5))
-  rw [euPreference_apply, ← Profile.map_update, ← Profile.map_update,
-    preserves, preserves, update_profile, update_profile] at bound
-  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) bound.2.2
+  rw [← Profile.map_update, ← Profile.map_update] at bound
+  have real := (euPreference_iff _ _ _ _ (targetIntegrable _) (targetIntegrable _)).mp bound
+  rw [preserves, preserves, update_profile, update_profile] at real
+  exact (not_le_of_gt (profitable_misreport values forfeiture valuation)) real
 
 end Vegas.Examples.CommitRevealAuction

@@ -97,8 +97,8 @@ theorem source_alice_zero (matchBit : Bool) (history : sourceArena.History) :
 theorem source_rational (matchBit : Bool) :
     sourceAssessment.IsSequentiallyRationalWithin (sourcePayoff matchBit) 5 := by
   intro who site
-  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-    fun alternative _ => ?_⟩
+  refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   cases who
   · have zero : sourcePayoff matchBit false = fun _ => 0 :=
       funext (source_alice_zero matchBit)

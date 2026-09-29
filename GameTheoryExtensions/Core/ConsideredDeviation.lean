@@ -83,17 +83,22 @@ theorem compileStrategy_ge_considered (utility : Observation → Player → ℝ)
       (profile who))
     (replacement : target.sig.Strategy who) (considered : Considered who replacement)
     (integrable : UtilityIntegrable (fun outcome player => utility (targetObserve outcome) player)
-      who (target.play (Profile.update (simulation.compileProfile profile) who replacement))) :
+      who (target.play (Profile.update (simulation.compileProfile profile) who replacement)))
+    (sourceIntegrable : ∀ alternative : source.sig.Strategy who,
+      UtilityIntegrable (fun outcome player => utility (sourceObserve outcome) player) who
+        (source.play (Profile.update profile who alternative))) :
     euPreference (fun outcome player => utility (targetObserve outcome) player) who
       (target.play (simulation.compileProfile profile))
       (target.play (Profile.update (simulation.compileProfile profile) who replacement)) := by
   obtain ⟨alternative, bound⟩ :=
     simulation.exists_source_deviation_ge utility profile who replacement considered integrable
+  have baseline := sourceIntegrable (profile who)
+  rw [Profile.update_eq_self] at baseline
   have hbest := best alternative
-  rw [euPreference_apply, Profile.update_eq_self] at hbest
-  obtain ⟨hsbase, _, hsource⟩ := hbest
-  refine ⟨(simulation.integrable_compile_iff profile
-    (fun observation => utility observation who)).mpr hsbase, integrable, ?_⟩
+  rw [Profile.update_eq_self] at hbest
+  have hsource := (euPreference_iff _ _ _ _ baseline (sourceIntegrable alternative)).mp hbest
+  refine (euPreference_iff _ _ _ _ ((simulation.integrable_compile_iff profile
+    (fun observation => utility observation who)).mpr baseline) integrable).mpr ?_
   have honest := simulation.expect_compile profile (fun observation => utility observation who)
   exact bound.trans (hsource.trans_eq honest.symm)
 

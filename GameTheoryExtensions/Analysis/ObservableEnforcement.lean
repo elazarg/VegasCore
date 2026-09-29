@@ -3,6 +3,7 @@
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Analysis.IncentiveComparison
 
 /-! # When observable violations admit a sound deterrent
 
@@ -139,7 +140,9 @@ theorem exists_sound_alarm_for_penalty_iff (comparison : IncentiveComparison Out
     have bounded := mul_le_mul_of_nonneg_right
       (detection_le_outside_admitted admitted (comparison.alternative.map observe) alarm sound)
       nonnegative
-    replace deters := deters.2.2
+    replace deters := (IncentiveComparison.holds_iff_of_integrable _ _
+      (payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _)
+      (payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _)).mp deters
     change expect comparison.alternative _ ≤ expect comparison.prescribed _ at deters
     rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
       expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero]
@@ -151,9 +154,9 @@ theorem exists_sound_alarm_for_penalty_iff (comparison : IncentiveComparison Out
       (alarm_zero_iff _ _).mpr (fun observation supported =>
         outsideAlarm_sound admitted observation (permitted supported))
     refine ⟨outsideAlarm admitted, outsideAlarm_sound admitted, ?_⟩
-    refine ⟨payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _,
-      payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _, ?_⟩
-    change expect comparison.alternative _ ≤ expect comparison.prescribed _
+    refine (IncentiveComparison.holds_iff_of_integrable _ _
+      (payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _)
+      (payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _)).mpr ?_
     rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
       expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero,
       outsideAlarm_probability]
@@ -183,7 +186,9 @@ theorem exists_sound_deterrent_iff (comparison : IncentiveComparison Outcome)
     have detected_nonnegative :
         0 ≤ (((comparison.alternative.map observe).bind alarm) true).toReal :=
       ENNReal.toReal_nonneg
-    replace deters := deters.2.2
+    replace deters := (IncentiveComparison.holds_iff_of_integrable _ _
+      (payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _)
+      (payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _)).mp deters
     change expect comparison.alternative _ ≤ expect comparison.prescribed _ at deters
     rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
       expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero]
@@ -207,9 +212,9 @@ theorem exists_sound_deterrent_iff (comparison : IncentiveComparison Outcome)
     refine ⟨outsideAlarm admitted, gain / probability,
       (div_pos gain_positive probability_positive).le,
       outsideAlarm_sound admitted, ?_⟩
-    refine ⟨payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _,
-      payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _, ?_⟩
-    change expect comparison.alternative _ ≤ expect comparison.prescribed _
+    refine (IncentiveComparison.holds_iff_of_integrable _ _
+      (payoffIntegrable_monitoredUtility prescribedIntegrable _ _ _)
+      (payoffIntegrable_monitoredUtility alternativeIntegrable _ _ _)).mpr ?_
     rw [expect_monitoredUtility _ _ _ _ _ alternativeIntegrable,
       expect_monitoredUtility _ _ _ _ _ prescribedIntegrable, silent, zero_mul, sub_zero,
       outsideAlarm_probability]

@@ -88,10 +88,10 @@ theorem valueBindingPendingGame_approximate_nash_iff
     wire wireFinite order orderFinite).considered_deviations_iff_isεNash optionUtility ε
       profile).trans
       (and_iff_left fun who replacement replacementFinite =>
-        payoffIntegrable_of_finite_support _ _
+        hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
           (setup.eventPendingGame_play_support_finite mode runtime roster reactionRounds
             wireFinite orderFinite _ (setup.compileEventPending_update_finiteSupport finite mode
-              runtime roster reactionRounds wire order _ who replacement replacementFinite)))
+              runtime roster reactionRounds wire order _ who replacement replacementFinite))))
 
 /-! ## From the pure-strategy game -/
 
@@ -155,9 +155,9 @@ theorem purePendingGame_approximate_nash_iff
     wireFinite order orderFinite).considered_deviations_iff_isεNash optionUtility ε
       profile).trans
       (and_iff_left fun who replacement replacementFinite =>
-        payoffIntegrable_of_finite_support _ _
+        hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
           (setup.eventPendingGame_play_support_finite mode runtime roster reactionRounds
             wireFinite orderFinite _ (setup.compileEventPending_update_finiteSupport finite mode
-              runtime roster reactionRounds wire order _ who replacement replacementFinite)))
+              runtime roster reactionRounds wire order _ who replacement replacementFinite))))
 
 end Vegas.SourceProgram.Setup

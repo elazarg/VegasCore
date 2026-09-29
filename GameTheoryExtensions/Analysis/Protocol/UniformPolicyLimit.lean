@@ -107,7 +107,11 @@ private theorem uniform_gain_at_site
       (selectedConverges.strategy who)
     have limitBound := le_of_tendsto_of_tendsto tendsto_const_nhds (alternate.sub prescribed)
       (Eventually.of_forall fun n => (greater (second n)).le)
-    have optimal := rational.2.2 alternative (Set.mem_univ _)
+    have optimal := (Context.isLocallyOptimal_iff_of_integrable
+      (continuationContext_integrableAt_of_finite (.of_finite_history E) assessment site payoff
+        fuel _)
+      fun alternative _ => continuationContext_integrableAt_of_finite (.of_finite_history E)
+        assessment site payoff fuel alternative).mp rational alternative (Set.mem_univ _)
     linarith
 
 /-- Sequential rationality of a finite assessment controls every whole

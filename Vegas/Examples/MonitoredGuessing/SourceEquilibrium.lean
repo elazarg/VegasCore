@@ -23,8 +23,8 @@ theorem source_rational_of_opens (assessment : sourceModel.BehavioralAssessment)
     (opens : Opens assessment.strategy) :
     assessment.IsSequentiallyRationalWithin sourcePayoff 3 := by
   intro who site
-  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
-    fun alternative _ => ?_⟩
+  refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   fin_cases who
   · change (assessment.continuationContext site (sourcePayoff alice) 3).value alternative ≤
       (assessment.continuationContext site (sourcePayoff alice) 3).value (assessment.strategy alice)
@@ -58,7 +58,10 @@ theorem source_rational_opens (assessment : sourceModel.BehavioralAssessment)
     Opens assessment.strategy := by
   intro bit guess
   let replacement := (sourceProfile (PMF.pure false) (PMF.pure true)) alice
-  have optimal := (rational alice (sourceAliceSite bit guess)).2.2 replacement (Set.mem_univ _)
+  have optimal := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
+    fun _ _ => (payoffIntegrable_of_finite _ _)).mp
+        (rational alice (sourceAliceSite bit guess)) replacement
+      (Set.mem_univ _)
   change (assessment.continuationContext (sourceAliceSite bit guess) (sourcePayoff alice) 3).value
     replacement ≤ _ at optimal
   rw [source_alice_context, source_alice_context, Profile.update_eq_self] at optimal

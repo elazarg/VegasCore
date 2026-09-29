@@ -532,14 +532,31 @@ theorem no_common_native_spe :
   have twoBound := (two (secondHistory first second) contested_isSubgameRoot ()
     (encodeNativePolicy (recoveryPolicy false))).2.2
   rw [deviation, profileEq] at oneBound twoBound
-  change expect (nativeRun (recoveryPolicy true) (10 + 99) _) _ ≤
-    expect (nativeRun policy (2 + 107) _) _ at oneBound
-  change expect (nativeRun (recoveryPolicy false) (10 + 99) _) _ ≤
-    expect (nativeRun policy (2 + 107) _) _ at twoBound
-  rw [show nativePayoff true = fun final _ =>
-      publicUtility true (nativeResult final.state) from rfl, recovery_value] at oneBound
-  rw [show nativePayoff false = fun final _ =>
-      publicUtility false (nativeResult final.state) from rfl, recovery_value] at twoBound
+  have runIntegrable (preferOne : Bool) (policy : NativePolicy graph) (fuel : Nat) :=
+    payoffIntegrable_of_bounded (nativeRun policy fuel (secondHistory first second))
+      (fun final => publicUtility preferOne (nativeResult final.state))
+      fun final => publicUtility_abs_le preferOne (nativeResult final.state)
+  change GameTheory.extendedExpectedUtility (nativePayoff true) ()
+      (nativeRun (recoveryPolicy true) (10 + 99) (secondHistory first second)) ≤
+    GameTheory.extendedExpectedUtility (nativePayoff true) ()
+      (nativeRun policy (2 + 107) (secondHistory first second)) at oneBound
+  change GameTheory.extendedExpectedUtility (nativePayoff false) ()
+      (nativeRun (recoveryPolicy false) (10 + 99) (secondHistory first second)) ≤
+    GameTheory.extendedExpectedUtility (nativePayoff false) ()
+      (nativeRun policy (2 + 107) (secondHistory first second)) at twoBound
+  replace oneBound := (GameTheory.extendedExpectedUtility_le_iff (runIntegrable true _ _)
+    (runIntegrable true _ _)).mp oneBound
+  replace twoBound := (GameTheory.extendedExpectedUtility_le_iff (runIntegrable false _ _)
+    (runIntegrable false _ _)).mp twoBound
+  change expect (nativeRun (recoveryPolicy true) (10 + 99) _)
+      (fun final => publicUtility true (nativeResult final.state)) ≤
+    expect (nativeRun policy (2 + 107) _)
+      (fun final => publicUtility true (nativeResult final.state)) at oneBound
+  change expect (nativeRun (recoveryPolicy false) (10 + 99) _)
+      (fun final => publicUtility false (nativeResult final.state)) ≤
+    expect (nativeRun policy (2 + 107) _)
+      (fun final => publicUtility false (nativeResult final.state)) at twoBound
+  rw [recovery_value] at oneBound twoBound
   linarith [native_value_sum_le policy 107]
 
 end Vegas.Examples.PendingMenus

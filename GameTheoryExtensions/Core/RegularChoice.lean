@@ -219,20 +219,20 @@ theorem nash_preserved (rule : RegularSelection Action)
     (prescribed : PMF Action)
     (optimal : IsNash (sourceGame continuation) (euPreference utility) (fun _ => prescribed))
     (integrable : ∀ alternative : PMF (Option Action), PayoffIntegrable
-      ((rule.responseLaw alternative).bind continuation) (utility · ())) :
+      ((rule.responseLaw alternative).bind continuation) (utility · ()))
+    (sourceIntegrable : ∀ action, PayoffIntegrable (continuation action) (utility · ()))
+    (prescribedIntegrable : PayoffIntegrable (prescribed.bind continuation) (utility · ())) :
     IsNash (rule.game continuation) (euPreference utility) (fun _ => prescribed.map some) := by
   rw [isNash_iff] at optimal ⊢
   intro who alternative
   cases who
-  have base := optimal () prescribed
-  simp only [euPreference_apply, sourceGame, Profile.update_same] at base
-  refine ⟨integrable _, integrable _, ?_⟩
-  apply rule.optimal_response prescribed continuation (utility · ()) base.1 ?_ (integrable _)
-    alternative (integrable _)
+  refine (euPreference_iff utility () _ _ (integrable _) (integrable _)).mpr ?_
+  apply rule.optimal_response prescribed continuation (utility · ()) prescribedIntegrable ?_
+    (integrable _) alternative (integrable _)
   intro action
   have bound := optimal () (PMF.pure action)
-  simp only [euPreference_apply, sourceGame, Profile.update_same, PMF.pure_bind] at bound
-  exact bound.2.2
+  simp only [sourceGame, Profile.update_same, PMF.pure_bind] at bound
+  exact (euPreference_iff utility () _ _ prescribedIntegrable (sourceIntegrable action)).mp bound
 
 end RegularSelection
 end GameTheory.PendingChoice

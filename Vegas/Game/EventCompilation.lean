@@ -122,8 +122,8 @@ theorem eventGame_approximate_nash_iff
       IsεNash setup.gameForm utility ε profile :=
   ((setup.eventSimulation finite scheduler).isεNash_compileProfile_iff utility ε
     profile (fun _ _ => trivial)).trans (and_iff_left fun _ _ =>
-      payoffIntegrable_of_finite_support _ _
-        (setup.eventGame_play_support_finite finite scheduler _))
+      hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
+        (setup.eventGame_play_support_finite finite scheduler _)))
 
 /-- Every source lower bound against unilateral deviations holds against
 arbitrary asynchronous graph replacements as well. -/

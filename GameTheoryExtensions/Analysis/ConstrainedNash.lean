@@ -141,7 +141,8 @@ theorem exists_pinned_tremble_bestResponses [∀ who, Finite (F.sig.Strategy who
   have comparison := (isNash_iff
     (F := (responseGame free pinned reference epsilon nonnegative small.le).mixed)
     (weaklyPrefers := euPreference utility) residual).mp optimal who alternative
-  replace comparison := comparison.2.2
+  replace comparison := (euPreference_iff _ _ _ _ (responseIntegrable.mixed_of_finite who _)
+    (responseIntegrable.mixed_of_finite who _)).mp comparison
   change expectedUtility utility who
     ((responseGame free pinned reference epsilon nonnegative small.le).mixed.play
       (Profile.update residual who alternative)) ≤

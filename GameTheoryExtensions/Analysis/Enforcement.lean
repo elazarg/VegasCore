@@ -2,6 +2,7 @@
 
 import GameTheory.Protocol.BehavioralAssessment
 import GameTheory.Analysis.IncentiveCone
+import GameTheoryExtensions.Analysis.IncentiveComparison
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
 
@@ -104,9 +105,11 @@ theorem holds_of_sanction (comparison : IncentiveComparison Outcome) (base : Out
     comparison.Holds (sanctionedUtility base sanction penalty) := by
   have bound := regret_le comparison base sanction prescribedIntegrable alternativeIntegrable
     penalty_nonneg gain_bound detection no_sanction
-  exact ⟨payoffIntegrable_sanctionedUtility prescribedIntegrable _ _,
-    payoffIntegrable_sanctionedUtility alternativeIntegrable _ _,
-    sub_nonpos.mp (bound.trans (sub_nonpos.mpr sufficient))⟩
+  exact (IncentiveComparison.holds_iff_of_integrable comparison
+    (sanctionedUtility base sanction penalty)
+    (payoffIntegrable_sanctionedUtility prescribedIntegrable sanction penalty)
+    (payoffIntegrable_sanctionedUtility alternativeIntegrable sanction penalty)).mpr
+      (sub_nonpos.mp (bound.trans (sub_nonpos.mpr sufficient)))
 
 theorem strictly_prefers_of_sanction (comparison : IncentiveComparison Outcome)
     (base : Outcome → ℝ) (sanction : Set Outcome) {penalty gain probability : ℝ}
@@ -247,16 +250,25 @@ theorem isSequentiallyRationalAt_of_sanction
     assessment.IsSequentiallyRationalAt site
       (assessment.continuationContext site
         (Enforcement.sanctionedUtility base sanction penalty) fuel) := by
-  refine ⟨Enforcement.payoffIntegrable_sanctionedUtility (integrable _) _ _,
-    fun alternative _ => Enforcement.payoffIntegrable_sanctionedUtility (integrable _) _ _,
-    fun alternative _ => ?_⟩
+  have sanctioned (policy : M.BehavioralPolicy who) :
+      (assessment.continuationContext site
+        (Enforcement.sanctionedUtility base sanction penalty) fuel).IntegrableAt policy :=
+    Enforcement.payoffIntegrable_sanctionedUtility (integrable policy) sanction penalty
+  refine (Context.isLocallyOptimal_iff_of_integrable (sanctioned _)
+    fun alternative _ => sanctioned alternative).mpr fun alternative _ => ?_
   let comparison : IncentiveComparison E.History := {
     prescribed := (assessment.continuationContext site base fuel).outcome
       (assessment.strategy who)
     alternative := (assessment.continuationContext site base fuel).outcome alternative }
-  exact (Enforcement.holds_of_sanction comparison base sanction (integrable _) (integrable _)
-    penalty_nonneg (gain_bound alternative) (detection alternative) no_sanction
-    (sufficient alternative)).2.2
+  exact (IncentiveComparison.holds_iff_of_integrable comparison
+    (Enforcement.sanctionedUtility base sanction penalty)
+    (Enforcement.payoffIntegrable_sanctionedUtility (integrable (assessment.strategy who))
+      sanction penalty)
+    (Enforcement.payoffIntegrable_sanctionedUtility (integrable alternative) sanction penalty)).mp
+      (Enforcement.holds_of_sanction comparison base sanction
+        (integrable (assessment.strategy who)) (integrable alternative)
+        penalty_nonneg (gain_bound alternative) (detection alternative) no_sanction
+        (sufficient alternative))
 
 end Protocol.InformationModel.BehavioralAssessment
 end GameTheory

@@ -126,7 +126,8 @@ theorem native_not_supported_failing_opening
           nativeScheduler))) site
     (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
       nativeScheduler who site)
-    (fun history => nativeUtility who history.state) (2 * nativeHorizon) rational choice
+    (fun history => nativeUtility who history.state) (2 * nativeHorizon) rational
+    (fun _ => (payoffIntegrable_of_finite _ _)) choice
     alternative (-4) (-1) (by norm_num)
   · intro history
     refine expect_le_const _ _ ((payoffIntegrable_map_iff _ _ _).mp

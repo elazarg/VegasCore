@@ -190,8 +190,8 @@ theorem eventScheduling_approximate_nash_iff
   refine ((graph.eventSchedulingSimulation ordered finite inputs finiteInputs scheduler
     ).isεNash_compileProfile_iff utility ε profile (fun _ _ => trivial)).trans ?_
   exact and_iff_left fun who replacement =>
-    payoffIntegrable_of_finite_support _ _
+    hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
       (graph.gameForm_play_support_finite inputs finiteInputs scheduler _
-        (finite.profileFiniteSupport _))
+        (finite.profileFiniteSupport _)))
 
 end Vegas.EventGraph

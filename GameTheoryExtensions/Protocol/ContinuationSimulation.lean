@@ -4,7 +4,7 @@ import GameTheory.Analysis.Protocol.Sequential
 import GameTheory.Analysis.Protocol.Incentives
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Analysis.IncentiveComparison
 
 /-! # Continuation simulation by finite mixtures
 
@@ -126,24 +126,27 @@ def map {Observed : Type*} (simulation : ContinuationSimulation source target)
   finite := simulation.finite
 
 /-- One player's source incentive inequalities imply each simulated target
-inequality of that player, integrability included. -/
+inequality of that player. The source laws must be integrable: a finite mixture
+of comparisons whose values are opposite infinities has no expectation. -/
 theorem holds (simulation : ContinuationSimulation source target) (who : ι)
     (utility : Outcome → ℝ) (respected : ∀ original, (source who original).Holds utility)
+    (integrable : ∀ original, PayoffIntegrable (source who original).prescribed utility ∧
+      PayoffIntegrable (source who original).alternative utility)
     (deviation : Target who) : (target who deviation).Holds utility := by
   have prescribed : PayoffIntegrable (target who deviation).prescribed utility := by
     rw [simulation.prescribed]
     exact payoffIntegrable_bind_of_finite_support _ _ _ (simulation.finite who deviation)
-      fun original _ => (respected original).1
+      fun original _ => (integrable original).1
   have alternative : PayoffIntegrable (target who deviation).alternative utility := by
     rw [simulation.alternative]
     exact payoffIntegrable_bind_of_finite_support _ _ _ (simulation.finite who deviation)
-      fun original _ => (respected original).2.1
-  refine ⟨prescribed, alternative, ?_⟩
-  simp only [expectedUtility]
+      fun original _ => (integrable original).2
+  refine (IncentiveComparison.holds_iff_of_integrable _ utility prescribed alternative).mpr ?_
   rw [simulation.prescribed] at prescribed ⊢
   rw [simulation.alternative] at alternative ⊢
   rw [expect_bind_tower _ _ _ prescribed, expect_bind_tower _ _ _ alternative]
-  exact expect_mono (fun original _ => (respected original).2.2)
+  exact expect_mono (fun original _ => (IncentiveComparison.holds_iff_of_integrable _ utility
+      (integrable original).1 (integrable original).2).mp (respected original))
     (payoffIntegrable_bind_conditionalExpectation _ _ _ alternative)
     (payoffIntegrable_bind_conditionalExpectation _ _ _ prescribed)
 
@@ -151,9 +154,12 @@ theorem holds (simulation : ContinuationSimulation source target) (who : ι)
 The source comparisons may involve different information sites and deviations. -/
 theorem preserves (simulation : ContinuationSimulation source target)
     (utility : Outcome → ι → ℝ)
-    (respected : ∀ who deviation, (source who deviation).Holds (utility · who)) :
+    (respected : ∀ who deviation, (source who deviation).Holds (utility · who))
+    (integrable : ∀ who deviation,
+      PayoffIntegrable (source who deviation).prescribed (utility · who) ∧
+        PayoffIntegrable (source who deviation).alternative (utility · who)) :
     ∀ who deviation, (target who deviation).Holds (utility · who) :=
-  fun who => simulation.holds who (utility · who) (respected who)
+  fun who => simulation.holds who (utility · who) (respected who) (integrable who)
 
 /-- For finite outcomes, law-pair simulation supplies the exact semantic
 criterion's cone inclusion. The simulation theorem itself needs no finiteness
@@ -163,7 +169,8 @@ theorem difference_mem_cone [Fintype Outcome]
     (target who deviation).difference ∈ IncentiveComparison.cone (source who) := by
   rw [IncentiveComparison.mem_cone_iff]
   intro utility respected
-  exact simulation.holds who utility respected deviation
+  exact simulation.holds who utility respected
+    (fun _ => ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _⟩) deviation
 
 section Protocol
 
@@ -184,11 +191,16 @@ theorem sequentialRationality
       (N.assessmentComparison targetObserve targetFuel targetAssessment))
     (utility : Observation → Player → ℝ)
     (rational : sourceAssessment.IsSequentiallyRationalWithin
-      (fun who history => utility (sourceObserve history) who) sourceFuel) :
+      (fun who history => utility (sourceObserve history) who) sourceFuel)
+    (integrable : ∀ who deviation,
+      PayoffIntegrable (M.assessmentComparison sourceObserve sourceFuel sourceAssessment who
+          deviation).prescribed (utility · who) ∧
+        PayoffIntegrable (M.assessmentComparison sourceObserve sourceFuel sourceAssessment who
+          deviation).alternative (utility · who)) :
     targetAssessment.IsSequentiallyRationalWithin
       (fun who history => utility (targetObserve history) who) targetFuel := by
   rw [N.isSequentiallyRationalWithin_iff_holds targetObserve targetFuel]
-  apply simulation.preserves utility
+  apply simulation.preserves utility _ integrable
   exact (M.isSequentiallyRationalWithin_iff_holds sourceObserve sourceFuel
     sourceAssessment utility).mp rational
 
@@ -206,11 +218,16 @@ theorem sequentialEquilibrium
     (utility : Observation → Player → ℝ)
     (equilibrium : sourceAssessment.IsSequentialEquilibriumFor sourceAntichain
       (fun who site => sourceAssessment.continuationContext site
-        (fun history => utility (sourceObserve history) who) sourceFuel)) :
+        (fun history => utility (sourceObserve history) who) sourceFuel))
+    (integrable : ∀ who deviation,
+      PayoffIntegrable (M.assessmentComparison sourceObserve sourceFuel sourceAssessment who
+          deviation).prescribed (utility · who) ∧
+        PayoffIntegrable (M.assessmentComparison sourceObserve sourceFuel sourceAssessment who
+          deviation).alternative (utility · who)) :
     targetAssessment.IsSequentialEquilibriumFor targetAntichain
       (fun who site => targetAssessment.continuationContext site
         (fun history => utility (targetObserve history) who) targetFuel) :=
-  ⟨simulation.sequentialRationality utility equilibrium.1, targetConsistent⟩
+  ⟨simulation.sequentialRationality utility equilibrium.1 integrable, targetConsistent⟩
 
 end Protocol
 

@@ -67,6 +67,10 @@ theorem isSingleMoverBehavioralSubgamePerfect_of_root_mixture_laws
         (N.runSingleMoverBehavioralFrom targetSingle (Profile.update
           (Profile.map (target := N.behavioralSignature) compile profile) who alternative)
           targetBound targetRoot))
+    (sourceIntegrable : ∀ root, M.IsSubgameRoot root → ∀ who (replacement : M.BehavioralPolicy who),
+      UtilityIntegrable (fun history player => utility (sourceObserve history) player) who
+        (M.runSingleMoverBehavioralFrom single (Profile.update profile who replacement)
+          sourceBound root))
     (perfect : M.IsSingleMoverBehavioralSubgamePerfect single sourceBounded profile
       (fun history who => utility (sourceObserve history) who)) :
     N.IsSingleMoverBehavioralSubgamePerfect targetSingle targetBounded
@@ -78,7 +82,10 @@ theorem isSingleMoverBehavioralSubgamePerfect_of_root_mixture_laws
   have honestIntegrable := integrable targetRoot proper who
     (Profile.map (target := N.behavioralSignature) compile profile who)
   rw [Profile.update_eq_self] at honestIntegrable
-  refine ⟨honestIntegrable, integrable targetRoot proper who alternative, ?_⟩
+  refine ⟨honestIntegrable.hasExpectation,
+    (integrable targetRoot proper who alternative).hasExpectation,
+    (extendedExpectedUtility_le_iff (integrable targetRoot proper who alternative)
+      honestIntegrable).mpr ?_⟩
   obtain ⟨roots, honest, deviations⟩ := coverage targetRoot proper
   obtain ⟨replacements, deviated⟩ := deviations who alternative
   have deviatedIntegrable := integrable targetRoot proper who alternative
@@ -99,7 +106,11 @@ theorem isSingleMoverBehavioralSubgamePerfect_of_root_mixture_laws
   rw [expect_bind_tower _ _ _ branch]
   apply expect_le_const _ _ (payoffIntegrable_bind_conditionalExpectation _ _ _ branch)
   intro replacement _
-  have optimal := (perfect root.val root.property who replacement).2.2
+  have rootBaseline := sourceIntegrable root.val root.property who (profile who)
+  rw [Profile.update_eq_self] at rootBaseline
+  have optimal := (extendedExpectedUtility_le_iff
+    (sourceIntegrable root.val root.property who replacement) rootBaseline).mp
+      (perfect root.val root.property who replacement).2.2
   simp only [expectedUtility] at optimal
   rw [expect_map, expect_map]
   exact optimal

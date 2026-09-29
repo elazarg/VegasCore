@@ -357,10 +357,11 @@ theorem BehavioralAssessmentConvergesPointwise.rationalAt_of_optimal_responses
       ((sequence n).continuationContext site payoff fuel).value alternative ≤
         ((sequence n).continuationContext site payoff fuel).value (responses n)) :
     assessment.IsSequentiallyRationalAt site (assessment.continuationContext site payoff fuel) := by
-  refine ⟨continuationContext_integrableAt_of_finite transitions assessment site payoff fuel _,
+  refine (Context.isLocallyOptimal_iff_of_integrable
+    (continuationContext_integrableAt_of_finite transitions assessment site payoff fuel _)
     fun alternative _ =>
-      continuationContext_integrableAt_of_finite transitions assessment site payoff fuel _,
-    fun alternative _ => ?_⟩
+      continuationContext_integrableAt_of_finite transitions assessment site payoff fuel _).mpr
+    fun alternative _ => ?_
   exact le_of_tendsto_of_tendsto
     (converges.context_value transitions site payoff fuel (fun _ => alternative) alternative
       (fun _ => pmfConvergesPointwise_const _))

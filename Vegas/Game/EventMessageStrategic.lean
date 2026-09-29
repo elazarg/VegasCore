@@ -6,6 +6,7 @@ import Vegas.Pending.EventStrategicLaw
 import GameTheory.Core.MixtureUtilitySimulation
 import GameTheory.Core.MixtureSimulationComposition
 import GameTheoryExtensions.Core.ConsideredDeviation
+import Vegas.Source.FiniteSupport
 
 /-! # Strategic correctness of asynchronous source-to-message compilation
 
@@ -298,11 +299,11 @@ theorem eventPendingGame_approximate_nash_iff
   exact ((setup.eventPendingSimulation finite mode runtime feasible roster reactionRounds wire
     wireFinite order orderFinite).considered_deviations_iff_isεNash optionUtility ε
       profile).trans (and_iff_left fun who replacement replacementFinite =>
-        payoffIntegrable_of_finite_support _ _
+        hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
           (setup.eventPendingGame_play_support_finite mode runtime roster reactionRounds
             wireFinite orderFinite _ (setup.compileEventPending_update_finiteSupport finite mode
               runtime roster reactionRounds wire order profile who replacement
-                replacementFinite)))
+                replacementFinite))))
 
 /-- A source best response compiles to a best response against the same
 opponents compiled, against every finitely branching native deviation. Only one
@@ -340,6 +341,8 @@ theorem eventPendingGame_isBestResponse_compileProfile
         (setup.eventPendingGame_play_support_finite mode runtime roster reactionRounds
           wireFinite orderFinite _ (setup.compileEventPending_update_finiteSupport finite mode
             runtime roster reactionRounds wire order profile who replacement replacementFinite)))
+      (fun _ => payoffIntegrable_of_finite_support _ _
+        (setup.gameForm_play_support_finite finite _))
 
 /-- A dominant source policy compiles to a best response against every compiled
 opponent profile and every finitely branching native deviation. The environment
@@ -436,11 +439,20 @@ theorem eventPendingGame_isStrongNash_of_compileProfile
   let simulation := setup.eventPendingSimulation finite mode runtime feasible roster
     reactionRounds wire wireFinite order orderFinite
   rw [← isεGroupNash_nonemptyGroups_iff] at strong ⊢
+  have sourceIntegrable (profile : BehavioralProfile setup.program) (who : Player) :=
+    payoffIntegrable_of_finite_support (setup.gameForm.play profile)
+      ((fun observation => optionUtility observation who) ∘ some)
+      (setup.gameForm_play_support_finite finite profile)
+  have targetIntegrable (profile : BehavioralProfile setup.program) (who : Player) :=
+    (simulation.integrable_compile_iff profile
+      (fun observation => optionUtility observation who)).mpr (sourceIntegrable profile who)
   exact GameForm.isεGroupNash_of_compileProfile simulation.compileStrategy
-    (fun profile who => simulation.integrable_compile_iff profile
-      (fun observation => optionUtility observation who))
-    (fun profile who _ _ =>
-      simulation.expect_compile profile (fun observation => optionUtility observation who))
+    (fun profile who => ⟨fun _ => hasExpectation_of_payoffIntegrable (sourceIntegrable profile who),
+      fun _ => hasExpectation_of_payoffIntegrable (targetIntegrable profile who)⟩)
+    (fun profile who _ _ => (extendedExpect_eq_expect (targetIntegrable profile who)).trans
+      ((congrArg _ (simulation.expect_compile profile
+        (fun observation => optionUtility observation who))).trans
+          (extendedExpect_eq_expect (sourceIntegrable profile who)).symm))
     (nonemptyGroups Player) ε profile strong
 
 end Vegas.SourceProgram.Setup

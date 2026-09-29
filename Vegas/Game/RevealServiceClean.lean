@@ -160,6 +160,41 @@ theorem continuationContext_net_integrable
     payoffIntegrable_congr_on_support fun final supported => (same final supported).symm⟩
 
 include reveals observer openable in
+/-- Deposits leave every retained continuation's expectation unchanged. -/
+theorem continuationContext_net_hasValue
+    (assessment : (information setup leaks bounds watcher).BehavioralAssessment)
+    (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
+    (who : Player) (site : (information setup leaks bounds watcher).InformationSite who)
+    (alternative : (information setup leaks bounds watcher).BehavioralPolicy who)
+    (fuel : Nat)
+    (enough : ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
+      2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
+    (assessment.continuationContext site
+      (fun final => netUtility setup leaks watcher base deposit final.state who) fuel).HasValueAt
+        alternative ↔
+      (assessment.continuationContext site (fun final => base final.state who) fuel).HasValueAt
+        alternative :=
+  hasExpectation_congr_on_support (continuationContext_net_eq_on_support setup leaks bounds
+    watcher reveals observer openable assessment base deposit who site alternative fuel enough)
+
+include reveals observer openable in
+theorem continuationContext_net_extendedValue
+    (assessment : (information setup leaks bounds watcher).BehavioralAssessment)
+    (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
+    (who : Player) (site : (information setup leaks bounds watcher).InformationSite who)
+    (alternative : (information setup leaks bounds watcher).BehavioralPolicy who)
+    (fuel : Nat)
+    (enough : ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
+      2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
+    (assessment.continuationContext site
+      (fun final => netUtility setup leaks watcher base deposit final.state who) fuel).extendedValue
+        alternative =
+      (assessment.continuationContext site (fun final => base final.state who) fuel).extendedValue
+        alternative :=
+  extendedExpect_congr_on_support (continuationContext_net_eq_on_support setup leaks bounds
+    watcher reveals observer openable assessment base deposit who site alternative fuel enough)
+
+include reveals observer openable in
 /-- Charging only departure evidence preserves exactly the C equilibria;
 even retained off-equilibrium continuations are free of charges. -/
 theorem sequential_equilibrium_net_iff
@@ -175,11 +210,11 @@ theorem sequential_equilibrium_net_iff
           (2 * horizon setup watcher + 1)) := by
   have same who (site : (information setup leaks bounds watcher).InformationSite who) :=
     Context.isLocallyOptimal_congr (allowed := Set.univ) (choice := assessment.strategy who)
-      (fun policy => continuationContext_net_integrable setup leaks bounds watcher reveals observer
+      (fun policy => continuationContext_net_hasValue setup leaks bounds watcher reveals observer
         openable assessment base deposit who site policy (2 * horizon setup watcher + 1)
         (fun _ => Nat.sub_le ..))
-      (fun policy _ => continuationContext_net_value setup leaks bounds watcher reveals observer
-        openable assessment base deposit who site policy (2 * horizon setup watcher + 1)
+      (fun policy => continuationContext_net_extendedValue setup leaks bounds watcher reveals
+        observer openable assessment base deposit who site policy (2 * horizon setup watcher + 1)
         (fun _ => Nat.sub_le ..))
   constructor
   · rintro ⟨rational, consistent⟩

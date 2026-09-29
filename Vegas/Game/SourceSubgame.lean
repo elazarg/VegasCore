@@ -120,16 +120,24 @@ theorem protocol_isSubgamePerfect_iff (program : SourceProgram Player L Γ O)
   · intro perfect history proper who alternative
     have bound := (perfect history proper who
       (purePolicyEquiv program admission initial who alternative)).2.2
-    rw [← Profile.map_update, protocol_continuationValue_eq,
-      protocol_continuationValue_eq] at bound
+    rw [← Profile.map_update, ExecutionProtocol.historyBackwardExtendedValue_le_iff _
+      (protocol_backwardLaw_integrable program admission initial _ utility history who)
+      (protocol_backwardLaw_integrable program admission initial profile utility history who),
+      protocol_continuationValue_eq, protocol_continuationValue_eq] at bound
     exact bound
   · intro optimal history proper who alternative
     obtain ⟨sourceAlternative, rfl⟩ :=
       (purePolicyEquiv program admission initial who).surjective alternative
     rw [← Profile.map_update]
-    refine ⟨protocol_backwardLaw_integrable program admission initial _ utility history who,
-      protocol_backwardLaw_integrable program admission initial profile utility history who, ?_⟩
-    rw [protocol_continuationValue_eq, protocol_continuationValue_eq]
+    refine ⟨hasExpectation_of_payoffIntegrable
+        (protocol_backwardLaw_integrable program admission initial _ utility history who),
+      hasExpectation_of_payoffIntegrable
+        (protocol_backwardLaw_integrable program admission initial profile utility history who),
+      ?_⟩
+    rw [ExecutionProtocol.historyBackwardExtendedValue_le_iff _
+      (protocol_backwardLaw_integrable program admission initial _ utility history who)
+      (protocol_backwardLaw_integrable program admission initial profile utility history who),
+      protocol_continuationValue_eq, protocol_continuationValue_eq]
     exact optimal history proper who sourceAlternative
 
 end Vegas.SourceProgram
