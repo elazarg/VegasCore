@@ -1,22 +1,16 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensionsTests.CoalitionSimulation
 import GameTheoryExtensionsTests.CoalescingEquilibrium
 import GameTheoryExtensionsTests.CorrelatedSequentialGap
 import GameTheoryExtensionsTests.ComponentCommunication
 import GameTheoryExtensionsTests.CoupledIncentives
-import GameTheoryExtensionsTests.ContinuationMenus
-import GameTheoryExtensionsTests.ContinuationTransfer
 import GameTheoryExtensionsTests.ContinuationSimulation
 import GameTheoryExtensionsTests.ContinuationDecision
 import GameTheoryExtensionsTests.ObservationRequirement
 import GameTheoryExtensionsTests.ActionRestriction
 import GameTheoryExtensionsTests.ConsistencyCompletion
-import GameTheoryExtensionsTests.IrreversibleFailure
-import GameTheoryExtensionsTests.InterleavedMenus
 import GameTheoryExtensionsTests.IncentiveCone
 import GameTheoryExtensionsTests.InducedInformation
-import GameTheoryExtensionsTests.MixtureSimulation
 import GameTheoryExtensionsTests.OffPathDisclosureLaws
 import GameTheoryExtensionsTests.ObservationQuotients
 import GameTheoryExtensionsTests.ObservationErasure
@@ -38,8 +32,6 @@ import GameTheoryExtensionsTests.DecisionRecall
 import GameTheoryExtensionsTests.MonitoredSignaling
 import GameTheoryExtensionsTests.PendingChoice
 import GameTheoryExtensionsTests.RegularChoice
-import GameTheoryExtensionsTests.SelectiveStopping
-import GameTheoryExtensionsTests.UtilitySimulation
 import GameTheoryExtensionsTests.ZeroSumOutcomeLaws
 
 /-! # Regression tests for reusable game-theoretic extensions -/

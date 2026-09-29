@@ -37,6 +37,7 @@ def first : GameTheory.ContinuationSimulation source middle where
   alternatives _ _ := coin
   prescribed _ _ := rfl
   alternative _ _ := rfl
+  finite _ _ := Set.toFinite _
 
 def second : GameTheory.ContinuationSimulation middle target :=
   .ofMap (fun _ _ => ()) (fun _ _ => rfl) (fun _ _ => rfl)
@@ -98,7 +99,7 @@ theorem separate_law_matching_insufficient :
   · simp only [crossed, PMF.pure_bind, neutral]
   · simp only [crossed, PMF.pure_bind, neutral]
   · intro utility branch
-    exact le_refl _
-  · norm_num [crossed, IncentiveComparison.Holds]
+    exact ⟨payoffIntegrable_pure _ _, payoffIntegrable_pure _ _, le_refl _⟩
+  · norm_num [crossed, IncentiveComparison.Holds, expect_pure]
 
 end GameTheoryExtensionsTests.ContinuationSimulation

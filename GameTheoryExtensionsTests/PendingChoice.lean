@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Core.PendingChoice
-import GameTheoryExtensionsTests.ContinuationMenus
+import GameTheory.Tests.ContinuationMenus
 
 /-! # Inclusion can preserve or destroy a common optimal response
 
@@ -16,7 +16,9 @@ noncomputable section
 namespace GameTheoryExtensionsTests.PendingChoice
 
 open GameTheory GameTheory.Math.Probability
-open ContinuationMenus
+open GameTheory.Tests.ContinuationMenus
+
+deriving instance Fintype for Outcome
 
 theorem same_submission_optimal (retained : PMF Outcome)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1) :
@@ -31,24 +33,30 @@ theorem same_submission_optimal (retained : PMF Outcome)
     rw [isNash_iff]
     intro who alternative
     cases who
+    rw [euPreference_apply]
+    refine ⟨payoffIntegrable_of_finite (α := Outcome) _ _,
+      payoffIntegrable_of_finite (α := Outcome) _ _, ?_⟩
     change expect (alternative.bind PMF.pure) (utility · ()) ≤
       expect ((PMF.pure Outcome.a).bind PMF.pure) (utility · ())
     rw [PMF.bind_pure, PMF.pure_bind, expect_pure]
-    exact FinDist.expect_le_of_forall _ _ _ (fun outcome _ => best outcome)
+    exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ (fun outcome _ => best outcome)
   constructor
   · simpa only [PMF.pure_map] using
       PendingChoice.nash_preserved weight nonnegative atMostOne retained PMF.pure
         utilityB (PMF.pure Outcome.a)
         (sourceOptimal utilityB (by intro outcome; cases outcome <;> norm_num [utilityB]))
+        (fun _ => payoffIntegrable_of_finite _ _)
   · simpa only [PMF.pure_map] using
       PendingChoice.nash_preserved weight nonnegative atMostOne retained PMF.pure
         utilityC (PMF.pure Outcome.a)
         (sourceOptimal utilityC (by intro outcome; cases outcome <;> norm_num [utilityC]))
+        (fun _ => payoffIntegrable_of_finite _ _)
 
 inductive Response where
   | fresh (outcome : Outcome)
   | replay (first : Bool)
   | silent
+  deriving Fintype
 
 def retained : PMF Outcome :=
   mix (1 / 2) (by norm_num) (by norm_num) (PMF.pure .b) (PMF.pure .c)
@@ -72,13 +80,13 @@ theorem weightedCopies_sum (response : Response) :
       expect (weightedCopies response) (utilityC · ()) ≤ 36 / 11 := by
   cases response with
   | fresh outcome =>
-      cases outcome <;> norm_num [weightedCopies, retained, FinDist.expect_mix,
+      cases outcome <;> norm_num [weightedCopies, retained, expect_mix_of_finite,
         expect_pure, utilityB, utilityC]
   | replay first =>
-      cases first <;> norm_num [weightedCopies, FinDist.expect_mix,
+      cases first <;> norm_num [weightedCopies, expect_mix_of_finite,
         expect_pure, utilityB, utilityC]
   | silent =>
-      norm_num [weightedCopies, retained, FinDist.expect_mix,
+      norm_num [weightedCopies, retained, expect_mix_of_finite,
         expect_pure, utilityB, utilityC]
 
 /-- Statelessness alone does not ensure a utility-independent optimal
@@ -89,8 +97,8 @@ theorem no_common_weighted_replay_response :
         IsNash replayGame (euPreference utilityC) profile := by
   rintro ⟨profile, bestB, bestC⟩
   rw [isNash_iff] at bestB bestC
-  have first := bestB () (PMF.pure (.replay true))
-  have second := bestC () (PMF.pure (.replay false))
+  have first := (bestB () (PMF.pure (.replay true))).2.2
+  have second := (bestC () (PMF.pure (.replay false))).2.2
   change (expect ((PMF.pure (Response.replay true)).bind weightedCopies) (utilityB · ())) ≤
     expect ((profile ()).bind weightedCopies) (utilityB · ()) at first
   change (expect ((PMF.pure (Response.replay false)).bind weightedCopies) (utilityC · ())) ≤
@@ -98,9 +106,12 @@ theorem no_common_weighted_replay_response :
   have total :
       expect ((profile ()).bind weightedCopies) (utilityB · ()) +
         expect ((profile ()).bind weightedCopies) (utilityC · ()) ≤ 36 / 11 := by
-    rw [FinDist.expect_bind, FinDist.expect_bind, ← FinDist.expect_add]
-    exact FinDist.expect_le_of_forall _ _ _ (fun response _ => weightedCopies_sum response)
-  norm_num [PMF.pure_bind, weightedCopies, FinDist.expect_mix,
+    rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _),
+      expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _),
+      ← expect_add (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
+    exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _
+      (fun response _ => weightedCopies_sum response)
+  norm_num [PMF.pure_bind, weightedCopies, expect_mix_of_finite,
     expect_pure, utilityB, utilityC] at first second
   change (5 / 3 : ℝ) ≤ expect ((profile ()).bind weightedCopies) (utilityB · ()) at first
   change (5 / 3 : ℝ) ≤ expect ((profile ()).bind weightedCopies) (utilityC · ()) at second

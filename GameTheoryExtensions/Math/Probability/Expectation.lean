@@ -55,6 +55,12 @@ theorem expect_ite_eq {α : Type*} [DecidableEq α] (μ : PMF α) (a : α) (c : 
   rw [tsum_eq_single a fun b different => by simp [Ne.symm different]]
   simp
 
+/-- On a finite carrier the mixture rule needs no integrability premise. -/
+theorem expect_mix_of_finite {α : Type*} [Finite α] (t : ℝ) (h0 : 0 ≤ t) (h1 : t ≤ 1)
+    (μ ν : PMF α) (f : α → ℝ) :
+    expect (mix t h0 h1 μ ν) f = t * expect μ f + (1 - t) * expect ν f :=
+  expect_mix t h0 h1 μ ν f (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
+
 /-- A constant factor on the right leaves the expectation. -/
 theorem expect_mul_const {α : Type*} (μ : PMF α) (f : α → ℝ) (c : ℝ) :
     expect μ (fun a => f a * c) = expect μ f * c := by

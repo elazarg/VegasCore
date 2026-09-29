@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensionsTests.IrreversibleFailure
+import GameTheory.Tests.IrreversibleFailure
 
 /-! # Experiments with preservation contracts
 
@@ -103,7 +103,7 @@ theorem scoped_does_not_imply_uniform :
     cases impossible
 
 open GameTheory
-open IrreversibleFailure
+open GameTheory.Tests.IrreversibleFailure
 
 def sourceSPE (prefer : Bool) (profile : Profile (model true).strategicSignature) : Prop :=
   (model true).IsSubgamePerfect (terminates true) profile (payoff true prefer)
