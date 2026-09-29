@@ -116,13 +116,13 @@ theorem sourceServiceLastPolicy_commit_opportunity
     simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
       ReactiveApplication.invoke, ReactiveApplication.Execution.activation_samples,
-      PMF.bind_map]
+      PMF.bind_map, Function.comp_def]
     rfl
   change ((runtime setup).runInteractionPlan leaks players network
     (.player owner :: remaining.map ServiceInstruction.player ++
       [.includeLatest event owner]) execution).map result = _
   rw [List.cons_append, runInteractionPlan, PMF.map_bind, step, PMF.bind_bind]
-  simp only [PMF.bind_map]
+  simp only [PMF.bind_map, Function.comp_def]
   let expected := (commitKernel profile (source.view owner)).map fun choice =>
     (execution.application.config.complete event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
@@ -372,7 +372,7 @@ private theorem binding_opportunity_provenance
   simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
     ReactiveApplication.invoke, ReactiveApplication.Execution.activation_samples,
-    PMF.bind_map, PMF.bind_bind] at reached
+    PMF.bind_map, PMF.bind_bind, Function.comp_def] at reached
   obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   let activated := current.sampledActivation app owner sample
   have physical (response : app.Action)

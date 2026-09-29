@@ -41,7 +41,7 @@ private theorem decoded_prefix_law
   have law := setup.encoded_prefix_state admission
     (setup.decodeBehavioralProfile admission profile) admitted count
   rw [encoded] at law
-  simpa only [PMF.bind_map, PMF.map_bind] using law
+  simpa only [PMF.bind_map, PMF.map_bind, Function.comp_def] using law
 
 private theorem prefix_observation_site
     (profile : Profile (setup.informationModel admission).behavioralSignature)
@@ -85,9 +85,6 @@ private theorem prefix_observation_site
     · simpa only [ExecutionProtocol.initHistory, ExecutionProtocol.Trace.length, zero_add]
         using length
   exact (setup.common_decision_depth admission who site ⟨history, same.symm⟩).symm.trans length
-
-variable [∀ who (site : (setup.informationModel admission).InformationSite who),
-  Fintype ((setup.informationModel admission).InformationHistory who site.1)]
 
 private theorem comparison_prefix_laws
     (assessment : (setup.informationModel admission).BehavioralAssessment)

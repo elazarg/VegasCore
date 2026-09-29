@@ -29,6 +29,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  [setup.FiniteInitialLaw] [leaks.FiniteSupport]
   (bounds : MessageBounds (graph setup)) (watcher : Player)
   (base : (application setup leaks).ProtocolState → Player → ℝ)
 

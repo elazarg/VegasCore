@@ -269,7 +269,7 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (fun law : PMF app.ProtocolState =>
         (law.toOuterMeasure {s | departureAtState setup leaks owner s}).toReal)
     exactLaw
-  rw [FinDist.probOf_map, FinDist.probOf_map] at mapped
+  rw [PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply] at mapped
   exact monitored.trans_eq mapped.symm
 
 end Vegas

@@ -215,7 +215,8 @@ private theorem initial_exact (initial : (application setup leaks).Execution)
     cases selected with
     | none => change True ↔ True; rfl
     | some slot => change 0 ≤ slot.val ↔ True; simp
-  simpa only [all, FinDist.condOn_univ] using dormant
+  rw [filter_of_support_subset _ _ _ fun _ _ => by rw [all]; exact Set.mem_univ _]
+  exact dormant
 
 variable [Fintype Player]
 
@@ -468,7 +469,7 @@ private theorem frame_run
         PMF.pure_bind, ReactiveApplication.dispatch, actor,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -748,8 +749,7 @@ theorem roster_response_posterior
         0 = Set.univ := by
       ext mode
       cases mode <;> simp [ReactiveApplication.remainingOpeningSlots]
-    rw [exactModes]
-    simp only [all, FinDist.condOn_univ]
+    rw [exactModes, filter_of_support_subset _ _ _ fun _ _ => by rw [all]; exact Set.mem_univ _]
     exact full mode
   obtain ⟨selected, frame, past, recorded, absent, possible, exactModes⟩ :=
     frame_run setup leaks bounds rosters initial initial event owner granted ownedEvent

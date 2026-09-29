@@ -43,7 +43,7 @@ private theorem iterate_kernel_map {A B : Type}
 /-- Every source-compatible alias policy has the exact source protocol-state law
 at each prefix, including private setup cells and source action history. -/
 theorem run_source_prefix_option_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
@@ -195,6 +195,7 @@ theorem run_source_prefix_option_law
             activeCheckpoint.reveal_response (bounds.withInitialValues (initialLaw setup)) players
               watcher watcherPolicy published selected event eventRank actor outputEq codeEq node
               (fun ref => refsBefore ref index) decoded granted response member
+          simp only [Function.comp_apply]
           rw [runInteractionPlan_append, afterLaw, PMF.pure_bind]
           have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs
@@ -220,7 +221,7 @@ theorem run_source_prefix_option_law
 history runner. The source takes one additional step to draw its private setup;
 the native service starts from the same initialized finite law. -/
 theorem initialized_prefix_source_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)
@@ -264,7 +265,7 @@ theorem initialized_prefix_source_law
     count setup.initialLaw
     (fun initial => PMF.pure
       (some (ProtocolState.entry setup.program (setup.initialConfig initial))))
-  rw [← PMF.bind_pure_comp, Function.comp_def] at split
+  conv_rhs => rw [← PMF.bind_pure_comp, Function.comp_def]
   rw [split, initialLaw, PMF.bind_map, PMF.map_bind]
   apply bind_congr_on_support _
   intro initial supported
@@ -289,7 +290,7 @@ theorem initialized_prefix_source_law
 including arbitrary correlated private setup and every choice of alias weight.
 The right side uses the supplied legal source protocol profile itself. -/
 theorem compiled_plan_prefix_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)

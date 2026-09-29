@@ -209,8 +209,10 @@ theorem run_source_prefix_focal_recall
                 rightActive.reveal_response bounds rightPlayers watcher rightWatcher published
                   selected event eventRank actor outputEq codeEq node
                   (fun ref => refsBefore ref index) decoded rightGrant rightResponse rightMember
-              rw [runInteractionPlan_append, leftAfterLaw, PMF.pure_bind] at leftContinued
-              rw [runInteractionPlan_append, rightAfterLaw, PMF.pure_bind] at rightContinued
+              rw [Function.comp_apply, runInteractionPlan_append, leftAfterLaw, PMF.pure_bind]
+                at leftContinued
+              rw [Function.comp_apply, runInteractionPlan_append, rightAfterLaw, PMF.pure_bind]
+                at rightContinued
               have leftTailAligned : CompiledPolicySuffix setup.program wholeProfile next
                   (afterReveal profile) tailRefs
                   (revealSuccessor published selected leftSource

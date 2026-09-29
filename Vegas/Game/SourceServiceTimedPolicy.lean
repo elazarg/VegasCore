@@ -150,7 +150,8 @@ theorem sourceServiceTimedPolicy_window_eq
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+        Function.comp_def]
       apply bind_congr_on_support _
       intro sample _
       let activated := execution.sampledActivation app actor sample
@@ -246,7 +247,7 @@ theorem sourceServiceTimedPolicy_active_phase_law
   let mixed := Function.update (fun _ => app.replayPolicy) owner mixture.policy
   trans (app.invoke mixed owner execution).bind
     ((runtime setup).runInteractionPlan leaks mixed network phase)
-  · simp only [ReactiveApplication.invoke, PMF.bind_map]
+  · simp only [ReactiveApplication.invoke, PMF.bind_map, Function.comp_def]
     have responseLaw : players owner (execution.recall owner) (execution.observe app owner) =
         mixed owner (execution.recall owner) (execution.observe app owner) := by
       simp only [players, sourceServiceTimedPolicy, mixed, Function.update_self]
@@ -261,7 +262,7 @@ theorem sourceServiceTimedPolicy_active_phase_law
         some event := (congrArg PublicView.serviceGrant
           ((runtime setup).reactive_respond_application leaks execution owner response).2).trans
             granted
-    dsimp only [phase]
+    dsimp only [phase, Function.comp_apply]
     rw [runInteractionPlan_append, runInteractionPlan_append,
       sourceServiceTimedPolicy_window_eq setup leaks rosters timing profile event owner owned
         network remaining _ currentGrant]
