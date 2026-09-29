@@ -68,7 +68,7 @@ theorem source_belief_flip (site : sourceModel.InformationSite true)
   apply pmf_ext_toReal
   intro history
   obtain ⟨previous, rfl⟩ := (sourceFlip site failed).surjective history
-  rw [FinDist.prob_map_of_injective _ (sourceFlip site failed).injective,
+  rw [pmf_map_apply_of_injective _ (sourceFlip site failed).injective,
     source_belief_prob, source_belief_prob]
 
 end Vegas.Examples.SequentialValidation

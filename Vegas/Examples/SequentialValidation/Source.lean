@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.SetupProtocolBehavioral
+import Vegas.Source.ProtocolChoiceFiniteness
 import Vegas.Expr.Simple
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Math.Probability.Uniform
@@ -50,6 +51,12 @@ def sourceSetup : Setup (Player := Bool) (L := simpleExpr) where
   obligations := {1, 2}
   program := sourceProgram
   accounts := rfl
+
+instance : sourceSetup.FiniteInitialLaw :=
+  ⟨by
+    change ((PMF.uniformOfFintype Bool).map initialState).support.Finite
+    rw [PMF.support_map]
+    exact (Set.toFinite _).image _⟩
 
 def sourceAdmission : CommitmentInterface sourceSetup.program :=
   CommitmentInterface.forfeiture sourceProgram
@@ -128,16 +135,22 @@ theorem uniformSourceProfile_full (who : Bool) (info : sourceModel.InfoState who
           ProtocolView.actor, ProtocolView.available, sourceAdmission,
           CommitmentInterface.forfeiture] at allowed
         simp_all [sourceSetup, sourceProgram, BehavioralPolicy.protocolAction,
-          uniformSourcePolicy, PMF.support_map,
-          PMF.mem_support_uniformOfFintype, eq_comm]
+          uniformSourcePolicy, PMF.support_map, eq_comm]
 
 theorem uniformSourceProfile_fullyMixed :
     (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).IsFullyMixed :=
   fun who site => uniformSourceProfile_full who site.1
 
+theorem sourceProgram_finiteBindingTypes : sourceProgram.FiniteBindingTypes :=
+  ⟨inferInstanceAs (Finite Bool), trivial⟩
+
 instance : Finite sourceArena.History :=
   uniformSourceProfile_fullyMixed.finite_history
     (sourceSetup.protocol_bounded sourceAdmission)
+    (fun who info =>
+      have := sourceSetup.finite_choice sourceProgram_finiteBindingTypes sourceAdmission who info
+      Set.toFinite _)
+    (fun draw => sourceSetup.protocolStep_support_finite _ draw.1)
 
 instance : Fintype sourceArena.History := Fintype.ofFinite _
 

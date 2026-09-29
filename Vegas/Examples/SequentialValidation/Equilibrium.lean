@@ -57,7 +57,7 @@ theorem source_guessing_value (matchBit : Bool) (site : sourceModel.InformationS
     (sourceAssessment.continuationContext site (sourcePayoff matchBit true) 5).value alternative =
       if sourceSecretResult site.1 = .failure then 1 / 2 else 0 := by
   classical
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   let profile := Profile.update (sig := sourceModel.behavioralSignature)
     sourceAssessment.strategy true alternative
   let value := fun (history : sourceModel.InformationHistory true site.1) =>
@@ -68,11 +68,12 @@ theorem source_guessing_value (matchBit : Bool) (site : sourceModel.InformationS
     have symmetric : expect (sourceAssessment.belief true site)
         (fun history => value (sourceFlip site failed history)) =
         expect (sourceAssessment.belief true site) value := by
-      rw [← expect_map, source_belief_flip]
+      refine (expect_map (sourceFlip site failed) _ value).symm.trans ?_
+      rw [source_belief_flip]
     have sum : expect (sourceAssessment.belief true site) value +
         expect (sourceAssessment.belief true site)
           (fun history => value (sourceFlip site failed history)) = 1 := by
-      rw [← FinDist.expect_add]
+      rw [← expect_add_of_finite]
       calc
         _ = expect (sourceAssessment.belief true site) (fun _ => (1 : ℝ)) := by
           apply expect_congr_on_support
@@ -95,14 +96,17 @@ theorem source_alice_zero (matchBit : Bool) (history : sourceArena.History) :
 
 theorem source_rational (matchBit : Bool) :
     sourceAssessment.IsSequentiallyRationalWithin (sourcePayoff matchBit) 5 := by
-  intro who site alternative _
+  intro who site
+  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+    fun alternative _ => ?_⟩
   cases who
   · have zero : sourcePayoff matchBit false = fun _ => 0 :=
       funext (source_alice_zero matchBit)
     change (sourceAssessment.continuationContext site (sourcePayoff matchBit false) 5).value
       alternative ≤ _
     rw [zero]
-    simp [InformationModel.BehavioralAssessment.continuationContext, Context.value, zero]
+    simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
+      Context.ofBelief, zero, expect_constant]
   · change (sourceAssessment.continuationContext site (sourcePayoff matchBit true) 5).value
       alternative ≤ _
     rw [source_guessing_value, source_guessing_value]

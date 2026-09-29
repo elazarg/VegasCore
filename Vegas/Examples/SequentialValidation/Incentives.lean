@@ -37,7 +37,7 @@ theorem source_bob_run (profile : Profile sourceModel.behavioralSignature)
     sourceModel sourceSingle, source_run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     SourcePath.history_state, SourcePath.state, sourceKernel, PMF.pure_bind,
-    PMF.bind_map, PMF.bind_bind, sourceGuessLaw, PMF.map_comp]
+    PMF.bind_map, PMF.bind_bind, sourceGuessLaw, PMF.map_comp, Function.comp_def]
   rw [← PMF.bind_pure_comp, Function.comp_def]
   simp only [sourceBobSite, InformationModel.informationSite, source_info]
   rfl
@@ -66,12 +66,12 @@ theorem source_bob_value (profile : Profile sourceModel.behavioralSignature)
     (source_bob_run profile bit dummy first second)
   change expect (sourceModel.runBehavioralFrom profile 5 _)
     (fun history => sourceUtility matchBit history.state true) = _
-  simpa only [expect_map, source_payoff_done] using same
+  simpa only [expect_map, Function.comp_def, source_payoff_done] using same
 
 theorem source_guess_pair (law : PMF Bool) (matchBit bit : Bool) :
     expect law (fun guess => if (guess == bit) = matchBit then (1 : ℝ) else 0) +
       expect law (fun guess => if (guess == !bit) = matchBit then (1 : ℝ) else 0) = 1 := by
-  rw [← FinDist.expect_add]
+  rw [← expect_add_of_finite]
   calc
     _ = expect law (fun _ => (1 : ℝ)) := by
       apply expect_congr_on_support

@@ -46,6 +46,7 @@ def nativeDisclosedDecision : nativeModel.BinaryDecision nativePayoff 113 where
   policy goal := nativeGuessPolicy (!goal)
   history_value profile goal history := by
     rw [native_bob_value profile goal false history, expect_map]
+    rfl
   force profile goal := by
     rw [native_guess_deviation, PMF.pure_map]
     cases goal <;> rfl
@@ -57,7 +58,7 @@ theorem native_continuation_value (assessment : nativeModel.BehavioralAssessment
         expect (nativeGuessLaw (Profile.update (sig := nativeModel.behavioralSignature)
           assessment.strategy true alternative) bit)
             (fun guess => if (guess == bit) = matchBit then (1 : ℝ) else 0) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   calc
     _ = expect (assessment.belief true (nativeBobSite bit)) (fun _ =>
           expect (nativeGuessLaw (Profile.update (sig := nativeModel.behavioralSignature)
@@ -73,7 +74,7 @@ theorem native_rational_payoff_one (assessment : nativeModel.BehavioralAssessmen
     (rational : assessment.IsSequentiallyRationalWithin (nativePayoff matchBit) 113) :
     1 ≤ expect (nativeGuessLaw assessment.strategy false)
       (fun guess => if (guess == false) = matchBit then (1 : ℝ) else 0) := by
-  simpa only [nativeDisclosedDecision, expect_map] using
+  simpa only [nativeDisclosedDecision, expect_map, Function.comp_def] using
     nativeDisclosedDecision.rational_value assessment matchBit rational
 
 /-- Hidden histories and utility-dependent beliefs cannot rationalize the

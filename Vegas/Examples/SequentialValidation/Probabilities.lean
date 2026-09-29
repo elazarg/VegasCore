@@ -72,15 +72,18 @@ theorem card_publication_bool : Fintype.card (PublicationResult Bool) = 3 := by
   decide
 
 theorem source_reach_secret (bit : Bool) (dummy : PublicationResult Bool) (first second : Bool) :
-    (sourceModel.historyReachWeight uniformSourceProfile (SourcePath.secretPublished bit dummy first second).history).toReal = 1 / 24 := by
+    (sourceModel.historyReachWeight uniformSourceProfile
+      (SourcePath.secretPublished bit dummy first second).history).toReal = 1 / 24 := by
   classical
-  unfold ((InformationModel.historyReachWeight rw [source_path_length]).toReal)
+  unfold InformationModel.historyReachWeight
+  rw [source_path_length]
   change ((sourceModel.runBehavioral uniformSourceProfile 4) _).toReal = _
-  rw [← FinDist.prob_map_of_injective History.state source_state_injective,
-    uniform_source_run, SourcePath.history_state,
-    FinDist.prob_map_of_injective SourcePath.state path_state_injective]
+  rw [← pmf_map_apply_of_injective _ source_state_injective, uniform_source_run,
+    SourcePath.history_state]
+  refine (congrArg ENNReal.toReal
+    (pmf_map_apply_of_injective _ path_state_injective _)).trans ?_
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
-    PMF.pure_bind, uniformPathKernel, PMF.bind_map, PMF.bind_bind]
+    PMF.pure_bind, uniformPathKernel, PMF.bind_map, PMF.bind_bind, Function.comp_def]
   simp only [toReal_bind_apply, toReal_map_apply, expect_eq_sum,
     Fintype.sum_bool, sum_publication_bool, toReal_uniformOfFintype_apply,
     card_publication_bool, Fintype.card_bool]

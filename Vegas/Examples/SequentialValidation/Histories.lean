@@ -84,7 +84,7 @@ theorem source_guess_legal (bit : Bool) (dummy : PublicationResult Bool)
 theorem source_bind_step (bit : Bool) (dummy : PublicationResult Bool) :
     sourceArena.step (SourcePath.drawn bit).state
       ⟨_, source_bind_legal bit dummy⟩ = PMF.pure (SourcePath.bound bit dummy).state := by
-  simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
+  simp [PMF.pure_map, sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, boundConfig,
     OwnAction.binding_commit, ProtocolState.entry]
 
@@ -92,7 +92,7 @@ theorem source_dummy_step (bit : Bool) (dummy : PublicationResult Bool) (first :
     sourceArena.step (SourcePath.bound bit dummy).state
       ⟨_, source_dummy_legal bit dummy first⟩ =
         PMF.pure (SourcePath.dummyPublished bit dummy first).state := by
-  simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
+  simp [PMF.pure_map, sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, dummyConfig,
     OwnAction.disclosure, ProtocolState.entry]
 
@@ -100,7 +100,7 @@ theorem source_secret_step (bit : Bool) (dummy : PublicationResult Bool) (first 
     sourceArena.step (SourcePath.dummyPublished bit dummy first).state
       ⟨_, source_secret_legal bit dummy first second⟩ =
         PMF.pure (SourcePath.secretPublished bit dummy first second).state := by
-  simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
+  simp [PMF.pure_map, sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, secretConfig,
     OwnAction.disclosure, ProtocolState.entry]
 
@@ -109,7 +109,7 @@ theorem source_guess_step (bit : Bool) (dummy : PublicationResult Bool)
     sourceArena.step (SourcePath.secretPublished bit dummy first second).state
       ⟨_, source_guess_legal bit dummy first second guess⟩ =
         PMF.pure (SourcePath.done bit dummy first second guess).state := by
-  simp [sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
+  simp [PMF.pure_map, sourceArena, Setup.executionProtocol, Setup.protocolStep, SourcePath.state,
     sourceSetup, sourceProgram, ProtocolState.step, sourceJoint, finalConfig,
     OwnAction.disclosure, ProtocolState.entry]
 

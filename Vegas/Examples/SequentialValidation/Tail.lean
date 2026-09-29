@@ -54,7 +54,7 @@ theorem native_run_tail (players : Bool → nativeApp.Policy) (count index : Nat
         ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, PMF.map_bind,
         ReactiveApplication.Execution.environmentStep, PMF.bind_map, PMF.bind_bind,
-        nativeTail]
+        Function.comp_def, nativeTail]
       apply bind_congr_on_support _
       intro next _
       apply ih

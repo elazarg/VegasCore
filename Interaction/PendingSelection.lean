@@ -52,6 +52,16 @@ theorem chooseUniform_supported (candidates : Finset (MessageId Principal))
     exact (PMF.mem_support_uniformOfFinset_iff nonempty id).mp member
   · cases (PMF.mem_support_pure_iff _ _).mp supported
 
+omit [DecidableEq Principal] in
+theorem chooseUniform_support_finite (candidates : Finset (MessageId Principal)) :
+    (chooseUniform candidates).support.Finite := by
+  refine ((Set.finite_singleton none).union
+    ((Finset.finite_toSet candidates).image some)).subset ?_
+  intro selected supported
+  cases selected with
+  | none => exact Or.inl rfl
+  | some id => exact Or.inr ⟨id, chooseUniform_supported candidates id supported, rfl⟩
+
 theorem uniformPending_supported (eligible : Message Principal Payload → Bool)
     (pending : List (Message Principal Payload)) (id : MessageId Principal)
     (supported : some id ∈ (uniformPending eligible pending).support) :

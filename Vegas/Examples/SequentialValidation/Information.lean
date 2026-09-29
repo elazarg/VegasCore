@@ -12,12 +12,16 @@ open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Pr
 open GameTheory.Protocol.ExecutionProtocol
 
 def sourceAssessment : sourceModel.BehavioralAssessment :=
-  InformationModel.bayesAssessment _ (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).strategy uniformSourceProfile_fullyMixed sourceAntichain
+  InformationModel.bayesAssessment _
+    (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).strategy
+    uniformSourceProfile_fullyMixed sourceAntichain
 
 theorem source_consistent : sourceAssessment.IsSequentiallyConsistent sourceAntichain :=
   InformationModel.BehavioralAssessment.IsSequentiallyConsistent.of_fullyMixed_bayes
     sourceAntichain uniformSourceProfile_fullyMixed
-    (InformationModel.bayesAssessment_isBayesConsistent _ (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).strategy uniformSourceProfile_fullyMixed sourceAntichain)
+    (InformationModel.bayesAssessment_isBayesConsistent _
+      (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).strategy
+      uniformSourceProfile_fullyMixed sourceAntichain)
 
 def sourceBobSite (bit : Bool) (dummy : PublicationResult Bool) (first second : Bool) :
     sourceModel.InformationSite true :=
@@ -105,9 +109,9 @@ theorem source_secret_info (bit : Bool) (dummy : PublicationResult Bool) (first 
 theorem source_belief_prob (site : sourceModel.InformationSite true)
     (history : sourceModel.InformationHistory true site.1) :
     ((sourceAssessment.belief true site) history).toReal =
-      (1 / 24) / sourceModel.informationMass uniformSourceProfile true site := by
+      (1 / 24) / (sourceModel.informationMass uniformSourceProfile true site).toReal := by
   rw [sourceAssessment, InformationModel.bayesAssessment,
-    InformationModel.bayesBelief_apply]
+    InformationModel.bayesBelief_apply, ENNReal.toReal_div]
   obtain ⟨bit, dummy, first, second, same⟩ := source_bob_history site history
   change (sourceModel.historyReachWeight uniformSourceProfile history.1).toReal / _ = _
   rw [same, source_reach_secret]

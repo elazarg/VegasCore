@@ -83,6 +83,14 @@ theorem native_bob_remaining (control : nativeApp.Control)
 theorem nativeAntichain : nativeModel.DecisionInformationAntichain :=
   nativeMenu.decisionInformationAntichain nativeInitialLaw 56 nativeScheduler
 
+instance : nativeLeaks.FiniteSupport := ⟨fun _ _ => by simp [nativeLeaks]⟩
+
+instance : nativeApp.FiniteNature nativeInitialLaw nativeScheduler where
+  initial_finite := by
+    rw [nativeInitialLaw, PMF.support_map]
+    exact (Set.toFinite _).image _
+  scheduler_finite _ _ := ReactiveApplication.uniformScheduler_support_finite _ _ _ _ _
+
 instance : Finite nativeArena.History := inferInstance
 
 end Vegas.Examples.SequentialValidation

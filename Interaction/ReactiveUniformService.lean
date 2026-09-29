@@ -77,6 +77,26 @@ def uniformScheduler
     (calendar : Nat → app.UniformInstruction) : app.Scheduler :=
   fun history view => app.uniformInstruction condition history view (calendar history.length)
 
+/-- Every calendar instruction has finitely many commands: selection draws
+among finitely many pending identifiers. -/
+theorem uniformInstruction_support_finite
+    (condition : app.PublicObservation → Message Principal app.Payload → Prop)
+    (history : List app.EnvironmentEntry) (view : app.EnvironmentView)
+    (instruction : app.UniformInstruction) :
+    (app.uniformInstruction condition history view instruction).support.Finite := by
+  cases instruction with
+  | select eligible =>
+      rw [uniformInstruction, PMF.support_map]
+      exact (MessageNetwork.chooseUniform_support_finite _).image _
+  | _ => simp [uniformInstruction]
+
+theorem uniformScheduler_support_finite
+    (condition : app.PublicObservation → Message Principal app.Payload → Prop)
+    (calendar : Nat → app.UniformInstruction) (history : List app.EnvironmentEntry)
+    (view : app.EnvironmentView) :
+    (app.uniformScheduler condition calendar history view).support.Finite :=
+  app.uniformInstruction_support_finite condition history view _
+
 /-- Selection and application commands cannot activate a player. -/
 theorem uniformInstruction_actor
     (condition : app.PublicObservation → Message Principal app.Payload → Prop)

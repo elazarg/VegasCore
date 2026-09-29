@@ -95,8 +95,8 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
       (sourceModel.singleMoverChooser sourceSingle profile history running).map
         (fun joint => f (joint.1 who)) =
       (sourceChoice profile who (sourceSetup.protocolObserve who history.state)).map f := by
-    exact (PMF.map_comp f (fun joint => joint.1 who)
-      (sourceModel.singleMoverJoint sourceSingle profile history running)).symm.trans
+    exact (PMF.map_comp (fun joint => joint.1 who)
+      (sourceModel.singleMoverJoint sourceSingle profile history running) f).symm.trans
         (congrArg (PMF.map f) (marginalState who))
   rcases history with ⟨state, trace⟩
   rcases state with _ | state

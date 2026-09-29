@@ -130,8 +130,9 @@ theorem native_bob_response_tail (bit : Bool) (control : nativeApp.Control)
       apply native_run_tail players 44 12 next _ (by omega) (by omega)
       rw [native_round_length players _ next reached, nativeApp.respond_environmentRecall, position]
     _ = _ := by
-      rw [← PMF.bind_map, native_bob_round bit control trace active empty views,
-        PMF.pure_bind]
+      refine (PMF.bind_map _ (fun next : nativeApp.Execution => next.application)
+        fun state => nativeTail 12 44 state).symm.trans ?_
+      rw [native_bob_round bit control trace active empty views, PMF.pure_bind]
 
 theorem native_chosen_guess (bit guess : Bool) :
     nativeChosenState (nativeBobExecution bit) ⟨some (.submit (nativeGuessSubmission guess))⟩ =

@@ -72,6 +72,14 @@ def nativeUtility (matchBit : Bool) : nativeApp.ProtocolState → Bool → ℝ
   | none, _ => 0
   | some control, who => nativeStateUtility matchBit control.execution.application who
 
+private theorem nativeUtility_abs_le (matchBit : Bool) (state : nativeApp.ProtocolState)
+    (who : Bool) : |nativeUtility matchBit state who| ≤ 1 := by
+  cases state with
+  | none => simp [nativeUtility]
+  | some control =>
+      simp only [nativeUtility, nativeStateUtility]
+      split_ifs <;> norm_num
+
 def nativePayoff (matchBit : Bool) (who : Bool) (history : nativeArena.History) : ℝ :=
   nativeUtility matchBit history.state who
 
@@ -104,7 +112,7 @@ theorem native_tail_utility (matchBit bit : Bool) (execution : nativeApp.Executi
   have failureFixed := native_tail_store 12 44 _ next (.inr secretEvent) .failure
     (native_chosen_store execution action _ _ failed) reached
   simp only [nativeStateUtility, typeFixed, failureFixed, Option.getD_some,
-    PublicationResult.isFailure, Bool.and_self, ↓reduceIte]
+    PublicationResult.isFailure, Bool.and_self, ↓reduceIte, Function.comp_apply]
 
 theorem native_bob_value (profile : Profile nativeModel.behavioralSignature)
     (matchBit bit : Bool) (history : nativeModel.InformationHistory true (nativeBobSite bit).1) :
@@ -129,7 +137,9 @@ theorem native_bob_value (profile : Profile nativeModel.behavioralSignature)
     _ = _ := by
       rw [state]
       simp only [ReactiveApplication.finish, ReactiveApplication.resume, ReactiveApplication.invoke,
-        expect_map, FinDist.expect_bind]
+        expect_map, Function.comp_def]
+      rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _ (C := 1) fun _ =>
+        nativeUtility_abs_le _ _ _), expect_map]
       change expect (nativePlayers profile true (execution.recall true)
         (execution.observe nativeApp true))
         (fun action => expect (nativeApp.runRounds nativeScheduler (nativePlayers profile) 45
@@ -137,7 +147,7 @@ theorem native_bob_value (profile : Profile nativeModel.behavioralSignature)
             (fun next => nativeStateUtility matchBit next.application true)) = _
       rw [empty, view]
       unfold nativeGuessLaw
-      rw [FinDist.expect_bind]
+      rw [expect_bind_of_finite]
       apply expect_congr_on_support
       intro action _
       have tail := native_bob_response_tail bit _ trace rfl empty views
