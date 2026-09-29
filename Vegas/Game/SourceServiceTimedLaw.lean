@@ -73,8 +73,8 @@ theorem sourceServiceTimedProfile_readout_law [Fintype Player]
         values initialValues capacity rosters opportunities timing full network original
         permitted focal (eventCount setup.program) le_rfl
       have projected := congrArg (PMF.map (fun pair => setup.protocolReadout pair.1)) joint
-      simp only [PMF.map_comp, Function.comp_def, PMF.map_bind, PMF.map_const,
-        ← PMF.bind_pure_comp, Function.comp_def] at projected
+      simp only [PMF.map_comp, Function.comp_def, PMF.map_bind, pmf_map_fun_const,
+        pmf_bind_pure_eq_map] at projected
       have completed : rosterPlanPrefix setup rosters (eventCount setup.program) =
           rosterPlan setup rosters := by
         unfold rosterPlanPrefix rosterPlan

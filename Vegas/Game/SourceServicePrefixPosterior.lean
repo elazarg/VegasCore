@@ -155,8 +155,8 @@ theorem sourceService_owner_information_law [Fintype Player]
         fun extra => (state, extra)) at factor
   have marginal : prefixLaw.map read = prior := by
     have result := congrArg (PMF.map Prod.fst) factor
-    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-      PMF.map_const, PMF.bind_pure] using result
+    simpa only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
+      PMF.bind_const, PMF.bind_pure] using result
   have recalls (execution : app.Execution) (supported : execution ∈ prefixLaw.support) :
       execution.InputRecall app := by
     obtain ⟨initial, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
@@ -197,9 +197,11 @@ theorem sourceService_owner_information_law [Fintype Player]
     change prefixLaw.bind (fun execution =>
       (execution.environmentStep app (.application (.grant event))).map fun final =>
         (read execution, (runtime setup).bindingTraffic leaks owner final)) = _ at grantFactor
-    simp only [grantLaw, ← PMF.bind_pure_comp, Function.comp_def] at grantFactor
-    rw [grantMarginal]
-    simpa only [afterGrant, PMF.map_comp, Function.comp_def, marginal] using grantFactor
+    simp only [grantLaw, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
+      PMF.pure_bind] at grantFactor
+    rw [grantMarginal, ← marginal]
+    simpa only [afterGrant, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
+      using grantFactor
   let policy := (app.policyMixture (timing event owner owned)
     (sourceServiceTimedFamily setup leaks rosters normalized owner event)).policy
   have grantedRecall (execution : app.Execution) (supported : execution ∈ afterGrant.support) :
@@ -242,8 +244,8 @@ theorem sourceService_owner_information_law [Fintype Player]
     exact Prod.ext (kept execution final reached) rfl
   have windowMarginal : window.map read = prior := by
     have result := congrArg (PMF.map Prod.fst) windowFactor'
-    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-      PMF.map_const, PMF.bind_pure] using result
+    simpa only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
+      PMF.bind_const, PMF.bind_pure] using result
   obtain ⟨channel, inputFactor⟩ := source_activation_input_factorization setup leaks owner
     window read (setup.protocolObserve owner) (fun execution => execution) windowNoise
       (by rw [windowMarginal]; exact windowFactor')

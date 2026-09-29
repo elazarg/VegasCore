@@ -77,7 +77,7 @@ theorem sourceStep_continuation
   · rename_i running
     exact ProtocolState.continuationLaw_behavioral_step program profile state running
       (independentProduct fun who => (profile who).protocolAction program
-        (ProtocolState.observe who program state)) (fun who => independentProduct_map_eval who _)
+        (ProtocolState.observe who program state)) (fun who => independentProduct_map_eval _ who)
 
 private theorem liftedPrefix_continuation
     {Γ Δ : SourceCtx Player L} {names restNames : Finset VarId}
@@ -101,7 +101,9 @@ private theorem liftedPrefix_continuation
           (fun state => ProtocolState.continuationLaw whole wholeProfile (lift state))
       · apply bind_congr_on_support _
         intro state _
-        rw [← PMF.bind_map, ← commutes]
+        refine (PMF.bind_map _ lift
+          (ProtocolState.continuationLaw whole wholeProfile)).symm.trans ?_
+        rw [← commutes]
         exact sourceStep_continuation whole wholeProfile (lift state)
       · exact ih
 
@@ -186,8 +188,9 @@ theorem sourceServiceTimedPolicy_suffix_state_law
   have all : (List.finRange (eventCount program)).take (eventCount program) =
       List.finRange (eventCount program) :=
     List.take_of_length_le (by rw [List.length_finRange])
-  simp only [PMF.pure_bind, all, PMF.map_bind, PMF.map_comp, Function.comp_def] at marginal
-  exact marginal
+  simp only [all] at marginal
+  simpa only [PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
+    PMF.bind_const] using marginal
 
 /-- At any supported typed boundary, all remaining actual timed service blocks
 have the complete terminal-store law of the residual source continuation. -/
@@ -357,7 +360,7 @@ theorem sourceServiceTimedPolicy_continuation_law
     rw [← conserved, PMF.map_bind]
     calc
       _ = sourceLaw.bind (fun current => PMF.pure
-          (ProtocolState.readout setup.program (lift current))) := FinDist.map_eq_bind _ _
+          (ProtocolState.readout setup.program (lift current))) := (PMF.bind_pure_comp _ _).symm
       _ = _ := bind_congr_on_support _ fun current chosen =>
         (ProtocolState.continuationLaw_terminal setup.program profile (lift current)
           (stopped current chosen)).symm

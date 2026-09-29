@@ -26,6 +26,17 @@ theorem pmf_sum_toReal_eq_one [Fintype α] (μ : PMF α) : ∑ a, (μ a).toReal 
   rw [tsum_fintype] at total
   rw [← ENNReal.toReal_sum fun a _ => μ.apply_ne_top a, total, ENNReal.toReal_one]
 
+/-- A constant pushforward is the point law. `PMF.map_const` states this for
+`Function.const`, which `simp` does not match against a literal `fun _ => b`. -/
+theorem pmf_map_fun_const (μ : PMF α) (b : β) : μ.map (fun _ => b) = PMF.pure b :=
+  PMF.map_const μ b
+
+/-- Binding into point laws is a pushforward. `PMF.bind_pure_comp` states this
+for `PMF.pure ∘ f`, which `simp` does not match against `fun a => PMF.pure (f a)`. -/
+theorem pmf_bind_pure_eq_map (μ : PMF α) (f : α → β) :
+    (μ.bind fun a => PMF.pure (f a)) = μ.map f :=
+  PMF.bind_pure_comp f μ
+
 /-- A point has positive real mass exactly when it is supported. -/
 theorem pmf_toReal_pos_iff {μ : PMF α} {a : α} : 0 < (μ a).toReal ↔ a ∈ μ.support := by
   rw [ENNReal.toReal_pos_iff, PMF.mem_support_iff, pos_iff_ne_zero]
