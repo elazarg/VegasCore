@@ -40,7 +40,6 @@ import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.ObservationPayoff
 import GameTheoryExtensions.Analysis.CorrelationPayoff
 import GameTheoryExtensions.Analysis.Enforcement
-import GameTheoryExtensions.Analysis.IncentiveComparison
 import GameTheoryExtensions.Analysis.ConstrainedNash
 import GameTheoryExtensions.Analysis.EnforcementLimits
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
@@ -86,6 +85,7 @@ import GameTheoryExtensions.Analysis.Protocol.ReadoutBayesProjection
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Core.IncentiveComparison
 import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Core.ConsideredDeviation
 import GameTheoryExtensions.Core.ConsideredZeroSum

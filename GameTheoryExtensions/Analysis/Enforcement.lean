@@ -2,7 +2,7 @@
 
 import GameTheory.Protocol.BehavioralAssessment
 import GameTheory.Analysis.IncentiveCone
-import GameTheoryExtensions.Analysis.IncentiveComparison
+import GameTheoryExtensions.Core.IncentiveComparison
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
 

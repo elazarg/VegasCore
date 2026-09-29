@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Enforcement
-import GameTheoryExtensions.Analysis.IncentiveComparison
+import GameTheoryExtensions.Core.IncentiveComparison
 
 /-! # When sufficiently large finite sanctions work
 

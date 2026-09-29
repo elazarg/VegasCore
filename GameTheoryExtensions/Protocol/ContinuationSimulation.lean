@@ -4,7 +4,7 @@ import GameTheory.Analysis.Protocol.Sequential
 import GameTheory.Analysis.Protocol.Incentives
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Analysis.IncentiveComparison
+import GameTheoryExtensions.Core.IncentiveComparison
 
 /-! # Continuation simulation by finite mixtures
 
