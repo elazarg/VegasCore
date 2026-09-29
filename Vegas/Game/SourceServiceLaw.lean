@@ -119,7 +119,8 @@ theorem sourceService_prefix_state_law
             (rosterPlanPrefix setup rosters 0)
             (ReactiveApplication.Execution.initial app state)).map (readout 0) = _
         simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-          Nat.zero_add, Function.iterate_one, PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def,
+          Nat.zero_add, Function.iterate_one, PMF.pure_bind, ← PMF.bind_pure_comp,
+              Function.comp_def,
           PMF.map_comp]
         change (initialLaw setup).map (fun state => sourceServicePrefix? setup 0
           (ReactiveApplication.Execution.initial app state).application.config) =
@@ -141,7 +142,8 @@ theorem sourceService_prefix_state_law
           simp only [plan, (runtime setup).runInteractionPlan_append, PMF.bind_bind]
         rw [distribution, PMF.map_bind]
         trans (physical rank).bind (fun execution => kernel (readout rank execution))
-        · exact bind_congr_on_support _ (fun execution supported => step rank inside execution supported)
+        · exact bind_congr_on_support _
+            (fun execution supported => step rank inside execution supported)
         · rw [← PMF.bind_map, prior]
           exact (Function.iterate_succ_apply' (fun law => law.bind kernel) (rank + 1)
             (PMF.pure none)).symm

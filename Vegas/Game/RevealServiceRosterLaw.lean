@@ -112,6 +112,6 @@ theorem rosterPolicy_phase_law
   apply bind_congr_on_support _
   intro disclose _
   cases disclose <;> simp only [Bool.false_eq_true, ↓reduceIte,
-    PMF.pure_bind, PMF.bind_map]
+    PMF.pure_bind, PMF.bind_map, Function.comp_def]
 
 end Vegas

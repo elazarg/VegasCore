@@ -44,13 +44,15 @@ theorem owner_extra_collection
     (sampling : ∀ owner, owner ≠ watcher →
       ∀ (pending : List (Message Player (WitnessedPacket (graph setup)))) message,
         message ∈ pending → message.id.1 = owner →
-        probability owner ≤ ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
+        probability owner ≤
+            ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
     (fuel : Nat) (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
     probability who ≤ (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
       (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
         profile who ((profile who).commit
           ((ordinaryRestriction setup leaks bounds watcher).site who site).1 action))
-      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).toOuterMeasure {final | departureAtState setup leaks who final.state}).toReal := by
+      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).toOuterMeasure
+          {final | departureAtState setup leaks who final.state}).toReal := by
   let responses := menu setup leaks bounds watcher
   let restriction := ordinaryRestriction setup leaks bounds watcher
   let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)

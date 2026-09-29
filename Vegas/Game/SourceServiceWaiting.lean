@@ -49,7 +49,8 @@ theorem sourceServiceLastPolicy_waiting_law
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+        Function.comp_def]
       apply bind_congr_on_support _
       intro sample _
       let activated := initial.sampledActivation app who sample
@@ -161,7 +162,8 @@ theorem sourceServiceLastPolicy_foreign_tail
       simp only [List.map_cons, List.cons_append, runInteractionPlan, interactionStep,
         interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
         ReactiveApplication.Command.actor?, ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+        Function.comp_def]
       apply bind_congr_on_support _
       intro sample _
       let activated := initial.sampledActivation app who sample
@@ -197,7 +199,7 @@ theorem replay_window_eventRecorded
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, supported, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)

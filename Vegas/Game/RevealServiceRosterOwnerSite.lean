@@ -45,8 +45,10 @@ theorem roster_owner_site
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)
-    let native := InformationModel.bayesAssessment _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-        admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+    let native := InformationModel.bayesAssessment _ assessment.strategy
+        (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+        admission source mixed timing timingFull)
+            (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
     ∀ (who : Player) (site : model.InformationSite who)
       (past : List (application setup leaks).PlayerEntry)
       (view : (application setup leaks).PlayerView) (packet : (application setup leaks).Action),

@@ -211,7 +211,8 @@ theorem roster_owner_opening_probability
   have choiceNow := sourceChoiceLaw_application_eq setup leaks profile who
     control.execution boundary unchanged
   rw [viewEq] at choiceNow
-  have actual : ((players who past view) ((runtime setup).windowOpening leaks event candidate raw)).toReal =
+  have actual : ((players who past view)
+      ((runtime setup).windowOpening leaks event candidate raw)).toReal =
       PMF.deferredHazard (((sourceChoiceLaw setup leaks profile who view) true).toReal)
         (timing event who owned) (past.length - rosterOffset setup rosters who event) := by
     rw [pastEq, viewEq] at physical

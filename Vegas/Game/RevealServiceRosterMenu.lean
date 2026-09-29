@@ -91,7 +91,8 @@ theorem silence_roster (setup : Setup (Player := Player) (L := L))
     (⟨none⟩ : (application setup leaks).Action) ∈
       rosterActions setup leaks bounds rosters who past view := by
   classical
-  refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _ (((application setup leaks).mem_replayActions_iff _ _ _).mpr ?_), ?_⟩
+  refine Finset.mem_inter.mpr ⟨Finset.mem_union_left _
+    (((application setup leaks).mem_replayActions_iff _ _ _).mpr ?_), ?_⟩
   · exact (application setup leaks).replayPolicy_support past view none
       (Finset.mem_insert_self _ _)
   · rw [bounds.menu_mem]
@@ -252,7 +253,7 @@ theorem roster_run_application (setup : Setup (Player := Player) (L := L))
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
         ReactiveApplication.Execution.activation_samples, PMF.bind_map,
-        PMF.bind_bind] at reached
+        PMF.bind_bind, Function.comp_def] at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨action, supported, reached⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)

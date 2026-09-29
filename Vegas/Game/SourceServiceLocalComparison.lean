@@ -262,7 +262,8 @@ def ofSource (service : SourceServiceSpec Player L)
       service.setup.program [] (Revelations.initial service.setup.context)
         (fun view => PMF.pure view.2)
     supports := sourceService_normalized_support service.setup source full
-    assessment := InformationModel.bayesAssessment _ native.strategy nativeMixed (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
+    assessment := InformationModel.bayesAssessment _ native.strategy nativeMixed
+        (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
         service.scheduler)
     strategy := rfl
     mixed := native.bayes_isFullyMixed nativeMixed _ }
@@ -287,7 +288,9 @@ theorem ofSource_bayes (service : SourceServiceSpec Player L)
       (ofSource service timing timingFull source full).assessment
       (service.menu.decisionInformationAntichain (initialLaw service.setup) service.planLength
         service.scheduler) :=
-  InformationModel.bayesAssessment_isBayesConsistent _ InformationModel.BehavioralAssessment.strategy _ (sourceServiceTimedProfile_fullyMixed service.setup service.leaks service.bounds
+  InformationModel.bayesAssessment_isBayesConsistent _
+      InformationModel.BehavioralAssessment.strategy _
+      (sourceServiceTimedProfile_fullyMixed service.setup service.leaks service.bounds
       service.values service.initialValues service.capacity service.rosters
       service.opportunities.binding service.network timing timingFull source full) _
 

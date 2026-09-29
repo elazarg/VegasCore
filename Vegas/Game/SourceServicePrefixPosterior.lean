@@ -374,7 +374,8 @@ theorem sourceService_owner_posterior [Fintype Player]
           (execution.recall owner, execution.observe (application setup leaks) owner))
         (reference.recall owner, reference.observe (application setup leaks) owner)).map
           (fun execution => sourceServicePrefix? setup event.val execution.application.config) =
-        (fiberConditional (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
+        (fiberConditional
+            (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
           GameTheory.Protocol.ExecutionProtocol.History.state)
             (setup.protocolObserve owner) (setup.protocolObserve owner
               (sourceServicePrefix? setup event.val reference.application.config))) := by

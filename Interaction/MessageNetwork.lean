@@ -48,6 +48,11 @@ abbrev ObservationRule (Principal Payload : Type) :=
   Principal → List (Message Principal Payload) →
     PMF (Finset (MessageId Principal))
 
+/-- An observation rule branches finitely: each observer and pending pool
+yields finitely many possible leaked sets. -/
+class ObservationRule.FiniteSupport (leaks : ObservationRule Principal Payload) : Prop where
+  support_finite : ∀ who pending, (leaks who pending).support.Finite
+
 structure PlayerView (Principal Payload : Type) where
   leaked : List (Message Principal Payload)
   ledger : List (Message Principal Payload)

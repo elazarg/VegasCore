@@ -197,18 +197,22 @@ theorem rosterPerturbedProfile_converges
       have approxProb (n : Nat) :
           ((rosterPerturbedProfile setup leaks bounds rosters network admission
             (sequence n) (timing n) who
-            (some (control.execution.recall who, control.execution.observe app who))) choice).toReal =
+            (some (control.execution.recall who, control.execution.observe app who)))
+                choice).toReal =
           (((rosterPolicy setup leaks rosters (timing n)
             (setup.decodeBehavioralProfile admission (sequence n).strategy) who
-            (control.execution.recall who) (control.execution.observe app who)).map some) choice.1).toReal := by
+            (control.execution.recall who) (control.execution.observe app who)).map some)
+                choice.1).toReal := by
         rw [← approxLaw n, FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
         rfl
       have limitProb :
           ((rosterCompiledProfile setup leaks bounds rosters network
             (setup.decodeBehavioralProfile admission source) who
-            (some (control.execution.recall who, control.execution.observe app who))) choice).toReal =
+            (some (control.execution.recall who, control.execution.observe app who)))
+                choice).toReal =
           (((rosterLimitPolicy setup leaks rosters (setup.decodeBehavioralProfile admission source)
-            who (control.execution.recall who) (control.execution.observe app who)).map some) choice.1).toReal := by
+            who (control.execution.recall who) (control.execution.observe app who)).map some)
+                choice.1).toReal := by
         rw [← limitLaw, FinDist.prob_map_of_injective Subtype.val Subtype.val_injective]
         rfl
       simp_rw [approxProb, limitProb]

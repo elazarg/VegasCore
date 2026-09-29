@@ -42,6 +42,12 @@ abbrev NetworkPolicy (runtime : EventGraphRuntime graph)
   List (runtime.reactiveApplication leaks).EnvironmentEntry →
     (runtime.reactiveApplication leaks).EnvironmentView → PMF (NetworkChoice Player)
 
+/-- A network policy branches finitely at every recall and view. -/
+class NetworkPolicy.FiniteSupport {runtime : EventGraphRuntime graph}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
+    (network : runtime.NetworkPolicy leaks) : Prop where
+  support_finite : ∀ history view, (network history view).support.Finite
+
 def interactionVisit (networkTurns : Nat) (event : graph.EventId) :
     List (ServiceInstruction graph) :=
   [.grant event] ++ (match graph.actor? event with
@@ -81,6 +87,20 @@ def interactionInstruction (runtime : EventGraphRuntime graph)
   | .sample event => PMF.pure (.application (.executeSample event))
   | .tick => PMF.pure (.application .advanceClock)
   | .expire event => PMF.pure (.application (.expire event))
+
+/-- Only network opportunities randomize a service instruction. -/
+theorem interactionInstruction_support_finite (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (network : runtime.NetworkPolicy leaks) [network.FiniteSupport]
+    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
+    (view : (runtime.reactiveApplication leaks).EnvironmentView)
+    (instruction : ServiceInstruction graph) :
+    (runtime.interactionInstruction leaks network history view instruction).support.Finite := by
+  cases instruction with
+  | wire =>
+      rw [interactionInstruction, PMF.support_map]
+      exact (NetworkPolicy.FiniteSupport.support_finite history view).image _
+  | _ => simp [interactionInstruction]
 
 /-- A fixed service order is a concrete scheduler instance. Its position is
 recovered from its own command recall, which advances once per scheduler choice,

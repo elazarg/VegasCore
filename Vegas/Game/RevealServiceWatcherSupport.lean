@@ -207,7 +207,8 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
       (players owner (execution.recall owner) (execution.observe app owner)).map
         (fun response => some ⟨remaining + 2, none, execution.respond app owner response⟩) := by
     simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-      ReactiveApplication.transition, ↓reduceIte, Option.getD_some, ← PMF.bind_pure_comp, Function.comp_def]
+      ReactiveApplication.transition, ↓reduceIte, Option.getD_some, ← PMF.bind_pure_comp,
+          Function.comp_def]
     rfl
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind] at reached

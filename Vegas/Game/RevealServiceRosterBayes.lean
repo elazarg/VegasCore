@@ -134,14 +134,17 @@ theorem roster_owner_bayes_posterior
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)
-    let native := InformationModel.bayesAssessment _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-        admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+    let native := InformationModel.bayesAssessment _ assessment.strategy
+        (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+        admission source mixed timing timingFull)
+            (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
     reference ∈ executions.support →
     ∀ site : model.InformationSite owner,
       site.1 = some (reference.recall owner, reference.observe (application setup leaks) owner) →
       (native.stateBelief owner site).map (fun state => state.bind fun control =>
         sourcePrefix? setup event.val control.execution.application.config) =
-        fiberConditional (((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
+        fiberConditional (((setup.informationModel admission).runBehavioral source.strategy
+            (event.val + 1)).map
           History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourcePrefix? setup event.val reference.application.config)) := by
@@ -190,8 +193,10 @@ theorem roster_owner_bayes_posterior
     (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
       admission source mixed timing timingFull)
     (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
-  have bayesNative := InformationModel.bayesAssessment_isBayesConsistent _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-      admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+  have bayesNative := InformationModel.bayesAssessment_isBayesConsistent _ assessment.strategy
+      (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+      admission source mixed timing timingFull)
+          (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
   have conditioned := menu.stateBelief_eq_conditional_prefix (initialLaw setup) horizon scheduler
     native mixedNative bayesNative owner site depth clockAt
   rw [law, siteInput] at conditioned
@@ -251,15 +256,18 @@ theorem roster_owner_bayes_at_history
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)
-    let native := InformationModel.bayesAssessment _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-        admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+    let native := InformationModel.bayesAssessment _ assessment.strategy
+        (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+        admission source mixed timing timingFull)
+            (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
     ∀ (site : model.InformationSite owner) (history : model.InformationHistory owner site.1)
       (control : (application setup leaks).Control),
       history.1.state = some control →
       control.execution.environmentRecall.length = count + 1 →
       (native.stateBelief owner site).map (fun state => state.bind fun current =>
         sourcePrefix? setup event.val current.execution.application.config) =
-        fiberConditional (((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
+        fiberConditional (((setup.informationModel admission).runBehavioral source.strategy
+            (event.val + 1)).map
           History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourcePrefix? setup event.val control.execution.application.config)) := by
@@ -346,8 +354,10 @@ theorem roster_owner_bayes_source_state
     let assessment := InformationModel.BehavioralAssessment.ofStrategy
       (rosterPerturbedProfile setup leaks bounds rosters network admission
         source timing)
-    let native := InformationModel.bayesAssessment _ assessment.strategy (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
-        admission source mixed timing timingFull) (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
+    let native := InformationModel.bayesAssessment _ assessment.strategy
+        (rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable
+        admission source mixed timing timingFull)
+            (menu.decisionInformationAntichain (initialLaw setup) horizon scheduler)
     ∀ (site : model.InformationSite owner) (history : model.InformationHistory owner site.1)
       (control : (application setup leaks).Control),
       history.1.state = some control →

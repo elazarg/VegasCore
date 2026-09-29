@@ -128,13 +128,15 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
           (control.execution.observe (application setup leaks) owner) →
       probability ≤ ((leaks watcher
         (control.execution.respond (application setup leaks) owner
-          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
+          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure
+              {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
     (fuel : Nat) (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
     probability ≤ (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
       (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
         profile owner ((profile owner).commit
           ((ordinaryRestriction setup leaks bounds watcher).site owner site).1 action))
-      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).toOuterMeasure {final | departureAtState setup leaks owner final.state}).toReal := by
+      fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).toOuterMeasure
+          {final | departureAtState setup leaks owner final.state}).toReal := by
   classical
   let restriction := ordinaryRestriction setup leaks bounds watcher
   have active := InformationModel.InformationSite.active
@@ -206,7 +208,8 @@ theorem ordinary_extra_comparison (watcher owner : Player) (different : owner �
           (control.execution.observe (application setup leaks) owner) →
       probability ≤ ((leaks watcher
         (control.execution.respond (application setup leaks) owner
-          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
+          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure
+              {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (nonnegative : 0 ≤ deposit owner) (lower upper : ℝ)
     (above : ∀ final : ((watchedMenu setup leaks bounds watcher).protocol (initialLaw setup)

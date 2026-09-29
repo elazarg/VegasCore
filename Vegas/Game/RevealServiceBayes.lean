@@ -107,7 +107,8 @@ theorem owner_bayes_state
       admission source sourceMixed weight nonnegative small positive
     ((InformationModel.bayesAssessment _ compiled.strategy mixed antichain).belief who site).map
         (fun native => prefixReadout setup leaks event.val native.1.state) =
-      ((InformationModel.bayesAssessment _ source.strategy sourceMixed (setup.decision_antichain admission)).belief who sourceSite).map
+      ((InformationModel.bayesAssessment _ source.strategy sourceMixed
+          (setup.decision_antichain admission)).belief who sourceSite).map
         (fun original => original.1.state) := by
   classical
   intro responses antichain compiled mixed

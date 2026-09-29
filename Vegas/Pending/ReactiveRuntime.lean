@@ -50,6 +50,16 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
   observePublic := State.publicView
   observePending := leaks
 
+omit [DecidableEq Player] in
+/-- A finitely branching leak rule makes every reactive environment law finite:
+the graph's own environment steps already are. -/
+instance reactiveApplication_finiteEnvironment (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) [leaks.FiniteSupport] :
+    (runtime.reactiveApplication leaks).FiniteEnvironment where
+  observePending_finite :=
+    MessageNetwork.ObservationRule.FiniteSupport.support_finite (leaks := leaks)
+  environment_finite := runtime.environmentStep_support_finite
+
 /-- Atomically fix a fresh candidate and transmit its handle. Only the packet
 field enters the network; the opening is private submission material. -/
 def reactiveBinding (runtime : EventGraphRuntime graph)

@@ -149,7 +149,8 @@ theorem roster_owner_comparison_of_posterior
   let sourceLaw := mix replacement lower upper
     (PMF.pure (representative true)) (PMF.pure (representative false))
   have sourceProbability :
-      ((sourceLaw.map (fun action => OwnAction.disclosure action.1)) true).toReal = replacement := by
+      ((sourceLaw.map (fun action => OwnAction.disclosure action.1)) true).toReal =
+          replacement := by
     simp only [sourceLaw, mix_map, PMF.pure_map, represents, mix_apply_toReal]
     norm_num [toReal_pure_apply]
   let sourceContext := source.continuationContext sourceSite

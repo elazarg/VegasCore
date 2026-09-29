@@ -761,7 +761,8 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     (small : site.disclosureProbability < 1)
     (old : ∀ slot, ((((application service.setup service.leaks).policyMixture
       (approx.timing phase.event who owned) (sourceServiceTimedFamily service.setup service.leaks
-        service.rosters approx.profile who phase.event)).posterior (execution.recall who)) slot).toReal = ((approx.timing phase.event who owned) slot).toReal *
+        service.rosters approx.profile who phase.event)).posterior (execution.recall who))
+            slot).toReal = ((approx.timing phase.event who owned) slot).toReal *
             (if slot.val < phase.earlier then 1 - site.disclosureProbability else 1) /
               PMF.deferredSurvival site.disclosureProbability
                 (approx.timing phase.event who owned) phase.earlier)
@@ -1012,7 +1013,8 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
         ring
     _ = utility (site.completion ready false) +
         q * (utility (site.completion ready true) - utility (site.completion ready false)) *
-          ((mixtureImpl.posterior (execution.recall actor ++ [entry])).toOuterMeasure {slot | phase.earlier + 1 ≤ slot.val}).toReal := by
+          ((mixtureImpl.posterior (execution.recall actor ++ [entry])).toOuterMeasure
+              {slot | phase.earlier + 1 ≤ slot.val}).toReal := by
       rw [FinDist.expect_add, expect_constant, FinDist.expect_smul,
         expect_indicator]
     _ = _ := by
@@ -1252,7 +1254,8 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
     rw [policyEq, FinDist.expect_bind, FinDist.expect_bind]
     calc
       _ = expect (mixtureImpl.posterior (execution.recall owner)) (fun slot =>
-          later + if slot = current then (disclosures true).toReal * (whenTrue - later) else 0) := by
+          later + if slot = current then (disclosures true).toReal *
+              (whenTrue - later) else 0) := by
         apply expect_congr_on_support
         intro slot slotSupport
         by_cases same : slot = current
@@ -1497,7 +1500,8 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
   choose alternative admittedAlternative alternativeLaw using exists_alternative
   -- The source value of each disclosure at each history.
   let value (disclose : Bool) (history : service.model.InformationHistory who site.1) : ℝ :=
-    expect ((service.setup.continuationLaw (Function.update approx.profile who (alternative disclose))
+    expect ((service.setup.continuationLaw
+        (Function.update approx.profile who (alternative disclose))
       (decodedState service event history.1)).map some) utility
   let later := PMF.deferredRemaining q (timing event who owned) (earlier + 1)
   let prescribedProbability := PMF.deferredRemaining q (timing event who owned) earlier
@@ -1533,7 +1537,8 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
         history.1).map service.readout) utility =
           prescribedProbability * value true history +
             (1 - prescribedProbability) * value false history ∧
-      expect ((service.model.runBehavioralFrom (Profile.update (sig := service.model.behavioralSignature)
+      expect ((service.model.runBehavioralFrom
+          (Profile.update (sig := service.model.behavioralSignature)
         approx.assessment.strategy who ((approx.assessment.strategy who).withLaw site.1 law))
           service.fuel history.1).map service.readout) utility =
           replacement * value true history + (1 - replacement) * value false history := by

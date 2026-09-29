@@ -26,7 +26,8 @@ open Classical in
 private theorem expect_binary {α : Type*} (law : PMF α) (predicate : Set α)
     (first second : ℝ) :
     expect law (fun value => if value ∈ predicate then first else second) =
-      (law.toOuterMeasure predicate).toReal * first + (1 - (law.toOuterMeasure predicate).toReal) * second := by
+      (law.toOuterMeasure predicate).toReal * first +
+          (1 - (law.toOuterMeasure predicate).toReal) * second := by
   classical
   have point (value : α) : (if value ∈ predicate then first else second) =
       (if value ∈ predicate then 1 else 0) * (first - second) + second := by

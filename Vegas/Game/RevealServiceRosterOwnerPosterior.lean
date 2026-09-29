@@ -379,7 +379,8 @@ theorem roster_owner_state_posterior
     reference ∈ executions.support →
     (fiberConditional executions info (info reference)).map
         (fun final => sourcePrefix? setup event.val final.application.config) =
-      fiberConditional (((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
+      fiberConditional (((setup.informationModel admission).runBehavioral source.strategy
+          (event.val + 1)).map
         ExecutionProtocol.History.state) (setup.protocolObserve owner)
           (setup.protocolObserve owner
             (sourcePrefix? setup event.val reference.application.config)) :=

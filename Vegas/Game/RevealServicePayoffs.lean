@@ -183,7 +183,8 @@ theorem netUtility_expect_le (watcher who : Player) (ordinary : who ≠ watcher)
     (deposit : Player → ℝ) (nonnegative : 0 ≤ deposit who)
     (law : PMF (application setup leaks).ProtocolState) (upper probability : ℝ)
     (bounded : ∀ state ∈ law.support, base state who ≤ upper)
-    (collection : probability ≤ (law.toOuterMeasure {state | departureAtState setup leaks who state}).toReal) :
+    (collection : probability ≤
+        (law.toOuterMeasure {state | departureAtState setup leaks who state}).toReal) :
     expect law (fun state => netUtility setup leaks watcher base deposit state who) ≤
       upper - probability * deposit who := by
   rw [netUtility_ordinary setup leaks watcher who ordinary,
@@ -204,7 +205,8 @@ theorem netUtility_comparison (watcher who : Player) (ordinary : who ≠ watcher
     (above : ∀ state ∈ extra.support, base state who ≤ upper)
     (below : ∀ state ∈ legal.support, lower ≤ base state who)
     (clean : ∀ state ∈ legal.support, ¬ departureAtState setup leaks who state)
-    (collection : probability ≤ (extra.toOuterMeasure {state | departureAtState setup leaks who state}).toReal)
+    (collection : probability ≤
+        (extra.toOuterMeasure {state | departureAtState setup leaks who state}).toReal)
     (sufficient : upper - lower ≤ probability * deposit who) :
     expect extra (fun state => netUtility setup leaks watcher base deposit state who) ≤
       expect legal (fun state => netUtility setup leaks watcher base deposit state who) := by

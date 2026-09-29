@@ -82,13 +82,12 @@ theorem failed_disclosure_response_posterior
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) =
       fun _ : Bool => (⟨none⟩ : (application setup leaks).Action) := funext constant
   rw [functionEq]
-  have fiber : (fun _ : Bool => (⟨none⟩ : (application setup leaks).Action)) ⁻¹'
-      {⟨none⟩} = Set.univ := by ext intention; simp only [Set.mem_preimage,
-        Set.mem_singleton_iff, Set.mem_univ]
   obtain ⟨intention, supported⟩ := intentions.support_nonempty
-  have present : ∃ intention ∈ (Set.univ : Set Bool), intention ∈ intentions.support :=
-    ⟨intention, Set.mem_univ _, supported⟩
-  simp only [fiberConditional, fiber, dite_eq_left present, FinDist.condOn_univ]
+  have present : ∃ intention ∈ (fun _ : Bool => (⟨none⟩ : (application setup leaks).Action)) ⁻¹'
+      {⟨none⟩}, intention ∈ intentions.support :=
+    ⟨intention, rfl, supported⟩
+  rw [fiberConditional, dite_eq_left present]
+  exact filter_of_support_subset _ _ _ fun _ _ => rfl
 
 /-- Conditioning the original successor on the actual failed native response
 retains both intended actions. The normalized source successor is withholding;

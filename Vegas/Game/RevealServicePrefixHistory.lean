@@ -81,7 +81,8 @@ theorem segment_control_steps (watcher : Player)
           (runtime setup).interactionStep leaks players
             ((runtime setup).reportNetwork leaks watcher) instruction execution := by
         simp only [ReactiveApplication.round, schedulerEq, interactionStep]
-      rw [step, ← PMF.bind_pure_comp, Function.comp_def, iterate_bind, runInteractionPlan, PMF.map_bind]
+      rw [step, ← PMF.bind_pure_comp, Function.comp_def, iterate_bind, runInteractionPlan,
+        PMF.map_bind]
       apply bind_congr_on_support _
       intro next reached
       apply ih (before ++ [instruction])

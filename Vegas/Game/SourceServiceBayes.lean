@@ -77,7 +77,8 @@ theorem sourceService_owner_bayes_posterior
       site.1 = some (reference.recall owner, reference.observe (application setup leaks) owner) →
       (native.stateBelief owner site).map (fun state => state.bind fun control =>
         sourceServicePrefix? setup event.val control.execution.application.config) =
-        fiberConditional (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
+        fiberConditional (((setup.informationModel admission).runBehavioral encoded
+            (event.val + 1)).map
           History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourceServicePrefix? setup event.val reference.application.config)) := by
@@ -214,7 +215,8 @@ theorem sourceService_owner_bayes_at_history
       control.execution ∈ executions.support ∧
       (native.stateBelief owner site).map (fun state => state.bind fun current =>
         sourceServicePrefix? setup event.val current.execution.application.config) =
-        fiberConditional (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
+        fiberConditional (((setup.informationModel admission).runBehavioral encoded
+            (event.val + 1)).map
           History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
               (sourceServicePrefix? setup event.val control.execution.application.config)) := by

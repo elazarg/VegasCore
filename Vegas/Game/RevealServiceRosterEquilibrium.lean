@@ -98,7 +98,8 @@ theorem roster_source_sequential_equilibrium_preserved
   have mixed (n : Nat) : (original n).IsFullyMixed :=
     rosterPerturbedProfile_fullyMixed setup leaks bounds rosters network reveals openable admission
       (sourceSequence n) (approximates n).1 (timing n) (timingFull n)
-  let sequence (n : Nat) := InformationModel.bayesAssessment _ (original n).strategy (mixed n) antichain
+  let sequence (n : Nat) := InformationModel.bayesAssessment _ (original n).strategy
+      (mixed n) antichain
   let compiled := rosterCompiledProfile setup leaks bounds rosters network
     (setup.decodeBehavioralProfile admission source.strategy)
   have strategies (who : Player) (site : model.InformationSite who) :
@@ -110,7 +111,8 @@ theorem roster_source_sequential_equilibrium_preserved
   obtain ⟨target, strategy, index, increasing, targetConverges, consistent⟩ :=
     InformationModel.BehavioralAssessment.exists_consistent_completion_subsequence antichain
       compiled sequence (fun n => (original n).bayes_isFullyMixed (mixed n) antichain)
-      (fun n => InformationModel.bayesAssessment_isBayesConsistent _ (original n).strategy (mixed n) antichain) strategies
+      (fun n => InformationModel.bayesAssessment_isBayesConsistent _ (original n).strategy
+          (mixed n) antichain) strategies
   let sourceObserve := fun history : (setup.executionProtocol admission).History =>
     setup.protocolReadout history.state
   let targetObserve := fun history : (menu.protocol (initialLaw setup) horizon scheduler).History =>

@@ -239,7 +239,8 @@ theorem roster_owner_response_source_value [Fintype Player]
         (ProtocolState.continuationLaw setup.program profile)) utility
     let probability := ((sourceChoiceLaw setup leaks profile owner
       (boundary.observe app owner)) true).toReal
-    expect ((runtime setup).runInteractionPlan leaks (rosterPolicy setup leaks rosters timing profile)
+    expect ((runtime setup).runInteractionPlan leaks
+        (rosterPolicy setup leaks rosters timing profile)
       network ((remaining.map ServiceInstruction.player ++
         (.includeLatest event owner :: List.replicate (event.val + 1) .tick ++ [.expire event])) ++
         (((List.finRange (eventCount setup.program)).drop (event.val + 1)).flatMap

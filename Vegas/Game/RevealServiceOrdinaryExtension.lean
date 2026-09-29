@@ -59,7 +59,8 @@ variable (reveals : setup.program.RevealOnly)
   (sufficient : ∀ who, who ≠ watcher → upper who - lower who ≤ probability who * deposit who)
   (sampling : ∀ owner, owner ≠ watcher →
     ∀ pending (message : Message Player (WitnessedPacket (graph setup))), message ∈ pending →
-      message.id.1 = owner → probability owner ≤ ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
+      message.id.1 = owner → probability owner ≤
+          ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
 
 include reveals observer openable nonnegative below above sufficient sampling in
 /-- Fixed utility bounds, deposits and observation coverage suffice for every

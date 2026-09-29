@@ -103,7 +103,7 @@ theorem repair_next_owner_opportunity
         exact fun pair _ => leftSample pair
       _ = (segmentLaw.map Prod.fst).bind
           (fun execution => execution.environmentStep app (.activate owner)) := by
-        rw [PMF.bind_map]
+        rw [PMF.bind_map]; rfl
       _ = _ := by rw [first]
   · rw [PMF.map_bind]
     calc
@@ -113,7 +113,7 @@ theorem repair_next_owner_opportunity
         exact rightSample
       _ = (segmentLaw.map Prod.snd).bind
           (fun pair => (pair.1.environmentStep app (.activate owner)).map
-            (fun execution => (execution, pair.2))) := by rw [PMF.bind_map]
+            (fun execution => (execution, pair.2))) := by rw [PMF.bind_map]; rfl
       _ = _ := by rw [second]
   · intro next supported
     obtain ⟨pair, chosen, reached⟩ :=

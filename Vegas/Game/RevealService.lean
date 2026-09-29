@@ -157,6 +157,24 @@ def scheduler (watcher : Player) : (application setup leaks).Scheduler := fun hi
   | some instruction => (runtime setup).interactionInstruction leaks
       ((runtime setup).reportNetwork leaks watcher) history view instruction
 
+/-- With a finitely supported prior and a finitely branching leak rule, all of
+the fixed service's nature branches finitely: its own instructions are
+deterministic. -/
+instance scheduler_finiteNature [setup.FiniteInitialLaw] [leaks.FiniteSupport]
+    (watcher : Player) :
+    (application setup leaks).FiniteNature (initialLaw setup) (scheduler setup leaks watcher) where
+  initial_finite := by
+    rw [initialLaw, PMF.support_map]
+    exact setup.initialLaw_support_finite.image _
+  scheduler_finite history view := by
+    unfold scheduler
+    split
+    · simp
+    · rename_i instruction _
+      cases instruction with
+      | wire => simp [(runtime setup).reportNetwork_instruction leaks watcher history view]
+      | _ => simp [EventGraphRuntime.interactionInstruction]
+
 abbrev horizon (watcher : Player) : Nat := (plan setup watcher).length
 
 /-- A local view determines the sole canonical opening, when the granted event

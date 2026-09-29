@@ -489,7 +489,8 @@ theorem roster_compiled_prefix_noise
       ((application setup leaks).messageView (execution seed), (execution seed).recall focal))) =
       (prior.map source).bind fun config => (PMF.pure emptyExtra).map fun extra =>
         (config, extra) := by
-    simp only [PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp, Function.comp_def]
+    simp only [PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp,
+        Function.comp_def]
     rfl
   obtain ⟨noise, factor⟩ := run_roster_source_prefix_noise setup leaks rosters timing network
     profile focal setup.program reveals profile

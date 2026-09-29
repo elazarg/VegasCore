@@ -829,7 +829,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
         change (prior.bind fun seed =>
           ((execution seed).environmentStep app (.application (.grant event))).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks focal final)) = _ at grantFactor
-        simpa only [grantEnvironment, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def] using grantFactor
+        simpa only [grantEnvironment, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def]
+            using grantFactor
       have nextPhysical (seed : Seed) (final : app.Execution)
           (moved : final ∈ ((runtime setup).runInteractionPlan leaks players network
             (rosterBlock setup rosters event) (execution seed)).support) :

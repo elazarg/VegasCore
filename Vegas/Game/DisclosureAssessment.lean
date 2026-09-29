@@ -184,12 +184,14 @@ theorem normalized_disclosure_assessment_comparison
       ∀ view ∈ ((prefixLaw normalized).map (ProtocolState.observe who setup.program)).support,
         SourceProgram.ProtocolView.actor who setup.program view = some who →
         ∃ mixture : PMF ((setup.informationModel admission).AssessmentDeviation who),
-          (((fiberConditional (prefixLaw normalized) (ProtocolState.observe who setup.program) view).bind
+          (((fiberConditional (prefixLaw normalized)
+              (ProtocolState.observe who setup.program) view).bind
             (ProtocolState.continuationLaw setup.program normalized)).map some) =
             mixture.bind (fun deviation => ((setup.informationModel admission).assessmentComparison
               (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
                 assessment who deviation).prescribed) ∧
-          (((fiberConditional (prefixLaw normalized) (ProtocolState.observe who setup.program) view).bind
+          (((fiberConditional (prefixLaw normalized)
+              (ProtocolState.observe who setup.program) view).bind
             (ProtocolState.continuationLaw setup.program
               (Function.update normalized who alternative))).map some) =
             mixture.bind (fun deviation => ((setup.informationModel admission).assessmentComparison

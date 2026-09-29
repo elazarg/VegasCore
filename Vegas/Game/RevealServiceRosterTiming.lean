@@ -46,7 +46,7 @@ def rosterTiming (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight �
     PMF (Fin ((rosters event).count owner)) :=
   let last := rosterLastSlot setup rosters coverage event owner owned
   letI : Nonempty (Fin ((rosters event).count owner)) := ⟨last⟩
-  mix weight nonnegative bounded PMF.uniformOfFintype (PMF.pure last)
+  mix weight nonnegative bounded (PMF.uniformOfFintype _) (PMF.pure last)
 
 theorem rosterTiming_fullSupport (weight : ℝ) (nonnegative : 0 ≤ weight)
     (bounded : weight ≤ 1) (positive : 0 < weight)
@@ -90,14 +90,8 @@ theorem rosterTiming_converges {weight : Nat → ℝ}
       (fun n => rosterTiming setup rosters coverage (weight n) (nonnegative n) (bounded n)
         event owner owned)
       (PMF.pure (rosterLastSlot setup rosters coverage event owner owned)) := by
-  let last := rosterLastSlot setup rosters coverage event owner owned
-  let _ : Nonempty (Fin ((rosters event).count owner)) := ⟨last⟩
-  intro slot
-  have first := vanishes.mul_const
-    ((((PMF.uniformOfFintype _) : PMF (Fin ((rosters event).count owner))) slot).toReal)
-  have one : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
-  have second := (one.sub vanishes).mul_const (((PMF.pure last) slot).toReal)
-  simpa only [rosterTiming, mix_apply_toReal, zero_mul, sub_zero, one_mul, zero_add] using
-    first.add second
+  let _ : Nonempty (Fin ((rosters event).count owner)) :=
+    ⟨rosterLastSlot setup rosters coverage event owner owned⟩
+  exact pmfConvergesPointwise_mix_zero weight nonnegative bounded vanishes _ _
 
 end Vegas

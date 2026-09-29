@@ -157,6 +157,7 @@ theorem run_source_prefix_support
             activeCheckpoint.reveal_response bounds players watcher watcherPolicy published
               selected event eventRank actor outputEq codeEq node
               (fun ref => refsBefore ref index) decoded granted response member
+          simp only [Function.comp_apply] at continued
           rw [runInteractionPlan_append, afterLaw, PMF.pure_bind] at continued
           have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs

@@ -204,10 +204,12 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
     let submitted := control.execution.respond (application setup leaks) owner
       ⟨some (.submit submission)⟩
-    ((leaks watcher submitted.network.pending).toOuterMeasure {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal ≤
+    ((leaks watcher submitted.network.pending).toOuterMeasure
+        {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal ≤
       (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
         (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
-          profile owner ((profile owner).commit site.1 action)) fuel history.1).toOuterMeasure {final | departureAtState setup leaks owner final.state}).toReal := by
+          profile owner ((profile owner).commit site.1 action)) fuel history.1).toOuterMeasure
+              {final | departureAtState setup leaks owner final.state}).toReal := by
   classical
   let app := application setup leaks
   let responses := watchedMenu setup leaks bounds watcher
@@ -264,7 +266,8 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     reporter control.execution event submission serials pendingPublished knownPublished departure
     (scheduler setup leaks watcher) rest.length
   have mapped := congrArg
-    (fun law : PMF app.ProtocolState => (law.toOuterMeasure {s | departureAtState setup leaks owner s}).toReal)
+    (fun law : PMF app.ProtocolState =>
+        (law.toOuterMeasure {s | departureAtState setup leaks owner s}).toReal)
     exactLaw
   rw [FinDist.probOf_map, FinDist.probOf_map] at mapped
   exact monitored.trans_eq mapped.symm

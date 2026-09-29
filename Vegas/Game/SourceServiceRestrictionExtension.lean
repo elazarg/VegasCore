@@ -128,7 +128,8 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       source sourceRemaining
   have full := (target.sequentialEquilibrium_remaining_iff
     (effective.information (initialLaw setup) count scheduler)
-    (effective.decisionRecall (initialLaw setup) count scheduler).decisionInformationAntichain (2 * count + 1)
+    (effective.decisionRecall (initialLaw setup) count scheduler).decisionInformationAntichain
+        (2 * count + 1)
     (effective.bounded (initialLaw setup) count scheduler) depth clock
     (fun who history => payoff history.state who)).mp remaining
   refine ⟨target, full, agrees, historyLaw, ?_⟩

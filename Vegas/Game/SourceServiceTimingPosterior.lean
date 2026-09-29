@@ -175,17 +175,20 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         have responseProbability : ((sourceServiceOpportunity setup leaks wholeProfile owner event
             (execution.recall owner) entry.beforeView) entry.action).toReal =
               (1 - (choice true).toReal) *
-                ((app.replayPolicy (execution.recall owner) entry.beforeView) entry.action).toReal := by
+                ((app.replayPolicy (execution.recall owner) entry.beforeView)
+                    entry.action).toReal := by
           rw [actionLaw, PMF.bind_bool_mix, mix_apply_toReal,
             entryAction, FinDist.prob_pure_of_ne different, mul_zero, zero_add]
         have likelihood (selected : Fin ((rosters event).count owner)) :
             ((family selected (execution.recall owner) entry.beforeView) entry.action).toReal =
               (if selected = slot then 1 - (choice true).toReal else 1) *
-                ((app.replayPolicy (execution.recall owner) entry.beforeView) entry.action).toReal := by
+                ((app.replayPolicy (execution.recall owner) entry.beforeView)
+                    entry.action).toReal := by
           change (((if some (offset + selected.val) = some (execution.recall owner).length then
             sourceServiceOpportunity setup leaks wholeProfile owner event
               (execution.recall owner) entry.beforeView else
-                app.replayPolicy (execution.recall owner) entry.beforeView)) entry.action).toReal = _
+                app.replayPolicy (execution.recall owner) entry.beforeView))
+                    entry.action).toReal = _
           by_cases equal : selected = slot
           · subst selected
             simp only [counted, slot, offset, ↓reduceIte]

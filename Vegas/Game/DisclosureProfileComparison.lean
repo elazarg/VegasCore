@@ -38,12 +38,14 @@ private def PrefixComparison (program : SourceProgram Player L Γ O)
         ((fiberConditional (prefixLaw target) (ProtocolState.observe who program) view).bind
           (ProtocolState.continuationLaw program target)) =
           alternatives.bind (fun selected =>
-            (fiberConditional (prefixLaw source) (ProtocolState.observe who program) selected.1).bind
+            (fiberConditional (prefixLaw source)
+                (ProtocolState.observe who program) selected.1).bind
               (ProtocolState.continuationLaw program source)) ∧
         ((fiberConditional (prefixLaw target) (ProtocolState.observe who program) view).bind
           (ProtocolState.continuationLaw program (Function.update target who alternative))) =
           alternatives.bind (fun selected =>
-            (fiberConditional (prefixLaw source) (ProtocolState.observe who program) selected.1).bind
+            (fiberConditional (prefixLaw source)
+                (ProtocolState.observe who program) selected.1).bind
               (ProtocolState.continuationLaw program (Function.update source who selected.2.1)))
 
 private theorem prefixComparison_refl (program : SourceProgram Player L Γ O)
@@ -154,12 +156,14 @@ theorem normalizeDisclosureProfile_prefix_comparison
           ((fiberConditional (prefixLaw normalized) (ProtocolState.observe who program) view).bind
             (ProtocolState.continuationLaw program normalized)) =
             alternatives.bind (fun selected =>
-              (fiberConditional (prefixLaw profile) (ProtocolState.observe who program) selected.1).bind
+              (fiberConditional (prefixLaw profile)
+                  (ProtocolState.observe who program) selected.1).bind
                 (ProtocolState.continuationLaw program profile)) ∧
           ((fiberConditional (prefixLaw normalized) (ProtocolState.observe who program) view).bind
             (ProtocolState.continuationLaw program (Function.update normalized who alternative))) =
             alternatives.bind (fun selected =>
-              (fiberConditional (prefixLaw profile) (ProtocolState.observe who program) selected.1).bind
+              (fiberConditional (prefixLaw profile)
+                  (ProtocolState.observe who program) selected.1).bind
                 (ProtocolState.continuationLaw program
                   (Function.update profile who selected.2.1))) := by
   classical

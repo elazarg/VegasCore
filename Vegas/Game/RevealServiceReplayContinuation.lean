@@ -126,7 +126,8 @@ theorem replay_control_bind_eq {Outcome : Type}
             (players who (execution.recall who) (execution.observe app who)).map fun response =>
               some ⟨remaining, none, execution.respond app who response⟩ := by
         simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-          ReactiveApplication.transition, reduceIte, Option.getD_some, ← PMF.bind_pure_comp, Function.comp_def]
+          ReactiveApplication.transition, reduceIte, Option.getD_some, ← PMF.bind_pure_comp,
+              Function.comp_def]
       rw [step, step, PMF.bind_map, PMF.bind_map]
       by_cases watches : who = watcher
       · subst who

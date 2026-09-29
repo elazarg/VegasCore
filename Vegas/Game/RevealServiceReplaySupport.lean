@@ -180,7 +180,8 @@ private theorem supported_counterpart
               initial.map (fun state => some ⟨count, none,
                 ReactiveApplication.Execution.initial app state⟩) := by
           simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
-            Option.bind_none, ReactiveApplication.transition, ← PMF.bind_pure_comp, Function.comp_def]
+            Option.bind_none, ReactiveApplication.transition, ← PMF.bind_pure_comp,
+                Function.comp_def]
           rfl
         rw [initialStep, PMF.support_map] at stateSupport
         obtain ⟨state, stateSupported, stateEq⟩ := stateSupport

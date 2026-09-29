@@ -55,7 +55,8 @@ theorem source_raw_sequential_equilibrium_preserved
     (positive : ∀ who, who ≠ watcher → 0 < probability who)
     (sampling : ∀ owner, owner ≠ watcher →
       ∀ pending (message : Message Player (WitnessedPacket (graph setup))), message ∈ pending →
-        message.id.1 = owner → probability owner ≤ ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
+        message.id.1 = owner → probability owner ≤
+            ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
       (fun who site => source.continuationContext site

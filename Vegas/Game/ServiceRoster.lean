@@ -49,6 +49,24 @@ def rosterScheduler (setup : Setup (Player := Player) (L := L))
     | none => PMF.pure .wait
     | some instruction => (runtime setup).interactionInstruction leaks network past view instruction
 
+/-- A finitely supported prior, leak rule, and network policy make all of the
+roster service's nature branch finitely. -/
+instance rosterScheduler_finiteNature (setup : Setup (Player := Player) (L := L))
+    [setup.FiniteInitialLaw]
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    [leaks.FiniteSupport] (rosters : (graph setup).EventId → List Player)
+    (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport] :
+    (application setup leaks).FiniteNature (initialLaw setup)
+      (rosterScheduler setup leaks rosters network) where
+  initial_finite := by
+    rw [initialLaw, PMF.support_map]
+    exact setup.initialLaw_support_finite.image _
+  scheduler_finite past view := by
+    unfold rosterScheduler
+    split
+    · simp
+    · exact (runtime setup).interactionInstruction_support_finite leaks network past view _
+
 /-- Every event actor has an activation at its own event. The compiler theorems
 assume this coverage: without it an owner could never bind or open, so a source
 choice would be unavailable in the native game. -/
