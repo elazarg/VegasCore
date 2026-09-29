@@ -46,6 +46,64 @@ theorem canonical_initial_stateLaw
   rw [PMF.map_comp] at projected
   exact projected
 
+/-- At every raw information site, the prescribed continuation's normalized
+final-state law is the source continuation's final-state law. -/
+theorem canonical_assessmentLaw
+    (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
+    (target : (raw.information initial horizon scheduler).BehavioralAssessment)
+    (strategy : target.strategy = (fun player => normal.canonicalPolicy raw stable closed
+      initial horizon scheduler player (source.strategy player)))
+    (who : Principal) (original : (raw.information initial horizon scheduler).InformationSite who)
+    (beliefs : (target.belief who original).map
+        (normal.informationHistory raw stable initial horizon scheduler who original.1) =
+      source.belief who (normal.site raw stable initial horizon scheduler who original)) :
+    ((raw.information initial horizon scheduler).assessmentLaw (2 * horizon + 1) target original
+        (target.strategy who)).map (fun history => normal.state history.state) =
+      (((normal.menu raw).information initial horizon scheduler).assessmentLaw (2 * horizon + 1)
+        source (normal.site raw stable initial horizon scheduler who original)
+          (source.strategy who)).map History.state := by
+  simp only [assessmentLaw, GameTheory.Profile.update_eq_self]
+  rw [strategy, ← beliefs, PMF.bind_map, PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro history _
+  have law := normal.runBehavioral_projection raw stable initial horizon scheduler
+    (fun player => normal.canonicalPolicy raw stable closed initial horizon scheduler
+      player (source.strategy player)) source.strategy
+    (fun player observed => normal.canonicalPolicy_project raw stable closed initial horizon
+      scheduler player (source.strategy player) observed) (2 * horizon + 1) history.1
+  have mapped := congrArg (PMF.map History.state) law
+  rw [PMF.map_comp] at mapped
+  exact mapped
+
+/-- A raw whole-policy deviation and its alias-erased source deviation induce
+the same normalized final-state law at every raw information site. -/
+theorem aliasDeviation_assessmentLaw
+    (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
+    (target : (raw.information initial horizon scheduler).BehavioralAssessment)
+    (strategy : target.strategy = (fun player => normal.canonicalPolicy raw stable closed
+      initial horizon scheduler player (source.strategy player)))
+    (who : Principal) (original : (raw.information initial horizon scheduler).InformationSite who)
+    (beliefs : (target.belief who original).map
+        (normal.informationHistory raw stable initial horizon scheduler who original.1) =
+      source.belief who (normal.site raw stable initial horizon scheduler who original))
+    (past : List app.PlayerEntry) (view : app.PlayerView)
+    (observed : original.1 = some (past, view))
+    (alternative : (raw.information initial horizon scheduler).BehavioralPolicy who) :
+    ((raw.information initial horizon scheduler).assessmentLaw (2 * horizon + 1) target original
+        alternative).map (fun history => normal.state history.state) =
+      (((normal.menu raw).information initial horizon scheduler).assessmentLaw (2 * horizon + 1)
+        source (normal.site raw stable initial horizon scheduler who original)
+          (normal.aliasDeviation raw initial horizon scheduler who past alternative)).map
+            History.state := by
+  simp only [assessmentLaw]
+  rw [strategy, ← beliefs, PMF.bind_map, PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro history _
+  have law := normal.aliasDeviation_historyLaw raw stable closed initial horizon scheduler
+    source.strategy who alternative history.1 past view (history.2.trans observed)
+  rw [PMF.map_comp] at law
+  exact law
+
 /-- Erasing ineffective private response names supplies a deterministic
 continuation simulation at every raw information site. The deviator's entire
 future policy is represented, including behavior conditioned on remembered
@@ -75,30 +133,26 @@ def aliasContinuationSimulation
         contradiction
     | some data => exact ⟨data, rfl⟩
   let data who original := Classical.choose (hasData who original)
-  refine GameTheory.ContinuationSimulation.ofMap_expect
+  refine GameTheory.ContinuationSimulation.ofMap
     (fun who deviation =>
       (normal.site raw stable initial horizon scheduler who deviation.1,
         normal.aliasDeviation raw initial horizon scheduler who
           (data who deviation.1).1 deviation.2)) ?_ ?_
-  · intro who deviation payoff
-    simpa only [assessmentComparison, expect_map, Context.value,
-      BehavioralAssessment.continuationContext] using
-      normal.canonical_context_value raw stable closed initial horizon scheduler
-        source target strategy who deviation.1 (beliefs who deviation.1) payoff
-  · intro who deviation payoff
-    simpa only [assessmentComparison, expect_map, Context.value,
-      BehavioralAssessment.continuationContext] using
-      normal.aliasDeviation_context_value raw stable closed initial horizon scheduler
-        source target strategy who deviation.1 (beliefs who deviation.1)
-          (data who deviation.1).1 (data who deviation.1).2
-            (Classical.choose_spec (hasData who deviation.1)) payoff deviation.2
+  · intro who deviation
+    exact normal.canonical_assessmentLaw raw stable closed initial horizon scheduler
+      source target strategy who deviation.1 (beliefs who deviation.1)
+  · intro who deviation
+    exact normal.aliasDeviation_assessmentLaw raw stable closed initial horizon scheduler
+      source target strategy who deviation.1 (beliefs who deviation.1)
+        (data who deviation.1).1 (data who deviation.1).2
+          (Classical.choose_spec (hasData who deviation.1)) deviation.2
 
 /-- Adding private response aliases preserves sequential equilibrium for
 utilities of the normalized final state. Consistency uses one common fully
 mixed sequence; rationality compares every whole continuation-policy deviation.
 The conclusion retains all projected information-set beliefs and the complete
 initialized final-state law. -/
-theorem exists_canonical_sequentialEquilibrium
+theorem exists_canonical_sequentialEquilibrium [app.FiniteNature initial scheduler]
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
     (payoff : Principal → app.ProtocolState → ℝ)
     (equilibrium : source.IsSequentialEquilibriumFor

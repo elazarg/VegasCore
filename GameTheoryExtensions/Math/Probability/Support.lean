@@ -114,6 +114,64 @@ theorem bindOnSupport_congr_measure {μ ν : PMF α} (same : μ = ν)
   subst ν
   exact bindOnSupport_congr μ fun a ha => agree a ha ha
 
+/-- A support-dependent bind after an ordinary bind reassociates, with the
+intermediate support witness threaded through the inner continuation. -/
+theorem bind_bindOnSupport_assoc {γ : Type*} (law : PMF α) (first : α → PMF β)
+    (next : ∀ value ∈ (law.bind first).support, PMF γ) :
+    (law.bind first).bindOnSupport next =
+      law.bindOnSupport fun value valueMem =>
+        (first value).bindOnSupport fun result resultMem =>
+          next result (by
+            rw [PMF.support_bind]
+            exact Set.mem_iUnion_of_mem value
+              (Set.mem_iUnion_of_mem valueMem resultMem)) := by
+  let dependentFirst : ∀ value ∈ law.support, PMF β := fun value _ => first value
+  have sourceEq : law.bindOnSupport dependentFirst = law.bind first :=
+    PMF.bindOnSupport_eq_bind law first
+  calc
+    (law.bind first).bindOnSupport next =
+        (law.bindOnSupport dependentFirst).bindOnSupport
+          (fun value valueMem => next value (by rwa [sourceEq] at valueMem)) := by
+      apply bindOnSupport_congr_measure sourceEq.symm
+      intro value _ _
+      congr
+    _ = _ := PMF.bindOnSupport_bindOnSupport law dependentFirst _
+
+/-- A support-dependent continuation after a pushforward can instead be
+evaluated at each original draw. The pushforward need not be injective. -/
+theorem bindOnSupport_map {γ : Type*} (law : PMF α) (f : α → β)
+    (next : ∀ value ∈ (law.map f).support, PMF γ) :
+    (law.map f).bindOnSupport next = law.bindOnSupport fun value supported =>
+      next (f value) (by rw [PMF.support_map]; exact ⟨value, supported, rfl⟩) := by
+  classical
+  obtain ⟨someValue, someSupported⟩ := (law.map f).support_nonempty
+  let total : β → PMF γ := fun value =>
+    if supported : value ∈ (law.map f).support then next value supported
+    else next someValue someSupported
+  have agrees : ∀ value (supported : value ∈ (law.map f).support),
+      next value supported = total value := by
+    intro value supported
+    simp only [total, supported, ↓reduceDIte]
+  rw [bindOnSupport_eq_bind_of_eq_on_support _ agrees, PMF.bind_map]
+  symm
+  apply bindOnSupport_eq_bind_of_eq_on_support
+  intro value supported
+  exact agrees (f value) (by rw [PMF.support_map]; exact ⟨value, supported, rfl⟩)
+
+/-- Tagging each branch's draw with its branch makes a tagged atom's mass the
+product of the branch mass and the draw's mass within that branch. -/
+theorem bind_map_tag_apply (prior : PMF α) (branch : α → PMF β) (value : β) (index : α) :
+    (prior.bind fun selected => (branch selected).map fun result => (result, selected))
+      (value, index) = prior index * branch index value := by
+  rw [PMF.bind_apply, tsum_eq_single index,
+    pmf_map_apply_of_injective _ (fun _ _ same => (Prod.mk.inj same).1)]
+  intro selected different
+  rw [(PMF.apply_eq_zero_iff ((branch selected).map fun result => (result, selected)) _).mpr,
+    mul_zero]
+  intro member
+  obtain ⟨result, _, same⟩ := PMF.support_map .. ▸ member
+  exact different (congrArg Prod.snd same)
+
 /-- Retype a law whose entire support satisfies a predicate. This does not
 condition or renormalize the law. -/
 def pmfToSubtype (law : PMF α) {P : α → Prop}

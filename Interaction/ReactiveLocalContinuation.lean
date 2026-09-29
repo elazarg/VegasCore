@@ -62,7 +62,7 @@ theorem run_one_response
   rw [menu.run_map_controlSteps]
   simp only [Function.iterate_one, PMF.pure_bind, current, controlStep,
     actor, Option.bind_some, transition, ↓reduceIte, Option.getD_some]
-  exact (FinDist.map_eq_bind _ _).symm
+  exact PMF.bind_pure_comp _ _
 
 open Classical in
 /-- A pure information-site deviation performs the selected physical response
@@ -184,7 +184,9 @@ theorem run_local_law_finish
       omega
     _ = ((model.runBehavioralFrom updated 1 history).map History.state).bind
         (app.finish initial horizon scheduler
-          (menu.decodeProfile initial horizon scheduler profile)) := by rw [PMF.bind_map]
+          (menu.decodeProfile initial horizon scheduler profile)) := by
+      rw [PMF.bind_map]
+      rfl
     _ = _ := by
       rw [firstLaw, PMF.bind_map, PMF.bind_map]
       rfl

@@ -40,7 +40,8 @@ theorem behavioralJoint_embed
           ⟨joint.1, menu.legal_raw initial horizon scheduler joint.2⟩ := by
   rcases history with ⟨state, trace⟩
   cases trace <;>
-    simp only [InformationModel.behavioralJoint, embedPolicy, independentProduct_map, PMF.map_comp] <;>
+    simp only [InformationModel.behavioralJoint, embedPolicy, ← independentProduct_map,
+      PMF.map_comp] <;>
     rfl
 
 /-- The map retains the complete history, rather than just public outcomes. -/

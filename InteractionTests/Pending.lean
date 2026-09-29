@@ -79,7 +79,7 @@ theorem response_marginal (deliverFirst reverseInclusion first : Bool)
     (respond : LocalView → PMF Bool) :
     (nativeRun deliverFirst reverseInclusion first respond).map Outcome.response =
       respond (observe (beforeResponse first deliverFirst).2 true) := by
-  simp [nativeRun]
+  simp [nativeRun, PMF.map_bind, PMF.pure_map]
 
 def constantResponse (value : Bool) : LocalView → PMF Bool :=
   fun _ => PMF.pure value
@@ -89,13 +89,13 @@ theorem forward_ledger (first response : Bool) :
         (fun outcome => outcome.pool.ledger) =
       PMF.pure [⟨(false, 0), first⟩, ⟨(true, 0), response⟩] := by
   simp [nativeRun, constantResponse, beforeResponse, afterFirstSubmission, submit,
-    empty, deliver, lookup, includePending, removeFirst]
+    empty, deliver, lookup, includePending, removeFirst, PMF.pure_map]
 
 theorem reverse_ledger (first response : Bool) :
     (nativeRun true true first (constantResponse response)).map
         (fun outcome => outcome.pool.ledger) =
       PMF.pure [⟨(true, 0), response⟩, ⟨(false, 0), first⟩] := by
   simp [nativeRun, constantResponse, beforeResponse, afterFirstSubmission, submit,
-    empty, deliver, lookup, includePending, removeFirst]
+    empty, deliver, lookup, includePending, removeFirst, PMF.pure_map]
 
 end InteractionTests.Pending

@@ -162,26 +162,20 @@ theorem canonical_context_value
         (fun history => payoff history.state) (2 * horizon + 1)).value (source.strategy who) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
     InformationModel.BehavioralAssessment.continuationContext_value]
-  simp only [GameTheory.Profile.update_eq_self, FinDist.expect_bind]
-  rw [strategy]
-  calc
-    _ = expect (target.belief who original) (fun history =>
-        expect (((normal.menu raw).information initial horizon scheduler).runBehavioralFrom
-          source.strategy (2 * horizon + 1)
-            (normal.history raw stable initial horizon scheduler history.1))
-          (fun final => payoff final.state)) := by
-      apply expect_congr_on_support
-      intro history _
-      have law := normal.runBehavioral_projection raw stable initial horizon scheduler
-        (fun player => normal.canonicalPolicy raw stable closed initial horizon scheduler
-          player (source.strategy player)) source.strategy
-        (fun player observed => normal.canonicalPolicy_project raw stable closed initial horizon
-          scheduler player (source.strategy player) observed) (2 * horizon + 1) history.1
-      rw [← law, expect_map]
-      rfl
-    _ = _ := by
-      rw [← beliefs, expect_map]
-      rfl
+  simp only [GameTheory.Profile.update_eq_self]
+  rw [strategy, ← beliefs, PMF.bind_map]
+  refine expect_bind_readout_congr _ _ _
+    (fun final : (raw.protocol initial horizon scheduler).History => normal.state final.state)
+    (fun final : ((normal.menu raw).protocol initial horizon scheduler).History => final.state)
+    payoff fun history _ => ?_
+  have law := normal.runBehavioral_projection raw stable initial horizon scheduler
+    (fun player => normal.canonicalPolicy raw stable closed initial horizon scheduler
+      player (source.strategy player)) source.strategy
+    (fun player observed => normal.canonicalPolicy_project raw stable closed initial horizon
+      scheduler player (source.strategy player) observed) (2 * horizon + 1) history.1
+  have mapped := congrArg (PMF.map History.state) law
+  rw [PMF.map_comp] at mapped
+  exact mapped
 
 theorem aliasDeviation_context_value
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
@@ -203,25 +197,14 @@ theorem aliasDeviation_context_value
           (normal.aliasDeviation raw initial horizon scheduler who past alternative) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value,
     InformationModel.BehavioralAssessment.continuationContext_value]
-  simp only [FinDist.expect_bind]
-  rw [strategy]
-  calc
-    _ = expect (target.belief who original) (fun history =>
-        expect (((normal.menu raw).information initial horizon scheduler).runBehavioralFrom
-          (GameTheory.Profile.update
-            (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
-              source.strategy who
-                (normal.aliasDeviation raw initial horizon scheduler who past alternative))
-          (2 * horizon + 1) (normal.history raw stable initial horizon scheduler history.1))
-            (fun final => payoff final.state)) := by
-      apply expect_congr_on_support
-      intro history _
-      have law := normal.aliasDeviation_historyLaw raw stable closed initial horizon scheduler
-        source.strategy who alternative history.1 past view (history.2.trans observed)
-      have value := congrArg (fun law => expect law payoff) law
-      simpa only [expect_map] using value
-    _ = _ := by
-      rw [← beliefs, expect_map]
-      rfl
+  rw [strategy, ← beliefs, PMF.bind_map]
+  refine expect_bind_readout_congr _ _ _
+    (fun final : (raw.protocol initial horizon scheduler).History => normal.state final.state)
+    (fun final : ((normal.menu raw).protocol initial horizon scheduler).History => final.state)
+    payoff fun history _ => ?_
+  have law := normal.aliasDeviation_historyLaw raw stable closed initial horizon scheduler
+    source.strategy who alternative history.1 past view (history.2.trans observed)
+  rw [PMF.map_comp] at law
+  exact law
 
 end Interaction.ReactiveApplication.SubmissionNormalization

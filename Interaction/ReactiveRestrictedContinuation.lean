@@ -100,7 +100,9 @@ theorem run_local_law_restrict_finish (players : Principal → app.Policy)
       change 2 * remaining ≤ fuel
       omega
     _ = ((model.runBehavioralFrom updated 1 history).map History.state).bind
-        (app.finish initial horizon scheduler players) := by rw [PMF.bind_map]
+        (app.finish initial horizon scheduler players) := by
+      rw [PMF.bind_map]
+      rfl
     _ = _ := by
       rw [firstLaw, PMF.bind_map, PMF.bind_map]
       rfl

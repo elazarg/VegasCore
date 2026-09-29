@@ -59,7 +59,7 @@ theorem controlStep_marginals (initial : PMF app.State) (horizon : Nat)
           have selected := congrArg (fun law => law.bind fun action =>
             PMF.pure (some (Control.mk remaining none
               (execution.respond app who (action.getD ⟨none⟩))))) law
-          simpa only [PMF.bind_map, Function.comp_apply, Option.getD_some, transition,
+          simpa only [PMF.bind_map, Function.comp_def, Option.getD_some, transition,
             controlStep, actor, Option.bind_some, ↓reduceIte] using selected
 
 theorem behavioral_step (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)

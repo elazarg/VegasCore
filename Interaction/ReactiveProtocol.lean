@@ -56,6 +56,50 @@ def transition (initial : PMF app.State) (horizon : Nat) (scheduler : app.Schedu
             (control.execution.environmentStep app command).map fun execution =>
               some ⟨remaining, command.actor? app, execution⟩
 
+/-- The application's own nature branches finitely: every pending-message
+observation and every environment step has finite support. -/
+class FiniteEnvironment : Prop where
+  observePending_finite : ∀ who pending, (app.observePending who pending).support.Finite
+  environment_finite : ∀ state command, (app.environment state command).support.Finite
+
+/-- All nature branches finitely: the application's own laws, the initial law
+and every scheduler decision have finite support. -/
+class FiniteNature (initial : PMF app.State) (scheduler : app.Scheduler) : Prop
+    extends app.FiniteEnvironment where
+  initial_finite : initial.support.Finite
+  scheduler_finite : ∀ recall view, (scheduler recall view).support.Finite
+
+theorem environmentStep_support_finite [app.FiniteEnvironment]
+    (execution : app.Execution) (command : app.Command) :
+    (execution.environmentStep app command).support.Finite := by
+  unfold Execution.environmentStep
+  rw [PMF.support_map]
+  refine Set.Finite.image _ ?_
+  cases command with
+  | activate who =>
+      rw [PMF.support_map]
+      exact (FiniteEnvironment.observePending_finite who _).image _
+  | «include» id => simp
+  | application command =>
+      rw [PMF.support_map]
+      exact (FiniteEnvironment.environment_finite _ command).image _
+  | wait => simp
+
+theorem transition_support_finite (initial : PMF app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) [app.FiniteNature initial scheduler]
+    (state : app.ProtocolState) (joint : Principal → Option app.Action) :
+    (app.transition initial horizon scheduler state joint).support.Finite := by
+  rcases state with _ | ⟨remaining, actor, execution⟩
+  · rw [transition, PMF.support_map]
+    exact (FiniteNature.initial_finite (app := app) scheduler).image _
+  rcases actor with _ | who
+  · rcases remaining with _ | remaining
+    · simp [transition]
+    · simp only [transition, PMF.support_bind, PMF.support_map]
+      exact (FiniteNature.scheduler_finite initial _ _).biUnion fun command _ =>
+        (app.environmentStep_support_finite _ command).image _
+  · simp [transition]
+
 def protocol (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ExecutionProtocol Principal where
   State := app.ProtocolState

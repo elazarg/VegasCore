@@ -283,7 +283,7 @@ theorem runPolicies_map_bindOnSupport_conservation [DecidableEq Principal]
     induction after generalizing before execution with
     | nil =>
         change (PMF.pure execution).bindOnSupport _ = _
-        rw [FinDist.pure_bindOnSupport]
+        rw [PMF.pure_bindOnSupport]
     | cons label rest ih =>
         let stepLaw := app.invoke players environment execution (toInvocation label)
         let restLaw := app.runPolicies players environment (rest.map toInvocation)
@@ -306,7 +306,7 @@ theorem runPolicies_map_bindOnSupport_conservation [DecidableEq Principal]
           intro next _ _
           congr
         rw [normalized]
-        rw [FinDist.bind_bindOnSupport_assoc]
+        rw [bind_bindOnSupport_assoc]
         calc
           _ = (app.invoke players environment execution
                 (toInvocation label)).bindOnSupport

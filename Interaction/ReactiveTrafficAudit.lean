@@ -238,7 +238,8 @@ theorem trafficViolation_continuation (initial : PMF app.State) (horizon : Nat)
     (fuel : Nat) (history : (app.protocol initial horizon scheduler).History)
     (detected : app.trafficViolation permitted who
       (app.trafficAudit initial horizon scheduler history.trace) = true) :
-    (((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history).toOuterMeasure {final | app.trafficViolation permitted who
+    (((app.protocol initial horizon scheduler).runRandomizedFor chooser fuel history).toOuterMeasure
+      {final | app.trafficViolation permitted who
         (app.trafficAudit initial horizon scheduler final.trace) = true}).toReal = 1 := by
   classical
   rw [← expect_indicator]
@@ -272,16 +273,12 @@ theorem trafficViolation_sampling_lower (permitted : app.TrafficRecord → Bool)
     (record : app.TrafficRecord) (owner : record.input.broadcaster = who)
     (forbidden : permitted record = false) :
     (observations.toOuterMeasure {observed | record ∈ observed}).toReal ≤
-      (observations.toOuterMeasure {observed | app.trafficViolation permitted who observed = true}).toReal := by
-  classical
-  rw [← expect_indicator, ← expect_indicator]
-  apply FinDist.expect_mono
-  intro observed _
-  by_cases included : record ∈ observed
-  · have detected := (app.trafficViolation_iff permitted who observed).mpr
-      ⟨record, included, owner, forbidden⟩
-    simp [included, detected]
-  · simp only [Set.mem_ofPred_eq, included, ite_eq_right, not_false_eq_true]
-    split <;> norm_num
+      (observations.toOuterMeasure
+        {observed | app.trafficViolation permitted who observed = true}).toReal := by
+  apply ENNReal.toReal_mono (outerMeasure_ne_top _ _)
+  apply PMF.toOuterMeasure_mono
+  intro observed ⟨included, _⟩
+  exact (app.trafficViolation_iff permitted who observed).mpr
+    ⟨record, included, owner, forbidden⟩
 
 end Interaction.ReactiveApplication

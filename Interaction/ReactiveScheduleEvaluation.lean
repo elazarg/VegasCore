@@ -59,7 +59,8 @@ theorem control_round (app : ReactiveApplication Principal)
         ReactiveApplication.resume, PMF.map_bind]
       apply bind_congr_on_support _
       intro observed _
-      simp only [↓reduceIte, Option.getD_some, ReactiveApplication.invoke,
+      simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
+        ReactiveApplication.transition, ↓reduceIte, Option.getD_some, ReactiveApplication.invoke,
         ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
 
 

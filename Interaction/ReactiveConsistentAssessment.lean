@@ -21,6 +21,7 @@ variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  [app.FiniteNature initial scheduler]
 
 /-- Complete any prescribed native profile without changing any strategy
 coordinate, including its behavior after earlier deviations. -/

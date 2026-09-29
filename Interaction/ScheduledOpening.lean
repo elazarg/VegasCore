@@ -27,13 +27,13 @@ theorem policyMixture_posterior_pure_snoc {Index : Type} (initial : PMF Index)
     (app.policyMixture initial policies).posterior (past ++ [entry]) =
       PMF.pure index := by
   rw [Implementation.posterior_snoc, fixed]
-  change ((PMF.pure index).bind (fun value =>
-    (policies value past entry.beforeView).map fun action => (action, value))
-      |>.condOnFibre Prod.fst entry.action).map Prod.snd = PMF.pure index
+  change (fiberConditional ((PMF.pure index).bind (fun value =>
+    (policies value past entry.beforeView).map fun action => (action, value)))
+      Prod.fst entry.action).map Prod.snd = PMF.pure index
   rw [PMF.pure_bind]
   have paired : (policies index past entry.beforeView).map (fun action => (action, index)) =
       bindPairLaw (policies index past entry.beforeView) (fun _ => (PMF.pure index)) := by
-    simp only [FinDist.product, ← PMF.bind_pure_comp, Function.comp_def, PMF.pure_bind]
+    simp only [bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def, PMF.pure_bind]
   rw [paired, conditional_snd_bindPairLaw_const]
 
 theorem policyMixture_posterior_pure_append {Index : Type} (initial : PMF Index)

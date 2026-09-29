@@ -49,7 +49,7 @@ theorem chooseUniform_supported (candidates : Finset (MessageId Principal))
   · rename_i nonempty
     obtain ⟨selected, member, same⟩ := PMF.support_map .. ▸ supported
     cases Option.some.inj same
-    exact (PMF.mem_support_uniformOfFinset_iff candidates nonempty id).mp member
+    exact (PMF.mem_support_uniformOfFinset_iff nonempty id).mp member
   · cases (PMF.mem_support_pure_iff _ _).mp supported
 
 theorem uniformPending_supported (eligible : Message Principal Payload → Bool)
@@ -66,10 +66,8 @@ theorem chooseUniform_singleton (id : MessageId Principal) :
   classical
   have singletonLaw : PMF.uniformOfFinset {id} (Finset.singleton_nonempty id) =
       PMF.pure id := by
-    apply pmf_ext_toReal
-    intro value
-    simp only [FinDist.prob_uniformSet, Finset.mem_singleton, Finset.card_singleton,
-      Nat.cast_one, inv_one, toReal_pure_apply]
+    ext value
+    by_cases same : value = id <;> simp [PMF.uniformOfFinset_apply, PMF.pure_apply, same]
   rw [chooseUniform, dite_eq_left (Finset.singleton_nonempty id), singletonLaw,
     PMF.pure_map]
 
@@ -215,7 +213,7 @@ theorem chooseUniform_regular_insert (candidates : Finset (MessageId Principal))
   · have empty : candidates = ∅ := Finset.not_nonempty_iff_eq_empty.mp nonempty
     rw [empty, Finset.insert_empty, chooseUniform_singleton]
     intro value different
-    rw [FinDist.prob_pure_of_ne different]
+    rw [PMF.pure_apply_of_ne _ _ different, ENNReal.toReal_zero]
     exact ENNReal.toReal_nonneg
 
 /-- Uniform selection also satisfies the regularity contract. -/

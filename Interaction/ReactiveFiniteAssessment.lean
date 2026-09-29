@@ -55,15 +55,17 @@ theorem uniform_fullyMixed : (menu.uniformAssessment initial horizon scheduler).
   let := Fintype.ofFinite ((menu.information initial horizon scheduler).Choice who site.1)
   exact PMF.mem_support_uniformOfFintype choice
 
-instance finite_history [Finite Principal] :
+instance finite_history [Finite Principal] [app.FiniteNature initial scheduler] :
     Finite (menu.protocol initial horizon scheduler).History :=
   (menu.uniform_fullyMixed initial horizon scheduler).finite_history
-    (menu.bounded initial horizon scheduler)
+    (menu.bounded initial horizon scheduler) (fun _ _ => Set.toFinite _)
+    (fun draw => app.transition_support_finite initial horizon scheduler _ draw.1)
 
-instance historyFintype [Finite Principal] :
+instance historyFintype [Finite Principal] [app.FiniteNature initial scheduler] :
     Fintype (menu.protocol initial horizon scheduler).History := Fintype.ofFinite _
 
-instance informationHistoryFintype [Finite Principal] (who : Principal)
+instance informationHistoryFintype [Finite Principal] [app.FiniteNature initial scheduler]
+    (who : Principal)
     (site : (menu.information initial horizon scheduler).InformationSite who) :
     Fintype ((menu.information initial horizon scheduler).InformationHistory who site.1) := by
   classical
@@ -73,7 +75,9 @@ variable [Fintype Principal]
 
 /-- Canonical Bayes beliefs for a fully mixed profile of this finite instance. -/
 def bayesAssessment : (menu.information initial horizon scheduler).BehavioralAssessment :=
-  InformationModel.bayesAssessment _ (menu.uniformAssessment initial horizon scheduler).strategy (menu.uniform_fullyMixed initial horizon scheduler) (menu.decisionInformationAntichain initial horizon scheduler)
+  InformationModel.bayesAssessment _ (menu.uniformAssessment initial horizon scheduler).strategy
+    (menu.uniform_fullyMixed initial horizon scheduler)
+    (menu.decisionInformationAntichain initial horizon scheduler)
 
 theorem bayesAssessment_consistent :
     (menu.bayesAssessment initial horizon scheduler).IsSequentiallyConsistent
@@ -88,10 +92,13 @@ def perturbedAssessment
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
     (menu.information initial horizon scheduler).BehavioralAssessment :=
-  InformationModel.bayesAssessment _ ((menu.uniformAssessment initial horizon scheduler).perturb profile weight
-    positive.le atMostOne).strategy ((menu.uniformAssessment initial horizon scheduler).perturb_fullyMixed
-        (menu.uniform_fullyMixed initial horizon scheduler) profile weight
-        positive.le atMostOne positive) (menu.decisionInformationAntichain initial horizon scheduler)
+  InformationModel.bayesAssessment _
+    ((menu.uniformAssessment initial horizon scheduler).perturb profile weight
+      positive.le atMostOne).strategy
+    ((menu.uniformAssessment initial horizon scheduler).perturb_fullyMixed
+      (menu.uniform_fullyMixed initial horizon scheduler) profile weight
+      positive.le atMostOne positive)
+    (menu.decisionInformationAntichain initial horizon scheduler)
 
 theorem perturbedAssessment_fullyMixed
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)

@@ -41,9 +41,9 @@ theorem policyMixture_posterior_snoc (initial : PMF Index) (policies : Index →
     (app.policyMixture initial policies).posterior (past ++ [entry]) =
       (app.policyMixture initial policies).posterior past := by
   rw [Implementation.posterior_snoc]
-  change (((app.policyMixture initial policies).posterior past).bind
-    (fun index => (policies index past entry.beforeView).map fun action => (action, index))
-      |>.condOnFibre Prod.fst entry.action).map Prod.snd = _
+  change (fiberConditional (((app.policyMixture initial policies).posterior past).bind
+    (fun index => (policies index past entry.beforeView).map fun action => (action, index)))
+      Prod.fst entry.action).map Prod.snd = _
   have joint : ((app.policyMixture initial policies).posterior past).bind
       (fun index => (policies index past entry.beforeView).map fun action => (action, index)) =
         bindPairLaw law (fun _ => ((app.policyMixture initial policies).posterior past)) := by

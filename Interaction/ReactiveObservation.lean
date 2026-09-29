@@ -51,7 +51,8 @@ theorem activation_visible_law (execution : app.Execution) (who : Principal) :
           execution.observeEnvironment app) := by
   simp only [Execution.environmentStep, PMF.map_comp]
   simp only [Function.comp_def, Execution.observeEnvironment, MessageNetwork.learn,
-    MessageNetwork.publicView, PMF.map_const]
+    MessageNetwork.publicView]
+  exact PMF.map_const _ _
 
 /-- A scheduler with arbitrary public-history memory makes the same next
 choice at every private observation outcome of this activation. -/

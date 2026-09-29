@@ -39,6 +39,34 @@ theorem toReal_toOuterMeasure_bind {α β : Type*} (μ : PMF α) (f : α → PMF
     ENNReal.mul_ne_top (μ.apply_ne_top a) (outerMeasure_ne_top (f a) event)]
   simp only [ENNReal.toReal_mul, expect]
 
+/-- Branchwise agreement of readouts transports an expectation over a mixture.
+No integrability is needed: both sides are the expectation of one readout law. -/
+theorem expect_bind_readout_congr {α β γ δ : Type*} (μ : PMF α) (f : α → PMF β)
+    (g : α → PMF γ) (u : β → δ) (v : γ → δ) (payoff : δ → ℝ)
+    (same : ∀ a ∈ μ.support, (f a).map u = (g a).map v) :
+    expect (μ.bind f) (fun b => payoff (u b)) = expect (μ.bind g) (fun c => payoff (v c)) := by
+  have readout : (μ.bind f).map u = (μ.bind g).map v := by
+    rw [PMF.map_bind, PMF.map_bind]
+    exact bind_congr_on_support μ same
+  have first := expect_map u (μ.bind f) payoff
+  have second := expect_map v (μ.bind g) payoff
+  rw [readout, second] at first
+  exact first.symm
+
+/-- The event masses of a kernel are integrable against every law. -/
+theorem payoffIntegrable_toReal_toOuterMeasure {α β : Type*} (μ : PMF α) (f : α → PMF β)
+    (event : Set β) : PayoffIntegrable μ fun a => ((f a).toOuterMeasure event).toReal :=
+  payoffIntegrable_of_bounded μ _ (C := 1) fun a => by
+    rw [abs_of_nonneg ENNReal.toReal_nonneg]
+    exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+      (by simpa using outerMeasure_le_one (f a) event)
+
+/-- An event's indicator is integrable against every law. The decision
+procedure is implicit so that any instance at the use site matches. -/
+theorem payoffIntegrable_ite_one_zero {α : Type*} (μ : PMF α) (p : α → Prop)
+    {decide : DecidablePred p} : PayoffIntegrable μ fun a => if p a then (1 : ℝ) else 0 :=
+  payoffIntegrable_of_bounded μ _ (C := 1) fun a => by split <;> norm_num
+
 open Classical in
 /-- The real mass of an atom of a pushforward is the probability of its fiber. -/
 theorem toReal_map_apply {α β : Type*} (f : α → β) (μ : PMF α) (b : β) :

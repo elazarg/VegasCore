@@ -24,16 +24,9 @@ variable {Principal : Type} (app : ReactiveApplication Principal)
 
 private theorem response_pair_prob {Index : Type} (prior : PMF Index)
     (responses : Index → PMF app.Action) (action : app.Action) (index : Index) :
-    ((prior.bind fun selected => (responses selected).map fun reply => (reply, selected)) (action, index)).toReal = (prior index).toReal * ((responses index) action).toReal := by
-  classical
-  rw [FinDist.prob_bind_of_unique_branch prior
-    (fun selected => (responses selected).map fun reply => (reply, selected))
-      (action, index) index]
-  · rw [FinDist.prob_map_of_injective (fun reply => (reply, index))
-      (fun _ _ same => (Prod.mk.inj same).1)]
-  · intro selected _ member
-    obtain ⟨reply, _, same⟩ := PMF.support_map .. ▸ member
-    exact congrArg Prod.snd same
+    ((prior.bind fun selected => (responses selected).map fun reply => (reply, selected))
+      (action, index)).toReal = (prior index).toReal * ((responses index) action).toReal := by
+  rw [bind_map_tag_apply, ENNReal.toReal_mul]
 
 open Classical in
 /-- An observed waiting response removes precisely the opening modes.
@@ -69,8 +62,9 @@ theorem policyMixture_posterior_wait {Index : Type} (initial : PMF Index)
         rw [branches index supported]
         by_cases remains : index ∈ kept
         · simp only [remains, ↓reduceIte, mul_one]
-        · simp only [remains, ↓reduceIte, FinDist.prob_pure_of_ne different, mul_zero]
-      _ = _ := by rw [FinDist.expect_smul, expect_indicator]
+        · simp only [remains, ↓reduceIte, PMF.pure_apply_of_ne _ _ different,
+            ENNReal.toReal_zero, mul_zero]
+      _ = _ := by rw [expect_const_mul, expect_indicator]
   have actionPositive : 0 < ((joint.map Prod.fst) entry.action).toReal := by
     rw [actionMass]
     exact mul_pos (pmf_toReal_pos_iff.mpr possible) (toOuterMeasure_toReal_pos _ meets)
@@ -80,7 +74,7 @@ theorem policyMixture_posterior_wait {Index : Type} (initial : PMF Index)
     exact ⟨pair, equal, supported⟩
   have mass : (joint.toOuterMeasure (Prod.fst ⁻¹' {entry.action})).toReal =
       (waiting entry.action).toReal * (prior.toOuterMeasure kept).toReal := by
-    rw [← FinDist.prob_map_eq_probOf_preimage_singleton]
+    rw [← PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_apply_singleton]
     exact actionMass
   have conditioned : joint.filter (Prod.fst ⁻¹' {entry.action}) actionMeet =
       (prior.filter kept meets).map (fun index => (entry.action, index)) := by
@@ -91,8 +85,8 @@ theorem policyMixture_posterior_wait {Index : Type} (initial : PMF Index)
     · subst reply
       rw [ite_eq_left (show (entry.action, index) ∈ Prod.fst ⁻¹' {entry.action} from rfl),
         app.response_pair_prob prior responses,
-        FinDist.prob_map_of_injective (fun index => (entry.action, index))
-          (fun _ _ same => (Prod.mk.inj same).2), toReal_filter_apply]
+        pmf_map_apply_of_injective _ (fun _ _ same => (Prod.mk.inj same).2),
+        toReal_filter_apply]
       by_cases supported : index ∈ prior.support
       · change (prior index).toReal * ((policies index past entry.beforeView) entry.action).toReal /
           ((waiting entry.action).toReal * (prior.toOuterMeasure kept).toReal) = _
@@ -101,11 +95,12 @@ theorem policyMixture_posterior_wait {Index : Type} (initial : PMF Index)
         · rw [ite_eq_left remains, ite_eq_left remains]
           rw [mul_comm ((waiting entry.action).toReal), mul_div_mul_right _ _
             (ne_of_gt (pmf_toReal_pos_iff.mpr possible))]
-        · simp only [remains, ↓reduceIte, FinDist.prob_pure_of_ne different, mul_zero, zero_div]
-      · simp only [FinDist.prob_eq_zero_iff.mpr supported, zero_mul, zero_div, ite_self]
+        · simp only [remains, ↓reduceIte, PMF.pure_apply_of_ne _ _ different,
+            ENNReal.toReal_zero, mul_zero, zero_div]
+      · simp only [pmf_toReal_eq_zero_iff.mpr supported, zero_mul, zero_div, ite_self]
     · rw [ite_eq_right (show (reply, index) ∉ Prod.fst ⁻¹' {entry.action} from equal)]
       symm
-      apply FinDist.prob_eq_zero_iff.mpr
+      apply pmf_toReal_eq_zero_iff.mpr
       intro member
       obtain ⟨old, _, equality⟩ := PMF.support_map .. ▸ member
       exact equal (congrArg Prod.fst equality).symm
@@ -148,7 +143,7 @@ theorem scheduledMixture_waiting_step {slots : Nat}
       selected ∈ (mixture.posterior past).support := by
     refine ⟨none, True.intro, ?_⟩
     rw [old]
-    exact FinDist.mem_support_condOn initial _ _ True.intro never
+    exact (PMF.mem_support_filter_iff _).mpr ⟨True.intro, never⟩
   have branches (selected : Option (Fin slots))
       (supported : selected ∈ (mixture.posterior past).support) :
       policies selected past entry.beforeView =
@@ -173,15 +168,15 @@ theorem scheduledMixture_waiting_step {slots : Nat}
     opening (waiting past entry.beforeView) (remainingOpeningSlots (count + 1))
       nextMeets branches (fun equal => different _ _ (equal ▸ possible)) possible
   rw [update]
-  have nested := FinDist.condOn_condOn initial (meets count) (meets (count + 1)) (by
-    intro selected member
-    rcases member with ⟨remaining, _⟩
+  have nested := filter_filter_of_subset initial _ _ (meets count)
+    (by simpa only [old] using nextMeets) (by
+    intro selected remaining
     cases selected with
     | none => exact True.intro
     | some slot =>
         change count + 1 ≤ slot.val at remaining
         change count ≤ slot.val
-        omega) (by simpa only [old] using nextMeets)
+        omega)
   change (mixture.posterior past).filter _ nextMeets = _
   simpa only [old] using nested
 
@@ -215,8 +210,10 @@ theorem scheduledMixture_waiting_posterior {slots : Nat}
       have all : remainingOpeningSlots (slots := slots) 0 = Set.univ := by
         ext selected
         cases selected <;> simp [remainingOpeningSlots]
-      simp only [List.append_nil, List.length_nil]
-      simp only [all, FinDist.condOn_univ]
+      have whole : initial.filter (remainingOpeningSlots 0) (meets 0) = initial := by
+        ext selected
+        simp only [PMF.filter_apply, all, Set.indicator_univ, PMF.tsum_coe, inv_one, mul_one]
+      simp only [List.append_nil, List.length_nil, whole]
       exact dormant
   | append_singleton suffix entry ih =>
       have earlierLawful : ∀ before next after, suffix = before ++ next :: after →
@@ -232,9 +229,10 @@ theorem scheduledMixture_waiting_posterior {slots : Nat}
 private theorem remainingOpeningSlots_mass {slots : Nat} (probability : ℝ)
     (nonnegative : 0 ≤ probability) (bounded : probability ≤ 1)
     (timing : PMF (Fin slots)) (count : Nat) :
-    ((mix probability nonnegative bounded (timing.map some) (PMF.pure none)).toOuterMeasure (remainingOpeningSlots count)).toReal = PMF.deferredSurvival probability timing count := by
+    ((mix probability nonnegative bounded (timing.map some) (PMF.pure none)).toOuterMeasure
+      (remainingOpeningSlots count)).toReal = PMF.deferredSurvival probability timing count := by
   classical
-  rw [← expect_indicator, FinDist.expect_mix, expect_map,
+  rw [← expect_indicator, expect_mix_of_finite, expect_map, Function.comp_def,
     expect_pure]
   have retained : expect timing (fun slot =>
       if some slot ∈ remainingOpeningSlots count then (1 : ℝ) else 0) =
@@ -270,7 +268,7 @@ theorem remainingOpeningSlots_value {slots : Nat} (probability : ℝ)
   let post := initial.filter (remainingOpeningSlots count) ⟨none, True.intro,
     mem_support_mix_right probability nonnegative small.le small (by simp)⟩
   have absent : ((timing.map some) none).toReal = 0 := by
-    apply FinDist.prob_eq_zero_iff.mpr
+    apply pmf_toReal_eq_zero_iff.mpr
     simp only [PMF.support_map, Set.mem_image, not_exists, not_and]
     intro slot _
     simp
@@ -280,7 +278,7 @@ theorem remainingOpeningSlots_value {slots : Nat} (probability : ℝ)
     rw [toReal_filter_apply,
       ite_eq_left (show none ∈ remainingOpeningSlots count from True.intro)]
     dsimp only [initial]
-    rw [remainingOpeningSlots_mass, mix_apply_toReal, absent, FinDist.prob_pure_self]
+    rw [remainingOpeningSlots_mass, mix_apply_toReal, absent, toReal_pure_apply, ite_eq_left rfl]
     ring
   have values (selected : Option (Fin slots)) :
       (if selected.isSome then whenTrue else whenFalse) =
@@ -288,7 +286,7 @@ theorem remainingOpeningSlots_value {slots : Nat} (probability : ℝ)
     cases selected <;> simp
   change expect post _ = _
   simp_rw [values]
-  rw [FinDist.expect_add, expect_constant, expect_ite_eq, noneMass,
+  rw [expect_add_of_finite, expect_constant, expect_ite_eq, noneMass,
     PMF.deferredRemaining_eq probability nonnegative small timing count]
   ring
 
@@ -351,8 +349,9 @@ theorem scheduledMixture_probability_of_posterior {slots : Nat}
         change slot.val ≤ slot.val
         exact le_rfl)]
     rw [remainingOpeningSlots_mass, mix_apply_toReal,
-      FinDist.prob_map_of_injective some (Option.some_injective _),
-      FinDist.prob_pure_of_ne (by simp : some slot ≠ none), mul_zero, add_zero]
+      pmf_map_apply_of_injective _ (Option.some_injective _),
+      PMF.pure_apply_of_ne _ _ (by simp : some slot ≠ none), ENNReal.toReal_zero, mul_zero,
+      add_zero]
   rw [app.policyMixture_policy]
   change ((((app.policyMixture initial policies).posterior past).bind
     (fun selected => policies selected past view)) action).toReal = _
@@ -386,7 +385,7 @@ theorem scheduledMixture_probability_of_posterior {slots : Nat}
         ring
       · simp only [equal, Ne.symm equal, ↓reduceIte, add_zero]
     _ = _ := by
-      rw [FinDist.expect_add, expect_constant, expect_ite_eq, mass]
+      rw [expect_add_of_finite, expect_constant, expect_ite_eq, mass]
       ring
 
 theorem scheduledMixture_waiting_probability {slots : Nat}
@@ -445,6 +444,7 @@ theorem scheduledMixture_waiting_limit {last : Nat}
         mix limit limitNonnegative limitBounded (PMF.pure opening)
           (waiting (past ++ suffix) view)
       else waiting (past ++ suffix) view) := by
+  rw [pmfConvergesPointwise_iff_toReal]
   intro action
   dsimp only
   have hazard := PMF.deferredHazard_tendsto_last probabilityConverges timingConverges slot

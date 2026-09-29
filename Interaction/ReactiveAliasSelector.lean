@@ -228,7 +228,8 @@ theorem selector_information_fiber [Fintype Principal]
     (own : profile who =
       normal.selectorPolicy raw stable closed initial horizon scheduler who past source)
     (history : (raw.protocol initial horizon scheduler).History)
-    (positive : 0 < ((raw.information initial horizon scheduler).historyReachWeight profile history).toReal)
+    (positive :
+      0 < ((raw.information initial horizon scheduler).historyReachWeight profile history).toReal)
     (projected : normal.info who
       ((raw.information initial horizon scheduler).infoOf who history.trace) =
         normal.info who (some (past, view))) :

@@ -161,7 +161,7 @@ theorem private_command_is_scoped :
 theorem early_draw_stutters :
     lottery.step initial (.environment .draw) = PMF.pure initial := by
   simp [MessageApplication.step, lottery, environmentStep, initial,
-    initialApplication, MessageApplication.State.initial]
+    initialApplication, MessageApplication.State.initial, PMF.pure_map]
 
 theorem accepted_draw_law :
     lottery.step s4 (.environment .draw) =
@@ -184,7 +184,7 @@ theorem accepted_draw_is_fair (value : Bool) :
     apply congrArg (PMF.map · fair)
     funext sampled
     rfl
-  rw [hlaw, FinDist.prob_map_of_injective]
+  rw [hlaw, pmf_map_apply_of_injective]
   · simp [fair]
   · intro left right heq
     exact Option.some.inj heq
@@ -195,7 +195,7 @@ def completed (value : Bool) : MessageApplication.State lottery :=
 theorem completion_disables_reroll (value : Bool) :
     lottery.step (completed value) (.environment .draw) =
       PMF.pure (completed value) := by
-  simp [MessageApplication.step, lottery, environmentStep, completed]
+  simp [MessageApplication.step, lottery, environmentStep, completed, PMF.pure_map]
 
 theorem observations_hide_prediction :
     MessageApplication.State.observe lottery

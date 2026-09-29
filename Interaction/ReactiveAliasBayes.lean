@@ -52,9 +52,9 @@ theorem splitBayes_projection
   have nativeMixed := normal.splitBayes_fullyMixed raw stable closed initial horizon scheduler
     source mixed weight positive atMostOne
   have nativePositive : 0 < M.informationMass native who original :=
-    nativeMixed.informationMass_pos who original
+    M.informationMass_pos_of_fullSupport _ nativeMixed who original
   have sourcePositive : 0 < N.informationMass source.strategy who target :=
-    mixed.informationMass_pos who target
+    N.informationMass_pos_of_fullSupport _ mixed who target
   obtain ⟨reference, _running, response, member⟩ := original.2
   have hasData : ∃ past view, original.1 = some (past, view) := by
     cases infoEq : original.1 with
@@ -134,15 +134,14 @@ theorem splitBayes_projection
       (fun history => (⟨project history.1, maps history.1 history.2⟩ :
         N.InformationHistory who target.1)) = _
   rw [projected]
-  apply pmf_ext_toReal
-  intro history
+  ext history
   rw [N.bayesBelief_apply]
   exact (bayes who target sourcePositive history).symm
 
 /-- Every consistent normalized assessment has consistent raw beliefs for the
 canonical response policy, with exactly the prescribed belief projection at
 every decision site. Sequential rationality is a separate obligation. -/
-theorem exists_canonical_consistent
+theorem exists_canonical_consistent [app.FiniteNature initial scheduler]
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
     (consistent : source.IsSequentiallyConsistent
       ((normal.menu raw).decisionInformationAntichain initial horizon scheduler)) :

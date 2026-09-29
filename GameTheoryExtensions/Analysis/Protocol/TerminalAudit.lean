@@ -32,6 +32,19 @@ def charge (observe : Outcome → Observation)
     (audit : Observation → PMF (Player → Bool)) (outcome : Outcome) (who : Player) : ℝ :=
   (((audit (observe outcome)).map (fun verdict => verdict who)) true).toReal
 
+theorem charge_mem_Icc (observe : Outcome → Observation)
+    (audit : Observation → PMF (Player → Bool)) (outcome : Outcome) (who : Player) :
+    charge observe audit outcome who ∈ Set.Icc 0 1 :=
+  ⟨ENNReal.toReal_nonneg, pmf_toReal_apply_le_one _ _⟩
+
+/-- A collection probability is bounded, hence integrable under every law. -/
+theorem payoffIntegrable_charge (law : PMF Outcome) (observe : Outcome → Observation)
+    (audit : Observation → PMF (Player → Bool)) (who : Player) :
+    PayoffIntegrable law (fun outcome => charge observe audit outcome who) :=
+  payoffIntegrable_of_bounded _ _ (C := 1) fun outcome => by
+    rw [abs_of_nonneg (charge_mem_Icc observe audit outcome who).1]
+    exact (charge_mem_Icc observe audit outcome who).2
+
 /-- The terminal service's joint realized payoff vector. -/
 def settlement (base : Outcome → Player → ℝ) (observe : Outcome → Observation)
     (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)

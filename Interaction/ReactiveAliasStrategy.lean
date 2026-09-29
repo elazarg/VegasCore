@@ -72,10 +72,12 @@ theorem splitPolicy_prob (who : Principal)
     (chosen : (raw.information initial horizon scheduler).Choice who observed) :
     (((normal.splitPolicy raw stable closed initial horizon scheduler who source
       weight nonnegative atMostOne) observed) chosen).toReal =
-      ((source (normal.info who observed)) (normal.choice raw stable initial horizon scheduler who observed chosen)).toReal *
+      ((source (normal.info who observed))
+        (normal.choice raw stable initial horizon scheduler who observed chosen)).toReal *
         ((normal.aliasKernel raw stable closed initial horizon scheduler who observed
           weight nonnegative atMostOne
-          (normal.choice raw stable initial horizon scheduler who observed chosen)) chosen).toReal :=
+          (normal.choice raw stable initial horizon scheduler who observed chosen))
+          chosen).toReal :=
     by
   let := Fintype.ofFinite ((raw.information initial horizon scheduler).Choice who observed)
   exact PMF.split_prob _ _ _ _ weight nonnegative atMostOne chosen

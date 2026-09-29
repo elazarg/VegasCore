@@ -54,22 +54,14 @@ private theorem posterior_point {Index : Type} (initial : PMF Index)
     rw [PMF.map_comp]
     exact reconstruct
   have point := congrArg (fun law => (law (entry.action, index)).toReal) reconstructed
-  rw [FinDist.prob_map_of_injective (fun selected => (entry.action, selected))
-      (fun _ _ equal => (Prod.mk.inj equal).2)] at point
+  rw [pmf_map_apply_of_injective _ (fun _ _ equal => (Prod.mk.inj equal).2)] at point
   rw [Implementation.posterior_snoc]
   change (((fiberConditional joint Prod.fst entry.action).map Prod.snd) index).toReal = _
   rw [fiberConditional, dite_eq_left meets, point, toReal_filter_apply,
     ite_eq_left (show (entry.action, index) ∈ Prod.fst ⁻¹' {entry.action} from rfl),
-    ← FinDist.prob_map_eq_probOf_preimage_singleton, marginal]
+    ← PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_apply_singleton, marginal]
   congr 1
-  rw [FinDist.prob_bind_of_unique_branch prior
-    (fun selected => (policies selected past entry.beforeView).map
-      fun response => (response, selected)) (entry.action, index) index]
-  · rw [FinDist.prob_map_of_injective (fun response : app.Action => (response, index))
-      (fun _ _ same => (Prod.mk.inj same).1)]
-  · intro selected _ supported
-    obtain ⟨response, _, same⟩ := PMF.support_map .. ▸ supported
-    exact congrArg Prod.snd same
+  rw [bind_map_tag_apply, ENNReal.toReal_mul]
 
 /-- Updating after one replay downweights precisely the selected timing slot.
 All observation-dependent replay probabilities cancel. -/
@@ -84,12 +76,14 @@ theorem scheduledChoice_posterior_step {slots : Nat}
     (old : ∀ selected, (((app.policyMixture timing policies).posterior past) selected).toReal =
       (timing selected).toReal * (if selected.val < current.val then 1 - probability else 1) /
         PMF.deferredSurvival probability timing current.val) :
-    ∀ selected, (((app.policyMixture timing policies).posterior (past ++ [entry])) selected).toReal =
+    ∀ selected,
+      (((app.policyMixture timing policies).posterior (past ++ [entry])) selected).toReal =
       (timing selected).toReal * (if selected.val < current.val + 1 then 1 - probability else 1) /
         PMF.deferredSurvival probability timing (current.val + 1) := by
   classical
   let prior := (app.policyMixture timing policies).posterior past
-  let mass := ((prior.bind fun selected => policies selected past entry.beforeView) entry.action).toReal
+  let mass :=
+    ((prior.bind fun selected => policies selected past entry.beforeView) entry.action).toReal
   have massEq : mass = (waiting entry.action).toReal *
       (1 - probability * (prior current).toReal) := by
     dsimp only [mass]
@@ -102,8 +96,9 @@ theorem scheduledChoice_posterior_step {slots : Nat}
         rw [likelihood]
         by_cases same : selected = current <;> simp [same, Ne.symm, mul_comm]
       _ = _ := by
-        rw [FinDist.expect_smul, FinDist.expect_sub, expect_constant,
-          FinDist.expect_smul, expect_ite_eq, mul_one]
+        rw [expect_const_mul,
+          expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _),
+          expect_constant, expect_const_mul, expect_ite_eq, mul_one]
   have denominator := PMF.deferredSurvival_positive probability nonnegative small
     timing current.val
   have nextDenominator := PMF.deferredSurvival_positive probability nonnegative small

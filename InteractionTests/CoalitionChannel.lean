@@ -125,7 +125,8 @@ def baseUtility (outcome : Bool × Bool) (_ : Principal) : ℝ :=
 theorem base_expect (profile : Profile baseGame.sig) (who : Principal) :
     expect (baseGame.play profile) (fun outcome => baseUtility outcome who) = 1 / 2 := by
   cases h : profile 1 <;>
-    norm_num [fair, baseUtility, expect_map, FinDist.expect_mix, h]
+    norm_num [fair, baseUtility, expect_map, Function.comp_def, expect_mix_of_finite,
+      expect_pure, h]
 
 /-- The first principal writes the secret onto the wire. -/
 def signalPolicy : channel.PlayerPolicy :=
@@ -152,7 +153,11 @@ theorem collusion_expect (who : Principal) :
       MessageApplication.runPolicies channel collusion environmentPolicy schedule
         (MessageApplication.PolicyExecution.initial channel (initialState secret)))
     (fun execution => hostUtility execution who) = 1
-  rw [FinDist.expect_bind, fair, FinDist.expect_mix]
+  have bounded (execution : channel.PolicyExecution) : |hostUtility execution who| ≤ 1 := by
+    unfold hostUtility
+    split <;> norm_num
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _ bounded), fair,
+    expect_mix_of_finite]
   simp [schedule, MessageApplication.runPolicies, MessageApplication.invoke,
     environmentPolicy, collusion, signalPolicy, copyPolicy, MessageApplication.playerStep,
     MessageApplication.environmentPolicyStep, MessageApplication.advance,
@@ -160,7 +165,8 @@ theorem collusion_expect (who : Principal) :
     MessageApplication.PolicyExecution.initial, MessageApplication.PlayerCommand.toAction,
     MessageApplication.EnvironmentPolicyCommand.toAction, channel, observe, privateStep,
     initialState, MessagePool.submit, MessagePool.deliver, MessagePool.observe,
-    MessagePool.empty, MessagePool.lookup, MessageApplication.includePending, hostUtility]
+    MessagePool.empty, MessagePool.lookup, MessageApplication.includePending, hostUtility,
+    expect_pure]
 
 /-- No coalition certificate relates the base game to the host, for any strategy
 translation. The pool carries the secret across a coalition that the base game
@@ -170,8 +176,12 @@ theorem isEmpty_coalitionSimulation :
       (GameTheory.nonemptyGroups Principal)) :=
   GameForm.UtilitySimulation.isEmpty_of_grandCoalitionValue Finset.univ_nonempty
     (fun _ => false) 0 collusion (1 / 2)
-    (fun profile => le_of_eq (base_expect profile 0))
-    (by rw [collusion_expect]; norm_num)
+    (fun profile => ⟨payoffIntegrable_of_finite _ _, le_of_eq (base_expect profile 0)⟩)
+    (fun _ => by
+      change (1 : ℝ) / 2 <
+        expect (hostGame.play collusion) (fun execution => hostUtility execution 0)
+      rw [collusion_expect]
+      norm_num)
 
 end
 

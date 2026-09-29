@@ -2,6 +2,8 @@
 
 import Interaction.ReactiveResponseEvaluation
 import GameTheory.Protocol.BehavioralAssessment
+import Interaction.ReactiveFiniteAssessment
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Assessment continuation values in the bounded interaction evaluator -/
 
@@ -14,6 +16,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
+  [app.FiniteNature initial scheduler]
 
 theorem context_value_finish
     (assessment : (menu.information initial horizon scheduler).BehavioralAssessment)
@@ -28,7 +31,7 @@ theorem context_value_finish
             (Profile.update
             (sig := (menu.information initial horizon scheduler).behavioralSignature)
               assessment.strategy who alternative)) history.1.state) payoff) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   apply expect_congr_on_support
   intro history _
   have bound := app.trace_bound initial horizon scheduler

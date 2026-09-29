@@ -57,7 +57,7 @@ theorem replayPolicy_support (past : List app.PlayerEntry) (view : app.PlayerVie
     (⟨selected.map Transmission.replay⟩ : app.Action) ∈
       (app.replayPolicy past view).support := by
   rw [replayPolicy, PMF.support_map]
-  exact ⟨selected, (PMF.mem_support_uniformOfFinset_iff _ _ _).mpr eligible, rfl⟩
+  exact ⟨selected, (PMF.mem_support_uniformOfFinset_iff _ _).mpr eligible, rfl⟩
 
 omit [DecidableEq Principal] in
 theorem messageRecall_length (past : List app.PlayerEntry) :

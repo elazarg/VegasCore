@@ -38,19 +38,14 @@ theorem sampling_le_report (network : MessageNetwork Principal Payload)
     (unknown : (network.known who).any (fun packet => packet.id = id) = false)
     (offending : violation message = true) :
     ((rule who network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
-      ((network.reportLaw rule who violation).toOuterMeasure {reports | message ∈ reports}).toReal := by
-  classical
-  rw [reportLaw, FinDist.probOf_map, ← expect_indicator,
-    ← expect_indicator]
-  apply FinDist.expect_mono
-  intro selected _
-  simp only [Set.mem_preimage, Set.mem_ofPred_eq]
-  by_cases chosen : id ∈ selected
-  · have reported := network.reports_learn_selected violation who selected id message
-      found foreign chosen unknown offending
-    simp only [chosen, reported, ↓reduceIte, le_refl]
-  · simp only [chosen, ↓reduceIte]
-    split <;> norm_num
+      ((network.reportLaw rule who violation).toOuterMeasure
+        {reports | message ∈ reports}).toReal := by
+  rw [reportLaw, PMF.toOuterMeasure_map_apply]
+  apply ENNReal.toReal_mono (outerMeasure_ne_top _ _)
+  apply PMF.toOuterMeasure_mono
+  intro selected ⟨chosen, _⟩
+  exact network.reports_learn_selected violation who selected id message
+    found foreign chosen unknown offending
 
 /-- Every sample at a compliant snapshot produces no report. Compliance is
 required only for this observer's retained packets and the current pending pool. -/
@@ -75,7 +70,8 @@ theorem reportLaw_eq_pure_nil_of_compliant (network : MessageNetwork Principal P
       · exact ledger message included
     rw [compliant] at offending
     cases offending
-  simp only [reportLaw, quiet, PMF.map_const]
+  simp only [reportLaw, quiet]
+  exact PMF.map_const _ _
 
 /-- Zero false positives at the specified compliant snapshot; this alone does
 not establish that every legal source execution has compliant snapshots. -/
@@ -85,7 +81,8 @@ theorem reportLaw_prob_nonempty_of_compliant (network : MessageNetwork Principal
     (leaked : ∀ message ∈ network.leaked who, violation message = false)
     (ledger : ∀ message ∈ network.ledger, violation message = false)
     (pending : ∀ message ∈ network.pending, violation message = false) :
-    ((network.reportLaw rule who violation).toOuterMeasure {reports | reports ≠ []}).toReal = 0 := by
+    ((network.reportLaw rule who violation).toOuterMeasure
+      {reports | reports ≠ []}).toReal = 0 := by
   classical
   rw [network.reportLaw_eq_pure_nil_of_compliant rule who violation leaked ledger pending,
     ← expect_indicator, expect_pure]
@@ -113,10 +110,20 @@ theorem sampling_delivery_lower (network : MessageNetwork Principal Payload)
       mul_le_mul_of_nonneg_right sampling nonnegative
     _ = expect (rule who network.pending)
         (fun selected => q * if selected ∈ {selected | id ∈ selected} then 1 else 0) := by
-      rw [FinDist.expect_smul, expect_indicator, mul_comm]
+      rw [expect_const_mul, mul_comm, ← expect_indicator]
+      congr 2
+      funext selected
+      congr
     _ ≤ expect (rule who network.pending) (fun selected =>
-        ((deliver (((network.learn who selected).observe who).reports violation)) true).toReal) := by
-      apply FinDist.expect_mono
+        ((deliver (((network.learn who selected).observe who).reports violation))
+          true).toReal) := by
+      refine expect_mono ?_
+        (payoffIntegrable_of_bounded _ _ (C := |q|) fun selected => ?_)
+        (payoffIntegrable_of_bounded _ _ (C := 1) fun selected => ?_)
+      rotate_left
+      · split <;> simp
+      · rw [abs_of_nonneg ENNReal.toReal_nonneg]
+        exact pmf_toReal_apply_le_one _ _
       intro selected supported
       by_cases chosen : id ∈ selected
       · have reported := network.reports_learn_selected violation who selected id message
@@ -135,5 +142,6 @@ theorem sampling_delivery_lower (network : MessageNetwork Principal Payload)
           ENNReal.toReal_nonneg
     _ = (((network.reportLaw rule who violation).bind deliver) true).toReal := by
       rw [reportLaw, PMF.bind_map, toReal_bind_apply]
+      rfl
 
 end Interaction.MessageNetwork

@@ -39,11 +39,13 @@ private def sent : app.Execution :=
 private def message : Message (Fin 3) Nat := ⟨(0, 0), 7⟩
 
 private theorem sampling_half :
-    ((app.observePending 2 sent.network.pending).toOuterMeasure {selected | (0, 0) ∈ selected}).toReal =
+    ((app.observePending 2 sent.network.pending).toOuterMeasure
+      {selected | (0, 0) ∈ selected}).toReal =
       (1 / 2 : ℝ) := by
   change ((mix (1 / 2) (by norm_num) (by norm_num)
     (PMF.pure {(0, 0)}) (PMF.pure ∅)).toOuterMeasure _).toReal = _
-  rw [← expect_indicator, FinDist.expect_mix,
+  rw [← expect_indicator,
+    expect_mix _ _ _ _ _ _ (payoffIntegrable_pure _ _) (payoffIntegrable_pure _ _),
     expect_pure, expect_pure]
   norm_num
 
@@ -53,7 +55,8 @@ theorem half_detection_after_arbitrary_continuation
     (players : Fin 3 → app.Policy) (reports : players 2 = app.reportFirstUnpublished)
     (scheduler : app.Scheduler) (count : Nat) :
     (1 / 2 : ℝ) ≤ (((app.reportInclusion players 2 sent).bind
-      (app.runRounds scheduler players count)).toOuterMeasure {final | ((0, 0), false) ∈ final.receipts}).toReal := by
+      (app.runRounds scheduler players count)).toOuterMeasure
+        {final | ((0, 0), false) ∈ final.receipts}).toReal := by
   rw [← sampling_half]
   apply app.sampling_rejected_receipt_lower players 2 sent (0, 0) message rfl (by decide)
     rfl (by simp [sent, ReactiveApplication.Execution.respond,

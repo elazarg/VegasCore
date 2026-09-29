@@ -310,20 +310,22 @@ theorem sampling_receipt_lower (players : Principal → app.Policy) (watcher : P
         players watcher (observed.recall watcher) (observed.observe app watcher) =
           PMF.pure ⟨some (.replay id)⟩)
     (scheduler : app.Scheduler) (count : Nat) :
-    ((app.observePending watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+    ((app.observePending watcher execution.network.pending).toOuterMeasure
+      {selected | id ∈ selected}).toReal ≤
       (((app.reportInclusion players watcher execution).bind
-        (app.runRounds scheduler players count)).toOuterMeasure {final | (id, (app.handle execution.application message).isSome) ∈ final.receipts}).toReal := by
+        (app.runRounds scheduler players count)).toOuterMeasure
+          {final | (id, (app.handle execution.application message).isSome) ∈
+            final.receipts}).toReal := by
   classical
-  rw [app.reportInclusion_law, PMF.bind_bind,
-    ← expect_indicator, ← expect_indicator,
-    FinDist.expect_bind]
-  apply FinDist.expect_mono
+  rw [app.reportInclusion_law, PMF.bind_bind, toReal_toOuterMeasure_bind, ← expect_indicator]
+  refine expect_mono ?_ (payoffIntegrable_ite_one_zero _ _)
+    (payoffIntegrable_toReal_toOuterMeasure _ _ _)
   intro selected supported
+  rw [← expect_indicator]
   let law := ((app.invoke players watcher (sampled app execution watcher selected)).bind
     fun reported => app.dispatch players
       (app.includeReported watcher (reported.observeEnvironment app)) reported).bind
         (app.runRounds scheduler players count)
-  change (if id ∈ selected then (1 : ℝ) else 0) ≤ expect law _
   by_cases chosen : id ∈ selected
   · have seen := app.sampled_leaked execution watcher id message found foreign unknown fresh
       selected chosen
@@ -333,11 +335,11 @@ theorem sampling_receipt_lower (players : Principal → app.Policy) (watcher : P
         some message := found
     have observedFresh : id ∉
         (sampled app execution watcher selected).network.ledger.map Message.id := fresh
-    simp only [chosen, ↓reduceIte]
+    simp only [Set.mem_ofPred_eq, chosen, ↓reduceIte]
     calc
       (1 : ℝ) = expect law (fun _ => 1) := (expect_constant law 1).symm
       _ ≤ _ := by
-        apply FinDist.expect_mono
+        refine expect_mono ?_ (payoffIntegrable_constant _ _) (payoffIntegrable_ite_one_zero _ _)
         intro final reached
         obtain ⟨recorded, included, continued⟩ :=
           Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -346,11 +348,12 @@ theorem sampling_receipt_lower (players : Principal → app.Policy) (watcher : P
         have persists := (app.receipt_policyInvariant players
           (id, (app.handle execution.application message).isSome)).runRounds scheduler count
             recorded final receipt.1 continued
-        simp only [Set.mem_ofPred_eq, persists, ↓reduceIte, le_refl]
-  · simp only [chosen, ↓reduceIte]
+        simp only [persists, ↓reduceIte, le_refl]
+  · simp only [Set.mem_ofPred_eq, chosen, ↓reduceIte]
     calc
       (0 : ℝ) = expect law (fun _ => 0) := (expect_constant law 0).symm
-      _ ≤ _ := FinDist.expect_mono (fun _ _ => by split <;> norm_num)
+      _ ≤ _ := expect_mono (fun _ _ => by split <;> norm_num)
+        (payoffIntegrable_constant _ _) (payoffIntegrable_ite_one_zero _ _)
 
 /-- A rejected report remains attributable after its payload becomes admissible
 in a later phase. The receipt stores the result of this actual inclusion. This
@@ -367,9 +370,11 @@ theorem sampling_rejected_receipt_lower (players : Principal → app.Policy) (wa
           PMF.pure ⟨some (.replay id)⟩)
     (rejected : app.handle execution.application message = none)
     (scheduler : app.Scheduler) (count : Nat) :
-    ((app.observePending watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+    ((app.observePending watcher execution.network.pending).toOuterMeasure
+      {selected | id ∈ selected}).toReal ≤
       (((app.reportInclusion players watcher execution).bind
-        (app.runRounds scheduler players count)).toOuterMeasure {final | (id, false) ∈ final.receipts}).toReal := by
+        (app.runRounds scheduler players count)).toOuterMeasure
+          {final | (id, false) ∈ final.receipts}).toReal := by
   simpa only [rejected, Option.isSome_none] using
     app.sampling_receipt_lower players watcher execution id message found foreign unknown fresh
       reports scheduler count
@@ -389,20 +394,21 @@ theorem sampling_ledger_violation_lower (players : Principal → app.Policy) (wa
         players watcher (observed.recall watcher) (observed.observe app watcher) =
           PMF.pure ⟨some (.replay id)⟩)
     (scheduler : app.Scheduler) (count : Nat) :
-    ((app.observePending watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
+    ((app.observePending watcher execution.network.pending).toOuterMeasure
+      {selected | id ∈ selected}).toReal ≤
       (((app.reportInclusion players watcher execution).bind
-        (app.runRounds scheduler players count)).toOuterMeasure {final | ledgerViolation who permitted final.network.ledger = true}).toReal := by
+        (app.runRounds scheduler players count)).toOuterMeasure
+          {final | ledgerViolation who permitted final.network.ledger = true}).toReal := by
   classical
-  rw [app.reportInclusion_law, PMF.bind_bind,
-    ← expect_indicator, ← expect_indicator,
-    FinDist.expect_bind]
-  apply FinDist.expect_mono
+  rw [app.reportInclusion_law, PMF.bind_bind, toReal_toOuterMeasure_bind, ← expect_indicator]
+  refine expect_mono ?_ (payoffIntegrable_ite_one_zero _ _)
+    (payoffIntegrable_toReal_toOuterMeasure _ _ _)
   intro selected supported
+  rw [← expect_indicator]
   let law := ((app.invoke players watcher (sampled app execution watcher selected)).bind
     fun reported => app.dispatch players
       (app.includeReported watcher (reported.observeEnvironment app)) reported).bind
         (app.runRounds scheduler players count)
-  change (if id ∈ selected then (1 : ℝ) else 0) ≤ expect law _
   by_cases chosen : id ∈ selected
   · have seen := app.sampled_leaked execution watcher id message found foreign unknown fresh
       selected chosen
@@ -412,11 +418,11 @@ theorem sampling_ledger_violation_lower (players : Principal → app.Policy) (wa
         some message := found
     have observedFresh : id ∉
         (sampled app execution watcher selected).network.ledger.map Message.id := fresh
-    simp only [chosen, ↓reduceIte]
+    simp only [Set.mem_ofPred_eq, chosen, ↓reduceIte]
     calc
       (1 : ℝ) = expect law (fun _ => 1) := (expect_constant law 1).symm
       _ ≤ _ := by
-        apply FinDist.expect_mono
+        refine expect_mono ?_ (payoffIntegrable_constant _ _) (payoffIntegrable_ite_one_zero _ _)
         intro final reached
         obtain ⟨recorded, included, continued⟩ :=
           Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -426,10 +432,11 @@ theorem sampling_ledger_violation_lower (players : Principal → app.Policy) (wa
           (ledgerViolation_iff ..).mpr ⟨message, receipt.2, authored, nonconforming⟩
         have persists := app.ledgerViolation_continuation who permitted players scheduler count
           recorded final detected continued
-        simp only [Set.mem_ofPred_eq, persists, ↓reduceIte, le_refl]
-  · simp only [chosen, ↓reduceIte]
+        simp only [persists, ↓reduceIte, le_refl]
+  · simp only [Set.mem_ofPred_eq, chosen, ↓reduceIte]
     calc
       (0 : ℝ) = expect law (fun _ => 0) := (expect_constant law 0).symm
-      _ ≤ _ := FinDist.expect_mono (fun _ _ => by split <;> norm_num)
+      _ ≤ _ := expect_mono (fun _ _ => by split <;> norm_num)
+        (payoffIntegrable_constant _ _) (payoffIntegrable_ite_one_zero _ _)
 
 end Interaction.ReactiveApplication

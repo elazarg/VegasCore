@@ -136,7 +136,7 @@ theorem finish_step (initial : PMF app.State) (horizon : Nat)
         app.finish initial horizon scheduler players state := by
   cases state with
   | none =>
-      simp only [controlStep, actor, Option.bind_none, transition, PMF.bind_map,
+      simp only [controlStep, actor, Option.bind_none, transition, PMF.bind_map, Function.comp_def,
         finish, resume, PMF.pure_bind]
   | some control =>
       rcases control with ⟨remaining, current, execution⟩
@@ -144,14 +144,14 @@ theorem finish_step (initial : PMF app.State) (horizon : Nat)
       | some who =>
           simp only [controlStep, actor, Option.bind_some, transition, ↓reduceIte,
             Option.getD_some, PMF.bind_bind, PMF.pure_bind, finish, resume,
-            invoke, PMF.bind_map, PMF.map_bind]
+            invoke, PMF.bind_map, PMF.map_bind, Function.comp_def]
       | none =>
           cases remaining with
           | zero => simp only [controlStep, actor, Option.bind_some, transition, PMF.pure_bind]
           | succ remaining =>
               simp only [controlStep, actor, Option.bind_some, transition, PMF.bind_bind,
                 PMF.bind_map, finish, resume, PMF.pure_bind, runRounds, round,
-                dispatch, PMF.map_bind]
+                dispatch, PMF.map_bind, Function.comp_def]
 
 theorem controlStep_rank (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (players : Principal → app.Policy)

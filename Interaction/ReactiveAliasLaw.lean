@@ -118,7 +118,7 @@ theorem behavioralJoint_projection {before}
     _ = independentProduct (fun who =>
         ((native who ((raw.information initial horizon scheduler).infoOf who prior)).map
           Subtype.val).map (fun action => normal.joint before (fun _ => action) who)) := by
-      conv_rhs => rw [independentProduct_map]
+      conv_rhs => rw [← independentProduct_map]
       congr 1
       funext choices who
       cases before <;> rfl
@@ -154,11 +154,11 @@ theorem extension_projection
   calc
     _ = ((app.transition initial horizon scheduler current.state choices.1).map
         normal.state).bindOnSupport continuation := by
-      rw [FinDist.bindOnSupport_map]
+      rw [bindOnSupport_map]
       apply bindOnSupport_congr _
       intro next realized
       rfl
-    _ = _ := FinDist.bindOnSupport_congr_law law _ _ (fun _ _ _ => rfl)
+    _ = _ := bindOnSupport_congr_measure law _ _ (fun _ _ _ => rfl)
 
 include projects in
 theorem oneStep_projection (current : (raw.protocol initial horizon scheduler).History) :
@@ -193,7 +193,9 @@ theorem oneStep_projection (current : (raw.protocol initial horizon scheduler).H
         exact normal.extension_projection raw stable initial horizon scheduler current choices
       _ = (((raw.information initial horizon scheduler).behavioralJoint native current.trace
           stopped).map (normal.legalJoint raw stable initial horizon scheduler current.state)).bind
-            continuation := (PMF.bind_map ..).symm
+            continuation := by
+        rw [PMF.bind_map]
+        rfl
       _ = _ := by
         rw [normal.behavioralJoint_projection raw stable initial horizon scheduler
           native source projects current.trace stopped]

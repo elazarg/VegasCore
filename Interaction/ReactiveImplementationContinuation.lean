@@ -34,10 +34,10 @@ theorem realize_continuation (who : Principal) (players : Principal → app.Poli
   | some owner =>
       by_cases same : owner = who
       · subst owner
-        simp only [resume, ↓reduceIte, PMF.bind_map]
+        simp only [resume, ↓reduceIte, PMF.bind_map, Function.comp_def]
         rw [implementation.response_disintegrate]
         simp only [implementation.realize, ReactiveApplication.resume, invoke,
-          Function.update_self, PMF.bind_map]
+          Function.update_self, PMF.bind_map, Function.comp_def]
       · simp only [resume, same, ↓reduceIte, PMF.bind_map,
           ReactiveApplication.resume, invoke, Function.update_of_ne same]
         rw [PMF.bind_comm]

@@ -99,7 +99,7 @@ theorem response_disintegrate {Result : Type} (execution : app.Execution) (who :
   rw [← PMF.bind_bind]
   change law.bind (fun response => next (execution.respond app who response.1) response.2) = _
   conv_lhs => arg 1; rw [eq_bind_fst_conditional_snd law]
-  simp only [PMF.bind_bind, PMF.bind_map, policy_eq, posterior_respond, law]
+  simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def, policy_eq, posterior_respond, law]
 
 /-- One activation with implementation state carried outside the game. -/
 def resume (who : Principal) (players : Principal → app.Policy) (actor : Option Principal)
@@ -195,10 +195,10 @@ theorem realize (who : Principal) (players : Principal → app.Policy) (schedule
         | some owner =>
             by_cases same : owner = who
             · subst owner
-              simp only [resume, ↓reduceIte, PMF.bind_map]
+              simp only [resume, ↓reduceIte, PMF.bind_map, Function.comp_def]
               rw [implementation.response_disintegrate]
               simp only [next, ih, ReactiveApplication.resume, invoke, Function.update_self,
-                PMF.bind_map]
+                PMF.bind_map, Function.comp_def]
             · simp only [resume, same, ↓reduceIte, PMF.bind_map,
                 ReactiveApplication.resume, invoke, Function.update_of_ne same]
               rw [PMF.bind_comm]

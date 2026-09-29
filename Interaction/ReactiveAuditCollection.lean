@@ -45,9 +45,10 @@ theorem sampledTrafficAudit_collection {Evidence : Type}
         (fun verdict => verdict who)) true).toReal =
       ((sample (actual.map project)).toOuterMeasure {observed | ∃ evidence ∈ observed,
           attribution evidence = who ∧ permitted evidence = false}).toReal := by
-  rw [sampledTrafficAudit, PMF.map_comp, FinDist.prob_map_eq_probOf_preimage_singleton]
-  apply FinDist.probOf_congr
-  intro observed _
+  rw [sampledTrafficAudit, PMF.map_comp, ← PMF.toOuterMeasure_apply_singleton,
+    PMF.toOuterMeasure_map_apply]
+  congr 2
+  ext observed
   simp only [Set.mem_preimage, Set.mem_singleton_iff, Function.comp_apply, decide_eq_true_eq,
     Set.mem_ofPred_eq]
 
@@ -79,8 +80,7 @@ theorem sampledTrafficAudit_sound {Evidence : Type}
         rw [allowed] at forbidden
         cases forbidden
       _ = _ := by simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_const]
-  rw [silent]
-  exact FinDist.prob_pure_of_ne Bool.noConfusion
+  rw [silent, PMF.pure_apply_of_ne _ _ Bool.noConfusion, ENNReal.toReal_zero]
 
 omit [DecidableEq Principal] in
 private theorem evidence_sampling_lower {Evidence : Type}
@@ -91,17 +91,10 @@ private theorem evidence_sampling_lower {Evidence : Type}
     (observations.toOuterMeasure {observed | record ∈ observed}).toReal ≤
       (observations.toOuterMeasure {observed | ∃ evidence ∈ observed,
         attribution evidence = who ∧ permitted evidence = false}).toReal := by
-  classical
-  rw [← expect_indicator, ← expect_indicator]
-  apply FinDist.expect_mono
-  intro observed _
-  by_cases included : record ∈ observed
-  · have detected : ∃ evidence ∈ observed,
-        attribution evidence = who ∧ permitted evidence = false :=
-      ⟨record, included, owner, forbidden⟩
-    simp only [Set.mem_ofPred_eq, included, detected, ite_true, le_refl]
-  · simp only [Set.mem_ofPred_eq, included, ite_eq_right, not_false_eq_true]
-    split <;> norm_num
+  apply ENNReal.toReal_mono (outerMeasure_ne_top _ _)
+  apply PMF.toOuterMeasure_mono
+  intro observed ⟨included, _⟩
+  exact ⟨record, included, owner, forbidden⟩
 
 /-- Per-record coverage applies to an arbitrary actual continuation law once
 the attributed record is present in every possible final readout. -/
@@ -124,7 +117,8 @@ theorem sampledTrafficAudit_collection_from_record {Evidence Outcome : Type}
   calc
     rate = expect law (fun _ => rate) := (expect_constant _ _).symm
     _ ≤ _ := by
-      apply FinDist.expect_mono
+      refine expect_mono ?_ (payoffIntegrable_constant _ _)
+        (TerminalAudit.payoffIntegrable_charge _ _ _ _)
       intro outcome supported
       have projected : project record ∈ (readout outcome).map project :=
         List.mem_map.mpr ⟨record, present outcome supported, rfl⟩
@@ -215,12 +209,19 @@ theorem trafficAudit_collection_after_step {Evidence : Type}
         (app.sampledTrafficAudit project attribution permitted sample)).map
           (fun verdict => verdict who)) true).toReal := by
   rw [(menu.information initial horizon scheduler).runBehavioralFrom_add,
-    TerminalAudit.collection_probability, FinDist.expect_bind]
+    TerminalAudit.collection_probability,
+    expect_bind_tower _ _ _ (TerminalAudit.payoffIntegrable_charge _ _ _ _)]
   calc
     rate = expect ((menu.information initial horizon scheduler).runBehavioralFrom profile 1
       history) (fun _ => rate) := (expect_constant _ _).symm
     _ ≤ _ := by
-      apply FinDist.expect_mono
+      refine expect_mono ?_ (payoffIntegrable_constant _ _) ?_
+      rotate_left
+      · exact payoffIntegrable_of_bounded _ _ (C := 1) fun next => by
+          rw [abs_of_nonneg (expect_nonneg _ _ fun _ _ =>
+            (TerminalAudit.charge_mem_Icc _ _ _ _).1)]
+          exact expect_le_const _ _ (TerminalAudit.payoffIntegrable_charge _ _ _ _) _
+            fun _ _ => (TerminalAudit.charge_mem_Icc _ _ _ _).2
       intro next supported
       obtain ⟨record, present, owner, forbidden⟩ := evidence next supported
       have bound := menu.trafficAudit_collection_from_record initial horizon scheduler

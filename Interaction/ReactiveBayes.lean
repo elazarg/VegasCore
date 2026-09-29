@@ -35,17 +35,16 @@ theorem stateBelief_eq_conditional_prefix
     (clock : ∀ history : (menu.information initial horizon scheduler).InformationHistory
       who site.1, history.1.trace.length = depth) :
     assessment.stateBelief who site =
-      fiberConditional (((menu.information initial horizon scheduler).runBehavioral assessment.strategy depth).map
-        History.state) (app.observe who) site.1 := by
+      fiberConditional (((menu.information initial horizon scheduler).runBehavioral
+        assessment.strategy depth).map History.state) (app.observe who) site.1 := by
   classical
   let M := menu.information initial horizon scheduler
   let prefixLaw := M.runBehavioral assessment.strategy depth
-  have positive := mixed.informationMass_pos who site
+  have positive := M.informationMass_pos_of_fullSupport _ mixed who site
   have belief : assessment.belief who site =
       M.bayesBelief assessment.strategy who site
         (menu.decisionInformationAntichain initial horizon scheduler who site) positive := by
-    apply pmf_ext_toReal
-    intro history
+    ext history
     rw [M.bayesBelief_apply]
     exact bayes who site positive history
   obtain ⟨history, _running, _active⟩ := site.2

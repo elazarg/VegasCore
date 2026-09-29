@@ -109,7 +109,7 @@ theorem embed_restrictPolicy_history (who : Principal) (policy : app.Policy)
     exact pointwise _ (app.info initial horizon scheduler who _)
   intro info observed
   cases info with
-  | none => simp [embedPolicy, restrictPolicy, encodePolicy, rawChoice]
+  | none => simp [embedPolicy, restrictPolicy, encodePolicy, rawChoice, PMF.pure_map]
   | some data =>
       rcases history with ⟨state, trace⟩
       cases state with
