@@ -110,7 +110,7 @@ theorem roster_extra_submission (bounds : MessageBounds (graph setup))
 
 /-- On every legal retained owner history, the public serial test is exactly
 the private recall test for whether the phase still permits a fresh opening. -/
-theorem roster_fresh_iff_serial (bounds : MessageBounds (graph setup))
+theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)

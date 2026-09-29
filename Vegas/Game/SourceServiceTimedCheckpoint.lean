@@ -550,6 +550,7 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
     network phase execution
   dsimp only at mixture
   rw [dormant, PMF.bind_map] at mixture
+  simp only [Function.comp_def] at mixture
   have transcript : bindingPhaseTranscript setup leaks network (rosters event) owner focal event
       payload (rosterOffset setup rosters owner event) ticks ((timing event owner owned).map some)
       execution choice =

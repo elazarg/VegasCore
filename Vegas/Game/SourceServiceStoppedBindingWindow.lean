@@ -392,7 +392,7 @@ theorem binding_window_stopped_coupling
               _ = (step.map Prod.fst).bind (fun execution =>
                   (app.invoke players owner execution).bind
                   ((runtime setup).runInteractionPlan leaks players network restPlan)) := by
-                rw [PMF.bind_map]
+                rw [PMF.bind_map]; rfl
               _ = leftRun response := by
                 rw [first]
                 simp only [leftRun, plan, restPlan, visitsEq, List.map_append, List.map_cons,
@@ -420,7 +420,7 @@ theorem binding_window_stopped_coupling
               _ = (step.map Prod.snd).bind (fun next =>
                   (strategy.resume owner players (some owner) next.1 next.2).bind
                     (fun resumed => strategy.runJoint owner players scheduler restPlan.length
-                      resumed.1 resumed.2)) := by rw [PMF.bind_map]
+                      resumed.1 resumed.2)) := by rw [PMF.bind_map]; rfl
               _ = rightRun response := by
                 rw [second]
                 have originalPair : proposed response = (response, memory.record (runtime setup)
@@ -443,7 +443,8 @@ theorem binding_window_stopped_coupling
                     List.length_append, List.length_map, List.length_cons]
                   omega
                 simpa only [rightRun, adjustedEq, originalPair, totalLength,
-                  PMF.bind_bind, PMF.bind_map, List.length_map] using pairedLaw.symm
+                  PMF.bind_bind, PMF.bind_map, Function.comp_def, List.length_map]
+                  using pairedLaw.symm
           · intro final supported
             obtain ⟨next, chosen, reached⟩ :=
               Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
@@ -494,7 +495,7 @@ theorem binding_window_stopped_coupling
             bindPairLaw_map_fst .., bindPairLaw_const_map_snd .., ?_⟩
           intro next supported
           have reached : next.1 ∈ (leftRun response).support := by
-            rw [← bindPairLaw_map_fst (leftRun response) (rightRun response),
+            rw [← bindPairLaw_map_fst (leftRun response) (fun _ => rightRun response),
               PMF.support_map]
             exact ⟨next, supported, rfl⟩
           left

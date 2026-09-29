@@ -82,7 +82,7 @@ theorem remaining_readout_eq_decode
   exact terminal_history_readout setup leaks responses watcher reveals final terminal
 
 theorem owner_response_finish_decode_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher who : Player)
     (reveals : setup.program.RevealOnly)

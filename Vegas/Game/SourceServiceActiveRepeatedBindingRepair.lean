@@ -506,7 +506,7 @@ theorem recorded_binding_history_response_block_coupling
         exact (tails next member).choose_spec.2.1
       _ = (first.map Prod.snd).bind (fun next =>
           strategy.runJoint owner players scheduler tail.length next.1 next.2) := by
-        exact (PMF.bind_map Prod.snd first (fun next =>
+        exact (PMF.bind_map first Prod.snd (fun next =>
           strategy.runJoint owner players scheduler tail.length next.1 next.2)).symm
       _ = _ := by rw [firstRight]
   · intro final supported

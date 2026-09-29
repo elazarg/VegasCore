@@ -92,7 +92,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 the original source policy, and its canonical opening is covered by the
 finite backend bound. The native reference profile need not be compiled. -/
 theorem owner_choice_data
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher who : Player)
     (reveals : setup.program.RevealOnly)
@@ -157,7 +157,7 @@ theorem owner_choice_data
 /-- Positive alias trembles make the compiled policy fully mixed at every
 native information site, including source-unreachable equilibrium branches. -/
 theorem compiledProfile_fullyMixed
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)
@@ -218,7 +218,7 @@ theorem compiledProfile_fullyMixed
 /-- The same source perturbation sequence and vanishing alias weights converge
 at every actual native decision. No positive limiting reach is required. -/
 theorem compiledProfile_converges
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (reveals : setup.program.RevealOnly)
@@ -267,8 +267,6 @@ theorem compiledProfile_converges
         exact (owner_choice_data setup leaks bounds watcher who reveals observer openable admission
           profile reference event owned history.1 supported past view history.2).1
       simp only [law]
-      let _ : Finite ((setup.informationModel admission).Choice who sourceSite.1) :=
-        (setup.revealReference_fullyMixed reveals admission who sourceSite).finite
       exact (converges who sourceSite).map (fun choice => OwnAction.disclosure choice.1)
 
 end Vegas

@@ -276,7 +276,16 @@ theorem roster_owner_response_source_value [Fintype Player]
     (visited.count owner + 1) after serials remaining complete counts joint chosen frames
   have value := congrArg
     (fun distribution => expect distribution (fun output => output.elim 0 utility)) law
-  simp only [expect_map, Option.elim_some, FinDist.expect_bind] at value
+  have supportFinite : (posterior.bind fun mode =>
+      (ProtocolState.step setup.program source (joint mode.isSome)).bind
+        (ProtocolState.continuationLaw setup.program profile)).support.Finite :=
+    bind_support_finite (Set.toFinite _) fun _ _ =>
+      bind_support_finite (ProtocolState.step_support_finite _ _ _) fun state _ =>
+        ProtocolState.continuationLaw_support_finite _ profile
+          (FiniteBindingTypes.profileFiniteSupport _
+            (RevealOnly.finiteBindingTypes setup.program reveals) profile) state
+  simp only [expect_map, Function.comp_def, Option.elim_some] at value
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _ supportFinite)] at value
   rw [value]
   have conditional := roster_owner_response_value setup leaks bounds rosters boundary event owner
     granted ownedEvent candidate raw opening owned valid offset serials published players covered
@@ -285,7 +294,7 @@ theorem roster_owner_response_source_value [Fintype Player]
   convert conditional using 1
   apply expect_congr_on_support
   intro mode _
-  cases mode <;> simp only [sourceValue, FinDist.expect_bind, Option.isSome_none,
+  cases mode <;> simp only [sourceValue, Option.isSome_none,
     Option.isSome_some, Bool.false_eq_true, ↓reduceIte]
 
 end Vegas

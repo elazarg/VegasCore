@@ -99,7 +99,8 @@ theorem sourceServiceTimedMixture_replay_window_posterior
       simp only [List.map_cons, runInteractionPlan, interactionStep, interactionInstruction,
         PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
         ReactiveApplication.resume, ReactiveApplication.invoke,
-        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind]
+        ReactiveApplication.Execution.activation_samples, PMF.bind_map, PMF.bind_bind,
+        Function.comp_def]
         at reached
       obtain ⟨sample, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨response, supported, reached⟩ :=
@@ -178,7 +179,8 @@ theorem sourceServiceTimedMixture_replay_window_posterior
                 ((app.replayPolicy (execution.recall owner) entry.beforeView)
                     entry.action).toReal := by
           rw [actionLaw, PMF.bind_bool_mix, mix_apply_toReal,
-            entryAction, FinDist.prob_pure_of_ne different, mul_zero, zero_add]
+            entryAction, PMF.pure_apply_of_ne _ _ different, ENNReal.toReal_zero, mul_zero,
+            zero_add]
         have likelihood (selected : Fin ((rosters event).count owner)) :
             ((family selected (execution.recall owner) entry.beforeView) entry.action).toReal =
               (if selected = slot then 1 - (choice true).toReal else 1) *
@@ -200,6 +202,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
               apply Fin.ext
               exact Nat.add_left_cancel (Option.some.inj equalCount)
             simp only [ite_eq_right unused, equal, ↓reduceIte, one_mul]
+            rfl
         have possible : entry.action ∈
             (app.replayPolicy (execution.recall owner) entry.beforeView).support := by
           rw [entryAction, entryView]
