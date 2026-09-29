@@ -2,6 +2,7 @@
 
 import GameTheory.Analysis.Protocol.CounterfactualRegret
 import GameTheory.Protocol.BehavioralAssessment
+import GameTheory.Math.Probability.ExpectationBind
 
 /-! # Supported responses under sequential rationality
 
@@ -75,55 +76,81 @@ theorem actsOnce_of_decisionInformationAntichain
           exact antichain player site ⟨prior, same⟩ ⟨⟨source, trace⟩, rfl⟩
             oldJoint oldLegal next moved fuel path
 
-theorem BehavioralAssessment.continuationContext_value_withLaw
+/-- Replacing the current response law makes the continuation law a mixture,
+over that response, of the laws with one fixed current response. -/
+theorem BehavioralAssessment.continuationContext_outcome_withLaw
     (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
     (payoff : E.History → ℝ) (fuel : Nat) (law : PMF (M.Choice who site.1)) :
+    (assessment.continuationContext site payoff (fuel + 1)).outcome
+        ((assessment.strategy who).withLaw site.1 law) =
+      law.bind fun choice => (assessment.continuationContext site payoff (fuel + 1)).outcome
+        ((assessment.strategy who).commit site.1 choice) := by
+  change (assessment.belief who site).bind _ =
+    law.bind fun choice => (assessment.belief who site).bind _
+  rw [← PMF.bind_comm]
+  apply bind_congr_on_support
+  intro history _
+  exact M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
+    (assessment.strategy who) site.1 law history.1 history.2 (nonterminal history)
+      (InformationSite.active M site history) fuel
+
+/-- A complete policy deviation's continuation law is a mixture of the laws
+of policies with the same future behavior and one fixed current response. -/
+theorem BehavioralAssessment.continuationContext_outcome_eq_bind_commit
+    (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
+    (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
+    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who) :
+    (assessment.continuationContext site payoff (fuel + 1)).outcome alternative =
+      (alternative site.1).bind fun choice =>
+        (assessment.continuationContext site payoff (fuel + 1)).outcome
+          (alternative.commit site.1 choice) := by
+  change (assessment.belief who site).bind _ =
+    (alternative site.1).bind fun choice => (assessment.belief who site).bind _
+  rw [← PMF.bind_comm]
+  apply bind_congr_on_support
+  intro history _
+  have split := M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
+    alternative site.1 (alternative site.1) history.1 history.2 (nonterminal history)
+      (InformationSite.active M site history) fuel
+  rwa [BehavioralPolicy.withLaw_eq_self] at split
+
+theorem BehavioralAssessment.continuationContext_value_withLaw
+    (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
+    (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
+    (payoff : E.History → ℝ) (fuel : Nat) (law : PMF (M.Choice who site.1))
+    (integrable : (assessment.continuationContext site payoff (fuel + 1)).IntegrableAt
+      ((assessment.strategy who).withLaw site.1 law)) :
     (assessment.continuationContext site payoff (fuel + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
       expect law (fun choice =>
         (assessment.continuationContext site payoff (fuel + 1)).value
           ((assessment.strategy who).commit site.1 choice)) := by
-  simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-  calc
-    _ = expect (assessment.belief who site) (fun history =>
-          expect law (fun choice =>
-            expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-              assessment.strategy who ((assessment.strategy who).commit site.1 choice))
-                (fuel + 1) history.1) payoff)) := by
-      apply expect_congr_on_support
-      intro history _
-      rw [M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
-        (assessment.strategy who) site.1 law history.1 history.2 (nonterminal history)
-          (InformationSite.active M site history) fuel, FinDist.expect_bind]
-    _ = _ := FinDist.expect_comm _ _ _
+  unfold Context.IntegrableAt at integrable
+  unfold Context.value
+  rw [assessment.continuationContext_outcome_withLaw once site nonterminal payoff fuel law]
+    at integrable ⊢
+  exact expect_bind_tower _ _ _ integrable
 
-/-- A complete policy deviation is a mixture of policies with the same future
-behavior and one fixed current response. This identity requires no optimality
-assumption on the original assessment or on the alternative policy. -/
+/-- A complete policy deviation with a finite expected payoff has the average
+value of policies with the same future behavior and one fixed current
+response. This identity requires no optimality assumption on the original
+assessment or on the alternative policy. -/
 theorem BehavioralAssessment.continuationContext_value_eq_expect_commit
     (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who) :
+    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who)
+    (integrable : (assessment.continuationContext site payoff (fuel + 1)).IntegrableAt
+      alternative) :
     (assessment.continuationContext site payoff (fuel + 1)).value alternative =
       expect (alternative site.1) (fun choice =>
         (assessment.continuationContext site payoff (fuel + 1)).value
           (alternative.commit site.1 choice)) := by
-  simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
-  calc
-    _ = expect (assessment.belief who site) (fun history =>
-          expect (alternative site.1) (fun choice =>
-            expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-              assessment.strategy who (alternative.commit site.1 choice))
-                (fuel + 1) history.1) payoff)) := by
-      apply expect_congr_on_support
-      intro history _
-      have split := M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
-        alternative site.1 (alternative site.1) history.1 history.2 (nonterminal history)
-          (InformationSite.active M site history) fuel
-      rw [BehavioralPolicy.withLaw_eq_self] at split
-      rw [split, FinDist.expect_bind]
-    _ = _ := FinDist.expect_comm _ _ _
+  unfold Context.IntegrableAt at integrable
+  unfold Context.value
+  rw [assessment.continuationContext_outcome_eq_bind_commit once site nonterminal payoff fuel
+    alternative] at integrable ⊢
+  exact expect_bind_tower _ _ _ integrable
 
 /-- Each supported pure current response has the same continuation value as
 the rational mixed response. Future choices remain the assessment's strategy. -/
@@ -139,12 +166,23 @@ theorem BehavioralAssessment.supported_choice_value
         ((assessment.strategy who).commit site.1 choice) =
       (assessment.continuationContext site payoff (fuel + 1)).value
         (assessment.strategy who) := by
-  have affine := assessment.continuationContext_value_withLaw once site nonterminal
+  have mixture := assessment.continuationContext_outcome_withLaw once site nonterminal
     payoff fuel (assessment.strategy who site.1)
-  rw [BehavioralPolicy.withLaw_eq_self] at affine
-  apply FinDist.eq_of_expect_eq_of_le (assessment.strategy who site.1) _ _
-    (fun alternative _ => rational ((assessment.strategy who).commit site.1 alternative)
-      (Set.mem_univ _)) affine.symm supported
+  rw [BehavioralPolicy.withLaw_eq_self] at mixture
+  have integrable := rational.1
+  unfold Context.IntegrableAt at integrable
+  rw [mixture] at integrable
+  have affine : (assessment.continuationContext site payoff (fuel + 1)).value
+      (assessment.strategy who) = expect (assessment.strategy who site.1) fun choice =>
+        (assessment.continuationContext site payoff (fuel + 1)).value
+          ((assessment.strategy who).commit site.1 choice) := by
+    unfold Context.value
+    rw [mixture]
+    exact expect_bind_tower _ _ _ integrable
+  exact expect_eq_const_of_le_on_support (assessment.strategy who site.1) _ _
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ integrable)
+    (fun alternative _ => rational.2.2 ((assessment.strategy who).commit site.1 alternative)
+      (Set.mem_univ _)) affine.symm choice supported
 
 /-- Supported responses maximize against whole continuation-policy deviations,
 not merely other current responses. -/
@@ -161,7 +199,7 @@ theorem BehavioralAssessment.supported_choice_optimal
       (assessment.continuationContext site payoff (fuel + 1)).value
         ((assessment.strategy who).commit site.1 choice) := by
   rw [assessment.supported_choice_value once site nonterminal payoff fuel rational choice supported]
-  exact rational alternative (Set.mem_univ _)
+  exact rational.2.2 alternative (Set.mem_univ _)
 
 /-- Uniformly worse responses receive no probability. The bounds range over
 all compatible histories, so this conclusion also controls an actual history
@@ -185,16 +223,14 @@ theorem BehavioralAssessment.not_supported_choice_of_uniform_gap
   intro supported
   have best := assessment.supported_choice_optimal once site nonterminal payoff fuel rational
     choice supported alternative
-  simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind] at best
-  have badBound := FinDist.expect_le_of_forall (assessment.belief who site) _ upper
+  have badIntegrable := rational.2.1 ((assessment.strategy who).commit site.1 choice)
+    (Set.mem_univ _)
+  have goodIntegrable := rational.2.1 alternative (Set.mem_univ _)
+  simp only [BehavioralAssessment.continuationContext_value] at best
+  have badBound := expect_bind_le_constant_on_support _ _ _ upper badIntegrable
     (fun history _ => bad history)
-  have goodBound : lower ≤ expect (assessment.belief who site) (fun history =>
-      expect (M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
-        assessment.strategy who alternative) (fuel + 1) history.1) payoff) := by
-    calc
-      lower = expect (assessment.belief who site) (fun _ => lower) :=
-        (expect_constant _ _).symm
-      _ ≤ _ := FinDist.expect_mono (fun history _ => good history)
+  have goodBound := expect_bind_ge_constant_on_support _ _ _ lower goodIntegrable
+    (fun history _ => good history)
   exact (not_le_of_gt gap) (goodBound.trans (best.trans badBound))
 
 end GameTheory.Protocol.InformationModel

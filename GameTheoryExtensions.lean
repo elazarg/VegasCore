@@ -25,7 +25,6 @@ import GameTheoryExtensions.Protocol.RestrictionExecution
 import GameTheoryExtensions.Protocol.RestrictionProfile
 import GameTheoryExtensions.Protocol.RestrictionDomination
 import GameTheoryExtensions.Protocol.TremblingPlans
-import GameTheoryExtensions.Protocol.BehavioralIncentives
 import GameTheoryExtensions.Protocol.Coalescing
 import GameTheoryExtensions.Protocol.ResponseSampling
 import GameTheoryExtensions.Protocol.PrivateStrategy

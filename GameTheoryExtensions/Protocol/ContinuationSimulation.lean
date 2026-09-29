@@ -3,6 +3,8 @@
 import GameTheory.Analysis.Protocol.Sequential
 import GameTheory.Analysis.Protocol.Incentives
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Continuation simulation by finite mixtures
 
@@ -39,6 +41,7 @@ structure ContinuationSimulation {ι : Type uι} {Outcome : Type uo}
     (alternatives who deviation).bind fun original => (source who original).prescribed
   alternative : ∀ who deviation, (target who deviation).alternative =
     (alternatives who deviation).bind fun original => (source who original).alternative
+  finite : ∀ who deviation, (alternatives who deviation).support.Finite
 
 namespace ContinuationSimulation
 
@@ -58,6 +61,7 @@ def ofMap (decode : ∀ who, Target who → Source who)
   alternatives who deviation := PMF.pure (decode who deviation)
   prescribed who deviation := by simpa only [PMF.pure_bind] using prescribed who deviation
   alternative who deviation := by simpa only [PMF.pure_bind] using alternative who deviation
+  finite _ _ := by simp only [PMF.support_pure, Set.finite_singleton]
 
 /-- Equality of every continuation expectation supplies the same certificate
 as equality of laws. Indicator payoffs suffice to recover each point mass. -/
@@ -73,13 +77,15 @@ def ofMap_expect (decode : ∀ who, Target who → Source who)
   · intro who deviation
     apply pmf_ext_toReal
     intro outcome
-    exact (FinDist.expect_prob_pure _ outcome).symm.trans
-      ((prescribed who deviation _).trans (FinDist.expect_prob_pure _ outcome))
+    classical
+    simpa only [expect_ite_eq, mul_one] using
+      prescribed who deviation fun value => if outcome = value then 1 else 0
   · intro who deviation
     apply pmf_ext_toReal
     intro outcome
-    exact (FinDist.expect_prob_pure _ outcome).symm.trans
-      ((alternative who deviation _).trans (FinDist.expect_prob_pure _ outcome))
+    classical
+    simpa only [expect_ite_eq, mul_one] using
+      alternative who deviation fun value => if outcome = value then 1 else 0
 
 def refl (source : ∀ who, Source who → IncentiveComparison Outcome) :
     ContinuationSimulation source source :=
@@ -98,6 +104,9 @@ def trans (first : ContinuationSimulation source target)
   alternative who deviation := by
     rw [second.alternative, PMF.bind_bind]
     exact bind_congr_on_support _ (fun original _ => first.alternative who original)
+  finite who deviation := by
+    rw [PMF.support_bind]
+    exact (second.finite who deviation).biUnion fun original _ => first.finite who original
 
 /-- A common outcome decoder preserves a law-pair certificate. This changes
 the observation on which utility depends; it does not change what players
@@ -114,17 +123,37 @@ def map {Observed : Type*} (simulation : ContinuationSimulation source target)
   alternatives := simulation.alternatives
   prescribed who deviation := by rw [simulation.prescribed, PMF.map_bind]
   alternative who deviation := by rw [simulation.alternative, PMF.map_bind]
+  finite := simulation.finite
+
+/-- One player's source incentive inequalities imply each simulated target
+inequality of that player, integrability included. -/
+theorem holds (simulation : ContinuationSimulation source target) (who : ι)
+    (utility : Outcome → ℝ) (respected : ∀ original, (source who original).Holds utility)
+    (deviation : Target who) : (target who deviation).Holds utility := by
+  have prescribed : PayoffIntegrable (target who deviation).prescribed utility := by
+    rw [simulation.prescribed]
+    exact payoffIntegrable_bind_of_finite_support _ _ _ (simulation.finite who deviation)
+      fun original _ => (respected original).1
+  have alternative : PayoffIntegrable (target who deviation).alternative utility := by
+    rw [simulation.alternative]
+    exact payoffIntegrable_bind_of_finite_support _ _ _ (simulation.finite who deviation)
+      fun original _ => (respected original).2.1
+  refine ⟨prescribed, alternative, ?_⟩
+  simp only [expectedUtility]
+  rw [simulation.prescribed] at prescribed ⊢
+  rw [simulation.alternative] at alternative ⊢
+  rw [expect_bind_tower _ _ _ prescribed, expect_bind_tower _ _ _ alternative]
+  exact expect_mono (fun original _ => (respected original).2.2)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ alternative)
+    (payoffIntegrable_bind_conditionalExpectation _ _ _ prescribed)
 
 /-- Every source incentive inequality implies the simulated target inequality.
 The source comparisons may involve different information sites and deviations. -/
 theorem preserves (simulation : ContinuationSimulation source target)
     (utility : Outcome → ι → ℝ)
     (respected : ∀ who deviation, (source who deviation).Holds (utility · who)) :
-    ∀ who deviation, (target who deviation).Holds (utility · who) := by
-  intro who deviation
-  simp only [IncentiveComparison.Holds, simulation.prescribed,
-    simulation.alternative, FinDist.expect_bind]
-  exact FinDist.expect_mono (fun original _ => respected who original)
+    ∀ who deviation, (target who deviation).Holds (utility · who) :=
+  fun who => simulation.holds who (utility · who) (respected who)
 
 /-- For finite outcomes, law-pair simulation supplies the exact semantic
 criterion's cone inclusion. The simulation theorem itself needs no finiteness
@@ -134,9 +163,7 @@ theorem difference_mem_cone [Fintype Outcome]
     (target who deviation).difference ∈ IncentiveComparison.cone (source who) := by
   rw [IncentiveComparison.mem_cone_iff]
   intro utility respected
-  simp only [IncentiveComparison.Holds, simulation.prescribed,
-    simulation.alternative, FinDist.expect_bind]
-  exact FinDist.expect_mono (fun original _ => respected original)
+  exact simulation.holds who utility respected deviation
 
 section Protocol
 
@@ -164,10 +191,6 @@ theorem sequentialRationality
   apply simulation.preserves utility
   exact (M.isSequentiallyRationalWithin_iff_holds sourceObserve sourceFuel
     sourceAssessment utility).mp rational
-
-variable
-  [∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1)]
-  [∀ who (site : N.InformationSite who), Fintype (N.InformationHistory who site.1)]
 
 /-- Consistency is the separate analytic obligation. Once it is proved for
 the target assessment, the continuation certificate transports sequential
