@@ -193,8 +193,8 @@ theorem sourceService_reveal_prefix_factorization
       next profile (source seed) (effective seed supported) disclose selected)
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
-    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+    simp only [joint, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
+      PMF.bind_const]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -348,8 +348,8 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
     (transcript seed result).map fun traffic => (advance (source seed) result, traffic)
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
-    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+    simp only [joint, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
+      PMF.bind_const]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -483,8 +483,8 @@ theorem sourceService_sample_prefix_factorization
     (transcript seed value).map fun traffic => (advance (source seed) value, traffic)
   have marginal : joint.map Prod.fst =
       (prior.map source).bind fun config => (choice config).map (advance config) := by
-    simp only [joint, PMF.map_bind, PMF.map_comp, Function.comp_def,
-      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_map]
+    simp only [joint, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
+      PMF.bind_const]
   have jointFactor : joint = (joint.map Prod.fst).bind fun config =>
       (nextNoise (config.view focal)).map fun traffic => (config, traffic) := by
     rw [marginal]
@@ -694,8 +694,8 @@ private theorem reconstruct_phase
     apply pmf_map_injective (f := fun source => some (encoded source))
       (fun _ _ equal => injective (Option.some.inj equal))
     have projected := congrArg (PMF.map Prod.fst) (mapped.trans factor)
-    simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def,
-      PMF.map_const, ← PMF.bind_pure_comp, Function.comp_def] using projected
+    simpa only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
+      PMF.bind_const] using projected
   refine ⟨source, ?_, fun _ => rfl, fun _ => rfl, decoded, marginalEq, ?_⟩
   · intro point
     exact ⟨decodeState?_agrees refs point.val.2.application.config.store _
@@ -779,9 +779,12 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
       refine ⟨nextNoise, ?_⟩
       dsimp only at nextFactor
       simp only [List.take_zero, List.flatMap_nil, runInteractionPlan,
-        PMF.pure_map, (checkpoint _).decode program embedding.ref,
-        Function.iterate_zero, id_eq, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def]
-      simpa only [PMF.map_comp, Function.comp_def] using nextFactor
+        Function.iterate_zero, id_eq, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
+        PMF.pure_bind]
+      simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
+        at nextFactor
+      refine Eq.trans (bind_congr_on_support _ fun seed _ => ?_) nextFactor
+      rw [(checkpoint seed).decode program embedding.ref]
   | succ count ih =>
       intro Γ names program profile refs embedding refsBefore offset Seed prior source execution
         aligned checkpoint supported effective noise factor within
@@ -829,8 +832,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
         change (prior.bind fun seed =>
           ((execution seed).environmentStep app (.application (.grant event))).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks focal final)) = _ at grantFactor
-        simpa only [grantEnvironment, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def]
-            using grantFactor
+        simpa only [grantEnvironment, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def,
+          PMF.bind_bind, PMF.pure_bind] using grantFactor
       have nextPhysical (seed : Seed) (final : app.Execution)
           (moved : final ∈ ((runtime setup).runInteractionPlan leaks players network
             (rosterBlock setup rosters event) (execution seed)).support) :
@@ -978,10 +981,10 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             (PMF.pure (ProtocolState.entry tail (nextSource point)))).map some
         have tailMarginal : tailJoint.map Prod.fst = tailSource := by
           have projected := congrArg (PMF.map Prod.fst) tailLaw
-          simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
-            PMF.map_const, PMF.bind_pure] at projected
-          simpa only [tailJoint, tailSource, PMF.map_bind, PMF.map_comp,
-            Function.comp_def] using projected
+          simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
+            PMF.bind_const] at projected
+          simpa only [tailJoint, tailSource, ← PMF.bind_pure_comp, Function.comp_def,
+            PMF.bind_bind, PMF.pure_bind, PMF.bind_pure] using projected
         have tailFactor : tailJoint = (tailJoint.map Prod.fst).bind fun state =>
             (tailNoise (state.map (ProtocolState.observe focal tail))).map fun extra =>
               (state, extra) := by
@@ -1016,10 +1019,11 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           calc
             _ = advanced.bind continuePoint := by
               simp only [advanced, continuePoint, PMF.bind_bind, PMF.bind_map,
-                runInteractionPlan_append, PMF.map_bind, remainingPlan]
+                runInteractionPlan_append, PMF.map_bind, remainingPlan, Function.comp_def]
             _ = nextPrior.bind (fun point => continuePoint point.val) := by
-              rw [← PMF.bind_map Subtype.val nextPrior continuePoint,
-                map_val_pmfToSubtype]
+              rw [show (nextPrior.bind fun point => continuePoint point.val) =
+                  (nextPrior.map Subtype.val).bind continuePoint from
+                (PMF.bind_map nextPrior Subtype.val continuePoint).symm, map_val_pmfToSubtype]
             _ = _ := by
               simp only [tailJoint, PMF.map_bind, PMF.map_comp, Function.comp_def]
               apply bind_congr_on_support _
@@ -1037,7 +1041,9 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             ((fun law => law.bind (ProtocolState.behavioralStateStep tail tailProfile))^[count]
               (PMF.pure (ProtocolState.entry tail config))).map fun state => some (lift state)
           change nextPrior.bind (fun point => continuation (nextSource point)) = _
-          rw [← PMF.bind_map nextSource nextPrior continuation, nextMarginal,
+          rw [show (nextPrior.bind fun point => continuation (nextSource point)) =
+              (nextPrior.map nextSource).bind continuation from
+            (PMF.bind_map nextPrior nextSource continuation).symm, nextMarginal,
             PMF.bind_bind, PMF.bind_map]
           apply bind_congr_on_support _
           intro seed _
@@ -1129,7 +1135,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             simp only [block]
             simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
               PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
-              observe_entry] using fact
+              observe_entry, Function.comp_def] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
               nextRegistry nextRevelations advanced encoded
@@ -1162,7 +1168,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             rfl
           · intro config
             rw [ProtocolState.behavioralStatePrefix_sample]
-            simp only [stepSource, PMF.bind_map, PMF.map_bind]
+            simp only [stepSource, PMF.bind_map, PMF.map_bind, Function.comp_def]
           · simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             rfl
@@ -1236,7 +1242,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             simp only [block]
             simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
               PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
-              observe_entry] using fact
+              observe_entry, Function.comp_def] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
               nextRegistry nextRevelations advanced encoded
@@ -1269,7 +1275,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             rfl
           · intro config
             rw [ProtocolState.behavioralStatePrefix_commit]
-            simp only [stepSource, PMF.bind_map, PMF.map_bind]
+            simp only [stepSource, PMF.bind_map, PMF.map_bind, Function.comp_def]
           · simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             rfl
@@ -1347,7 +1353,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             simp only [block]
             simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
               PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
-              observe_entry] using fact
+              observe_entry, Function.comp_def] using fact
           obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
             nextMarginal, nextFactor⟩ := reconstruct_phase setup leaks focal tailRefs (offset + 1)
               nextRegistry nextRevelations advanced encoded
@@ -1381,7 +1387,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             rfl
           · intro config
             rw [ProtocolState.behavioralStatePrefix_reveal]
-            simp only [stepSource, PMF.bind_map, PMF.map_bind]
+            simp only [stepSource, PMF.bind_map, PMF.map_bind, Function.comp_def]
           · simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             rfl
@@ -1448,9 +1454,9 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
         (sourceServiceTimedPolicy setup leaks rosters timing profile) network
         (rosterPlanPrefix setup rosters 0)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
-    simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan,
-      ← PMF.bind_pure_comp, Function.comp_def, initialLaw, PMF.map_comp, PMF.support_map]
-    exact ⟨seed.val, seed.property, rfl⟩
+    simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan, initialLaw]
+    exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨_, (PMF.mem_support_map_iff _ _ _).mpr
+      ⟨seed.val, seed.property, rfl⟩, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
   obtain ⟨noise, law⟩ := sourceServiceTimedPolicy_prefix_joint_factorization setup leaks
     bounds values capacity rosters opportunities timing network profile covered focal count
       setup.program profile (ContextRefs.initial setup.context (outputLayout setup.program))
@@ -1471,11 +1477,11 @@ theorem sourceServiceTimedPolicy_initialized_prefix_factorization [Fintype Playe
     ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[count]
       (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map some
   have nativeLaw : prior.bind (fun seed => combined seed.val) = setup.initialLaw.bind combined := by
-    rw [← PMF.bind_map Subtype.val prior combined]
+    refine (PMF.bind_map prior Subtype.val combined).symm.trans ?_
     exact congrArg (fun law => law.bind combined) (map_val_pmfToSubtype _ _)
   have sourceLaw : prior.bind (fun seed => sourcePrefix seed.val) =
       setup.initialLaw.bind sourcePrefix := by
-    rw [← PMF.bind_map Subtype.val prior sourcePrefix]
+    refine (PMF.bind_map prior Subtype.val sourcePrefix).symm.trans ?_
     exact congrArg (fun law => law.bind sourcePrefix) (map_val_pmfToSubtype _ _)
   change (prior.bind fun seed => combined seed.val) =
     (prior.bind fun seed => sourcePrefix seed.val).bind fun state =>
