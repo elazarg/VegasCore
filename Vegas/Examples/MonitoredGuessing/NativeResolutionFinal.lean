@@ -35,8 +35,8 @@ theorem resolution_plan_alice_upper (deposit : ℝ) (nonnegative : 0 ≤ deposit
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
       (nativeExecutionUtility deposit alice) ≤ correctness (.success bit) guess -
         if rejectedAlice execution.receipts then deposit else 0 := by
-  apply FinDist.expect_le_of_forall
-  intro final supported
+  refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _
+    (nativeExecutionUtility_abs_le deposit alice)) _ fun final supported => ?_
   have fixed := resolution_plan_invariant players _ (native_fixed_invariant bit) plan
     execution final valid supported
   have bound := resolution_plan_invariant players _
@@ -104,8 +104,8 @@ theorem resolution_final_site_dominates (deposit : ℝ) (nonnegative : 0 ≤ dep
   rw [nativeMenu.context_value_finish nativeInitialLaw nativeHorizon nativeScheduler,
     nativeMenu.context_value_finish nativeInitialLaw nativeHorizon nativeScheduler,
     Profile.update_eq_self]
-  apply FinDist.expect_mono
-  intro history _
+  refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
   let typed : nativeModel.InformationHistory alice (some (past, view)) :=
     ⟨history.1, history.2.trans information⟩
   obtain ⟨control, stateEq, active, _, observed⟩ :=

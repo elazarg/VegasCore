@@ -86,8 +86,7 @@ theorem evidencePolicy_optimal (assessment : nativeModel.BehavioralAssessment)
     (assessment.continuationContext (nativeBobSite bit) (nativePayoff matchBit true) 113).value
       (evidencePolicy (winningAnswer matchBit)) := by
   rw [evidencePolicy_value, native_continuation_value]
-  apply FinDist.expect_le_of_forall
-  intro guess _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun guess _ => ?_
   split <;> norm_num
 
 end Vegas.Examples.CommunicationSequentialNative

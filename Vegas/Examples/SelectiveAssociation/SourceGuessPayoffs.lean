@@ -104,11 +104,15 @@ theorem finish_bob_guess_payoff_le {Claim : Type}
             (fun response => correctness a (selectedBinding 2 response) -
               openingPenalty (selectedBinding 2 response)) := by
   rw [finish_response_law players 2 control active remaining position,
-    expect_map, FinDist.expect_bind]
-  apply FinDist.expect_mono
-  intro response _
-  apply FinDist.expect_le_of_forall
-  intro final supported
+    expect_map, Function.comp_def, expect_bind_tower _ _ _
+      (payoffIntegrable_of_finite_summary _ _
+        (fun result : Results => utility result bob))]
+  refine expect_mono (fun response _ => ?_)
+    (payoffIntegrable_expect_of_finite_summary _ _ _ (fun result : Results => utility result bob))
+    (payoffIntegrable_of_finite_summary _ (selectedBinding 2)
+      (fun result => correctness a result - openingPenalty result))
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _ _
+    (fun result : Results => utility result bob)) _ fun final supported => ?_
   exact bob_guess_response_payoff_le players control.execution final response a c core
     visited supported
 
@@ -127,11 +131,15 @@ theorem finish_carol_guess_payoff_le {Claim : Type}
             (fun response => correctness a (selectedBinding 1 response) -
               openingPenalty (selectedBinding 1 response)) := by
   rw [finish_response_law players 1 control active remaining position,
-    expect_map, FinDist.expect_bind]
-  apply FinDist.expect_mono
-  intro response _
-  apply FinDist.expect_le_of_forall
-  intro final supported
+    expect_map, Function.comp_def, expect_bind_tower _ _ _
+      (payoffIntegrable_of_finite_summary _ _
+        (fun result : Results => utility result carol))]
+  refine expect_mono (fun response _ => ?_)
+    (payoffIntegrable_expect_of_finite_summary _ _ _ (fun result : Results => utility result carol))
+    (payoffIntegrable_of_finite_summary _ (selectedBinding 1)
+      (fun result => correctness a result - openingPenalty result))
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _ _
+    (fun result : Results => utility result carol)) _ fun final supported => ?_
   exact carol_guess_response_payoff_le players control.execution final response a core
     visited supported
 
@@ -160,7 +168,9 @@ theorem finish_bob_prescribed_guess (Claim : Type) (defaultClaim : Claim)
           correctness a (.success
             (publicGuess (control.execution.observe (application Claim) bob))) := by
   rw [finish_response_law (policy Claim defaultClaim) 2 control active remaining position,
-    expect_map, FinDist.expect_bind]
+    expect_map, Function.comp_def, expect_bind_tower _ _ _
+      (payoffIntegrable_of_finite_summary _ _
+        (fun result : Results => utility result bob))]
   calc
     _ = expect (policy Claim defaultClaim bob (control.execution.recall bob)
         (control.execution.observe (application Claim) bob)) (fun _ =>
@@ -195,7 +205,9 @@ theorem finish_carol_prescribed_guess (Claim : Type) (defaultClaim : Claim)
           correctness a (.success
             (publicGuess (control.execution.observe (application Claim) carol))) := by
   rw [finish_response_law (policy Claim defaultClaim) 1 control active remaining position,
-    expect_map, FinDist.expect_bind]
+    expect_map, Function.comp_def, expect_bind_tower _ _ _
+      (payoffIntegrable_of_finite_summary _ _
+        (fun result : Results => utility result carol))]
   calc
     _ = expect (policy Claim defaultClaim carol (control.execution.recall carol)
         (control.execution.observe (application Claim) carol)) (fun _ =>

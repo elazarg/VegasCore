@@ -56,8 +56,7 @@ theorem compiled_alice_optimal (table : PayoffTable)
   rw [alice_context_value table target site bit guess siteEq,
     alice_context_value table target site bit guess siteEq, Profile.update_eq_self]
   conv_rhs => rw [strategy, compile, targetDisclosures_responseProfile]
-  apply FinDist.expect_le_of_forall
-  intro disclose _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun disclose _ => ?_
   simpa only [source_results, decisionResult] using
     source_disclosure_optimal (tableReward table) source rational bit guess disclose
 
@@ -66,7 +65,8 @@ theorem compiled_bob_optimal (table : PayoffTable)
     (sourceConsistent : source.IsSequentiallyConsistent sourceAntichain)
     (rational : source.IsSequentiallyRationalWithin (sourceResultPayoff (tableReward table)) 3)
     (target : restrictedModel.BehavioralAssessment)
-    (consistent : target.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
+    (consistent : target.IsSequentiallyConsistent
+        restricted_decisionRecall.decisionInformationAntichain)
     (strategy : target.strategy = compile source.strategy)
     (site : restrictedModel.InformationSite bob)
     (alternative : restrictedModel.BehavioralPolicy bob) :
@@ -79,9 +79,8 @@ theorem compiled_bob_optimal (table : PayoffTable)
   rw [receiver_context_value table target consistent site,
     receiver_context_value table target consistent site, Profile.update_eq_self]
   simp only [strategy, compile, targetGuesses_responseProfile, targetDisclosures_responseProfile]
-  conv_lhs => rw [FinDist.expect_comm]
-  apply FinDist.expect_le_of_forall
-  intro guess _
+  conv_lhs => rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun guess _ => ?_
   simpa only [source_results, decisionResult] using
     source_guess_optimal (tableReward table) source sourceConsistent rational guess
 
@@ -92,7 +91,8 @@ theorem compiled_local_optimal (table : PayoffTable)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.continuationContext site (sourceResultPayoff (tableReward table) who) 3))
     (target : restrictedModel.BehavioralAssessment)
-    (consistent : target.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
+    (consistent : target.IsSequentiallyConsistent
+        restricted_decisionRecall.decisionInformationAntichain)
     (strategy : target.strategy = compile source.strategy)
     (who : Player) (site : restrictedModel.InformationSite who)
     (law : PMF (restrictedModel.Choice who site.1)) :
@@ -144,7 +144,8 @@ theorem source_equilibrium_compiles (table : PayoffTable)
       source.continuationContext site (sourceResultPayoff (tableReward table) who) 3)) :
     ∃ target : restrictedModel.BehavioralAssessment,
       target.strategy = compile source.strategy ∧
-      target.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain (fun who site =>
+      target.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain
+          (fun who site =>
         target.continuationContext site
           (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1 - restrictedDepth who site)) := by

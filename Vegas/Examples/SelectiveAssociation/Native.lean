@@ -92,6 +92,23 @@ def serviceScheduler (observation : MessageNetwork.ObservationRule Player (Witne
   | some instruction => nativeRuntime.interactionInstruction observation
       (serviceNetwork observation) history view instruction
 
+instance : nativeLeaks.FiniteSupport := ⟨fun _ _ => by simp [nativeLeaks]⟩
+
+instance (observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)) :
+    (serviceNetwork observation).FiniteSupport := ⟨fun _ _ => by simp [serviceNetwork]⟩
+
+instance (observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph))
+    [observation.FiniteSupport] :
+    (serviceApp observation).FiniteNature (PMF.pure nativeInitial)
+      (serviceScheduler observation) where
+  initial_finite := by simp
+  scheduler_finite history view := by
+    unfold serviceScheduler
+    split
+    · simp
+    · exact nativeRuntime.interactionInstruction_support_finite observation
+        (serviceNetwork observation) history view _
+
 abbrev nativeHorizon : Nat := nativePlan.length
 
 abbrev serviceArena (observation : MessageNetwork.ObservationRule Player (WitnessedPacket
@@ -134,5 +151,19 @@ def nativeUtility
     {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
     (who : Player) (state : (nativeRuntime.reactiveApplication observation).ProtocolState) : ℝ :=
   state.elim 0 (fun control => utility (nativeResults control.execution.application.config) who)
+
+/-- Native utilities read only the finitely many results. -/
+theorem nativeUtility_integrable
+    {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
+    (law : PMF (nativeRuntime.reactiveApplication observation).ProtocolState) (who : Player) :
+    PayoffIntegrable law (nativeUtility who) := by
+  have summarized : nativeUtility (observation := observation) who = fun state =>
+      (state.map fun control => nativeResults control.execution.application.config).elim 0
+        fun result => utility result who := by
+    funext state
+    cases state <;> rfl
+  rw [summarized]
+  exact payoffIntegrable_of_finite_summary law _
+    (fun summary : Option Results => summary.elim 0 fun result => utility result who)
 
 end Vegas.Examples.SelectiveAssociation

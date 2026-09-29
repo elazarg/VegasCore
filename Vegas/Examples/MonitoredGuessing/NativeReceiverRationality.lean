@@ -24,9 +24,13 @@ theorem quiet_raw_finish_value_le (deposit : ℝ) (players : Player → nativeAp
     (nativePlan.drop 5) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
     (quietBobHistory bit).state = _ at finishLaw
-  rw [finishLaw, FinDist.expect_bind, quiet_bob_recall, quiet_bob_observation]
-  apply FinDist.expect_mono
-  intro response _
+  rw [finishLaw, expect_bind_tower _ _ _
+      (payoffIntegrable_of_bounded _ _ (nativeUtility_abs_le deposit bob)),
+    quiet_bob_recall, quiet_bob_observation]
+  refine expect_mono (fun response _ => ?_)
+    (payoffIntegrable_expect_of_bounded _ _ _ (by positivity) (nativeUtility_abs_le deposit bob))
+    (payoffIntegrable_of_finite_summary _ (fun response => quietGuess response players)
+      (correctness (.success bit)))
   rw [expect_map]
   exact quiet_response_bob_value_le deposit players bit response
 
@@ -45,9 +49,13 @@ theorem quiet_receiver_context_le (assessment : nativeModel.BehavioralAssessment
     _ ≤ expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (players bob [] ((quietBob false).observe nativeApp bob))
           (fun response => correctness (.success bit) (quietGuess response players))) :=
-      FinDist.expect_mono (fun bit _ => quiet_raw_finish_value_le deposit players bit)
+      expect_mono (fun bit _ => quiet_raw_finish_value_le deposit players bit)
+          (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
     _ = _ := by
-      rw [FinDist.expect_comm]
+      rw [expect_comm_of_support_finite_left _ _ (Set.toFinite _) _ fun bit _ =>
+        payoffIntegrable_of_finite_summary _ (fun response => quietGuess response players)
+          (correctness (.success bit))]
       simp only [fair_correctness, expect_constant]
 
 theorem quiet_receiver_site_dominates (assessment : nativeModel.BehavioralAssessment)

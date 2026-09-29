@@ -189,15 +189,19 @@ theorem bob_decision_reach_invariant (profile : Profile nativeModel.behavioralSi
     (alternative : nativeModel.BehavioralPolicy bob)
     (site : nativeModel.InformationSite bob)
     (history : nativeModel.InformationHistory bob site.1) :
-    (nativeModel.historyReachWeight (Profile.update (sig := nativeModel.behavioralSignature)
-      profile bob alternative) history.1).toReal =
+    nativeModel.historyReachWeight (Profile.update (sig := nativeModel.behavioralSignature)
+      profile bob alternative) history.1 =
+      nativeModel.historyReachWeight profile history.1 := by
+  have real : (nativeModel.historyReachWeight (Profile.update
+      (sig := nativeModel.behavioralSignature) profile bob alternative) history.1).toReal =
       (nativeModel.historyReachWeight profile history.1).toReal := by
-  rw [nativeModel.historyReachProbability_eq_player_mul_counterfactual _ bob history.1.trace,
-    nativeModel.historyReachProbability_eq_player_mul_counterfactual _ bob history.1.trace,
-    bob_decision_player_reach _ site history, bob_decision_player_reach _ site history]
-  congr 1
-  exact nativeModel.counterfactualReachProbability_eq_of_eq_off
-    (fun player different => Profile.update_of_ne _ _ different) history.1.trace
+    rw [nativeModel.historyReachProbability_eq_player_mul_counterfactual _ bob history.1.trace,
+      nativeModel.historyReachProbability_eq_player_mul_counterfactual _ bob history.1.trace,
+      bob_decision_player_reach _ site history, bob_decision_player_reach _ site history]
+    congr 1
+    exact nativeModel.counterfactualReachProbability_eq_of_eq_off
+      (fun player different => Profile.update_of_ne _ _ different) history.1.trace
+  exact (ENNReal.toReal_eq_toReal_iff' (PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)).mp real
 
 private def afterBob : nativeApp.ProtocolState → Prop
   | none => False

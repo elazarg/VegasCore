@@ -47,15 +47,15 @@ theorem native_deviation_carol_bound (players : Player → nativeApp.Policy) (bi
           (fun final => nativeResults final.application.config))
             (fun result => correctness (.success bit) result.carol) ≤
       expect (nativeCarolGuessLaw changed) (correctness (.success bit)) := by
-    rw [FinDist.expect_bind]
+    rw [expect_bind_of_finite]
     have bound : expect (nativeCarolPlay changed bit prior)
         (fun settled => expect ((nativeApp.runRounds nativeScheduler changed 76 settled).map
           (fun final => nativeResults final.application.config))
             (fun result => correctness (.success bit) result.carol)) ≤
       expect (nativeCarolPlay changed bit prior) (fun settled => correctness (.success bit)
         ((carolBindingRef.get? settled.application.config.store).getD .failure)) := by
-      apply FinDist.expect_mono
-      intro settled supported
+      refine expect_mono (fun settled supported => ?_) (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
       obtain ⟨response, _, settledMem⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨valid, guess, stored⟩ := native_carol_guess_stored changed bit prior response
@@ -67,9 +67,8 @@ theorem native_deviation_carol_bound (players : Player → nativeApp.Policy) (bi
     exact congrArg (fun law => expect law (correctness (.success bit)))
       (native_carol_common_law changed bit prior)
   unfold nativeDeviationOutcomes
-  rw [PMF.bind_bind, FinDist.expect_bind]
-  apply FinDist.expect_le_of_forall
-  intro prior _
+  rw [PMF.bind_bind, expect_bind_of_finite]
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun prior _ => ?_
   exact each prior
 
 theorem native_deviation_advantage (players : Player → nativeApp.Policy)

@@ -64,6 +64,14 @@ def scheduler (Claim : Type) : (application Claim).Scheduler := fun past view =>
 abbrev horizon : Nat := calendar.length
 abbrev arena (Claim : Type) [Fintype Claim] :=
   (menu Claim).protocol (PMF.pure initial) horizon (scheduler Claim)
+/-- Every nature step of the source calendar is deterministic. -/
+instance (Claim : Type) :
+    (application Claim).FiniteNature (PMF.pure initial) (scheduler Claim) where
+  observePending_finite _ _ := by simp [application, leaks]
+  environment_finite _ _ := by simp [application]
+  initial_finite := by simp
+  scheduler_finite _ _ := by simp [scheduler]
+
 abbrev model (Claim : Type) [Fintype Claim] :=
   (menu Claim).information (PMF.pure initial) horizon (scheduler Claim)
 

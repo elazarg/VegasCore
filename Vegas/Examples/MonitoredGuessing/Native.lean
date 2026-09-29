@@ -90,6 +90,28 @@ def nativeScheduler : nativeApp.Scheduler := fun history view =>
   | some instruction => nativeRuntime.interactionInstruction nativeLeaks
       nativeNetwork history view instruction
 
+instance : nativeLeaks.FiniteSupport where
+  support_finite who pending := by
+    unfold nativeLeaks
+    split_ifs
+    · refine ((Set.finite_singleton (pendingIds pending)).union (Set.finite_singleton ∅)).subset ?_
+      simpa only [PMF.support_pure] using support_mix_subset (1 / 2) (by norm_num) (by norm_num)
+        (PMF.pure (pendingIds pending)) (PMF.pure ∅)
+    all_goals simp
+
+instance : nativeNetwork.FiniteSupport := ⟨fun _ _ => by simp [nativeNetwork]⟩
+
+instance : nativeApp.FiniteNature nativeInitialLaw nativeScheduler where
+  initial_finite := by
+    rw [nativeInitialLaw, PMF.support_map]
+    exact (Set.toFinite _).image _
+  scheduler_finite history view := by
+    unfold nativeScheduler
+    split
+    · simp
+    · exact nativeRuntime.interactionInstruction_support_finite nativeLeaks nativeNetwork
+        history view _
+
 abbrev nativeHorizon : Nat := nativePlan.length
 
 abbrev nativeArena := nativeMenu.protocol nativeInitialLaw nativeHorizon nativeScheduler
@@ -122,6 +144,40 @@ def nativeExecutionUtility (deposit : ℝ) (who : Player)
 
 def nativeUtility (deposit : ℝ) (who : Player) (state : nativeApp.ProtocolState) : ℝ :=
   state.elim 0 (fun control => nativeExecutionUtility deposit who control.execution)
+
+/-- Native payoffs are bounded by the source payoffs plus the deposit, so every
+continuation law has an integrable payoff. -/
+theorem nativeExecutionUtility_abs_le (deposit : ℝ) (who : Player)
+    (execution : nativeApp.Execution) :
+    |nativeExecutionUtility deposit who execution| ≤ 5 + |deposit| := by
+  have correct (a b : PublicationResult Bool) : 0 ≤ correctness a b ∧ correctness a b ≤ 1 := by
+    cases a <;> simp only [correctness] <;> (try split_ifs) <;> norm_num
+  have penalty (a : PublicationResult Bool) : 0 ≤ openingPenalty a ∧ openingPenalty a ≤ 4 := by
+    cases a <;> simp only [openingPenalty] <;> norm_num
+  have base (result : Results) : |utility result who| ≤ 5 := by
+    unfold utility
+    have := correct result.alice result.bob
+    have := penalty result.alice
+    split_ifs <;> rw [abs_le] <;> constructor <;> linarith
+  unfold nativeExecutionUtility
+  refine (abs_sub _ _).trans (add_le_add (base _) ?_)
+  split_ifs <;> simp
+
+theorem nativeUtility_abs_le (deposit : ℝ) (who : Player) (state : nativeApp.ProtocolState) :
+    |nativeUtility deposit who state| ≤ 5 + |deposit| := by
+  cases state with
+  | none => simp only [nativeUtility, Option.elim_none, abs_zero]; positivity
+  | some control => exact nativeExecutionUtility_abs_le deposit who control.execution
+
+theorem nativeExecutionUtility_integrable (deposit : ℝ) (who : Player)
+    (law : PMF nativeApp.Execution) : PayoffIntegrable law (nativeExecutionUtility deposit who) :=
+  payoffIntegrable_of_bounded _ _ (nativeExecutionUtility_abs_le deposit who)
+
+theorem nativeExecutionValue_integrable {α : Type*} (deposit : ℝ) (who : Player) (μ : PMF α)
+    (law : α → PMF nativeApp.Execution) :
+    PayoffIntegrable μ (fun a => expect (law a) (nativeExecutionUtility deposit who)) :=
+  payoffIntegrable_expect_of_bounded _ _ _ (by positivity)
+    (nativeExecutionUtility_abs_le deposit who)
 
 @[simp] theorem native_execution_utility_watcher (deposit : ℝ)
     (execution : nativeApp.Execution) :

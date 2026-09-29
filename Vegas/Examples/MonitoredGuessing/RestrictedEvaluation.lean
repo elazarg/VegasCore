@@ -131,7 +131,7 @@ theorem source_initialized_states_all (profile : Profile sourceModel.behavioralS
   change ((((PMF.uniformOfFintype Bool).map initialState).map
     (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))).bind
       (sourceKernel profile)).bind (sourceKernel profile) = _
-  simp only [PMF.bind_map, PMF.bind_bind]
+  simp only [PMF.bind_map, PMF.bind_bind, Function.comp_def]
   apply bind_congr_on_support _
   intro bit _
   have first : sourceBobSite.1 =

@@ -104,11 +104,10 @@ theorem uniform_flip (Claim : Type) [Fintype Claim] (who : Player)
       ((menu Claim).nonempty who past view).choose_spec⟩⟩
   have uniform : (PMF.uniformOfFintype choices).map
       (responseFlip Claim who past view) = (PMF.uniformOfFintype _) := by
-    apply pmf_ext_toReal
-    intro action
+    ext action
     obtain ⟨before, rfl⟩ := (responseFlip Claim who past view).surjective action
-    rw [FinDist.prob_map_of_injective _ (responseFlip Claim who past view).injective]
-    simp only [toReal_uniformOfFintype_apply]
+    rw [pmf_map_apply_of_injective _ (responseFlip Claim who past view).injective]
+    rw [PMF.uniformOfFintype_apply, PMF.uniformOfFintype_apply]
   change ((PMF.uniformOfFintype choices).map Subtype.val).map flipResponse = _
   rw [PMF.map_comp]
   calc
@@ -131,8 +130,8 @@ theorem fairBinding_flip (Claim : Type) (defaultClaim : Claim) (event : Event) :
     apply pmf_ext_toReal
     intro bit
     have involutive : Function.Involutive Bool.not := fun bit => Bool.not_not bit
-    have same := FinDist.prob_map_of_injective Bool.not involutive.injective
-      (PMF.uniformOfFintype Bool) (!bit)
+    have same := congrArg ENNReal.toReal (pmf_map_apply_of_injective
+      (PMF.uniformOfFintype Bool) involutive.injective (!bit))
     simpa only [Bool.not_not, toReal_uniformOfFintype_apply] using same
   rw [PMF.map_comp]
   calc

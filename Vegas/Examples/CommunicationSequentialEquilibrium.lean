@@ -49,7 +49,7 @@ theorem native_sequential_equilibrium_exists (matchBit : Bool) :
         cases who with
         | false => exact native_alice_zero matchBit
         | true => exact (different rfl).elim)
-      112
+      112 (fun _ _ => (payoffIntegrable_of_finite _ _))
   exact ⟨assessment, equilibrium⟩
 
 /-- The constructed equilibria solve the disclosed guessing problem with
@@ -64,7 +64,7 @@ theorem native_equilibrium_certified_value (matchBit : Bool) :
   obtain ⟨assessment, equilibrium⟩ := native_sequential_equilibrium_exists matchBit
   refine ⟨assessment, equilibrium, ?_⟩
   intro bit
-  have optimal := equilibrium.1 true (nativeBobSite bit)
+  have optimal := (equilibrium.1 true (nativeBobSite bit)).2.2
     (evidencePolicy (winningAnswer matchBit)) (Set.mem_univ _)
   change (assessment.continuationContext (nativeBobSite bit)
       (nativePayoff matchBit true) 113).value (evidencePolicy (winningAnswer matchBit)) ≤
@@ -73,8 +73,7 @@ theorem native_equilibrium_certified_value (matchBit : Bool) :
   rw [evidencePolicy_value] at optimal
   apply le_antisymm _ optimal
   rw [native_continuation_value]
-  apply FinDist.expect_le_of_forall
-  intro guess _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun guess _ => ?_
   split <;> norm_num
 
 end Vegas.Examples.CommunicationSequentialNative

@@ -31,7 +31,7 @@ theorem source_result_alice_value (reward : Results → Player → ℝ)
   unfold sourceResultPayoff
   have value := congrArg (fun law : PMF sourceArena.State =>
     expect law (sourceResultUtility reward · alice)) (source_alice_run profile bit guess)
-  simpa only [expect_map, sourceDisclosures,
+  simpa only [expect_map, Function.comp_def, sourceDisclosures,
     sourceResultUtility, SourcePath.state, source_results, decisionResult] using value
 
 theorem source_result_bob_value (reward : Results → Player → ℝ)
@@ -44,7 +44,10 @@ theorem source_result_bob_value (reward : Results → Player → ℝ)
   unfold sourceResultPayoff
   have value := congrArg (fun law : PMF sourceArena.State =>
     expect law (sourceResultUtility reward · bob)) (source_bob_run profile bit)
-  simpa only [expect_map, FinDist.expect_bind,
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _
+    (bind_support_finite (Set.toFinite _) fun _ _ => by
+      rw [PMF.support_map]; exact (Set.toFinite _).image _))] at value
+  simpa only [expect_map, Function.comp_def,
     sourceGuesses, sourceDisclosures, sourceResultUtility, SourcePath.state,
     source_results, decisionResult] using value
 
@@ -56,7 +59,7 @@ theorem source_result_alice_context (reward : Results → Player → ℝ)
       expect (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
         assessment.strategy alice alternative) bit guess)
         fun disclose => reward (decisionResult bit guess disclose) alice := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   calc
     _ = expect (assessment.belief alice (sourceAliceSite bit guess)) (fun _ =>
         expect (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
@@ -78,12 +81,12 @@ theorem source_result_bob_context (reward : Results → Player → ℝ)
           assessment.strategy bob alternative)) fun guess =>
           expect (sourceDisclosures assessment.strategy bit guess) fun disclose =>
             reward (decisionResult bit guess disclose) bob := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind,
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
     source_consistent_bob assessment consistent, expect_map]
   apply expect_congr_on_support
   intro bit _
-  change expect (sourceModel.runBehavioralFrom (Profile.update (sig := sourceModel.behavioralSignature)
-    assessment.strategy bob alternative)
+  change expect (sourceModel.runBehavioralFrom
+    (Profile.update (sig := sourceModel.behavioralSignature) assessment.strategy bob alternative)
     3 (SourcePath.drawn bit).history) (sourceResultPayoff reward bob) = _
   rw [source_result_bob_value]
   apply expect_congr_on_support
@@ -99,7 +102,7 @@ theorem source_disclosure_optimal (reward : Results → Player → ℝ)
       expect (sourceDisclosures assessment.strategy bit guess) fun decision =>
         reward (decisionResult bit guess decision) alice := by
   let alternative := (sourceProfile (PMF.pure false) (PMF.pure disclose)) alice
-  have optimal := rational alice (sourceAliceSite bit guess) alternative (Set.mem_univ _)
+  have optimal := (rational alice (sourceAliceSite bit guess)).2.2 alternative (Set.mem_univ _)
   change (assessment.continuationContext (sourceAliceSite bit guess)
     (sourceResultPayoff reward alice) 3).value alternative ≤ _ at optimal
   rw [source_result_alice_context, source_result_alice_context,
@@ -125,7 +128,7 @@ theorem source_guess_optimal (reward : Results → Player → ℝ)
           expect (sourceDisclosures assessment.strategy bit decision) fun disclose =>
             reward (decisionResult bit decision disclose) bob) := by
   let alternative := (sourceProfile (PMF.pure guess) (PMF.pure false)) bob
-  have optimal := rational bob sourceBobSite alternative (Set.mem_univ _)
+  have optimal := (rational bob sourceBobSite).2.2 alternative (Set.mem_univ _)
   change (assessment.continuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
     alternative ≤ _ at optimal
   rw [source_result_bob_context reward assessment consistent,

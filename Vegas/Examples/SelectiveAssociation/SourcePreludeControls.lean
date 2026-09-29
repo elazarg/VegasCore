@@ -71,7 +71,7 @@ theorem ambient_decision_representation (Claim : Type) [Fintype Claim]
     rw [roundsFrom_prefix (menu Claim).uniformResponses [.player alice] calendar.tail rfl]
       at firstLaw
     simp only [runInstructions_player, runInstructions_nil] at firstLaw
-    rw [← PMF.bind_pure_comp, Function.comp_def, PMF.support_map] at firstLaw
+    rw [pmf_bind_pure_eq_map, PMF.support_map] at firstLaw
     obtain ⟨first, _, firstEq⟩ := firstLaw
     have commandEq : command = .activate bob := by
       simpa only [scheduler, cursor, show calendar[1]? = some (.player bob) from rfl,

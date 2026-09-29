@@ -22,15 +22,16 @@ theorem source_rational_of_opens (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain)
     (opens : Opens assessment.strategy) :
     assessment.IsSequentiallyRationalWithin sourcePayoff 3 := by
-  intro who site alternative _
+  intro who site
+  refine ⟨payoffIntegrable_of_finite _ _, fun _ _ => payoffIntegrable_of_finite _ _,
+    fun alternative _ => ?_⟩
   fin_cases who
   · change (assessment.continuationContext site (sourcePayoff alice) 3).value alternative ≤
       (assessment.continuationContext site (sourcePayoff alice) 3).value (assessment.strategy alice)
     obtain ⟨bit, guess, rfl⟩ := source_alice_site site
     rw [source_alice_context, source_alice_context, Profile.update_eq_self,
       opens, expect_pure]
-    apply FinDist.expect_le_of_forall
-    intro disclose _
+    refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun disclose _ => ?_
     cases disclose <;> split_ifs <;> norm_num at *
   · change (assessment.continuationContext site (sourcePayoff bob) 3).value alternative ≤
       (assessment.continuationContext site (sourcePayoff bob) 3).value (assessment.strategy bob)
@@ -43,20 +44,21 @@ theorem opening_law_of_optimal (law : PMF Bool) (reward : ℝ) (nonnegative : 0 
     law = PMF.pure true := by
   have normalized := pmf_sum_toReal_eq_one law
   simp only [Fintype.sum_bool] at normalized
-  have positive := ENNReal.toReal_nonneg
+  have positiveTrue : 0 ≤ (law true).toReal := ENNReal.toReal_nonneg
+  have positiveFalse : 0 ≤ (law false).toReal := ENNReal.toReal_nonneg
   simp only [expect_eq_sum, Fintype.sum_bool, Bool.false_eq_true, ↓reduceIte] at optimal
   have absent : (law false).toReal = 0 := by nlinarith
   have present : (law true).toReal = 1 := by linarith
   apply pmf_ext_toReal
   intro disclose
-  cases disclose <;> simp [absent, present, toReal_pure_apply]
+  cases disclose <;> simp [absent, present]
 
 theorem source_rational_opens (assessment : sourceModel.BehavioralAssessment)
     (rational : assessment.IsSequentiallyRationalWithin sourcePayoff 3) :
     Opens assessment.strategy := by
   intro bit guess
   let replacement := (sourceProfile (PMF.pure false) (PMF.pure true)) alice
-  have optimal := rational alice (sourceAliceSite bit guess) replacement (Set.mem_univ _)
+  have optimal := (rational alice (sourceAliceSite bit guess)).2.2 replacement (Set.mem_univ _)
   change (assessment.continuationContext (sourceAliceSite bit guess) (sourcePayoff alice) 3).value
     replacement ≤ _ at optimal
   rw [source_alice_context, source_alice_context, Profile.update_eq_self] at optimal
@@ -106,7 +108,7 @@ theorem source_initialized_states (profile : Profile sourceModel.behavioralSigna
   change ((((PMF.uniformOfFintype Bool).map initialState).map
     (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))).bind
       (sourceKernel profile)).bind (sourceKernel profile) = _
-  simp only [PMF.bind_map, PMF.bind_bind]
+  simp only [PMF.bind_map, PMF.bind_bind, Function.comp_def]
   apply bind_congr_on_support _
   intro bit _
   have first : sourceBobSite.1 =

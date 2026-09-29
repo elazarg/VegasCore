@@ -121,8 +121,8 @@ theorem guess_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClaim 
     _ ≤ expect (assessment.belief (eventOwner event) site) (fun history =>
         expect responses (fun response =>
           bindingReward (selectedBinding event response) history.1.state)) := by
-      apply FinDist.expect_mono
-      intro history _
+      refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
       have bound := guess_information_finish_le Claim
         (Function.update (policy Claim defaultClaim) (eventOwner event)
           (decodedAlternative Claim (eventOwner event) alternative)) event guessSite past view
@@ -131,7 +131,7 @@ theorem guess_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClaim 
     _ = expect (assessment.belief (eventOwner event) site) (fun history =>
         expect (responses.map (selectedBinding event)) (fun guess =>
           bindingReward guess history.1.state)) := by
-      simp only [expect_map]
+      simp only [expect_map, Function.comp_def]
     _ ≤ expect (assessment.belief (eventOwner event) site) (fun history =>
         bindingReward (.success (publicGuess view)) history.1.state) :=
       prescribed_mixed_guess_optimal Claim assessment fair (eventOwner event) site

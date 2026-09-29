@@ -78,5 +78,6 @@ theorem quiet_native_context (assessment : nativeModel.BehavioralAssessment)
               alternative)) (quietBobHistory bit).state) (nativeUtility deposit bob)) := by
   rw [native_context_value, quiet_native_state_belief_of_prescribed assessment consistent
     alicePolicy watcherPolicy, expect_map]
+  rfl
 
 end Vegas.Examples.MonitoredGuessing

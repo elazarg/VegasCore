@@ -35,10 +35,11 @@ private theorem idle_step_probability
     (inactive : ¬ nativeArena.active state true) :
     nativeModel.playerStepProb profile true trace joint = 1 := by
   let := nativeModel.subsingleton_choice_of_not_active trace inactive
-  change ((profile true (nativeModel.infoOf true trace)) (nativeModel.choicesOfLegal trace joint true)).toReal = 1
+  change ((profile true (nativeModel.infoOf true trace))
+    (nativeModel.choicesOfLegal trace joint true)).toReal = 1
   rw [eq_pure_of_subsingleton (profile true (nativeModel.infoOf true trace))
     (nativeModel.choicesOfLegal trace joint true)]
-  exact FinDist.prob_pure_self _
+  exact by rw [PMF.pure_apply_self, ENNReal.toReal_one]
 
 private def beforeBob : nativeApp.ProtocolState → Prop
   | none => True
@@ -60,7 +61,8 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
             have position := (native_bob_remaining control prior same).1
             change _ ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
               (some control) joint).support at reached
-            simp only [ReactiveApplication.transition, same, PMF.mem_support_pure_iff _ _] at reached
+            simp only [ReactiveApplication.transition, same,
+              PMF.mem_support_pure_iff _ _] at reached
             subst_vars
             simp only [beforeBob, nativeApp.respond_environmentRecall, position,
               Nat.reduceLeDiff, reduceCtorEq, and_false, or_self] at early
@@ -161,15 +163,19 @@ theorem decision_reach_invariant (profile : Profile nativeModel.behavioralSignat
     (alternative : nativeModel.BehavioralPolicy true) (who : Bool)
     (site : nativeModel.InformationSite who)
     (history : nativeModel.InformationHistory who site.1) :
-    (nativeModel.historyReachWeight (Profile.update (sig := nativeModel.behavioralSignature)
-      profile true alternative) history.1).toReal =
+    nativeModel.historyReachWeight (Profile.update (sig := nativeModel.behavioralSignature)
+      profile true alternative) history.1 =
+      nativeModel.historyReachWeight profile history.1 := by
+  have real : (nativeModel.historyReachWeight (Profile.update
+      (sig := nativeModel.behavioralSignature) profile true alternative) history.1).toReal =
       (nativeModel.historyReachWeight profile history.1).toReal := by
-  rw [nativeModel.historyReachProbability_eq_player_mul_counterfactual _ true history.1.trace,
-    nativeModel.historyReachProbability_eq_player_mul_counterfactual _ true history.1.trace,
-    decision_player_reach _ who site history, decision_player_reach _ who site history]
-  congr 1
-  exact nativeModel.counterfactualReachProbability_eq_of_eq_off
-    (fun player different => Profile.update_of_ne _ _ different) history.1.trace
+    rw [nativeModel.historyReachProbability_eq_player_mul_counterfactual _ true history.1.trace,
+      nativeModel.historyReachProbability_eq_player_mul_counterfactual _ true history.1.trace,
+      decision_player_reach _ who site history, decision_player_reach _ who site history]
+    congr 1
+    exact nativeModel.counterfactualReachProbability_eq_of_eq_off
+      (fun player different => Profile.update_of_ne _ _ different) history.1.trace
+  exact (ENNReal.toReal_eq_toReal_iff' (PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)).mp real
 
 private def afterBob : nativeApp.ProtocolState → Prop
   | none => False

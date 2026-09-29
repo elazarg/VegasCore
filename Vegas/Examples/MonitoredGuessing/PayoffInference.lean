@@ -108,8 +108,8 @@ theorem inferredCharge_deters_against_opening (table : PayoffTable) {charge : �
         (table ⟨.success bit, if guess then .success true else .failure⟩ alice : ℝ)) := by
   apply (inferredCharge_deters table inferred bit submission players plan).trans
   rw [← expect_constant guesses (senderLower table : ℝ)]
-  apply FinDist.expect_mono
-  intro guess _
+  refine expect_mono (fun guess _ => ?_) (payoffIntegrable_constant _ _)
+    (payoffIntegrable_of_finite _ _)
   exact_mod_cast senderLower_le table bit guess
 
 /-- The original correctness table recovers the native pilot's deposit two. -/

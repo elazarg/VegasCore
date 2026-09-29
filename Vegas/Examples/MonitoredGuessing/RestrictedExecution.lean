@@ -182,7 +182,8 @@ theorem after_bob_fixed (bit guess : Bool) :
       have expiry := environmentStep_expire_resolve_eq nativeRuntime
         (silentBobTicked bit).application bobPublication (silent_bob_ready bit) 0 rfl
         (by change 1 ≤ 1; omega) bob .bool bobBindingRef [] rfl rfl bob_node
-      change _ ∈ (environmentStep nativeRuntime _ _).support
+      change _ ∈ (environmentStep nativeRuntime (silentBobTicked bit).application
+        (.expire bobPublication)).support
       rw [expiry]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl
 

@@ -35,7 +35,7 @@ theorem source_alice_run (profile : Profile sourceModel.behavioralSignature)
   rw [source_run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     SourcePath.history_state, SourcePath.state, sourceKernel, PMF.pure_bind,
-    PMF.bind_map, PMF.bind_bind, sourceDecisionLaw, PMF.map_comp]
+    PMF.bind_map, PMF.bind_bind, sourceDecisionLaw, PMF.map_comp, Function.comp_def]
   rw [← PMF.bind_pure_comp, Function.comp_def]
   simp only [sourceAliceSite, InformationModel.informationSite, source_info]
   rfl
@@ -51,7 +51,7 @@ theorem source_bob_run (profile : Profile sourceModel.behavioralSignature) (bit 
   rw [first, source_run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     SourcePath.history_state, SourcePath.state, sourceKernel, PMF.pure_bind,
-    PMF.bind_map, PMF.bind_bind, sourceDecisionLaw, PMF.map_comp,
+    PMF.bind_map, PMF.bind_bind, sourceDecisionLaw, PMF.map_comp, Function.comp_def,
     sourceAliceSite, InformationModel.informationSite, source_info]
   rfl
 
@@ -84,7 +84,7 @@ theorem source_alice_value (profile : Profile sourceModel.behavioralSignature)
     (source_alice_run profile bit guess)
   change expect (sourceModel.runBehavioralFrom profile 3 _)
     (fun history => sourceUtility history.state alice) = _
-  simpa only [expect_map, source_payoff_alice] using same
+  simpa only [expect_map, Function.comp_def, source_payoff_alice] using same
 
 theorem source_bob_value (profile : Profile sourceModel.behavioralSignature)
     (opens : Opens profile) (bit : Bool) :
@@ -94,7 +94,10 @@ theorem source_bob_value (profile : Profile sourceModel.behavioralSignature)
         (fun guess => if bit = guess then 1 else 0) := by
   have same := congrArg (fun law => expect law (sourceUtility · bob))
     (source_bob_run profile bit)
-  simp only [expect_map, FinDist.expect_bind] at same
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _
+    (bind_support_finite (Set.toFinite _) fun _ _ => by
+      rw [PMF.support_map]; exact (Set.toFinite _).image _))] at same
+  simp only [expect_map, Function.comp_def] at same
   unfold sourcePayoff
   rw [same]
   apply expect_congr_on_support
@@ -110,7 +113,7 @@ theorem source_alice_context (assessment : sourceModel.BehavioralAssessment)
         (Profile.update (sig := sourceModel.behavioralSignature)
           assessment.strategy alice alternative) alice (sourceAliceSite bit guess).1)
         (fun disclose => if disclose then (if bit = guess then 1 else 0) else -4) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   calc
     _ = expect (assessment.belief alice (sourceAliceSite bit guess)) (fun _ =>
         expect (sourceDecisionLaw
@@ -134,10 +137,11 @@ theorem source_bob_context (assessment : sourceModel.BehavioralAssessment)
     (opens : Opens assessment.strategy) (alternative : sourceModel.BehavioralPolicy bob) :
     (assessment.continuationContext sourceBobSite (sourcePayoff bob) 3).value alternative =
       1 / 2 := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind,
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
     source_consistent_bob assessment consistent, expect_map]
-  simp only [sourceBobHistory, source_bob_value _ (opens_update_bob _ opens alternative)]
-  rw [FinDist.expect_comm]
+  simp only [Function.comp_def, sourceBobHistory,
+    source_bob_value _ (opens_update_bob _ opens alternative)]
+  rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
   calc
     _ = expect (sourceDecisionLaw
         (Profile.update (sig := sourceModel.behavioralSignature)

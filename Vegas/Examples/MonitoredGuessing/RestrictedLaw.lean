@@ -115,7 +115,7 @@ theorem bob_finish_observation (table : PayoffTable)
   rw [finish, decoded_bob_response, PMF.bind_map, PMF.map_bind]
   apply bind_congr_on_support _
   intro guess _
-  rw [PMF.map_comp]
+  rw [Function.comp_apply, PMF.map_comp]
   exact bob_choice_observation table profile bit guess
 
 theorem finish_quiet (profile : Profile restrictedModel.behavioralSignature) :

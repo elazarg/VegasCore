@@ -231,7 +231,7 @@ theorem native_alice_nine_rounds (players : Player → nativeApp.Policy) :
   rw [runInteractionPlan, native_alice_first_round, PMF.bind_map]
   apply bind_congr_on_support _
   intro bit _
-  rw [runInteractionPlan, native_alice_bob_round, PMF.bind_map]
+  rw [Function.comp_apply, runInteractionPlan, native_alice_bob_round, PMF.bind_map]
   exact bind_congr_on_support _ fun response _ => native_alice_after_bob players bit response
 
 /-- After thirteen rounds Carol's guess is fixed. This is the actual service
@@ -297,8 +297,9 @@ theorem native_alice_carol_activation (players : Player → nativeApp.Policy) :
   rw [runInteractionPlan, native_alice_first_round, PMF.bind_map, PMF.bind_bind]
   apply bind_congr_on_support _
   intro bit _
-  rw [runInteractionPlan, native_alice_bob_round, PMF.bind_map, PMF.bind_bind,
-    ← PMF.bind_pure_comp, Function.comp_def]
-  exact bind_congr_on_support _ fun response _ => native_alice_activation_after_bob players bit response
+  rw [Function.comp_apply, runInteractionPlan, native_alice_bob_round, PMF.bind_map,
+    PMF.bind_bind, ← PMF.bind_pure_comp, Function.comp_def]
+  exact bind_congr_on_support _ fun response _ => native_alice_activation_after_bob
+      players bit response
 
 end Vegas.Examples.SelectiveAssociation

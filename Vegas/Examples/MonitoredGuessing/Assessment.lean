@@ -45,8 +45,8 @@ theorem native_context_value (assessment : nativeModel.BehavioralAssessment)
           (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy who
               alternative)) state) (payoff)) := by
-  simp only [BehavioralAssessment.continuationContext_value, FinDist.expect_bind,
-    expect_map]
+  simp only [BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
+    expect_map, Function.comp_def]
   apply expect_congr_on_support
   intro history _
   have bound := nativeApp.trace_bound nativeInitialLaw nativeHorizon nativeScheduler
@@ -58,7 +58,7 @@ theorem native_context_value (assessment : nativeModel.BehavioralAssessment)
       omega)
   have value := congrArg (fun outcomes : PMF nativeApp.ProtocolState =>
     expect outcomes (payoff)) law
-  simpa only [expect_map] using value
+  simpa only [expect_map, Function.comp_def] using value
 
 private def weight (n : ℕ) : ℝ := (1 / ((n : ℝ) + 1)) / 2
 
@@ -126,20 +126,21 @@ private theorem responseProfile_mixed (baseline : Profile nativeModel.behavioral
 private def sequence (baseline : Profile nativeModel.behavioralSignature)
     (quiet : nativeModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ) (n : ℕ) :
     nativeModel.BehavioralAssessment :=
-  InformationModel.bayesAssessment _ (BehavioralAssessment.ofStrategy (responseProfile baseline quiet payoff n)).strategy (responseProfile_mixed baseline quiet payoff n) nativeAntichain
+  InformationModel.bayesAssessment _
+    (BehavioralAssessment.ofStrategy (responseProfile baseline quiet payoff n)).strategy
+    (responseProfile_mixed baseline quiet payoff n) nativeAntichain
 
 private theorem bob_belief (baseline : Profile nativeModel.behavioralSignature)
     (quiet : nativeModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ) (n : ℕ)
     (site : nativeModel.InformationSite bob) :
     (sequence baseline quiet payoff n).belief bob site =
-      (InformationModel.bayesAssessment _ (baseTremble baseline n).strategy (baseTremble_mixed baseline n) nativeAntichain).belief bob site := by
-  apply pmf_ext_toReal
-  intro history
+      (InformationModel.bayesAssessment _ (baseTremble baseline n).strategy
+        (baseTremble_mixed baseline n) nativeAntichain).belief bob site := by
+  ext history
   have mass : nativeModel.informationMass (responseProfile baseline quiet payoff n) bob site =
       nativeModel.informationMass (baseTremble baseline n).strategy bob site := by
     unfold InformationModel.informationMass
-    apply Finset.sum_congr rfl
-    intro next _
+    refine tsum_congr fun next => ?_
     exact bob_decision_reach_invariant (baseTremble baseline n).strategy
       (responseLaw baseline quiet payoff n) site next
   simp only [sequence, InformationModel.bayesAssessment, BehavioralAssessment.ofStrategy_strategy,
@@ -155,9 +156,9 @@ private theorem bob_value (baseline : Profile nativeModel.behavioralSignature)
     ((sequence baseline quiet payoff n).continuationContext site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)).value
         alternative =
-      ((InformationModel.bayesAssessment _ (baseTremble baseline n).strategy (baseTremble_mixed baseline n) nativeAntichain).continuationContext
-        site (fun history => payoff history.state)
-          (2 * nativeHorizon + 1)).value alternative := by
+      ((InformationModel.bayesAssessment _ (baseTremble baseline n).strategy
+        (baseTremble_mixed baseline n) nativeAntichain).continuationContext site
+          (fun history => payoff history.state) (2 * nativeHorizon + 1)).value alternative := by
   have profiles : Profile.update (sig := nativeModel.behavioralSignature)
       (sequence baseline quiet payoff n).strategy bob alternative =
         Profile.update (sig := nativeModel.behavioralSignature)
@@ -187,15 +188,18 @@ private theorem response_optimal (baseline : Profile nativeModel.behavioralSigna
         (fun history => payoff history.state) (2 * nativeHorizon) site.1 := by
     simp only [response, ite_eq_right differentInfo]
   rw [native_bob_last_decision.context_value_eq_expect _ site (native_bob_allNonterminal site)
-    _ (2 * nativeHorizon) (response baseline quiet payoff n), same,
+    _ (2 * nativeHorizon) (response baseline quiet payoff n) (payoffIntegrable_of_finite _ _),
+    same,
     ← native_bob_last_decision.context_value_eq_expect _ site (native_bob_allNonterminal site)
       _ (2 * nativeHorizon)
       (bestLastPolicy (baseTremble baseline n) (baseTremble_mixed baseline n) nativeAntichain bob
-        (fun history => payoff history.state) (2 * nativeHorizon))]
+        (fun history => payoff history.state) (2 * nativeHorizon))
+      (payoffIntegrable_of_finite _ _)]
   exact bestLastPolicy_optimal (baseTremble baseline n) (baseTremble_mixed baseline n)
     nativeAntichain bob
     (fun history => payoff history.state) (2 * nativeHorizon)
     native_bob_last_decision site (native_bob_allNonterminal site) alternative
+    (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
 
 /-- The actual bounded native game admits one consistent completion whose
 receiver is rational at every information site other than the prescribed quiet
@@ -229,7 +233,7 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
         (baseline who info) :=
     (nativeReference.perturb_strategy_converges baseline weight
       (fun n => (weight_positive n).le) (fun n => (weight_below_one n).le)
-      weight_vanishes who info).subsequence increasing
+      weight_vanishes who info).subseq increasing
   have converges : BehavioralAssessmentConvergesPointwise
       (fun n => sequence baseline quiet payoff (index n)) completed := by
     constructor
@@ -281,7 +285,8 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
   · exact ⟨fun n => sequence baseline quiet payoff (index n),
       fun n => ⟨mixed (index n), bayes (index n)⟩, converges⟩
   · intro site different
-    exact converges.rationalAt_of_optimal_responses nativeReference nativeReference_mixed site
+    exact converges.rationalAt_of_optimal_responses
+      (ExecutionProtocol.FiniteTransitions.of_finite_history nativeArena) site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)
       (fun n => response baseline quiet payoff (index n)) responsesConverge
       (fun n alternative => response_optimal baseline quiet payoff (index n) site

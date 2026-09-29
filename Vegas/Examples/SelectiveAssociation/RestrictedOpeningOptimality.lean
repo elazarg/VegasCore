@@ -221,15 +221,16 @@ theorem opening_expectation_optimal (who : Player) (alternative : model.Behavior
   change expect deviated _ ≤ expect prescribed _
   calc
     _ ≤ expect deviated (fun _ => expect prescribed (fun history =>
-      nativeUtility who history.state)) := FinDist.expect_mono (by
+      nativeUtility who history.state)) := expect_mono (by
         intro other otherMem
         calc
           _ = expect prescribed (fun _ => nativeUtility who other.state) :=
             (expect_constant _ _).symm
-          _ ≤ _ := FinDist.expect_mono (by
+          _ ≤ _ := expect_mono (by
             intro final finalMem
             exact opening_payoff_optimal who alternative control trace active granted final other
-              finalMem otherMem))
+              finalMem otherMem) (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _))
+                  (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
     _ = _ := expect_constant _ _
 
 theorem information_control (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
@@ -262,9 +263,9 @@ theorem profile_opening_rational (assessment : model.BehavioralAssessment)
       (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   intro alternative _
   simp only [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, strategy, Profile.update_eq_self]
-  apply FinDist.expect_mono
-  intro history _
+    expect_bind_of_finite, strategy, Profile.update_eq_self]
+  refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
   obtain ⟨control, stateEq, active, _, observed⟩ :=
     information_control who past view ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩

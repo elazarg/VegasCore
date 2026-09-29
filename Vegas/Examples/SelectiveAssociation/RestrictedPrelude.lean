@@ -126,9 +126,9 @@ theorem bob_prelude_rational (assessment : model.BehavioralAssessment)
       (fun history => nativeUtility bob history.state) (2 * nativeHorizon + 1)) := by
   intro alternative _
   simp only [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, strategy, Profile.update_eq_self]
-  apply FinDist.expect_mono
-  intro history _
+    expect_bind_of_finite, strategy, Profile.update_eq_self]
+  refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
   obtain ⟨control, stateEq, active, _, observed⟩ :=
     information_control bob past view ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
@@ -146,8 +146,7 @@ theorem bob_prelude_rational (assessment : model.BehavioralAssessment)
       controlAmbient final finalMem
     simp [nativeUtility, finalEq, outcomes, utility_bob, correctness]
   rw [prescribed]
-  apply FinDist.expect_le_of_forall
-  intro final _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun final _ => ?_
   cases final.state with
   | none => change (0 : ℝ) ≤ 1; norm_num
   | some result => exact (utility_bob_bounds (nativeResults result.execution.application.config)).2

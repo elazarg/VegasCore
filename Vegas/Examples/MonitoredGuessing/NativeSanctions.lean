@@ -82,8 +82,8 @@ theorem native_alice_continuation_le (deposit : ℝ) (nonnegative : 0 ≤ deposi
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
       (nativeExecutionUtility deposit alice) ≤
         1 - if rejectedAlice execution.receipts then deposit else 0 := by
-  apply FinDist.expect_le_of_forall
-  intro after supported
+  refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _
+    (nativeExecutionUtility_abs_le deposit alice)) _ fun after supported => ?_
   apply (native_alice_utility_le deposit after).trans
   have retained := native_plan_receipts_prefix players plan execution after supported
   cases alarm : rejectedAlice execution.receipts with
@@ -99,13 +99,22 @@ theorem submitted_continuation_utility_le (bit : Bool)
     expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
         (nativeExecutionUtility deposit alice) ≤ 1 - deposit / 2 := by
-  rw [FinDist.expect_bind]
-  apply le_trans (FinDist.expect_mono (fun execution _ =>
-    native_alice_continuation_le deposit nonnegative players plan execution))
-  rw [← expect_map (fun execution : nativeApp.Execution =>
+  have prefixFinite : (monitoredPrefixLaw bit (submissionAction submission)).support.Finite := by
+    rw [monitoredPrefixLaw, PMF.support_map]
+    exact (MessageNetwork.ObservationRule.FiniteSupport.support_finite (leaks := nativeLeaks)
+      _ _).image _
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _
+    (nativeExecutionUtility_abs_le deposit alice))]
+  apply le_trans (expect_mono (fun execution _ =>
+    native_alice_continuation_le deposit nonnegative players plan execution)
+    (payoffIntegrable_of_finite_support _ _ prefixFinite)
+    (payoffIntegrable_of_finite_support _ _ prefixFinite))
+  have alarms := expect_map (fun execution : nativeApp.Execution =>
     rejectedAlice execution.receipts) (monitoredPrefixLaw bit (submissionAction submission))
-      (fun alarm : Bool => 1 - if alarm then deposit else 0)]
-  rw [submission_monitoring_law, FinDist.expect_mix]
+      (fun alarm : Bool => 1 - if alarm then deposit else 0)
+  simp only [Function.comp_def] at alarms
+  rw [← alarms, submission_monitoring_law, expect_mix _ _ _ _ _ _ (payoffIntegrable_pure _ _)
+    (payoffIntegrable_pure _ _)]
   simp only [expect_pure, ↓reduceIte, Bool.false_eq_true]
   ring_nf
   exact le_rfl

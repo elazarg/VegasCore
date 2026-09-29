@@ -53,7 +53,9 @@ theorem exists_native_sequential_equilibrium (guesses : PMF Bool)
   have watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior :=
     fixed watcher (by decide)
   refine ⟨assessment, alicePolicy, watcherPolicy, atQuiet, ?_, consistent⟩
-  intro who site alternative _
+  intro who site
+  refine ⟨(payoffIntegrable_of_finite _ _), fun _ _ => (payoffIntegrable_of_finite _ _),
+      fun alternative _ => ?_⟩
   fin_cases who
   · change nativeModel.InformationSite alice at site
     rcases native_alice_site_cases site with ⟨bit, rfl⟩ | ⟨past, view, info, granted⟩
@@ -66,7 +68,7 @@ theorem exists_native_sequential_equilibrium (guesses : PMF Bool)
     · subst site
       exact quiet_receiver_site_dominates assessment consistent guesses deposit alicePolicy
         watcherPolicy atQuiet alternative
-    · exact offQuiet site quiet alternative (Set.mem_univ _)
+    · exact (offQuiet site quiet).2.2 alternative (Set.mem_univ _)
   · change nativeModel.InformationSite watcher at site
     exact le_of_eq ((watcher_context_value assessment site deposit alternative).trans
       (watcher_context_value assessment site deposit (assessment.strategy watcher)).symm)

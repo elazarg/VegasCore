@@ -22,7 +22,8 @@ theorem expected_guessReward_success (assessment : model.BehavioralAssessment)
     (who : Player) (site : model.InformationSite who) (bit : Bool) :
     expect (assessment.belief who site) (fun history =>
       guessReward (.success bit) history.1.state) =
-        ((assessment.belief who site).toOuterMeasure {history | hasAliceBit bit history.1.state}).toReal := by
+        ((assessment.belief who site).toOuterMeasure
+            {history | hasAliceBit bit history.1.state}).toReal := by
   classical
   exact expect_indicator _ _
 
@@ -31,8 +32,10 @@ theorem prescribed_guess_optimal (assessment : model.BehavioralAssessment)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
     (posterior : publicGuess view = false →
-      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal ≤
-        ((assessment.belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal)
+      ((assessment.belief who site).toOuterMeasure
+          {history | hasAliceBit true history.1.state}).toReal ≤
+        ((assessment.belief who site).toOuterMeasure
+            {history | hasAliceBit false history.1.state}).toReal)
     (guess : PublicationResult Bool) :
     expect (assessment.belief who site) (fun history => guessReward guess history.1.state) ≤
       expect (assessment.belief who site) (fun history =>
@@ -42,7 +45,9 @@ theorem prescribed_guess_optimal (assessment : model.BehavioralAssessment)
   | false =>
       cases guess with
       | failure =>
-          exact FinDist.expect_mono (fun history _ => guessReward_nonneg _ history.1.state)
+          exact expect_mono (fun history _ => guessReward_nonneg _ history.1.state)
+              (payoffIntegrable_of_finite _ _)
+            (payoffIntegrable_of_finite _ _)
       | success bit =>
           rw [expected_guessReward_success, expected_guessReward_success]
           cases bit
@@ -64,7 +69,8 @@ theorem prescribed_guess_optimal (assessment : model.BehavioralAssessment)
           exact known
         simp only [guessReward, ite_eq_left valid]
       rw [target]
-      exact FinDist.expect_le_of_forall _ _ _ (fun history _ => guessReward_le_one _ _)
+      exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _
+          (fun history _ => guessReward_le_one _ _)
 
 open Classical in
 theorem committed_guesser_bound (assessment : model.BehavioralAssessment)
@@ -120,7 +126,7 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
       expect (assessment.belief who site) (fun history =>
         guessReward (.success (publicGuess view)) history.1.state) := by
   simp only [InformationModel.BehavioralAssessment.continuationContext_value,
-    Profile.update_eq_self, FinDist.expect_bind, strategy]
+    Profile.update_eq_self, expect_bind_of_finite, strategy]
   apply expect_congr_on_support
   intro history _
   obtain ⟨control, stateEq, active, _, observed⟩ := information_control who past view
@@ -146,8 +152,10 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     (information : site.1 = some (past, view))
     (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who))
     (posterior : publicGuess view = false →
-      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal ≤
-        ((assessment.belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal) :
+      ((assessment.belief who site).toOuterMeasure
+          {history | hasAliceBit true history.1.state}).toReal ≤
+        ((assessment.belief who site).toOuterMeasure
+            {history | hasAliceBit false history.1.state}).toReal) :
     assessment.IsSequentiallyRationalAt site (assessment.continuationContext site
       (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   classical
@@ -159,17 +167,16 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     (menu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon scheduler
       who site) _ (2 * nativeHorizon) alternative,
     profile_guesser_context assessment strategy who guesser site past view information granted]
-  apply FinDist.expect_le_of_forall
-  intro choice _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun choice _ => ?_
   obtain ⟨guess, bound⟩ := committed_guesser_bound assessment who guesser site past view
     information granted alternative choice
   calc
     _ ≤ expect (assessment.belief who site) (fun history => guessReward guess history.1.state) := by
       simp only [InformationModel.BehavioralAssessment.continuationContext_value,
-        FinDist.expect_bind, strategy]
-      apply FinDist.expect_mono
-      intro history _
-      exact FinDist.expect_le_of_forall _ _ _ (bound history)
+        expect_bind_of_finite, strategy]
+      refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
+      exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ (bound history)
     _ ≤ _ := prescribed_guess_optimal assessment who site past view information posterior guess
 
 end Vegas.Examples.SelectiveAssociation.Restricted

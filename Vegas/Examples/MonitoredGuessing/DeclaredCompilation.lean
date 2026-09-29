@@ -49,10 +49,6 @@ private theorem equal_model_assessment
     {E T : ExecutionProtocol.{0, 0, 0} Player}
     {M : InformationModel.{0, 0, 0, 0, 0, 0} E}
     {N : InformationModel.{0, 0, 0, 0, 0, 0} T}
-    [sourceFinite : ∀ who (site : M.InformationSite who),
-      Fintype (M.InformationHistory who site.1)]
-    [targetFinite : ∀ who (site : N.InformationSite who),
-      Fintype (N.InformationHistory who site.1)]
     (arena : E = T) (information : HEq M N)
     (sourceAntichain : M.DecisionInformationAntichain)
     (targetAntichain : N.DecisionInformationAntichain)
@@ -72,8 +68,6 @@ private theorem equal_model_assessment
   cases eq_of_heq information
   cases eq_of_heq utilities
   cases eq_of_heq observations
-  have finiteEq : sourceFinite = targetFinite := Subsingleton.elim _ _
-  cases finiteEq
   exact ⟨source, equilibrium, rfl⟩
 
 /-- The transported assessment changes no game behavior or information. The

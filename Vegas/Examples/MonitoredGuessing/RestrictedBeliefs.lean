@@ -56,7 +56,8 @@ theorem bob_prefix_law (profile : Profile restrictedModel.behavioralSignature) :
   exact quiet_bob_control_law _ (decoded_early_alice profile) (decoded_quiet_watcher profile)
 
 theorem bob_state_belief (assessment : restrictedModel.BehavioralAssessment)
-    (consistent : assessment.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
+    (consistent : assessment.IsSequentiallyConsistent
+      restricted_decisionRecall.decisionInformationAntichain)
     (site : restrictedModel.InformationSite bob) :
     (assessment.belief bob site).map (fun history => history.1.state) =
       (PMF.uniformOfFintype Bool).map
@@ -87,7 +88,8 @@ theorem bob_state_belief (assessment : restrictedModel.BehavioralAssessment)
   simpa only [PMF.map_comp, Function.comp_def] using stateLaw.trans (bob_prefix_law _)
 
 theorem bob_context_value (assessment : restrictedModel.BehavioralAssessment)
-    (consistent : assessment.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
+    (consistent : assessment.IsSequentiallyConsistent
+      restricted_decisionRecall.decisionInformationAntichain)
     (site : restrictedModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ)
     (alternative : restrictedModel.BehavioralPolicy bob) :
     (assessment.continuationContext site (fun history => payoff history.state)
@@ -105,6 +107,6 @@ theorem bob_context_value (assessment : restrictedModel.BehavioralAssessment)
         (Profile.update (sig := restrictedModel.behavioralSignature)
           assessment.strategy bob alternative)) state) payoff))
     (bob_state_belief assessment consistent site)
-  simpa only [expect_map] using projected
+  simpa only [expect_map, Function.comp_def] using projected
 
 end Vegas.Examples.MonitoredGuessing.Restricted

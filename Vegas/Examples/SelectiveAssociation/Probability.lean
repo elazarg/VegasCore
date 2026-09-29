@@ -29,9 +29,8 @@ theorem fair_guess_le_half (guesses : PMF (PublicationResult Bool)) :
         (fun bit => expect guesses (correctness (.success bit))) ≤ 1 / 2 := by
   have bound : expect guesses (correctness (.success false)) +
       expect guesses (correctness (.success true)) ≤ 1 := by
-    rw [← FinDist.expect_add]
-    apply FinDist.expect_le_of_forall
-    intro guess _
+    rw [← expect_add_of_finite]
+    refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun guess _ => ?_
     rw [correctness_pair]
     split <;> norm_num
   rw [expect_eq_sum]

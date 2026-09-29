@@ -182,7 +182,8 @@ theorem bob_continuation_evaluation (players : Player → nativeApp.Policy) (bit
   apply bind_congr_on_support _
   intro execution _
   rw [runInteractionPlan]
-  simp only [runInteractionPlan, PMF.bind_pure, step, PMF.bind_bind, PMF.bind_map]
+  simp only [runInteractionPlan, PMF.bind_pure, step, PMF.bind_bind, PMF.bind_map,
+    Function.comp_def]
 
 /-- Wrong-address traffic has exactly the silent source continuation's game
 results and receiver payoff for every mixed legal Alice response. -/

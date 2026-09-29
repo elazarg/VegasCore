@@ -82,10 +82,11 @@ theorem initial_clean_finish_lower (table : PayoffTable)
       profile bob [] ((quietBob bit).observe nativeApp bob) =
         (targetGuesses profile).map (choiceAction bobPublication bobHandle true) :=
     decoded_bob_response profile bit
-  rw [guessing, PMF.bind_map, FinDist.expect_bind, expect_map]
+  rw [guessing, PMF.bind_map,
+    expect_bind_tower _ _ _ (Enforcement.executionUtility_integrable table who _), expect_map]
   rw [← expect_constant (targetGuesses profile) (Enforcement.payoffLower table who : ℝ)]
-  apply FinDist.expect_mono
-  intro guess _
+  refine expect_mono (fun guess _ => ?_) (payoffIntegrable_of_finite (α := Bool) _ _)
+    (payoffIntegrable_of_finite (α := Bool) _ _)
   change _ ≤ expect (nativeRuntime.runInteractionPlan nativeLeaks _ nativeNetwork
     ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
       .grant alicePublication, .player alice] ++ resolutionTail)
@@ -95,8 +96,8 @@ theorem initial_clean_finish_lower (table : PayoffTable)
   rw [bob_choice_value]
   rw [← expect_constant (targetDisclosures profile bit guess)
     (Enforcement.payoffLower table who : ℝ)]
-  apply FinDist.expect_mono
-  intro disclose _
+  refine expect_mono (fun disclose _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
   change (Enforcement.payoffLower table who : ℝ) ≤
     (table (sourceResults (finalConfig bit guess disclose).state) who : ℝ)
   exact_mod_cast Enforcement.payoffLower_le table who
@@ -180,7 +181,7 @@ theorem initial_continuation_comparison (table : PayoffTable)
     expect law (fun state => Enforcement.stateUtility table state alice)) rawLaw
   have legalValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
     expect law (fun state => Enforcement.stateUtility table state alice)) legalLaw
-  rw [expect_map] at rawValue legalValue
+  simp only [expect_map, Function.comp_def] at rawValue legalValue
   change expect (watchedModel.runBehavioralFrom rawProfile fuel
     (ordinaryRestriction.history history.1)) _ ≤
       expect (restrictedModel.runBehavioralFrom legalProfile fuel history.1) _

@@ -45,8 +45,8 @@ theorem source_chooser_kernel (profile : Profile sourceModel.behavioralSignature
       (sourceModel.singleMoverChooser sourceSingle profile history running).map
         (fun joint => f (joint.1 who)) =
       (sourceChoice profile who (sourceSetup.protocolObserve who history.state)).map f := by
-    exact (PMF.map_comp f (fun joint => joint.1 who)
-      (sourceModel.singleMoverJoint sourceSingle profile history running)).symm.trans
+    exact (PMF.map_comp (fun joint => joint.1 who)
+      (sourceModel.singleMoverJoint sourceSingle profile history running) f).symm.trans
         (congrArg (PMF.map f) (marginalState who))
   rcases history with ⟨state, trace⟩
   rcases state with _ | state
@@ -115,8 +115,7 @@ theorem uniformSourceProfile_full (who : Player) (info : sourceModel.InfoState w
         dsimp [Setup.protocolMenu, sourceSetup, sourceProgram, ProtocolView.menu,
           ProtocolView.actor, ProtocolView.available] at allowed
         simp_all [sourceSetup, sourceProgram, BehavioralPolicy.protocolAction,
-          sourcePolicy, PMF.support_map, PMF.mem_support_uniformOfFintype,
-          alice, bob, watcher, eq_comm]
+          sourcePolicy, PMF.support_map, alice, bob, watcher, eq_comm]
 
 theorem uniformSourceProfile_fullyMixed :
     (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile).IsFullyMixed :=

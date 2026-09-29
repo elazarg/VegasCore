@@ -78,7 +78,8 @@ private theorem noEarly_transition (before after : (serviceApp observation).Prot
                 (untouched_prior event execution.environmentRecall.length untouched)
               cases instruction : nativePlan[execution.environmentRecall.length]? with
               | none =>
-                  simp only [serviceScheduler, instruction, PMF.mem_support_pure_iff _ _] at selected
+                  simp only [serviceScheduler, instruction,
+                    PMF.mem_support_pure_iff _ _] at selected
                   subst command
                   simp only [ReactiveApplication.Execution.environmentStep,
                     PMF.pure_map, PMF.mem_support_pure_iff _ _] at moved

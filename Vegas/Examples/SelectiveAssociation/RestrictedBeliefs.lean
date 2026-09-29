@@ -46,7 +46,9 @@ theorem information_depth (who : Player) (past : List app.PlayerEntry) (view : a
 
 theorem carol_history_joint (players : Profile model.behavioralSignature)
     (input : List app.PlayerEntry × app.PlayerView) (bit : Bool) :
-    ((model.runBehavioral players 13).toOuterMeasure {history | model.infoOf carol history.trace = some input ∧ hasAliceBit bit history.state}).toReal =
+    ((model.runBehavioral players 13).toOuterMeasure
+        {history | model.infoOf carol history.trace = some input ∧ hasAliceBit bit
+        history.state}).toReal =
     ((Prefix.carolLaw (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
       players)).toOuterMeasure {responses |
         ((Prefix.carolInput responses).recall carol,
@@ -54,16 +56,20 @@ theorem carol_history_joint (players : Profile model.behavioralSignature)
         aliceBindingRef.get? (Prefix.carolInput responses).application.config.store =
           some (.success bit)}).toReal := by
   have mapped := congrArg (fun law : PMF app.ProtocolState =>
-    (law.toOuterMeasure {state | app.observe carol state = some input ∧ hasAliceBit bit state}).toReal)
+    (law.toOuterMeasure
+        {state | app.observe carol state = some input ∧ hasAliceBit bit state}).toReal)
       (Prefix.carol_history_law players)
-  simp only [FinDist.probOf_map, Set.preimage_ofPred_eq, history_observe, Prefix.carolControl,
+  simp only [PMF.toOuterMeasure_map_apply, Set.preimage_ofPred_eq, history_observe,
+      Prefix.carolControl,
     ReactiveApplication.observe, ite_true, Option.some.injEq, hasAliceBit, Option.elim_some]
       at mapped ⊢
   exact mapped
 
 theorem bob_history_joint (players : Profile model.behavioralSignature)
     (input : List app.PlayerEntry × app.PlayerView) (bit : Bool) :
-    ((model.runBehavioral players 20).toOuterMeasure {history | model.infoOf bob history.trace = some input ∧ hasAliceBit bit history.state}).toReal =
+    ((model.runBehavioral players 20).toOuterMeasure
+        {history | model.infoOf bob history.trace = some input ∧ hasAliceBit bit
+        history.state}).toReal =
     ((Prefix.bobLaw (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
       players)).toOuterMeasure {responses |
         ((Prefix.bobInput responses).recall bob,
@@ -71,9 +77,11 @@ theorem bob_history_joint (players : Profile model.behavioralSignature)
         aliceBindingRef.get? (Prefix.bobInput responses).application.config.store =
           some (.success bit)}).toReal := by
   have mapped := congrArg (fun law : PMF app.ProtocolState =>
-    (law.toOuterMeasure {state | app.observe bob state = some input ∧ hasAliceBit bit state}).toReal)
+    (law.toOuterMeasure
+        {state | app.observe bob state = some input ∧ hasAliceBit bit state}).toReal)
       (Prefix.bob_history_law players)
-  simp only [FinDist.probOf_map, Set.preimage_ofPred_eq, history_observe, Prefix.bobControl,
+  simp only [PMF.toOuterMeasure_map_apply, Set.preimage_ofPred_eq, history_observe,
+      Prefix.bobControl,
     ReactiveApplication.observe, ite_true, Option.some.injEq, hasAliceBit, Option.elim_some]
       at mapped ⊢
   exact mapped
@@ -82,9 +90,13 @@ theorem tremble_bit_belief_ratio (weight : ℝ) (positive : 0 < weight)
     (atMostOne : weight ≤ 1) (who : Player) (site : model.InformationSite who) (depth : Nat)
     (sameDepth : ∀ history : model.InformationHistory who site.1,
       history.1.trace.length = depth) (bit : Bool) :
-    (((tremble weight positive atMostOne).belief who site).toOuterMeasure {history | hasAliceBit bit history.1.state}).toReal =
-      ((model.runBehavioral (tremble weight positive atMostOne).strategy depth).toOuterMeasure {history | model.infoOf who history.trace = site.1 ∧ hasAliceBit bit history.state}).toReal /
-      ((model.runBehavioral (tremble weight positive atMostOne).strategy depth).toOuterMeasure {history | model.infoOf who history.trace = site.1}).toReal := by
+    (((tremble weight positive atMostOne).belief who site).toOuterMeasure
+        {history | hasAliceBit bit history.1.state}).toReal =
+      ((model.runBehavioral (tremble weight positive atMostOne).strategy depth).toOuterMeasure
+          {history | model.infoOf who history.trace = site.1 ∧ hasAliceBit bit
+          history.state}).toReal /
+      ((model.runBehavioral (tremble weight positive atMostOne).strategy depth).toOuterMeasure
+          {history | model.infoOf who history.trace = site.1}).toReal := by
   have mixed := menu.perturbedAssessment_fullyMixed (PMF.pure nativeInitial) nativeHorizon
     scheduler profile weight positive atMostOne
   have meet : ∃ history ∈ {history | model.infoOf who history.trace = site.1},
@@ -98,25 +110,34 @@ theorem tremble_bit_belief_ratio (weight : ℝ) (positive : 0 < weight)
     who site depth sameDepth
     (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon
       scheduler who site)
-    (mixed.informationMass_pos who site) meet
+    (InformationModel.informationMass_pos_of_fullSupport _ _ mixed who site) meet
   have beliefEq : (tremble weight positive atMostOne).belief who site =
       model.bayesBelief (tremble weight positive atMostOne).strategy who site
         (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon
-          scheduler who site) (mixed.informationMass_pos who site) := rfl
+          scheduler who site)
+              (InformationModel.informationMass_pos_of_fullSupport _ _ mixed who site) := rfl
   rw [← beliefEq] at conditioned
   have events := congrArg (fun law : PMF arena.History =>
     (law.toOuterMeasure {history | hasAliceBit bit history.state}).toReal) conditioned
-  rw [FinDist.probOf_map, FinDist.probOf_condOn_eq_inter] at events
+  rw [PMF.toOuterMeasure_map_apply, pmf_toOuterMeasure_filter_apply, ENNReal.toReal_div,
+    Set.inter_comm] at events
   exact events
 
 theorem tremble_bit_belief_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1)
     (who : Player) (site : model.InformationSite who) (depth : Nat)
     (sameDepth : ∀ history : model.InformationHistory who site.1,
       history.1.trace.length = depth)
-    (joint : ((model.runBehavioral (tremble weight positive atMostOne).strategy depth).toOuterMeasure {history | model.infoOf who history.trace = site.1 ∧ hasAliceBit true history.state}).toReal ≤
-      ((model.runBehavioral (tremble weight positive atMostOne).strategy depth).toOuterMeasure {history | model.infoOf who history.trace = site.1 ∧ hasAliceBit false history.state}).toReal) :
-    (((tremble weight positive atMostOne).belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal ≤
-        (((tremble weight positive atMostOne).belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal := by
+    (joint : ((model.runBehavioral
+        (tremble weight positive atMostOne).strategy depth).toOuterMeasure
+        {history | model.infoOf who history.trace = site.1 ∧ hasAliceBit true
+        history.state}).toReal ≤
+      ((model.runBehavioral (tremble weight positive atMostOne).strategy depth).toOuterMeasure
+          {history | model.infoOf who history.trace = site.1 ∧ hasAliceBit false
+          history.state}).toReal) :
+    (((tremble weight positive atMostOne).belief who site).toOuterMeasure
+        {history | hasAliceBit true history.1.state}).toReal ≤
+        (((tremble weight positive atMostOne).belief who site).toOuterMeasure
+            {history | hasAliceBit false history.1.state}).toReal := by
   rw [tremble_bit_belief_ratio weight positive atMostOne who site depth sameDepth,
     tremble_bit_belief_ratio weight positive atMostOne who site depth sameDepth]
   exact div_le_div_of_nonneg_right joint ENNReal.toReal_nonneg
@@ -127,8 +148,10 @@ def GuessBeliefs (assessment : model.BehavioralAssessment) : Prop :=
     site.1 = some (past, view) → who ≠ alice →
     view.application.publicView.serviceGrant = some (nativeBindingEvent who) →
     publicGuess view = false →
-    ((assessment.belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal ≤
-      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal
+    ((assessment.belief who site).toOuterMeasure
+        {history | hasAliceBit true history.1.state}).toReal ≤
+      ((assessment.belief who site).toOuterMeasure
+          {history | hasAliceBit false history.1.state}).toReal
 
 theorem tremble_guessBeliefs_of_prefix_comparison (weight : ℝ) (positive : 0 < weight)
     (atMostOne : weight ≤ 1)

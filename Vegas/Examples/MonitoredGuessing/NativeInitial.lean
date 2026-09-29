@@ -222,7 +222,7 @@ theorem native_alice_initial_representation (control : nativeApp.Control)
       nativeMenu.uniformResponses 0 =
         (PMF.uniformOfFintype Bool).map nativeStart := by
     simp only [ReactiveApplication.roundsFrom, ReactiveApplication.runRounds, nativeInitialLaw,
-      ← PMF.bind_pure_comp, Function.comp_def, PMF.map_comp]
+      ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
     rfl
   rw [roots] at priorMem
   obtain ⟨bit, _, same⟩ := PMF.support_map .. ▸ priorMem
@@ -280,7 +280,8 @@ theorem initial_alice_finish_value (deposit : ℝ) (players : Player → nativeA
       (some (initialAliceControl bit))) (nativeUtility deposit alice) =
       expect (players alice [] ((aliceActivated bit).observe nativeApp alice))
         (initialResponseValue deposit players bit) := by
-  rw [initial_alice_finish, FinDist.expect_bind]
+  rw [initial_alice_finish, expect_bind_tower _ _ _
+    (payoffIntegrable_of_bounded _ _ (nativeUtility_abs_le deposit alice))]
   apply expect_congr_on_support
   intro response _
   rw [expect_map]

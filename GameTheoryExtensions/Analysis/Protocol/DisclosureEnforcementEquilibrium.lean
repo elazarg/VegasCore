@@ -45,9 +45,8 @@ theorem silent_optimal_mixture (prior : PMF Secret) (choices : PMF Decision)
     (alternative : PMF Decision) :
     expect prior (fun secret => expect alternative (receiver secret)) ≤
       expect prior (fun secret => expect choices (receiver secret)) := by
-  rw [FinDist.expect_comm]
-  apply FinDist.expect_le_of_forall
-  intro decision _
+  rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun decision _ => ?_
   exact optimal decision
 
 /-- A known bound on sender payoff variation gives a sufficient charge that
@@ -170,7 +169,7 @@ theorem silent_context_value (ambient : Bool)
           expect (choiceLaw (Profile.update (sig := (model prior ambient).behavioralSignature)
             assessment.strategy true alternative) true (some none)) (receiver secret)) := by
   rw [InformationModel.BehavioralAssessment.continuationContext_value, posterior]
-  rw [FinDist.expect_bind, expect_map]
+  rw [expect_bind_of_finite, expect_map]
   simp_rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     (model prior ambient) (single prior ambient)]
   change expect prior (fun secret =>
@@ -249,8 +248,7 @@ theorem target_rational (choices : PMF Decision) (response : Secret → Decision
       simp [choiceLaw, silentProfile, choose, decisionInfo]
     rw [silent, expect_pure]
     simp only [Bool.false_eq_true, ite_false]
-    apply FinDist.expect_le_of_forall
-    intro disclose _
+    refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun disclose _ => ?_
     cases disclose
     · exact le_rfl
     · exact deterrence secret
@@ -267,8 +265,7 @@ theorem target_rational (choices : PMF Decision) (response : Secret → Decision
       simp only [Bool.true_and]
       rw [disclosed_receiver_value]
       simp only [resultLaw, expect_map, payoff]
-      apply FinDist.expect_le_of_forall
-      intro action _
+      refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun action _ => ?_
       exact disclosedOptimal secret action
 
 end Rationality

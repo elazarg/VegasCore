@@ -163,11 +163,12 @@ theorem finish_alice_binding_payoff_le {Claim : Type} (defaultClaim : Claim)
     expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)) (fun state => utility (protocolResults state) alice) ≤ 0 := by
   rw [finish_response_law players 0 control active remaining position,
-    expect_map, FinDist.expect_bind]
-  apply FinDist.expect_le_of_forall
-  intro response _
-  apply FinDist.expect_le_of_forall
-  intro final supported
+    expect_map, Function.comp_def, expect_bind_tower _ _ _
+      (payoffIntegrable_of_finite_summary _ _ (fun result : Results => utility result alice))]
+  refine expect_le_const _ _ (payoffIntegrable_expect_of_finite_summary _ _ _
+    (fun result : Results => utility result alice)) _ fun response _ => ?_
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _ _
+    (fun result : Results => utility result alice)) _ fun final supported => ?_
   exact alice_binding_response_payoff_le defaultClaim players carolPolicy bobPolicy
     control.execution final response core visited serials supported
 

@@ -111,6 +111,6 @@ theorem native_response_execution (players : Player → nativeApp.Policy)
       rw [nativeApp.respond_environmentRecall]
       exact observedCursor
     simpa only [ReactiveApplication.round, serviceScheduler, respondedCursor, count,
-      native_reserved_selected, interactionStep] using included
+      native_reserved_selected, interactionStep, Function.comp_apply] using included
 
 end Vegas.Examples.SelectiveAssociation

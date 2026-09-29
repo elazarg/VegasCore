@@ -143,9 +143,10 @@ theorem alice_early_sequentiallyRational (Claim : Type) [Fintype Claim] (default
         (assessment.strategy alice) := by
   rw [prescribed_context_value_finish Claim defaultClaim assessment strategy,
     prescribed_context_baseline Claim defaultClaim assessment strategy]
-  exact FinDist.expect_mono (fun history _ => alice_early_information_optimal Claim defaultClaim
+  exact expect_mono (fun history _ => alice_early_information_optimal Claim defaultClaim
     past view early (decodedAlternative Claim alice alternative)
-    ⟨history.1, history.2.trans observed⟩)
+    ⟨history.1, history.2.trans observed⟩) (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
 
 theorem prescribed_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (assessment : (model Claim).BehavioralAssessment)

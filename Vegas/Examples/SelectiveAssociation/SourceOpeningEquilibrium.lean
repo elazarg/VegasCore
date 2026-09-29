@@ -98,9 +98,10 @@ theorem opening_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClai
           (2 * horizon + 1)).value (assessment.strategy (eventOwner event)) := by
   rw [prescribed_context_value_finish Claim defaultClaim assessment strategy,
     prescribed_context_baseline Claim defaultClaim assessment strategy]
-  exact FinDist.expect_mono (fun history _ =>
+  exact expect_mono (fun history _ =>
     opening_information_optimal Claim defaultClaim event opening past view granted
       (decodedAlternative Claim (eventOwner event) alternative)
-      ⟨history.1, history.2.trans observed⟩)
+      ⟨history.1, history.2.trans observed⟩) (payoffIntegrable_of_finite _ _)
+          (payoffIntegrable_of_finite _ _)
 
 end Vegas.Examples.SelectiveAssociation.NamedSource

@@ -51,7 +51,9 @@ theorem finish_alice_prescribed_binding (Claim : Type) (defaultClaim : Claim)
       (policy Claim defaultClaim) (some control))
         (fun state => utility (protocolResults state) alice) = 0 := by
   rw [finish_response_law (policy Claim defaultClaim) 0 control active remaining position,
-    expect_map, FinDist.expect_bind]
+    expect_map, Function.comp_def,
+    expect_bind_tower _ _ _ (payoffIntegrable_of_finite_summary _ _
+      (fun result : Results => utility result alice))]
   calc
     _ = expect (policy Claim defaultClaim alice (control.execution.recall alice)
         (control.execution.observe (application Claim) alice)) (fun _ => 0) := by
@@ -151,11 +153,13 @@ theorem finish_alice_ambient_payoff_le {Claim : Type} (defaultClaim : Claim)
     expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)) (fun state => utility (protocolResults state) alice) ≤ 0 := by
   rw [finish_ambient_law players 1 (by decide) alice control active remaining
-    (by rw [execution]; rfl), expect_map, FinDist.expect_bind]
-  apply FinDist.expect_le_of_forall
-  intro response _
-  apply FinDist.expect_le_of_forall
-  intro final supported
+    (by rw [execution]; rfl), expect_map, Function.comp_def,
+    expect_bind_tower _ _ _ (payoffIntegrable_of_finite_summary _ _
+      (fun result : Results => utility result alice))]
+  refine expect_le_const _ _ (payoffIntegrable_expect_of_finite_summary _ _ _
+    (fun result : Results => utility result alice)) _ fun response _ => ?_
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _ _
+    (fun result : Results => utility result alice)) _ fun final supported => ?_
   rw [execution] at supported
   exact alice_ambient_response_payoff_le defaultClaim players carolPolicy bobPolicy
     response final supported
@@ -168,7 +172,9 @@ theorem finish_alice_prescribed_ambient (Claim : Type) (defaultClaim : Claim)
       (policy Claim defaultClaim) (some control))
         (fun state => utility (protocolResults state) alice) = 0 := by
   rw [finish_ambient_law (policy Claim defaultClaim) 1 (by decide) alice control active remaining
-    (by rw [execution]; rfl), expect_map, FinDist.expect_bind]
+    (by rw [execution]; rfl), expect_map, Function.comp_def,
+    expect_bind_tower _ _ _ (payoffIntegrable_of_finite_summary _ _
+      (fun result : Results => utility result alice))]
   calc
     _ = expect (policy Claim defaultClaim alice (control.execution.recall alice)
         (control.execution.observe (application Claim) alice)) (fun _ => 0) := by

@@ -65,7 +65,7 @@ theorem first_two_rounds (policy : app.Policy) :
   change (policy ((activated contested).recall ()) ((activated contested).observe app ())).bind
     (fun action => (app.round scheduler (fun _ => policy) (afterAction action)).bind _) = _
   simp only [inclusion_round, PMF.pure_bind, ReactiveApplication.runRounds]
-  exact (FinDist.map_eq_bind _ _).symm
+  exact pmf_bind_pure_eq_map _ _
 
 private theorem contested_invariant : contested.application.Invariant input := by
   have invariant := (runtime.reactiveStateInvariant leaks input).history
@@ -117,18 +117,27 @@ theorem native_value_sum_le (policy : app.Policy) :
     expect (run policy) (fun final => PendingMenus.publicUtility true (result final.state)) +
       expect (run policy) (fun final => PendingMenus.publicUtility false
         (result final.state)) ≤ 3 := by
-  rw [← FinDist.expect_add]
+  have sumBound (first second : Option (PublicationResult Int)) :
+      |PendingMenus.publicUtility true first + PendingMenus.publicUtility false second| ≤ 3 + 3 :=
+    (abs_add_le _ _).trans (add_le_add (PendingMenus.publicUtility_abs_le _ _)
+      (PendingMenus.publicUtility_abs_le _ _))
+  have sum := expect_add (μ := run policy)
+    (f := fun final => PendingMenus.publicUtility true (result final.state))
+    (g := fun final => PendingMenus.publicUtility false (result final.state))
+    (payoffIntegrable_of_bounded _ _ fun _ => PendingMenus.publicUtility_abs_le _ _)
+    (payoffIntegrable_of_bounded _ _ fun _ => PendingMenus.publicUtility_abs_le _ _)
+  rw [← sum]
   have expected := congrArg (fun law : PMF app.ProtocolState => expect law (fun state =>
     PendingMenus.publicUtility true (result state) + PendingMenus.publicUtility false
       (result state))) (run_state policy)
-  simp only [expect_map] at expected
+  simp only [expect_map, Function.comp_def] at expected
   rw [expected]
   rw [show 5 = 2 + 3 from rfl, app.runRounds_add, first_two_rounds, PMF.bind_map]
-  rw [FinDist.expect_bind]
-  apply FinDist.expect_le_of_forall
-  intro action _
-  apply FinDist.expect_le_of_forall
-  intro final reached
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _ fun _ => sumBound _ _)]
+  refine expect_le_const _ _ (payoffIntegrable_expect_of_bounded _ _ _ (by norm_num)
+    fun _ => sumBound _ _) _ fun action _ => ?_
+  refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _ fun _ => sumBound _ _) _
+    fun final reached => ?_
   exact residual_utility_sum_le policy action 3 final reached
 
 def preferredValue (preferOne : Bool) : Int := if preferOne then 1 else 2
@@ -324,7 +333,7 @@ theorem recovery_value (preferOne : Bool) :
   have expected := congrArg (fun law : PMF app.ProtocolState => expect law
     (fun state => PendingMenus.publicUtility preferOne (result state)))
     (run_state (recovery preferOne))
-  simp only [expect_map] at expected
+  simp only [expect_map, Function.comp_def] at expected
   rw [expected, recovery_rounds, expect_pure]
   change PendingMenus.publicUtility preferOne
     ((finalExecution preferOne).application.config.outputs 1) = 2
@@ -338,9 +347,11 @@ def payoff (preferOne : Bool) (final : arena.History) (_who : Unit) : ℝ :=
 the source has a common SPE. This quantifies over all native policies. -/
 theorem no_common_spe :
     ¬ ∃ profile : Profile model.behavioralSignature,
-      model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+      model.IsSingleMoverBehavioralSubgamePerfect
+          (app.singleMover (PMF.pure initialState) 7 scheduler)
         (app.bounded (PMF.pure initialState) 7 scheduler) profile (payoff true) ∧
-      model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+      model.IsSingleMoverBehavioralSubgamePerfect
+          (app.singleMover (PMF.pure initialState) 7 scheduler)
         (app.bounded (PMF.pure initialState) 7 scheduler) profile (payoff false) := by
   rintro ⟨profile, one, two⟩
   let policy := app.decodePolicy (profile ())
@@ -355,10 +366,10 @@ theorem no_common_spe :
     cases who
     simp [Profile.update]
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at one two
-  have left := one (secondHistory first second) contested_isSubgameRoot ()
-    (app.encodePolicy (recovery true))
-  have right := two (secondHistory first second) contested_isSubgameRoot ()
-    (app.encodePolicy (recovery false))
+  have left := (one (secondHistory first second) contested_isSubgameRoot ()
+    (app.encodePolicy (recovery true))).2.2
+  have right := (two (secondHistory first second) contested_isSubgameRoot ()
+    (app.encodePolicy (recovery false))).2.2
   rw [deviation, profileEq] at left right
   change expect (run (recovery true)) (fun final => PendingMenus.publicUtility true
     (result final.state)) ≤ expect (run policy)

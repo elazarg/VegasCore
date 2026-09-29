@@ -138,6 +138,7 @@ theorem resolution_tail_alice_value (deposit : ℝ) (players : Player → native
   rw [expect_map, expect_pure] at expected
   change expect _ (fun final => nativeExecutionUtility deposit alice final) = _
   simpa only [nativeExecutionUtility, utility_alice, openingPenalty, sub_zero, true_and,
+    Function.comp_def,
     eq_self_iff_true]
     using expected
 

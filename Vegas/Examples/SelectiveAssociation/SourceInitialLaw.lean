@@ -126,7 +126,7 @@ theorem prescribed_initial_alice_payoff (Claim : Type) [Fintype Claim] (defaultC
   have value := congrArg (fun law : PMF Results =>
     expect law (fun result => utility result alice))
     (prescribed_initial_results Claim defaultClaim)
-  simp only [expect_map, utility_alice, sub_self, openingPenalty_success,
+  simp only [expect_map, Function.comp_def, utility_alice, sub_self, openingPenalty_success,
     expect_constant] at value
   exact value
 

@@ -51,6 +51,17 @@ theorem pmf_ext_toReal {μ ν : PMF α} (same : ∀ a, (μ a).toReal = (ν a).to
   PMF.ext fun a => (ENNReal.toReal_eq_toReal_iff' (μ.apply_ne_top a) (ν.apply_ne_top a)).mp
     (same a)
 
+/-- Conditioning on an event rescales the mass of its intersection with any
+other event by the event's own mass. -/
+theorem pmf_toOuterMeasure_filter_apply (p : PMF α) (s t : Set α)
+    (h : ∃ a ∈ s, a ∈ p.support) :
+    (p.filter s h).toOuterMeasure t = p.toOuterMeasure (t ∩ s) / p.toOuterMeasure s := by
+  simp only [PMF.toOuterMeasure_apply, div_eq_mul_inv]
+  rw [← ENNReal.tsum_mul_right]
+  refine tsum_congr fun a => ?_
+  by_cases inT : a ∈ t <;> by_cases inS : a ∈ s <;>
+    simp [Set.indicator, inT, inS, PMF.filter_apply]
+
 /-- When only one supported branch can produce an outcome, the outcome's mass
 is that branch's mass times its conditional mass. -/
 theorem bind_apply_of_unique_branch (law : PMF α) (branch : α → PMF β)

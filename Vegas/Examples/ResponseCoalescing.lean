@@ -88,7 +88,7 @@ theorem response_records_multiple : ∀ {state} (_trace : arena.Trace state), re
                     wire ordering ⟨_, prior⟩ () (runtime.nativeInput () execution)
                     (by simp [nativeObserve, nativeActor, nativeInput])
                   have length : actions.length = 3 := available.2.trans count.symm
-                  change _ ∈ (runtime.responseTransition _ _ _ _ _ _ joint).support at reached
+                  simp only [arena, EventGraphRuntime.responseProtocol] at reached
                   simp only [responseTransition, selected, Option.getD_some,
                     PMF.mem_support_pure_iff _ _] at reached
                   subst_vars

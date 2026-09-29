@@ -42,8 +42,8 @@ theorem run_value (policy : app.Policy) :
         (fun final => PendingMenus.publicUtility true (final.application.config.outputs 1)) := by
   have equal := congrArg (fun law : PMF app.ProtocolState => expect law
     (fun state => PendingMenus.publicUtility true (result state))) (run_state policy)
-  simpa only [expect_map, result, ReactiveApplication.finished, Option.bind_some]
-    using equal
+  simpa only [expect_map, Function.comp_def, result, ReactiveApplication.finished,
+    Option.bind_some] using equal
 
 theorem run_publication (policy : app.Policy) :
     (run policy).map (fun final => result final.state) =
@@ -81,12 +81,12 @@ theorem compared_continuations_publish (policy : app.Policy)
     PMF.support_map .. ▸ ⟨final, supported, rfl⟩
   rcases compared with rfl | rfl
   · rw [compiled_publication] at observed
-    simp only [half, FinDist.mem_support_mix_iff _ _ _ (by norm_num : (0 : ℝ) < 1 / 2)
+    simp only [half, mem_support_mix_iff _ _ _ (by norm_num : (0 : ℝ) < 1 / 2)
       (by norm_num : (1 : ℝ) / 2 < 1)] at observed
     rcases observed with (observed | observed) | (observed | observed) <;>
       rw [(PMF.mem_support_pure_iff _ _).mp observed] <;> rfl
   · rw [early_publication] at observed
-    simp only [third, FinDist.mem_support_mix_iff _ _ _ (by norm_num : (0 : ℝ) < 1 / 3)
+    simp only [third, mem_support_mix_iff _ _ _ (by norm_num : (0 : ℝ) < 1 / 3)
       (by norm_num : (1 : ℝ) / 3 < 1)] at observed
     rcases observed with observed | observed <;>
       rw [(PMF.mem_support_pure_iff _ _).mp observed] <;> rfl
@@ -95,7 +95,7 @@ theorem compiled_value :
     expect (run compiled) (fun final => PendingMenus.publicUtility true (result final.state)) =
       5 / 4 := by
   rw [run_value, compiled_rounds]
-  simp only [half, FinDist.expect_mix, expect_pure,
+  simp only [half, expect_mix, payoffIntegrable_mix, payoffIntegrable_pure, expect_pure,
     finished_withholding true false (by simp), finished_withholding true true (by simp),
     repaired_opening]
   norm_num [PendingMenus.publicUtility]
@@ -104,7 +104,8 @@ theorem early_value :
     expect (run earlyPolicy) (fun final => PendingMenus.publicUtility true (result final.state)) =
       4 / 3 := by
   rw [run_value, early_rounds]
-  simp only [half, third, FinDist.expect_mix, expect_pure,
+  simp only [half, third, expect_mix, payoffIntegrable_mix, payoffIntegrable_pure,
+    expect_pure,
     early_withholding, early_opening, later_opening]
   norm_num [PendingMenus.publicUtility]
 
@@ -112,13 +113,14 @@ def payoff (final : arena.History) (_who : Unit) : ℝ :=
   PendingMenus.publicUtility true (result final.state)
 
 theorem compiled_not_spe :
-    ¬ model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+    ¬ model.IsSingleMoverBehavioralSubgamePerfect
+        (app.singleMover (PMF.pure initialState) 7 scheduler)
       (app.bounded (PMF.pure initialState) 7 scheduler)
       (fun _ => app.encodePolicy compiled) payoff := by
   intro perfect
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at perfect
-  have improves := perfect (secondHistory first second) contested_isSubgameRoot ()
-    (app.encodePolicy earlyPolicy)
+  have improves := (perfect (secondHistory first second) contested_isSubgameRoot ()
+    (app.encodePolicy earlyPolicy)).2.2
   have updated : Profile.update (sig := model.behavioralSignature)
       (fun _ => app.encodePolicy compiled : Profile model.behavioralSignature) ()
       (app.encodePolicy earlyPolicy) =
@@ -149,7 +151,8 @@ theorem honest_source_spe_native_failure
         (PendingMenus.sourceProtocolProfile admission)
         (protocolUtility PendingMenus.sourceProgram admission PendingMenus.sourceInitial
           (PendingMenus.sourceUtility true)) ∧
-      ¬ model.IsSingleMoverBehavioralSubgamePerfect (app.singleMover (PMF.pure initialState) 7 scheduler)
+      ¬ model.IsSingleMoverBehavioralSubgamePerfect
+          (app.singleMover (PMF.pure initialState) 7 scheduler)
         (app.bounded (PMF.pure initialState) 7 scheduler)
         (fun _ => app.encodePolicy compiled) payoff :=
   ⟨source_honest, PendingMenus.source_spe admission true, compiled_not_spe⟩

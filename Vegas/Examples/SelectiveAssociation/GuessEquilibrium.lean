@@ -50,8 +50,8 @@ theorem native_supported_certified_guess
     ((assessment.strategy bob).commit (some (past, view)) (bobCorrectiveChoice bit past view))
     0 1 (by norm_num) _ _) chosen
   · intro other
-    apply FinDist.expect_le_of_forall
-    intro otherFinal otherSupported
+    refine expect_le_const _ _
+        (payoffIntegrable_of_finite _ _) _ fun otherFinal otherSupported => ?_
     have same := native_committed_binding_local bob assessment.strategy past view granted
       choice history other final otherFinal supported otherSupported
     have initial := native_observed_alice_binding past view bit observed other
@@ -74,9 +74,10 @@ theorem native_supported_certified_guess
             ((assessment.strategy bob).commit (some (past, view))
               (bobCorrectiveChoice bit past view))) (2 * nativeHorizon + 1) other.1)
             (fun _ => 1) := (expect_constant _ _).symm
-      _ ≤ _ := FinDist.expect_mono fun outcome member =>
+      _ ≤ _ := expect_mono (fun outcome member =>
         le_of_eq (native_bob_corrective_utility assessment rational past view bit granted unfinished
-          observed other outcome member).symm
+          observed other outcome member).symm) (payoffIntegrable_of_finite _ _)
+              (payoffIntegrable_of_finite _ _)
 
 /-- The protected visit has not yet settled its event at any compatible legal
 history. This is derived from the actual service, not required of the view. -/

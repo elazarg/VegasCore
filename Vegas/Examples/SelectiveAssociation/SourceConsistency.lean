@@ -24,8 +24,10 @@ def FairGuessBeliefs (Claim : Type) [Fintype Claim]
     site.1 = some (past, view) →
     ((who = carol ∧ view.application.visit = some 1) ∨
       (who = bob ∧ view.application.visit = some 2)) → NoPublicAlice view →
-    ((assessment.belief who site).toOuterMeasure {history | hasAliceBit false history.1.state}).toReal =
-      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit true history.1.state}).toReal
+    ((assessment.belief who site).toOuterMeasure
+        {history | hasAliceBit false history.1.state}).toReal =
+      ((assessment.belief who site).toOuterMeasure
+          {history | hasAliceBit true history.1.state}).toReal
 
 theorem tremble_fairGuessBeliefs (Claim : Type) [Fintype Claim] (defaultClaim : Claim)
     (weight : ℝ) (positive : 0 < weight) (atMostOne : weight ≤ 1) :
@@ -47,14 +49,15 @@ theorem fairGuessBeliefs_limit (Claim : Type) [Fintype Claim]
   have eventLimit (event : Set ((model Claim).InformationHistory who site.1)) :
       Tendsto (fun n => (((sequence n).belief who site).toOuterMeasure event).toReal) atTop
         (nhds (((assessment.belief who site).toOuterMeasure event).toReal)) := by
-    simpa only [expect_indicator] using
-      expect (converges.belief who site) (fun history => if history ∈ event then (1 : ℝ) else 0)
+    simpa only [expect_indicator] using (converges.belief who site).expect_of_bounded
+      (fun history => if history ∈ event then (1 : ℝ) else 0) (C := 1)
+        fun _ => by split_ifs <;> norm_num
   have first := eventLimit {history | hasAliceBit false history.1.state}
   have second := eventLimit {history | hasAliceBit true history.1.state}
-  have same : (fun n => (sequence n).belief who site |>.probOf
-      {history | hasAliceBit false history.1.state}) =
-      fun n => (sequence n).belief who site |>.probOf
-        {history | hasAliceBit true history.1.state} := by
+  have same : (fun n => (((sequence n).belief who site).toOuterMeasure
+      {history | hasAliceBit false history.1.state}).toReal) =
+      fun n => (((sequence n).belief who site).toOuterMeasure
+        {history | hasAliceBit true history.1.state}).toReal := by
     funext n
     exact fair n who site past view observed decision hidden
   rw [same] at first

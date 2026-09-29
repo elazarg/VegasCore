@@ -478,9 +478,15 @@ theorem native_value_sum_le (policy : NativePolicy graph) (extra : Nat) :
       (fun final => publicUtility true (nativeResult final.state)) +
     expect (nativeRun policy (2 + extra) (secondHistory first second))
       (fun final => publicUtility false (nativeResult final.state)) ≤ 3 := by
-  rw [← FinDist.expect_add]
-  apply FinDist.expect_le_of_forall
-  intro final reached
+  have sum := expect_add (μ := nativeRun policy (2 + extra) (secondHistory first second))
+    (f := fun final => publicUtility true (nativeResult final.state))
+    (g := fun final => publicUtility false (nativeResult final.state))
+    (payoffIntegrable_of_bounded _ _ fun final => publicUtility_abs_le _ _)
+    (payoffIntegrable_of_bounded _ _ fun final => publicUtility_abs_le _ _)
+  rw [← sum]
+  refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _ (C := 3 + 3) fun final =>
+    (abs_add_le _ _).trans (add_le_add (publicUtility_abs_le _ _) (publicUtility_abs_le _ _)))
+    _ fun final reached => ?_
   rw [nativeRun, InformationModel.runSingleMoverBehavioralFrom,
     ExecutionProtocol.runRandomizedFor_add, PMF.support_bind] at reached
   obtain ⟨middle, prefixRun, suffix⟩ := Set.mem_iUnion₂.mp reached
@@ -521,10 +527,10 @@ theorem no_common_native_spe :
     cases who
     simp [GameTheory.Profile.update]
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at one two
-  have oneBound := one (secondHistory first second) contested_isSubgameRoot ()
-    (encodeNativePolicy (recoveryPolicy true))
-  have twoBound := two (secondHistory first second) contested_isSubgameRoot ()
-    (encodeNativePolicy (recoveryPolicy false))
+  have oneBound := (one (secondHistory first second) contested_isSubgameRoot ()
+    (encodeNativePolicy (recoveryPolicy true))).2.2
+  have twoBound := (two (secondHistory first second) contested_isSubgameRoot ()
+    (encodeNativePolicy (recoveryPolicy false))).2.2
   rw [deviation, profileEq] at oneBound twoBound
   change expect (nativeRun (recoveryPolicy true) (10 + 99) _) _ ≤
     expect (nativeRun policy (2 + 107) _) _ at oneBound

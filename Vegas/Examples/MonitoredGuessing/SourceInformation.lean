@@ -129,35 +129,37 @@ def sourceBobHistories : Bool ≃ sourceModel.InformationHistory bob sourceBobSi
     exact ⟨bit, Subtype.ext same.symm⟩⟩
 
 theorem source_reach_bob (profile : Profile sourceModel.behavioralSignature) (bit : Bool) :
-    (sourceModel.historyReachWeight profile (SourcePath.drawn bit).history).toReal = 1 / 2 := by
+    sourceModel.historyReachWeight profile (SourcePath.drawn bit).history = 2⁻¹ := by
   classical
-  unfold ((InformationModel.historyReachWeight rw [show (SourcePath.drawn bit).history.trace.length = 1 by
-    simp [SourcePath.history, SourcePath.trace, Trace.length]]).toReal)
-  rw [← FinDist.prob_map_of_injective History.state source_state_injective]
-  change (((sourceModel.runBehavioralFrom profile 1 sourceArena.initHistory).map
-    History.state) _).toReal = _
+  unfold InformationModel.historyReachWeight
+  rw [show (SourcePath.drawn bit).history.trace.length = 1 by
+    simp [SourcePath.history, SourcePath.trace, Trace.length]]
+  refine (pmf_map_apply_of_injective _ source_state_injective _).symm.trans ?_
+  change (sourceModel.runBehavioralFrom profile 1 sourceArena.initHistory).map
+    History.state _ = _
   rw [source_run_states]
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind,
     initHistory, sourceKernel]
-  change ((((PMF.uniformOfFintype Bool).map initialState).map
-    (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))) _).toReal = _
+  change (((PMF.uniformOfFintype Bool).map initialState).map
+    (fun state => (some (.inl (sourceSetup.initialConfig state)) : sourceArena.State))) _ = _
   rw [PMF.map_comp]
-  change (((PMF.uniformOfFintype Bool).map
-    (fun bit => (SourcePath.drawn bit).state)) (SourcePath.drawn bit)).toReal.state = _
+  change ((PMF.uniformOfFintype Bool).map
+    (fun bit => (SourcePath.drawn bit).state)) (SourcePath.drawn bit).state = _
   have injective : Function.Injective (fun bit => (SourcePath.drawn bit).state) := by
     intro first second same
     have decoded := congrArg decodeSource same
     exact SourcePath.drawn.inj decoded
-  rw [FinDist.prob_map_of_injective _ injective, toReal_uniformOfFintype_apply]
+  rw [pmf_map_apply_of_injective _ injective, PMF.uniformOfFintype_apply, Fintype.card_bool]
   norm_num
 
 theorem source_mass_bob (profile : Profile sourceModel.behavioralSignature) :
     sourceModel.informationMass profile bob sourceBobSite = 1 := by
   unfold InformationModel.informationMass
-  rw [← sourceBobHistories.sum_comp]
-  change (∑ bit : Bool, (sourceModel.historyReachWeight profile (SourcePath.drawn bit).history).toReal) = _
-  simp only [source_reach_bob, Fintype.sum_bool]
-  norm_num
+  refine (sourceBobHistories.tsum_eq _).symm.trans ?_
+  change (∑' bit : Bool, sourceModel.historyReachWeight profile
+    (SourcePath.drawn bit).history) = _
+  rw [tsum_fintype, Fintype.sum_bool, source_reach_bob, source_reach_bob,
+    ENNReal.inv_two_add_inv_two]
 
 theorem source_consistent_bob (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain) :
@@ -165,22 +167,21 @@ theorem source_consistent_bob (assessment : sourceModel.BehavioralAssessment)
       (PMF.uniformOfFintype Bool).map sourceBobHistory := by
   classical
   obtain ⟨sequence, approximates, converges⟩ := consistent
-  apply pmf_ext_toReal
-  intro history
+  ext history
   obtain ⟨bit, rfl⟩ := sourceBobHistories.surjective history
-  change ((assessment.belief bob sourceBobSite) (sourceBobHistory bit)).toReal =
-    (((PMF.uniformOfFintype Bool).map sourceBobHistory) (sourceBobHistory bit)).toReal
+  change (assessment.belief bob sourceBobSite) (sourceBobHistory bit) =
+    ((PMF.uniformOfFintype Bool).map sourceBobHistory) (sourceBobHistory bit)
   have each (n : Nat) :
-      (((sequence n).belief bob sourceBobSite) (sourceBobHistory bit)).toReal = 1 / 2 := by
+      ((sequence n).belief bob sourceBobSite) (sourceBobHistory bit) = 2⁻¹ := by
     rw [(approximates n).2 bob sourceBobSite (by rw [source_mass_bob]; norm_num)]
-    change (sourceModel.historyReachWeight (sequence n).strategy (SourcePath.drawn bit).history).toReal / sourceModel.informationMass
+    change sourceModel.historyReachWeight (sequence n).strategy
+      (SourcePath.drawn bit).history / sourceModel.informationMass
         (sequence n).strategy bob sourceBobSite = _
     rw [source_reach_bob, source_mass_bob, div_one]
-  rw [FinDist.prob_map_of_injective _ sourceBobHistory_injective,
-    toReal_uniformOfFintype_apply, Fintype.card_bool]
+  rw [pmf_map_apply_of_injective _ sourceBobHistory_injective, PMF.uniformOfFintype_apply,
+    Fintype.card_bool]
   have limit := converges.2 bob sourceBobSite (sourceBobHistory bit)
   simp_rw [each] at limit
   convert tendsto_nhds_unique limit tendsto_const_nhds using 1
-  norm_num
 
 end Vegas.Examples.MonitoredGuessing

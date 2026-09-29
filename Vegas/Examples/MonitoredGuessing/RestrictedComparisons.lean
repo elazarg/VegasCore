@@ -45,7 +45,7 @@ theorem final_finish_comparison (table : PayoffTable)
   rw [rawFinish, legalFinish, rawChoice, legalChoice, PMF.pure_bind,
     PMF.pure_bind, expect_map, expect_map]
   simpa only [Enforcement.stateUtility, ReactiveApplication.finished, Option.elim_some,
-    Enforcement.executionUtility,
+    Function.comp_def, Enforcement.executionUtility,
     Enforcement.liability, ↓reduceIte, mul_ite, mul_one, mul_zero] using
     final_comparator_declared_payoff_le table (Enforcement.deposit table alice)
       (by exact_mod_cast Enforcement.deposit_nonnegative table alice)
@@ -122,7 +122,7 @@ theorem final_continuation_comparison (table : PayoffTable)
     expect law (fun state => Enforcement.stateUtility table state alice)) rawLaw
   have legalValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
     expect law (fun state => Enforcement.stateUtility table state alice)) legalLaw
-  rw [expect_map] at rawValue legalValue
+  simp only [expect_map, Function.comp_def] at rawValue legalValue
   change expect (watchedModel.runBehavioralFrom rawProfile fuel
     (ordinaryRestriction.history history.1)) _ ≤
       expect (restrictedModel.runBehavioralFrom legalProfile fuel history.1) _

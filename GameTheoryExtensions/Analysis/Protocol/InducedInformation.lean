@@ -57,9 +57,9 @@ theorem induced_advantage
   have advantage : expect prior (fun state =>
       benchmark - expect (outcomes state) (uninformedScore state)) ≤
       expect (prior.bind outcomes) payoff := by
-    rw [FinDist.expect_bind]
-    apply FinDist.expect_mono
-    intro state supported
+    rw [expect_bind_of_finite]
+    refine expect_mono (fun state supported => ?_) (payoffIntegrable_of_finite _ _)
+      (payoffIntegrable_of_finite _ _)
     rw [← expect_constant (outcomes state) benchmark, ← FinDist.expect_sub]
     exact FinDist.expect_mono (payoffBound state supported)
   rw [FinDist.expect_sub, expect_constant] at advantage
@@ -118,7 +118,7 @@ theorem continuation_value_eq_initial
     (assessment.continuationContext site payoff fuel).value alternative =
       expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy player alternative) fuel) payoff := by
-  rw [BehavioralAssessment.continuationContext_value, FinDist.expect_bind]
+  rw [BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   calc
     _ = expect (assessment.belief player site) (fun _ =>
         expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)

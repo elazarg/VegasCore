@@ -77,7 +77,7 @@ theorem final_comparator_payoff_le (payoff : Results → ℝ) (charge : ℝ)
   have expected := congrArg (fun law : PMF (Results × Bool) =>
     expect law (fun outcome => payoff outcome.1 - if outcome.2 then charge else 0)) summary
   rw [expect_map, expect_pure] at expected
-  simp only [Bool.false_eq_true, ↓reduceIte, sub_zero] at expected
+  simp only [Bool.false_eq_true, ↓reduceIte, sub_zero, Function.comp_def] at expected
   rw [final_response_law, expect_pure, final_comparator_eq, expected,
     final_response_result (beforeAlice bit guess) response bit (guessResult guess)
       (before_alice_fixed bit guess) (after_bob_stored bit guess)]

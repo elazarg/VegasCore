@@ -545,11 +545,10 @@ theorem uniform (selected : Handle nativeGraph) (who : Player)
     ⟨⟨(menu.nonempty who past view).choose, (menu.nonempty who past view).choose_spec⟩⟩
   have symmetric : (PMF.uniformOfFintype choices).map
       (responseEquiv selected who past view) = (PMF.uniformOfFintype _) := by
-    apply pmf_ext_toReal
-    intro response
+    ext response
     obtain ⟨before, rfl⟩ := (responseEquiv selected who past view).surjective response
-    rw [FinDist.prob_map_of_injective _ (responseEquiv selected who past view).injective]
-    simp only [toReal_uniformOfFintype_apply]
+    rw [pmf_map_apply_of_injective _ (responseEquiv selected who past view).injective]
+    rw [PMF.uniformOfFintype_apply, PMF.uniformOfFintype_apply]
   change ((PMF.uniformOfFintype choices).map Subtype.val).map (action selected) = _
   rw [PMF.map_comp]
   calc
@@ -564,7 +563,7 @@ theorem uniform_prob (selected : Handle nativeGraph) (who : Player)
   classical
   have same := congrArg (fun law => (law (action selected response)).toReal)
     (uniform selected who past view)
-  rw [FinDist.prob_map_of_injective _ (action_involutive selected).injective] at same
+  rw [pmf_map_apply_of_injective _ (action_involutive selected).injective] at same
   exact same.symm
 
 theorem requests_eq_of_known_ids

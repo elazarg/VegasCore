@@ -546,6 +546,11 @@ def publicUtility (preferOne : Bool) : Option (PublicationResult Int) → ℝ
           if value = 2 then (if preferOne then 1 else 2) else 0
   | _ => 0
 
+theorem publicUtility_abs_le (preferOne : Bool) (result : Option (PublicationResult Int)) :
+    |publicUtility preferOne result| ≤ 3 := by
+  unfold publicUtility
+  split <;> (try split_ifs) <;> norm_num
+
 /-- The two tests agree on the missing best public result and disagree on the
 remaining successes. Failure earns zero in both. -/
 theorem residual_utility_sum_le (action : PlayerAction graph)

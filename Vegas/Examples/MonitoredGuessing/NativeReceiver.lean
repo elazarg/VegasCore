@@ -39,7 +39,9 @@ theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralS
       ((quietBob bit).observe nativeApp bob) = guesses.map nativeGuessAction :=
     quiet_guess_policy profile guesses atQuiet bit
   rw [finishLaw, decision]
-  simp only [PMF.bind_map, FinDist.expect_bind, expect_map]
+  simp only [PMF.bind_map, Function.comp_def]
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _ (nativeUtility_abs_le deposit bob))]
+  simp only [expect_map, Function.comp_def]
   apply expect_congr_on_support
   intro guess _
   have value := congrArg (fun law : PMF (Results × Bool) =>
@@ -71,7 +73,7 @@ theorem quiet_prescribed_context_value (assessment : nativeModel.BehavioralAsses
   rw [quiet_native_context assessment consistent alicePolicy watcherPolicy]
   simp only [Profile.update_eq_self]
   simp_rw [quiet_prescribed_finish_value assessment.strategy guesses deposit alicePolicy atQuiet]
-  rw [FinDist.expect_comm]
+  rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
   simp only [fair_correctness, expect_constant]
 
 end Vegas.Examples.MonitoredGuessing

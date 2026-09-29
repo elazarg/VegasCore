@@ -237,7 +237,7 @@ theorem bob_continuation_comparison (table : PayoffTable)
     expect law (fun state => Enforcement.stateUtility table state bob)) rawLaw
   have legalValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
     expect law (fun state => Enforcement.stateUtility table state bob)) legalLaw
-  rw [expect_map] at rawValue legalValue
+  simp only [expect_map, Function.comp_def] at rawValue legalValue
   change expect (watchedModel.runBehavioralFrom rawProfile fuel
     (ordinaryRestriction.history history.1)) _ ≤
       expect (restrictedModel.runBehavioralFrom legalProfile fuel history.1) _

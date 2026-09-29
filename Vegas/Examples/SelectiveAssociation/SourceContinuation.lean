@@ -25,7 +25,7 @@ private theorem visit_player_response {Claim : Type}
             ((effect execution (.activate who)).respond (application Claim) who response)) := by
   simp only [runInstructions, instruction, ReactiveApplication.dispatch, effect_law,
     PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-    ReactiveApplication.invoke, PMF.bind_map]
+    ReactiveApplication.invoke, PMF.bind_map, Function.comp_def]
 
 theorem runInstructions_visit {Claim : Type} (players : Player → (application Claim).Policy)
     (event : Event) (rest : List Instruction) (execution : (application Claim).Execution) :
@@ -273,8 +273,9 @@ theorem opening_deviation_expect_le {Claim : Type}
     (core : execution.application.core = CorePath.bob a c b) :
     expect (runInstructions players (visit 3 ++ visit 4 ++ visit 5) execution)
         (fun final => utility (results final.application) who) ≤ utility ⟨a, b, c⟩ who := by
-  apply FinDist.expect_le_of_forall
-  intro final supported
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _
+    (fun final : (application Claim).Execution => results final.application)
+    (fun result => utility result who)) _ fun final supported => ?_
   exact opening_deviation_bound players who others execution final a c b core supported
 
 end Vegas.Examples.SelectiveAssociation.NamedSource

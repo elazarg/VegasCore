@@ -43,7 +43,7 @@ theorem value_eq_expect (prior : PMF State) (observe : State → Signal)
     (utility : State → Action → ℝ) (policy : Signal → PMF Action) :
     value prior observe utility policy =
       expect prior (fun state => expect (policy (observe state)) (utility state)) := by
-  simp only [value, outcomeLaw, FinDist.expect_bind, expect_map]
+  simp only [value, outcomeLaw, expect_bind_of_finite, expect_map]
 
 /-- Unnormalized conditional value. Zero-probability observations impose no
 constraint; on a positive-probability fiber normalization cancels from comparisons. -/
@@ -87,7 +87,7 @@ theorem localValue_eq_expect_pure (prior : PMF State) (observe : State → Signa
         localValue prior observe utility signal (PMF.pure action) := by
   classical
   unfold localValue
-  rw [FinDist.expect_comm]
+  rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
   apply expect_congr_on_support
   intro state _
   by_cases same : observe state = signal
@@ -105,8 +105,7 @@ theorem exists_bayesOptimal [Finite Action] [Nonempty Action]
   refine ⟨fun signal => PMF.pure (best signal), ?_⟩
   intro signal alternative
   rw [localValue_eq_expect_pure]
-  apply FinDist.expect_le_of_forall
-  intro action _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun action _ => ?_
   exact maximal signal action
 
 /-- The payoff-relevant fact can be recovered from the observation wherever
@@ -160,7 +159,7 @@ theorem report_value_le_one [DecidableEq Fact] (prior : PMF State)
     (observe : State → Signal) (fact : State → Fact) (policy : Signal → PMF Fact) :
     value prior observe (reportUtility fact) policy ≤ 1 := by
   rw [report_value]
-  exact FinDist.expect_le_of_forall _ _ _ fun _ _ => pmf_toReal_apply_le_one _ _
+  exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun _ _ => pmf_toReal_apply_le_one _ _
 
 private theorem eq_pure_of_prob_one (law : PMF Fact) (fact : Fact)
     (certain : (law fact).toReal = 1) : law = PMF.pure fact := by

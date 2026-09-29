@@ -61,7 +61,8 @@ theorem step_player (players : Player → app.Policy) (execution : app.Execution
       (players who (execution.recall who) (execution.observe app who)).map fun action =>
         some ⟨remaining, none, execution.respond app who action⟩ := by
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-    ReactiveApplication.transition, ite_true, Option.getD_some, ← PMF.bind_pure_comp, Function.comp_def]
+    ReactiveApplication.transition, ite_true, Option.getD_some, ← PMF.bind_pure_comp,
+        Function.comp_def]
 
 theorem step_environment (players : Player → app.Policy) (execution : app.Execution)
     (remaining : Nat) :
@@ -70,7 +71,8 @@ theorem step_environment (players : Player → app.Policy) (execution : app.Exec
       (scheduler execution.environmentRecall (execution.observeEnvironment app)).map fun command =>
         some ⟨remaining, command.actor? app, environmentResult execution command⟩ := by
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-    ReactiveApplication.transition, environmentResult_law, ← PMF.bind_pure_comp, Function.comp_def, PMF.pure_bind]
+    ReactiveApplication.transition, environmentResult_law, ← PMF.bind_pure_comp, Function.comp_def,
+        PMF.pure_bind]
 
 theorem prefix_lookup (index : Nat) (early : index < 15) :
     nativePlan[index]? =

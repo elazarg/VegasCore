@@ -69,7 +69,7 @@ private theorem early_rounds_visit (Claim : Type) [Fintype Claim] (count : Nat)
     rw [roundsFrom_prefix (menu Claim).uniformResponses [.player alice] calendar.tail rfl]
       at reached
     simp only [runInstructions_player, runInstructions_nil] at reached
-    rw [← PMF.bind_pure_comp, Function.comp_def] at reached
+    rw [pmf_bind_pure_eq_map] at reached
     obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ reached
     exact firstResponse_visit response
 

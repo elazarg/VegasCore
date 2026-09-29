@@ -129,10 +129,10 @@ theorem native_not_supported_failing_opening
     (fun history => nativeUtility who history.state) (2 * nativeHorizon) rational choice
     alternative (-4) (-1) (by norm_num)
   · intro history
-    apply FinDist.expect_le_of_forall
-    intro final supported
+    refine expect_le_const _ _ ((payoffIntegrable_map_iff _ _ _).mp
+      (nativeUtility_integrable _ who)) _ fun final supported => ?_
     obtain ⟨control, stateEq, failed⟩ := fails history final supported
-    rw [stateEq]
+    rw [Function.comp_apply, stateEq]
     exact le_of_eq (native_failed_utility control.execution.application.config who failed)
   · intro history
     have good := native_opening_fiber_lower

@@ -63,8 +63,8 @@ theorem resolution_plan_bob_upper (deposit : ℝ) (players : Player → nativeAp
     (stored : bobPublicationRef.get? execution.application.config.store = some guess) :
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
       (nativeExecutionUtility deposit bob) ≤ correctness (.success bit) guess := by
-  apply FinDist.expect_le_of_forall
-  intro final supported
+  refine expect_le_const _ _ (nativeExecutionUtility_integrable deposit bob _) _
+    fun final supported => ?_
   have fixed := resolution_plan_invariant players _ (native_fixed_invariant bit) plan
     execution final valid supported
   have bound := resolution_plan_invariant players _
@@ -92,9 +92,10 @@ theorem quiet_response_bob_value_le (deposit : ℝ) (players : Player → native
   change expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
     (quietGuessPlan ++ [.grant alicePublication, .player alice] ++ resolutionTail)
       ((quietBob bit).respond nativeApp bob response)) _ ≤ _
-  rw [List.append_assoc, runInteractionPlan_append, FinDist.expect_bind]
-  apply FinDist.expect_le_of_forall
-  intro next supported
+  rw [List.append_assoc, runInteractionPlan_append,
+    expect_bind_tower _ _ _ (nativeExecutionUtility_integrable deposit bob _)]
+  refine expect_le_const _ _ (nativeExecutionValue_integrable deposit bob _ _) _
+    fun next supported => ?_
   have fixed := resolution_plan_invariant players _ (native_fixed_invariant bit) quietGuessPlan
     ((quietBob bit).respond nativeApp bob response) next
     ((native_fixed_invariant bit).respond (quietBob bit) bob response (quiet_bob_fixed bit))

@@ -564,7 +564,7 @@ theorem continuation_value (original : Signal → PMF Action)
           (prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe site})).toReal := by
   classical
   let : Fintype State := Fintype.ofFinite _
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, FinDist.expect_bind,
+  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
     expect_eq_sum]
   have run (history : (model prior observe).InformationHistory () site.1) :
       expect ((model prior observe).runBehavioralFrom

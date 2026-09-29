@@ -117,7 +117,7 @@ theorem native_initialized_observation (profile : Profile nativeModel.behavioral
       ((quietBob bit).observe nativeApp bob) = guesses.map nativeGuessAction :=
     quiet_guess_policy profile guesses atQuiet bit
   rw [decision]
-  simp only [PMF.bind_map, PMF.map_bind, PMF.map_comp]
+  simp only [PMF.bind_map, PMF.map_bind, PMF.map_comp, Function.comp_def]
   rw [← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
   intro guess _

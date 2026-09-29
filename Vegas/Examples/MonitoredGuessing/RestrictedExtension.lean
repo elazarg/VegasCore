@@ -56,7 +56,8 @@ private theorem watched_final_depth (bit guess : Bool)
 retained policies, beliefs, and full initialized history/net-payoff law. -/
 theorem ordinary_equilibrium_extends (table : PayoffTable)
     (source : restrictedModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain
+    (equilibrium : source.IsSequentialEquilibriumFor
+        restricted_decisionRecall.decisionInformationAntichain
       (fun who site => source.continuationContext site
         (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :
@@ -116,7 +117,8 @@ theorem restricted_raw_equilibrium_extends (table : PayoffTable)
     {Observation : Type} (observe : nativeApp.ProtocolState → Observation)
     (observationInvariant : ∀ state, observe (normalization.state state) = observe state)
     (source : restrictedModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain
+    (equilibrium : source.IsSequentialEquilibriumFor
+        restricted_decisionRecall.decisionInformationAntichain
       (fun who site => source.continuationContext site
         (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :

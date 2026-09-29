@@ -27,12 +27,15 @@ theorem finish_alice_payoff_le {Claim : Type}
     expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)) (fun state => utility (protocolResults state) alice) ≤
         utility ⟨a, b, c⟩ alice := by
-  rw [← expect_map (protocolResults (Claim := Claim)) _
+  rw [show (fun state : (application Claim).ProtocolState =>
+      utility (protocolResults state) alice) =
+      (fun result => utility result alice) ∘ protocolResults (Claim := Claim) from rfl,
+    ← expect_map (protocolResults (Claim := Claim)) _
       (fun result => utility result alice),
     finish_alice_results players control a c b core visited active remaining position
       carolOpens bobOpens, expect_map]
-  apply FinDist.expect_le_of_forall
-  intro response _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _ _
+    (fun result : Results => utility result alice)) _ fun response _ => ?_
   cases selectedDisclosure 3 response
   · simpa using (utility_alice_bounds ⟨a, b, c⟩).1
   · exact le_rfl
@@ -49,12 +52,15 @@ theorem finish_carol_payoff_le {Claim : Type}
     expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)) (fun state => utility (protocolResults state) carol) ≤
         utility ⟨if first then a else .failure, b, c⟩ carol := by
-  rw [← expect_map (protocolResults (Claim := Claim)) _
+  rw [show (fun state : (application Claim).ProtocolState =>
+      utility (protocolResults state) carol) =
+      (fun result => utility result carol) ∘ protocolResults (Claim := Claim) from rfl,
+    ← expect_map (protocolResults (Claim := Claim)) _
       (fun result => utility result carol),
     finish_carol_results players control a c b first core visited active remaining position
       bobOpens, expect_map]
-  apply FinDist.expect_le_of_forall
-  intro response _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _ _
+    (fun result : Results => utility result carol)) _ fun response _ => ?_
   cases selectedDisclosure 4 response
   · simpa using (utility_carol_bounds ⟨if first then a else .failure, b, c⟩).1
   · exact le_rfl
@@ -70,12 +76,15 @@ theorem finish_bob_payoff_le {Claim : Type}
     expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim) players
       (some control)) (fun state => utility (protocolResults state) bob) ≤
         utility ⟨if first then a else .failure, b, if second then c else .failure⟩ bob := by
-  rw [← expect_map (protocolResults (Claim := Claim)) _
+  rw [show (fun state : (application Claim).ProtocolState =>
+      utility (protocolResults state) bob) =
+      (fun result => utility result bob) ∘ protocolResults (Claim := Claim) from rfl,
+    ← expect_map (protocolResults (Claim := Claim)) _
       (fun result => utility result bob),
     finish_bob_results players control a c b first second core visited active remaining position,
     expect_map]
-  apply FinDist.expect_le_of_forall
-  intro response _
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _ _
+    (fun result : Results => utility result bob)) _ fun response _ => ?_
   cases selectedDisclosure 5 response
   · simpa using (utility_bob_bounds
       ⟨if first then a else .failure, b, if second then c else .failure⟩).1

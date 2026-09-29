@@ -91,7 +91,7 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
         (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess) := by
     have same := prescribed_bob_input_same Claim defaultClaim first second guess bit
     exact congrArg (fun info => players bob info.1 info.2) same
-  rw [after_prelude_law, aliceLaw, FinDist.expect_bind, expect_map]
+  rw [after_prelude_law, aliceLaw, expect_bind_of_finite, expect_map]
   calc
     _ ≤ expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (chooseAt players carol
@@ -99,16 +99,15 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
             (fun guess => expect (chooseAt players bob
               (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess))
                 (fun response => correctness (.success bit) (selectedBinding 2 response)))) := by
-      apply FinDist.expect_mono
-      intro bit _
-      rw [FinDist.expect_bind, carolLaw bit]
-      apply FinDist.expect_mono
-      intro guess _
-      rw [FinDist.expect_bind, bobLaw guess bit]
-      apply FinDist.expect_mono
-      intro response _
-      apply FinDist.expect_le_of_forall
-      intro final supported
+      refine expect_mono (fun bit _ => ?_) (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
+      rw [expect_bind_of_finite, carolLaw bit]
+      refine expect_mono (fun guess _ => ?_) (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
+      rw [expect_bind_of_finite, bobLaw guess bit]
+      refine expect_mono (fun response _ => ?_) (payoffIntegrable_of_finite _ _)
+        (payoffIntegrable_of_finite _ _)
+      refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun final supported => ?_
       have bound := bob_guess_response_payoff_le players _ final response
         (.success bit) (selectedBinding 1 guess) (by
           rw [bobInput_core]
@@ -122,10 +121,9 @@ theorem after_prelude_bob_bound (Claim : Type) (defaultClaim : Claim)
             (fun bit => expect (chooseAt players bob
               (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess))
                 (fun response => correctness (.success bit) (selectedBinding 2 response)))) :=
-      FinDist.expect_comm _ _ _
+      expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _) _ _ _
     _ ≤ 1 / 2 := by
-      apply FinDist.expect_le_of_forall
-      intro guess _
+      refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun guess _ => ?_
       have bound := fair_guess_le_half ((chooseAt players bob
         (bobInput first second (playing Claim defaultClaim 0 (.success false)) guess)).map
           (selectedBinding 2))
@@ -159,17 +157,17 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     dsimp only [chooseAt, players]
     simp only [policy]
     rfl
-  rw [after_prelude_law, aliceLaw, FinDist.expect_bind, expect_map]
+  rw [after_prelude_law, aliceLaw, expect_bind_of_finite, expect_map]
   calc
     _ = expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (chooseAt players carol (carolInput first second (binding false)))
           (fun guess => correctness (.success bit) (.success (target guess)))) := by
       apply expect_congr_on_support
       intro bit _
-      rw [FinDist.expect_bind, carolLaw bit]
+      rw [expect_bind_of_finite, carolLaw bit]
       apply expect_congr_on_support
       intro guess _
-      rw [FinDist.expect_bind, bobLaw guess bit, expect_pure]
+      rw [expect_bind_of_finite, bobLaw guess bit, expect_pure]
       calc
         _ = expect (runInstructions players (afterResponse 2)
             ((bobInput first second (binding bit) guess).respond (application Claim) bob
@@ -192,7 +190,7 @@ theorem after_prelude_bob_prescribed (Claim : Type) (defaultClaim : Claim)
     _ = expect (chooseAt players carol (carolInput first second (binding false)))
         (fun guess => expect (PMF.uniformOfFintype Bool)
           (fun bit => correctness (.success bit) (.success (target guess)))) :=
-      FinDist.expect_comm _ _ _
+      expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _) _ _ _
     _ = 1 / 2 := by
       have fair (guess : (application Claim).Action) :
           expect (PMF.uniformOfFintype Bool)
@@ -217,9 +215,8 @@ theorem finish_bob_ambient_bound (Claim : Type) [Fintype Claim] (defaultClaim : 
     rw [execution]
     rfl
   rw [finish_ambient_law players 2 (by decide) bob control active remaining position,
-    expect_map, FinDist.expect_bind]
-  apply FinDist.expect_le_of_forall
-  intro response _
+    expect_map, expect_bind_of_finite]
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun response _ => ?_
   change expect (runInstructions players (calendar.drop 2)
     (control.execution.respond (application Claim) bob response))
       (fun final => utility (results final.application) bob) ≤ 1 / 2
@@ -236,7 +233,7 @@ theorem finish_bob_ambient_prescribed (Claim : Type) [Fintype Claim] (defaultCla
     bob_ambient_representation Claim control trace active ambient
   have position : control.execution.environmentRecall.length = 2 := by rw [execution]; rfl
   rw [finish_ambient_law (policy Claim defaultClaim) 2 (by decide) bob control active remaining
-    position, expect_map, FinDist.expect_bind]
+    position, expect_map, expect_bind_of_finite]
   calc
     _ = expect (policy Claim defaultClaim bob (control.execution.recall bob)
         (control.execution.observe (application Claim) bob)) (fun _ => 1 / 2) := by
@@ -268,8 +265,7 @@ theorem bob_ambient_sequentially_rational (Claim : Type) [Fintype Claim] (defaul
         (Function.update (policy Claim defaultClaim) bob
           (decodedAlternative Claim bob alternative)) history.1.state)
             (fun state => utility (protocolResults state) bob)) ≤ 1 / 2 := by
-      apply FinDist.expect_le_of_forall
-      intro history _
+      refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun history _ => ?_
       obtain ⟨control, stateEq, active, _, observed⟩ := information_control Claim bob past view
         ⟨history.1, history.2.trans siteEq⟩
       rcases history with ⟨⟨state, trace⟩, information⟩

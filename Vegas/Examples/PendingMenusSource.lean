@@ -125,8 +125,10 @@ theorem source_continuation_optimal (preferOne : Bool)
   cases state with
   | inl config =>
       rw [honest_commit_value]
-      exact FinDist.expect_le_of_forall _ _ _ (fun final _ =>
-        utility_le_three preferOne (final.get .here))
+      exact expect_le_const _ _
+        (payoffIntegrable_of_bounded _ (sourceUtility preferOne · ()) fun final =>
+          publicUtility_abs_le preferOne _) _
+        (fun final _ => utility_le_three preferOne (final.get .here))
   | inr state =>
       cases state with
       | inr config => exact le_rfl
@@ -135,9 +137,10 @@ theorem source_continuation_optimal (preferOne : Bool)
             PMF.pure (revealSuccessor 1 .here config disclose).state)) _ ≤
             expect ((PMF.pure true).bind (fun disclose =>
               PMF.pure (revealSuccessor 1 .here config disclose).state)) _
-          rw [PMF.pure_bind, expect_pure, FinDist.expect_bind]
-          apply FinDist.expect_le_of_forall
-          intro disclose _
+          rw [PMF.pure_bind, expect_pure, expect_bind_tower _ _ _
+            (payoffIntegrable_of_bounded _ (sourceUtility preferOne · ()) fun final =>
+              publicUtility_abs_le preferOne _)]
+          refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun disclose _ => ?_
           rw [expect_pure]
           cases disclose with
           | true => exact le_rfl
@@ -163,7 +166,10 @@ theorem source_spe (admission : CommitmentInterface sourceProgram) (preferOne : 
       (protocol_bounded sourceProgram admission sourceInitial)
       (sourceProtocolProfile admission)
       (protocolUtility sourceProgram admission sourceInitial (sourceUtility preferOne)) := by
-  rw [sourceProtocolProfile, protocol_isBehavioralSubgamePerfect_iff]
+  rw [sourceProtocolProfile, protocol_isBehavioralSubgamePerfect_iff _ _ _ _
+    (sourceUtility preferOne) fun _ _ who =>
+      protocolUtility_integrable_of_bounded _ _ _ (sourceUtility preferOne) (by norm_num)
+        (fun state _ => publicUtility_abs_le preferOne _) who _]
   intro history _ who alternative
   cases who
   exact source_continuation_optimal preferOne _ history.state

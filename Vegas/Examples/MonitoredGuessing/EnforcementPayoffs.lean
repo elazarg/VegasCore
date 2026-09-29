@@ -84,8 +84,37 @@ def executionUtility (table : PayoffTable) (execution : nativeApp.Execution)
   (table (nativeResults execution.application.config) who : ℝ) -
     (deposit table who : ℝ) * liability execution who
 
+/-- The finitely many facts a settled utility reads: results, Alice's rejected
+receipt, and Bob's ledger violation. -/
+private def settlementSummary (execution : nativeApp.Execution) : Results × Bool × Bool :=
+  (nativeResults execution.application.config, rejectedAlice execution.receipts,
+    Conformance.bobLedgerViolation execution)
+
+private def summaryUtility (table : PayoffTable) (who : Player)
+    (summary : Results × Bool × Bool) : ℝ :=
+  (table summary.1 who : ℝ) - (deposit table who : ℝ) *
+    (if who = alice then (if summary.2.1 then 1 else 0)
+      else if who = bob then (if summary.2.2 then 1 else 0) else 0)
+
+theorem executionUtility_integrable (table : PayoffTable) (who : Player)
+    (law : PMF nativeApp.Execution) :
+    PayoffIntegrable law (fun execution => executionUtility table execution who) :=
+  payoffIntegrable_of_finite_summary law settlementSummary (summaryUtility table who)
+
 def stateUtility (table : PayoffTable) (state : nativeApp.ProtocolState) : Player → ℝ :=
   state.elim (fun _ => 0) (fun control => executionUtility table control.execution)
+
+theorem stateUtility_integrable (table : PayoffTable) (who : Player)
+    (law : PMF nativeApp.ProtocolState) :
+    PayoffIntegrable law (fun state => stateUtility table state who) := by
+  have summarized : (fun state : nativeApp.ProtocolState => stateUtility table state who) =
+      fun state => ((state.map fun control => settlementSummary control.execution).elim 0
+        (summaryUtility table who)) := by
+    funext state
+    cases state <;> rfl
+  rw [summarized]
+  exact payoffIntegrable_of_finite_summary law _
+    (fun summary : Option (Results × Bool × Bool) => summary.elim 0 (summaryUtility table who))
 
 theorem liability_nonnegative (execution : nativeApp.Execution) (who : Player) :
     0 ≤ liability execution who := by
@@ -153,8 +182,8 @@ theorem detected_bob_utility_le (table : PayoffTable) (execution : nativeApp.Exe
 theorem lower_le_expect (table : PayoffTable) (who : Player) (outcomes : PMF Results) :
     (payoffLower table who : ℝ) ≤ expect outcomes (fun result => (table result who : ℝ)) := by
   rw [← expect_constant outcomes (payoffLower table who : ℝ)]
-  apply FinDist.expect_mono
-  intro result _
+  refine expect_mono (fun result _ => ?_) (payoffIntegrable_constant _ _)
+    (payoffIntegrable_of_finite _ _)
   exact_mod_cast payoffLower_le table who result
 
 /-- The actual passive-monitor kernel bounds every initial raw submission,
@@ -320,7 +349,7 @@ theorem alice_service_value (table : PayoffTable) (players : Player → nativeAp
   have law := congrArg (fun law : PMF (Results × (Player → ℝ)) =>
     expect law (fun outcome => outcome.2 who)) (alice_service_payoff_law table players bit guess
       disclose)
-  simpa only [expect_map, expect_pure] using law
+  simpa only [expect_map, expect_pure, Function.comp_def] using law
 
 end
 

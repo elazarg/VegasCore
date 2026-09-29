@@ -104,7 +104,8 @@ theorem expected_bindingReward_success (Claim : Type) [Fintype Claim]
     (site : (model Claim).InformationSite who) (bit : Bool) :
     expect (assessment.belief who site) (fun history =>
       bindingReward (.success bit) history.1.state) =
-      ((assessment.belief who site).toOuterMeasure {history | hasAliceBit bit history.1.state}).toReal := by
+      ((assessment.belief who site).toOuterMeasure
+          {history | hasAliceBit bit history.1.state}).toReal := by
   classical
   exact expect_indicator (assessment.belief who site)
     {history | hasAliceBit bit history.1.state}
@@ -131,8 +132,9 @@ theorem prescribed_guess_optimal (Claim : Type) [Fintype Claim]
           calc
             0 = expect (assessment.belief who site) (fun _ => 0) :=
               (expect_constant _ _).symm
-            _ ≤ _ := FinDist.expect_mono (fun history _ =>
+            _ ≤ _ := expect_mono (fun history _ =>
               bindingReward_success_nonneg (publicGuess view) history.1.state)
+                  (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)
         linarith
     | success bit =>
         rw [expected_bindingReward_success, expected_bindingReward_success]
@@ -149,7 +151,7 @@ theorem prescribed_guess_optimal (Claim : Type) [Fintype Claim]
           exact ite_eq_left (known ⟨history.1, history.2.trans observed⟩)
         _ = 1 := expect_constant _ _
     rw [target]
-    exact FinDist.expect_le_of_forall _ _ _
+    exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _
       (fun history _ => bindingReward_le_one guess history.1.state)
 
 theorem prescribed_mixed_guess_optimal (Claim : Type) [Fintype Claim]
@@ -163,8 +165,8 @@ theorem prescribed_mixed_guess_optimal (Claim : Type) [Fintype Claim]
         expect guesses (fun guess => bindingReward guess history.1.state)) ≤
       expect (assessment.belief who site) (fun history =>
         bindingReward (.success (publicGuess view)) history.1.state) := by
-  rw [FinDist.expect_comm]
-  exact FinDist.expect_le_of_forall _ _ _ (fun guess _ =>
+  rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
+  exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ (fun guess _ =>
     prescribed_guess_optimal Claim assessment fair who site past view observed decision guess)
 
 theorem bindingReward_of_alice {Claim : Type} (control : (application Claim).Control)

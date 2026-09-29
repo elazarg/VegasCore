@@ -47,7 +47,7 @@ theorem isBayesOptimal_iff_value (prior : PMF State) (observe : State → Signal
   have replacement : value prior observe utility replaced =
       value prior observe utility policy - localValue prior observe utility signal (policy signal) +
         localValue prior observe utility signal alternative := by
-    simp only [value_eq_expect, localValue, ← FinDist.expect_sub, ← FinDist.expect_add]
+    simp only [value_eq_expect, localValue, ← FinDist.expect_sub, ← expect_add_of_finite]
     apply expect_congr_on_support
     intro state _
     by_cases same : observe state = signal

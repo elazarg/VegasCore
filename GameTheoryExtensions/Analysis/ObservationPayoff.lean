@@ -59,7 +59,7 @@ theorem fullInformation_optimal_iff (prior : PMF State)
     rw [localValue_id, localValue_id]
     by_cases supported : state ∈ prior.support
     · exact mul_le_mul_of_nonneg_left
-        (FinDist.expect_le_of_forall _ _ _ fun action _ => optimal state supported action)
+        (expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun action _ => optimal state supported action)
         (le_of_lt (pmf_toReal_pos_iff.mpr supported))
     · rw [FinDist.prob_eq_zero_iff.mpr supported, zero_mul, zero_mul]
 

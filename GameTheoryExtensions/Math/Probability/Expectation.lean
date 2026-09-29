@@ -127,6 +127,27 @@ theorem expect_bind_of_finite {α β : Type*} [Finite β] (p : PMF α) (q : α �
     (f : β → ℝ) : expect (p.bind q) f = expect p (fun a => expect (q a) f) :=
   expect_bind_tower p q f (payoffIntegrable_of_finite _ _)
 
+/-- A payoff read through a finite summary is integrable under every law, even
+on an infinite carrier. -/
+theorem payoffIntegrable_of_finite_summary {α β : Type*} [Finite β] (μ : PMF α)
+    (summary : α → β) (g : β → ℝ) : PayoffIntegrable μ (fun a => g (summary a)) :=
+  (payoffIntegrable_map_iff summary μ g).mp (payoffIntegrable_of_finite _ _)
+
+/-- Expected values of a uniformly bounded payoff are integrable against every law. -/
+theorem payoffIntegrable_expect_of_bounded {α β : Type*} (μ : PMF α) (kernel : α → PMF β)
+    (f : β → ℝ) {C : ℝ} (nonnegative : 0 ≤ C) (bound : ∀ b, |f b| ≤ C) :
+    PayoffIntegrable μ (fun a => expect (kernel a) f) :=
+  payoffIntegrable_of_bounded _ _ fun _ => expect_abs_le_of_bounded nonnegative bound
+
+/-- Expected values of a payoff read through a finite summary are bounded,
+hence integrable against every law. -/
+theorem payoffIntegrable_expect_of_finite_summary {α β γ : Type*} [Finite γ] (μ : PMF α)
+    (kernel : α → PMF β) (summary : β → γ) (g : γ → ℝ) :
+    PayoffIntegrable μ (fun a => expect (kernel a) (fun b => g (summary b))) := by
+  obtain ⟨C, bound⟩ := (Set.finite_range fun c => |g c|).bddAbove
+  exact payoffIntegrable_expect_of_bounded _ _ _ (le_max_right C 0) fun b =>
+    (bound ⟨summary b, rfl⟩).trans (le_max_left _ _)
+
 /-- On a finite carrier expectation is additive without integrability premises. -/
 theorem expect_add_of_finite {α : Type*} [Finite α] (μ : PMF α) (f g : α → ℝ) :
     expect μ (fun a => f a + g a) = expect μ f + expect μ g :=
@@ -146,6 +167,19 @@ theorem expect_eq_sum_of_support_finite {α : Type*} (μ : PMF α) (finite : μ.
   intro a absent
   rw [Set.Finite.mem_toFinset, PMF.mem_support_iff, not_not] at absent
   simp [absent]
+
+/-- Expectations commute when the outer law is finitely supported and the inner
+integrand is integrable at every supported outer point; the inner law may have
+infinite support. -/
+theorem expect_comm_of_support_finite_left {α β : Type*} (μ : PMF α) (ν : PMF β)
+    (μFinite : μ.support.Finite) (g : α → β → ℝ)
+    (integrable : ∀ a ∈ μ.support, PayoffIntegrable ν (g a)) :
+    expect μ (fun a => expect ν (fun b => g a b)) =
+      expect ν (fun b => expect μ (fun a => g a b)) := by
+  simp_rw [expect_eq_sum_of_support_finite μ μFinite, ← Finset.sum_coe_sort μFinite.toFinset]
+  rw [expect_sum ν (fun a : μFinite.toFinset => fun b => (μ a).toReal * g a b) fun a =>
+    payoffIntegrable_const_mul (integrable a (μFinite.mem_toFinset.mp a.2))]
+  simp_rw [expect_const_mul]
 
 /-- Independent expectations under finitely supported laws commute. -/
 theorem expect_comm_of_support_finite {α β : Type*} (μ : PMF α) (ν : PMF β)

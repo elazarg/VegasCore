@@ -303,7 +303,8 @@ theorem authorized_compiled_value :
       (fun final => PendingMenus.publicUtility true (final.application.config.outputs 1)) =
         5 / 2 := by
   rw [authorized_compiled_rounds]
-  simp only [half, FinDist.expect_mix, expect_pure, repaired_opening]
+  simp only [half, expect_mix, payoffIntegrable_pure, expect_pure,
+      repaired_opening]
   norm_num [PendingMenus.publicUtility]
 
 theorem authorized_early_value :

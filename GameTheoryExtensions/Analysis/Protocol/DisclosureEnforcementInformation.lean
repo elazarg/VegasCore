@@ -219,6 +219,6 @@ theorem value_sender {ambient : Bool}
         expect (choiceLaw profile false (some (some secret)))
           (fun disclose => expect (resultLaw profile secret (ambient && disclose)) utility) := by
   have mapped := congrArg (fun law => expect law utility) (run_sender full profile secret)
-  simpa only [expect_map, FinDist.expect_bind] using mapped
+  simpa only [expect_map, expect_bind_of_finite] using mapped
 
 end GameTheory.Protocol.DisclosureEnforcement

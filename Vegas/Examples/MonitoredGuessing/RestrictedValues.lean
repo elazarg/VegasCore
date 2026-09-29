@@ -38,10 +38,11 @@ theorem alice_finish_value (table : PayoffTable)
     (before_alice_position bit guess)
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _
     (some ⟨4, some alice, beforeAlice bit guess⟩) = _ at finish
-  rw [finish, decoded_alice_response, PMF.bind_map, FinDist.expect_bind]
+  rw [finish, decoded_alice_response, PMF.bind_map,
+    expect_bind_tower _ _ _ (Enforcement.stateUtility_integrable table who _)]
   apply expect_congr_on_support
   intro disclose _
-  rw [expect_map]
+  rw [Function.comp_apply, expect_map]
   exact Enforcement.alice_service_value table _ bit guess disclose who
 
 theorem bob_choice_value (table : PayoffTable)
@@ -57,7 +58,7 @@ theorem bob_choice_value (table : PayoffTable)
       expect (targetDisclosures profile bit guess) fun disclose =>
         tableReward table (sourceResults (finalConfig bit guess disclose).state) who := by
   rw [runInteractionPlan_append, bob_to_alice, decoded_alice_response, PMF.map_comp,
-    PMF.bind_map, FinDist.expect_bind]
+    PMF.bind_map, expect_bind_tower _ _ _ (Enforcement.executionUtility_integrable table who _)]
   apply expect_congr_on_support
   intro disclose _
   exact Enforcement.alice_service_value table _ bit guess disclose who
@@ -78,10 +79,11 @@ theorem bob_finish_value (table : PayoffTable)
       .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _
     (some ⟨9, some bob, quietBob bit⟩) = _ at finish
-  rw [finish, decoded_bob_response, PMF.bind_map, FinDist.expect_bind]
+  rw [finish, decoded_bob_response, PMF.bind_map,
+    expect_bind_tower _ _ _ (Enforcement.stateUtility_integrable table who _)]
   apply expect_congr_on_support
   intro guess _
-  rw [expect_map]
+  rw [Function.comp_apply, expect_map]
   exact bob_choice_value table profile bit guess who
 
 theorem targetDisclosures_update_bob (profile : Profile restrictedModel.behavioralSignature)
@@ -110,7 +112,8 @@ theorem alice_context_value (table : PayoffTable)
 
 theorem receiver_context_value (table : PayoffTable)
     (assessment : restrictedModel.BehavioralAssessment)
-    (consistent : assessment.IsSequentiallyConsistent restricted_decisionRecall.decisionInformationAntichain)
+    (consistent : assessment.IsSequentiallyConsistent
+      restricted_decisionRecall.decisionInformationAntichain)
     (site : restrictedModel.InformationSite bob)
     (alternative : restrictedModel.BehavioralPolicy bob) :
     (assessment.continuationContext site

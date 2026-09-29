@@ -75,13 +75,13 @@ theorem report_sample_law (bit : Bool) (probability : ℝ) (nonnegative : 0 ≤ 
     (partialSample probability nonnegative atMostOne).map (sampledReports bit) =
       mix probability nonnegative atMostOne
         (PMF.pure [certifiedEnvelope bit]) (PMF.pure []) := by
-  simp [partialSample, mix_map, sample_finds_report, empty_sample_no_report]
+  simp [partialSample, mix_map, PMF.pure_map, sample_finds_report, empty_sample_no_report]
 
 theorem exact_detection_probability (bit : Bool) (probability : ℝ)
     (nonnegative : 0 ≤ probability) (atMostOne : probability ≤ 1) :
     ((((partialSample probability nonnegative atMostOne).map (sampledReports bit)).map
       (fun reports => !reports.isEmpty)) true).toReal = probability := by
   rw [report_sample_law]
-  simp [mix_map, mix_apply_toReal, toReal_pure_apply]
+  simp [mix_map, PMF.pure_map, nonnegative]
 
 end Vegas.Examples.PassiveDisclosureMonitoring

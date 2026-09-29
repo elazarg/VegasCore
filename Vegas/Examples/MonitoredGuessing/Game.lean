@@ -69,6 +69,11 @@ structure Results where
   bob : PublicationResult Bool
   deriving DecidableEq
 
+instance : Finite Results :=
+  Finite.of_injective (fun result : Results => (result.alice, result.bob))
+    fun first second same => by
+      cases first; cases second; cases same; rfl
+
 def sourceResults (state : State simpleExpr sourceProgram.terminalCtx) : Results where
   alice := state.get .here
   bob := state.get (.there .here)

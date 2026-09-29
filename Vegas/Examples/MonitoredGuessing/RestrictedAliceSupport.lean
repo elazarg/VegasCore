@@ -51,6 +51,7 @@ theorem reference_receiver_support (bit : Bool) (execution : nativeApp.Execution
     rfl
   rw [activated, PMF.bind_map, PMF.support_bind] at reached
   obtain ⟨response, responseMem, finished⟩ := Set.mem_iUnion₂.mp reached
+  rw [Function.comp_apply] at finished
   have permitted := (restrictedMenu.uniformResponses_support bob _ _ response).mp responseMem
   rw [bob_actions, Finset.mem_insert, Finset.mem_singleton] at permitted
   rcases permitted with rfl | rfl
@@ -136,7 +137,7 @@ theorem alice_control (control : nativeApp.Control)
     left
     change prior ∈ (nativeInitialLaw.bind fun initial =>
       PMF.pure (ReactiveApplication.Execution.initial nativeApp initial)).support at priorMem
-    rw [← PMF.bind_pure_comp, Function.comp_def, nativeInitialLaw, PMF.map_comp, PMF.support_map] at priorMem
+    rw [pmf_bind_pure_eq_map, nativeInitialLaw, PMF.map_comp, PMF.support_map] at priorMem
     obtain ⟨bit, _, rfl⟩ := priorMem
     have commandEq : command = .activate alice := (PMF.mem_support_pure_iff _ _).mp selected
     subst command

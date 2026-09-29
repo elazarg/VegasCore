@@ -79,11 +79,36 @@ theorem protocol_behavioralRun_integrable (program : SourceProgram Player L Γ O
   · funext final
     rfl
 
+/-- A bounded utility is integrable under every law of protocol histories,
+whatever the fresh-binding alphabets. -/
+theorem protocolUtility_integrable_of_bounded (program : SourceProgram Player L Γ O)
+    (admission : CommitmentInterface program) (initial : Config Player L Γ)
+    (utility : State L program.terminalCtx → Player → ℝ) {C : ℝ} (nonnegative : 0 ≤ C)
+    (bound : ∀ state who, |utility state who| ≤ C) (who : Player)
+    (law : PMF (executionProtocol program admission initial).History) :
+    UtilityIntegrable (protocolUtility program admission initial utility) who law :=
+  payoffIntegrable_of_bounded _ _ fun history => by
+    change |(ProtocolState.readout program history.state).elim 0 (utility · who)| ≤ C
+    cases ProtocolState.readout program history.state with
+    | none => simpa using nonnegative
+    | some state => exact bound state who
+
+/-- Behavioral SPE of the source protocol is continuation optimality at every
+subgame root, whenever every behavioral continuation has an integrable utility.
+`protocol_behavioralRun_integrable` supplies this for finite fresh-binding
+alphabets and `protocolUtility_integrable_of_bounded` for bounded utilities. -/
 theorem protocol_isBehavioralSubgamePerfect_iff (program : SourceProgram Player L Γ O)
     (admission : CommitmentInterface program) (initial : Config Player L Γ)
-    (finite : program.FiniteBindingTypes)
     (profile : Profile (admittedBehavioralSignature program admission))
-    (utility : State L program.terminalCtx → Player → ℝ) :
+    (utility : State L program.terminalCtx → Player → ℝ)
+    (integrable : ∀ (other : Profile (admittedBehavioralSignature program admission))
+      (history : (executionProtocol program admission initial).History) (who : Player),
+      UtilityIntegrable (protocolUtility program admission initial utility) who
+        ((informationModel program admission initial).runSingleMoverBehavioralFrom
+          (protocol_singleMover program admission initial)
+          (Profile.map (target := (informationModel program admission initial).behavioralSignature)
+            (fun who => behavioralPolicyEquiv program admission initial who) other)
+          (instructionCount program) history)) :
     (informationModel program admission initial).IsSingleMoverBehavioralSubgamePerfect
         (protocol_singleMover program admission initial)
         (protocol_bounded program admission initial)
@@ -109,9 +134,7 @@ theorem protocol_isBehavioralSubgamePerfect_iff (program : SourceProgram Player 
     obtain ⟨sourceAlternative, rfl⟩ :=
       (behavioralPolicyEquiv program admission initial who).surjective alternative
     rw [← Profile.map_update]
-    refine ⟨protocol_behavioralRun_integrable program admission initial finite profile utility
-      history who, protocol_behavioralRun_integrable program admission initial finite _ utility
-      history who, ?_⟩
+    refine ⟨integrable profile history who, integrable _ history who, ?_⟩
     simp only [expectedUtility]
     rw [protocol_behavioralContinuationValue_eq, protocol_behavioralContinuationValue_eq]
     exact optimal history proper who sourceAlternative

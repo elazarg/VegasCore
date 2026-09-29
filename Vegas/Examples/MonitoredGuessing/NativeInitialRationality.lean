@@ -43,12 +43,14 @@ theorem initial_silent_value (deposit : ℝ) (players : Player → nativeApp.Pol
       guesses.map nativeGuessAction) :
     initialResponseValue deposit players bit nativeSilent =
       expect guesses (fun guess =>
-        expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
-          (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice)) := by
+        expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+          (nativePlan.drop 5) (quietGuessRespond bit guess))
+            (nativeExecutionUtility deposit alice)) := by
   unfold initialResponseValue
   rw [show nativePlan.tail = [.player watcher, .wire, .grant bobPublication, .player bob] ++
     nativePlan.drop 5 from rfl, runInteractionPlan_append, quiet_silent_to_bob players reports,
-    guessing, FinDist.expect_bind, expect_map, expect_map]
+    guessing, expect_bind_tower _ _ _ (nativeExecutionUtility_integrable deposit alice _),
+    expect_map, expect_map]
   rfl
 
 theorem initial_silent_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
@@ -72,7 +74,8 @@ theorem initial_silent_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
     convert result using 1
     cases bit <;> cases guess <;> norm_num [correctness, guessResult, rejectedAlice, alice, bob,
       PublicationResult.isSuccess]
-  apply (FinDist.expect_mono (fun guess _ => bound guess)).trans_eq
+  apply (expect_mono (fun guess _ => bound guess) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)).trans_eq
   simpa only [mul_one] using expect_ite_eq guesses bit 1
 
 theorem initial_silent_value_eq (deposit : ℝ) (players : Player → nativeApp.Policy)
@@ -91,6 +94,7 @@ theorem initial_silent_value_eq (deposit : ℝ) (players : Player → nativeApp.
     have value := congrArg (fun law => expect law (fun result : Results × Bool =>
       utility result.1 alice - if result.2 then deposit else 0)) summarized
     rw [expect_map, expect_pure] at value
+    simp only [Function.comp_def] at value
     convert value using 1
     · apply expect_congr_on_support
       intro execution _
@@ -146,8 +150,8 @@ theorem initial_alice_site_dominates (deposit : ℝ) (sufficient : 2 ≤ deposit
   change _ ≤ expect (PMF.pure nativeSilent) (initialResponseValue deposit players bit)
   rw [expect_pure,
     initial_silent_value_eq deposit players opens reports guesses bit guessing]
-  apply FinDist.expect_le_of_forall
-  intro action supported
+  refine expect_le_const _ _ (nativeExecutionValue_integrable deposit alice _ _) _
+    fun action supported => ?_
   have covered := nativeMenu.decode_embedPolicy_covered nativeInitialLaw nativeHorizon
     nativeScheduler alice ((Profile.update (sig := nativeModel.behavioralSignature)
       assessment.strategy alice alternative) alice) []

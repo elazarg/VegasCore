@@ -79,7 +79,8 @@ theorem controlStep_response {Claim : Type} (players : Player → (application C
       (chooseAt players who execution).map fun action =>
         some ⟨remaining, none, execution.respond (application Claim) who action⟩ := by
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
-    ReactiveApplication.transition, ↓reduceIte, Option.getD_some, chooseAt, ← PMF.bind_pure_comp, Function.comp_def]
+    ReactiveApplication.transition, ↓reduceIte, Option.getD_some, chooseAt, ← PMF.bind_pure_comp,
+        Function.comp_def]
 
 theorem controlStep_instruction {Claim : Type} (players : Player → (application Claim).Policy)
     (remaining : Nat) (execution : (application Claim).Execution) (next : Instruction)
@@ -182,7 +183,8 @@ theorem controlLaw_instructions {Claim : Type} (players : Player → (applicatio
         (by simpa only [List.append_assoc, List.singleton_append] using split)
         middle nextPosition remaining (by simpa only [List.length_cons, Nat.succ_le_succ_iff]
           using enough)
-      simpa only [List.length_cons, Nat.succ_eq_add_one, Nat.add_sub_add_right] using restLaw
+      simpa only [List.length_cons, Nat.succ_eq_add_one, Nat.add_sub_add_right,
+        Function.comp_apply] using restLaw
 
 theorem runInstructions_environmentCount {Claim : Type}
     (players : Player → (application Claim).Policy) (plan : List Instruction)
@@ -211,7 +213,7 @@ theorem runInstructions_player {Claim : Type} (players : Player → (application
           ((effect execution (.activate who)).respond (application Claim) who response) := by
   simp only [runInstructions, instruction, ReactiveApplication.dispatch, effect_law,
     PMF.pure_bind, ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-    ReactiveApplication.invoke, PMF.bind_map, chooseAt]
+    ReactiveApplication.invoke, PMF.bind_map, chooseAt, Function.comp_def]
 
 theorem runInstructions_nil {Claim : Type} (players : Player → (application Claim).Policy)
     (execution : (application Claim).Execution) :
@@ -280,7 +282,7 @@ theorem bob_prefix_law {Claim : Type} (players : Player → (application Claim).
       .application (.settle 1), .application (.grant 2)] (root Claim)).map _ = _
   simp only [runInstructions_player, runInstructions_application, runInstructions_record,
     runInstructions_nil, PMF.map_bind, PMF.pure_map,
-    guessLaw, bindingLaw, PMF.bind_bind, PMF.bind_map, PMF.map_comp]
+    guessLaw, bindingLaw, PMF.bind_bind, PMF.bind_map, PMF.map_comp, Function.comp_def]
   rfl
 
 theorem controlLaw_carol {Claim : Type} (players : Player → (application Claim).Policy) :

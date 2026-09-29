@@ -98,14 +98,14 @@ theorem bindingLaw_swapHidden {Claim : Type} (players : Player → (application 
   classical
   apply pmf_ext_toReal
   intro sample
-  have mapped := FinDist.prob_map_of_injective BindingSample.swapHidden
-    BindingSample.swapHidden_involutive.injective (bindingLaw players) sample.swapHidden
+  have mapped := pmf_map_apply_of_injective (bindingLaw players)
+    BindingSample.swapHidden_involutive.injective sample.swapHidden
   rw [BindingSample.swapHidden_involutive] at mapped
   rw [mapped]
   by_cases clean : sample.Uncertified
   · rw [BindingSample.swapHidden, ite_eq_left clean]
-    exact PMF.apply_involution (bindingLaw players) BindingSample.flip
-      BindingSample.flip_involutive (bindingLaw_flip players symmetric) sample
+    exact congrArg ENNReal.toReal (PMF.apply_involution (bindingLaw players) BindingSample.flip
+      BindingSample.flip_involutive (bindingLaw_flip players symmetric) sample)
   · rw [BindingSample.swapHidden, ite_eq_right clean]
 
 def BindingSample.carolInformation {Claim : Type} (sample : BindingSample Claim) :
@@ -147,9 +147,12 @@ theorem carol_conditional_fair {Claim : Type} (players : Player → (application
     (positive : ∃ sample ∈ {sample | BindingSample.hiddenCarolInformation sample = some info},
       sample ∈ (bindingLaw players).support) :
     (((bindingLaw players).filter
-      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).toOuterMeasure {sample | sample.Uncertified ∧ sample.value = .success false}).toReal =
+      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).toOuterMeasure
+          {sample | sample.Uncertified ∧ sample.value = .success false}).toReal =
     (((bindingLaw players).filter
-      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).toOuterMeasure {sample | sample.Uncertified ∧ sample.value = .success true}).toReal := by
+      {sample | BindingSample.hiddenCarolInformation sample = some info} positive).toOuterMeasure
+          {sample | sample.Uncertified ∧ sample.value = .success true}).toReal := by
+  congr 1
   apply PMF.filter_observation_toOuterMeasure_eq _ BindingSample.swapHidden
     BindingSample.swapHidden_involutive (bindingLaw_swapHidden players symmetric)
     BindingSample.hiddenCarolInformation BindingSample.hiddenCarolInformation_swapHidden
@@ -192,7 +195,7 @@ theorem guessLaw_swap {Claim : Type} (players : Player → (application Claim).P
       rw [PMF.bind_map]
       apply bind_congr_on_support _
       intro sample _
-      rw [sample.carolInformation_swapHidden, PMF.map_comp]
+      rw [Function.comp_apply, sample.carolInformation_swapHidden, PMF.map_comp]
       rfl
     _ = _ := by rw [bindingLaw_swapHidden players symmetric]
 
@@ -230,8 +233,13 @@ theorem bob_conditional_fair {Claim : Type} (players : Player → (application C
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView)
     (positive : ∃ sample ∈ {sample | hiddenBobInformation sample = some info},
       sample ∈ (guessLaw players).support) :
-    (((guessLaw players).filter {sample | hiddenBobInformation sample = some info} positive).toOuterMeasure {sample | sample.1.Uncertified ∧ sample.1.value = .success false}).toReal =
-    (((guessLaw players).filter {sample | hiddenBobInformation sample = some info} positive).toOuterMeasure {sample | sample.1.Uncertified ∧ sample.1.value = .success true}).toReal := by
+    (((guessLaw players).filter
+        {sample | hiddenBobInformation sample = some info} positive).toOuterMeasure
+        {sample | sample.1.Uncertified ∧ sample.1.value = .success false}).toReal =
+    (((guessLaw players).filter
+        {sample | hiddenBobInformation sample = some info} positive).toOuterMeasure
+        {sample | sample.1.Uncertified ∧ sample.1.value = .success true}).toReal := by
+  congr 1
   apply PMF.filter_observation_toOuterMeasure_eq _ swapGuess swapGuess_involutive
     (guessLaw_swap players symmetric) hiddenBobInformation hiddenBobInformation_swap
   intro sample _
@@ -288,8 +296,11 @@ theorem carol_joint_fair {Claim : Type} (players : Player → (application Claim
         chooseAt players alice (aliceInput first second))
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView)
     (hidden : NoPublicAlice info.2) :
-    ((bindingLaw players).toOuterMeasure {sample | sample.carolInformation = info ∧ sample.value = .success false}).toReal =
-      ((bindingLaw players).toOuterMeasure {sample | sample.carolInformation = info ∧ sample.value = .success true}).toReal := by
+    ((bindingLaw players).toOuterMeasure
+        {sample | sample.carolInformation = info ∧ sample.value = .success false}).toReal =
+      ((bindingLaw players).toOuterMeasure
+          {sample | sample.carolInformation = info ∧ sample.value = .success true}).toReal := by
+  congr 1
   apply PMF.toOuterMeasure_eq_of_involution _ BindingSample.swapHidden
     (bindingLaw_swapHidden players symmetric)
   intro sample _
@@ -312,8 +323,11 @@ theorem bob_joint_fair {Claim : Type} (players : Player → (application Claim).
         chooseAt players alice (aliceInput first second))
     (info : List (application Claim).PlayerEntry × (application Claim).PlayerView)
     (hidden : NoPublicAlice info.2) :
-    ((guessLaw players).toOuterMeasure {sample | bobInformation sample = info ∧ sample.1.value = .success false}).toReal =
-      ((guessLaw players).toOuterMeasure {sample | bobInformation sample = info ∧ sample.1.value = .success true}).toReal := by
+    ((guessLaw players).toOuterMeasure
+        {sample | bobInformation sample = info ∧ sample.1.value = .success false}).toReal =
+      ((guessLaw players).toOuterMeasure
+          {sample | bobInformation sample = info ∧ sample.1.value = .success true}).toReal := by
+  congr 1
   apply PMF.toOuterMeasure_eq_of_involution _ swapGuess (guessLaw_swap players symmetric)
   intro sample _
   change bobInformation (swapGuess sample) = info ∧ sample.1.swapHidden.value = .success false ↔

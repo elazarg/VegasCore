@@ -44,7 +44,8 @@ private theorem native_reserved_unique (event : nativeGraph.EventId) (who : Play
   rw [nativeRuntime.interaction_includeLatest_environment] at firstMem secondMem
   obtain ⟨result, law⟩ := nativeRuntime.reactiveLatest_step_pure nativeLeaks who event execution
   rw [law] at firstMem secondMem
-  exact ((PMF.mem_support_pure_iff _ _).mp firstMem).trans ((PMF.mem_support_pure_iff _ _).mp secondMem).symm
+  exact ((PMF.mem_support_pure_iff _ _).mp firstMem).trans
+      ((PMF.mem_support_pure_iff _ _).mp secondMem).symm
 
 private theorem success_of_getD (value : Option (PublicationResult Bool)) (bit : Bool)
     (correct : value.getD .failure = .success bit) : value = some (.success bit) := by

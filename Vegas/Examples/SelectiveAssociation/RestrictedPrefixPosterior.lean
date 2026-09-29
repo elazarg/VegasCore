@@ -74,7 +74,8 @@ theorem bob_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight 
     (uncertified : publicGuess view = false) :
     ((bobLaw (mixed weight positive.le atMostOne)).toOuterMeasure {responses |
       ((bobInput responses).recall bob, (bobInput responses).observe app bob) = (past, view) ∧
-      aliceBindingRef.get? (bobInput responses).application.config.store = some (.success true)}).toReal ≤
+      aliceBindingRef.get? (bobInput responses).application.config.store = some
+          (.success true)}).toReal ≤
     ((bobLaw (mixed weight positive.le atMostOne)).toOuterMeasure {responses |
       ((bobInput responses).recall bob, (bobInput responses).observe app bob) = (past, view) ∧
       aliceBindingRef.get? (bobInput responses).application.config.store =

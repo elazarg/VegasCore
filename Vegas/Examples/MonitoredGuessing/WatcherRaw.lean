@@ -27,7 +27,8 @@ theorem watcher_raw_equilibrium_extends
     (utilityInvariant : ∀ state, utility (normalization.state state) = utility state)
     (indifferent : ∀ state, utility state watcher = 0)
     (source : watchedModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor watched_decisionRecall.decisionInformationAntichain
+    (equilibrium : source.IsSequentialEquilibriumFor
+      watched_decisionRecall.decisionInformationAntichain
       (fun who site => source.continuationContext site
         (fun history => utility history.state who)
         (2 * nativeHorizon + 1 - watchedDepth who site))) :

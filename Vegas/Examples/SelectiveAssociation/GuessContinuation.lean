@@ -20,8 +20,9 @@ theorem native_carol_continuation_bound (players : Player → nativeApp.Policy)
     expect (nativeApp.runRounds scheduler players rounds execution)
         (fun final => correctness aliceResult (nativeResults final.application.config).carol) ≤
       correctness aliceResult guess := by
-  apply FinDist.expect_le_of_forall
-  intro final supported
+  refine expect_le_const _ _ (payoffIntegrable_of_finite_summary _
+    (fun final : nativeApp.Execution => (nativeResults final.application.config).carol)
+    (correctness aliceResult)) _ fun final supported => ?_
   have invariant := (ReactiveApplication.Invariant.policyInvariant nativeApp
     (nativeRuntime.reactiveStateInvariant nativeLeaks nativeInputs) players).runRounds
       scheduler rounds execution final valid supported

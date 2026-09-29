@@ -161,9 +161,9 @@ theorem alice_early_rational (assessment : model.BehavioralAssessment)
       (fun history => nativeUtility alice history.state) (2 * nativeHorizon + 1)) := by
   intro alternative _
   simp only [InformationModel.BehavioralAssessment.continuationContext_value,
-    FinDist.expect_bind, strategy, Profile.update_eq_self]
-  apply FinDist.expect_mono
-  intro history _
+    expect_bind_of_finite, strategy, Profile.update_eq_self]
+  refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
+    (payoffIntegrable_of_finite _ _)
   obtain ⟨control, stateEq, active, _, observed⟩ :=
     information_control alice past view ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
@@ -185,8 +185,7 @@ theorem alice_early_rational (assessment : model.BehavioralAssessment)
     · exact profile_alice_binding_payoff alice control trace active granted _
         (full_enough control trace) final finalMem
   rw [prescribed]
-  apply FinDist.expect_le_of_forall
-  intro final finalMem
+  refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun final finalMem => ?_
   rcases current with ambient | granted
   · exact alice_prelude_payoff_bound alternative control trace active ambient final finalMem
   · exact alice_binding_payoff_bound alternative control trace active granted final finalMem

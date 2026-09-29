@@ -32,8 +32,8 @@ theorem bob_extra_addressed_le_lower (table : PayoffTable)
       Enforcement.payoffLower table bob := by
   rw [runInteractionPlan, bob_addressed_included players bit submission addressed,
     PMF.pure_bind]
-  apply FinDist.expect_le_of_forall
-  intro final supported
+  refine expect_le_const _ _ (Enforcement.executionUtility_integrable table bob _) _
+    fun final supported => ?_
   apply Enforcement.detected_bob_utility_le table final
   exact bob_ledger_plan_persists players rest (bobIncluded bit submission) final
     (extra_addressed_bob_detected bit submission available extra addressed) supported

@@ -218,10 +218,11 @@ theorem native_opening_behavioral_lower
   rw [expectation]
   calc
     -1 = expect finished (fun _ => -1) := (expect_constant _ _).symm
-    _ ≤ expect finished (nativeUtility who) := FinDist.expect_mono (by
+    _ ≤ expect finished (nativeUtility who) := expect_mono (by
       intro result supported
       obtain ⟨final, rfl, published⟩ := native_opening_finish players control trace who bit active
         granted unfinished stored (native_profile_opens profile who _ _ opens) result supported
       exact native_opening_utility_lower final.execution.application.config who bit published)
+      (payoffIntegrable_constant _ _) (nativeUtility_integrable _ who)
 
 end Vegas.Examples.SelectiveAssociation
