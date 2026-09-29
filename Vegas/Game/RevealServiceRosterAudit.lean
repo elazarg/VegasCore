@@ -37,7 +37,8 @@ local instance : Nonempty ((bounds.menu (runtime setup) leaks).protocol (initial
 open Classical in
 /-- Standard SE and the joint observation/realized settlement law survive
 restoration of every bounded raw response. There is no strategic watcher slot. -/
-theorem roster_audited_sequential_equilibrium
+theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.FiniteSupport]
+    [network.FiniteSupport]
     (reveals : setup.program.RevealOnly)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (base : (application setup leaks).ProtocolState → Player → ℝ)

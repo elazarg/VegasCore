@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 omit [Fintype Player] in
 theorem roster_compiled_prefix_checkpoint [Finite Player]
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -66,7 +66,7 @@ theorem roster_compiled_prefix_checkpoint [Finite Player]
   exact ⟨initial, initialSupport, state, related, readout⟩
 
 theorem roster_owner_information_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -183,7 +183,7 @@ theorem roster_owner_information_law
     have afterEq : prior.bind
         ((runtime setup).runInteractionPlan leaks players network [.grant event]) = after := by
       rw [grants]
-      exact (FinDist.map_eq_bind granted prior).symm
+      exact PMF.bind_pure_comp _ _
     simpa only [afterEq] using grantFactor
   obtain ⟨channel, law⟩ := roster_owner_information_kernel setup leaks rosters timing decoded
     event owner owned after (fun execution supported => by
@@ -244,7 +244,7 @@ omit [Fintype Player] in
 /-- A supported actual owner input retains the semantic application of its
 granted source checkpoint, even though its traffic and allocator have changed. -/
 theorem roster_owner_supported_application [Finite Player]
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -305,7 +305,7 @@ theorem roster_owner_supported_application [Finite Player]
 
 omit [Fintype Player] in
 theorem roster_owner_information_projects [Finite Player]
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
@@ -352,7 +352,7 @@ theorem roster_owner_information_projects [Finite Player]
 source-state posterior. The observation includes complete private response
 recall and the current passive sample, at any position in the phase. -/
 theorem roster_owner_state_posterior
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)

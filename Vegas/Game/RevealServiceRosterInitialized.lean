@@ -91,7 +91,7 @@ theorem roster_restrict_complete_state
 finite source profile's initialized readout law. The fixed event timing laws
 and actual passive observations remain in the native execution. -/
 theorem rosterPerturbedProfile_readout_law
-    (setup : Setup (Player := Player) (L := L))
+    (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)

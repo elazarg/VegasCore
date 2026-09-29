@@ -30,7 +30,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (admission : CommitmentInterface setup.program)
 
 include reveals observer openable in
-theorem owner_compiled_choice_law
+theorem owner_compiled_choice_law [setup.FiniteInitialLaw]
     (source : Profile (setup.informationModel admission).behavioralSignature)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (small : weight ≤ 1)
     (who : Player)
@@ -99,7 +99,7 @@ open Classical in
 /-- Matching Boolean laws at one native and source site gives matching actual
 continuation values. The source state posterior and unchanged baseline source
 continuation supply everything needed after the immediate action. -/
-theorem owner_context_eq_source_local
+theorem owner_context_eq_source_local [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (source : (setup.informationModel admission).BehavioralAssessment)
     (target : (information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).BehavioralAssessment)
@@ -132,6 +132,7 @@ theorem owner_context_eq_source_local
         (instructionCount setup.program + 1)).value
           ((source.strategy who).withLaw sourceSite.1 sourceLaw) := by
   classical
+  have := setup.reveal_finite_history reveals admission
   have sectionExists (disclose : Bool) :
       ∃ choice : (setup.informationModel admission).Choice who sourceSite.1,
         OwnAction.disclosure choice.1 = disclose := by
@@ -155,14 +156,14 @@ theorem owner_context_eq_source_local
     setup.continuationContext_local_value_stateBelief admission source who sourceSite
       (source_site_nonterminal setup admission who sourceSite) sourceLaw utility
       (instructionCount setup.program) enough]
-  simp only [InformationModel.BehavioralAssessment.stateBelief, expect_map]
+  simp only [InformationModel.BehavioralAssessment.stateBelief, expect_map, Function.comp_def]
   apply expect_congr_on_support
   intro history _supported
   have projected := congrArg (fun distribution => expect distribution (fun disclose =>
     expect ((setup.protocolStep history.1.state (joint disclose)).bind
       (setup.continuationLaw
         (setup.decodeBehavioralProfile admission source.strategy))) utility)) choices
-  simp only [expect_map] at projected
+  simp only [expect_map, Function.comp_def] at projected
   rw [projected]
   apply expect_congr_on_support
   intro choice _supported
@@ -187,7 +188,7 @@ include reveals observer openable in
 open Classical in
 /-- Original source sequential rationality rules out every local native
 response law, including mixtures over privately remembered replay aliases. -/
-theorem owner_local_optimal
+theorem owner_local_optimal [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (source : (setup.informationModel admission).BehavioralAssessment)
     (target : (information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).BehavioralAssessment)
@@ -260,6 +261,6 @@ theorem owner_local_optimal
   rw [InformationModel.BehavioralPolicy.withLaw_eq_self,
     InformationModel.BehavioralPolicy.withLaw_eq_self] at baseline
   rw [changed, baseline]
-  exact optimal _ (Set.mem_univ _)
+  exact optimal.2.2 _ (Set.mem_univ _)
 
 end Vegas

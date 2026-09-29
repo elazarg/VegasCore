@@ -127,7 +127,7 @@ theorem replay_response_traffic
       exact (List.not_mem_nil observed).elim
     rw [replay_menu_watcher] at allowed
     rcases Finset.mem_union.mp allowed with silence | replayed
-    · rw [quiet, Set.Finite.mem_toFinset, PMF.mem_support_pure_iff _ _] at silence
+    · rw [Set.Finite.mem_toFinset, quiet, PMF.mem_support_pure_iff _ _] at silence
       subst response
       cases control with
       | mk remaining actor execution =>
