@@ -28,9 +28,9 @@ theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralS
       nativeScheduler alice (profile alice)) = _
     rw [alicePolicy, decode_native_alice]
   have finishLaw := native_finish_response players
-    [.player alice, .player watcher, .wire, .grant bobPublication]
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
+    [.player alice, .player watcher, .wire]
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+      resolutionTail) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
     (quietBobHistory bit).state = _ at finishLaw
   change expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players

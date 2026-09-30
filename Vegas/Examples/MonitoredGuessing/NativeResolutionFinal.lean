@@ -14,17 +14,6 @@ namespace Vegas.Examples.MonitoredGuessing
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
-theorem resolution_final_position (control : nativeApp.Control)
-    (trace : nativeArena.Trace (some control)) (active : control.actor = some alice)
-    (granted : control.execution.application.serviceGrant = some alicePublication) :
-    control.execution.environmentRecall.length = 10 ∧ control.remaining = 4 := by
-  rcases native_alice_calendar control trace active with early | late
-  · obtain ⟨bit, same⟩ := native_alice_initial_representation control trace active early.1
-    subst control
-    change none = some alicePublication at granted
-    cases granted
-  · exact late
-
 /-- Once Bob's guess has settled, no later raw response can improve on a
 truthful final opening or remove an earlier sanction. -/
 theorem resolution_plan_alice_upper (deposit : ℝ) (nonnegative : 0 ≤ deposit)
@@ -52,7 +41,7 @@ theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤
     (alternative : nativeModel.BehavioralPolicy alice)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some alice)
-    (position : control.execution.environmentRecall.length = 10)
+    (position : control.execution.environmentRecall.length = 8)
     (remaining : control.remaining = 4)
     (ready : control.execution.application.config.cut.Ready alicePublication)
     (timely : control.execution.application.WithinDeadline nativeRuntime alicePublication)
@@ -66,7 +55,6 @@ theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤
       (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
       (some control)) (nativeUtility deposit alice) := by
   obtain ⟨bit, fixed⟩ := native_history_fixed control trace
-  have grant := native_alice_final_grant control trace active position
   have serials := nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw
     nativeHorizon (nativeMenu.toRawTrace nativeInitialLaw nativeHorizon nativeScheduler trace)
   have opens : (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
@@ -76,7 +64,7 @@ theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤
       nativeScheduler alice (profile alice))) _ _ = _
     rw [prescribed, decode_native_alice]
     change PMF.pure (nativeAliceResponse (control.execution.observe nativeApp alice)) = _
-    rw [native_alice_response_eq bit control.execution fixed grant]
+    rw [native_alice_response_eq bit control.execution fixed ready]
   have bounded := resolution_finish_alice_dominates deposit nonnegative
     (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
     (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
@@ -93,7 +81,7 @@ theorem resolution_final_site_dominates (deposit : ℝ) (nonnegative : 0 ≤ dep
     (site : nativeModel.InformationSite alice)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : view.application.publicView.serviceGrant = some alicePublication)
+    (responded : past.length = 1)
     (alternative : nativeModel.BehavioralPolicy alice) :
     (assessment.truncatedContinuationContext site
       (fun history => nativeUtility deposit alice history.state)
@@ -108,15 +96,12 @@ theorem resolution_final_site_dominates (deposit : ℝ) (nonnegative : 0 ≤ dep
     (payoffIntegrable_of_finite _ _)
   let typed : nativeModel.InformationHistory alice (some (past, view)) :=
     ⟨history.1, history.2.trans information⟩
-  obtain ⟨control, stateEq, active, _, observed⟩ :=
+  obtain ⟨control, stateEq, active, recalled, _⟩ :=
     native_information_control alice past view typed
   have trace : nativeArena.Trace (some control) := stateEq ▸ history.1.trace
-  have grant : control.execution.application.serviceGrant = some alicePublication := by
-    have projected := congrArg (fun observation : nativeApp.PlayerView =>
-      observation.application.publicView.serviceGrant) observed
-    exact projected.trans granted
-  have position := resolution_final_position control trace active grant
-  obtain ⟨completed, ready, timely⟩ := native_alice_final_service control trace active grant
+  have final : (control.execution.recall alice).length = 1 := by rw [recalled]; exact responded
+  have position := native_alice_final_calendar control trace active final
+  obtain ⟨completed, ready, timely⟩ := native_alice_final_service control trace active final
   have present := control.execution.application.config.output_available bobPublication
   have existsResult : ∃ guess, bobPublicationRef.get?
       control.execution.application.config.store = some guess := by

@@ -24,13 +24,6 @@ def quietAfterWire (bit : Bool) : nativeApp.Execution :=
   { previous with environmentRecall := previous.environmentRecall ++
     [⟨previous.observeEnvironment nativeApp, .wait⟩] }
 
-def quietGranted (bit : Bool) : nativeApp.Execution :=
-  let previous := quietAfterWire bit
-  { previous with
-    application := { previous.application with serviceGrant := some bobPublication }
-    environmentRecall := previous.environmentRecall ++
-      [⟨previous.observeEnvironment nativeApp, .application (.grant bobPublication)⟩] }
-
 theorem quiet_watcher_activation (bit : Bool) :
     (ambientRespond bit nativeSilent).environmentStep nativeApp (.activate watcher) =
       PMF.pure (watcherActivated bit nativeSilent ∅) := by
@@ -47,74 +40,61 @@ theorem quiet_wire (bit : Bool) :
   simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
   rfl
 
-theorem quiet_grant (bit : Bool) :
-    (quietAfterWire bit).environmentStep nativeApp (.application (.grant bobPublication)) =
-      PMF.pure (quietGranted bit) := by
-  simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, PMF.pure_map]
-  rfl
-
 theorem quiet_bob_activation (bit : Bool) :
-    (quietGranted bit).environmentStep nativeApp (.activate bob) =
+    (quietAfterWire bit).environmentStep nativeApp (.activate bob) =
       PMF.pure (quietBob bit) := by
-  have pending : (quietGranted bit).network.pending = [] := rfl
+  have pending : (quietAfterWire bit).network.pending = [] := rfl
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
     nativeLeaks, bob, watcher, show (1 : Player) ≠ 2 by decide, ↓reduceIte, pending,
     pendingIds, List.map_nil, List.toFinset_nil, PMF.pure_map, MessageNetwork.learn_empty]
   rfl
 
 theorem quiet_ambient_trace (bit : Bool) :
-    Nonempty (nativeArena.Trace (some ⟨13, none, ambientRespond bit nativeSilent⟩)) := by
+    Nonempty (nativeArena.Trace (some ⟨11, none, ambientRespond bit nativeSilent⟩)) := by
   obtain ⟨initial⟩ := native_initial_trace bit
   obtain ⟨active⟩ := nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler
-    13 (nativeStart bit) (aliceActivated bit) (.activate alice) initial (by
+    11 (nativeStart bit) (aliceActivated bit) (.activate alice) initial (by
       change _ ∈ (PMF.pure (.activate alice : nativeApp.Command)).support
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) (by
       rw [initial_activation]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  exact nativeMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler 13
+  exact nativeMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler 11
     (aliceActivated bit) alice nativeSilent active (native_silent_available _ _ _)
 
 theorem quiet_watcher_trace (bit : Bool) :
     Nonempty (nativeArena.Trace
-      (some ⟨12, none, watcherRespond bit nativeSilent ∅ nativeSilent⟩)) := by
+      (some ⟨10, none, watcherRespond bit nativeSilent ∅ nativeSilent⟩)) := by
   obtain ⟨previous⟩ := quiet_ambient_trace bit
   obtain ⟨active⟩ := nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler
-    12 (ambientRespond bit nativeSilent) (watcherActivated bit nativeSilent ∅)
+    10 (ambientRespond bit nativeSilent) (watcherActivated bit nativeSilent ∅)
     (.activate watcher) previous (by
       change _ ∈ (PMF.pure (.activate watcher : nativeApp.Command)).support
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) (by
       rw [quiet_watcher_activation]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  exact nativeMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler 12
+  exact nativeMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler 10
     (watcherActivated bit nativeSilent ∅) watcher nativeSilent active
       (native_silent_available _ _ _)
 
 theorem quiet_bob_trace (bit : Bool) :
-    Nonempty (nativeArena.Trace (some ⟨9, some bob, quietBob bit⟩)) := by
+    Nonempty (nativeArena.Trace (some ⟨8, some bob, quietBob bit⟩)) := by
   obtain ⟨previous⟩ := quiet_watcher_trace bit
   obtain ⟨wire⟩ := nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler
-    11 (watcherRespond bit nativeSilent ∅ nativeSilent) (quietAfterWire bit) .wait previous (by
+    9 (watcherRespond bit nativeSilent ∅ nativeSilent) (quietAfterWire bit) .wait previous (by
       change _ ∈ ((PMF.pure NetworkChoice.wait).map _).support
       rw [PMF.pure_map]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) (by
       rw [quiet_wire]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  obtain ⟨granted⟩ := nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler
-    10 (quietAfterWire bit) (quietGranted bit) (.application (.grant bobPublication)) wire (by
-      change _ ∈ (PMF.pure (.application (.grant bobPublication) : nativeApp.Command)).support
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl) (by
-      rw [quiet_grant]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   exact nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler
-    9 (quietGranted bit) (quietBob bit) (.activate bob) granted (by
+    8 (quietAfterWire bit) (quietBob bit) (.activate bob) wire (by
       change _ ∈ (PMF.pure (.activate bob : nativeApp.Command)).support
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) (by
       rw [quiet_bob_activation]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
 def quietBobHistory (bit : Bool) : nativeArena.History :=
-  ⟨some ⟨9, some bob, quietBob bit⟩, (quiet_bob_trace bit).some⟩
+  ⟨some ⟨8, some bob, quietBob bit⟩, (quiet_bob_trace bit).some⟩
 
 theorem quiet_bob_history_info (bit : Bool) :
     nativeModel.infoOf bob (quietBobHistory bit).trace = quietBobInfo := by
@@ -169,64 +149,57 @@ private theorem control_step_player (players : Player → nativeApp.Policy)
 private theorem quiet_step_initial (players : Player → nativeApp.Policy) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players none =
       (PMF.uniformOfFintype Bool).map
-        (fun bit => some ⟨14, none, nativeStart bit⟩) := by
+        (fun bit => some ⟨12, none, nativeStart bit⟩) := by
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_none,
     ReactiveApplication.transition, nativeInitialLaw, PMF.map_comp]
   rfl
 
 private theorem quiet_step_alice (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨14, none, nativeStart bit⟩) =
-      PMF.pure (some ⟨13, some alice, aliceActivated bit⟩) :=
-  control_step_environment players _ _ 13 (.activate alice) rfl (initial_activation bit)
+      (some ⟨12, none, nativeStart bit⟩) =
+      PMF.pure (some ⟨11, some alice, aliceActivated bit⟩) :=
+  control_step_environment players _ _ 11 (.activate alice) rfl (initial_activation bit)
 
 private theorem quiet_step_alice_response (players : Player → nativeApp.Policy)
     (prescribed : ∀ bit, players alice ((aliceActivated bit).recall alice)
       ((aliceActivated bit).observe nativeApp alice) = PMF.pure nativeSilent) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨13, some alice, aliceActivated bit⟩) =
-      PMF.pure (some ⟨13, none, ambientRespond bit nativeSilent⟩) := by
+      (some ⟨11, some alice, aliceActivated bit⟩) =
+      PMF.pure (some ⟨11, none, ambientRespond bit nativeSilent⟩) := by
   rw [control_step_player, prescribed]
   change (PMF.pure nativeSilent).map _ = _
   exact PMF.pure_map _ _
 
 private theorem quiet_step_watcher (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨13, none, ambientRespond bit nativeSilent⟩) =
-      PMF.pure (some ⟨12, some watcher, watcherActivated bit nativeSilent ∅⟩) :=
-  control_step_environment players _ _ 12 (.activate watcher) rfl (quiet_watcher_activation bit)
+      (some ⟨11, none, ambientRespond bit nativeSilent⟩) =
+      PMF.pure (some ⟨10, some watcher, watcherActivated bit nativeSilent ∅⟩) :=
+  control_step_environment players _ _ 10 (.activate watcher) rfl (quiet_watcher_activation bit)
 
 private theorem quiet_step_watcher_response (players : Player → nativeApp.Policy)
     (prescribed : ∀ bit, players watcher ((watcherActivated bit nativeSilent ∅).recall watcher)
       ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher) =
         PMF.pure nativeSilent) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨12, some watcher, watcherActivated bit nativeSilent ∅⟩) =
-      PMF.pure (some ⟨12, none, watcherRespond bit nativeSilent ∅ nativeSilent⟩) := by
+      (some ⟨10, some watcher, watcherActivated bit nativeSilent ∅⟩) =
+      PMF.pure (some ⟨10, none, watcherRespond bit nativeSilent ∅ nativeSilent⟩) := by
   rw [control_step_player, prescribed]
   change (PMF.pure nativeSilent).map _ = _
   exact PMF.pure_map _ _
 
 private theorem quiet_step_wire (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨12, none, watcherRespond bit nativeSilent ∅ nativeSilent⟩) =
-      PMF.pure (some ⟨11, none, quietAfterWire bit⟩) := by
-  apply control_step_environment players _ _ 11 .wait _ (quiet_wire bit)
+      (some ⟨10, none, watcherRespond bit nativeSilent ∅ nativeSilent⟩) =
+      PMF.pure (some ⟨9, none, quietAfterWire bit⟩) := by
+  apply control_step_environment players _ _ 9 .wait _ (quiet_wire bit)
   change (PMF.pure NetworkChoice.wait).map _ = PMF.pure _
   exact PMF.pure_map _ _
 
-private theorem quiet_step_grant (players : Player → nativeApp.Policy) (bit : Bool) :
-    nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨11, none, quietAfterWire bit⟩) =
-      PMF.pure (some ⟨10, none, quietGranted bit⟩) :=
-  control_step_environment players _ _ 10 (.application (.grant bobPublication)) rfl
-    (quiet_grant bit)
-
 private theorem quiet_step_bob (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨10, none, quietGranted bit⟩) =
-      PMF.pure (some ⟨9, some bob, quietBob bit⟩) :=
-  control_step_environment players _ _ 9 (.activate bob) rfl (quiet_bob_activation bit)
+      (some ⟨9, none, quietAfterWire bit⟩) =
+      PMF.pure (some ⟨8, some bob, quietBob bit⟩) :=
+  control_step_environment players _ _ 8 (.activate bob) rfl (quiet_bob_activation bit)
 
 theorem quiet_bob_control_law (players : Player → nativeApp.Policy)
     (alicePolicy : ∀ bit, players alice ((aliceActivated bit).recall alice)
@@ -235,23 +208,23 @@ theorem quiet_bob_control_law (players : Player → nativeApp.Policy)
       ((watcherActivated bit nativeSilent ∅).observe nativeApp watcher) =
         PMF.pure nativeSilent) :
     (fun distribution => distribution.bind
-      (nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players))^[8]
+      (nativeApp.controlStep nativeInitialLaw nativeHorizon nativeScheduler players))^[7]
         (PMF.pure none) =
       (PMF.uniformOfFintype Bool).map
-        (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
+        (fun bit => some ⟨8, some bob, quietBob bit⟩) := by
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, quiet_step_initial, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
         quiet_step_alice,
     quiet_step_alice_response players alicePolicy, quiet_step_watcher,
-    quiet_step_watcher_response players watcherPolicy, quiet_step_wire, quiet_step_grant,
+    quiet_step_watcher_response players watcherPolicy, quiet_step_wire,
     quiet_step_bob]
 
 theorem quiet_bob_history_law (profile : Profile nativeModel.behavioralSignature)
     (alicePolicy : profile alice = nativeAliceBehavior)
     (watcherPolicy : profile watcher = nativeWatcherBehavior) :
-    (nativeModel.runBehavioral profile 8).map History.state =
+    (nativeModel.runBehavioral profile 7).map History.state =
       (PMF.uniformOfFintype Bool).map
-        (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
+        (fun bit => some ⟨8, some bob, quietBob bit⟩) := by
   rw [InformationModel.runBehavioral, nativeMenu.run_map_controlStep]
   apply quiet_bob_control_law
   · intro bit

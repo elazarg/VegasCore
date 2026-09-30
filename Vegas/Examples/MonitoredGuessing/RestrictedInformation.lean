@@ -60,7 +60,7 @@ theorem bob_actions (bit : Bool) :
   classical
   have notWatcher : bob ≠ watcher := by decide
   simp only [restrictedMenu, notWatcher, ↓reduceIte]
-  rw [ordinaryActions, ite_eq_left ⟨rfl, rfl⟩, quiet_bob_opening]
+  rw [ordinaryActions, ite_eq_left ⟨rfl, quiet_bob_turn bit⟩, quiet_bob_opening]
 
 open Classical in
 theorem alice_actions (bit guess : Bool) :
@@ -72,7 +72,7 @@ theorem alice_actions (bit guess : Bool) :
   have notBob : alice ≠ bob := by decide
   simp only [restrictedMenu, notWatcher, ↓reduceIte]
   rw [ordinaryActions, ite_eq_right (fun matching => notBob matching.1),
-    ite_eq_left ⟨rfl, rfl⟩, before_alice_opening]
+    ite_eq_left ⟨rfl, before_alice_turn bit guess⟩, before_alice_opening]
 
 theorem bob_choice_available (bit guess : Bool) :
     choiceAction bobPublication bobHandle true guess ∈

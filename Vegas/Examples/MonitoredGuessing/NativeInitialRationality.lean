@@ -20,19 +20,19 @@ open GameTheory.Math.Probability
 theorem quiet_silent_to_bob (players : Player → nativeApp.Policy)
     (reports : players watcher = nativeWatcherPolicy) (bit : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      [.player watcher, .wire, .grant bobPublication, .player bob]
+      [.player watcher, .wire, .player bob]
       (ambientRespond bit nativeSilent) =
       (players bob [] ((quietBob bit).observe nativeApp bob)).map
         ((quietBob bit).respond nativeApp bob) := by
-  rw [show ([.player watcher, .wire, .grant bobPublication, .player bob] :
+  rw [show ([.player watcher, .wire, .player bob] :
     List (ServiceInstruction nativeGraph)) = [.player watcher, .wire] ++
-      [.grant bobPublication, .player bob] from rfl,
+      [.player bob] from rfl,
     runInteractionPlan_append, monitoring_plan players reports, silent_monitoring_law,
     PMF.pure_bind]
   have quiet : monitoredPrefix bit nativeSilent ∅ = quietAfterWire bit := rfl
   rw [quiet]
   simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-    ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, quiet_grant,
+    ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     quiet_bob_activation, ReactiveApplication.resume, PMF.pure_bind,
     ReactiveApplication.invoke, PMF.bind_pure]
   rfl
@@ -44,11 +44,11 @@ theorem initial_silent_value (deposit : ℝ) (players : Player → nativeApp.Pol
     initialResponseValue deposit players bit nativeSilent =
       expect guesses (fun guess =>
         expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-          (nativePlan.drop 5) (quietGuessRespond bit guess))
+          (nativePlan.drop 4) (quietGuessRespond bit guess))
             (nativeExecutionUtility deposit alice)) := by
   unfold initialResponseValue
-  rw [show nativePlan.tail = [.player watcher, .wire, .grant bobPublication, .player bob] ++
-    nativePlan.drop 5 from rfl, runInteractionPlan_append, quiet_silent_to_bob players reports,
+  rw [show nativePlan.tail = [.player watcher, .wire, .player bob] ++
+    nativePlan.drop 4 from rfl, runInteractionPlan_append, quiet_silent_to_bob players reports,
     guessing, expect_bind_tower _ _ _ (nativeExecutionUtility_integrable deposit alice _),
     expect_map, expect_map]
   rfl
@@ -61,13 +61,13 @@ theorem initial_silent_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
     initialResponseValue deposit players bit nativeSilent ≤ (guesses bit).toReal := by
   rw [initial_silent_value deposit players reports guesses bit guessing]
   have bound : ∀ guess : Bool,
-      expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
+      expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 4)
         (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice) ≤
           if bit = guess then 1 else 0 := by
     intro guess
-    rw [show nativePlan.drop 5 = .includeLatest bobPublication bob :: nativePlan.drop 6 from rfl,
+    rw [show nativePlan.drop 4 = .includeLatest bobPublication bob :: nativePlan.drop 5 from rfl,
       runInteractionPlan, quiet_guess_included, PMF.pure_bind]
-    have result := resolution_plan_alice_upper deposit nonnegative players (nativePlan.drop 6)
+    have result := resolution_plan_alice_upper deposit nonnegative players (nativePlan.drop 5)
       (quietGuessIncluded bit guess) bit (guessResult guess) (quiet_guess_fixed bit guess)
         (quiet_guess_results bit guess).1
     rw [(quiet_guess_results bit guess).2] at result
@@ -86,7 +86,7 @@ theorem initial_silent_value_eq (deposit : ℝ) (players : Player → nativeApp.
     initialResponseValue deposit players bit nativeSilent = (guesses bit).toReal := by
   rw [initial_silent_value deposit players reports guesses bit guessing]
   have exactValue : ∀ guess : Bool,
-      expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 5)
+      expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 4)
         (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice) =
           if bit = guess then 1 else 0 := by
     intro guess

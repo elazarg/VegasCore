@@ -52,9 +52,9 @@ theorem decoded_quiet_watcher (profile : Profile restrictedModel.behavioralSigna
   exact uniform
 
 theorem bob_prefix_law (profile : Profile restrictedModel.behavioralSignature) :
-    (restrictedModel.runBehavioral profile 8).map History.state =
+    (restrictedModel.runBehavioral profile 7).map History.state =
       (PMF.uniformOfFintype Bool).map
-        (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
+        (fun bit => some ⟨8, some bob, quietBob bit⟩) := by
   rw [InformationModel.runBehavioral, restrictedMenu.run_map_controlStep]
   exact quiet_bob_control_law _ (decoded_early_alice profile) (decoded_quiet_watcher profile)
 
@@ -64,18 +64,18 @@ theorem bob_state_belief (assessment : restrictedModel.BehavioralAssessment)
     (site : restrictedModel.InformationSite bob) :
     (assessment.belief bob site).map (fun history => history.1.state) =
       (PMF.uniformOfFintype Bool).map
-        (fun bit => some ⟨9, some bob, quietBob bit⟩) := by
+        (fun bit => some ⟨8, some bob, quietBob bit⟩) := by
   classical
   have depth : ∀ history : restrictedModel.InformationHistory bob site.1,
-      history.1.trace.length = 8 := by
+      history.1.trace.length = 7 := by
     simpa only [restrictedDepth, watchedDepth, effectiveDepth, nativeDecisionDepth, ↓reduceIte,
       InformationModel.InformationSite.CommonDepth]
       using restricted_common_depth bob site
   have seen (history : restrictedArena.History)
-      (supported : history ∈ (restrictedModel.runBehavioral assessment.strategy 8).support) :
+      (supported : history ∈ (restrictedModel.runBehavioral assessment.strategy 7).support) :
       restrictedModel.infoOf bob history.trace = site.1 := by
     have stateSupported : history.state ∈
-        ((restrictedModel.runBehavioral assessment.strategy 8).map History.state).support := by
+        ((restrictedModel.runBehavioral assessment.strategy 7).map History.state).support := by
       rw [PMF.support_map]
       exact ⟨history, supported, rfl⟩
     rw [bob_prefix_law, PMF.support_map] at stateSupported
@@ -85,7 +85,7 @@ theorem bob_state_belief (assessment : restrictedModel.BehavioralAssessment)
       ((congrArg (nativeApp.observe bob) same).symm.trans
         ((bob_input bit).trans (bob_site_input site).symm))
   have belief := assessment.belief_map_eq_run_of_full_reach restrictedModel
-    restricted_decisionRecall.decisionInformationAntichain consistent bob site 8 depth seen
+    restricted_decisionRecall.decisionInformationAntichain consistent bob site 7 depth seen
   have stateLaw := congrArg (fun histories : PMF restrictedArena.History =>
     histories.map History.state) belief
   simpa only [PMF.map_comp, Function.comp_def] using stateLaw.trans (bob_prefix_law _)
@@ -102,7 +102,7 @@ theorem bob_context_value (assessment : restrictedModel.BehavioralAssessment)
           (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := restrictedModel.behavioralSignature)
               assessment.strategy bob alternative))
-          (some ⟨9, some bob, quietBob bit⟩)) payoff) := by
+          (some ⟨8, some bob, quietBob bit⟩)) payoff) := by
   rw [restrictedMenu.context_value_finish]
   have projected := congrArg (fun law : PMF nativeApp.ProtocolState => expect law
     (fun state => expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler

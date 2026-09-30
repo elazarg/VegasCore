@@ -34,9 +34,9 @@ theorem final_finish_comparison (table : PayoffTable)
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
       (some ⟨4, some alice, beforeAlice bit guess⟩))
         (fun state => Enforcement.stateUtility table state alice) := by
-  have rawFinish := native_finish_response rawPlayers (nativePlan.take 9) resolutionTail alice
+  have rawFinish := native_finish_response rawPlayers (nativePlan.take 7) resolutionTail alice
     rfl (beforeAlice bit guess) (before_alice_position bit guess)
-  have legalFinish := native_finish_response legalPlayers (nativePlan.take 9) resolutionTail alice
+  have legalFinish := native_finish_response legalPlayers (nativePlan.take 7) resolutionTail alice
     rfl (beforeAlice bit guess) (before_alice_position bit guess)
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
     (some ⟨4, some alice, beforeAlice bit guess⟩) = _ at rawFinish
@@ -110,7 +110,7 @@ theorem final_continuation_comparison (table : PayoffTable)
       (aliceInput bit guess)).map (fun chosen => chosen.1.getD nativeSilent) = _
     rw [InformationModel.BehavioralPolicy.withLaw_self]
     simp only [ordinaryComparator, PMF.pure_map, Option.getD_some, same]
-    rfl
+    rw [comparator_final]
   have rawLaw := watchedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
     rawProfile fuel (ordinaryRestriction.history history.1) (by
       change nativeApp.rank nativeHorizon history.1.state ≤ fuel

@@ -122,15 +122,8 @@ theorem silent_bob_publication (bit : Bool) :
 def afterBob (bit guess : Bool) : nativeApp.Execution :=
   if guess then quietGuessExpired bit true else silentBobExpired bit
 
-def grantedAlice (bit guess : Bool) : nativeApp.Execution :=
-  let before := afterBob bit guess
-  { before with
-    application := { before.application with serviceGrant := some alicePublication }
-    environmentRecall := before.environmentRecall ++
-      [⟨before.observeEnvironment nativeApp, .application (.grant alicePublication)⟩] }
-
 def beforeAlice (bit guess : Bool) : nativeApp.Execution :=
-  let before := grantedAlice bit guess
+  let before := afterBob bit guess
   { before with environmentRecall := before.environmentRecall ++
       [⟨before.observeEnvironment nativeApp, .activate alice⟩] }
 
@@ -196,9 +189,14 @@ theorem after_bob_clock (bit guess : Bool) : (afterBob bit guess).application.cl
 
 theorem before_alice_fixed (bit guess : Bool) :
     NativeFixed bit (beforeAlice bit guess).application :=
-  (native_fixed_invariant bit).environment (afterBob bit guess).application
-    (.grant alicePublication) _ (after_bob_fixed bit guess)
-    ((PMF.mem_support_pure_iff _ _).mpr rfl)
+  after_bob_fixed bit guess
+
+/-- Alice's publication is her turn at her final decision. -/
+theorem before_alice_turn (bit guess : Bool) :
+    ((beforeAlice bit guess).observe nativeApp alice).application.publicView.ownTurn? alice =
+      some alicePublication :=
+  (native_turn_iff (beforeAlice bit guess).application alicePublication).mpr
+    (after_bob_ready bit guess)
 
 theorem before_alice_timely (bit guess : Bool) :
     (beforeAlice bit guess).application.WithinDeadline nativeRuntime alicePublication := by
@@ -209,15 +207,8 @@ theorem before_alice_timely (bit guess : Bool) :
   rw [after_bob_clock]
   omega
 
-theorem grant_alice (bit guess : Bool) :
-    (afterBob bit guess).environmentStep nativeApp (.application (.grant alicePublication)) =
-      PMF.pure (grantedAlice bit guess) := by
-  simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, PMF.pure_map]
-  rfl
-
 theorem activate_alice (bit guess : Bool) :
-    (grantedAlice bit guess).environmentStep nativeApp (.activate alice) =
+    (afterBob bit guess).environmentStep nativeApp (.activate alice) =
       PMF.pure (beforeAlice bit guess) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
     nativeLeaks, alice, watcher, bob, show (0 : Player) ≠ 2 by decide,
@@ -384,18 +375,17 @@ theorem alice_service_summary (players : Player → nativeApp.Policy)
 
 theorem bob_to_alice (players : Player → nativeApp.Policy) (bit guess : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      [.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice]
+      [.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice]
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) =
       (players alice ((beforeAlice bit guess).recall alice)
         ((beforeAlice bit guess).observe nativeApp alice)).map
           ((beforeAlice bit guess).respond nativeApp alice) := by
   change nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
     ([.includeLatest bobPublication bob, .tick, .expire bobPublication] ++
-      [.grant alicePublication, .player alice]) _ = _
+      [.player alice]) _ = _
   rw [runInteractionPlan_append, bob_service, PMF.pure_bind]
   simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-    ReactiveApplication.dispatch, ReactiveApplication.Command.actor?, grant_alice,
+    ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
     activate_alice, ReactiveApplication.resume, ReactiveApplication.invoke, PMF.bind_pure]
 
 theorem source_results (bit guess disclose : Bool) :
@@ -411,8 +401,8 @@ theorem branch_summary (players : Player → nativeApp.Policy) (bit guess disclo
       ((beforeAlice bit guess).observe nativeApp alice) =
         PMF.pure (choiceAction alicePublication aliceHandle bit disclose)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
         (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
       PMF.pure (sourceResults (finalConfig bit guess disclose).state, false) := by
@@ -425,8 +415,8 @@ theorem branch_initial_type_results (players : Player → nativeApp.Policy)
       ((beforeAlice bit guess).observe nativeApp alice) =
         PMF.pure (choiceAction alicePublication aliceHandle bit disclose)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
         (fun final => (observedAliceBit (final.observe nativeApp alice),
           nativeResults final.application.config, rejectedAlice final.receipts)) =

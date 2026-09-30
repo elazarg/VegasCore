@@ -149,14 +149,14 @@ theorem resolution_finish_alice_value (deposit : ℝ) (players : Player → nati
     (ready : execution.application.config.cut.Ready alicePublication)
     (timely : execution.application.WithinDeadline nativeRuntime alicePublication)
     (serials : execution.network.SerialsBeforeNext)
-    (position : execution.environmentRecall.length = 10)
+    (position : execution.environmentRecall.length = 8)
     (opens : players alice (execution.recall alice) (execution.observe nativeApp alice) =
       PMF.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
       (some ⟨4, some alice, execution⟩)) (nativeUtility deposit alice) =
       correctness (.success bit) guess -
         if rejectedAlice execution.receipts then deposit else 0 := by
-  have finish := native_finish_response players (nativePlan.take 9) resolutionTail alice
+  have finish := native_finish_response players (nativePlan.take 7) resolutionTail alice
     rfl execution position
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
       (some ⟨4, some alice, execution⟩) = _ at finish
@@ -173,7 +173,7 @@ theorem resolution_finish_alice_dominates (deposit : ℝ) (nonnegative : 0 ≤ d
     (ready : execution.application.config.cut.Ready alicePublication)
     (timely : execution.application.WithinDeadline nativeRuntime alicePublication)
     (serials : execution.network.SerialsBeforeNext)
-    (position : execution.environmentRecall.length = 10)
+    (position : execution.environmentRecall.length = 8)
     (opens : prescribed alice (execution.recall alice) (execution.observe nativeApp alice) =
       PMF.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler alternative

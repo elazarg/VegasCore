@@ -6,8 +6,8 @@ import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 
 /-! # Common decision depths in the actual native fixture
 
-The fixed activation roster, existing service grants and existing decision
-recall determine one trace depth for each information site. This certificate
+The fixed activation roster and existing decision recall determine one trace
+depth for each information site. This certificate
 covers arbitrary raw responses and passive observations. It adds no clock or
 other information to a player's view.
 -/
@@ -20,8 +20,8 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 private def scheduledActivations (count : Nat) : Nat :=
-  if count = 0 then 0 else if count = 1 then 1 else if count ≤ 4 then 2
-    else if count ≤ 9 then 3 else 4
+  if count = 0 then 0 else if count = 1 then 1 else if count ≤ 3 then 2
+    else if count ≤ 7 then 3 else 4
 
 private theorem scheduled_activation_count (history : List nativeApp.EnvironmentEntry)
     (view : nativeApp.EnvironmentView) (command : nativeApp.Command)
@@ -33,21 +33,21 @@ private theorem scheduled_activation_count (history : List nativeApp.Environment
   | none =>
       rw [selected, PMF.mem_support_pure_iff _ _] at supported
       subst command
-      have bound : 14 ≤ history.length := by
+      have bound : 12 ≤ history.length := by
         simpa only [← native_horizon] using List.getElem?_eq_none_iff.mp selected
       have nonzero : history.length ≠ 0 := by omega
       have notOne : history.length ≠ 1 := by omega
-      have notFour : ¬history.length ≤ 4 := by omega
-      have notNine : ¬history.length ≤ 9 := by omega
-      simp [scheduledActivations, nonzero, notOne, notFour, notNine,
-        show ¬history.length + 1 ≤ 4 by omega,
-        show ¬history.length + 1 ≤ 9 by omega, ReactiveApplication.Command.actor?]
+      have notThree : ¬history.length ≤ 3 := by omega
+      have notSeven : ¬history.length ≤ 7 := by omega
+      simp [scheduledActivations, nonzero, notOne, notThree, notSeven,
+        show ¬history.length + 1 ≤ 3 by omega,
+        show ¬history.length + 1 ≤ 7 by omega, ReactiveApplication.Command.actor?]
   | some instruction =>
       rw [selected] at supported
       have actor := native_instruction_actor_eq history view instruction command supported
-      have bound : history.length < 14 := by
+      have bound : history.length < 12 := by
         simpa only [← native_horizon] using (List.getElem?_eq_some_iff.mp selected).1
-      have table : ∀ index : Fin 14,
+      have table : ∀ index : Fin 12,
           scheduledActivations (index.val + 1) = scheduledActivations index.val +
             ((nativePlan[index.val]?).bind instructionPlayer).toList.length := by decide
       have counted := table ⟨history.length, bound⟩
@@ -116,11 +116,10 @@ theorem native_initial_alice_information_depth (bit : Bool)
 
 theorem native_final_alice_information_depth (site : nativeModel.InformationSite alice)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
-    (viewed : site.1 = some (past, view))
-    (granted : view.application.publicView.serviceGrant = some alicePublication)
+    (viewed : site.1 = some (past, view)) (responded : past.length = 1)
     (history : nativeModel.InformationHistory alice site.1) :
-    history.1.trace.length = 14 := by
-  obtain ⟨control, stateEq, active, _, observed⟩ := native_information_control alice past view
+    history.1.trace.length = 12 := by
+  obtain ⟨control, stateEq, active, recalled, _⟩ := native_information_control alice past view
     ⟨history.1, history.2.trans viewed⟩
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
@@ -128,11 +127,9 @@ theorem native_final_alice_information_depth (site : nativeModel.InformationSite
   rcases native_alice_calendar control trace active with early | late
   · obtain ⟨bit, same⟩ := native_alice_initial_representation control trace active early.1
     subst control
-    have actualGrant := congrArg (fun observed : nativeApp.PlayerView =>
-      observed.application.publicView.serviceGrant) observed
-    change none = view.application.publicView.serviceGrant at actualGrant
-    rw [granted] at actualGrant
-    cases actualGrant
+    change [] = past at recalled
+    rw [← recalled] at responded
+    cases responded
   · have counted := trace_counted_depth trace
     change trace.length + control.actor.toList.length = _ at counted
     rw [active, late.1] at counted
@@ -179,12 +176,13 @@ theorem native_watcher_information_depth (site : nativeModel.InformationSite wat
       norm_num [scheduledActivations] at counted
       omega
 
-/-- A theorem-side evaluator depth, obtained from information already in the model. -/
+/-- A theorem-side evaluator depth, obtained from information already in the model:
+Alice's own recall distinguishes her two decisions. -/
 def nativeDecisionDepth (who : Player) (site : nativeModel.InformationSite who) : Nat :=
-  if who = bob then 8 else if who = watcher then 4 else
+  if who = bob then 7 else if who = watcher then 4 else
     match site.1 with
     | none => 2
-    | some (_, view) => if view.application.publicView.serviceGrant = none then 2 else 14
+    | some (past, _) => if past = [] then 2 else 12
 
 theorem native_common_decision_depth (who : Player) (site : nativeModel.InformationSite who) :
     InformationModel.InformationSite.CommonDepth nativeModel site (nativeDecisionDepth who site) :=
@@ -192,12 +190,13 @@ theorem native_common_decision_depth (who : Player) (site : nativeModel.Informat
   fin_cases who
   · change InformationModel.InformationSite.CommonDepth nativeModel
       (site : nativeModel.InformationSite alice) (nativeDecisionDepth alice site)
-    rcases native_alice_site_cases site with ⟨bit, rfl⟩ | ⟨past, view, viewed, granted⟩
+    rcases native_alice_site_cases site with ⟨bit, rfl⟩ | ⟨past, view, viewed, responded⟩
     · exact native_initial_alice_information_depth bit
     · intro history
-      have depth := native_final_alice_information_depth site past view viewed granted history
+      have depth := native_final_alice_information_depth site past view viewed responded history
+      have nonempty : past ≠ [] := fun empty => by rw [empty] at responded; cases responded
       simpa only [nativeDecisionDepth, alice, bob, watcher, show (0 : Player) ≠ 1 by decide,
-        show (0 : Player) ≠ 2 by decide, ↓reduceIte, viewed, granted, reduceCtorEq] using depth
+        show (0 : Player) ≠ 2 by decide, ↓reduceIte, viewed, nonempty] using depth
   · exact native_bob_information_depth site
   · exact native_watcher_information_depth site
 

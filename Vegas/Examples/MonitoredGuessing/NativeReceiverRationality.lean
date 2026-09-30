@@ -20,8 +20,8 @@ theorem quiet_raw_finish_value_le (deposit : ℝ) (players : Player → nativeAp
       expect (players bob [] ((quietBob false).observe nativeApp bob))
         (fun response => correctness (.success bit) (quietGuess response players)) := by
   have finishLaw := native_finish_response players
-    [.player alice, .player watcher, .wire, .grant bobPublication]
-    (nativePlan.drop 5) bob rfl (quietBob bit) rfl
+    [.player alice, .player watcher, .wire]
+    (nativePlan.drop 4) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
     (quietBobHistory bit).state = _ at finishLaw
   rw [finishLaw, expect_bind_tower _ _ _

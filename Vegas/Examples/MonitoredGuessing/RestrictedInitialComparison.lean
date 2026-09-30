@@ -75,8 +75,8 @@ theorem initial_clean_finish_lower (table : PayoffTable)
   change _ ≤ expect (nativeRuntime.runInteractionPlan nativeLeaks _ nativeNetwork nativePlan.tail
     (ambientRespond bit nativeSilent))
       (fun execution => Enforcement.executionUtility table execution who)
-  rw [show nativePlan.tail = [.player watcher, .wire, .grant bobPublication, .player bob] ++
-    nativePlan.drop 5 from rfl, runInteractionPlan_append,
+  rw [show nativePlan.tail = [.player watcher, .wire, .player bob] ++
+    nativePlan.drop 4 from rfl, runInteractionPlan_append,
     quiet_silent_to_bob _ (restricted_watcher_policy profile)]
   have guessing : restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
       profile bob [] ((quietBob bit).observe nativeApp bob) =
@@ -88,8 +88,8 @@ theorem initial_clean_finish_lower (table : PayoffTable)
   refine expect_mono (fun guess _ => ?_) (payoffIntegrable_of_finite (α := Bool) _ _)
     (payoffIntegrable_of_finite (α := Bool) _ _)
   change _ ≤ expect (nativeRuntime.runInteractionPlan nativeLeaks _ nativeNetwork
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication, .player alice] ++ resolutionTail)
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+      resolutionTail)
     ((quietBob bit).respond nativeApp bob
       (choiceAction bobPublication bobHandle true guess)))
         (fun execution => Enforcement.executionUtility table execution who)
@@ -114,7 +114,7 @@ theorem initial_continuation_comparison (table : PayoffTable)
     (action : watchedModel.Choice alice (ordinaryRestriction.site alice site).1)
     (extra : action ∉ Set.range (ordinaryRestriction.choice alice site.1))
     (history : restrictedModel.InformationHistory alice site.1)
-    (fuel : Nat) (enough : 27 ≤ fuel) :
+    (fuel : Nat) (enough : 23 ≤ fuel) :
     expect (watchedModel.runBehavioralFrom
       (Profile.update (sig := watchedModel.behavioralSignature) targetProfile alice
         ((targetProfile alice).commit (ordinaryRestriction.site alice site).1 action))

@@ -25,30 +25,30 @@ theorem restricted_before_alice_trace (bit guess : Bool) :
     Nonempty (restrictedArena.Trace (some ⟨4, some alice, beforeAlice bit guess⟩)) := by
   have covered := fun who past view action supported =>
     (restrictedMenu.uniformResponses_support who past view action).mp supported
-  obtain ⟨grantedBob⟩ := restrictedMenu.trace_roundsFrom nativeInitialLaw nativeHorizon
-    nativeScheduler restrictedMenu.uniformResponses covered 4 (by decide) (quietGranted bit) (by
-      rw [reference_rounds_four, PMF.support_map]
+  obtain ⟨wired⟩ := restrictedMenu.trace_roundsFrom nativeInitialLaw nativeHorizon
+    nativeScheduler restrictedMenu.uniformResponses covered 3 (by decide) (quietAfterWire bit) (by
+      rw [reference_rounds_three, PMF.support_map]
       exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
   obtain ⟨bobTrace⟩ := restrictedMenu.trace_environment nativeInitialLaw nativeHorizon
-    nativeScheduler 9 (quietGranted bit) (quietBob bit) (.activate bob) grantedBob
+    nativeScheduler 8 (quietAfterWire bit) (quietBob bit) (.activate bob) wired
     ((PMF.mem_support_pure_iff _ _).mpr rfl) (by
       rw [quiet_bob_activation]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   obtain ⟨responded⟩ := restrictedMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler
-    9 (quietBob bit) bob (choiceAction bobPublication bobHandle true guess) bobTrace
+    8 (quietBob bit) bob (choiceAction bobPublication bobHandle true guess) bobTrace
     (bob_choice_available bit guess)
-  have rounds := native_segment_rounds restrictedMenu.uniformResponses (nativePlan.take 5)
-    [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
-    (nativePlan.drop 9) rfl
+  have rounds := native_segment_rounds restrictedMenu.uniformResponses (nativePlan.take 4)
+    [.includeLatest bobPublication bob, .tick, .expire bobPublication]
+    (nativePlan.drop 7) rfl
     ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) (by
       rw [nativeApp.respond_environmentRecall]
       rfl)
   simp only [List.length_cons, List.length_nil] at rounds
-  obtain ⟨grantedAliceTrace⟩ := restrictedMenu.trace_runRounds nativeInitialLaw nativeHorizon
-    nativeScheduler restrictedMenu.uniformResponses covered 5 4 _ (grantedAlice bit guess) responded
-    (by rw [rounds, bob_to_granted_alice]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
+  obtain ⟨servedTrace⟩ := restrictedMenu.trace_runRounds nativeInitialLaw nativeHorizon
+    nativeScheduler restrictedMenu.uniformResponses covered 5 3 _ (afterBob bit guess) responded
+    (by rw [rounds, bob_service]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   exact restrictedMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 4
-    (grantedAlice bit guess) (beforeAlice bit guess) (.activate alice) grantedAliceTrace
+    (afterBob bit guess) (beforeAlice bit guess) (.activate alice) servedTrace
     (by cases guess <;> exact (PMF.mem_support_pure_iff _ _).mpr rfl)
     (by rw [activate_alice]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
 
@@ -79,21 +79,21 @@ theorem bob_finish_comparison (table : PayoffTable)
       ((beforeAlice bit false).observe nativeApp alice) =
         choices.map (choiceAction alicePublication aliceHandle bit)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
-      (some ⟨9, some bob, quietBob bit⟩))
+      (some ⟨8, some bob, quietBob bit⟩))
         (fun state => Enforcement.stateUtility table state bob) ≤
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
-      (some ⟨9, some bob, quietBob bit⟩))
+      (some ⟨8, some bob, quietBob bit⟩))
         (fun state => Enforcement.stateUtility table state bob) := by
-  have rawFinish := native_finish_response rawPlayers (nativePlan.take 4)
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
-  have legalFinish := native_finish_response legalPlayers (nativePlan.take 4)
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
+  have rawFinish := native_finish_response rawPlayers (nativePlan.take 3)
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+      resolutionTail) bob rfl (quietBob bit) rfl
+  have legalFinish := native_finish_response legalPlayers (nativePlan.take 3)
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+      resolutionTail) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
-    (some ⟨9, some bob, quietBob bit⟩) = _ at rawFinish
+    (some ⟨8, some bob, quietBob bit⟩) = _ at rawFinish
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
-    (some ⟨9, some bob, quietBob bit⟩) = _ at legalFinish
+    (some ⟨8, some bob, quietBob bit⟩) = _ at legalFinish
   rw [rawFinish, legalFinish, rawChoice, legalChoice, PMF.pure_bind,
     PMF.pure_bind, expect_map, expect_map]
   change expect (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork _
@@ -113,7 +113,7 @@ theorem bob_finish_comparison (table : PayoffTable)
   · have lower := bob_extra_addressed_le_clean_outcomes table
       (choices.map (fun disclose => sourceResults (finalConfig bit false disclose).state))
       rawPlayers bit submission available extra addressed
-      ([.tick, .expire bobPublication, .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.tick, .expire bobPublication, .player alice] ++ resolutionTail)
     rw [expect_map] at lower
     have law := silence_continuation_payoff_law table legalPlayers bit choices legalAlice
     have expected := congrArg (fun law : PMF (Results × ℝ) => expect law Prod.snd) law
@@ -122,7 +122,7 @@ theorem bob_finish_comparison (table : PayoffTable)
 
 theorem bob_history_state (site : restrictedModel.InformationSite bob)
     (history : restrictedModel.InformationHistory bob site.1) :
-    ∃ bit, history.1.state = some ⟨9, some bob, quietBob bit⟩ := by
+    ∃ bit, history.1.state = some ⟨8, some bob, quietBob bit⟩ := by
   have active := InformationModel.InformationSite.active restrictedModel site history
   rcases history with ⟨⟨state, trace⟩, observed⟩
   cases state with
@@ -142,7 +142,7 @@ theorem bob_continuation_comparison (table : PayoffTable)
     (action : watchedModel.Choice bob (ordinaryRestriction.site bob site).1)
     (extra : action ∉ Set.range (ordinaryRestriction.choice bob site.1))
     (history : restrictedModel.InformationHistory bob site.1)
-    (fuel : Nat) (enough : 19 ≤ fuel) :
+    (fuel : Nat) (enough : 17 ≤ fuel) :
     expect (watchedModel.runBehavioralFrom
       (Profile.update (sig := watchedModel.behavioralSignature) targetProfile bob
         ((targetProfile bob).commit (ordinaryRestriction.site bob site).1 action))

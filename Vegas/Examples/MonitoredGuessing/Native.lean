@@ -16,7 +16,7 @@ Alice has one ambient response before the ordinary two-event service. Watcher
 independently receives all pending envelopes or none, each with probability one
 half. A subsequent wire turn includes only an Alice envelope actually replayed
 by Watcher. Bob sees pending envelopes before guessing. The source publications
-then receive the usual grant, response, inclusion, and expiry service.
+then receive the usual response, inclusion, and expiry service.
 
 The liability below is an explicit extra utility charge on rejected Alice
 receipts. Receipt persistence is implemented; collection of the charge is an
@@ -69,7 +69,7 @@ theorem native_actor (event : nativeGraph.EventId) :
   fin_cases event <;> rfl
 
 def nativeVisit (event : nativeGraph.EventId) : List (ServiceInstruction nativeGraph) :=
-  [.grant event, .player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
+  [.player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
     List.replicate (nativeRuntime.deadline event) .tick ++ [.expire event]
 
 def nativePlan : List (ServiceInstruction nativeGraph) :=
@@ -119,7 +119,7 @@ abbrev nativeHorizon : Nat := nativePlan.length
 abbrev nativeArena := nativeMenu.protocol nativeInitialLaw nativeHorizon nativeScheduler
 abbrev nativeModel := nativeMenu.information nativeInitialLaw nativeHorizon nativeScheduler
 
-theorem native_horizon : nativeHorizon = 14 := by decide
+theorem native_horizon : nativeHorizon = 12 := by decide
 
 def aliceInput : nativeGraph.InputId := ⟨0, by decide⟩
 def bobInput : nativeGraph.InputId := ⟨1, by decide⟩

@@ -21,7 +21,7 @@ open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 def tableReward (table : PayoffTable) (result : Results) (who : Player) : ℝ := table result who
 
 theorem before_alice_position (bit guess : Bool) :
-    (beforeAlice bit guess).environmentRecall.length = 10 := by
+    (beforeAlice bit guess).environmentRecall.length = 8 := by
   cases guess <;> rfl
 
 theorem alice_finish_value (table : PayoffTable)
@@ -34,7 +34,7 @@ theorem alice_finish_value (table : PayoffTable)
         tableReward table (sourceResults (finalConfig bit guess disclose).state) who := by
   have finish := native_finish_response
     (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-    (nativePlan.take 9) resolutionTail alice rfl (beforeAlice bit guess)
+    (nativePlan.take 7) resolutionTail alice rfl (beforeAlice bit guess)
     (before_alice_position bit guess)
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _
     (some ⟨4, some alice, beforeAlice bit guess⟩) = _ at finish
@@ -50,8 +50,8 @@ theorem bob_choice_value (table : PayoffTable)
     expect (nativeRuntime.runInteractionPlan nativeLeaks
       (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
       nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       ((quietBob bit).respond nativeApp bob
         (choiceAction bobPublication bobHandle true guess)))
         (fun final => Enforcement.executionUtility table final who) =
@@ -67,18 +67,18 @@ theorem bob_finish_value (table : PayoffTable)
     (profile : Profile restrictedModel.behavioralSignature) (bit : Bool) (who : Player) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-      (some ⟨9, some bob, quietBob bit⟩))
+      (some ⟨8, some bob, quietBob bit⟩))
         (fun state => Enforcement.stateUtility table state who) =
       expect (targetGuesses profile) fun guess =>
         expect (targetDisclosures profile bit guess) fun disclose =>
           tableReward table (sourceResults (finalConfig bit guess disclose).state) who := by
   have finish := native_finish_response
     (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-    [.player alice, .player watcher, .wire, .grant bobPublication]
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
+    [.player alice, .player watcher, .wire]
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+      resolutionTail) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _
-    (some ⟨9, some bob, quietBob bit⟩) = _ at finish
+    (some ⟨8, some bob, quietBob bit⟩) = _ at finish
   rw [finish, decoded_bob_response, PMF.bind_map,
     expect_bind_tower _ _ _ (Enforcement.stateUtility_integrable table who _)]
   apply expect_congr_on_support

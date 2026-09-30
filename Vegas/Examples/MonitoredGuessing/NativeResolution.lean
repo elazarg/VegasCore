@@ -165,11 +165,11 @@ theorem native_observed_alice_bit (bit : Bool) (execution : nativeApp.Execution)
 
 theorem native_alice_response_eq (bit : Bool) (execution : nativeApp.Execution)
     (valid : NativeFixed bit execution.application)
-    (grant : execution.application.serviceGrant = some alicePublication) :
+    (ready : execution.application.config.cut.Ready alicePublication) :
     nativeAliceResponse (execution.observe nativeApp alice) =
       nativeOpeningAction alicePublication aliceHandle bit := by
   unfold nativeAliceResponse
   rw [native_observed_alice_bit bit execution valid]
-  exact ite_eq_left grant
+  exact ite_eq_left ((native_turn_iff execution.application alicePublication).mpr ready)
 
 end Vegas.Examples.MonitoredGuessing

@@ -6,7 +6,7 @@ import Vegas.Examples.MonitoredGuessing.FinalComparison
 
 /-! # Actual native histories for the receiver's continuation
 
-The four service commands after Bob contain no player response. Their supported
+The three service commands after Bob contain no player response. Their supported
 executions therefore give actual bounded raw histories independently of the
 policy family used to write the interaction law.
 -/
@@ -21,10 +21,10 @@ open GameTheory.Math.Probability
 theorem bob_service_policy_irrel (left right : Player → nativeApp.Policy)
     (execution : nativeApp.Execution) :
     nativeRuntime.runInteractionPlan nativeLeaks left nativeNetwork
-      [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
+      [.includeLatest bobPublication bob, .tick, .expire bobPublication]
       execution =
     nativeRuntime.runInteractionPlan nativeLeaks right nativeNetwork
-      [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
+      [.includeLatest bobPublication bob, .tick, .expire bobPublication]
       execution := by
   have resume (players : Player → nativeApp.Policy) :
       nativeApp.resume players none = PMF.pure := rfl
@@ -39,33 +39,33 @@ theorem bob_response_to_alice_trace (players : Player → nativeApp.Policy) (bit
     (available : response ∈ nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (next : nativeApp.Execution)
     (supported : next ∈ ((nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
+      [.includeLatest bobPublication bob, .tick, .expire bobPublication]
       ((quietBob bit).respond nativeApp bob response)).bind fun execution =>
         execution.environmentStep nativeApp (.activate alice)).support) :
     Nonempty (nativeArena.Trace (some ⟨4, some alice, next⟩)) := by
-  obtain ⟨granted, prior, activated⟩ :=
+  obtain ⟨served, prior, activated⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have initialPosition : ((quietBob bit).respond nativeApp bob response).environmentRecall.length =
-      (nativePlan.take 5).length := by
+      (nativePlan.take 4).length := by
     rw [nativeApp.respond_environmentRecall]
     rfl
   have cursor := nativeRuntime.runInteractionPlan_recall nativeLeaks players nativeNetwork _
-    ((quietBob bit).respond nativeApp bob response) granted prior
+    ((quietBob bit).respond nativeApp bob response) served prior
   rw [nativeApp.respond_environmentRecall] at cursor
-  change granted.environmentRecall.length = 9 at cursor
+  change served.environmentRecall.length = 7 at cursor
   rw [bob_service_policy_irrel players nativeMenu.uniformResponses] at prior
-  have rounds := native_segment_rounds nativeMenu.uniformResponses (nativePlan.take 5)
-    [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
-    (nativePlan.drop 9) rfl ((quietBob bit).respond nativeApp bob response) initialPosition
+  have rounds := native_segment_rounds nativeMenu.uniformResponses (nativePlan.take 4)
+    [.includeLatest bobPublication bob, .tick, .expire bobPublication]
+    (nativePlan.drop 7) rfl ((quietBob bit).respond nativeApp bob response) initialPosition
   rw [← rounds] at prior
   obtain ⟨quiet⟩ := quiet_bob_trace bit
-  obtain ⟨responded⟩ := nativeMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler 9
+  obtain ⟨responded⟩ := nativeMenu.trace_respond nativeInitialLaw nativeHorizon nativeScheduler 8
     (quietBob bit) bob response quiet available
   obtain ⟨before⟩ := nativeMenu.trace_runRounds nativeInitialLaw nativeHorizon nativeScheduler
     nativeMenu.uniformResponses (fun who past view action member =>
-      (nativeMenu.uniformResponses_support who past view action).mp member) 5 4
-      ((quietBob bit).respond nativeApp bob response) granted responded prior
-  exact nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 4 granted next
+      (nativeMenu.uniformResponses_support who past view action).mp member) 5 3
+      ((quietBob bit).respond nativeApp bob response) served responded prior
+  exact nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 4 served next
     (.activate alice) before (by
       simp only [nativeScheduler, cursor]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) activated
@@ -77,7 +77,7 @@ theorem before_alice_trace (bit guess : Bool) :
   · cases guess with
     | false => exact native_silent_available _ _ _
     | true => exact native_opening_available bob _ _ bobPublication bobHandle trivial true
-  · rw [bob_to_granted_alice, PMF.pure_bind, activate_alice]
+  · rw [bob_service, PMF.pure_bind, activate_alice]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem before_alice_false_local (bit : Bool) : FinalResponseLocal (beforeAlice bit false) := by

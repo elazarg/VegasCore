@@ -62,7 +62,7 @@ private theorem native_instruction_actor (history : List nativeApp.EnvironmentEn
 theorem native_unique_bob_activation (history : List nativeApp.EnvironmentEntry)
     (view : nativeApp.EnvironmentView) (command : nativeApp.Command)
     (supported : command ∈ (nativeScheduler history view).support)
-    (active : command.actor? nativeApp = some bob) : history.length = 4 := by
+    (active : command.actor? nativeApp = some bob) : history.length = 3 := by
   unfold nativeScheduler at supported
   cases selected : nativePlan[history.length]? with
   | none =>
@@ -73,7 +73,7 @@ theorem native_unique_bob_activation (history : List nativeApp.EnvironmentEntry)
       rw [selected] at supported
       have only := native_instruction_actor history view instruction command supported active
       subst instruction
-      have bounded : history.length < 14 := by
+      have bounded : history.length < 12 := by
         have := List.getElem?_eq_some_iff.mp selected
         simpa only [← native_horizon] using this.1
       generalize size : history.length = index at *
@@ -84,9 +84,9 @@ theorem native_unique_bob_activation (history : List nativeApp.EnvironmentEntry)
 
 theorem native_bob_remaining (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some bob) :
-    control.execution.environmentRecall.length = 5 ∧ control.remaining = 9 := by
+    control.execution.environmentRecall.length = 4 ∧ control.remaining = 8 := by
   have accounted := nativeApp.remaining_at_activation nativeInitialLaw nativeHorizon
-    nativeScheduler bob 4 native_unique_bob_activation control
+    nativeScheduler bob 3 native_unique_bob_activation control
       (nativeMenu.toRawTrace nativeInitialLaw nativeHorizon nativeScheduler trace) active
   exact ⟨accounted.1, by have := accounted.2; rw [native_horizon] at this; omega⟩
 
@@ -117,8 +117,8 @@ private theorem idle_step_probability
 
 private def beforeBob : nativeApp.ProtocolState → Prop
   | none => True
-  | some control => control.execution.environmentRecall.length ≤ 4 ∨
-      (control.execution.environmentRecall.length = 5 ∧ control.actor = some bob)
+  | some control => control.execution.environmentRecall.length ≤ 3 ∨
+      (control.execution.environmentRecall.length = 4 ∧ control.actor = some bob)
 
 theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignature) :
     ∀ {state} (trace : nativeArena.Trace state), beforeBob state →
@@ -150,7 +150,7 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
             cases actor with
             | some who =>
                 cases (PMF.mem_support_pure_iff _ _).mp reached
-                have previous : execution.environmentRecall.length ≤ 4 := by
+                have previous : execution.environmentRecall.length ≤ 3 := by
                   simpa only [beforeBob, nativeApp.respond_environmentRecall,
                     reduceCtorEq, and_false, or_false] using early
                 exact Or.inl previous
@@ -162,10 +162,10 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
                       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                     obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                     have length := environment_recall execution next command supported
-                    change execution.environmentRecall.length ≤ 4 ∨ _
+                    change execution.environmentRecall.length ≤ 3 ∨ _
                     left
-                    change next.environmentRecall.length ≤ 4 ∨
-                      (next.environmentRecall.length = 5 ∧ command.actor? nativeApp = some bob)
+                    change next.environmentRecall.length ≤ 3 ∨
+                      (next.environmentRecall.length = 4 ∧ command.actor? nativeApp = some bob)
                         at early
                     rw [length, List.length_append, List.length_singleton] at early
                     omega
@@ -205,8 +205,8 @@ theorem bob_decision_reach_invariant (profile : Profile nativeModel.behavioralSi
 
 private def afterBob : nativeApp.ProtocolState → Prop
   | none => False
-  | some control => 5 ≤ control.execution.environmentRecall.length ∧
-      (control.execution.environmentRecall.length = 5 → control.actor = none)
+  | some control => 4 ≤ control.execution.environmentRecall.length ∧
+      (control.execution.environmentRecall.length = 4 → control.actor = none)
 
 private theorem afterBob_transition (before after : nativeApp.ProtocolState)
     (joint : Player → Option nativeApp.Action) (valid : afterBob before)
@@ -230,9 +230,9 @@ private theorem afterBob_transition (before after : nativeApp.ProtocolState)
                 Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
               obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               have length := environment_recall execution next command supported
-              change 5 ≤ next.environmentRecall.length ∧ _
+              change 4 ≤ next.environmentRecall.length ∧ _
               have lower := valid.1
-              change 5 ≤ execution.environmentRecall.length at lower
+              change 4 ≤ execution.environmentRecall.length at lower
               rw [length, List.length_append, List.length_singleton]
               exact ⟨by omega, by intro impossible; omega⟩
 

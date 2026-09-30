@@ -160,16 +160,16 @@ another protocol or modifying any observation. -/
 theorem bob_continuation_evaluation (players : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       (bobSubmission bit submission) =
     (bobToAlice players bit submission).bind (fun next =>
       (players alice (next.recall alice) (next.observe nativeApp alice)).bind fun response =>
         nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
           (next.respond nativeApp alice response)) := by
   change nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication] ++ [.player alice] ++ resolutionTail) _ = _
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication] ++ [.player alice] ++
+      resolutionTail) _ = _
   rw [runInteractionPlan_append, runInteractionPlan_append]
   have step (execution : nativeApp.Execution) :
       nativeRuntime.interactionStep nativeLeaks players nativeNetwork (.player alice) execution =
@@ -198,8 +198,8 @@ theorem wrong_address_continuation_payoff_law (table : PayoffTable)
       ((beforeAlice bit false).observe nativeApp alice) =
         choices.map (choiceAction alicePublication aliceHandle bit)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       (bobSubmission bit submission)).map
         (fun final => (nativeResults final.application.config,
           Enforcement.executionUtility table final bob)) =
@@ -230,8 +230,8 @@ theorem silence_continuation_payoff_law (table : PayoffTable)
       ((beforeAlice bit false).observe nativeApp alice) =
         choices.map (choiceAction alicePublication aliceHandle bit)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       ((quietBob bit).respond nativeApp bob nativeSilent)).map
         (fun final => (nativeResults final.application.config,
           Enforcement.executionUtility table final bob)) =
@@ -266,14 +266,14 @@ theorem wrong_address_compared_with_silence (table : PayoffTable)
       ((beforeAlice bit false).observe nativeApp alice) =
         choices.map (choiceAction alicePublication aliceHandle bit)) :
     (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       (bobSubmission bit submission)).map
         (fun final => (nativeResults final.application.config,
           Enforcement.executionUtility table final bob)) =
     (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       ((quietBob bit).respond nativeApp bob nativeSilent)).map
         (fun final => (nativeResults final.application.config,
           Enforcement.executionUtility table final bob)) := by

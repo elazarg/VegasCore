@@ -85,12 +85,12 @@ theorem resolution_plan_bob_upper (deposit : ℝ) (players : Player → nativeAp
 theorem quiet_response_bob_value_le (deposit : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) :
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      (nativePlan.drop 5)
+      (nativePlan.drop 4)
       ((quietBob bit).respond nativeApp bob response))
         (nativeExecutionUtility deposit bob) ≤
       correctness (.success bit) (quietGuess response players) := by
   change expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-    (quietGuessPlan ++ [.grant alicePublication, .player alice] ++ resolutionTail)
+    (quietGuessPlan ++ [.player alice] ++ resolutionTail)
       ((quietBob bit).respond nativeApp bob response)) _ ≤ _
   rw [List.append_assoc, runInteractionPlan_append,
     expect_bind_tower _ _ _ (nativeExecutionUtility_integrable deposit bob _)]

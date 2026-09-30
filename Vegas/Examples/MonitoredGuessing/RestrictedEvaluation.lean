@@ -106,8 +106,8 @@ theorem mixed_branch_summary (players : Player → nativeApp.Policy)
       ((beforeAlice bit guess).observe nativeApp alice) =
         disclosures.map (choiceAction alicePublication aliceHandle bit)) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
         (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
       disclosures.map (fun disclose =>

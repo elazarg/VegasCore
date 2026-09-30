@@ -3,6 +3,7 @@
 import Vegas.Examples.MonitoredGuessing.NativeSanctions
 import Vegas.Examples.MonitoredGuessing.NativeSchedule
 import Interaction.ReactiveAssessmentEvaluation
+import Interaction.ReactiveScheduleClock
 import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Alice's private initial native decisions
@@ -39,12 +40,12 @@ theorem native_information_control (who : Player) (past : List nativeApp.PlayerE
         cases information
 
 def initialAliceControl (bit : Bool) : nativeApp.Control :=
-  ⟨13, some alice, aliceActivated bit⟩
+  ⟨11, some alice, aliceActivated bit⟩
 
 theorem initial_alice_trace (bit : Bool) :
     Nonempty (nativeArena.Trace (some (initialAliceControl bit))) := by
   obtain ⟨initial⟩ := native_initial_trace bit
-  exact nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 13
+  exact nativeMenu.trace_environment nativeInitialLaw nativeHorizon nativeScheduler 11
     (nativeStart bit) (aliceActivated bit) (.activate alice) initial (by
       change _ ∈ (PMF.pure (.activate alice : nativeApp.Command)).support
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) (by
@@ -58,7 +59,7 @@ def initialAliceSite (bit : Bool) : nativeModel.InformationSite alice := by
     exact nativeMenu.info nativeInitialLaw nativeHorizon nativeScheduler alice trace
   refine ⟨some ([], (aliceActivated bit).observe nativeApp alice),
     ⟨⟨⟨some (initialAliceControl bit), trace⟩, information⟩, ?_, ?_⟩⟩
-  · change ¬ (13 = 0 ∧ (some alice : Option Player) = none)
+  · change ¬ (11 = 0 ∧ (some alice : Option Player) = none)
     simp
   · exact ⟨nativeSilent, nativeSilent, native_silent_available _ _ _, rfl⟩
 
@@ -119,7 +120,7 @@ theorem native_alice_activation_positions (history : List nativeApp.EnvironmentE
     (view : nativeApp.EnvironmentView) (command : nativeApp.Command)
     (supported : command ∈ (nativeScheduler history view).support)
     (active : command.actor? nativeApp = some alice) :
-    history.length = 0 ∨ history.length = 9 := by
+    history.length = 0 ∨ history.length = 7 := by
   unfold nativeScheduler at supported
   cases selected : nativePlan[history.length]? with
   | none =>
@@ -134,15 +135,15 @@ theorem native_alice_activation_positions (history : List nativeApp.EnvironmentE
         (List.getElem?_eq_some_iff.mp selected).1
       have table : ∀ index : Fin nativePlan.length,
           (nativePlan[index.val]?).bind instructionPlayer = some alice →
-            index.val = 0 ∨ index.val = 9 := by decide
+            index.val = 0 ∨ index.val = 7 := by decide
       apply table ⟨history.length, bounded⟩
       rw [selected]
       exact actor
 
 theorem native_alice_calendar (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some alice) :
-    (control.execution.environmentRecall.length = 1 ∧ control.remaining = 13) ∨
-      (control.execution.environmentRecall.length = 10 ∧ control.remaining = 4) := by
+    (control.execution.environmentRecall.length = 1 ∧ control.remaining = 11) ∨
+      (control.execution.environmentRecall.length = 8 ∧ control.remaining = 4) := by
   obtain ⟨accounted, supported⟩ := nativeMenu.roundSupported_uniform nativeInitialLaw
     nativeHorizon nativeScheduler trace
   rw [active] at supported
@@ -157,56 +158,39 @@ theorem native_alice_calendar (control : nativeApp.Control)
   · left; constructor <;> omega
   · right; constructor <;> omega
 
-theorem native_rounds_grant (players : Player → nativeApp.Policy)
-    (count : Nat) (bounded : count ≤ nativePlan.length)
-    (before : List (ServiceInstruction nativeGraph)) (event : nativeGraph.EventId)
-    (last : nativePlan.take count = before ++ [.grant event])
-    (execution : nativeApp.Execution)
-    (supported : execution ∈ (nativeApp.roundsFrom nativeInitialLaw nativeScheduler
-      players count).support) : execution.application.serviceGrant = some event := by
-  obtain ⟨state, stateMem, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ stateMem
-  have law := native_segment_rounds players [] (nativePlan.take count) (nativePlan.drop count)
-    (by simp) (nativeStart bit) rfl
-  rw [List.length_take_of_le bounded] at law
-  change execution ∈ (nativeApp.runRounds nativeScheduler players count (nativeStart bit)).support
-    at reached
-  rw [law, last, runInteractionPlan_append] at reached
-  obtain ⟨previous, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have grantLaw : nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      [.grant event] previous =
-        previous.environmentStep nativeApp (.application (.grant event)) := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction,
-      PMF.pure_bind, PMF.bind_pure, ReactiveApplication.dispatch]
-    exact PMF.bind_pure _
-  rw [grantLaw] at moved
-  simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] at moved
-  subst execution
-  rfl
+/-- The scheduler activates exactly the player of the plan instruction at the
+current environment position. -/
+theorem native_scheduled_actor (history : List nativeApp.EnvironmentEntry)
+    (view : nativeApp.EnvironmentView) (command : nativeApp.Command)
+    (supported : command ∈ (nativeScheduler history view).support) :
+    command.actor? nativeApp = ((nativePlan.map instructionPlayer)[history.length]?).join := by
+  unfold nativeScheduler at supported
+  rw [List.getElem?_map]
+  cases selected : nativePlan[history.length]? with
+  | none =>
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
+      subst command
+      rfl
+  | some instruction =>
+      rw [selected] at supported
+      exact native_instruction_actor_eq history view instruction command supported
 
-theorem native_alice_final_grant (control : nativeApp.Control)
+/-- Alice's second decision follows her first recorded response: her own recall
+distinguishes her two decision sites, with no service announcement. -/
+theorem native_alice_final_recall (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some alice)
-    (late : control.execution.environmentRecall.length = 10) :
-    control.execution.application.serviceGrant = some alicePublication := by
-  obtain ⟨_, supported⟩ := nativeMenu.roundSupported_uniform nativeInitialLaw
-    nativeHorizon nativeScheduler trace
-  rw [active] at supported
-  obtain ⟨count, prior, command, position, priorMem, _, actor, observed⟩ := supported
-  have counted : count = 9 := by omega
-  subst count
-  have granted := native_rounds_grant nativeMenu.uniformResponses 9 (by decide)
-    (nativePlan.take 8) alicePublication rfl prior priorMem
-  have commandEq : command = .activate alice := by
-    cases command with
-    | activate who => cases Option.some.inj actor; rfl
-    | «include» id | application command | wait => cases actor
-  subst command
-  obtain ⟨next, member, same⟩ := PMF.support_map .. ▸ observed
-  rw [← same]
-  obtain ⟨selected, _, sameNext⟩ := PMF.support_map .. ▸ member
-  rw [← sameNext]
-  exact granted
+    (late : control.execution.environmentRecall.length = 8) :
+    (control.execution.recall alice).length = 1 := by
+  obtain ⟨position, atPosition, _, counts, _⟩ := nativeApp.scheduled_decision_counts
+    nativeInitialLaw nativeHorizon nativeScheduler (nativePlan.map instructionPlayer)
+    native_scheduled_actor alice control (nativeMenu.toRawTrace _ _ _ trace) active
+  have seven : position = 7 := by omega
+  subst position
+  have counted := counts alice
+  have aliceCount : ((nativePlan.map instructionPlayer).take 8).count (some alice) = 2 := by
+    decide
+  simp only [↓reduceIte, aliceCount] at counted
+  omega
 
 theorem native_alice_initial_representation (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some alice)
@@ -233,7 +217,7 @@ theorem native_alice_initial_representation (control : nativeApp.Control)
     | «include» id | application command | wait => cases actor
   subst command
   rw [initial_activation, PMF.mem_support_pure_iff _ _] at observed
-  have remaining : control.remaining = 13 := by
+  have remaining : control.remaining = 11 := by
     rw [native_horizon] at accounted
     omega
   exact ⟨bit, by cases control; simp_all [initialAliceControl]⟩
@@ -241,7 +225,7 @@ theorem native_alice_initial_representation (control : nativeApp.Control)
 theorem initial_alice_information_control (bit : Bool)
     (history : nativeModel.InformationHistory alice (initialAliceSite bit).1) :
     history.1.state = some (initialAliceControl bit) := by
-  obtain ⟨control, stateEq, active, _, observed⟩ := native_information_control alice []
+  obtain ⟨control, stateEq, active, recallEq, observed⟩ := native_information_control alice []
     ((aliceActivated bit).observe nativeApp alice) history
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
@@ -254,12 +238,9 @@ theorem initial_alice_information_control (bit : Bool)
       simpa only [initialAliceControl, initial_alice_observed_bit] using bits
     subst actualBit
     rfl
-  · have granted := native_alice_final_grant control trace active late.1
-    have viewed := congrArg (fun view : nativeApp.PlayerView =>
-      view.application.publicView.serviceGrant) observed
-    change control.execution.application.serviceGrant = none at viewed
-    rw [granted] at viewed
-    cases viewed
+  · have recalled := native_alice_final_recall control trace active late.1
+    rw [recallEq] at recalled
+    cases recalled
 
 theorem initial_alice_finish (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
@@ -339,8 +320,7 @@ theorem native_site_observation (who : Player) (site : nativeModel.InformationSi
 
 theorem native_alice_site_cases (site : nativeModel.InformationSite alice) :
     (∃ bit, site = initialAliceSite bit) ∨
-      ∃ past view, site.1 = some (past, view) ∧
-        view.application.publicView.serviceGrant = some alicePublication := by
+      ∃ past view, site.1 = some (past, view) ∧ past.length = 1 := by
   obtain ⟨past, view, viewed⟩ := native_site_observation alice site
   obtain ⟨history, _, _⟩ := site.2
   obtain ⟨control, stateEq, active, recalled, observed⟩ := native_information_control alice
@@ -357,7 +337,7 @@ theorem native_alice_site_cases (site : nativeModel.InformationSite alice) :
     rfl
   · right
     refine ⟨past, view, viewed, ?_⟩
-    rw [← observed]
-    exact native_alice_final_grant control trace active late.1
+    rw [← recalled]
+    exact native_alice_final_recall control trace active late.1
 
 end Vegas.Examples.MonitoredGuessing

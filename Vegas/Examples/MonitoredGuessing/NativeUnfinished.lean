@@ -129,20 +129,15 @@ theorem native_bob_include_unfinished (players : Player → nativeApp.Policy)
 
 theorem native_maintenance_unfinished (players : Player → nativeApp.Policy)
     (before after : nativeApp.Execution) (instruction : ServiceInstruction nativeGraph)
-    (allowed : instruction = .grant bobPublication ∨ instruction = .grant alicePublication ∨
-      instruction = .tick ∨ instruction = .expire bobPublication)
+    (allowed : instruction = .tick ∨ instruction = .expire bobPublication)
     (unfinished : alicePublication ∉ before.application.config.cut.completed)
     (reached : after ∈ (nativeRuntime.interactionStep nativeLeaks players nativeNetwork
       instruction before).support) : alicePublication ∉ after.application.config.cut.completed :=
     by
-  rcases allowed with rfl | rfl | rfl | rfl
+  rcases allowed with rfl | rfl
   all_goals
     have moved := nativeRuntime.reactive_application_support nativeLeaks players _ before after
       (by simpa only [interactionStep, interactionInstruction, PMF.pure_bind] using reached)
-  · rw [(PMF.mem_support_pure_iff _ _).mp moved]
-    exact unfinished
-  · rw [(PMF.mem_support_pure_iff _ _).mp moved]
-    exact unfinished
   · rw [(PMF.mem_support_pure_iff _ _).mp moved]
     exact unfinished
   · rcases nativeRuntime.environmentStep_expire_config_eq_or_mem_step
@@ -164,20 +159,17 @@ theorem native_bob_visit_unfinished (players : Player → nativeApp.Policy)
         instruction before).support → alicePublication ∉ after.application.config.cut.completed :=
       by
     intro instruction member previous next prior moved
-    have cases : instruction = .grant bobPublication ∨ instruction = .player bob ∨
+    have cases : instruction = .player bob ∨
         instruction = .includeLatest bobPublication bob ∨ instruction = .tick ∨
           instruction = .expire bobPublication := by
       simpa only [nativeVisit, nativeOwner, ite_true, nativeRuntime, bobPublication,
         pow_zero, List.replicate_one, List.mem_append, List.mem_cons, List.mem_singleton,
         List.not_mem_nil, or_false, or_assoc] using member
-    rcases cases with rfl | rfl | rfl | rfl | rfl
-    · exact native_maintenance_unfinished players previous next _ (Or.inl rfl) prior moved
+    rcases cases with rfl | rfl | rfl | rfl
     · exact native_player_keeps_alice_unfinished players bob previous next prior moved
     · exact native_bob_include_unfinished players previous next prior moved
-    · exact native_maintenance_unfinished players previous next _
-        (Or.inr (Or.inr (Or.inl rfl))) prior moved
-    · exact native_maintenance_unfinished players previous next _
-        (Or.inr (Or.inr (Or.inr rfl))) prior moved
+    · exact native_maintenance_unfinished players previous next _ (Or.inl rfl) prior moved
+    · exact native_maintenance_unfinished players previous next _ (Or.inr rfl) prior moved
   generalize planEq : nativeVisit bobPublication = plan at reached
   have all : ∀ instruction ∈ plan, ∀ before after : nativeApp.Execution,
       alicePublication ∉ before.application.config.cut.completed →
@@ -219,17 +211,6 @@ theorem native_rounds_prefix_support (players : Player → nativeApp.Policy)
     at reached
   rwa [law] at reached
 
-theorem native_grant_application (players : Player → nativeApp.Policy)
-    (event : nativeGraph.EventId) (before after : nativeApp.Execution)
-    (supported : after ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      [.grant event] before).support) :
-    after.application = { before.application with serviceGrant := some event } := by
-  have moved := nativeRuntime.reactive_application_support nativeLeaks players (.grant event)
-    before after (by
-      simpa only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
-        PMF.pure_bind] using supported)
-  exact (PMF.mem_support_pure_iff _ _).mp moved
-
 theorem native_activation_application (before after : nativeApp.Execution) (who : Player)
     (supported : after ∈ (before.environmentStep nativeApp (.activate who)).support) :
     after.application = before.application := by
@@ -240,52 +221,47 @@ theorem native_activation_application (before after : nativeApp.Execution) (who 
 
 theorem native_alice_final_calendar (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some alice)
-    (granted : control.execution.application.serviceGrant = some alicePublication) :
-    control.execution.environmentRecall.length = 10 ∧ control.remaining = 4 := by
+    (responded : (control.execution.recall alice).length = 1) :
+    control.execution.environmentRecall.length = 8 ∧ control.remaining = 4 := by
   rcases native_alice_calendar control trace active with early | late
   · obtain ⟨bit, same⟩ := native_alice_initial_representation control trace active early.1
     subst control
-    cases granted
+    cases responded
   · exact late
 
 /-- Every off-path final Alice information history has a settled Bob result,
 an unfinished ready publication, and enough time for its reserved inclusion. -/
 theorem native_alice_final_service (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some alice)
-    (granted : control.execution.application.serviceGrant = some alicePublication) :
+    (responded : (control.execution.recall alice).length = 1) :
     bobPublication ∈ control.execution.application.config.cut.completed ∧
       control.execution.application.config.cut.Ready alicePublication ∧
       control.execution.application.WithinDeadline nativeRuntime alicePublication := by
-  have calendar := native_alice_final_calendar control trace active granted
+  have calendar := native_alice_final_calendar control trace active responded
   obtain ⟨_, supported⟩ := nativeMenu.roundSupported_uniform nativeInitialLaw
     nativeHorizon nativeScheduler trace
   rw [active] at supported
   obtain ⟨count, prior, command, position, priorMem, _, actor, observed⟩ := supported
-  have counted : count = 9 := by omega
+  have counted : count = 7 := by omega
   subst count
-  obtain ⟨bit, prefixMem⟩ := native_rounds_prefix_support nativeMenu.uniformResponses 9
+  obtain ⟨bit, beforeMem⟩ := native_rounds_prefix_support nativeMenu.uniformResponses 7
     (by decide) prior priorMem
-  rw [show nativePlan.take 9 = nativeBefore 1 ++ [.grant alicePublication] from rfl,
-    runInteractionPlan_append] at prefixMem
-  obtain ⟨previous, beforeMem, grantMem⟩ :=
-    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ prefixMem)
-  have unfinished := native_before_alice_unfinished bit nativeMenu.uniformResponses previous
+  rw [show nativePlan.take 7 = nativeBefore 1 from rfl] at beforeMem
+  have unfinished := native_before_alice_unfinished bit nativeMenu.uniformResponses prior
     beforeMem
-  have ready := (native_before_available bit nativeMenu.uniformResponses alicePublication previous
+  have ready := (native_before_available bit nativeMenu.uniformResponses alicePublication prior
     beforeMem).resolve_left unfinished
-  have timely := native_before_timely bit nativeMenu.uniformResponses alicePublication previous
+  have timely := native_before_timely bit nativeMenu.uniformResponses alicePublication prior
     beforeMem unfinished
-  have bobDone := native_before_completed bit nativeMenu.uniformResponses 1 (by decide) previous
+  have bobDone := native_before_completed bit nativeMenu.uniformResponses 1 (by decide) prior
     beforeMem bobPublication (by decide)
-  have grantApp := native_grant_application nativeMenu.uniformResponses alicePublication
-    previous prior grantMem
   have commandEq : command = .activate alice := by
     cases command with
     | activate who => cases Option.some.inj actor; rfl
     | «include» id | application command | wait => cases actor
   subst command
   have observationApp := native_activation_application prior control.execution alice observed
-  rw [observationApp, grantApp]
+  rw [observationApp]
   exact ⟨bobDone, ready, timely⟩
 
 end Vegas.Examples.MonitoredGuessing

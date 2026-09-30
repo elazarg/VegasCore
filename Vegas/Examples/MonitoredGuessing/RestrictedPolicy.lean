@@ -26,9 +26,10 @@ open Classical in
 def responsePolicy (guesses : PMF Bool) (disclosures : Bool → Bool → PMF Bool)
     (who : Player) : nativeApp.Policy := fun past view =>
   if who = watcher then PMF.pure (nativeWatcherResponse view)
-  else if who = bob ∧ view.application.publicView.serviceGrant = some bobPublication then
+  else if who = bob ∧ view.application.publicView.ownTurn? bob = some bobPublication then
     guesses.map (normalizedChoice who past view bobPublication bobHandle true)
-  else if who = alice ∧ view.application.publicView.serviceGrant = some alicePublication then
+  else if who = alice ∧
+      view.application.publicView.ownTurn? alice = some alicePublication then
     let input := decodeAliceInput (some (past, view))
     (disclosures input.1 input.2).map
       (normalizedChoice who past view alicePublication aliceHandle (observedAliceBit view))
@@ -51,15 +52,15 @@ theorem responsePolicy_covered (guesses : PMF Bool)
     rw [ite_eq_right different]
     unfold ordinaryActions
     split at supported
-    · rename_i granted
-      rw [ite_eq_left granted]
+    · rename_i turn
+      rw [ite_eq_left turn]
       obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
       cases choice <;> simp [normalizedChoice]
     · rename_i notBob
       rw [ite_eq_right notBob]
       split at supported
-      · rename_i granted
-        rw [ite_eq_left granted]
+      · rename_i turn
+        rw [ite_eq_left turn]
         obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ supported
         cases choice <;> simp [normalizedChoice]
       · rename_i notAlice
@@ -86,7 +87,7 @@ theorem responsePolicy_bob (guesses : PMF Bool)
         guesses.map (choiceAction bobPublication bobHandle true) := by
   have different : bob ≠ watcher := by decide
   simp only [responsePolicy, different, ↓reduceIte]
-  rw [ite_eq_left ⟨trivial, rfl⟩]
+  rw [ite_eq_left ⟨trivial, quiet_bob_turn bit⟩]
   congr 1
   funext choice
   cases choice <;> simp only [normalizedChoice, choiceAction, Bool.false_eq_true,
@@ -100,7 +101,7 @@ theorem responsePolicy_alice (guesses : PMF Bool)
   have notWatcher : alice ≠ watcher := by decide
   have notBob : alice ≠ bob := by decide
   simp only [responsePolicy, notWatcher, notBob, false_and, ↓reduceIte]
-  rw [ite_eq_left ⟨trivial, rfl⟩]
+  rw [ite_eq_left ⟨trivial, before_alice_turn bit guess⟩]
   change (disclosures (decodeAliceInput (aliceInput bit guess)).1
     (decodeAliceInput (aliceInput bit guess)).2).map _ = _
   rw [decode_alice_input]
@@ -116,7 +117,8 @@ theorem responsePolicy_early_alice (guesses : PMF Bool)
   have notWatcher : alice ≠ watcher := by decide
   have notBob : alice ≠ bob := by decide
   simp only [responsePolicy, notWatcher, notBob, false_and, ↓reduceIte]
-  rfl
+  rw [ite_eq_right]
+  exact fun matching => initial_alice_no_turn bit matching.2
 
 theorem responsePolicy_watcher (guesses : PMF Bool)
     (disclosures : Bool → Bool → PMF Bool) :

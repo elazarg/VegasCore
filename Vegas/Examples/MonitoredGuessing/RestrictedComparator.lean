@@ -24,9 +24,16 @@ def comparatorResponse (who : Player) (information : nativeApp.Info)
   if who = watcher then
     information.elim nativeSilent (fun pair => nativeWatcherResponse pair.2)
   else if who = alice ∧
-      information.bind (fun pair => pair.2.application.publicView.serviceGrant) =
+      information.bind (fun pair => pair.2.application.publicView.ownTurn? alice) =
         some alicePublication then finalComparator information response
   else nativeSilent
+
+/-- At Alice's final decision the comparator plays the final comparison. -/
+theorem comparator_final (bit guess : Bool) (response : nativeApp.Action) :
+    comparatorResponse alice (aliceInput bit guess) response =
+      finalComparator (aliceInput bit guess) response := by
+  rw [comparatorResponse, ite_eq_right (show alice ≠ watcher by decide), ite_eq_left]
+  exact ⟨rfl, before_alice_turn bit guess⟩
 
 theorem comparatorResponse_legal (who : Player)
     (site : restrictedModel.InformationSite who) (response : nativeApp.Action) :
@@ -53,13 +60,15 @@ theorem comparatorResponse_legal (who : Player)
         · simp only [restrictedMenu, watching, ↓reduceIte]
           exact silent_ordinary alice _ _
         · simp only [comparatorResponse, watching, ↓reduceIte, Option.bind_some]
-          rfl
+          rw [ite_eq_right]
+          exact fun matching => initial_alice_no_turn bit matching.2
       · rw [observed]
         change ∃ action ∈ restrictedMenu.actions alice ((beforeAlice bit guess).recall alice)
             ((beforeAlice bit guess).observe nativeApp alice),
           some (comparatorResponse alice (aliceInput bit guess) response) = some action
         exact ⟨finalComparator (aliceInput bit guess) response,
-          final_comparator_available bit guess response, rfl⟩
+          final_comparator_available bit guess response,
+          congrArg some (comparator_final bit guess response)⟩
     · obtain ⟨_, _, chosen, allowed⟩ := site.2
       cases observed : site.1 with
       | none => rw [observed] at allowed; cases allowed

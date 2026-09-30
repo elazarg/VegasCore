@@ -146,7 +146,7 @@ private theorem same_alice_activation (left right nextLeft nextRight : nativeApp
 def bobToAlice (players : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph) : PMF nativeApp.Execution :=
   (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-    [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
+    [.includeLatest bobPublication bob, .tick, .expire bobPublication]
     (bobSubmission bit submission)).bind fun execution =>
       execution.environmentStep nativeApp (.activate alice)
 
@@ -158,20 +158,18 @@ theorem wrong_address_alice_input (players : Player → nativeApp.Policy) (bit :
     (next : nativeApp.Execution) (supported : next ∈ (bobToAlice players bit submission).support) :
     (next.recall alice, next.observe nativeApp alice) =
       ((beforeAlice bit false).recall alice, (beforeAlice bit false).observe nativeApp alice) := by
-  obtain ⟨granted, grantMem, activated⟩ :=
+  obtain ⟨expired, planMem, activated⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   rw [runInteractionPlan, wrong_address_inclusion players bit submission wrong,
-    PMF.pure_bind] at grantMem
+    PMF.pure_bind] at planMem
   have inactive (command : EnvironmentCommand nativeGraph) :
       (ReactiveApplication.Command.application command).actor? nativeApp = none := rfl
   have resume : nativeApp.resume players none = PMF.pure := rfl
   simp only [runInteractionPlan, interactionStep, interactionInstruction,
     PMF.pure_bind, ReactiveApplication.dispatch, inactive,
-    resume, PMF.bind_pure] at grantMem
-  obtain ⟨ticked, tickMem, afterTick⟩ :=
-    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ grantMem)
-  obtain ⟨expired, expiryMem, grantMem⟩ :=
-    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ afterTick)
+    resume, PMF.bind_pure] at planMem
+  obtain ⟨ticked, tickMem, expiryMem⟩ :=
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ planMem)
   have includedSame : SameAlice (waitExecution (bobSubmission bit submission))
       (silentBobIncluded bit) := same_alice_submission bit submission
   have tickedSame := same_alice_maintenance _ _ ticked (silentBobTicked bit) .advanceClock
@@ -180,12 +178,8 @@ theorem wrong_address_alice_input (players : Player → nativeApp.Policy) (bit :
   have expiredSame := same_alice_maintenance _ _ expired (silentBobExpired bit)
     (.expire bobPublication) (by intro event impossible; cases impossible) tickedSame expiryMem
     (by rw [silent_bob_expiry]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  have grantedSame := same_alice_maintenance expired (afterBob bit false) granted
-    (grantedAlice bit false) (.grant alicePublication)
-    (by intro event impossible; cases impossible) expiredSame grantMem
-    (by rw [grant_alice]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  have finalSame := same_alice_activation granted (grantedAlice bit false) next
-    (beforeAlice bit false) grantedSame activated
+  have finalSame := same_alice_activation expired (afterBob bit false) next
+    (beforeAlice bit false) expiredSame activated
     (by rw [activate_alice]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   exact Prod.ext finalSame.2.1 finalSame.2.2
 

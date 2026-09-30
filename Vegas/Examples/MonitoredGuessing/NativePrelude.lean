@@ -65,7 +65,7 @@ def nativeStart (bit : Bool) : nativeApp.Execution :=
   ReactiveApplication.Execution.initial nativeApp (nativeInitial bit)
 
 theorem native_initial_trace (bit : Bool) :
-    Nonempty (nativeArena.Trace (some ⟨14, none, nativeStart bit⟩)) := by
+    Nonempty (nativeArena.Trace (some ⟨12, none, nativeStart bit⟩)) := by
   refine ⟨.extend .start (fun _ => none) ?_ ?_⟩
   · constructor
     · change ¬False

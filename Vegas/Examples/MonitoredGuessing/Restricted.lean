@@ -54,9 +54,10 @@ theorem watcher_effective (past : List nativeApp.PlayerEntry) (view : nativeApp.
 open Classical in
 def ordinaryActions (who : Player) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) : Finset nativeApp.Action :=
-  if who = bob ∧ view.application.publicView.serviceGrant = some bobPublication then
+  if who = bob ∧ view.application.publicView.ownTurn? bob = some bobPublication then
     {nativeSilent, opening who past view bobPublication bobHandle true}
-  else if who = alice ∧ view.application.publicView.serviceGrant = some alicePublication then
+  else if who = alice ∧
+      view.application.publicView.ownTurn? alice = some alicePublication then
     {nativeSilent, opening who past view alicePublication aliceHandle (observedAliceBit view)}
   else {nativeSilent}
 

@@ -155,17 +155,10 @@ def quietGuessExpired (bit guess : Bool) : nativeApp.Execution :=
   { ticked with environmentRecall := ticked.environmentRecall ++
       [⟨ticked.observeEnvironment nativeApp, .application (.expire bobPublication)⟩] }
 
-def quietAliceGranted (bit guess : Bool) : nativeApp.Execution :=
-  let expired := quietGuessExpired bit guess
-  { expired with
-    application := { expired.application with serviceGrant := some alicePublication }
-    environmentRecall := expired.environmentRecall ++
-      [⟨expired.observeEnvironment nativeApp, .application (.grant alicePublication)⟩] }
-
 def quietAlice (bit guess : Bool) : nativeApp.Execution :=
-  let granted := quietAliceGranted bit guess
-  { granted with environmentRecall := granted.environmentRecall ++
-      [⟨granted.observeEnvironment nativeApp, .activate alice⟩] }
+  let expired := quietGuessExpired bit guess
+  { expired with environmentRecall := expired.environmentRecall ++
+      [⟨expired.observeEnvironment nativeApp, .activate alice⟩] }
 
 theorem quiet_alice_ready (bit guess : Bool) :
     (quietAlice bit guess).application.config.cut.Ready alicePublication :=
@@ -195,9 +188,7 @@ theorem quiet_alice_fixed (bit guess : Bool) :
     (quietGuessIncluded bit guess).application .advanceClock
     (quietGuessTicked bit guess).application (quiet_guess_fixed bit guess)
     ((PMF.mem_support_pure_iff _ _).mpr rfl)
-  exact (native_fixed_invariant bit).environment (quietGuessTicked bit guess).application
-    (.grant alicePublication) (quietAlice bit guess).application ticked
-    ((PMF.mem_support_pure_iff _ _).mpr rfl)
+  exact ticked
 
 theorem quiet_alice_serials (bit guess : Bool) :
     (quietAlice bit guess).network.SerialsBeforeNext := by
@@ -228,15 +219,8 @@ theorem quiet_guess_expiry (bit guess : Bool) :
     expiry, PMF.pure_map]
   rfl
 
-theorem quiet_alice_grant (bit guess : Bool) :
-    (quietGuessExpired bit guess).environmentStep nativeApp
-      (.application (.grant alicePublication)) = PMF.pure (quietAliceGranted bit guess) := by
-  simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
-    environmentStep, PMF.pure_map]
-  rfl
-
 theorem quiet_alice_activation (bit guess : Bool) :
-    (quietAliceGranted bit guess).environmentStep nativeApp (.activate alice) =
+    (quietGuessExpired bit guess).environmentStep nativeApp (.activate alice) =
       PMF.pure (quietAlice bit guess) := by
   simp only [ReactiveApplication.Execution.environmentStep, nativeApp, reactiveApplication,
     nativeLeaks, alice, watcher, bob, show (0 : Player) ≠ 2 by decide,
@@ -246,32 +230,33 @@ theorem quiet_alice_activation (bit guess : Bool) :
 theorem quiet_alice_response (bit guess : Bool) :
     nativeAliceResponse ((quietAlice bit guess).observe nativeApp alice) =
       nativeOpeningAction alicePublication aliceHandle bit := by
-  exact native_alice_response_eq bit (quietAlice bit guess) (quiet_alice_fixed bit guess) rfl
+  exact native_alice_response_eq bit (quietAlice bit guess) (quiet_alice_fixed bit guess)
+    (quiet_alice_ready bit guess)
 
 theorem quiet_guess_to_alice (players : Player → nativeApp.Policy)
     (prescribed : players alice = nativeAlicePolicy) (bit guess : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      [.tick, .expire bobPublication, .grant alicePublication, .player alice]
+      [.tick, .expire bobPublication, .player alice]
       (quietGuessIncluded bit guess) =
         PMF.pure ((quietAlice bit guess).respond nativeApp alice
           (nativeOpeningAction alicePublication aliceHandle bit)) := by
   simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-    quiet_guess_tick, quiet_guess_expiry, quiet_alice_grant, quiet_alice_activation,
+    quiet_guess_tick, quiet_guess_expiry, quiet_alice_activation,
     ReactiveApplication.resume, PMF.pure_bind, ReactiveApplication.invoke, prescribed,
     nativeAlicePolicy, quiet_alice_response, PMF.pure_map]
 
 theorem quiet_guess_suffix_summary (players : Player → nativeApp.Policy)
     (prescribed : players alice = nativeAlicePolicy) (bit guess : Bool) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       (quietGuessRespond bit guess)).map
         (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
       PMF.pure (Results.mk (.success bit) (guessResult guess), false) := by
   have prefixLaw : nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       [.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] (quietGuessRespond bit guess) =
+        .player alice] (quietGuessRespond bit guess) =
       PMF.pure ((quietAlice bit guess).respond nativeApp alice
         (nativeOpeningAction alicePublication aliceHandle bit)) := by
     rw [runInteractionPlan, quiet_guess_included, PMF.pure_bind]

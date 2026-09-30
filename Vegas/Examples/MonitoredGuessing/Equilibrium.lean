@@ -58,11 +58,11 @@ theorem exists_native_sequential_equilibrium (guesses : PMF Bool)
     fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   fin_cases who
   · change nativeModel.InformationSite alice at site
-    rcases native_alice_site_cases site with ⟨bit, rfl⟩ | ⟨past, view, info, granted⟩
+    rcases native_alice_site_cases site with ⟨bit, rfl⟩ | ⟨past, view, info, responded⟩
     · exact initial_alice_site_dominates deposit sufficient assessment guesses
         alicePolicy watcherPolicy atQuiet bit alternative
     · exact resolution_final_site_dominates deposit (by linarith) assessment alicePolicy
-        site past view info granted alternative
+        site past view info responded alternative
   · change nativeModel.InformationSite bob at site
     by_cases quiet : site = quietBobSite
     · subst site

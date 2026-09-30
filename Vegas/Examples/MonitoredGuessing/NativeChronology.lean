@@ -25,7 +25,7 @@ theorem native_deadline_pos (event : nativeGraph.EventId) :
   fin_cases event <;> decide
 
 theorem nativeVisit_prefix_ticks (event : nativeGraph.EventId) :
-    serviceTicks ([.grant event, .player (nativeOwner event),
+    serviceTicks ([.player (nativeOwner event),
       .includeLatest event (nativeOwner event)] ++
       List.replicate (nativeRuntime.deadline event) .tick) = nativeRuntime.deadline event := by
   fin_cases event <;> decide
@@ -47,7 +47,7 @@ theorem native_visit_completes (bit : Bool) (players : Player → nativeApp.Poli
   have enteredLe := invariant.activated_le event entered activated
   obtain ⟨prior, priorMem, expired, expiredMem, finalMem⟩ :=
     nativeRuntime.runInteractionPlan_support_instruction nativeLeaks players nativeNetwork
-      ([.grant event, .player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
+      ([.player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
         List.replicate (nativeRuntime.deadline event) .tick) [] (.expire event)
       execution next reached
   have progress := nativeRuntime.runInteractionPlan_facts nativeLeaks (nativeInputs bit) players

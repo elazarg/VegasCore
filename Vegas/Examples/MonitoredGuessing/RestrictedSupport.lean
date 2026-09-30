@@ -27,9 +27,11 @@ theorem reference_early_alice (bit : Bool) :
   have permitted : restrictedMenu.actions alice ((aliceActivated bit).recall alice)
       ((aliceActivated bit).observe nativeApp alice) = {nativeSilent} := by
     classical
-    simp [restrictedMenu, ordinaryActions, alice, bob, watcher, aliceActivated, nativeStart,
-      ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
-      nativeApp, reactiveApplication, State.publicView, nativeInitial, State.initial]
+    have notWatcher : alice ≠ watcher := by decide
+    have notBob : alice ≠ bob := by decide
+    simp only [restrictedMenu, notWatcher, ↓reduceIte]
+    rw [ordinaryActions, ite_eq_right (fun matching => notBob matching.1),
+      ite_eq_right (fun matching => initial_alice_no_turn bit matching.2)]
   rw [permitted, Finset.mem_singleton] at available
   exact available
 
@@ -51,8 +53,8 @@ theorem reference_quiet_watcher (bit : Bool) :
 
 theorem reference_quiet_prefix (bit : Bool) :
     nativeRuntime.runInteractionPlan nativeLeaks restrictedMenu.uniformResponses nativeNetwork
-      [.player alice, .player watcher, .wire, .grant bobPublication] (nativeStart bit) =
-        PMF.pure (quietGranted bit) := by
+      [.player alice, .player watcher, .wire] (nativeStart bit) =
+        PMF.pure (quietAfterWire bit) := by
   have wire : nativeRuntime.interactionInstruction nativeLeaks nativeNetwork
       (watcherRespond bit nativeSilent ∅ nativeSilent).environmentRecall
       ((watcherRespond bit nativeSilent ∅ nativeSilent).observeEnvironment nativeApp) .wire =
@@ -87,21 +89,17 @@ theorem reference_quiet_prefix (bit : Bool) :
   simp only [PMF.pure_bind, ReactiveApplication.dispatch, quiet_wire]
   rw [show (ReactiveApplication.Command.wait : nativeApp.Command).actor? nativeApp = none
     from rfl, ReactiveApplication.resume, PMF.pure_bind]
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-    ReactiveApplication.dispatch, quiet_grant]
-  rw [show (ReactiveApplication.Command.application (.grant bobPublication) :
-    nativeApp.Command).actor? nativeApp = none from rfl,
-    ReactiveApplication.resume, PMF.pure_bind]
+  rfl
 
-theorem reference_rounds_four :
-    nativeApp.roundsFrom nativeInitialLaw nativeScheduler restrictedMenu.uniformResponses 4 =
-      (PMF.uniformOfFintype Bool).map (quietGranted) := by
+theorem reference_rounds_three :
+    nativeApp.roundsFrom nativeInitialLaw nativeScheduler restrictedMenu.uniformResponses 3 =
+      (PMF.uniformOfFintype Bool).map quietAfterWire := by
   rw [ReactiveApplication.roundsFrom, nativeInitialLaw, PMF.bind_map]
   rw [← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
   intro bit _
   have rounds := native_segment_rounds restrictedMenu.uniformResponses []
-    [.player alice, .player watcher, .wire, .grant bobPublication] (nativePlan.drop 4)
+    [.player alice, .player watcher, .wire] (nativePlan.drop 3)
     rfl (nativeStart bit) rfl
   exact rounds.trans (reference_quiet_prefix bit)
 
@@ -109,7 +107,7 @@ theorem reference_rounds_four :
 compiler's chosen behavioral profile. -/
 theorem bob_control (control : nativeApp.Control)
     (trace : restrictedArena.Trace (some control)) (active : control.actor = some bob) :
-    ∃ bit, control = ⟨9, some bob, quietBob bit⟩ := by
+    ∃ bit, control = ⟨8, some bob, quietBob bit⟩ := by
   have supported := restrictedMenu.roundSupported_uniform nativeInitialLaw nativeHorizon
     nativeScheduler trace
   rcases control with ⟨remaining, actor, execution⟩
@@ -117,21 +115,21 @@ theorem bob_control (control : nativeApp.Control)
   subst actor
   obtain ⟨accounted, count, prior, command, position, priorMem, selected, acting, moved⟩ :=
     supported
-  have countEq : count = 4 :=
+  have countEq : count = 3 :=
     (nativeApp.roundsFrom_recall nativeInitialLaw nativeScheduler restrictedMenu.uniformResponses
       count prior priorMem).symm.trans
       (native_unique_bob_activation prior.environmentRecall
         (prior.observeEnvironment nativeApp) command selected acting)
   subst count
-  rw [reference_rounds_four, PMF.support_map] at priorMem
+  rw [reference_rounds_three, PMF.support_map] at priorMem
   obtain ⟨bit, _, rfl⟩ := priorMem
   have commandEq : command = .activate bob := (PMF.mem_support_pure_iff _ _).mp selected
   subst command
   rw [quiet_bob_activation, PMF.mem_support_pure_iff _ _] at moved
   change execution = quietBob bit at moved
   subst execution
-  have remainingEq : remaining = 9 := by
-    change 5 + remaining = 14 at accounted
+  have remainingEq : remaining = 8 := by
+    change 4 + remaining = 12 at accounted
     omega
   subst remaining
   exact ⟨bit, rfl⟩

@@ -6,7 +6,7 @@ import Vegas.Examples.MonitoredGuessing.NativeInitial
 /-! # Exhaustive restricted sender checkpoints
 
 Uniform legal responses give every restricted history positive support. The
-actual nine-round prefix then classifies every final sender input by the same
+actual seven-round prefix then classifies every final sender input by the same
 initial bit and receiver choice used by the source program.
 -/
 
@@ -17,33 +17,18 @@ namespace Vegas.Examples.MonitoredGuessing.Restricted
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
-theorem bob_to_granted_alice (players : Player → nativeApp.Policy) (bit guess : Bool) :
-    nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      [.includeLatest bobPublication bob, .tick, .expire bobPublication, .grant alicePublication]
-      ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) =
-      PMF.pure (grantedAlice bit guess) := by
-  change nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication] ++
-      [.grant alicePublication]) _ = _
-  rw [runInteractionPlan_append, bob_service, PMF.pure_bind]
-  simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-    ReactiveApplication.dispatch, grant_alice]
-  rw [show (ReactiveApplication.Command.application (.grant alicePublication) :
-    nativeApp.Command).actor? nativeApp = none from rfl,
-    ReactiveApplication.resume, PMF.pure_bind]
-
 theorem reference_receiver_support (bit : Bool) (execution : nativeApp.Execution)
     (reached : execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks
       restrictedMenu.uniformResponses nativeNetwork
-      [.player bob, .includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication] (quietGranted bit)).support) :
-    ∃ guess, execution = grantedAlice bit guess := by
+      [.player bob, .includeLatest bobPublication bob, .tick, .expire bobPublication]
+      (quietAfterWire bit)).support) :
+    ∃ guess, execution = afterBob bit guess := by
   classical
-  change execution ∈ ((nativeRuntime.interactionStep nativeLeaks
-    restrictedMenu.uniformResponses nativeNetwork (.player bob) (quietGranted bit)).bind _).support
+  change execution ∈ ((nativeRuntime.interactionStep nativeLeaks restrictedMenu.uniformResponses
+    nativeNetwork (.player bob) (quietAfterWire bit)).bind _).support
     at reached
   have activated : nativeRuntime.interactionStep nativeLeaks restrictedMenu.uniformResponses
-      nativeNetwork (.player bob) (quietGranted bit) =
+      nativeNetwork (.player bob) (quietAfterWire bit) =
         (restrictedMenu.uniformResponses bob ((quietBob bit).recall bob)
           ((quietBob bit).observe nativeApp bob)).map ((quietBob bit).respond nativeApp bob) := by
     simp only [interactionStep, interactionInstruction, PMF.pure_bind,
@@ -56,32 +41,32 @@ theorem reference_receiver_support (bit : Bool) (execution : nativeApp.Execution
   rw [bob_actions, Finset.mem_insert, Finset.mem_singleton] at permitted
   rcases permitted with rfl | rfl
   · refine ⟨false, ?_⟩
-    have law := bob_to_granted_alice restrictedMenu.uniformResponses bit false
+    have law := bob_service restrictedMenu.uniformResponses bit false
     simp only [choiceAction, Bool.false_eq_true, ↓reduceIte] at law
     rw [law] at finished
     exact (PMF.mem_support_pure_iff _ _).mp finished
   · refine ⟨true, ?_⟩
-    have law := bob_to_granted_alice restrictedMenu.uniformResponses bit true
+    have law := bob_service restrictedMenu.uniformResponses bit true
     simp only [choiceAction, ↓reduceIte] at law
     rw [law] at finished
     exact (PMF.mem_support_pure_iff _ _).mp finished
 
-theorem reference_rounds_nine_support (execution : nativeApp.Execution)
+theorem reference_rounds_seven_support (execution : nativeApp.Execution)
     (reached : execution ∈ (nativeApp.roundsFrom nativeInitialLaw nativeScheduler
-      restrictedMenu.uniformResponses 9).support) :
-    ∃ bit guess, execution = grantedAlice bit guess := by
+      restrictedMenu.uniformResponses 7).support) :
+    ∃ bit guess, execution = afterBob bit guess := by
   rw [ReactiveApplication.roundsFrom, nativeInitialLaw, PMF.bind_map,
     PMF.support_bind] at reached
   obtain ⟨bit, _, reached⟩ := Set.mem_iUnion₂.mp reached
   change execution ∈ (nativeApp.runRounds nativeScheduler restrictedMenu.uniformResponses
-    9 (nativeStart bit)).support at reached
+    7 (nativeStart bit)).support at reached
   have rounds := native_segment_rounds restrictedMenu.uniformResponses []
-    (nativePlan.take 9) (nativePlan.drop 9) (by simp) (nativeStart bit) rfl
-  change nativeApp.runRounds nativeScheduler restrictedMenu.uniformResponses 9 (nativeStart bit) =
+    (nativePlan.take 7) (nativePlan.drop 7) (by simp) (nativeStart bit) rfl
+  change nativeApp.runRounds nativeScheduler restrictedMenu.uniformResponses 7 (nativeStart bit) =
     nativeRuntime.runInteractionPlan nativeLeaks restrictedMenu.uniformResponses nativeNetwork
-      ([.player alice, .player watcher, .wire, .grant bobPublication] ++
-        [.player bob, .includeLatest bobPublication bob, .tick, .expire bobPublication,
-          .grant alicePublication]) (nativeStart bit) at rounds
+      ([.player alice, .player watcher, .wire] ++
+        [.player bob, .includeLatest bobPublication bob, .tick, .expire bobPublication])
+          (nativeStart bit) at rounds
   rw [rounds, runInteractionPlan_append, reference_quiet_prefix, PMF.pure_bind] at reached
   obtain ⟨guess, same⟩ := reference_receiver_support bit execution reached
   exact ⟨bit, guess, same⟩
@@ -89,7 +74,7 @@ theorem reference_rounds_nine_support (execution : nativeApp.Execution)
 /-- Every final-Alice legal control is one of the four source decision inputs. -/
 theorem final_alice_control (control : nativeApp.Control)
     (trace : restrictedArena.Trace (some control)) (active : control.actor = some alice)
-    (position : control.execution.environmentRecall.length = 10) :
+    (position : control.execution.environmentRecall.length = 8) :
     ∃ bit guess, control = ⟨4, some alice, beforeAlice bit guess⟩ := by
   have supported := restrictedMenu.roundSupported_uniform nativeInitialLaw nativeHorizon
     nativeScheduler trace
@@ -98,9 +83,9 @@ theorem final_alice_control (control : nativeApp.Control)
   subst actor
   obtain ⟨accounted, count, prior, command, advanced, priorMem, selected, acting, moved⟩ :=
     supported
-  have countEq : count = 9 := by omega
+  have countEq : count = 7 := by omega
   subst count
-  obtain ⟨bit, guess, rfl⟩ := reference_rounds_nine_support prior priorMem
+  obtain ⟨bit, guess, rfl⟩ := reference_rounds_seven_support prior priorMem
   have commandEq : command = .activate alice := by
     cases command with
     | activate who => cases Option.some.inj acting; rfl
@@ -110,15 +95,15 @@ theorem final_alice_control (control : nativeApp.Control)
   change execution = beforeAlice bit guess at moved
   subst execution
   have remainingEq : remaining = 4 := by
-    change (beforeAlice bit guess).environmentRecall.length + remaining = 14 at accounted
-    change (beforeAlice bit guess).environmentRecall.length = 10 at position
+    change (beforeAlice bit guess).environmentRecall.length + remaining = 12 at accounted
+    change (beforeAlice bit guess).environmentRecall.length = 8 at position
     omega
   subst remaining
   exact ⟨bit, guess, rfl⟩
 
 theorem alice_control (control : nativeApp.Control)
     (trace : restrictedArena.Trace (some control)) (active : control.actor = some alice) :
-    (∃ bit, control = ⟨13, some alice, aliceActivated bit⟩) ∨
+    (∃ bit, control = ⟨11, some alice, aliceActivated bit⟩) ∨
       ∃ bit guess, control = ⟨4, some alice, beforeAlice bit guess⟩ := by
   have supported := restrictedMenu.roundSupported_uniform nativeInitialLaw nativeHorizon
     nativeScheduler trace
@@ -145,14 +130,14 @@ theorem alice_control (control : nativeApp.Control)
       at moved
     rw [initial_activation, PMF.mem_support_pure_iff _ _] at moved
     subst execution
-    have remainingEq : remaining = 13 := by
-      change 1 + remaining = 14 at accounted
+    have remainingEq : remaining = 11 := by
+      change 1 + remaining = 12 at accounted
       omega
     subst remaining
     exact ⟨bit, rfl⟩
   · right
     apply final_alice_control _ trace rfl
-    change execution.environmentRecall.length = 10
+    change execution.environmentRecall.length = 8
     change execution.environmentRecall.length = count + 1 at advanced
     omega
 
@@ -189,10 +174,9 @@ theorem final_alice_known_state (bit guess : Bool)
           control.execution.observe nativeApp alice) = aliceInput bit guess := by
         simpa only [ReactiveApplication.observe, active, ↓reduceIte] using observed
       rcases alice_control control trace active with ⟨other, rfl⟩ | ⟨other, decision, rfl⟩
-      · have grants := congrArg (fun info : nativeApp.Info =>
-          info.bind fun pair => pair.2.application.publicView.serviceGrant) actualInput
-        change none = some alicePublication at grants
-        cases grants
+      · have recalls := congrArg (fun info : nativeApp.Info =>
+          info.map fun pair => pair.1.length) actualInput
+        cases guess <;> change some 0 = some 1 at recalls <;> cases recalls
       · obtain ⟨rfl, rfl⟩ := (alice_input_eq_iff other decision bit guess).mp actualInput
         rfl
 

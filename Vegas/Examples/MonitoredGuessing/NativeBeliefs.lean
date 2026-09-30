@@ -29,13 +29,13 @@ native prefix law. Keeping states rather than hand-picked history witnesses
 retains every history that the assessment gives positive probability. -/
 theorem quiet_native_state_belief (assessment : nativeModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent nativeAntichain)
-    (prefixLaw : (nativeModel.runBehavioral assessment.strategy 8).map History.state =
+    (prefixLaw : (nativeModel.runBehavioral assessment.strategy 7).map History.state =
       (PMF.uniformOfFintype Bool).map (fun bit => (quietBobHistory bit).state)) :
     (assessment.belief bob quietBobSite).map (fun history => history.1.state) =
       (PMF.uniformOfFintype Bool).map (fun bit => (quietBobHistory bit).state) := by
   classical
   have depth := native_bob_information_depth quietBobSite
-  let law := nativeModel.runBehavioral assessment.strategy 8
+  let law := nativeModel.runBehavioral assessment.strategy 7
   let information : Set nativeArena.History :=
     {history | nativeModel.infoOf bob history.trace = quietBobSite.1}
   have seen (history : nativeArena.History) (supported : history ∈ law.support) :
@@ -49,7 +49,7 @@ theorem quiet_native_state_belief (assessment : nativeModel.BehavioralAssessment
     exact (nativeMenu.info nativeInitialLaw nativeHorizon nativeScheduler bob history.trace).trans
       ((congrArg (nativeApp.observe bob) same).symm.trans (quiet_bob_info bit))
   have conditioned := assessment.belief_map_eq_run_of_full_reach nativeModel nativeAntichain
-    consistent bob quietBobSite 8 depth seen
+    consistent bob quietBobSite 7 depth seen
   have projected := congrArg (fun histories : PMF nativeArena.History =>
     histories.map History.state) conditioned
   simpa only [PMF.map_comp, Function.comp_def] using projected.trans prefixLaw

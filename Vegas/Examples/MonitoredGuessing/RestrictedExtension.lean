@@ -26,8 +26,7 @@ private theorem watched_alice_depth (site : restrictedModel.InformationSite alic
     watchedDepth alice (ordinaryRestriction.site alice site) =
       match site.1 with
       | none => 2
-      | some (_, view) =>
-          if view.application.publicView.serviceGrant = none then 2 else 14 := by
+      | some (past, _) => if past = [] then 2 else 12 := by
   simp only [watchedDepth, effectiveDepth, nativeDecisionDepth,
     show alice ≠ bob by decide, show alice ≠ watcher by decide, ↓reduceIte]
   have information : (effectiveRawRestriction.site alice (watcherRestriction.site alice
@@ -49,9 +48,9 @@ private theorem watched_initial_depth (bit : Bool)
 private theorem watched_final_depth (bit guess : Bool)
     (site : restrictedModel.InformationSite alice)
     (observed : site.1 = aliceInput bit guess) :
-    watchedDepth alice (ordinaryRestriction.site alice site) = 14 := by
+    watchedDepth alice (ordinaryRestriction.site alice site) = 12 := by
   rw [watched_alice_depth, observed]
-  rfl
+  cases guess <;> exact ite_eq_right (List.cons_ne_nil _ _)
 
 /-- Every restricted equilibrium extends to the fixed watched game, with its
 retained policies, beliefs, and full initialized history/net-payoff law. -/
@@ -108,16 +107,16 @@ theorem ordinary_equilibrium_extends (table : PayoffTable)
           rcases alice_site_cases site with ⟨bit, early⟩ | ⟨bit, guess, final⟩
           · apply initial_continuation_comparison table sourceProfile targetProfile bit site early
               action extra history
-            change 27 ≤ 29 - watchedDepth alice (ordinaryRestriction.site alice site)
+            change 23 ≤ 25 - watchedDepth alice (ordinaryRestriction.site alice site)
             rw [watched_initial_depth bit site early]
           · apply final_continuation_comparison table sourceProfile targetProfile bit guess site
               final action history
-            change 9 ≤ 29 - watchedDepth alice (ordinaryRestriction.site alice site)
+            change 9 ≤ 25 - watchedDepth alice (ordinaryRestriction.site alice site)
             rw [watched_final_depth bit guess site final]
             decide
         · apply bob_continuation_comparison table sourceProfile targetProfile paired site action
             extra history
-          change 19 ≤ 29 - watchedDepth bob (ordinaryRestriction.site bob site)
+          change 17 ≤ 25 - watchedDepth bob (ordinaryRestriction.site bob site)
           simp only [watchedDepth, effectiveDepth, nativeDecisionDepth, ↓reduceIte]
           decide
         · exact (extra (watcher_choice_surjective site.1 action)).elim)

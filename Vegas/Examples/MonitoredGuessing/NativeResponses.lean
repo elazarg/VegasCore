@@ -31,8 +31,23 @@ def observedAliceBit (view : nativeApp.PlayerView) : Bool :=
   | .openable raw => (raw.as? .bool).getD false
   | _ => false
 
+/-- Each player owns exactly one publication, so it is the owner's turn exactly
+when it is ready. -/
+theorem native_turn_iff (state : EventGraphRuntime.State nativeGraph)
+    (event : nativeGraph.EventId) :
+    state.publicView.ownTurn? (nativeOwner event) = some event ↔ state.config.cut.Ready event := by
+  constructor
+  · intro turn
+    exact (state.publicView_eventReady event).mp (PublicView.ownTurn?_spec _ _ event turn).1
+  · intro ready
+    refine PublicView.ownTurn?_of_ownTurn _ _ event
+      ⟨(state.publicView_eventReady event).mpr ready, native_actor event, ?_⟩
+    intro other _ actor
+    rw [native_actor, Option.some_inj] at actor
+    fin_cases event <;> fin_cases other <;> first | rfl | exact absurd actor (by decide)
+
 def nativeAliceResponse (view : nativeApp.PlayerView) : nativeApp.Action :=
-  if view.application.publicView.serviceGrant = some alicePublication then
+  if view.application.publicView.ownTurn? alice = some alicePublication then
     nativeOpeningAction alicePublication aliceHandle (observedAliceBit view)
   else nativeSilent
 
@@ -120,18 +135,14 @@ def nativeWatcherBehavior : nativeModel.BehavioralPolicy watcher :=
   nativeMenu.restrictPolicy nativeInitialLaw nativeHorizon nativeScheduler watcher
     nativeWatcherPolicy
 
-/-- The actual execution after silent ambient responses and the first grant. -/
+/-- The actual execution after silent ambient responses and the wire turn. -/
 def quietBob (bit : Bool) : nativeApp.Execution :=
   let previous := watcherRespond bit nativeSilent ∅ nativeSilent
   let afterWire : nativeApp.Execution := { previous with
     environmentRecall := previous.environmentRecall ++
       [⟨previous.observeEnvironment nativeApp, .wait⟩] }
-  let granted : nativeApp.Execution := { afterWire with
-    application := { afterWire.application with serviceGrant := some bobPublication }
-    environmentRecall := afterWire.environmentRecall ++
-      [⟨afterWire.observeEnvironment nativeApp, .application (.grant bobPublication)⟩] }
-  { granted with environmentRecall := granted.environmentRecall ++
-    [⟨granted.observeEnvironment nativeApp, .activate bob⟩] }
+  { afterWire with environmentRecall := afterWire.environmentRecall ++
+    [⟨afterWire.observeEnvironment nativeApp, .activate bob⟩] }
 
 def quietBobInfo : nativeApp.Info := some ([], (quietBob false).observe nativeApp bob)
 
@@ -171,6 +182,23 @@ theorem quiet_bob_observation (bit : Bool) :
         cases slot with
         | initial input => fin_cases input <;> rfl
         | prepared serial => rfl
+
+/-- Bob's publication is his turn at his actual decision. -/
+theorem quiet_bob_turn (bit : Bool) :
+    ((quietBob bit).observe nativeApp bob).application.publicView.ownTurn? bob =
+      some bobPublication := by
+  apply (native_turn_iff (quietBob bit).application bobPublication).mpr
+  change (watcherRespond bit nativeSilent ∅ nativeSilent).application.config.cut.Ready
+    bobPublication
+  rw [watcher_config]
+  exact initial_bob_ready bit
+
+/-- Alice's publication is not yet her turn at her first activation. -/
+theorem initial_alice_no_turn (bit : Bool) :
+    ((aliceActivated bit).observe nativeApp alice).application.publicView.ownTurn? alice ≠
+      some alicePublication := fun turn =>
+  initial_alice_not_ready bit
+    ((native_turn_iff (aliceActivated bit).application alicePublication).mp turn)
 
 theorem quiet_bob_recall (bit : Bool) : (quietBob bit).recall bob = [] := rfl
 

@@ -86,8 +86,8 @@ theorem bob_choice_observation (table : PayoffTable)
     (nativeRuntime.runInteractionPlan nativeLeaks
       (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
       nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       ((quietBob bit).respond nativeApp bob
         (choiceAction bobPublication bobHandle true guess))).map
           (fun final => nativePayoffObservation table (nativeApp.finished final)) =
@@ -102,16 +102,16 @@ theorem bob_finish_observation (table : PayoffTable)
     (profile : Profile restrictedModel.behavioralSignature) (bit : Bool) :
     (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-      (some ⟨9, some bob, quietBob bit⟩)).map (nativePayoffObservation table) =
+      (some ⟨8, some bob, quietBob bit⟩)).map (nativePayoffObservation table) =
       (targetGuesses profile).bind fun guess =>
         (targetDisclosures profile bit guess).map (decisionObservation table bit guess) := by
   have finish := native_finish_response
     (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-    [.player alice, .player watcher, .wire, .grant bobPublication]
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
+    [.player alice, .player watcher, .wire]
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+      resolutionTail) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _
-    (some ⟨9, some bob, quietBob bit⟩) = _ at finish
+    (some ⟨8, some bob, quietBob bit⟩) = _ at finish
   rw [finish, decoded_bob_response, PMF.bind_map, PMF.map_bind]
   apply bind_congr_on_support _
   intro guess _
@@ -124,15 +124,15 @@ theorem finish_quiet (profile : Profile restrictedModel.behavioralSignature) :
       (PMF.uniformOfFintype Bool).bind fun bit =>
         nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
           (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-          (some ⟨9, some bob, quietBob bit⟩) := by
+          (some ⟨8, some bob, quietBob bit⟩) := by
   have prefixLaw := bob_prefix_law profile
   rw [InformationModel.runBehavioral, restrictedMenu.run_map_controlStep] at prefixLaw
   change ((fun law => law.bind (nativeApp.controlStep nativeInitialLaw nativeHorizon
     nativeScheduler (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
-      profile)))^[8] (PMF.pure none)) = _ at prefixLaw
+      profile)))^[7] (PMF.pure none)) = _ at prefixLaw
   have stopped := nativeApp.finish_after_steps nativeInitialLaw nativeHorizon nativeScheduler
     (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-    8 (PMF.pure none)
+    7 (PMF.pure none)
   rw [prefixLaw, PMF.bind_map, PMF.pure_bind] at stopped
   exact stopped.symm
 

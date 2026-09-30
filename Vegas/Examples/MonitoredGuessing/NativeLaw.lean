@@ -35,8 +35,8 @@ theorem source_done_observation (bit guess : Bool) :
 theorem quiet_guess_suffix_observation (players : Player → nativeApp.Policy)
     (prescribed : players alice = nativeAlicePolicy) (bit guess : Bool) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
-      ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-        .grant alicePublication, .player alice] ++ resolutionTail)
+      ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+        resolutionTail)
       (quietGuessRespond bit guess)).map nativeExecutionObservation =
       PMF.pure (guessingObservation bit guess) := by
   apply pmf_eq_pure_of_support_subset_singleton
@@ -61,9 +61,9 @@ theorem native_finish_quiet (players : Player → nativeApp.Policy)
     nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players none =
       (PMF.uniformOfFintype Bool).bind (fun bit =>
         nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-          (some ⟨9, some bob, quietBob bit⟩)) := by
+          (some ⟨8, some bob, quietBob bit⟩)) := by
   have stopped := nativeApp.finish_after_steps nativeInitialLaw nativeHorizon nativeScheduler
-    players 8 (PMF.pure none)
+    players 7 (PMF.pure none)
   rw [quiet_bob_control_law players (by intro bit; rw [alicePolicy]; rfl)
     (by intro bit; rw [watcherPolicy]; rfl),
     PMF.bind_map, PMF.pure_bind] at stopped
@@ -107,11 +107,11 @@ theorem native_initialized_observation (profile : Profile nativeModel.behavioral
   apply bind_congr_on_support _
   intro bit _
   have finishLaw := native_finish_response players
-    [.player alice, .player watcher, .wire, .grant bobPublication]
-    ([.includeLatest bobPublication bob, .tick, .expire bobPublication,
-      .grant alicePublication, .player alice] ++ resolutionTail) bob rfl (quietBob bit) rfl
+    [.player alice, .player watcher, .wire]
+    ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
+      resolutionTail) bob rfl (quietBob bit) rfl
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-    (some ⟨9, some bob, quietBob bit⟩) = _ at finishLaw
+    (some ⟨8, some bob, quietBob bit⟩) = _ at finishLaw
   rw [finishLaw]
   have decision : players bob ((quietBob bit).recall bob)
       ((quietBob bit).observe nativeApp bob) = guesses.map nativeGuessAction :=
