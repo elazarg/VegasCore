@@ -7,7 +7,7 @@ import Vegas.Compile.EventGraphLaw
 
 /-! # Exact source law of the restricted revelation service
 
-The proof folds actual grant, response, inclusion, monitoring, and deadline
+The proof folds actual activation, response, inclusion, monitoring, and deadline
 instructions along the existing source syntax. It allows arbitrary distributions
 over published replay aliases, provided their Boolean projection is the source
 choice kernel. This includes changing one player's private alias selector.
@@ -97,10 +97,10 @@ theorem run_source_suffix_option_law
       have node : nodeView (graph setup) event =
           .resolve owner payload (refs.get selected) [] outputEq codeEq :=
         EventGraphRuntime.nodeView_eq_resolve _ _
-      obtain ⟨opportunity, activeCheckpoint, _granted, _clock, _activation,
+      obtain ⟨opportunity, activeCheckpoint, _sameApplication,
           opportunityLaw, _opportunityRecall⟩ :=
         checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
-          event owner
+          owner
       have ready : opportunity.application.config.cut.Ready event := by
         have active : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt
         have chosenEvent : (⟨offset, active⟩ : (graph setup).EventId) = event :=
@@ -143,7 +143,7 @@ theorem run_source_suffix_option_law
       have planEq : ((List.finRange (eventCount
           (.reveal published owner name fresh selected unresolved next))).flatMap fun i =>
             block setup watcher (embedding.event i)) =
-          [.grant event, .player owner] ++ (suffix ++ remaining) := by
+          [.player owner] ++ (suffix ++ remaining) := by
         simp only [eventCount, List.finRange_succ, List.flatMap_cons, List.flatMap_map]
         change block setup watcher event ++ remaining = _
         rw [block_of_owner setup watcher owner event actor]

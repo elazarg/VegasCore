@@ -80,7 +80,6 @@ theorem interactionStep_serviceGrant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (instruction : ServiceInstruction graph)
-    (fixed : instruction ≠ .wire)
     (noGrant : ∀ event, instruction ≠ .grant event)
     (execution next : (runtime.reactiveApplication leaks).Execution)
     (reached : next ∈ (runtime.interactionStep leaks players network instruction
@@ -108,7 +107,15 @@ theorem interactionStep_serviceGrant (runtime : EventGraphRuntime graph)
   apply runtime.reactive_environment_serviceGrant leaks execution middle command _ observed
   intro event
   cases instruction with
-  | wire => exact (fixed rfl).elim
+  | wire =>
+      simp only [interactionInstruction] at selected
+      obtain ⟨choice, _, rfl⟩ := PMF.support_map .. ▸ selected
+      intro impossible
+      rcases choice with who | id | _ <;>
+        simp only [NetworkChoice.command, ReactiveApplication.atMostOnceCommand] at impossible
+      · cases impossible
+      · split at impossible <;> cases impossible
+      · cases impossible
   | grant granted => exact (noGrant granted rfl).elim
   | player who | sample sampled | tick | expire expired =>
       simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at selected
@@ -121,13 +128,12 @@ theorem interactionStep_serviceGrant (runtime : EventGraphRuntime graph)
       unfold reactiveLatest
       split <;> simp
 
-/-- A fixed service tail without another grant retains the current public
-event cursor under arbitrary raw player responses. -/
+/-- A service plan without a grant instruction retains the current public
+event cursor under arbitrary raw player responses and network choices. -/
 theorem runInteractionPlan_serviceGrant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (network : runtime.NetworkPolicy leaks) (plan : List (ServiceInstruction graph))
-    (fixed : ServiceInstruction.wire ∉ plan)
     (noGrant : ∀ event, ServiceInstruction.grant event ∉ plan)
     (execution next : (runtime.reactiveApplication leaks).Execution)
     (reached : next ∈ (runtime.runInteractionPlan leaks players network plan execution).support) :
@@ -137,10 +143,8 @@ theorem runInteractionPlan_serviceGrant (runtime : EventGraphRuntime graph)
   | cons instruction rest ih =>
       obtain ⟨middle, stepped, continued⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      rw [ih (fun member => fixed (List.mem_cons_of_mem _ member))
-        (fun event member => noGrant event (List.mem_cons_of_mem _ member)) middle continued]
+      rw [ih (fun event member => noGrant event (List.mem_cons_of_mem _ member)) middle continued]
       exact runtime.interactionStep_serviceGrant leaks players network instruction
-        (fun equal => fixed (List.mem_cons.mpr (Or.inl equal.symm)))
         (fun event equal => noGrant event (List.mem_cons.mpr (Or.inl equal.symm)))
         execution middle stepped
 

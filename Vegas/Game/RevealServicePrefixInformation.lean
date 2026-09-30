@@ -6,7 +6,7 @@ import Vegas.Source.ObservationRecall
 /-! # Exact source views at restricted service prefixes
 
 The actual checkpoint invariant equates source information with the native
-before-view at a fixed grant. Native own-response recall remains separate:
+before-view. Native own-response recall remains separate:
 different aliases may refine a source information set without changing this
 view or the source Boolean choices.
 -/
@@ -58,7 +58,6 @@ theorem PublicPrefixCheckpoint.observe_eq_iff
         offset count left nativeLeft →
       PublicPrefixCheckpoint setup leaks rightInitial program refs revelations outputs
         offset count right nativeRight →
-      nativeLeft.application.serviceGrant = nativeRight.application.serviceGrant →
       nativeLeft.network.leaked who = nativeRight.network.leaked who →
       (ProtocolState.observe who program left = ProtocolState.observe who program right ↔
         nativeLeft.observe (application setup leaks) who =
@@ -67,55 +66,55 @@ theorem PublicPrefixCheckpoint.observe_eq_iff
   induction program with
   | ret payoffs =>
       intro refs revelations outputs offset count left right nativeLeft nativeRight
-        leftRelated rightRelated grant leaked
+        leftRelated rightRelated leaked
       cases count with
       | zero =>
           obtain ⟨leftSource, rfl, _leftRevelations, leftCheckpoint⟩ := leftRelated
           obtain ⟨rightSource, rfl, _rightRevelations, rightCheckpoint⟩ := rightRelated
           constructor
-          · exact leftCheckpoint.observe_eq rightCheckpoint who grant leaked
+          · exact leftCheckpoint.observe_eq rightCheckpoint who leaked
           · exact source_view_eq_of_observe_eq setup leaks refs who _ _
               nativeLeft nativeRight leftCheckpoint.agrees rightCheckpoint.agrees
               leftCheckpoint.history rightCheckpoint.history
       | succ count => exact leftRelated.elim
   | sample name fresh law next ih =>
       intro refs revelations outputs offset count left right nativeLeft nativeRight
-        leftRelated rightRelated grant leaked
+        leftRelated rightRelated leaked
       cases count with
       | zero =>
           obtain ⟨leftSource, rfl, _leftRevelations, leftCheckpoint⟩ := leftRelated
           obtain ⟨rightSource, rfl, _rightRevelations, rightCheckpoint⟩ := rightRelated
           change Sum.inl (leftSource.view who) = Sum.inl (rightSource.view who) ↔ _
           rw [Sum.inl.injEq]
-          exact ⟨leftCheckpoint.observe_eq rightCheckpoint who grant leaked,
+          exact ⟨leftCheckpoint.observe_eq rightCheckpoint who leaked,
             source_view_eq_of_observe_eq setup leaks refs who leftSource rightSource
               nativeLeft nativeRight leftCheckpoint.agrees rightCheckpoint.agrees
               leftCheckpoint.history rightCheckpoint.history⟩
       | succ count => exact leftRelated.elim
   | commit name owner fresh guard next ih =>
       intro refs revelations outputs offset count left right nativeLeft nativeRight
-        leftRelated rightRelated grant leaked
+        leftRelated rightRelated leaked
       cases count with
       | zero =>
           obtain ⟨leftSource, rfl, _leftRevelations, leftCheckpoint⟩ := leftRelated
           obtain ⟨rightSource, rfl, _rightRevelations, rightCheckpoint⟩ := rightRelated
           change Sum.inl (leftSource.view who) = Sum.inl (rightSource.view who) ↔ _
           rw [Sum.inl.injEq]
-          exact ⟨leftCheckpoint.observe_eq rightCheckpoint who grant leaked,
+          exact ⟨leftCheckpoint.observe_eq rightCheckpoint who leaked,
             source_view_eq_of_observe_eq setup leaks refs who leftSource rightSource
               nativeLeft nativeRight leftCheckpoint.agrees rightCheckpoint.agrees
               leftCheckpoint.history rightCheckpoint.history⟩
       | succ count => exact leftRelated.elim
   | reveal published owner name fresh selected unresolved next ih =>
       intro refs revelations outputs offset count left right nativeLeft nativeRight
-        leftRelated rightRelated grant leaked
+        leftRelated rightRelated leaked
       cases count with
       | zero =>
           obtain ⟨leftSource, rfl, _leftRevelations, leftCheckpoint⟩ := leftRelated
           obtain ⟨rightSource, rfl, _rightRevelations, rightCheckpoint⟩ := rightRelated
           change Sum.inl (leftSource.view who) = Sum.inl (rightSource.view who) ↔ _
           rw [Sum.inl.injEq]
-          exact ⟨leftCheckpoint.observe_eq rightCheckpoint who grant leaked,
+          exact ⟨leftCheckpoint.observe_eq rightCheckpoint who leaked,
             source_view_eq_of_observe_eq setup leaks refs who leftSource rightSource
               nativeLeft nativeRight leftCheckpoint.agrees rightCheckpoint.agrees
               leftCheckpoint.history rightCheckpoint.history⟩
@@ -127,7 +126,7 @@ theorem PublicPrefixCheckpoint.observe_eq_iff
               | inl source => exact rightRelated.elim
               | inr right =>
                   have tail := ih _ (revelations.reveal selected) _ (offset + 1) count
-                    left right nativeLeft nativeRight leftRelated rightRelated grant leaked
+                    left right nativeLeft nativeRight leftRelated rightRelated leaked
                   simpa only [ProtocolState.observe, Sum.elim_inr, Sum.inr.injEq] using tail
 
 /-- The source view is already fixed by the local application observation.

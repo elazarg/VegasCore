@@ -111,9 +111,9 @@ depended on: prescribed owners transmitted only when granted and the audit
 classified a fresh packet as conforming only for the granted event. Since step
 3 below, both use readiness instead, so a prescribed owner acts exactly when a
 deviator could, and the calendar proofs identify the event a decision belongs
-to by readiness as well. The calendar no longer issues grants at all, so its
-executions keep the empty grant throughout. The field and the command survive
-for the watcher calendar and the event-service stack
+to by readiness as well. Neither the roster calendar nor the watcher calendar
+issues grants any more, so their executions keep the empty grant throughout.
+The field and the command survive only for the event-service stack
 (`Vegas/Pending/EventBindingPolicyService.lean`); removing them is the rest of
 step 4.
 
@@ -455,7 +455,9 @@ design evidence, not proofs.
    modeled.
 4. **Phase from public history and order-invariant continuations.** Started:
    the roster calendar issues no grant, and a phase start is identified by its
-   plan position (`sourceService_phase_boundary`). The watcher calendar, the
+   plan position (`sourceService_phase_boundary`). The watcher calendar issues
+   no grant either; its decision depths are read from the public clock
+   (`Vegas.decisionDepth` in `Vegas/Game/RevealServiceClock.lean`). The
    event-service stack and the grant field itself remain.
 5. **The general theorem**, with the fixed calendar recovered as an instance.
 6. **Joint transmission-and-ordering deviations**, a separate theorem beyond

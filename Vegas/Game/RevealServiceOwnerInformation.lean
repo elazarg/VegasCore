@@ -35,9 +35,9 @@ theorem owner_information_projects
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
     (leftHistory rightHistory : (protocol setup leaks bounds watcher).History)
     (leftSupport : leftHistory ∈ ((information setup leaks bounds watcher).runBehavioral left
-      (blockOffset event.val + 2 * event.val + 3)).support)
+      (blockOffset event.val + 2 * event.val + 2)).support)
     (rightSupport : rightHistory ∈ ((information setup leaks bounds watcher).runBehavioral right
-      (blockOffset event.val + 2 * event.val + 3)).support)
+      (blockOffset event.val + 2 * event.val + 2)).support)
     (same : (information setup leaks bounds watcher).infoOf who leftHistory.trace =
       (information setup leaks bounds watcher).infoOf who rightHistory.trace) :
     setup.protocolObserve who (prefixReadout setup leaks event.val leftHistory.state) =
@@ -67,7 +67,7 @@ theorem owner_information_projects
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val
     leftSource rightSource _ _
     (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ leftOpportunity)
-    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ rightOpportunity) rfl
+    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ rightOpportunity)
     (by rw [leftLeaks, rightLeaks])).mpr beforeView
   simpa only [leftState, rightState, prefixReadout, ownerOpportunity,
     leftDecoded, rightDecoded, Setup.protocolObserve, Option.map_some] using
@@ -93,9 +93,9 @@ theorem owner_focal_information
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
     (leftHistory rightHistory : (protocol setup leaks bounds watcher).History)
     (leftSupport : leftHistory ∈ ((information setup leaks bounds watcher).runBehavioral left
-      (blockOffset event.val + 2 * event.val + 3)).support)
+      (blockOffset event.val + 2 * event.val + 2)).support)
     (rightSupport : rightHistory ∈ ((information setup leaks bounds watcher).runBehavioral right
-      (blockOffset event.val + 2 * event.val + 3)).support)
+      (blockOffset event.val + 2 * event.val + 2)).support)
     (referenceInfo : (information setup leaks bounds watcher).infoOf who rightHistory.trace =
       some (reference, view))
     (same : setup.protocolObserve who
@@ -121,14 +121,14 @@ theorem owner_focal_information
       rightHistory rightSupport
   have leftInfo : (information setup leaks bounds watcher).infoOf who leftHistory.trace =
       some (leftBoundary.recall who,
-        (ownerOpportunity setup leaks event who leftBoundary).observe
+        (ownerOpportunity setup leaks who leftBoundary).observe
           (application setup leaks) who) := by
     change (responses.signals _ _ _).infoOf who leftHistory.trace = _
     rw [responses.info, leftState]
     simp only [ReactiveApplication.observe, ↓reduceIte, ownerOpportunity]
   have rightInfo : (information setup leaks bounds watcher).infoOf who rightHistory.trace =
       some (rightBoundary.recall who,
-        (ownerOpportunity setup leaks event who rightBoundary).observe
+        (ownerOpportunity setup leaks who rightBoundary).observe
           (application setup leaks) who) := by
     change (responses.signals _ _ _).infoOf who rightHistory.trace = _
     rw [responses.info, rightState]
@@ -162,7 +162,7 @@ theorem owner_focal_information
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val
     leftSource rightSource _ _
     (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ leftOpportunity)
-    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ rightOpportunity) rfl
+    (PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ rightOpportunity)
     (by rw [leftLeaks, rightLeaks])).mp sourceView
   rw [leftInfo, rightInfo, past, beforeView]
 

@@ -133,10 +133,10 @@ theorem run_source_prefix_option_law
           have node : nodeView (graph setup) event =
               .resolve owner payload (refs.get selected) [] outputEq codeEq :=
             EventGraphRuntime.nodeView_eq_resolve _ _
-          obtain ⟨opportunity, activeCheckpoint, _granted, _clock, _activation,
+          obtain ⟨opportunity, activeCheckpoint, _sameApplication,
               opportunityLaw, _opportunityRecall⟩ :=
             checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
-              event owner
+              owner
           have ready : opportunity.application.config.cut.Ready event := by
             have active : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt
             have chosenEvent : (⟨offset, active⟩ : (graph setup).EventId) = event :=
@@ -180,7 +180,7 @@ theorem run_source_prefix_option_law
               (.reveal published owner name fresh selected unresolved next))).take
                 (count + 1)).flatMap fun i =>
                 block setup watcher (embedding.event i)) =
-              [.grant event, .player owner] ++ (suffix ++ remaining) := by
+              [.player owner] ++ (suffix ++ remaining) := by
             simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             change block setup watcher event ++ remaining = _

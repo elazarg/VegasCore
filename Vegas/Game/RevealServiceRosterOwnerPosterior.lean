@@ -124,21 +124,12 @@ theorem roster_owner_information_law
     exact (runtime setup).runInteractionPlan_inputRecall leaks players network
       (rosterPlanPrefix setup rosters event.val) (ReactiveApplication.Execution.initial app initial)
         execution (app.initial_inputRecall initial) reached
-  have previous (execution : app.Execution) (supported : execution ∈ prior.support) :
-      execution.application.serviceGrant = none := by
-    obtain ⟨initial, initialSupport, reached⟩ :=
-      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-    rw [roster_prefix_serviceGrant setup leaks rosters players network event.val
-      (ReactiveApplication.Execution.initial app initial) execution reached]
-    obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ initialSupport
-    rfl
   obtain ⟨noise, factor⟩ := roster_compiled_prefix_noise setup leaks rosters timing network
     reveals openable decoded owner event.val event.isLt.le
   obtain ⟨channel, law⟩ := roster_owner_information_kernel setup leaks rosters timing decoded
     event owner owned prior (fun execution supported => by
       obtain ⟨initial, _, state, related, readout⟩ := checkpoint execution supported
       exact ⟨initial, state, related, readout⟩)
-    none previous
     (fun execution supported => by
       obtain ⟨initial, initialSupport, state, related, _⟩ :=
         checkpoint execution supported

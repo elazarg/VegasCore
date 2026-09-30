@@ -54,8 +54,8 @@ Sizes: S up to about 150 lines, M up to about 500, L beyond.
 
 `SourceServiceSpec.exists_siteKind`
 ([SourceServiceSiteKind](../Vegas/Game/SourceServiceSiteKind.lean)) gives
-every native information site its recall, view and granted event, together
-with a `DecisionSiteKind` computed from those three alone, so every history of
+every native information site its recall, view and an event that view shows
+ready, together with a `DecisionSiteKind` computed from those three alone, so every history of
 a site has the same kind. The kinds and their comparisons:
 
 | Plan kind | `DecisionSiteKind` | Comparison |

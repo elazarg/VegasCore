@@ -110,7 +110,6 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
       ((graph setup).nodes event) = .resolve owner payload (refs.get selected) [])
     (node : nodeView (graph setup) event =
       .resolve owner payload (refs.get selected) [] outputEq codeEq)
-    (granted : control.execution.application.serviceGrant = some event)
     (action : (watchedInformation setup leaks bounds watcher).Choice owner
       ((ordinaryRestriction setup leaks bounds watcher).site owner site).1)
     (extra : action ∉ Set.range ((ordinaryRestriction setup leaks bounds watcher).choice
@@ -158,7 +157,7 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
   have chosenSubmission : action.1 = some ⟨some (.submit submission)⟩ := by rw [chosen, same]
   have collected := watched_commit_collection setup leaks bounds watcher owner different reveals
     profile (restriction.site owner site) (restriction.informationHistory owner site history)
-    control state event granted submission action chosenSubmission checkpoint.serials
+    control state submission action chosenSubmission checkpoint.serials
     checkpoint.pending (checkpoint.known_published watcher) departure fuel (by
       change 2 * horizon setup watcher + 1 -
         (restriction.history history.1).trace.length ≤ fuel
@@ -191,7 +190,6 @@ theorem ordinary_extra_comparison [setup.FiniteInitialLaw] [leaks.FiniteSupport]
       ((graph setup).nodes event) = .resolve owner payload (refs.get selected) [])
     (node : nodeView (graph setup) event =
       .resolve owner payload (refs.get selected) [] outputEq codeEq)
-    (granted : control.execution.application.serviceGrant = some event)
     (action : (watchedInformation setup leaks bounds watcher).Choice owner
       ((ordinaryRestriction setup leaks bounds watcher).site owner site).1)
     (extra : action ∉ Set.range ((ordinaryRestriction setup leaks bounds watcher).choice
@@ -238,7 +236,7 @@ theorem ordinary_extra_comparison [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     history.1
   have collected := ordinary_extra_collection setup leaks bounds watcher owner different reveals
     targetProfile site history control state source refs rank checkpoint selected event eventRank
-    ownedEvent outputEq codeEq node granted action extra probability sampling fuel enough
+    ownedEvent outputEq codeEq node action extra probability sampling fuel enough
   have compared := netUtility_comparison setup leaks watcher owner different base deposit
     nonnegative (targetLaw.map History.state) (legalLaw.map History.state) lower upper probability
     (by

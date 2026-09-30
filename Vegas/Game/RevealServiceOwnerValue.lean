@@ -36,7 +36,7 @@ theorem owner_history_local_readout
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
     (history : (protocol setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).History)
     (supported : history ∈ ((information setup leaks (bounds.withInitialValues (initialLaw setup))
-      watcher).runBehavioral reference (blockOffset event.val + 2 * event.val + 3)).support)
+      watcher).runBehavioral reference (blockOffset event.val + 2 * event.val + 2)).support)
     {info : (application setup leaks).Info}
     (observed : (information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).infoOf who history.trace = info)
@@ -73,12 +73,12 @@ theorem owner_history_local_readout
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add,
       planPrefix_length setup watcher reveals event.val event.isLt.le] using count
   have opportunityPosition :
-      (ownerOpportunity setup leaks event who boundary).environmentRecall.length =
-        blockOffset event.val + 2 := by
+      (ownerOpportunity setup leaks who boundary).environmentRecall.length =
+        blockOffset event.val + 1 := by
     simp only [ownerOpportunity, List.length_append, List.length_cons, List.length_nil, position]
   have value := owner_local_law_readout setup leaks bounds watcher who reveals observer profile
-    initial initialSupport event owned source (ownerOpportunity setup leaks event who boundary)
-    related rfl opportunityPosition history nativeState law joint chosen
+    initial initialSupport event owned source (ownerOpportunity setup leaks who boundary)
+    related opportunityPosition history nativeState law joint chosen
   have read : prefixReadout setup leaks event.val history.state = some source := by
     simpa only [nativeState, prefixReadout, ownerOpportunity] using decoded
   rw [read]
@@ -104,7 +104,7 @@ theorem owner_context_local_value
       watcher).InformationSite who)
     (clock : InformationModel.InformationSite.CommonDepth
       (information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher) site
-        (blockOffset event.val + 2 * event.val + 3))
+        (blockOffset event.val + 2 * event.val + 2))
     (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who site.1))
     (joint : Bool → Player → Option (OwnAction Player L))
@@ -112,7 +112,7 @@ theorem owner_context_local_value
     (utility : State L setup.program.terminalCtx → ℝ) :
     (assessment.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
-      (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
+      (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 2))).value
         ((assessment.strategy who).withLaw site.1 law) =
       expect ((assessment.belief who site).map
         (fun current => prefixReadout setup leaks event.val current.1.state))
@@ -131,7 +131,7 @@ theorem owner_context_local_value
   apply expect_congr_on_support
   intro history _supported
   have reached : history.1 ∈ (model.runBehavioral reference
-      (blockOffset event.val + 2 * event.val + 3)).support := by
+      (blockOffset event.val + 2 * event.val + 2)).support := by
     have result := (responses.uniform_fullyMixed (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher)).history_supported history.1.trace
     simpa only [clock history, ReactiveApplication.ResponseMenu.uniformAssessment,

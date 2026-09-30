@@ -62,7 +62,7 @@ theorem owner_extra_traffic (who : Player) (ordinary : who ≠ watcher)
       _boundaryCheckpoint, related, _decoded⟩ :=
     owner_supported setup leaks bounds watcher who reveals observer openable reference
       event owned history supported
-  have sameExecution : execution = ownerOpportunity setup leaks event who boundary :=
+  have sameExecution : execution = ownerOpportunity setup leaks who boundary :=
     congrArg ReactiveApplication.Control.execution
       (Option.some.inj (current.symm.trans nativeState))
   have checkpoint : PrefixCheckpoint setup leaks initial setup.program

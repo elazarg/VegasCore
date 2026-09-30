@@ -20,48 +20,6 @@ open GameTheory.Math.Probability GameTheory.Protocol Interaction EventGraphRunti
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-theorem PublicPrefixCheckpoint.grant
-    {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {initial : State L setup.context} {Γ : SourceCtx Player L} {O : Finset VarId}
-    {program : SourceProgram Player L Γ O} {refs : ContextRefs (graph setup).layout Γ}
-    {revelations : Revelations Γ}
-    {outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)}
-    {offset count : Nat} {state : ProtocolState program}
-    {execution : (application setup leaks).Execution}
-    (related : PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
-      offset count state execution)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks) (event : (graph setup).EventId) :
-    ∃ granted, PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
-        offset count state granted ∧
-      granted.application.serviceGrant = some event ∧ granted.recall = execution.recall ∧
-      granted.network = execution.network ∧
-      (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        PMF.pure granted := by
-  let app := application setup leaks
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  have law : (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-      PMF.pure granted := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-      ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, PMF.pure_map,
-      ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-    rfl
-  refine ⟨granted, ?_, rfl, rfl, rfl, law⟩
-  apply PublicPrefixCheckpoint.map_execution execution granted _ program refs revelations outputs
-    offset count state related
-  intro context source sourceRefs rank checkpoint
-  obtain ⟨other, preserved, _, _, _, otherLaw⟩ := checkpoint.grant players network event
-  have same : granted ∈ (PMF.pure other).support := by
-    rw [← otherLaw, law]
-    exact (PMF.mem_support_pure_iff _ _).mpr rfl
-  cases (PMF.mem_support_pure_iff _ _).mp same
-  exact preserved
-
 /-- The active roster occurrence follows strictly fewer occurrences of the
 same player. This counts actual responses, including silence and replay. -/
 theorem roster_count_before {visits : List Player} {slot : Nat} {who : Player}

@@ -52,8 +52,8 @@ theorem exists_compiled_consistent [setup.FiniteInitialLaw] [leaks.FiniteSupport
         (event : (graph setup).EventId) (_owned : (graph setup).actor? event = some who)
         (history : model.InformationHistory who site.1),
         history.1 ∈ (model.runBehavioral reference
-          (blockOffset event.val + 2 * event.val + 3)).support →
-        history.1.trace.length = blockOffset event.val + 2 * event.val + 3 →
+          (blockOffset event.val + 2 * event.val + 2)).support →
+        history.1.trace.length = blockOffset event.val + 2 * event.val + 2 →
         ∀ sourceSite : (setup.informationModel admission).InformationSite who,
           sourceSite.1 = setup.protocolObserve who
             (prefixReadout setup leaks event.val history.1.state) →

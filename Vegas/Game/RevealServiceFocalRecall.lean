@@ -151,14 +151,14 @@ theorem run_source_prefix_focal_recall
               have node : nodeView (graph setup) event =
                   .resolve owner payload (refs.get selected) [] outputEq codeEq :=
                 EventGraphRuntime.nodeView_eq_resolve _ _
-              obtain ⟨leftOpportunity, leftActive, leftGrant, _leftClock, _leftActivation,
+              obtain ⟨leftOpportunity, leftActive, _leftOpportunityApp,
                   leftOpportunityLaw, leftRecall⟩ :=
                 leftCheckpoint.owner_opportunity leftPlayers
-                  ((runtime setup).reportNetwork leaks watcher) event owner
-              obtain ⟨rightOpportunity, rightActive, rightGrant, _rightClock, _rightActivation,
+                  ((runtime setup).reportNetwork leaks watcher) owner
+              obtain ⟨rightOpportunity, rightActive, _rightOpportunityApp,
                   rightOpportunityLaw, rightRecall⟩ :=
                 rightCheckpoint.owner_opportunity rightPlayers
-                  ((runtime setup).reportNetwork leaks watcher) event owner
+                  ((runtime setup).reportNetwork leaks watcher) owner
               let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
               let resultRef : EventGraph.FieldRef (graphLayout setup.program)
                 (.publication payload) := ⟨.inr event, outputEq⟩
@@ -179,7 +179,7 @@ theorem run_source_prefix_focal_recall
               have planEq : (((List.finRange (eventCount
                   (.reveal published owner name fresh selected unresolved next))).take
                     (count + 1)).flatMap fun i => block setup watcher (embedding.event i)) =
-                  [.grant event, .player owner] ++ (suffix ++ remaining) := by
+                  [.player owner] ++ (suffix ++ remaining) := by
                 simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
                   List.flatMap_cons, List.flatMap_map]
                 change block setup watcher event ++ remaining = _
@@ -270,8 +270,7 @@ theorem run_source_prefix_focal_recall
                 rw [leftAfterRecall who ordinaryWho, rightAfterRecall who ordinaryWho]
                 by_cases owns : owner = who
                 · subst owner
-                  have input := leftActive.observe_eq rightActive who
-                    (leftGrant.trans rightGrant.symm) priorView
+                  have input := leftActive.observe_eq rightActive who priorView
                   obtain ⟨entry, appended, entryView, entryAction⟩ :=
                     (runtime setup).response_recall_entry leaks rightOpportunity who rightResponse
                   have retained := (runtime setup).runInteractionPlan_recall_prefix leaks
@@ -297,7 +296,7 @@ theorem run_source_prefix_focal_recall
                     exact selected.trans entryAction
                   rw [chosen]
                   exact leftActive.respond_recall_eq rightActive who
-                    (leftGrant.trans rightGrant.symm) priorView opportunityPast rightResponse
+                    priorView opportunityPast rightResponse
                 · rw [(application setup leaks).respond_recall_other _ owner who
                     (Ne.symm owns), (application setup leaks).respond_recall_other _ owner who
                     (Ne.symm owns)]

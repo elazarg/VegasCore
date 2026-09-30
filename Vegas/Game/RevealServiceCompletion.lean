@@ -112,7 +112,7 @@ theorem block_completes (watcher : Player) (reveals : setup.program.RevealOnly)
   obtain ⟨entered, activated⟩ :=
     invariant.activatedAt_eq_some_of_ready_actor event ready strategic
   let beforeExpiry : List (ServiceInstruction (graph setup)) :=
-    [.grant event, .player owner, .includeLatest event owner, .player watcher, .wire] ++
+    [.player owner, .includeLatest event owner, .player watcher, .wire] ++
       List.replicate (event.val + 1) .tick
   have blockEq : block setup watcher event = beforeExpiry ++ [.expire event] :=
     block_of_owner setup watcher owner event owned

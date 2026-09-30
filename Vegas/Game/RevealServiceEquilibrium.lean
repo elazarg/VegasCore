@@ -134,10 +134,10 @@ theorem source_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [leaks.
         (scheduler setup leaks watcher)
       obtain ⟨sourceSite, sourceView⟩ := owner_source_site setup leaks extended watcher who reveals
         observer openable admission reference event owned history.1 supported
-      have currentDepth : depth who site = blockOffset event.val + 2 * event.val + 3 :=
+      have currentDepth : depth who site = blockOffset event.val + 2 * event.val + 2 :=
         (clock who site history).symm.trans length
       have nativeClock : InformationModel.InformationSite.CommonDepth model site
-          (blockOffset event.val + 2 * event.val + 3) := by
+          (blockOffset event.val + 2 * event.val + 2) := by
         simpa only [currentDepth] using clock who site
       have belief := beliefs who site reference event owned history supported length sourceSite
         sourceView

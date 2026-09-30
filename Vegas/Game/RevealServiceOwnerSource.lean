@@ -35,7 +35,7 @@ theorem owner_source_history
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
     (history : (protocol setup leaks bounds watcher).History)
     (supported : history ∈ ((information setup leaks bounds watcher).runBehavioral profile
-      (blockOffset event.val + 2 * event.val + 3)).support) :
+      (blockOffset event.val + 2 * event.val + 2)).support) :
     ∃ source : (setup.executionProtocol admission).History,
       source ∈ ((setup.informationModel admission).runBehavioral
         (setup.revealReference reveals admission).strategy (event.val + 1)).support ∧
@@ -89,7 +89,7 @@ theorem owner_source_site
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
     (history : (protocol setup leaks bounds watcher).History)
     (supported : history ∈ ((information setup leaks bounds watcher).runBehavioral profile
-      (blockOffset event.val + 2 * event.val + 3)).support) :
+      (blockOffset event.val + 2 * event.val + 2)).support) :
     ∃ site : (setup.informationModel admission).InformationSite who,
       site.1 = setup.protocolObserve who (prefixReadout setup leaks event.val history.state) := by
   obtain ⟨source, _sourceSupport, same, active, running⟩ :=

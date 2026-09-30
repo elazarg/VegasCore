@@ -78,7 +78,6 @@ theorem PublicCheckpoint.reveal_scheduled_coupling
       message.id ∈ left.network.ledger.map Message.id)
     (rightPublished : right.network.Satisfies fun message =>
       message.id ∈ right.network.ledger.map Message.id)
-    (grant : left.application.serviceGrant = right.application.serviceGrant)
     (messages : (application setup leaks).messageView left =
       (application setup leaks).messageView right)
     (recall : left.recall focal = right.recall focal)
@@ -101,7 +100,7 @@ theorem PublicCheckpoint.reveal_scheduled_coupling
   have networks := congrArg Prod.fst messages
   have leaked : left.network.leaked focal = right.network.leaked focal :=
     congrArg (fun net => net.leaked focal) networks
-  have observed := leftCheckpoint.observe_eq rightCheckpoint focal grant leaked sourceView
+  have observed := leftCheckpoint.observe_eq rightCheckpoint focal leaked sourceView
   have nativeView : (application setup leaks).observePlayer left.application focal =
       (application setup leaks).observePlayer right.application focal :=
     congrArg ReactiveApplication.PlayerView.application observed

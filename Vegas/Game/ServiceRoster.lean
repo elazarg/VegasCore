@@ -2,7 +2,6 @@
 
 import Vegas.Game.RevealServiceRosterPolicy
 import Vegas.Game.RevealServiceClock
-import Vegas.Pending.ReactiveServiceGrant
 
 /-! # Finite activation rosters in the existing native service
 
@@ -129,12 +128,6 @@ theorem rosterBlock_no_wire (setup : Setup (Player := Player) (L := L))
   unfold rosterBlock
   cases (graph setup).actor? event <;> simp
 
-theorem rosterBlock_no_grant (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (block event : (graph setup).EventId) :
-    ServiceInstruction.grant event ∉ rosterBlock setup rosters block := by
-  unfold rosterBlock
-  cases (graph setup).actor? block <;> simp
-
 theorem rosterPlanPrefix_succ (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :
     rosterPlanPrefix setup rosters (event.val + 1) =
@@ -202,27 +195,6 @@ theorem finRange_drop_cons {count rank : Nat} {event : Fin count} {rest : List (
     List.getElem_finRange] at same
   obtain ⟨head, tail⟩ := List.cons.inj same
   exact ⟨by rw [head]; rfl, tail⟩
-
-theorem rosterPlanPrefix_no_grant (setup : Setup (Player := Player) (L := L))
-    (rosters : (graph setup).EventId → List Player) (rank : Nat) (event : (graph setup).EventId) :
-    ServiceInstruction.grant event ∉ rosterPlanPrefix setup rosters rank := by
-  intro member
-  obtain ⟨block, _, inside⟩ := List.mem_flatMap.mp member
-  exact rosterBlock_no_grant setup rosters block event inside
-
-/-- No roster instruction sets the service grant. -/
-theorem roster_prefix_serviceGrant (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (rosters : (graph setup).EventId → List Player)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks) (rank : Nat)
-    (initial final : (application setup leaks).Execution)
-    (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
-      (rosterPlanPrefix setup rosters rank) initial).support) :
-    final.application.serviceGrant = initial.application.serviceGrant :=
-  (runtime setup).runInteractionPlan_serviceGrant leaks players network _
-    (rosterPlanPrefix_no_wire setup rosters rank) (rosterPlanPrefix_no_grant setup rosters rank)
-    initial final reached
 
 theorem rosterPlan_split (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId) :

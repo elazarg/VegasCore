@@ -62,11 +62,10 @@ theorem owner_local_law_readout
     (related : PrefixCheckpoint setup leaks initial setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val source execution)
-    (granted : execution.application.serviceGrant = some event)
-    (position : execution.environmentRecall.length = blockOffset event.val + 2)
+    (position : execution.environmentRecall.length = blockOffset event.val + 1)
     (history : (protocol setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).History)
     (current : history.state =
-      some ⟨horizon setup watcher - blockOffset event.val - 2, some who, execution⟩)
+      some ⟨horizon setup watcher - blockOffset event.val - 1, some who, execution⟩)
     (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who ((information setup leaks (bounds.withInitialValues (initialLaw setup))
         watcher).infoOf who history.trace)))
@@ -112,14 +111,14 @@ theorem owner_local_law_readout
       control.execution.application.config.store
   have first := responses.run_local_law_remaining (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) compiled history who
-    (horizon setup watcher - blockOffset event.val - 2) execution current law
+    (horizon setup watcher - blockOffset event.val - 1) execution current law
   rw [decoded_compiledProfile] at first
   change (model.runBehavioralFrom updated
       (2 * horizon setup watcher + 1 - history.trace.length) history).map History.state =
     (law.map (fun choice => choice.1.getD ⟨none⟩)).bind (fun response =>
       (application setup leaks).finish (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) players
-          (some ⟨horizon setup watcher - blockOffset event.val - 2, none,
+          (some ⟨horizon setup watcher - blockOffset event.val - 1, none,
             execution.respond (application setup leaks) who response⟩)) at first
   calc
     _ = (model.runBehavioralFrom updated
@@ -129,7 +128,7 @@ theorem owner_local_law_readout
     _ = ((law.map (fun choice => choice.1.getD ⟨none⟩)).bind (fun response =>
         (application setup leaks).finish (initialLaw setup) (horizon setup watcher)
           (scheduler setup leaks watcher) players
-            (some ⟨horizon setup watcher - blockOffset event.val - 2, none,
+            (some ⟨horizon setup watcher - blockOffset event.val - 1, none,
               execution.respond (application setup leaks) who response⟩))).map decode := by
       simpa only [PMF.map_comp, Function.comp_def] using
         congrArg (fun distribution => distribution.map decode) first
@@ -139,7 +138,7 @@ theorem owner_local_law_readout
       intro choice _supported
       exact owner_response_finish_decode_law setup leaks bounds watcher who reveals observer
         profile players reports ordinary projects initial initialSupport event owned source
-        execution related granted position (choice.1.getD ⟨none⟩)
+        execution related position (choice.1.getD ⟨none⟩)
         (owner_choice_ordinary setup leaks extended watcher who different history _ execution
           current choice) _ (chosen _)
 

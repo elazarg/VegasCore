@@ -54,8 +54,6 @@ theorem run_roster_source_prefix_noise
         message.id ∈ (execution seed).network.ledger.map Message.id) →
       (∀ seed, (execution seed).network.SerialsBeforeNext) →
       (∀ seed, (execution seed).InputRecall (application setup leaks)) →
-      ∀ (grant : Option (graph setup).EventId),
-      (∀ seed, (execution seed).application.serviceGrant = grant) →
       ∀ (noise : DecisionView focal Γ → PMF ((application setup leaks).MessageReadout ×
         List (application setup leaks).PlayerEntry)),
       prior.map (fun seed => (source seed,
@@ -84,7 +82,7 @@ theorem run_roster_source_prefix_noise
   induction program with
   | ret payoffs =>
       intro _reveals profile refs embedding refsBefore offset Seed prior initial source execution
-        _aligned checkpoint _counts _clean _serials _recalls grant _granted noise factor
+        _aligned checkpoint _counts _clean _serials _recalls noise factor
         count within
       have zero : count = 0 := by simpa [eventCount] using within
       subst count
@@ -111,7 +109,7 @@ theorem run_roster_source_prefix_noise
       exact impossible.elim
   | @reveal Γ O published owner name payload fresh selected unresolved next ih =>
       intro reveals profile refs embedding refsBefore offset Seed prior initial source execution
-        aligned checkpoint counts clean serials recalls grant granted noise factor count within
+        aligned checkpoint counts clean serials recalls noise factor count within
       cases count with
       | zero =>
           obtain ⟨nextNoise, law⟩ := ProtocolView.entry_noise_factor
@@ -179,7 +177,7 @@ theorem run_roster_source_prefix_noise
               (fun seed _ => recalls seed)
               (fun seed _ => serials seed)
               (fun seed _ => clean seed)
-              grant (fun seed _ => granted seed) (rosters event)
+              (rosters event)
               (timing event owner actor) network focal noise factor
               (fun config => revealKernel profile (config.view owner))
           let phase : List (ServiceInstruction (graph setup)) :=
@@ -247,8 +245,7 @@ theorem run_roster_source_prefix_noise
           have nextFacts (point : NextSeed) : PublicCheckpoint setup leaks
               (nextInitial point) (nextSource point) tailRefs (offset + 1) (nextExecution point) ∧
               (nextExecution point).network.Satisfies (fun message =>
-                message.id ∈ (nextExecution point).network.ledger.map Message.id) ∧
-              (nextExecution point).application.serviceGrant = grant := by
+                message.id ∈ (nextExecution point).network.ledger.map Message.id) := by
             obtain ⟨slot, disclosure, reached⟩ := nextSupported point
             have result := (checkpoint point.val.1).reveal_scheduled rosters network
               published selected event eventRank actor outputEq codeEq node
@@ -257,8 +254,7 @@ theorem run_roster_source_prefix_noise
               (candidateFacts point.val.1).1 (candidateFacts point.val.1).2.2.1
               (ownerOffset point.val.1) (clean point.val.1)
               (serials point.val.1) slot point.val.2.2 reached
-            exact ⟨by simpa only [disclosure] using result.1, result.2.1,
-              result.2.2.trans (granted point.val.1)⟩
+            exact ⟨by simpa only [disclosure] using result.1, result.2⟩
           have nextCounts (point : NextSeed) (who : Player) :
               ((nextExecution point).recall who).length =
                 (((List.finRange (graph setup).order.eventCount).take (offset + 1)).flatMap
@@ -335,8 +331,8 @@ theorem run_roster_source_prefix_noise
             simpa only [PMF.map_comp, Function.comp_def] using mapped
           obtain ⟨tailNoise, tailLaw⟩ := ih reveals (afterReveal profile) tailRefs tailEmbedding
             tailBefore (offset + 1) nextPrior nextInitial nextSource nextExecution nextAligned
-            (fun point => (nextFacts point).1) nextCounts (fun point => (nextFacts point).2.1)
-            nextSerials nextRecalls grant (fun point => (nextFacts point).2.2)
+            (fun point => (nextFacts point).1) nextCounts (fun point => (nextFacts point).2)
+            nextSerials nextRecalls
             nextNoise advancedFactor count (by simpa [eventCount] using within)
           let remaining := ((List.finRange (eventCount next)).take count).flatMap fun tail =>
             rosterBlock setup rosters (tailEmbedding.event tail)
@@ -485,7 +481,7 @@ theorem roster_compiled_prefix_noise
     (fun seed => (checkpoint_initial setup leaks reveals seed.val
       (openable seed.val seed.property)).toPublicCheckpoint) (fun _ _ => rfl)
     (fun _ => MessageNetwork.Satisfies.empty) (fun _ => MessageNetwork.SerialsBeforeNext.empty)
-    (fun _ => (application setup leaks).initial_inputRecall _) none (fun _ => rfl)
+    (fun _ => (application setup leaks).initial_inputRecall _)
     (fun _ => PMF.pure emptyExtra) initialFactor count within
   refine ⟨noise, ?_⟩
   let combined := fun initial : State L setup.context =>

@@ -110,10 +110,10 @@ theorem run_source_prefix_support
           have node : nodeView (graph setup) event =
               .resolve owner payload (refs.get selected) [] outputEq codeEq :=
             EventGraphRuntime.nodeView_eq_resolve _ _
-          obtain ⟨opportunity, activeCheckpoint, granted, _clock, _activation,
+          obtain ⟨opportunity, activeCheckpoint, _sameApplication,
               opportunityLaw, _opportunityRecall⟩ :=
             checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
-              event owner
+              owner
           let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
           let resultRef : EventGraph.FieldRef (graphLayout setup.program) (.publication payload) :=
             ⟨.inr event, outputEq⟩
@@ -137,7 +137,7 @@ theorem run_source_prefix_support
           have planEq : (((List.finRange (eventCount
               (.reveal published owner name fresh selected unresolved next))).take
                 (count + 1)).flatMap fun i => block setup watcher (embedding.event i)) =
-              [.grant event, .player owner] ++ (suffix ++ remaining) := by
+              [.player owner] ++ (suffix ++ remaining) := by
             simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             change block setup watcher event ++ remaining = _

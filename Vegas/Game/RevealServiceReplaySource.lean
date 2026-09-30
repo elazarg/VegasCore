@@ -56,8 +56,8 @@ theorem active_history_clean (history : (protocol setup leaks bounds watcher).Hi
         _before, related, _decoded⟩ := owner_supported setup leaks bounds watcher who reveals
       observer openable reference event owned history supported
     have same : control =
-        ⟨horizon setup watcher - blockOffset event.val - 2, some who,
-          ownerOpportunity setup leaks event who boundary⟩ :=
+        ⟨horizon setup watcher - blockOffset event.val - 1, some who,
+          ownerOpportunity setup leaks who boundary⟩ :=
       Option.some.inj (state.symm.trans current)
     subst control
     exact PrefixCheckpoint.runtime_fact (fun execution =>

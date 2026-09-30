@@ -198,7 +198,7 @@ theorem run_roster_source_prefix_option_law
                       (PMF.pure (ProtocolState.entry next
                         (revealSuccessor published selected source slot.isSome)))).map
                           (Sum.inr (α := Config Player L Γ))).map some := by
-              obtain ⟨afterCheckpoint, afterClean, _afterGrant⟩ :=
+              obtain ⟨afterCheckpoint, afterClean⟩ :=
                 checkpoint.reveal_scheduled rosters network
                 published selected event eventRank actor outputEq codeEq node
                   (fun ref => refsBefore ref index) decoded value bound candidate owned associated

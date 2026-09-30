@@ -254,7 +254,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner)
     (history : (protocol setup leaks bounds watcher).History)
     (supported : history ∈ ((information setup leaks bounds watcher).runBehavioral profile
-      (blockOffset event.val + 2 * event.val + 6)).support) :
+      (blockOffset event.val + 2 * event.val + 5)).support) :
     ∃ control : (application setup leaks).Control, history.state = some control ∧
       control.actor = some watcher ∧ control.execution.network.leaked = (fun _ => []) ∧
       (∀ message ∈ control.execution.network.pending,
@@ -265,7 +265,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
   let model := information setup leaks bounds watcher
   let players := responses.decodeProfile (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) profile
-  let ownerDepth := blockOffset event.val + 2 * event.val + 3
+  let ownerDepth := blockOffset event.val + 2 * event.val + 2
   change history ∈ (model.runBehavioral profile (ownerDepth + 3)).support at supported
   rw [InformationModel.runBehavioral, InformationModel.runBehavioralFrom_add,
     PMF.support_bind] at supported
@@ -274,7 +274,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
       _boundaryCheckpoint, related, _decoded⟩ :=
     owner_supported setup leaks bounds watcher owner reveals observer openable profile
       event owned before beforeSupport
-  let execution := ownerOpportunity setup leaks event owner boundary
+  let execution := ownerOpportunity setup leaks owner boundary
   have pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id :=
     PrefixCheckpoint.runtime_fact (fun next => ∀ message ∈ next.network.pending,
@@ -294,7 +294,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
   have prefixLength := planPrefix_length setup watcher reveals event.val event.isLt.le
   obtain ⟨initialNative, _initialNativeSupport, prefixRun⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ boundarySupport)
-  have position : execution.environmentRecall.length = blockOffset event.val + 2 := by
+  have position : execution.environmentRecall.length = blockOffset event.val + 1 := by
     have counted := (runtime setup).runInteractionPlan_recall leaks players
       ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
       (ReactiveApplication.Execution.initial (application setup leaks) initialNative)
@@ -303,36 +303,36 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
       prefixLength] at counted
     simp only [execution, ownerOpportunity, List.length_append, List.length_singleton, counted]
   obtain ⟨rest, planEq⟩ := plan_split_at setup watcher event
-  have includeAt : (plan setup watcher)[blockOffset event.val + 2]? =
+  have includeAt : (plan setup watcher)[blockOffset event.val + 1]? =
       some (.includeLatest event owner) := by
     rw [planEq, List.append_assoc, List.getElem?_append_right (by omega), prefixLength,
       Nat.add_sub_cancel_left, block_of_owner setup watcher owner event owned]
     rfl
-  have watcherAt : (plan setup watcher)[(blockOffset event.val + 2) + 1]? =
+  have watcherAt : (plan setup watcher)[(blockOffset event.val + 1) + 1]? =
       some (.player watcher) := by
-    rw [show (blockOffset event.val + 2) + 1 = blockOffset event.val + 3 by omega,
+    rw [show (blockOffset event.val + 1) + 1 = blockOffset event.val + 2 by omega,
       planEq, List.append_assoc, List.getElem?_append_right (by omega), prefixLength,
       Nat.add_sub_cancel_left, block_of_owner setup watcher owner event owned]
     rfl
-  have room : blockOffset event.val + 4 ≤ horizon setup watcher := by
+  have room : blockOffset event.val + 3 ≤ horizon setup watcher := by
     have lengths := congrArg List.length planEq
     rw [List.length_append, List.length_append, prefixLength,
       block_length setup watcher reveals] at lengths
-    change blockOffset event.val + 4 ≤ (plan setup watcher).length
+    change blockOffset event.val + 3 ≤ (plan setup watcher).length
     omega
   have stateSupport : history.state ∈ ((model.runBehavioralFrom profile 3 before).map
       History.state).support := by
     rw [PMF.support_map]
     exact ⟨history, continued, rfl⟩
   rw [menu_run_control_steps, current] at stateSupport
-  have remaining : horizon setup watcher - blockOffset event.val - 2 =
-      (horizon setup watcher - blockOffset event.val - 4) + 2 := by omega
+  have remaining : horizon setup watcher - blockOffset event.val - 1 =
+      (horizon setup watcher - blockOffset event.val - 3) + 2 := by omega
   rw [remaining] at stateSupport
   have different : owner ≠ watcher := fun same => observer event (same ▸ owned)
   obtain ⟨next, stateEq, quiet, pendingPublished, inputPublished⟩ :=
     owner_to_watcher_clean setup leaks bounds players
-    watcher owner event execution (horizon setup watcher - blockOffset event.val - 4)
-    (blockOffset event.val + 2) position includeAt watcherAt
+    watcher owner event execution (horizon setup watcher - blockOffset event.val - 3)
+    (blockOffset event.val + 1) position includeAt watcherAt
     (ownTurn?_of_ready setup execution.application
       ((PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ related).ready event (Nat.zero_add _).symm)
       owned)
@@ -367,19 +367,19 @@ theorem watcher_history_clean (bounds : MessageBounds (graph setup))
     cases state
     exact ⟨responses.toRawTrace (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) trace, responses.toRawTrace_length ..⟩
-  obtain ⟨event, _granted, located⟩ := raw_decision_calendar setup leaks watcher watcher
+  obtain ⟨event, located⟩ := raw_decision_calendar setup leaks watcher watcher
     reveals control rawTrace active
-  have position : control.execution.environmentRecall.length = blockOffset event.val + 4 := by
+  have position : control.execution.environmentRecall.length = blockOffset event.val + 3 := by
     rcases located with ⟨_position, owned⟩ | ⟨position, _same⟩
     · exact (observer event owned).elim
     · exact position
   obtain ⟨owner, owned⟩ := source_owner setup reveals event
   have depth := raw_watcher_decision_depth setup leaks watcher owner reveals event owned
     control rawTrace active position
-  have actualDepth : history.trace.length = blockOffset event.val + 2 * event.val + 6 :=
+  have actualDepth : history.trace.length = blockOffset event.val + 2 * event.val + 5 :=
     rawLength.symm.trans depth
   have atDepth : history ∈ ((information setup leaks bounds watcher).runBehavioral reference
-      (blockOffset event.val + 2 * event.val + 6)).support := by
+      (blockOffset event.val + 2 * event.val + 5)).support := by
     simpa only [actualDepth, ReactiveApplication.ResponseMenu.uniformAssessment,
       InformationModel.BehavioralAssessment.ofStrategy] using supported
   obtain ⟨reachedControl, reachedState, _reachedActor, clean⟩ := watcher_supported_clean

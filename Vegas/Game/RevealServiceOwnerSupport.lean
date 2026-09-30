@@ -6,7 +6,7 @@ import Interaction.ReactiveFiniteAssessment
 
 /-! # Actual restricted owner histories
 
-An owner opportunity is the existing grant and activation update. Every
+An owner opportunity is the existing activation update. Every
 supported owner history comes from a supported source-boundary execution;
 the update preserves the decoded source state and the entire private recall.
 No compiled-profile or positive-probability assumption on source play is used.
@@ -24,19 +24,14 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-/-- The literal endpoint of the grant and passive activation commands, when
-all pending envelopes are already published. -/
+/-- The literal endpoint of the passive owner activation command, when all
+pending envelopes are already published. -/
 def ownerOpportunity (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (event : (graph setup).EventId) (owner : Player)
+    (owner : Player)
     (execution : (application setup leaks).Execution) : (application setup leaks).Execution :=
-  let app := application setup leaks
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  { granted with environmentRecall := granted.environmentRecall ++
-    [⟨granted.observeEnvironment app, .activate owner⟩] }
+  { execution with environmentRecall := execution.environmentRecall ++
+    [⟨execution.observeEnvironment (application setup leaks), .activate owner⟩] }
 
 omit [Fintype Player] in
 theorem PrefixCheckpoint.ownerOpportunity
@@ -50,9 +45,9 @@ theorem PrefixCheckpoint.ownerOpportunity
     {offset count : Nat} {state : ProtocolState program}
     {execution : (application setup leaks).Execution}
     (related : PrefixCheckpoint setup leaks initial program refs revelations outputs
-      offset count state execution) (event : (graph setup).EventId) (owner : Player) :
+      offset count state execution) (owner : Player) :
     PrefixCheckpoint setup leaks initial program refs revelations outputs offset count state
-      (ownerOpportunity setup leaks event owner execution) := by
+      (ownerOpportunity setup leaks owner execution) := by
   apply PrefixCheckpoint.map_execution execution _ _ program refs revelations outputs
     offset count state related
   intro Γ source refs rank checkpoint
@@ -100,57 +95,36 @@ theorem menu_decode_ordinary (setup : Setup (Player := Player) (L := L))
   simpa only [menu, different, ↓reduceIte] using allowed
 
 omit [Fintype Player] in
-private theorem grant_activate_state
+private theorem activate_state
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (watcher owner : Player) (players : Player → (application setup leaks).Policy)
-    (event : (graph setup).EventId) (remaining cursor : Nat)
+    (remaining cursor : Nat)
     (execution : (application setup leaks).Execution)
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (position : execution.environmentRecall.length = cursor)
-    (grantAt : (plan setup watcher)[cursor]? = some (.grant event))
-    (ownerAt : (plan setup watcher)[cursor + 1]? = some (.player owner)) :
+    (ownerAt : (plan setup watcher)[cursor]? = some (.player owner)) :
     (fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
-      (horizon setup watcher) (scheduler setup leaks watcher) players))^[2]
-        (PMF.pure (some ⟨remaining + 2, none, execution⟩)) =
+      (horizon setup watcher) (scheduler setup leaks watcher) players))^[1]
+        (PMF.pure (some ⟨remaining + 1, none, execution⟩)) =
       PMF.pure (some ⟨remaining, some owner,
-        ownerOpportunity setup leaks event owner execution⟩) := by
+        ownerOpportunity setup leaks owner execution⟩) := by
   let app := application setup leaks
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  have first : (scheduler setup leaks watcher) execution.environmentRecall
-      (execution.observeEnvironment app) = PMF.pure (.application (.grant event)) := by
-    simp only [scheduler, position, grantAt, interactionInstruction]
-  have second : (scheduler setup leaks watcher) granted.environmentRecall
-      (granted.observeEnvironment app) = PMF.pure (.activate owner) := by
-    simp only [scheduler, granted, List.length_append, List.length_singleton, position,
-      ownerAt, interactionInstruction]
-  have grantLaw : execution.environmentStep app (.application (.grant event)) =
-      PMF.pure granted := by
-    simp only [ReactiveApplication.Execution.environmentStep, app, application, reactiveApplication,
-      environmentStep, PMF.pure_map]
-    rfl
+  have scheduled : (scheduler setup leaks watcher) execution.environmentRecall
+      (execution.observeEnvironment app) = PMF.pure (.activate owner) := by
+    simp only [scheduler, position, ownerAt, interactionInstruction]
   have one : app.controlStep (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher) players (some ⟨remaining + 2, none, execution⟩) =
-      PMF.pure (some ⟨remaining + 1, none, granted⟩) := by
+      (scheduler setup leaks watcher) players (some ⟨remaining + 1, none, execution⟩) =
+      PMF.pure (some ⟨remaining, some owner,
+        ownerOpportunity setup leaks owner execution⟩) := by
     change ((scheduler setup leaks watcher) execution.environmentRecall
       (execution.observeEnvironment app)).bind _ = _
-    rw [first, PMF.pure_bind, grantLaw, PMF.pure_map]
-    rfl
-  have two : app.controlStep (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher) players (some ⟨remaining + 1, none, granted⟩) =
-      PMF.pure (some ⟨remaining, some owner,
-        ownerOpportunity setup leaks event owner execution⟩) := by
-    change ((scheduler setup leaks watcher) granted.environmentRecall
-      (granted.observeEnvironment app)).bind _ = _
-    rw [second, PMF.pure_bind,
-      granted.activate_of_pending_published app owner pending, PMF.pure_map]
+    rw [scheduled, PMF.pure_bind,
+      execution.activate_of_pending_published app owner pending, PMF.pure_map]
     rfl
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind]
-  rw [one, PMF.pure_bind, two]
+  rw [one]
 
 /-- Every supported C owner history retains a concrete boundary execution
 and its source checkpoint. This quantifies over arbitrary C policies. -/
@@ -165,7 +139,7 @@ theorem owner_supported
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner)
     (history : (protocol setup leaks bounds watcher).History)
     (supported : history ∈ ((information setup leaks bounds watcher).runBehavioral profile
-      (blockOffset event.val + 2 * event.val + 3)).support) :
+      (blockOffset event.val + 2 * event.val + 2)).support) :
     let players := (menu setup leaks bounds watcher).decodeProfile (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) profile
     ∃ boundary : (application setup leaks).Execution,
@@ -173,8 +147,8 @@ theorem owner_supported
         (runtime setup).runInteractionPlan leaks players
           ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).support ∧
-      history.state = some ⟨horizon setup watcher - blockOffset event.val - 2, some owner,
-        ownerOpportunity setup leaks event owner boundary⟩ ∧
+      history.state = some ⟨horizon setup watcher - blockOffset event.val - 1, some owner,
+        ownerOpportunity setup leaks owner boundary⟩ ∧
       ∃ initial ∈ setup.initialLaw.support, ∃ source,
         PrefixCheckpoint setup leaks initial setup.program
           (ContextRefs.initial setup.context (outputLayout setup.program))
@@ -183,14 +157,14 @@ theorem owner_supported
         PrefixCheckpoint setup leaks initial setup.program
           (ContextRefs.initial setup.context (outputLayout setup.program))
           (Revelations.initial setup.context) (outputRef setup.program) 0 event.val
-          source (ownerOpportunity setup leaks event owner boundary) ∧
+          source (ownerOpportunity setup leaks owner boundary) ∧
         sourcePrefix? setup event.val boundary.application.config = some source := by
   let responses := menu setup leaks bounds watcher
   let model := information setup leaks bounds watcher
   let players := responses.decodeProfile (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) profile
   let depth := blockOffset event.val + 2 * event.val + 1
-  change history ∈ (model.runBehavioral profile (depth + 2)).support at supported
+  change history ∈ (model.runBehavioral profile (depth + 1)).support at supported
   rw [InformationModel.runBehavioral, InformationModel.runBehavioralFrom_add,
     PMF.support_bind] at supported
   obtain ⟨before, beforeSupport, continued⟩ := Set.mem_iUnion₂.mp supported
@@ -221,19 +195,15 @@ theorem owner_supported
       (fun _ _ _ _ checked => checked.pending) _ _ _ _ _ _ _ _ checkpoint
   obtain ⟨rest, planEq⟩ := plan_split_at setup watcher event
   have prefixLength := planPrefix_length setup watcher reveals event.val event.isLt.le
-  have grantAt : (plan setup watcher)[blockOffset event.val]? = some (.grant event) := by
+  have ownerAt : (plan setup watcher)[blockOffset event.val]? = some (.player owner) := by
     rw [planEq, List.append_assoc, List.getElem?_append_right (by omega), prefixLength,
       Nat.sub_self, block_of_owner setup watcher owner event owned]
     rfl
-  have ownerAt : (plan setup watcher)[blockOffset event.val + 1]? = some (.player owner) := by
-    rw [planEq, List.append_assoc, List.getElem?_append_right (by omega), prefixLength,
-      Nat.add_sub_cancel_left, block_of_owner setup watcher owner event owned]
-    rfl
-  have room : 2 ≤ horizon setup watcher - blockOffset event.val := by
+  have room : 1 ≤ horizon setup watcher - blockOffset event.val := by
     have lengths := congrArg List.length planEq
     rw [List.length_append, List.length_append, prefixLength,
       block_length setup watcher reveals] at lengths
-    change (plan setup watcher).length - blockOffset event.val ≥ 2
+    change (plan setup watcher).length - blockOffset event.val ≥ 1
     omega
   have position : boundary.environmentRecall.length = blockOffset event.val := by
     have counted := (runtime setup).runInteractionPlan_recall leaks players
@@ -243,23 +213,23 @@ theorem owner_supported
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add,
       prefixLength] using counted
   have stateSupport : history.state ∈
-      ((model.runBehavioralFrom profile 2 before).map History.state).support := by
+      ((model.runBehavioralFrom profile 1 before).map History.state).support := by
     rw [PMF.support_map]
     exact ⟨history, continued, rfl⟩
   rw [menu_run_control_steps, ← stateEq] at stateSupport
   have remaining : horizon setup watcher - blockOffset event.val =
-      (horizon setup watcher - blockOffset event.val - 2) + 2 := by omega
+      (horizon setup watcher - blockOffset event.val - 1) + 1 := by omega
   rw [remaining] at stateSupport
-  have law := grant_activate_state setup leaks watcher owner players event
-    (horizon setup watcher - blockOffset event.val - 2) (blockOffset event.val)
-    boundary pending position grantAt ownerAt
+  have law := activate_state setup leaks watcher owner players
+    (horizon setup watcher - blockOffset event.val - 1) (blockOffset event.val)
+    boundary pending position ownerAt
   change history.state ∈ ((fun law => law.bind ((application setup leaks).controlStep
-    (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher) players))^[2]
-      (PMF.pure (some ⟨(horizon setup watcher - blockOffset event.val - 2) + 2,
+    (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher) players))^[1]
+      (PMF.pure (some ⟨(horizon setup watcher - blockOffset event.val - 1) + 1,
         none, boundary⟩))).support at stateSupport
   rw [law, PMF.mem_support_pure_iff _ _] at stateSupport
   exact ⟨boundary, boundarySupport, stateSupport, initial, initialSupport, source,
-    checkpoint, checkpoint.ownerOpportunity event owner, decoded⟩
+    checkpoint, checkpoint.ownerOpportunity owner, decoded⟩
 
 /-- Every actual ordinary decision has a declared source rank and occurs
 with positive probability under the finite menu's uniform reference. This
@@ -272,11 +242,11 @@ theorem owner_history_supported
     (history : (protocol setup leaks bounds watcher).History)
     (active : (protocol setup leaks bounds watcher).active history.state owner) :
     ∃ event : (graph setup).EventId, (graph setup).actor? event = some owner ∧
-      history.trace.length = blockOffset event.val + 2 * event.val + 3 ∧
+      history.trace.length = blockOffset event.val + 2 * event.val + 2 ∧
       history ∈ ((information setup leaks bounds watcher).runBehavioral
         ((menu setup leaks bounds watcher).uniformPolicy (initialLaw setup)
           (horizon setup watcher) (scheduler setup leaks watcher))
-        (blockOffset event.val + 2 * event.val + 3)).support := by
+        (blockOffset event.val + 2 * event.val + 2)).support := by
   let responses := menu setup leaks bounds watcher
   have supported := (responses.uniform_fullyMixed (initialLaw setup)
     (horizon setup watcher) (scheduler setup leaks watcher)).history_supported history.trace
@@ -287,7 +257,7 @@ theorem owner_history_supported
       change control.actor = some owner at active
       let rawTrace := responses.toRawTrace (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher) trace
-      obtain ⟨event, _grant, located⟩ := raw_decision_calendar setup leaks watcher owner
+      obtain ⟨event, located⟩ := raw_decision_calendar setup leaks watcher owner
         reveals control rawTrace active
       rcases located with ⟨position, owned⟩ | ⟨_position, same⟩
       · have depth := raw_owner_decision_depth setup leaks watcher owner reveals event owned

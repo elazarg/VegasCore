@@ -153,7 +153,7 @@ forbidden traffic, certifies a missed binding, or preserves the required
 observation relation. The
 [off-turn roster coupling](../Vegas/Game/SourceServiceOffTurnWindow.lean)
 retains known pending replays and classifies fresh focal transmissions while
-another actor has the grant. Complete stopped couplings also cover
+another actor holds the roster turn. Complete stopped couplings also cover
 [public sampling](../Vegas/Game/SourceServiceSampleRepair.lean),
 [guarded disclosure](../Vegas/Game/SourceServiceResolutionBlock.lean), and
 [foreign binding settlement](../Vegas/Game/SourceServiceForeignBindingRepair.lean).
@@ -327,7 +327,7 @@ The following obligations establish its arbitrary-length theorem:
 | C actions project to opening/withholding with fully supported split perturbations | Checked at all actual native decision sites; source fully mixed perturbations compile to fully mixed native profiles and converge to the compiler profile. |
 | Native decision view determines the source decision view | Checked from typed store and completion-history agreement. |
 | Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes, including public service fields; the focal selector also reconstructs the sender's replay recall. |
-| Common decision depths for C/W/N/raw menus | Checked at all legal histories using existing grant and actor observations. |
+| Common decision depths for C/W/N/raw menus | Checked at all legal histories using the existing public clock and actor observations. |
 | Bounded settlement under arbitrary responses | Checked for every finite response menu and every legal terminal history, including zero-probability histories. Remaining suffixes settle whenever preceding events have completed. |
 | Full monitored block agrees with its source reveal | Checked for every ordinary response, including published-replay aliases of withholding; typed source store and action history agree afterward. |
 | Initialized compiler execution law for arbitrary reveal sequences | Checked for all source policies and all alias-splitting weights, with correlated valid initial bindings. |
@@ -504,9 +504,10 @@ unbounded traffic are outside this first theorem. Initial binding validity is a
 setup assumption. It does not establish a cryptographic setup protocol or
 security under key/secret sharing.
 
-The constructed block for event rank `k` grants that event, activates its owner,
+The constructed block for event rank `k` activates the event's owner,
 attempts reserved inclusion, activates the watcher, includes its report, advances
-the clock `k+1` times, and expires the event. Its relative deadline is `k+1`.
+the clock `k+1` times, and expires the event. It issues no grant: the owner acts
+on the event its public view shows ready. Its relative deadline is `k+1`.
 The owner is activated once per source event; arbitrary intervening broadcast
 opportunities are outside this backend contract. All other players' passive
 sampling rules remain parameters.
@@ -684,7 +685,8 @@ no clock or memory observation is added to satisfy it.
 For the reusable reveal backend,
 [RevealServiceClock](../Vegas/Game/RevealServiceClock.lean) proves common
 decision depth at every raw history and for every response menu of the same
-service. The observed event grant identifies the block. Actor identity
+service. The public clock identifies the block, since every earlier block
+advanced it a known number of times. Actor identity
 distinguishes its owner and watcher opportunities, with a watcher distinct
 from all source owners. The formulas include both actual environment steps
 and prior player responses; they do not assume source-conforming play.

@@ -6,8 +6,9 @@ import Vegas.Game.ServiceRosterClock
 
 The player already remembers its responses. Their number identifies its
 current scheduled occurrence, so all histories in one information site have
-the same environment position. The existing public grant then identifies the
-same event and roster slot, including off-path sites.
+the same environment position. Since each roster slot lies inside its event's
+block, that position identifies the same event and roster slot, including
+off-path sites.
 -/
 
 noncomputable section
@@ -36,19 +37,16 @@ theorem roster_same_information_position
     (leftActive : left.actor = some who) (rightActive : right.actor = some who)
     (same : (application setup leaks).observe who (some left) =
       (application setup leaks).observe who (some right)) :
-    left.execution.environmentRecall.length = right.execution.environmentRecall.length ∧
-      left.execution.application.serviceGrant = right.execution.application.serviceGrant := by
+    left.execution.environmentRecall.length = right.execution.environmentRecall.length := by
   simp only [ReactiveApplication.observe, leftActive, rightActive, ↓reduceIte,
     Option.some.injEq] at same
   have recall := congrArg Prod.fst same
-  have view := congrArg Prod.snd same
-  refine ⟨((application setup leaks).scheduled_decision_position (initialLaw setup)
+  exact ((application setup leaks).scheduled_decision_position (initialLaw setup)
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)
     ((rosterPlan setup rosters).map instructionActor)
     (roster_scheduled_actor setup leaks rosters network) who left right
     (menu.toRawTrace _ _ _ leftTrace) (menu.toRawTrace _ _ _ rightTrace)
-    leftActive rightActive (congrArg List.length recall)).1, ?_⟩
-  exact congrArg (fun observed => observed.application.publicView.serviceGrant) view
+    leftActive rightActive (congrArg List.length recall)).1
 
 theorem roster_site_position
     (setup : Setup (Player := Player) (L := L))
@@ -66,9 +64,7 @@ theorem roster_site_position
     (leftState : left.1.state = some leftControl)
     (rightState : right.1.state = some rightControl) :
     leftControl.execution.environmentRecall.length =
-        rightControl.execution.environmentRecall.length ∧
-      leftControl.execution.application.serviceGrant =
-        rightControl.execution.application.serviceGrant := by
+      rightControl.execution.environmentRecall.length := by
   have leftActive := InformationModel.InformationSite.active _ site left
   have rightActive := InformationModel.InformationSite.active _ site right
   rw [leftState] at leftActive
@@ -80,6 +76,25 @@ theorem roster_site_position
   exact roster_same_information_position setup leaks rosters network menu who leftControl
     rightControl (leftState ▸ left.1.trace) (rightState ▸ right.1.trace)
     leftActive rightActive same
+
+private theorem rosterPlanPrefix_length_le (setup : Setup (Player := Player) (L := L))
+    (rosters : (graph setup).EventId → List Player) {rank rank' : Nat}
+    (le : rank ≤ rank') :
+    (rosterPlanPrefix setup rosters rank).length ≤
+      (rosterPlanPrefix setup rosters rank').length := by
+  obtain ⟨extra, rfl⟩ := Nat.exists_eq_add_of_le le
+  simp only [rosterPlanPrefix, List.take_add, List.flatMap_append, List.length_append]
+  omega
+
+/-- A roster slot of an earlier event lies before every later event's block. -/
+private theorem roster_slot_before (setup : Setup (Player := Player) (L := L))
+    (rosters : (graph setup).EventId → List Player) (early late : (graph setup).EventId)
+    (slot : Nat) (bound : slot < (rosters early).length) (before : early.val < late.val) :
+    (rosterPlanPrefix setup rosters early.val).length + slot <
+      (rosterPlanPrefix setup rosters late.val).length := by
+  have grows := rosterPlanPrefix_length_le setup rosters (Nat.succ_le_of_lt before)
+  rw [rosterPlanPrefix_succ, List.length_append, rosterBlock_length] at grows
+  omega
 
 /-- The event and within-event slot are common to the entire information
 fiber, not merely to histories with positive limiting strategy probability. -/
@@ -99,20 +114,23 @@ theorem roster_site_phase
     (leftState : left.1.state = some leftControl)
     (rightState : right.1.state = some rightControl)
     (leftEvent rightEvent : (graph setup).EventId) (leftSlot rightSlot : Nat)
-    (leftGrant : leftControl.execution.application.serviceGrant = some leftEvent)
-    (rightGrant : rightControl.execution.application.serviceGrant = some rightEvent)
+    (leftBound : leftSlot < (rosters leftEvent).length)
+    (rightBound : rightSlot < (rosters rightEvent).length)
     (leftPosition : leftControl.execution.environmentRecall.length =
-      (rosterPlanPrefix setup rosters leftEvent.val).length + leftSlot + 2)
+      (rosterPlanPrefix setup rosters leftEvent.val).length + leftSlot + 1)
     (rightPosition : rightControl.execution.environmentRecall.length =
-      (rosterPlanPrefix setup rosters rightEvent.val).length + rightSlot + 2) :
+      (rosterPlanPrefix setup rosters rightEvent.val).length + rightSlot + 1) :
     leftEvent = rightEvent ∧ leftSlot = rightSlot := by
-  obtain ⟨position, granted⟩ := roster_site_position setup leaks rosters network menu who site
+  have position := roster_site_position setup leaks rosters network menu who site
     left right leftControl rightControl leftState rightState
-  have events : leftEvent = rightEvent := Option.some.inj
-    (leftGrant.symm.trans (granted.trans rightGrant))
-  refine ⟨events, ?_⟩
-  rw [events] at leftPosition
-  omega
+  rcases Nat.lt_trichotomy leftEvent.val rightEvent.val with before | same | after
+  · have := roster_slot_before setup rosters leftEvent rightEvent leftSlot leftBound before
+    omega
+  · have events : leftEvent = rightEvent := Fin.ext same
+    subst events
+    exact ⟨rfl, by omega⟩
+  · have := roster_slot_before setup rosters rightEvent leftEvent rightSlot rightBound after
+    omega
 
 /-- Any current raw response advances the same public roster count. This is
 independent of its packet, inclusion effect, and private passive sample. -/

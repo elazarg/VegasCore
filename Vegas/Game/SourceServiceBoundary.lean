@@ -202,39 +202,6 @@ theorem ServiceBoundary.binding_capacity {setup : Setup (Player := Player) (L :=
   simp only [List.length_cons, Fintype.card_fin] at lengthBound
   omega
 
-/-- The actual grant command records the environment transition while leaving
-every completed-prefix fact intact. -/
-theorem ServiceBoundary.grant {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
-    {Γ : SourceCtx Player L} {source : Config Player L Γ}
-    {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
-    (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks) (event : (graph setup).EventId) :
-    ∃ granted, ServiceBoundary setup leaks rosters initial source refs rank granted ∧
-      granted.application.serviceGrant = some event ∧
-      granted.application = { execution.application with serviceGrant := some event } ∧
-      granted.recall = execution.recall ∧
-      (runtime setup).interactionStep leaks players network (.grant event) execution =
-        PMF.pure granted := by
-  let app := application setup leaks
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  refine ⟨granted, ?_, rfl, rfl, rfl, ?_⟩
-  · exact { boundary with
-      invariant := boundary.invariant.copy rfl rfl rfl
-      binding := boundary.binding.copy rfl rfl rfl }
-  · simp only [interactionStep, interactionInstruction, PMF.pure_bind]
-    change (execution.environmentStep app (.application (.grant event))).bind PMF.pure = _
-    rw [PMF.bind_pure]
-    simp only [ReactiveApplication.Execution.environmentStep,
-      app, application, reactiveApplication, environmentStep, PMF.pure_map]
-    rfl
-
 /-- Passive sampling retains every boundary fact, while keeping its actual
 known-envelope updates and environment record in the execution. -/
 theorem ServiceBoundary.sampledActivation {setup : Setup (Player := Player) (L := L)}

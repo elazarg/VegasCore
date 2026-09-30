@@ -54,7 +54,6 @@ theorem prefix_response_option_law
       PrefixCheckpoint setup leaks initial program refs revelations embedding.ref
         offset count state execution →
       ∀ (who : Player) (_owned : (graph setup).actor? (embedding.event ⟨count, inside⟩) = some who),
-      execution.application.serviceGrant = some (embedding.event ⟨count, inside⟩) →
       ∀ (response : (application setup leaks).Action),
       response ∈ ordinaryActions setup leaks (bounds.withInitialValues (initialLaw setup))
         who (execution.recall who) (execution.observe (application setup leaks) who) →
@@ -63,7 +62,7 @@ theorem prefix_response_option_law
       ((runtime setup).runInteractionPlan leaks players
         ((runtime setup).reportNetwork leaks watcher)
         ((((List.finRange (eventCount program)).drop count).flatMap fun index =>
-          block setup watcher (embedding.event index)).drop 2)
+          block setup watcher (embedding.event index)).drop 1)
         (execution.respond (application setup leaks) who response)).map
         (fun final => decodeState? (terminalRefsWith program refs embedding.ref)
           final.application.config.store) =
@@ -79,7 +78,7 @@ theorem prefix_response_option_law
   | commit name owner fresh guard next ih => intro impossible; exact impossible.elim
   | @reveal Γ openNames published owner name payload fresh selected unresolved next ih =>
       intro reveals profile refs revelations embedding refsBefore offset aligned count inside state
-        execution related who owned granted response member joint chosen
+        execution related who owned response member joint chosen
       cases count with
       | zero =>
           obtain ⟨source, rfl, revelationsEq, checkpoint⟩ := related
@@ -148,11 +147,11 @@ theorem prefix_response_option_law
             block setup watcher (tailEmbedding.event index)
           have planEq : (((List.finRange (eventCount
               (.reveal published owner name fresh selected unresolved next))).drop 0).flatMap
-                fun index => block setup watcher (embedding.event index)).drop 2 =
+                fun index => block setup watcher (embedding.event index)).drop 1 =
               suffix ++ remaining := by
             simp only [List.drop_zero, eventCount, List.finRange_succ, List.flatMap_cons,
               List.flatMap_map]
-            change (block setup watcher event ++ remaining).drop 2 = _
+            change (block setup watcher event ++ remaining).drop 1 = _
             rw [block_of_owner setup watcher owner event actor]
             simp only [suffix, List.append_assoc, List.cons_append, List.nil_append,
               List.drop_succ_cons, List.drop_zero]
@@ -197,7 +196,7 @@ theorem prefix_response_option_law
               have within : count < eventCount next := by simpa [eventCount] using inside
               have tailLaw := ih reveals (afterReveal profile) tailRefs
                 (revelations.reveal selected) tailEmbedding tailBefore (offset + 1) tailAligned
-                count within state execution related who owned granted response member joint chosen
+                count within state execution related who owned response member joint chosen
               simp only [eventCount, List.finRange_succ, List.drop_succ_cons, ← List.map_drop,
                 List.flatMap_map, terminalRefsWith, ProtocolState.step, Sum.elim_inr,
                 PMF.bind_map, ProtocolState.continuationLaw]

@@ -116,13 +116,12 @@ theorem owner_continuation_layout (responses : (application setup leaks).Respons
       (scheduler setup leaks watcher)).Trace (some control))
     (active : control.actor = some owner) :
     ∃ (event : (graph setup).EventId) (before rest : List (ServiceInstruction (graph setup))),
-      control.execution.application.serviceGrant = some event ∧
       (graph setup).actor? event = some owner ∧
       plan setup watcher = before ++ .player owner :: .includeLatest event owner ::
         .player watcher :: .wire :: rest ∧
       control.execution.environmentRecall.length = before.length + 1 ∧
       control.remaining = rest.length + 3 := by
-  obtain ⟨event, grant, located⟩ := raw_decision_calendar setup leaks watcher owner reveals control
+  obtain ⟨event, located⟩ := raw_decision_calendar setup leaks watcher owner reveals control
     (responses.toRawTrace (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) trace) active
   rcases located with ⟨position, owned⟩ | ⟨_, same⟩
@@ -130,14 +129,14 @@ theorem owner_continuation_layout (responses : (application setup leaks).Respons
   · exact (different same).elim
   obtain ⟨suffix, split⟩ := plan_split_at setup watcher event
   rw [block_of_owner setup watcher owner event owned] at split
-  let before := planPrefix setup watcher event.val ++ [.grant event]
+  let before := planPrefix setup watcher event.val
   let rest := List.replicate (event.val + 1) (.tick : ServiceInstruction (graph setup)) ++
     .expire event :: suffix
   have split' : plan setup watcher = before ++ .player owner :: .includeLatest event owner ::
       .player watcher :: .wire :: rest := by
     simpa only [before, rest, List.append_assoc, List.cons_append, List.nil_append] using split
   have position' : control.execution.environmentRecall.length = before.length + 1 := by
-    simp only [before, List.length_append, List.length_singleton,
+    simp only [before,
       planPrefix_length setup watcher reveals event.val event.isLt.le]
     omega
   have accounted := (responses.roundSupported_uniform (initialLaw setup) (horizon setup watcher)
@@ -146,7 +145,7 @@ theorem owner_continuation_layout (responses : (application setup leaks).Respons
     (plan setup watcher).length at accounted
   rw [split', List.length_append] at accounted
   simp only [List.length_cons] at accounted
-  exact ⟨event, before, rest, grant, owned, split', position', by omega⟩
+  exact ⟨event, before, rest, owned, split', position', by omega⟩
 
 /-- The generic theorem's remaining-depth fuel suffices for complete native
 evaluation at every legal menu history. -/
@@ -183,8 +182,6 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (site : (watchedInformation setup leaks bounds watcher).InformationSite owner)
     (history : (watchedInformation setup leaks bounds watcher).InformationHistory owner site.1)
     (control : (application setup leaks).Control) (state : history.1.state = some control)
-    (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
     (submission : WitnessedSubmission (graph setup))
     (action : (watchedInformation setup leaks bounds watcher).Choice owner site.1)
     (chosen : action.1 = some ⟨some (.submit submission)⟩)
@@ -225,11 +222,9 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
   change control.actor = some owner at active
   have trace : (responses.protocol (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher)).Trace (some control) := state ▸ history.1.trace
-  obtain ⟨current, before, rest, grant, _owned, split, position, remaining⟩ :=
+  obtain ⟨event, before, rest, _owned, split, position, remaining⟩ :=
     owner_continuation_layout setup leaks responses watcher owner different reveals control trace
       active
-  have currentEq : current = event := Option.some.inj (grant.symm.trans granted)
-  subst current
   have observed : site.1 = some (control.execution.recall owner,
       control.execution.observe app owner) := by
     calc

@@ -153,8 +153,6 @@ theorem roster_owner_information_kernel
         (Revelations.initial setup.context) (outputRef setup.program)
         0 event.val state execution ∧
       sourcePrefix? setup event.val execution.application.config = some state)
-    (grant : Option (graph setup).EventId)
-    (granted : ∀ execution ∈ prior.support, execution.application.serviceGrant = grant)
     (opening : ∀ execution ∈ prior.support, ∃ candidate raw,
       rosterOpening? setup leaks owner event (execution.observe (application setup leaks) owner) =
         some (candidate, raw) ∧ candidate.1 = owner ∧
@@ -206,7 +204,6 @@ theorem roster_owner_information_kernel
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) (outputRef setup.program) 0 event.val
         leftState rightState left right leftCheckpoint rightCheckpoint
-        ((granted left leftSupport).trans (granted right rightSupport).symm)
         (congrArg (fun net => net.leaked owner) networks)).mp sourceView
       obtain ⟨leftCandidate, leftRaw, leftOpening, owned, leftValid⟩ := opening left leftSupport
       obtain ⟨rightCandidate, rightRaw, rightOpening, _, rightValid⟩ :=

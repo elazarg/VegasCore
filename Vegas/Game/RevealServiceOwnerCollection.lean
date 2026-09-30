@@ -65,9 +65,9 @@ theorem owner_extra_collection
       _boundaryCheckpoint, related, _decoded⟩ :=
     owner_supported setup leaks bounds watcher who reveals observer openable reference
       event owned history.1 supported
-  let execution := ownerOpportunity setup leaks event who boundary
+  let execution := ownerOpportunity setup leaks who boundary
   let control : (application setup leaks).Control :=
-    ⟨horizon setup watcher - blockOffset event.val - 2, some who, execution⟩
+    ⟨horizon setup watcher - blockOffset event.val - 1, some who, execution⟩
   have current : history.1.state = some control := nativeState
   have observed : site.1 = some (execution.recall who,
       execution.observe (application setup leaks) who) := by
@@ -97,7 +97,7 @@ theorem owner_extra_collection
       (fun _ _ _ _ checkpoint => checkpoint.known_published watcher) _ _ _ _ _ _ _ _ related
   have collected := watched_commit_collection setup leaks bounds watcher who different reveals
     profile (restriction.site who site) (restriction.informationHistory who site history)
-    control current event rfl submission action chosenSubmission serials pending known departure
+    control current submission action chosenSubmission serials pending known departure
     fuel (by
       change 2 * horizon setup watcher + 1 -
         (restriction.history history.1).trace.length ≤ fuel

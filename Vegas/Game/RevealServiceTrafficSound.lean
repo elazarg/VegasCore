@@ -94,7 +94,7 @@ theorem retained_owner_response_traffic (bounds : MessageBounds (graph setup))
         observer openable reference event owned history supported
   have same := Option.some.inj (state.symm.trans stateEq)
   subst control
-  let execution := ownerOpportunity setup leaks event who boundary
+  let execution := ownerOpportunity setup leaks who boundary
   have recalled : execution.InputRecall (application setup leaks) :=
     PrefixCheckpoint.runtime_fact (fun next => next.InputRecall (application setup leaks))
       (fun _ _ _ _ checkpoint => checkpoint.recall) _ _ _ _ _ _ _ _ related

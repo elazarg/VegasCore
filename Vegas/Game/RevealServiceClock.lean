@@ -27,20 +27,15 @@ def instructionActor {graph : Vegas.EventGraph Player L} : ServiceInstruction gr
   | .player who => some who
   | _ => none
 
-private def instructionGrant {graph : Vegas.EventGraph Player L} :
-    ServiceInstruction graph → Option graph.EventId
-  | .grant event => some event
-  | _ => none
-
 /-- The actual service instructions before a given source rank. -/
 def planPrefix (setup : Setup (Player := Player) (L := L)) (watcher : Player) (rank : Nat) :
     List (ServiceInstruction (graph setup)) :=
   ((List.finRange (graph setup).order.eventCount).take rank).flatMap (block setup watcher)
 
 /-- Scheduler instructions preceding source rank `rank`. -/
-def blockOffset (rank : Nat) : Nat := (Finset.range rank).sum fun index => index + 7
+def blockOffset (rank : Nat) : Nat := (Finset.range rank).sum fun index => index + 6
 
-theorem blockOffset_succ (rank : Nat) : blockOffset (rank + 1) = blockOffset rank + rank + 7 := by
+theorem blockOffset_succ (rank : Nat) : blockOffset (rank + 1) = blockOffset rank + rank + 6 := by
   simp only [blockOffset, Finset.sum_range_succ]
   omega
 
@@ -65,7 +60,7 @@ theorem planPrefix_length (setup : Setup (Player := Player) (L := L)) (watcher :
       have inside : rank < (graph setup).order.eventCount := by omega
       rw [planPrefix_succ setup watcher ⟨rank, inside⟩, List.length_append,
         ih (by omega), block_length setup watcher reveals, blockOffset_succ]
-      change blockOffset rank + (rank + 7) = blockOffset rank + rank + 7
+      change blockOffset rank + (rank + 6) = blockOffset rank + rank + 6
       omega
 
 theorem block_actors (setup : Setup (Player := Player) (L := L)) (watcher owner : Player)
@@ -103,12 +98,12 @@ theorem plan_split_at (setup : Setup (Player := Player) (L := L)) (watcher : Pla
   rw [planPrefix_succ] at split
   exact split.symm
 
-/-- The owner is activated after the grant, before any watcher step. -/
+/-- The owner is activated first in its block, before any watcher step. -/
 theorem plan_take_owner (setup : Setup (Player := Player) (L := L)) (watcher owner : Player)
     (reveals : setup.program.RevealOnly) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner) :
-    (plan setup watcher).take (blockOffset event.val + 2) =
-      planPrefix setup watcher event.val ++ [.grant event, .player owner] := by
+    (plan setup watcher).take (blockOffset event.val + 1) =
+      planPrefix setup watcher event.val ++ [.player owner] := by
   obtain ⟨suffix, split⟩ := plan_split_at setup watcher event
   have length := planPrefix_length setup watcher reveals event.val event.isLt.le
   rw [split, List.append_assoc, List.take_append,
@@ -120,9 +115,9 @@ theorem plan_take_owner (setup : Setup (Player := Player) (L := L)) (watcher own
 theorem plan_take_watcher (setup : Setup (Player := Player) (L := L)) (watcher owner : Player)
     (reveals : setup.program.RevealOnly) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner) :
-    (plan setup watcher).take (blockOffset event.val + 4) =
+    (plan setup watcher).take (blockOffset event.val + 3) =
       planPrefix setup watcher event.val ++
-        [.grant event, .player owner, .includeLatest event owner, .player watcher] := by
+        [.player owner, .includeLatest event owner, .player watcher] := by
   obtain ⟨suffix, split⟩ := plan_split_at setup watcher event
   have length := planPrefix_length setup watcher reveals event.val event.isLt.le
   rw [split, List.append_assoc, List.take_append,
@@ -134,10 +129,9 @@ private theorem block_actor_position (setup : Setup (Player := Player) (L := L))
     (watcher owner who : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner) (index : Nat)
     (active : ((block setup watcher event)[index]?).bind instructionActor = some who) :
-    (index = 1 ∧ who = owner) ∨ (index = 3 ∧ who = watcher) := by
+    (index = 0 ∧ who = owner) ∨ (index = 2 ∧ who = watcher) := by
   rw [block_of_owner setup watcher owner event owned] at active
-  rcases index with _ | _ | _ | _ | _ | index
-  · cases active
+  rcases index with _ | _ | _ | _ | index
   · exact Or.inl ⟨rfl, (Option.some.inj active).symm⟩
   · cases active
   · exact Or.inr ⟨rfl, (Option.some.inj active).symm⟩
@@ -170,8 +164,8 @@ theorem plan_activation_position (setup : Setup (Player := Player) (L := L))
     (watcher who : Player) (reveals : setup.program.RevealOnly) (index : Nat)
     (active : ((plan setup watcher)[index]?).bind instructionActor = some who) :
     ∃ event : (graph setup).EventId,
-      (index = blockOffset event.val + 1 ∧ (graph setup).actor? event = some who) ∨
-      (index = blockOffset event.val + 3 ∧ who = watcher) := by
+      (index = blockOffset event.val ∧ (graph setup).actor? event = some who) ∨
+      (index = blockOffset event.val + 2 ∧ who = watcher) := by
   obtain ⟨instruction, found, actor⟩ := Option.bind_eq_some_iff.mp active
   have inPlan := (List.getElem?_eq_some_iff.mp found).1
   have fullPrefix : planPrefix setup watcher (graph setup).order.eventCount =
@@ -191,7 +185,7 @@ theorem plan_activation_position (setup : Setup (Player := Player) (L := L))
   have blockLength := block_length setup watcher reveals event
   have blockBound : index - blockOffset rank < (block setup watcher event).length := by
     rw [blockLength]
-    change index - blockOffset rank < rank + 7
+    change index - blockOffset rank < rank + 6
     rw [blockOffset_succ] at upper
     omega
   have selected : (block setup watcher event)[index - blockOffset rank]? = some instruction := by
@@ -203,10 +197,10 @@ theorem plan_activation_position (setup : Setup (Player := Player) (L := L))
   refine ⟨event, ?_⟩
   rcases located with ⟨position, same⟩ | ⟨position, same⟩
   · refine Or.inl ⟨?_, same ▸ owned⟩
-    change index = blockOffset rank + 1
+    change index = blockOffset rank
     omega
   · refine Or.inr ⟨?_, same⟩
-    change index = blockOffset rank + 3
+    change index = blockOffset rank + 2
     omega
 
 variable (setup : Setup (Player := Player) (L := L))
@@ -216,29 +210,9 @@ variable (setup : Setup (Player := Player) (L := L))
 def activationCount (watcher : Player) (count : Nat) : Nat :=
   (((plan setup watcher).take count).filterMap instructionActor).length
 
-private def calendarGrant (watcher : Player) (count : Nat) : Option (graph setup).EventId :=
-  (((plan setup watcher).take count).filterMap instructionGrant).getLast?
-
-private def commandGrant : (application setup leaks).Command → Option (graph setup).EventId
-  | .application (.grant event) => some event
-  | _ => none
-
-private theorem calendarGrant_owner (watcher owner : Player) (reveals : setup.program.RevealOnly)
-    (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner) :
-    calendarGrant setup watcher (blockOffset event.val + 2) = some event := by
-  rw [calendarGrant, plan_take_owner setup watcher owner reveals event owned]
-  simp [instructionGrant]
-
-private theorem calendarGrant_watcher (watcher owner : Player)
-    (reveals : setup.program.RevealOnly) (event : (graph setup).EventId)
-    (owned : (graph setup).actor? event = some owner) :
-    calendarGrant setup watcher (blockOffset event.val + 4) = some event := by
-  rw [calendarGrant, plan_take_watcher setup watcher owner reveals event owned]
-  simp [instructionGrant]
-
 theorem owner_activation_count (watcher owner : Player) (reveals : setup.program.RevealOnly)
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner) :
-    activationCount setup watcher (blockOffset event.val + 2) = 2 * event.val + 1 := by
+    activationCount setup watcher (blockOffset event.val + 1) = 2 * event.val + 1 := by
   rw [activationCount, plan_take_owner setup watcher owner reveals event owned,
     List.filterMap_append, List.length_append,
     planPrefix_actors_length setup watcher reveals event.val event.isLt.le]
@@ -246,7 +220,7 @@ theorem owner_activation_count (watcher owner : Player) (reveals : setup.program
 
 theorem watcher_activation_count (watcher owner : Player) (reveals : setup.program.RevealOnly)
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner) :
-    activationCount setup watcher (blockOffset event.val + 4) = 2 * event.val + 2 := by
+    activationCount setup watcher (blockOffset event.val + 3) = 2 * event.val + 2 := by
   rw [activationCount, plan_take_watcher setup watcher owner reveals event owned,
     List.filterMap_append, List.length_append,
     planPrefix_actors_length setup watcher reveals event.val event.isLt.le]
@@ -283,155 +257,6 @@ theorem instruction_actor (watcher : Player)
           split <;> rfl
         · rfl
 
-private theorem instruction_grant (watcher : Player)
-    (history : List (application setup leaks).EnvironmentEntry)
-    (view : (application setup leaks).EnvironmentView)
-    (instruction : ServiceInstruction (graph setup)) (command : (application setup leaks).Command)
-    (supported : command ∈ ((runtime setup).interactionInstruction leaks
-      ((runtime setup).reportNetwork leaks watcher) history view instruction).support) :
-    commandGrant setup leaks command = instructionGrant instruction := by
-  cases instruction with
-  | player who | grant event | sample event | tick | expire event =>
-      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
-        at supported
-      subst command
-      rfl
-  | includeLatest event owner =>
-      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
-        at supported
-      subst command
-      unfold reactiveLatest
-      split <;> rfl
-  | wire =>
-      rw [(runtime setup).reportNetwork_instruction leaks watcher history view,
-        PMF.mem_support_pure_iff _ _] at supported
-      subst command
-      unfold ReactiveApplication.includeReported
-      split
-      · rfl
-      · split
-        · simp only [ReactiveApplication.atMostOnceCommand]
-          split <;> rfl
-        · rfl
-
-private theorem scheduled_grant (watcher : Player)
-    (history : List (application setup leaks).EnvironmentEntry)
-    (view : (application setup leaks).EnvironmentView) (command : (application setup leaks).Command)
-    (supported : command ∈ (scheduler setup leaks watcher history view).support) :
-    calendarGrant setup watcher (history.length + 1) =
-      (commandGrant setup leaks command).or (calendarGrant setup watcher history.length) := by
-  unfold scheduler at supported
-  cases selected : (plan setup watcher)[history.length]? with
-  | none =>
-      rw [selected, PMF.mem_support_pure_iff _ _] at supported
-      subst command
-      simp only [calendarGrant, List.take_add_one, selected, Option.toList_none,
-        List.append_nil, commandGrant, Option.none_or]
-  | some instruction =>
-      rw [selected] at supported
-      rw [instruction_grant setup leaks watcher history view instruction command supported]
-      simp only [calendarGrant, List.take_add_one, selected, Option.toList_some,
-        List.filterMap_append, List.filterMap_cons, List.filterMap_nil]
-      cases instructionGrant instruction <;> simp
-
-private theorem respond_grant (execution : (application setup leaks).Execution) (who : Player)
-    (response : (application setup leaks).Action) :
-    (execution.respond (application setup leaks) who response).application.serviceGrant =
-      execution.application.serviceGrant := by
-  rcases response with ⟨transmission⟩
-  cases transmission with
-  | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id => rfl
-      | submit submission =>
-          have visible := submission.call.register_facts who execution.application |>.2.2
-          change (submitStep (submission.call.register execution.application who) who
-            submission.call.packet).serviceGrant = execution.application.serviceGrant
-          rw [submitStep_serviceGrant]
-          exact congrArg PublicView.serviceGrant visible
-
-private theorem environment_grant (before after : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : after ∈ (before.environmentStep (application setup leaks) command).support) :
-    after.application.serviceGrant =
-      (commandGrant setup leaks command).or before.application.serviceGrant := by
-  cases command with
-  | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rfl
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl
-  | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      change (before.includePending (application setup leaks) id).application.serviceGrant = _
-      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-      cases found : before.network.lookup id with
-      | none => rfl
-      | some message =>
-          change (((runtime setup).handle before.application
-            ⟨message.id, message.payload.call⟩).getD before.application).serviceGrant = _
-          cases accepted : (runtime setup).handle before.application
-              ⟨message.id, message.payload.call⟩ with
-          | none => rfl
-          | some next => exact (runtime setup).handle_serviceGrant _ _ _ accepted
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      have preserved := (runtime setup).environmentStep_serviceGrant
-        before.application state command changed
-      cases command <;> exact preserved
-
-private def GrantCalendar (watcher : Player) : (application setup leaks).ProtocolState → Prop
-  | none => True
-  | some control => control.execution.application.serviceGrant =
-      calendarGrant setup watcher control.execution.environmentRecall.length
-
-private theorem trace_grant_calendar (watcher : Player) :
-    ∀ {state} (_trace : ((application setup leaks).protocol (initialLaw setup)
-      (horizon setup watcher) (scheduler setup leaks watcher)).Trace state),
-      GrantCalendar setup leaks watcher state
-  | _, .start => trivial
-  | _, @Trace.extend _ _ source target before joint legal realized => by
-      have inherited := trace_grant_calendar watcher before
-      have reached : target ∈ ((application setup leaks).transition (initialLaw setup)
-        (horizon setup watcher) (scheduler setup leaks watcher) source joint).support := realized
-      cases source with
-      | none =>
-          obtain ⟨initial, supported, rfl⟩ := PMF.support_map .. ▸ reached
-          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-          rfl
-      | some control =>
-          rcases control with ⟨remaining, actor, execution⟩
-          cases actor with
-          | some who =>
-              cases (PMF.mem_support_pure_iff _ _).mp reached
-              change
-                (execution.respond (application setup leaks) who _).application.serviceGrant = _
-              rw [respond_grant, (application setup leaks).respond_environmentRecall]
-              exact inherited
-          | none =>
-              cases remaining with
-              | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
-              | succ remaining =>
-                  obtain ⟨command, selected, moved⟩ :=
-                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  have recall : next.environmentRecall = execution.environmentRecall ++
-                      [⟨execution.observeEnvironment (application setup leaks), command⟩] := by
-                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
-                    cases equal
-                    rfl
-                  change next.application.serviceGrant = _
-                  rw [recall, List.length_append, List.length_singleton,
-                    scheduled_grant setup leaks watcher _ _ command selected,
-                    environment_grant setup leaks execution next command supported]
-                  exact congrArg ((commandGrant setup leaks command).or) inherited
-
 private theorem scheduler_activation_position (watcher who : Player)
     (reveals : setup.program.RevealOnly)
     (history : List (application setup leaks).EnvironmentEntry)
@@ -439,8 +264,8 @@ private theorem scheduler_activation_position (watcher who : Player)
     (supported : command ∈ (scheduler setup leaks watcher history view).support)
     (active : command.actor? (application setup leaks) = some who) :
     ∃ event : (graph setup).EventId,
-      (history.length = blockOffset event.val + 1 ∧ (graph setup).actor? event = some who) ∨
-      (history.length = blockOffset event.val + 3 ∧ who = watcher) := by
+      (history.length = blockOffset event.val ∧ (graph setup).actor? event = some who) ∨
+      (history.length = blockOffset event.val + 2 ∧ who = watcher) := by
   unfold scheduler at supported
   cases selected : (plan setup watcher)[history.length]? with
   | none =>
@@ -457,10 +282,10 @@ private theorem scheduler_activation_position (watcher who : Player)
 private def ActiveCalendar (watcher : Player) : (application setup leaks).ProtocolState → Prop
   | none => True
   | some control => ∀ who, control.actor = some who →
-      ∃ event : (graph setup).EventId, control.execution.application.serviceGrant = some event ∧
-        ((control.execution.environmentRecall.length = blockOffset event.val + 2 ∧
+      ∃ event : (graph setup).EventId,
+        (control.execution.environmentRecall.length = blockOffset event.val + 1 ∧
             (graph setup).actor? event = some who) ∨
-          (control.execution.environmentRecall.length = blockOffset event.val + 4 ∧ who = watcher))
+          (control.execution.environmentRecall.length = blockOffset event.val + 3 ∧ who = watcher)
 
 private theorem trace_active_calendar (watcher : Player) (reveals : setup.program.RevealOnly) :
     ∀ {state} (_trace : ((application setup leaks).protocol (initialLaw setup)
@@ -468,7 +293,6 @@ private theorem trace_active_calendar (watcher : Player) (reveals : setup.progra
       ActiveCalendar setup leaks watcher state
   | _, .start => trivial
   | _, @Trace.extend _ _ source target before joint legal realized => by
-      have inherited := trace_grant_calendar setup leaks watcher before
       have reached : target ∈ ((application setup leaks).transition (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher) source joint).support := realized
       cases source with
@@ -495,40 +319,29 @@ private theorem trace_active_calendar (watcher : Player) (reveals : setup.progra
                     obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
                     cases equal
                     rfl
-                  have granted : next.application.serviceGrant = calendarGrant setup watcher
-                      (execution.environmentRecall.length + 1) := by
-                    rw [environment_grant setup leaks execution next command supported,
-                      scheduled_grant setup leaks watcher _ _ command selected]
-                    exact congrArg ((commandGrant setup leaks command).or) inherited
                   intro who active
                   obtain ⟨event, located⟩ := scheduler_activation_position setup leaks watcher who
                     reveals execution.environmentRecall
                     (execution.observeEnvironment (application setup leaks)) command selected active
-                  refine ⟨event, ?_, ?_⟩
-                  · rcases located with ⟨position, owned⟩ | ⟨position, same⟩
-                    · rw [granted, position]
-                      exact calendarGrant_owner setup watcher who reveals event owned
-                    · obtain ⟨owner, owned⟩ := source_owner setup reveals event
-                      rw [granted, position]
-                      exact calendarGrant_watcher setup watcher owner reveals event owned
-                  · change (next.environmentRecall.length = _ ∧ _) ∨
-                      (next.environmentRecall.length = _ ∧ _)
-                    rw [recall, List.length_append, List.length_singleton]
-                    rcases located with ⟨position, owned⟩ | ⟨position, same⟩
-                    · exact Or.inl ⟨by omega, owned⟩
-                    · exact Or.inr ⟨by omega, same⟩
+                  refine ⟨event, ?_⟩
+                  change (next.environmentRecall.length = _ ∧ _) ∨
+                    (next.environmentRecall.length = _ ∧ _)
+                  rw [recall, List.length_append, List.length_singleton]
+                  rcases located with ⟨position, owned⟩ | ⟨position, same⟩
+                  · exact Or.inl ⟨by omega, owned⟩
+                  · exact Or.inr ⟨by omega, same⟩
 
-/-- Every raw decision occurs at one of the two declared positions of its
-visible grant. Repeated source owners are permitted. -/
+/-- Every raw decision occurs at one of the two declared positions of a source
+event's block. Repeated source owners are permitted. -/
 theorem raw_decision_calendar (watcher who : Player) (reveals : setup.program.RevealOnly)
     (control : (application setup leaks).Control)
     (trace : ((application setup leaks).protocol (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher)).Trace (some control))
     (active : control.actor = some who) :
-    ∃ event : (graph setup).EventId, control.execution.application.serviceGrant = some event ∧
-      ((control.execution.environmentRecall.length = blockOffset event.val + 2 ∧
+    ∃ event : (graph setup).EventId,
+      (control.execution.environmentRecall.length = blockOffset event.val + 1 ∧
           (graph setup).actor? event = some who) ∨
-        (control.execution.environmentRecall.length = blockOffset event.val + 4 ∧ who = watcher)) :=
+        (control.execution.environmentRecall.length = blockOffset event.val + 3 ∧ who = watcher) :=
   trace_active_calendar setup leaks watcher reveals trace who active
 
 theorem scheduled_activation_count (watcher : Player)
@@ -628,8 +441,8 @@ theorem raw_owner_decision_depth (watcher owner : Player) (reveals : setup.progr
     (trace : ((application setup leaks).protocol (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher)).Trace (some control))
     (active : control.actor = some owner)
-    (position : control.execution.environmentRecall.length = blockOffset event.val + 2) :
-    trace.length = blockOffset event.val + 2 * event.val + 3 := by
+    (position : control.execution.environmentRecall.length = blockOffset event.val + 1) :
+    trace.length = blockOffset event.val + 2 * event.val + 2 := by
   rw [raw_decision_depth setup leaks watcher owner control trace active, position,
     owner_activation_count setup watcher owner reveals event owned]
   omega
@@ -641,19 +454,238 @@ theorem raw_watcher_decision_depth (watcher owner : Player) (reveals : setup.pro
     (trace : ((application setup leaks).protocol (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher)).Trace (some control))
     (active : control.actor = some watcher)
-    (position : control.execution.environmentRecall.length = blockOffset event.val + 4) :
-    trace.length = blockOffset event.val + 2 * event.val + 6 := by
+    (position : control.execution.environmentRecall.length = blockOffset event.val + 3) :
+    trace.length = blockOffset event.val + 2 * event.val + 5 := by
   rw [raw_decision_depth setup leaks watcher watcher control trace active, position,
     watcher_activation_count setup watcher owner reveals event owned]
   omega
 
+/-- The clock ticks of the service plan before a source rank. -/
+def ticksBefore (watcher : Player) (rank : Nat) : Nat :=
+  serviceTicks (planPrefix setup watcher rank)
+
+theorem ticksBefore_succ (watcher : Player) (event : (graph setup).EventId) :
+    ticksBefore setup watcher (event.val + 1) =
+      ticksBefore setup watcher event.val + (event.val + 1) := by
+  unfold ticksBefore
+  rw [planPrefix_succ, serviceTicks_append]
+  congr 1
+  unfold block
+  cases (graph setup).actor? event <;>
+    simp [serviceTicks, ServiceInstruction.ticks, runtime]
+
+private theorem ticksBefore_lt (watcher : Player) (rank later : Nat) (earlier : rank < later)
+    (within : later ≤ (graph setup).order.eventCount) :
+    ticksBefore setup watcher rank < ticksBefore setup watcher later := by
+  induction later with
+  | zero => omega
+  | succ later ih =>
+      have inside : later < (graph setup).order.eventCount := by omega
+      have step := ticksBefore_succ setup watcher ⟨later, inside⟩
+      change ticksBefore setup watcher (later + 1) =
+        ticksBefore setup watcher later + (later + 1) at step
+      by_cases same : rank = later
+      · subst rank
+        omega
+      · have below := ih (by omega) (by omega)
+        omega
+
+private theorem rank_le_ticksBefore (watcher : Player) (rank : Nat)
+    (within : rank ≤ (graph setup).order.eventCount) : rank ≤ ticksBefore setup watcher rank := by
+  induction rank with
+  | zero => omega
+  | succ rank ih =>
+      have inside : rank < (graph setup).order.eventCount := by omega
+      have step := ticksBefore_succ setup watcher ⟨rank, inside⟩
+      change ticksBefore setup watcher (rank + 1) =
+        ticksBefore setup watcher rank + (rank + 1) at step
+      have below := ih (by omega)
+      omega
+
+/-- The source rank of a block whose decisions see the public clock `clock`. -/
+def clockRank (watcher : Player) (clock : Nat) : Nat :=
+  Nat.findGreatest (fun rank => ticksBefore setup watcher rank ≤ clock) clock
+
+theorem clockRank_ticksBefore (watcher : Player) (event : (graph setup).EventId) :
+    clockRank setup watcher (ticksBefore setup watcher event.val) = event.val := by
+  unfold clockRank
+  apply (Nat.findGreatest_eq_iff).mpr
+  refine ⟨rank_le_ticksBefore setup watcher event.val event.isLt.le, fun _ => le_rfl, ?_⟩
+  intro later earlier bounded
+  by_cases inside : later ≤ (graph setup).order.eventCount
+  · exact not_le.mpr (ticksBefore_lt setup watcher event.val later earlier inside)
+  · intro atMost
+    have monotone := ticksBefore_lt setup watcher event.val
+      (graph setup).order.eventCount event.isLt le_rfl
+    have full : ticksBefore setup watcher later = ticksBefore setup watcher
+        (graph setup).order.eventCount := by
+      unfold ticksBefore planPrefix
+      rw [List.take_of_length_le (by simp only [List.length_finRange]; omega),
+        List.take_of_length_le (by simp only [List.length_finRange]; exact le_rfl)]
+    omega
+
+private def commandTicks : (application setup leaks).Command → Nat
+  | .application command => command.clockTicks
+  | _ => 0
+
+private theorem instruction_ticks (watcher : Player)
+    (history : List (application setup leaks).EnvironmentEntry)
+    (view : (application setup leaks).EnvironmentView)
+    (instruction : ServiceInstruction (graph setup)) (command : (application setup leaks).Command)
+    (supported : command ∈ ((runtime setup).interactionInstruction leaks
+      ((runtime setup).reportNetwork leaks watcher) history view instruction).support) :
+    commandTicks setup leaks command = instruction.ticks := by
+  cases instruction with
+  | player who | grant event | sample event | tick | expire event =>
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
+        at supported
+      subst command
+      rfl
+  | includeLatest event owner =>
+      simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
+        at supported
+      subst command
+      unfold reactiveLatest
+      split <;> rfl
+  | wire =>
+      rw [(runtime setup).reportNetwork_instruction leaks watcher history view,
+        PMF.mem_support_pure_iff _ _] at supported
+      subst command
+      unfold ReactiveApplication.includeReported
+      split
+      · rfl
+      · split
+        · simp only [ReactiveApplication.atMostOnceCommand]
+          split <;> rfl
+        · rfl
+
+private def calendarTicks (watcher : Player) (count : Nat) : Nat :=
+  serviceTicks ((plan setup watcher).take count)
+
+private theorem scheduled_ticks (watcher : Player)
+    (history : List (application setup leaks).EnvironmentEntry)
+    (view : (application setup leaks).EnvironmentView) (command : (application setup leaks).Command)
+    (supported : command ∈ (scheduler setup leaks watcher history view).support) :
+    calendarTicks setup watcher (history.length + 1) =
+      calendarTicks setup watcher history.length + commandTicks setup leaks command := by
+  unfold scheduler at supported
+  cases selected : (plan setup watcher)[history.length]? with
+  | none =>
+      rw [selected, PMF.mem_support_pure_iff _ _] at supported
+      subst command
+      simp only [calendarTicks, List.take_add_one, selected, Option.toList_none,
+        List.append_nil, commandTicks, Nat.add_zero]
+  | some instruction =>
+      rw [selected] at supported
+      rw [instruction_ticks setup leaks watcher history view instruction command supported]
+      simp only [calendarTicks, List.take_add_one, selected, Option.toList_some,
+        serviceTicks_append, serviceTicks_cons, serviceTicks_nil, Nat.add_zero]
+
+private theorem respond_clock (execution : (application setup leaks).Execution) (who : Player)
+    (response : (application setup leaks).Action) :
+    (execution.respond (application setup leaks) who response).application.clock =
+      execution.application.clock := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => rfl
+  | some transmission =>
+      cases transmission with
+      | replay id => rfl
+      | submit submission =>
+          have visible := submission.call.register_facts who execution.application |>.2.2
+          change (submitStep (submission.call.register execution.application who) who
+            submission.call.packet).clock = execution.application.clock
+          rw [submitStep_clock]
+          exact congrArg PublicView.clock visible
+
+private theorem environment_clock (before after : (application setup leaks).Execution)
+    (command : (application setup leaks).Command)
+    (reached : after ∈ (before.environmentStep (application setup leaks) command).support) :
+    after.application.clock = before.application.clock + commandTicks setup leaks command := by
+  cases command with
+  | wait =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      rfl
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨sample, _, rfl⟩ := PMF.support_map .. ▸ supported
+      rfl
+  | «include» id =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      change (before.includePending (application setup leaks) id).application.clock = _ + 0
+      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+      cases found : before.network.lookup id with
+      | none => rfl
+      | some message =>
+          change (((runtime setup).handle before.application
+            ⟨message.id, message.payload.call⟩).getD before.application).clock = _ + 0
+          cases accepted : (runtime setup).handle before.application
+              ⟨message.id, message.payload.call⟩ with
+          | none => rfl
+          | some next => exact ((runtime setup).handle_clock_activated _ _ _ accepted).1
+  | application command =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      exact (runtime setup).environmentStep_clock before.application state command changed
+
+private def ClockCalendar (watcher : Player) : (application setup leaks).ProtocolState → Prop
+  | none => True
+  | some control => control.execution.application.clock =
+      calendarTicks setup watcher control.execution.environmentRecall.length
+
+private theorem trace_clock_calendar (watcher : Player) :
+    ∀ {state} (_trace : ((application setup leaks).protocol (initialLaw setup)
+      (horizon setup watcher) (scheduler setup leaks watcher)).Trace state),
+      ClockCalendar setup leaks watcher state
+  | _, .start => trivial
+  | _, @Trace.extend _ _ source target before joint legal realized => by
+      have inherited := trace_clock_calendar watcher before
+      have reached : target ∈ ((application setup leaks).transition (initialLaw setup)
+        (horizon setup watcher) (scheduler setup leaks watcher) source joint).support := realized
+      cases source with
+      | none =>
+          obtain ⟨initial, supported, rfl⟩ := PMF.support_map .. ▸ reached
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+          rfl
+      | some control =>
+          rcases control with ⟨remaining, actor, execution⟩
+          cases actor with
+          | some who =>
+              cases (PMF.mem_support_pure_iff _ _).mp reached
+              change
+                (execution.respond (application setup leaks) who _).application.clock = _
+              rw [respond_clock, (application setup leaks).respond_environmentRecall]
+              exact inherited
+          | none =>
+              cases remaining with
+              | zero => exact (legal.1 ⟨rfl, rfl⟩).elim
+              | succ remaining =>
+                  obtain ⟨command, selected, moved⟩ :=
+                    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+                  obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
+                  have recall : next.environmentRecall = execution.environmentRecall ++
+                      [⟨execution.observeEnvironment (application setup leaks), command⟩] := by
+                    obtain ⟨updated, _, equal⟩ := PMF.support_map .. ▸ supported
+                    cases equal
+                    rfl
+                  change next.application.clock = _
+                  rw [recall, List.length_append, List.length_singleton,
+                    scheduled_ticks setup leaks watcher _ _ command selected,
+                    environment_clock setup leaks execution next command supported]
+                  change execution.application.clock = _ at inherited
+                  rw [inherited]
+
 /-- A theorem-side depth computed from information already visible to the
-acting player. No field is added to the native observation. -/
+acting player: the public clock fixes the source block, since the clock only
+advances after both decisions of a block. No field is added to the native
+observation. -/
 def decisionDepth (watcher who : Player) : (application setup leaks).Info → Nat
   | none => 0
-  | some (_, view) => match view.application.publicView.serviceGrant with
-    | none => 0
-    | some event => blockOffset event.val + 2 * event.val + if who = watcher then 6 else 3
+  | some (_, view) =>
+      let rank := clockRank setup watcher view.application.publicView.clock
+      blockOffset rank + 2 * rank + if who = watcher then 5 else 2
 
 theorem raw_decision_depth_observed (watcher who : Player)
     (reveals : setup.program.RevealOnly)
@@ -664,24 +696,37 @@ theorem raw_decision_depth_observed (watcher who : Player)
     (active : control.actor = some who) :
     trace.length = decisionDepth setup leaks watcher who
       ((application setup leaks).observe who (some control)) := by
-  obtain ⟨event, granted, located⟩ := raw_decision_calendar setup leaks watcher who reveals
+  obtain ⟨event, located⟩ := raw_decision_calendar setup leaks watcher who reveals
     control trace active
+  have clocked := trace_clock_calendar setup leaks watcher trace
+  change control.execution.application.clock =
+    calendarTicks setup watcher control.execution.environmentRecall.length at clocked
+  obtain ⟨owner, owned⟩ := source_owner setup reveals event
+  have rank : clockRank setup watcher control.execution.application.clock = event.val := by
+    rw [clocked]
+    rcases located with ⟨position, _⟩ | ⟨position, _⟩
+    · rw [position, calendarTicks, plan_take_owner setup watcher owner reveals event owned,
+        serviceTicks_append]
+      simpa only [serviceTicks_cons, serviceTicks_nil, ServiceInstruction.ticks, Nat.add_zero,
+        ticksBefore] using clockRank_ticksBefore setup watcher event
+    · rw [position, calendarTicks, plan_take_watcher setup watcher owner reveals event owned,
+        serviceTicks_append]
+      simpa only [serviceTicks_cons, serviceTicks_nil, ServiceInstruction.ticks, Nat.add_zero,
+        ticksBefore] using clockRank_ticksBefore setup watcher event
   simp only [ReactiveApplication.observe, active, ↓reduceIte, decisionDepth]
-  change trace.length = match control.execution.application.serviceGrant with
-    | none => 0
-    | some current => blockOffset current.val + 2 * current.val +
-        if who = watcher then 6 else 3
-  rw [granted]
-  rcases located with ⟨position, owned⟩ | ⟨position, same⟩
+  change trace.length = blockOffset (clockRank setup watcher control.execution.application.clock) +
+      2 * clockRank setup watcher control.execution.application.clock +
+        if who = watcher then 5 else 2
+  rw [rank]
+  rcases located with ⟨position, actor⟩ | ⟨position, same⟩
   · have different : who ≠ watcher := by
       intro same
-      exact separate event (same ▸ owned)
+      exact separate event (same ▸ actor)
     rw [ite_eq_right different]
-    exact raw_owner_decision_depth setup leaks watcher who reveals event owned control
+    exact raw_owner_decision_depth setup leaks watcher who reveals event actor control
       trace active position
   · subst who
     rw [ite_eq_left rfl]
-    obtain ⟨owner, owned⟩ := source_owner setup reveals event
     exact raw_watcher_decision_depth setup leaks watcher owner reveals event owned control
       trace active position
 

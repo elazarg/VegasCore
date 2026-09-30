@@ -48,7 +48,7 @@ theorem owner_source_common_depth
     (history : (protocol setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).History)
     (supported : history ∈
       ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
-        reference (blockOffset event.val + 2 * event.val + 3)).support)
+        reference (blockOffset event.val + 2 * event.val + 2)).support)
     (sourceSite : (setup.informationModel admission).InformationSite who)
     (sourceView : sourceSite.1 =
       setup.protocolObserve who (prefixReadout setup leaks event.val history.state)) :
@@ -90,8 +90,8 @@ theorem owner_bayes_state [setup.FiniteInitialLaw]
       watcher).InformationHistory who site.1)
     (supported : history.1 ∈
       ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
-        reference (blockOffset event.val + 2 * event.val + 3)).support)
-    (length : history.1.trace.length = blockOffset event.val + 2 * event.val + 3)
+        reference (blockOffset event.val + 2 * event.val + 2)).support)
+    (length : history.1.trace.length = blockOffset event.val + 2 * event.val + 2)
     (sourceSite : (setup.informationModel admission).InformationSite who)
     (sourceView : sourceSite.1 =
       setup.protocolObserve who (prefixReadout setup leaks event.val history.1.state)) :
@@ -129,7 +129,7 @@ theorem owner_bayes_state [setup.FiniteInitialLaw]
     funext actor
     exact (setup.behavioralPolicyEquiv admission actor).apply_symm_apply (source.strategy actor)
   have unmarked : (model.runBehavioral selected
-      (blockOffset event.val + 2 * event.val + 3)).map
+      (blockOffset event.val + 2 * event.val + 2)).map
         (fun current => prefixReadout setup leaks event.val current.state) =
       ((setup.informationModel admission).runBehavioral source.strategy (event.val + 1)).map
         History.state := by
@@ -143,7 +143,7 @@ theorem owner_bayes_state [setup.FiniteInitialLaw]
     exact law
   have marked := model.informationReadout_law_of_fiber (setup.informationModel admission)
     selected who site sourceSite (fun current => prefixReadout setup leaks event.val current.state)
-    History.state source.strategy (blockOffset event.val + 2 * event.val + 3) (event.val + 1)
+    History.state source.strategy (blockOffset event.val + 2 * event.val + 2) (event.val + 1)
     (fun state => setup.protocolObserve who state = sourceSite.1) unmarked
     (by
       intro current reached
@@ -162,7 +162,7 @@ theorem owner_bayes_state [setup.FiniteInitialLaw]
         exact equality.trans history.2)
     (by intro current _; exact (setup.protocol_info admission who current.trace) ▸ Iff.rfl)
   have clock : InformationModel.InformationSite.CommonDepth model site
-      (blockOffset event.val + 2 * event.val + 3) := by
+      (blockOffset event.val + 2 * event.val + 2) := by
     intro current
     exact (menu_common_decision_depth setup leaks responses watcher reveals observer who site
       current).trans ((menu_common_decision_depth setup leaks responses watcher reveals observer

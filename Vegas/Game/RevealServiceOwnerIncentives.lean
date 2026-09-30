@@ -44,7 +44,7 @@ theorem owner_compiled_choice_law [setup.FiniteInitialLaw]
       watcher).InformationHistory who site.1)
     (supported : history.1 ∈
       ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
-        reference (blockOffset event.val + 2 * event.val + 3)).support)
+        reference (blockOffset event.val + 2 * event.val + 2)).support)
     (sourceSite : (setup.informationModel admission).InformationSite who)
     (sourceView : sourceSite.1 =
       setup.protocolObserve who (prefixReadout setup leaks event.val history.1.state)) :
@@ -112,7 +112,7 @@ theorem owner_context_eq_source_local [setup.FiniteInitialLaw] [leaks.FiniteSupp
       watcher).InformationSite who)
     (clock : InformationModel.InformationSite.CommonDepth
       (information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher) site
-        (blockOffset event.val + 2 * event.val + 3))
+        (blockOffset event.val + 2 * event.val + 2))
     (sourceSite : (setup.informationModel admission).InformationSite who)
     (belief : (target.belief who site).map
         (fun current => prefixReadout setup leaks event.val current.1.state) =
@@ -125,7 +125,7 @@ theorem owner_context_eq_source_local [setup.FiniteInitialLaw] [leaks.FiniteSupp
     (utility : State L setup.program.terminalCtx → ℝ) :
     (target.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
-      (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
+      (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 2))).value
         ((target.strategy who).withLaw site.1 law) =
       (source.truncatedContinuationContext sourceSite
         (fun final => (setup.protocolReadout final.state).elim 0 utility)
@@ -201,7 +201,7 @@ theorem owner_local_optimal [setup.FiniteInitialLaw] [leaks.FiniteSupport]
       watcher).InformationSite who)
     (clock : InformationModel.InformationSite.CommonDepth
       (information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher) site
-        (blockOffset event.val + 2 * event.val + 3))
+        (blockOffset event.val + 2 * event.val + 2))
     (reference : Profile
       (information setup leaks (bounds.withInitialValues (initialLaw setup))
         watcher).behavioralSignature)
@@ -209,7 +209,7 @@ theorem owner_local_optimal [setup.FiniteInitialLaw] [leaks.FiniteSupport]
       watcher).InformationHistory who site.1)
     (supported : history.1 ∈
       ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
-        reference (blockOffset event.val + 2 * event.val + 3)).support)
+        reference (blockOffset event.val + 2 * event.val + 2)).support)
     (sourceSite : (setup.informationModel admission).InformationSite who)
     (sourceView : sourceSite.1 =
       setup.protocolObserve who (prefixReadout setup leaks event.val history.1.state))
@@ -225,11 +225,11 @@ theorem owner_local_optimal [setup.FiniteInitialLaw] [leaks.FiniteSupport]
       watcher).Choice who site.1)) :
     (target.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
-      (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
+      (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 2))).value
         ((target.strategy who).withLaw site.1 law) ≤
       (target.truncatedContinuationContext site
         (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
-        (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
+        (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 2))).value
           (target.strategy who) := by
   have represented (disclose : Bool) :
       ∃ choice : (setup.informationModel admission).Choice who sourceSite.1,

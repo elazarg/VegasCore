@@ -107,7 +107,7 @@ theorem owner_choice_data
     (history : (protocol setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).History)
     (supported : history ∈
       ((information setup leaks (bounds.withInitialValues (initialLaw setup)) watcher).runBehavioral
-        nativeProfile (blockOffset event.val + 2 * event.val + 3)).support)
+        nativeProfile (blockOffset event.val + 2 * event.val + 2)).support)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
     (observed :
@@ -135,7 +135,7 @@ theorem owner_choice_data
     setup.program reveals decoded (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program decoded)
-    event.val event.isLt source (ownerOpportunity setup leaks event who boundary)
+    event.val event.isLt source (ownerOpportunity setup leaks who boundary)
     (opportunityCheckpoint.toPublic _ _ _ _ _ _ _ _) event (by omega) owned
     ((opportunityCheckpoint.toPublic _ _ _ _ _ _ _ _).ready event (Nat.zero_add _).symm)
   refine ⟨?_, data.2.1⟩

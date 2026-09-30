@@ -22,37 +22,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Granting a roster phase changes only the public service marker and the
-scheduler's own recall. It preserves the existing private network observations. -/
-theorem PublicCheckpoint.grant
-    {setup : Setup (Player := Player) (L := L)}
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {initial : State L setup.context} {Γ : SourceCtx Player L}
-    {source : Config Player L Γ} {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
-    (checkpoint : PublicCheckpoint setup leaks initial source refs rank execution)
-    (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks) (event : (graph setup).EventId) :
-    ∃ granted, PublicCheckpoint setup leaks initial source refs rank granted ∧
-      granted.application.serviceGrant = some event ∧ granted.recall = execution.recall ∧
-      granted.network = execution.network ∧
-      (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        PMF.pure granted := by
-  let app := application setup leaks
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  refine ⟨granted, ?_, rfl, rfl, rfl, ?_⟩
-  · exact { checkpoint with
-      invariant := checkpoint.invariant.copy rfl rfl rfl
-      binding := checkpoint.binding.copy rfl rfl rfl }
-  · simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-      ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, PMF.pure_map,
-      ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-    rfl
-
 theorem roster_opening_at_checkpoint (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
@@ -240,7 +209,10 @@ theorem PublicCheckpoint.reveal_endpoint
     receipts := transcript.2.1
     counters := transcript.2.2
     clock := actualCalendar.1
-    activated := actualCalendar.2 }
+    activated := actualCalendar.2
+    noGrant := by
+      rw [applicationEq]
+      cases disclose <;> exact checkpoint.noGrant }
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
   · intro successor nextRank actor
@@ -358,8 +330,7 @@ theorem PublicCheckpoint.reveal_scheduled
         List.replicate (event.val + 1) .tick ++ [.expire event]) execution).support) :
     PublicCheckpoint setup leaks initial (revealSuccessor published binding source slot.isSome)
       (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1) next ∧
-    next.network.Satisfies (fun message => message.id ∈ next.network.ledger.map Message.id) ∧
-    next.application.serviceGrant = execution.application.serviceGrant := by
+    next.network.Satisfies (fun message => message.id ∈ next.network.ledger.map Message.id) := by
   have ready : execution.application.config.cut.Ready event := by
     have active : rank < (graph setup).order.eventCount := eventRank ▸ event.isLt
     have chosenEvent : (⟨rank, active⟩ : (graph setup).EventId) = event := Fin.ext eventRank.symm
@@ -402,8 +373,6 @@ theorem PublicCheckpoint.reveal_scheduled
     _ network _ execution next checkpoint.invariant reached
   exact ⟨checkpoint.reveal_endpoint published binding event eventRank outputEq codeEq node ready
     value candidate associated slot.isSome next progressed.invariant store history applicationEq
-      ledger receipts counters, cleanAfter, by
-        rw [applicationEq]
-        cases slot <;> rfl⟩
+      ledger receipts counters, cleanAfter⟩
 
 end Vegas

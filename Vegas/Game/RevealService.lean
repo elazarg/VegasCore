@@ -123,7 +123,7 @@ theorem source_owner (setup : Setup (Player := Player) (L := L))
 
 def block (setup : Setup (Player := Player) (L := L)) (watcher : Player)
     (event : (graph setup).EventId) : List (ServiceInstruction (graph setup)) :=
-  [.grant event] ++ (match (graph setup).actor? event with
+  (match (graph setup).actor? event with
     | none => []
     | some owner => [.player owner, .includeLatest event owner]) ++
     [.player watcher, .wire] ++ List.replicate ((runtime setup).deadline event) .tick ++
@@ -136,31 +136,17 @@ def plan (setup : Setup (Player := Player) (L := L)) (watcher : Player) :
 theorem block_of_owner (setup : Setup (Player := Player) (L := L)) (watcher owner : Player)
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner) :
     block setup watcher event =
-      [.grant event, .player owner, .includeLatest event owner, .player watcher, .wire] ++
+      [.player owner, .includeLatest event owner, .player watcher, .wire] ++
         List.replicate (event.val + 1) .tick ++ [.expire event] := by
   simp only [block, owned, List.cons_append, List.nil_append, runtime]
 
 theorem block_length (setup : Setup (Player := Player) (L := L)) (watcher : Player)
     (reveals : setup.program.RevealOnly) (event : (graph setup).EventId) :
-    (block setup watcher event).length = event.val + 7 := by
+    (block setup watcher event).length = event.val + 6 := by
   obtain ⟨owner, owned⟩ := source_owner setup reveals event
   rw [block_of_owner setup watcher owner event owned]
   simp only [List.length_append, List.length_cons, List.length_nil, List.length_replicate]
   omega
-
-theorem plan_grant_order (setup : Setup (Player := Player) (L := L)) (watcher : Player) :
-    (plan setup watcher).filterMap (fun instruction => match instruction with
-      | .grant event => some event
-      | _ => none) = List.finRange (graph setup).order.eventCount := by
-  have each (event : (graph setup).EventId) :
-      (block setup watcher event).filterMap (fun instruction => match instruction with
-        | .grant selected => some selected
-        | _ => none) = [event] := by
-    unfold block
-    cases (graph setup).actor? event <;> simp
-  simp only [plan, List.filterMap_flatMap, each]
-  rw [← List.map_eq_flatMap]
-  exact List.map_id _
 
 theorem plan_expiry_order (setup : Setup (Player := Player) (L := L)) (watcher : Player) :
     (plan setup watcher).filterMap (fun instruction => match instruction with

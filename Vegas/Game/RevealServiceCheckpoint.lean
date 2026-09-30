@@ -72,6 +72,8 @@ structure PublicCheckpoint (setup : Setup (Player := Player) (L := L))
   activated : execution.application.activatedAt = checkpointActivations setup
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
     ((graph setup).publicObserve execution.application.config) rank
+  /-- The service calendar issues no grants. -/
+  noGrant : execution.application.serviceGrant = none
 
 /-- The fixed one-owner service additionally has empty private leak lists.
 This specialization is useful for that calendar's exact observation theorem;
@@ -123,7 +125,8 @@ theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
     receipts := rfl
     counters := rfl
     clock := rfl
-    activated := ?_ }
+    activated := ?_
+    noGrant := rfl }
   · exact EventOrder.Cut.empty_isPrefix _
   · intro event first strategic
     apply EventGraphRuntime.State.initial_withinDeadline _ (runtime setup) event _ strategic
@@ -177,7 +180,6 @@ theorem PublicCheckpoint.observe_eq {setup : Setup (Player := Player) (L := L)}
     (leftCheckpoint : PublicCheckpoint setup leaks leftInitial left refs rank nativeLeft)
     (rightCheckpoint : PublicCheckpoint setup leaks rightInitial right refs rank nativeRight)
     (who : Player)
-    (grant : nativeLeft.application.serviceGrant = nativeRight.application.serviceGrant)
     (leaked : nativeLeft.network.leaked who = nativeRight.network.leaked who)
     (same : left.view who = right.view who) :
     nativeLeft.observe (application setup leaks) who =
@@ -200,7 +202,8 @@ theorem PublicCheckpoint.observe_eq {setup : Setup (Player := Player) (L := L)}
     (EventGraphRuntime.State.initial (graph := graph setup)
       (setup.eventInputs leftInitial)).accepted
     leftCheckpoint.accepted rightCheckpoint.accepted leftCheckpoint.clock rightCheckpoint.clock
-    leftCheckpoint.activated rightCheckpoint.activated nativeRight.application.serviceGrant grant
+    leftCheckpoint.activated rightCheckpoint.activated nativeRight.application.serviceGrant
+    (leftCheckpoint.noGrant.trans rightCheckpoint.noGrant.symm)
     rfl leftCheckpoint.ledger rightCheckpoint.ledger
     leaked
     leftCheckpoint.receipts rightCheckpoint.receipts same
@@ -215,11 +218,10 @@ theorem Checkpoint.observe_eq {setup : Setup (Player := Player) (L := L)}
     (leftCheckpoint : Checkpoint setup leaks leftInitial left refs rank nativeLeft)
     (rightCheckpoint : Checkpoint setup leaks rightInitial right refs rank nativeRight)
     (who : Player)
-    (grant : nativeLeft.application.serviceGrant = nativeRight.application.serviceGrant)
     (same : left.view who = right.view who) :
     nativeLeft.observe (application setup leaks) who =
       nativeRight.observe (application setup leaks) who :=
-  leftCheckpoint.toPublicCheckpoint.observe_eq rightCheckpoint.toPublicCheckpoint who grant
+  leftCheckpoint.toPublicCheckpoint.observe_eq rightCheckpoint.toPublicCheckpoint who
     (by rw [leftCheckpoint.leaked, rightCheckpoint.leaked]) same
 
 /-- Matching source views and an already matching focal alias prefix also
@@ -232,13 +234,12 @@ theorem Checkpoint.respond_recall_eq {setup : Setup (Player := Player) (L := L)}
     (leftCheckpoint : Checkpoint setup leaks leftInitial left refs rank nativeLeft)
     (rightCheckpoint : Checkpoint setup leaks rightInitial right refs rank nativeRight)
     (who : Player)
-    (grant : nativeLeft.application.serviceGrant = nativeRight.application.serviceGrant)
     (same : left.view who = right.view who)
     (past : nativeLeft.recall who = nativeRight.recall who)
     (response : (application setup leaks).Action) :
     (nativeLeft.respond (application setup leaks) who response).recall who =
       (nativeRight.respond (application setup leaks) who response).recall who := by
-  have views := leftCheckpoint.observe_eq rightCheckpoint who grant same
+  have views := leftCheckpoint.observe_eq rightCheckpoint who same
   have publicViews := congrArg (fun view : (application setup leaks).PlayerView =>
     view.application.publicView.observation) views
   change (graph setup).publicObserve nativeLeft.application.config =
@@ -249,8 +250,8 @@ theorem Checkpoint.respond_recall_eq {setup : Setup (Player := Player) (L := L)}
   rw [leftCheckpoint.counters, rightCheckpoint.counters, publicViews]
   rfl
 
-/-- Grant and owner activation reach the actual response opportunity. Passive
-sampling is inert here because every pending identifier is already public. -/
+/-- Owner activation reaches the actual response opportunity. Passive sampling
+is inert here because every pending identifier is already public. -/
 theorem Checkpoint.owner_opportunity
     {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -259,40 +260,25 @@ theorem Checkpoint.owner_opportunity
     {execution : (application setup leaks).Execution}
     (checkpoint : Checkpoint setup leaks initial source refs rank execution)
     (players : Player → (application setup leaks).Policy)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (event : (graph setup).EventId) (owner : Player) :
+    (network : (runtime setup).NetworkPolicy leaks) (owner : Player) :
     ∃ opportunity, Checkpoint setup leaks initial source refs rank opportunity ∧
-      opportunity.application.serviceGrant = some event ∧
-      opportunity.application.clock = execution.application.clock ∧
-      opportunity.application.activatedAt = execution.application.activatedAt ∧
-      (runtime setup).runInteractionPlan leaks players network [.grant event, .player owner]
-          execution =
+      opportunity.application = execution.application ∧
+      (runtime setup).runInteractionPlan leaks players network [.player owner] execution =
         (players owner (opportunity.recall owner)
           (opportunity.observe (application setup leaks) owner)).map
             (opportunity.respond (application setup leaks) owner) ∧
       opportunity.recall = execution.recall := by
   let app := application setup leaks
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some event }
+  let activated : app.Execution := { execution with
     environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  let activated : app.Execution := { granted with
-    environmentRecall := granted.environmentRecall ++
-      [⟨granted.observeEnvironment app, .activate owner⟩] }
-  have grantedLaw : (runtime setup).interactionStep leaks players network (.grant event)
-      execution = PMF.pure granted := by
-    simp only [interactionStep, interactionInstruction, PMF.pure_bind,
-      ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, PMF.pure_map,
-      ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-    rfl
-  refine ⟨activated, ?_, rfl, rfl, rfl, ?_, rfl⟩
+      [⟨execution.observeEnvironment app, .activate owner⟩] }
+  refine ⟨activated, ?_, rfl, ?_, rfl⟩
   · exact { checkpoint with
       invariant := checkpoint.invariant.copy rfl rfl rfl
       binding := checkpoint.binding.copy rfl rfl rfl }
-  · simp only [runInteractionPlan, grantedLaw, PMF.pure_bind, PMF.bind_pure]
+  · simp only [runInteractionPlan, PMF.bind_pure]
     exact (runtime setup).player_instruction_published leaks players network
-      granted owner checkpoint.pending
+      execution owner checkpoint.pending
 
 private theorem ordinary_network_checkpoint [Fintype Player]
     (setup : Setup (Player := Player) (L := L))
@@ -510,7 +496,10 @@ theorem Checkpoint.reveal_response [Fintype Player]
     receipts := transcript.2.1
     counters := transcript.2.2
     clock := actualCalendar.1
-    activated := actualCalendar.2 }
+    activated := actualCalendar.2
+    noGrant := by
+      rw [applicationEq]
+      cases sourceChoice setup leaks response <;> exact checkpoint.noGrant }
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
   · exact boundAfter.copy configEq tables.1 tables.2.1

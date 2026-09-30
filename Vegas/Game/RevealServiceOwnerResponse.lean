@@ -105,8 +105,7 @@ theorem owner_response_finish_decode_law
     (related : PrefixCheckpoint setup leaks initial setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val source execution)
-    (granted : execution.application.serviceGrant = some event)
-    (position : execution.environmentRecall.length = blockOffset event.val + 2)
+    (position : execution.environmentRecall.length = blockOffset event.val + 1)
     (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks (bounds.withInitialValues (initialLaw setup))
       who (execution.recall who) (execution.observe (application setup leaks) who))
@@ -114,7 +113,7 @@ theorem owner_response_finish_decode_law
     (chosen : OwnAction.disclosure (joint who) = sourceChoice setup leaks response) :
     ((application setup leaks).finish (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players
-      (some ⟨horizon setup watcher - blockOffset event.val - 2, none,
+      (some ⟨horizon setup watcher - blockOffset event.val - 1, none,
         execution.respond (application setup leaks) who response⟩)).map
       (fun state => state.bind fun control => decodeState? (terminalRefs setup.program)
         control.execution.application.config.store) =
@@ -124,7 +123,7 @@ theorem owner_response_finish_decode_law
   let after := [.includeLatest event who, .player watcher, .wire] ++
     List.replicate (event.val + 1) .tick ++ [.expire event] ++ rest
   have split' : plan setup watcher =
-      planPrefix setup watcher event.val ++ .grant event :: .player who :: after := by
+      planPrefix setup watcher event.val ++ .player who :: after := by
     rw [split, block_of_owner setup watcher who event owned]
     simp only [after, List.append_assoc, List.cons_append, List.nil_append]
   have sourceSplit : plan setup watcher = planPrefix setup watcher event.val ++
@@ -136,17 +135,17 @@ theorem owner_response_finish_decode_law
     rw [← List.flatMap_append, List.take_append_drop]
   have suffixEq := List.append_cancel_left (sourceSplit.symm.trans split')
   have afterEq : ((((List.finRange (eventCount setup.program)).drop event.val).flatMap
-      (block setup watcher)).drop 2) = after := by
+      (block setup watcher)).drop 1) = after := by
     rw [suffixEq]
     rfl
   have lengthPrefix := planPrefix_length setup watcher reveals event.val event.isLt.le
-  have remaining : horizon setup watcher - blockOffset event.val - 2 = after.length := by
+  have remaining : horizon setup watcher - blockOffset event.val - 1 = after.length := by
     have lengths := congrArg List.length split'
     simp only [List.length_append, List.length_cons, lengthPrefix] at lengths
-    change (plan setup watcher).length - blockOffset event.val - 2 = _
+    change (plan setup watcher).length - blockOffset event.val - 1 = _
     omega
   have rounds := suffix_rounds setup leaks watcher players
-    (planPrefix setup watcher event.val ++ [.grant event, .player who]) after
+    (planPrefix setup watcher event.val ++ [.player who]) after
     (by simpa only [List.append_assoc, List.cons_append, List.nil_append] using split')
     (execution.respond (application setup leaks) who response) (by
       simp only [ReactiveApplication.respond_environmentRecall, List.length_append,
@@ -159,11 +158,11 @@ theorem owner_response_finish_decode_law
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program profile)
-    event.val event.isLt source execution related who owned granted response member joint chosen
+    event.val event.isLt source execution related who owned response member joint chosen
   change ((runtime setup).runInteractionPlan leaks players
     ((runtime setup).reportNetwork leaks watcher)
     ((((List.finRange (eventCount setup.program)).drop event.val).flatMap
-      (block setup watcher)).drop 2)
+      (block setup watcher)).drop 1)
     (execution.respond (application setup leaks) who response)).map
       (fun final => decodeState? (terminalRefs setup.program) final.application.config.store) = _
     at law

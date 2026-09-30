@@ -4,7 +4,7 @@ import Vegas.Game.RevealServicePrefixBehavioral
 
 /-! # Source-state readout before an owner's response
 
-Granting the event and sampling passive observations consume native transitions
+Activating the owner and sampling passive observations consume native transitions
 without changing the source-state readout. The statement retains the sampling
 law and does not assume that all pending traffic is public.
 -/
@@ -22,61 +22,40 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 omit [Fintype Player] in
-private theorem grant_activate_readout
+private theorem activate_readout
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (watcher owner : Player) (players : Player → (application setup leaks).Policy)
-    (event : (graph setup).EventId) (rank remaining cursor : Nat)
+    (rank remaining cursor : Nat)
     (execution : (application setup leaks).Execution)
     (position : execution.environmentRecall.length = cursor)
-    (grantAt : (plan setup watcher)[cursor]? = some (.grant event))
-    (ownerAt : (plan setup watcher)[cursor + 1]? = some (.player owner)) :
+    (ownerAt : (plan setup watcher)[cursor]? = some (.player owner)) :
     ((fun law => law.bind ((application setup leaks).controlStep (initialLaw setup)
-      (horizon setup watcher) (scheduler setup leaks watcher) players))^[2]
-        (PMF.pure (some ⟨remaining + 2, none, execution⟩))).map
+      (horizon setup watcher) (scheduler setup leaks watcher) players))^[1]
+        (PMF.pure (some ⟨remaining + 1, none, execution⟩))).map
           (prefixReadout setup leaks rank) =
       PMF.pure (sourcePrefix? setup rank execution.application.config) := by
   let app := application setup leaks
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  have first : (scheduler setup leaks watcher) execution.environmentRecall
-      (execution.observeEnvironment app) = PMF.pure (.application (.grant event)) := by
-    simp only [scheduler, position, grantAt, interactionInstruction]
-  have second : (scheduler setup leaks watcher) granted.environmentRecall
-      (granted.observeEnvironment app) = PMF.pure (.activate owner) := by
-    simp only [scheduler, granted, List.length_append, List.length_singleton, position,
-      ownerAt, interactionInstruction]
-  have grantLaw : execution.environmentStep app (.application (.grant event)) =
-      PMF.pure granted := by
-    simp only [ReactiveApplication.Execution.environmentStep, app, application, reactiveApplication,
-      environmentStep, PMF.pure_map]
-    rfl
+  have scheduled : (scheduler setup leaks watcher) execution.environmentRecall
+      (execution.observeEnvironment app) = PMF.pure (.activate owner) := by
+    simp only [scheduler, position, ownerAt, interactionInstruction]
   have one : app.controlStep (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher) players (some ⟨remaining + 2, none, execution⟩) =
-      PMF.pure (some ⟨remaining + 1, none, granted⟩) := by
+      (scheduler setup leaks watcher) players (some ⟨remaining + 1, none, execution⟩) =
+      (execution.environmentStep app (.activate owner)).map
+        (fun next => some ⟨remaining, some owner, next⟩) := by
     change ((scheduler setup leaks watcher) execution.environmentRecall
       (execution.observeEnvironment app)).bind _ = _
-    rw [first, PMF.pure_bind, grantLaw, PMF.pure_map]
-    rfl
-  have two : app.controlStep (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher) players (some ⟨remaining + 1, none, granted⟩) =
-      (granted.environmentStep app (.activate owner)).map
-        (fun next => some ⟨remaining, some owner, next⟩) := by
-    change ((scheduler setup leaks watcher) granted.environmentRecall
-      (granted.observeEnvironment app)).bind _ = _
-    rw [second, PMF.pure_bind]
+    rw [scheduled, PMF.pure_bind]
     rfl
   simp only [Function.iterate_succ_apply', Function.iterate_zero_apply, PMF.pure_bind]
-  rw [one, PMF.pure_bind, two, PMF.map_comp]
+  rw [one, PMF.map_comp]
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp, Function.comp_def,
-    prefixReadout, granted]
+    prefixReadout]
   exact PMF.map_const _ _
 
 /-- The actual owner decision has the same source-state marginal as its
-preceding source boundary. The two intervening native transitions grant the
-event and activate the owner; they do not execute the owner's response. -/
+preceding source boundary. The intervening native transition activates the
+owner; it does not execute the owner's response. -/
 theorem menu_owner_readout
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -87,7 +66,7 @@ theorem menu_owner_readout
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some owner) :
     ((responses.information (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher)).runBehavioral profile
-        (blockOffset event.val + 2 * event.val + 3)).map
+        (blockOffset event.val + 2 * event.val + 2)).map
           (fun history => prefixReadout setup leaks event.val history.state) =
       ((responses.information (initialLaw setup) (horizon setup watcher)
         (scheduler setup leaks watcher)).runBehavioral profile
@@ -102,21 +81,17 @@ theorem menu_owner_readout
     event.isLt.le
   obtain ⟨rest, planEq⟩ := plan_split_at setup watcher event
   have prefixLength := planPrefix_length setup watcher reveals event.val event.isLt.le
-  have grantAt : (plan setup watcher)[blockOffset event.val]? = some (.grant event) := by
+  have ownerAt : (plan setup watcher)[blockOffset event.val]? = some (.player owner) := by
     rw [planEq, List.append_assoc, List.getElem?_append_right (by omega), prefixLength,
       Nat.sub_self, block_of_owner setup watcher owner event owned]
     rfl
-  have ownerAt : (plan setup watcher)[blockOffset event.val + 1]? = some (.player owner) := by
-    rw [planEq, List.append_assoc, List.getElem?_append_right (by omega), prefixLength,
-      Nat.add_sub_cancel_left, block_of_owner setup watcher owner event owned]
-    rfl
-  have room : 2 ≤ horizon setup watcher - blockOffset event.val := by
+  have room : 1 ≤ horizon setup watcher - blockOffset event.val := by
     have lengths := congrArg List.length planEq
     rw [List.length_append, List.length_append, prefixLength,
       block_length setup watcher reveals] at lengths
-    change (plan setup watcher).length - blockOffset event.val ≥ 2
+    change (plan setup watcher).length - blockOffset event.val ≥ 1
     omega
-  change (model.runBehavioral profile (depth + 2)).map _ =
+  change (model.runBehavioral profile (depth + 1)).map _ =
     (model.runBehavioral profile depth).map _
   rw [InformationModel.runBehavioral, InformationModel.runBehavioralFrom_add,
     PMF.map_bind, ← PMF.bind_pure_comp, Function.comp_def]
@@ -135,14 +110,14 @@ theorem menu_owner_readout
       (ReactiveApplication.Execution.initial (application setup leaks) initial) execution executed
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add,
       prefixLength] using counted
-  change (model.runBehavioralFrom profile 2 history).map
+  change (model.runBehavioralFrom profile 1 history).map
     (prefixReadout setup leaks event.val ∘ History.state) = _
   rw [← PMF.map_comp, menu_run_control_steps]
   rw [← stateEq]
   have remaining : horizon setup watcher - blockOffset event.val =
-      (horizon setup watcher - blockOffset event.val - 2) + 2 := by omega
+      (horizon setup watcher - blockOffset event.val - 1) + 1 := by omega
   rw [remaining]
-  exact grant_activate_readout setup leaks watcher owner players event event.val _ _ execution
-    position grantAt ownerAt
+  exact activate_readout setup leaks watcher owner players event.val _ _ execution
+    position ownerAt
 
 end Vegas
