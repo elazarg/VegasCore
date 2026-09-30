@@ -224,7 +224,12 @@ results, with narrower scope than the target.
   extension of the barrier order. It only permutes different-owner bindings
   between consecutive public events, which leaves each player's information
   unchanged; source sequential equilibrium is invariant under this interchange,
-  unlike coalescing (see Experiment 1 in [action boundaries](action-coalescing.md)).
+  unlike coalescing. Among the perfect-recall transformations of Thompson
+  (1952), Dalkey (1953) and Elmes and Reny (1994), sequential equilibrium is
+  invariant only to interchanging essentially simultaneous moves (Battigalli
+  and Dufwenberg,
+  [extra section 10 to "Belief-Dependent Motivations and Psychological Game Theory"](https://bpb-us-e2.wpmucdn.com/sites.arizona.edu/dist/3/21/files/2023/05/extra-section10-for-JEL-article_2022-09-01.pdf#page=2),
+  2022, p. 2; Bonanno (1992) characterizes that invariance).
   If π is compiled into the dependency order, the runtime is the sequentialized
   graph of the permuted program, and the existing theorem applies to it
   directly. A gated concurrent runtime with adjusted timers is a different
