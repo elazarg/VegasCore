@@ -40,7 +40,7 @@ theorem roster_opening_raw_available
 theorem roster_owner_coverage
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -85,7 +85,7 @@ theorem roster_owner_coverage
   let view := activated.observe app owner
   let packet := (runtime setup).windowOpening leaks event candidate raw
   obtain ⟨selected, frame, earlier, recorded, posterior⟩ :=
-    roster_window_posterior setup leaks bounds rosters initial event owner granted ownedEvent
+    roster_window_posterior setup leaks bounds rosters initial event owner sole ownedEvent
       candidate raw opening owned valid offset serials published players covered network visits
         inside.le current reached
   rw [app.policyMixture_policy] at supported
@@ -117,9 +117,10 @@ theorem roster_owner_coverage
       have contrary := recorded.mpr present
       rw [empty] at contrary
       cases contrary
-    have grant : view.application.publicView.serviceGrant = some event := by
-      change current.application.serviceGrant = some event
-      rw [frame.application, granted]
+    have grant : view.application.publicView.ownTurn? owner = some event := by
+      change current.application.publicView.ownTurn? owner = some event
+      rw [frame.application]
+      exact PublicView.ownTurn?_of_ownTurn _ owner event (sole.ownTurn ownedEvent)
     have data : rosterOpening? setup leaks owner event view = some (candidate, raw) := by
       rw [rosterOpening?_application_eq setup leaks owner event activated initial frame.application]
       exact opening

@@ -64,7 +64,6 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
     (execution : (application setup leaks).Execution) {config : (graph setup).Config}
     (site : RevealSource setup wholeProfile event config)
     (sameConfig : execution.application.config = config)
-    (granted : execution.application.serviceGrant = some event)
     (unsent : (runtime setup).eventRecorded leaks (execution.recall site.owner) event = false)
     (effective : (site.residual site.owner).EffectiveDisclosures
       (.reveal site.published site.owner site.name site.fresh site.binding site.unresolved
@@ -124,7 +123,7 @@ theorem reveal_slot_config_law (setup : Setup (Player := Player) (L := L))
   have law := sourceServiceTimedFamily_reveal_law setup leaks rosters fresh binding unresolved
     next wholeProfile residual refs source embedding refsBefore _ aligned execution agree history
     valid recalled origins effective network visits visited remaining slot position selected
-    granted unsent
+    ready unsent
   have splitPlan : (visits.map ServiceInstruction.player ++
       (.includeLatest (embedding.event ⟨0, by simp [eventCount]⟩) owner ::
         List.replicate ticks .tick ++ [.expire (embedding.event ⟨0, by simp [eventCount]⟩)]) :
@@ -260,7 +259,8 @@ theorem disclosure_decision_resources {who : Player} {remaining : Nat}
   have priorState := EventGraphRuntime.ResolutionWindowState.run (runtime service.setup)
     service.leaks service.bounds service.menu.uniformResponses lawful service.network actor
     phase.event payload binding checks isPublication codeEq node
-    ((service.rosters phase.event).take slot) granted prior initialState grant reached
+    ((service.rosters phase.event).take slot) granted prior initialState
+    (by rw [← publicEq]; exact phase.sole) reached
   have state := priorState.learn (runtime service.setup) service.leaks who sample
   rw [← sampled] at state
   obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
@@ -314,7 +314,7 @@ theorem recorded_disclosure_phase_invariant {who : Player} {remaining : Nat}
       service.network service.menu approx.players approx.covered approx.assessment
       approx.strategy approx.mixed who remaining execution trace response allowed
     exact sourceServiceTimedPolicy_recorded_transport service.setup service.leaks service.rosters
-      approx.timing approx.profile phase.event owner owned execution phase.granted recorded
+      approx.timing approx.profile phase.event owner owned execution phase.sole recorded
       execution rfl (List.Subset.refl _) who response supported
   have ending : rosterPhaseEnding service.setup phase.event =
       [.includeLatest phase.event owner] ++
@@ -324,7 +324,7 @@ theorem recorded_disclosure_phase_invariant {who : Player} {remaining : Nat}
       (allowed : response ∈ service.menu.actions who (execution.recall who)
         (execution.observe (application service.setup service.leaks) who)) :=
     sourceService_recorded_response_application_law service.setup service.leaks service.rosters
-      approx.timing approx.profile service.network phase.event owner owned execution phase.granted
+      approx.timing approx.profile service.network phase.event owner owned execution phase.sole
       recorded message authored addressed packets pending unpublished who response
       (transport response allowed) phase.visits (phase.event.val + 1)
   have applications := (law first firstAllowed).trans (law second secondAllowed).symm
@@ -394,7 +394,7 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
       (allowed : response ∈ service.menu.actions who (execution.recall who)
         (execution.observe (application service.setup service.leaks) who)) :
       approx.phaseConfigLaw phase response = posterior.bind target := by
-    have transport := approx.foreign_response_transport trace owned foreign phase.granted
+    have transport := approx.foreign_response_transport trace owned foreign phase.sole
       response allowed
     have member := sourceServiceMenu_in_compiled service.setup service.leaks service.bounds
       service.rosters who _ _ allowed
@@ -411,9 +411,9 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
     set after := execution.respond (application service.setup service.leaks) who response
       with afterDef
     have sameApp : after.application = execution.application := preserved.1
-    have afterGrant : after.application.serviceGrant = some phase.event := by
+    have afterSole : after.application.publicView.SoleReady phase.event := by
       rw [sameApp]
-      exact phase.granted
+      exact phase.sole
     have afterPublished : after.network.Satisfies fun message =>
         message.id ∈ after.network.ledger.map Message.id := by
       rw [preserved.2.1]
@@ -436,7 +436,7 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
       rw [runInteractionPlan_append, runInteractionPlan_append,
         sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
           approx.timing approx.profile phase.event site.owner owned service.network phase.visits
-          after afterGrant]
+          after afterSole]
       apply bind_congr_on_support _
       intro current _
       exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
@@ -459,7 +459,7 @@ theorem foreign_disclosure_phase_invariant {who : Player} {remaining : Nat}
     · dsimp only [target]
       simp only [inside.1, inside.2, and_self, ↓reduceIte]
       exact reveal_slot_config_law service.setup service.leaks service.rosters service.network
-        approx.profile after site (by rw [sameApp]) afterGrant
+        approx.profile after site (by rw [sameApp])
         (by rw [sameRecall]; exact unsent) effective ready (by rw [sameApp]; exact timely)
         (by rw [sameApp]; exact valid) afterRecalled afterOrigins entered (phase.event.val + 1)
         (by rw [sameApp]; exact activated) (by rw [sameApp]; exact due) afterSerials
@@ -510,7 +510,7 @@ theorem foreign_disclosure_comparison_eq (who : Player)
     {event : (graph service.setup).EventId} {owner : Player} {payload : L.Ty}
     (foreign : who ≠ owner) (owned : (graph service.setup).actor? event = some owner)
     (isPublication : (graph service.setup).outputLayout event = .publication payload)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
         service.fuel) service.readout
@@ -520,11 +520,11 @@ theorem foreign_disclosure_comparison_eq (who : Player)
   intro history remaining execution current info phase first second firstAllowed secondAllowed
   have input := Option.some.inj
     ((service.infoOf_decision history current).symm.trans (info.trans observed))
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) input).trans granted
-  have same : phase.event = event := Option.some.inj (phase.granted.symm.trans grant)
+        pair.2.application.publicView.EventReady event) input).mpr readyView
+  have same : phase.event = event := (phase.sole.2 event readyNow).symm
   subst same
   have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩) := current ▸ history.trace
@@ -542,7 +542,7 @@ theorem recorded_disclosure_comparison_eq (who : Player)
     {event : (graph service.setup).EventId} {payload : L.Ty}
     (owned : (graph service.setup).actor? event = some who)
     (isPublication : (graph service.setup).outputLayout event = .publication payload)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (recorded : (runtime service.setup).eventRecorded service.leaks past event = true)
     (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
@@ -553,11 +553,11 @@ theorem recorded_disclosure_comparison_eq (who : Player)
   intro history remaining execution current info phase first second firstAllowed secondAllowed
   have input := Option.some.inj
     ((service.infoOf_decision history current).symm.trans (info.trans observed))
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) input).trans granted
-  have same : phase.event = event := Option.some.inj (phase.granted.symm.trans grant)
+        pair.2.application.publicView.EventReady event) input).mpr readyView
+  have same : phase.event = event := (phase.sole.2 event readyNow).symm
   subst same
   have ownRecall : execution.recall who = past := congrArg Prod.fst input
   have trace : (service.menu.protocol (initialLaw service.setup) service.planLength

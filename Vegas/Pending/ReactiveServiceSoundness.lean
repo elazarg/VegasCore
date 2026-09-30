@@ -118,7 +118,6 @@ theorem service_binding_traffic
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
     (unused : execution.application.HandleUnused
@@ -140,7 +139,7 @@ theorem service_binding_traffic
   rw [app.trafficStep_submit, List.mem_singleton] at member
   subst record
   apply runtime.permittedServiceEnvelope_binding execution.application owner event
-    execution.network.ledger (execution.network.nextSerial owner) granted _ counted
+    execution.network.ledger (execution.network.nextSerial owner) _ counted
   simp only [PublicView.BindingIncludable, node]
   exact ⟨(execution.application.publicView_eventReady event).mpr ready, timely,
     by trivial, by trivial, vacant, unused⟩
@@ -156,7 +155,6 @@ theorem service_opening_traffic
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
     (candidate : Handle graph) (value : L.Val payload)
@@ -195,7 +193,7 @@ theorem service_opening_traffic
   apply (runtime.freshServiceEnvelope_opening_iff execution.application.publicView
     (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq codeEq
       node candidate ⟨payload, value⟩ (some ⟨candidate, ⟨payload, value⟩⟩)).mpr
-  refine ⟨granted, (execution.application.publicView_eventReady event).mpr ready, timely,
+  refine ⟨(execution.application.publicView_eventReady event).mpr ready, timely,
     by simp only [certifiedOpening, decide_true], ?_, rfl, owned, associated, rfl⟩
   apply (execution.application.publicView.openingGuardsAccepted_iff owner event payload binding
     checks outputEq codeEq node candidate ⟨payload, value⟩ _).mpr
@@ -219,7 +217,6 @@ theorem serviceDecision_resolution_traffic
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
@@ -272,7 +269,7 @@ theorem serviceDecision_resolution_traffic
         change response = _ at action
         rw [action]
         exact runtime.service_opening_traffic leaks execution remaining owner event payload binding
-          checks outputEq codeEq node granted ready timely candidate value associated owned fixed
+          checks outputEq codeEq node ready timely candidate value associated owned fixed
             resolved serial
 
 variable [Fintype Player]
@@ -287,7 +284,7 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (turn : execution.application.publicView.OwnTurn owner event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
     (freshSlot : runtime.eventRecorded leaks (execution.recall owner) event = false →
@@ -308,6 +305,7 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
         execution.respond (runtime.reactiveApplication leaks) owner response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
+  have turnSome := execution.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   have owned : graph.actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
@@ -317,13 +315,13 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
   cases recorded : runtime.eventRecorded leaks (execution.recall owner) event with
   | true =>
       have replay := bounds.ordinary_binding_recorded runtime leaks owner _ _ event payload
-        outputEq codeEq node granted owned publicReady recorded response member
+        outputEq codeEq node turn owned publicReady recorded response member
       exact runtime.service_transport_traffic leaks execution remaining owner response
         (app.replayPolicy_cases _ _ response replay) known
   | false =>
       have slot := freshSlot recorded
       rcases bounds.ordinary_binding_cases runtime leaks owner _ _ event payload outputEq codeEq
-        node granted owned publicReady _ slot response member with replay | ⟨value, _, _, rfl⟩
+        node turn owned publicReady _ slot response member with replay | ⟨value, _, _, rfl⟩
       · exact runtime.service_transport_traffic leaks execution remaining owner _
           (app.replayPolicy_cases _ _ _ replay) known
       · have fresh := reactiveFreshSlot_spec
@@ -339,7 +337,7 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
           | some candidate => exact False.elim (ready.1
               (invariant.toAssociationInvariant.accepted_complete event candidate associated))
         exact runtime.service_binding_traffic leaks execution remaining owner event payload outputEq
-          codeEq node granted ready timely unused vacant (counted recorded) (some ⟨payload, value⟩)
+          codeEq node ready timely unused vacant (counted recorded) (some ⟨payload, value⟩)
 
 /-- Every retained response by the resolution owner is permitted, independently
 of the source profile and the probabilities it assigns to disclosure. -/
@@ -354,7 +352,7 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (turn : execution.application.publicView.OwnTurn owner event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
@@ -373,6 +371,7 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
       runtime.permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
   classical
+  have turnSome := execution.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   have owned : graph.actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
@@ -381,28 +380,25 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
   have publicReady := (execution.application.publicView_eventReady event).mpr ready
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | replay
   · obtain ⟨chosen, first⟩ := Finset.mem_filter.mp decision
-    have grantedView : (execution.observe app owner).application.publicView.serviceGrant =
-        some event := granted
+    have turnView : (execution.observe app owner).application.publicView.ownTurn? owner =
+        some event := turnSome
     have readyView : (execution.observe app owner).application.publicView.EventReady event :=
       publicReady
-    dsimp only [app] at grantedView readyView
-    simp only [MessageBounds.decisionActions, grantedView, owned, readyView,
+    dsimp only [app] at turnView readyView
+    simp only [MessageBounds.decisionActions, turnView, owned, readyView,
       and_self, ↓reduceIte, node] at chosen
     obtain ⟨choice, _, rfl⟩ := Finset.mem_image.mp chosen
     exact runtime.serviceDecision_resolution_traffic leaks execution recalled invariant remaining
-      owner event payload binding checks outputEq codeEq node granted ready timely counted choice
+      owner event payload binding checks outputEq codeEq node ready timely counted choice
         first
   · exact runtime.service_transport_traffic leaks execution remaining owner response
       (app.replayPolicy_cases _ _ response (((runtime.reactiveApplication
           leaks).mem_replayActions_iff _ _ _).mp replay)) known
 
-/-- Other participants can wait or replay during this event. The statement also
-covers every participant at a chance event, whose actor is absent. -/
+/-- A participant without a ready event of its own can wait or replay. -/
 theorem MessageBounds.compiled_foreign_traffic (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution)
-    (remaining : Nat) (who : Player) (event : graph.EventId)
-    (granted : execution.application.serviceGrant = some event)
-    (foreign : graph.actor? event ≠ some who)
+    (remaining : Nat) (who : Player) (idle : execution.application.publicView.Idle who)
     (known : ∀ message ∈ execution.network.known who,
       runtime.permittedServiceEnvelope execution.application.publicView
         execution.network.ledger message = true)
@@ -414,8 +410,8 @@ theorem MessageBounds.compiled_foreign_traffic (bounds : MessageBounds graph)
       (some ⟨remaining, none, execution.respond (runtime.reactiveApplication leaks) who response⟩),
       runtime.permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
-  have replay := bounds.compiled_foreign_transport runtime leaks who _ _ event granted foreign
-    response member
+  have replay := bounds.compiled_foreign_transport runtime leaks who _ _
+    (execution.application.publicView.ownTurn?_eq_none who idle) response member
   exact runtime.service_transport_traffic leaks execution remaining who response
     ((runtime.reactiveApplication leaks).replayPolicy_cases _ _ response replay) known
 

@@ -52,7 +52,6 @@ theorem roster_menu_reveal_source_step (setup : Setup (Player := Player) (L := L
     (valid : initial.application.candidates.lookup candidate = .openable ⟨payload, value⟩)
     (ready : initial.application.config.cut.Ready event)
     (timely : initial.application.WithinDeadline (runtime setup) event)
-    (granted : initial.application.serviceGrant = some event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (opening : rosterOpening? setup leaks owner event
       (initial.observe (application setup leaks) owner) = some (candidate, ⟨payload, value⟩))
@@ -98,7 +97,8 @@ theorem roster_menu_reveal_source_step (setup : Setup (Player := Player) (L := L
   rw [List.append_assoc, List.append_assoc, (runtime setup).runInteractionPlan_append] at reached
   obtain ⟨current, prior, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨selected, frame, _, _⟩ := roster_window_support setup leaks bounds rosters
-    initial event owner granted ownedEvent candidate ⟨payload, value⟩ opening owned valid
+    initial event owner (soleReady_of_ready setup initial.application ready) ownedEvent candidate
+    ⟨payload, value⟩ opening owned valid
       offset serials clean players covered network (rosters event) (Nat.le_refl _) current prior
   have stored : (refs.get binding).get? initial.application.config.store =
       some (.success value) := by

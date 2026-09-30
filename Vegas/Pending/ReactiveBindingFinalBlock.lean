@@ -52,7 +52,7 @@ theorem required_binding_final_block_coupling
         some (original.application.publicView.bindingCount owner))
     (capacity : original.application.publicView.bindingCount owner < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
     (unused : original.application.HandleUnused
@@ -92,6 +92,7 @@ theorem required_binding_final_block_coupling
         next.1.application.publicView.missedBinding event = true ∨
         Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
   classical
+  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   intro app strategy plan
   let serial := original.application.publicView.bindingCount owner
   let law := players owner (original.recall owner) (original.observe app owner)
@@ -131,10 +132,9 @@ theorem required_binding_final_block_coupling
   have rightReady : repaired.application.publicView.EventReady event := by
     rw [← frame.publicView]
     exact (original.application.publicView_eventReady event).mpr ready
-  have rightGrant : repaired.application.serviceGrant = some event := by
-    rw [← show original.application.serviceGrant = repaired.application.serviceGrant from
-      congrArg PublicView.serviceGrant frame.publicView]
-    exact granted
+  have rightTurn : repaired.application.publicView.OwnTurn owner event := by
+    rw [← frame.publicView]
+    exact turn
   have originalFresh : (memory.shadow.inputView runtime leaks
       (repaired.observe app owner)).application.candidates (.prepared serial) = .fresh := by
     rw [frame.observed]
@@ -158,7 +158,7 @@ theorem required_binding_final_block_coupling
         ∀ next ∈ coupling.support,
           bad next.1 ∨ Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
     rcases runtime.binding_audit_response_cases leaks bounds original owner remaining event
-        payload outputEq codeEq node granted fresh leftRecall serials response
+        payload outputEq codeEq node turn fresh leftRecall serials response
           (available response member) with replay | canonical | departure
     · apply badBranch response
       intro final supported
@@ -180,7 +180,7 @@ theorem required_binding_final_block_coupling
         apply coverage
         exact repairResponse_binding_available runtime leaks bounds owner memory
           (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
-          rightGrant owned rightReady unsent serial actualSlot capacity default opening bounded
+          rightTurn owned rightReady unsent serial actualSlot capacity default opening bounded
           originalFresh
       have adjustedEq : adjusted response = proposed response := by
         dsimp only [adjusted]

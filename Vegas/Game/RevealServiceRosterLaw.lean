@@ -67,7 +67,7 @@ theorem rosterPolicy_phase_law
     (profile : BehavioralProfile setup.program)
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (ready : initial.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -102,7 +102,8 @@ theorem rosterPolicy_phase_law
       (runtime setup).runInteractionPlan leaks mixed network phase initial := by
     rw [show phase = window ++ tail from rfl, runInteractionPlan_append, runInteractionPlan_append]
     rw [rosterPolicy_window_eq setup leaks rosters timing profile initial initial event owner
-      granted owned candidate raw opening rfl network (rosters event)]
+      (soleReady_of_ready setup initial.application ready) owned candidate raw opening rfl network
+      (rosters event)]
     apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq setup leaks _ _ network tail noWire noPlayers current

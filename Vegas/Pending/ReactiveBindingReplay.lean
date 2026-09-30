@@ -36,7 +36,7 @@ theorem compiled_binding_tail_transport (runtime : EventGraphRuntime graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (owned : graph.actor? event = some owner)
     (ready : initial.application.config.cut.Ready event)
     (recorded : runtime.eventRecorded leaks (initial.recall owner) event = true)
@@ -48,8 +48,10 @@ theorem compiled_binding_tail_transport (runtime : EventGraphRuntime graph)
       (current.observe (runtime.reactiveApplication leaks) who)).support) :
     response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
   let app := runtime.reactiveApplication leaks
-  have currentGrant : (current.observe app who).application.publicView.serviceGrant =
-      some event := by change current.application.serviceGrant = _; rw [same]; exact granted
+  have currentSole : (current.observe app who).application.publicView.SoleReady event := by
+    change current.application.publicView.SoleReady event
+    rw [same]
+    exact sole
   have transport : response ∈ (app.replayPolicy (current.recall who)
       (current.observe app who)).support := by
     by_cases acting : who = owner
@@ -63,9 +65,11 @@ theorem compiled_binding_tail_transport (runtime : EventGraphRuntime graph)
         rw [same]
         exact (initial.application.publicView_eventReady event).mpr ready
       exact bounds.ordinary_binding_recorded runtime leaks owner _ _ event payload outputEq codeEq
-        node currentGrant owned publicReady present response (lawful owner _ _ response supported)
-    · exact bounds.compiled_foreign_transport runtime leaks who _ _ event currentGrant
-        (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm)
+        node (currentSole.ownTurn owned) owned publicReady present response
+          (lawful owner _ _ response supported)
+    · exact bounds.compiled_foreign_transport runtime leaks who _ _
+        (currentSole.ownTurn?_foreign
+          (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm))
           response (lawful who _ _ response supported)
   exact app.replayPolicy_cases _ _ response transport
 
@@ -84,7 +88,7 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (owned : graph.actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (published : execution.network.Satisfies fun packet =>
@@ -110,14 +114,15 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
   let message : Message Player (WitnessedPacket graph) :=
     ⟨(owner, execution.network.nextSerial owner), packet⟩
   have same := runtime.reactive_respond_application leaks execution owner response
-  have currentGrant : submitted.application.serviceGrant = some event := by
-    exact (congrArg PublicView.serviceGrant same.2).trans granted
+  have currentSole : submitted.application.publicView.SoleReady event := by
+    rw [same.2]
+    exact sole
   have currentReady : submitted.application.config.cut.Ready event := by rw [same.1]; exact ready
   have recorded : runtime.eventRecorded leaks (submitted.recall owner) event = true :=
     runtime.eventRecorded_respond leaks execution owner response event rfl
   have transport := fun current who action application recalled supported =>
     runtime.compiled_binding_tail_transport leaks bounds players lawful submitted owner event
-      payload outputEq codeEq node currentGrant owned currentReady recorded current application
+      payload outputEq codeEq node currentSole owned currentReady recorded current application
         recalled who action supported
   have networkEq : submitted.network = (execution.network.submit owner packet).2 := rfl
   have ledger : submitted.network.ledger = execution.network.ledger := rfl
@@ -155,7 +160,7 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (owned : graph.actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (published : execution.network.Satisfies fun packet =>
@@ -186,7 +191,7 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
       (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) submitted).map
         readout).support := PMF.support_map .. ▸ ⟨final, reached, rfl⟩
   rw [runtime.rawBinding_delayed_inclusion leaks bounds players lawful network execution owner
-    event payload outputEq codeEq node granted owned ready published serials serial opening roster]
+    event payload outputEq codeEq node sole owned ready published serials serial opening roster]
     at mapped
   obtain ⟨immediate, included, same⟩ := PMF.support_map .. ▸ mapped
   refine ⟨immediate, included, (congrArg Prod.fst same).symm,
@@ -194,8 +199,9 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
     (congrArg (fun value => value.2.2.1) same).symm,
     (congrArg (fun value => value.2.2.2) same).symm, ?_⟩
   have application := runtime.reactive_respond_application leaks execution owner response
-  have currentGrant : submitted.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant application.2).trans granted
+  have currentSole : submitted.application.publicView.SoleReady event := by
+    rw [application.2]
+    exact sole
   have currentReady : submitted.application.config.cut.Ready event := by
     rw [application.1]
     exact ready
@@ -204,7 +210,7 @@ theorem rawBinding_delayed_support (runtime : EventGraphRuntime graph)
   exact runtime.submission_replay_settled_published leaks players network owner execution _ event
     rfl published serials
     (fun current who action same recalled supported => runtime.compiled_binding_tail_transport
-      leaks bounds players lawful submitted owner event payload outputEq codeEq node currentGrant
+      leaks bounds players lawful submitted owner event payload outputEq codeEq node currentSole
         owned currentReady recorded current same recalled who action supported)
     roster final reached
 

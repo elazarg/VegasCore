@@ -221,9 +221,15 @@ theorem sourceService_owner_information_law [Fintype Player]
         (runtime setup).runInteractionPlan leaks
           (Function.update (fun _ => app.replayPolicy) owner policy) network
           (visits.map ServiceInstruction.player) execution := by
-    obtain ⟨before, _, rfl⟩ := PMF.support_map .. ▸ supported
+    obtain ⟨before, beforeSupport, rfl⟩ := PMF.support_map .. ▸ supported
     exact sourceServiceTimedPolicy_window_eq setup leaks rosters timing normalized event owner
-      owned network visits (granted before) rfl
+      owned network visits (granted before)
+      (soleReady_of_ready setup (granted before).application
+        (sourceService_prefix_ready setup leaks bounds values capacity rosters opportunities
+          network players (sourceServiceTimedPolicy_admissible setup leaks bounds values
+            initialValues capacity rosters opportunities network timing full normalized
+            (normalized_sourceService_admitted setup original permitted))
+          event before beforeSupport))
   have kept (execution final : app.Execution)
       (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) execution).support) : read final = read execution :=

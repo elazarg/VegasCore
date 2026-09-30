@@ -11,8 +11,8 @@ import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source decisions in the existing sequential native service
 
-The physical policy reads the existing compiler's policy table at the granted
-event. Binding choices are atomic submissions; ineffective disclosures and
+The physical policy reads the existing compiler's policy table at the player's
+turn, its ready event. Binding choices are atomic submissions; ineffective disclosures and
 withholding are settled by silence and expiry. The correspondence below permits
 arbitrary outstanding source guards and does not freeze the candidate catalogue
 or accepted handles at initialization.
@@ -35,13 +35,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The source compiler's decision at the granted event, represented by one
+/-- The source compiler's decision at the player's turn, represented by one
 actual native response. This definition introduces neither strategy memory nor
 an additional runtime step. -/
 def sourceServicePolicy (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   if identity : view.application.who = who then
-    match view.application.publicView.serviceGrant with
+    match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩
     | some event =>
         if owned : (graph setup).actor? event = some who then
@@ -55,7 +55,7 @@ def sourceServicePolicy (profile : BehavioralProfile setup.program) (who : Playe
 theorem sourceServicePolicy_at_event (profile : BehavioralProfile setup.program)
     (who : Player) (execution : (application setup leaks).Execution)
     (event : (graph setup).EventId)
-    (granted : execution.application.serviceGrant = some event)
+    (selected : execution.application.publicView.ownTurn? who = some event)
     (owned : (graph setup).actor? event = some who) :
     sourceServicePolicy setup leaks profile who (execution.recall who)
         (execution.observe (application setup leaks) who) =
@@ -67,10 +67,10 @@ theorem sourceServicePolicy_at_event (profile : BehavioralProfile setup.program)
   unfold sourceServicePolicy
   rw [dite_eq_left (show (execution.observe (application setup leaks) who).application.who = who
     from rfl)]
-  change (match execution.application.serviceGrant with
+  change (match execution.application.publicView.ownTurn? who with
     | none => _
-    | some selected => _) = _
-  simp only [granted, dite_eq_left owned]
+    | some chosen => _) = _
+  simp only [selected, dite_eq_left owned]
   rfl
 
 /-- The local source commitment distribution is retained exactly, including
@@ -94,8 +94,8 @@ theorem sourceServicePolicy_commit {Γ : SourceCtx Player L} {openNames : Finset
     (history : decodeHistory setup.program
       (execution.application.config.history.map
         (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
-    (granted : execution.application.serviceGrant =
-      some (embedding.event ⟨0, by simp [eventCount]⟩)) :
+    (ready : execution.application.config.cut.Ready
+      (embedding.event ⟨0, by simp [eventCount]⟩)) :
     let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
     let outputEq : (graph setup).outputLayout (embedding.event headIndex) =
@@ -115,7 +115,8 @@ theorem sourceServicePolicy_commit {Γ : SourceCtx Player L} {openNames : Finset
   have actor : (graph setup).actor? event = some owner := by
     change (toEventGraph setup.program).actor? event = some owner
     simpa [event, headIndex, eventOwner?, eventCount] using aligned.actorEq headIndex
-  rw [sourceServicePolicy_at_event setup leaks wholeProfile owner execution event granted actor]
+  rw [sourceServicePolicy_at_event setup leaks wholeProfile owner execution event
+    (ownTurn?_of_ready setup execution.application ready actor) actor]
   let observation := setup.eventGraph.fromModeObservation .sequential owner
     ((graph setup).playerObserve owner execution.application.config)
   have law := aligned.policyEq owner headIndex actor observation
@@ -162,8 +163,8 @@ theorem sourceServicePolicy_reveal {Γ : SourceCtx Player L} {openNames : Finset
     (history : decodeHistory setup.program
       (execution.application.config.history.map
         (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
-    (granted : execution.application.serviceGrant =
-      some (embedding.event ⟨0, by simp [eventCount]⟩)) :
+    (ready : execution.application.config.cut.Ready
+      (embedding.event ⟨0, by simp [eventCount]⟩)) :
     let headIndex : Fin (eventCount
       (.reveal published owner name fresh selected unresolved next)) := ⟨0, by simp [eventCount]⟩
     let outputEq : (graph setup).outputLayout (embedding.event headIndex) =
@@ -183,7 +184,8 @@ theorem sourceServicePolicy_reveal {Γ : SourceCtx Player L} {openNames : Finset
   have actor : (graph setup).actor? event = some owner := by
     change (toEventGraph setup.program).actor? event = some owner
     simpa [event, headIndex, eventOwner?, eventCount] using aligned.actorEq headIndex
-  rw [sourceServicePolicy_at_event setup leaks wholeProfile owner execution event granted actor]
+  rw [sourceServicePolicy_at_event setup leaks wholeProfile owner execution event
+    (ownTurn?_of_ready setup execution.application ready actor) actor]
   let observation := setup.eventGraph.fromModeObservation .sequential owner
     ((graph setup).playerObserve owner execution.application.config)
   have law := aligned.policyEq owner headIndex actor observation

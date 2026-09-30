@@ -29,14 +29,14 @@ theorem recorded_compiled_sourceService
     (who : Player) (event : (graph setup).EventId)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (serving : view.application.publicView.ownTurn? who = some event)
     (recorded : (runtime setup).eventRecorded leaks past event = true) :
     bounds.compiledActions (runtime setup) leaks who past view ⊆
       (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
   classical
   have optional : ¬ bindingRequired setup leaks rosters who past view := by
-    rintro ⟨selected, _, sameGrant, _, _, _, unsent, _⟩
-    cases Option.some.inj (sameGrant.symm.trans granted)
+    rintro ⟨selected, _, sameTurn, _, _, _, unsent, _⟩
+    cases Option.some.inj (sameTurn.symm.trans serving)
     rw [recorded] at unsent
     cases unsent
   change _ ⊆ sourceServiceActions setup leaks bounds rosters who past view
@@ -88,7 +88,7 @@ theorem repeated_roster_stopped_coupling
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
       original.network.ledger.countP (fun message => message.sender = owner))
-    (granted : original.application.serviceGrant = some event)
+    (serving : original.application.publicView.ownTurn? owner = some event)
     (recorded : (runtime setup).eventRecorded leaks (repaired.recall owner) event = true)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu (runtime setup) leaks).actions owner past view)
@@ -113,7 +113,7 @@ theorem repeated_roster_stopped_coupling
   obtain ⟨coupling, first, second, related⟩ := frame.run_repeated_stopped_coupling bounds
     (sourceServiceMenu setup leaks bounds rosters) players
     (rosterScheduler setup leaks rosters network) reference started leftRecall rightRecall
-    serials repeated event granted recorded
+    serials repeated event serving recorded
     (recorded_compiled_sourceService setup leaks bounds rosters owner event) available
     before.length visits.length position
     (fun execution lower upper command supported => roster_activation_segment setup leaks

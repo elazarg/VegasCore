@@ -138,28 +138,49 @@ theorem compiled_response :
     change ReactiveApplication.Policy.Consistent _ ([] ++ [_]) at consistent
     have supported := (ReactiveApplication.Policy.consistent_snoc_iff _ [] _).mp consistent
     have selected := supported.2
-    have grantOne :
-        ((activated (grant 1 root)).observe app ()).application.publicView.serviceGrant =
-        some 1 := rfl
-    have unready :
-        ¬ ((activated (grant 1 root)).observe app ()).application.publicView.EventReady 1 := by
+    have turn : ((activated (grant 1 root)).observe app ()).application.publicView.ownTurn? () =
+        some 0 := by
       decide
+    have readyZero :
+        ((activated (grant 1 root)).observe app ()).application.publicView.EventReady 0 := by
+      decide
+    have actor : graph.actor? 0 = some () := rfl
     change first ∈ (runtime.prescribedReactivePolicy leaks () zeroPolicy []
       ((activated (grant 1 root)).observe app ())).support at selected
     rw [prescribedReactivePolicy_apply] at selected
-    simp only [prescribedReactiveResponse, grantOne, reactiveAlreadySubmitted, List.any_nil,
-      Bool.false_eq_true, ite_false, dite_true, ite_eq_right unready,
-      PMF.pure_map, PMF.bind_const, PMF.mem_support_pure_iff _ _] at selected
-    cases congrArg ReactiveApplication.Action.transmission selected
+    simp only [prescribedReactiveResponse, turn, reactiveAlreadySubmitted, List.any_nil,
+      Bool.false_eq_true, ite_false, dite_true, ite_eq_left readyZero, dite_eq_left actor,
+      EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero, PMF.pure_map, PMF.bind_const,
+      PMF.mem_support_pure_iff _ _] at selected
+    have sent := congrArg ReactiveApplication.Action.transmission selected
+    have slot :
+        reactiveFreshSlot ((activated (grant 1 root)).observe app ()).application = some 0 := by
+      unfold reactiveFreshSlot
+      split
+      · congr 1
+        exact (Nat.find_eq_zero _).mpr rfl
+      · rename_i impossible
+        exact False.elim (impossible ⟨0, rfl⟩)
+    change some (ReactiveApplication.Transmission.submit (app := app)
+        ⟨⟨.commitment 0 ((), .prepared 0), some ⟨.int, 1⟩⟩, .none⟩) =
+      (reactiveFreshSlot ((activated (grant 1 root)).observe app ()).application).map _ at sent
+    rw [slot] at sent
+    have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
+    have opening := congrArg
+      (fun submission : WitnessedSubmission graph => submission.call.opening) material
+    have raw := Option.some.inj opening
+    have value := congrArg (fun raw : Raw simpleExpr => raw.as? .int) raw
+    cases value
   rw [compiled, compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     incompatible]
-  have grantZero : ((activated atBinding).observe app ()).application.publicView.serviceGrant =
-      some 0 := rfl
+  have turn : ((activated atBinding).observe app ()).application.publicView.ownTurn? () =
+      some 0 := by
+    decide
   have readyView : ((activated atBinding).observe app ()).application.publicView.EventReady 0 :=
     by decide
   have actor : graph.actor? 0 = some () := rfl
   rw [recoverReactivePolicy_apply]
-  simp only [recoverReactiveResponse, grantZero, dite_true, ite_eq_left readyView,
+  simp only [recoverReactiveResponse, turn, dite_true, ite_eq_left readyView,
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero,
     reactiveRecoveryLaw_pure (graph := graph), PMF.pure_map, PMF.bind_const]
   change PMF.pure (ReactiveApplication.Action.mk (app := app)

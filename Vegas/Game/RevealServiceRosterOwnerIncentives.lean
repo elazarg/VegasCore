@@ -57,7 +57,7 @@ theorem roster_owner_comparison_of_posterior
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (observed : site.1 = some (past, view))
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (serving : view.application.publicView.ownTurn? who = some event)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks who event view = some (candidate, raw))
     (fresh : rosterFresh? setup leaks rosters who past view =
@@ -176,7 +176,7 @@ theorem roster_owner_comparison_of_posterior
     (2 * (rosterPlan setup rosters).length + 1)
   have targetAlternative := roster_owner_context_value setup leaks bounds rosters network reveals
     openable admission source mixed timing timingFull assessment strategy who event owned site
-    past view observed grant candidate raw opening unopened law joint (fun _ => rfl) utility
+    past view observed serving candidate raw opening unopened law joint (fun _ => rfl) utility
   dsimp only at targetAlternative
   rw [posterior] at targetAlternative
   change targetContext.value ((assessment.strategy who).withLaw site.1 law) =
@@ -184,12 +184,13 @@ theorem roster_owner_comparison_of_posterior
       (remaining * values true + (1 - remaining) * values false) at targetAlternative
   have targetPrescribed := roster_owner_context_value setup leaks bounds rosters network reveals
     openable admission source mixed timing timingFull assessment strategy who event owned site
-    past view observed grant candidate raw opening unopened (assessment.strategy who site.1)
+    past view observed serving candidate raw opening unopened (assessment.strategy who site.1)
     joint (fun _ => rfl) utility
   simp only [InformationModel.BehavioralPolicy.withLaw_eq_self] at targetPrescribed
   rw [posterior] at targetPrescribed
   have hazard := roster_owner_opening_probability setup leaks bounds rosters network reveals
-    openable admission source mixed timing timingFull who site past view observed event owned grant
+    openable admission source mixed timing timingFull who site past view observed event owned
+    serving
     ((runtime setup).windowOpening leaks event candidate raw) fresh
   rw [← strategy] at hazard
   rw [hazard] at targetPrescribed

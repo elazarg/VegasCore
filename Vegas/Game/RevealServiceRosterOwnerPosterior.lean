@@ -197,9 +197,8 @@ theorem roster_owner_information_law
     (fun execution supported => by
       obtain ⟨initial, initialSupport, state, related, _⟩ :=
         grantedCheckpoint execution supported
-      have current : execution.application.serviceGrant = some event := by
-        obtain ⟨before, _, rfl⟩ := PMF.support_map .. ▸ supported
-        rfl
+      have current : execution.application.config.cut.Ready event :=
+        related.ready event (Nat.zero_add _).symm
       have data := owner_choices_at_prefix setup leaks bounds decoded owner initial initialSupport
         setup.program reveals decoded
         (ContextRefs.initial setup.context (outputLayout setup.program))

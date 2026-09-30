@@ -36,7 +36,7 @@ theorem sourceService_sample_window_conformance
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
     (network : (runtime setup).NetworkPolicy leaks) (event : (graph setup).EventId)
     (chance : (graph setup).actor? event = none)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (published : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
@@ -61,7 +61,7 @@ theorem sourceService_sample_window_conformance
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have prior := ih before reachedBefore
       have same := (sourceService_sample_window setup leaks bounds rosters players lawful network
-        event chance execution before granted published visits reachedBefore).1
+        event chance execution before sole published visits reachedBefore).1
       simp only [List.map_cons, List.map_nil, runInteractionPlan, PMF.bind_pure,
         interactionStep, interactionInstruction, PMF.pure_bind] at reached
       change current ∈ ((before.environmentStep app (.activate actor)).bind
@@ -76,9 +76,12 @@ theorem sourceService_sample_window_conformance
       have sampled := (runtime setup).service_sampled_conformance leaks before actor sample prior.1
       have member := sourceServiceMenu_in_compiled setup leaks bounds rosters actor
         (activated.recall actor) (activated.observe app actor) (lawful actor _ _ response chosen)
-      have issued := bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor event
-        (by change before.application.serviceGrant = some event; rw [same]; exact granted)
-        (by rw [chance]; simp) (sampled.known actor) response member
+      have issued := bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor
+        (by
+          change before.application.publicView.Idle actor
+          rw [same]
+          exact sole.idle (by rw [chance]; simp))
+        (sampled.known actor) response member
       refine ⟨(runtime setup).service_response_conformance leaks activated 0 actor response
         sampled issued, ?_⟩
       intro record included
@@ -111,7 +114,7 @@ theorem ServiceBoundary.binding_block_conformance
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
-  obtain ⟨granted, grantBoundary, grant, _, _, grantLaw⟩ := boundary.grant players network event
+  obtain ⟨granted, grantBoundary, _, _, _, grantLaw⟩ := boundary.grant players network event
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
     (.grant event) (by simp) (by simp) execution granted
     (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
@@ -121,7 +124,7 @@ theorem ServiceBoundary.binding_block_conformance
   rw [(runtime setup).runInteractionPlan_append] at reached
   obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have visitedTraffic := (grantBoundary.binding_prefix_conformance bounds players lawful network
-    event atRank owner payload outputEq codeEq node owned grant
+    event atRank owner payload outputEq codeEq node owned
       (by rw [grantTraffic]; exact traffic) (rosters event) visited window).2
   have exactTraffic := (runtime setup).executionTraffic_passive_plan leaks players network
     ([.includeLatest event owner] ++ List.replicate (event.val + 1) .tick ++ [.expire event])
@@ -142,7 +145,8 @@ theorem ServiceBoundary.sample_block_conformance
     (lawful : ∀ who past view response, response ∈ (players who past view).support →
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view)
     (network : (runtime setup).NetworkPolicy leaks)
-    (event : (graph setup).EventId) (chance : (graph setup).actor? event = none)
+    (event : (graph setup).EventId) (atRank : event.val = rank)
+    (chance : (graph setup).actor? event = none)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true)
@@ -152,7 +156,7 @@ theorem ServiceBoundary.sample_block_conformance
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
-  obtain ⟨granted, grantBoundary, grant, _, _, grantLaw⟩ := boundary.grant players network event
+  obtain ⟨granted, grantBoundary, _, _, _, grantLaw⟩ := boundary.grant players network event
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
     (.grant event) (by simp) (by simp) execution granted
     (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
@@ -162,7 +166,8 @@ theorem ServiceBoundary.sample_block_conformance
   rw [(runtime setup).runInteractionPlan_append] at reached
   obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have visitedTraffic := (sourceService_sample_window_conformance bounds players lawful network
-    event chance grant grantBoundary.published (by rw [grantTraffic]; exact traffic)
+    event chance (soleReady_of_ready setup granted.application (grantBoundary.ready event atRank))
+    grantBoundary.published (by rw [grantTraffic]; exact traffic)
       (rosters event) visited window).2
   have exactTraffic := (runtime setup).executionTraffic_passive_plan leaks players network
     ([.sample event] ++ List.replicate (event.val + 1) .tick ++ [.expire event])
@@ -199,7 +204,7 @@ theorem ServiceBoundary.roster_block_conformance
         have actor := congrArg EventGraph.EventCode.actor codeEq
         rw [EventGraph.EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor
         exact actor
-      exact boundary.sample_block_conformance bounds players lawful network event chance
+      exact boundary.sample_block_conformance bounds players lawful network event atRank chance
         traffic final reached
   | bind owner payload outputEq codeEq =>
       have owned : (graph setup).actor? event = some owner := by

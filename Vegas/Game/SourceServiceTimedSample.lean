@@ -32,7 +32,7 @@ theorem sourceServiceTimedPolicy_sample_window
     (chance : (graph setup).actor? event = none)
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
     (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event) :
+    (sole : execution.application.publicView.SoleReady event) :
     (runtime setup).runInteractionPlan leaks
       (sourceServiceTimedPolicy setup leaks rosters timing profile) network
       (visits.map ServiceInstruction.player) execution =
@@ -53,9 +53,9 @@ theorem sourceServiceTimedPolicy_sample_window
       have law : sourceServiceTimedPolicy setup leaks rosters timing profile actor
           (activated.recall actor) (activated.observe app actor) =
             app.replayPolicy (activated.recall actor) (activated.observe app actor) := by
-        have current : (activated.observe app actor).application.publicView.serviceGrant =
-            some event := granted
-        simp only [sourceServiceTimedPolicy, current, chance, reduceCtorEq, ↓reduceDIte]
+        have idle : (activated.observe app actor).application.publicView.ownTurn? actor = none :=
+          sole.ownTurn?_foreign (by rw [chance]; simp)
+        simp only [sourceServiceTimedPolicy, idle]
         rfl
       change (sourceServiceTimedPolicy setup leaks rosters timing profile actor
         (activated.recall actor) (activated.observe app actor)).bind _ = _
@@ -64,7 +64,8 @@ theorem sourceServiceTimedPolicy_sample_window
       intro response _
       apply ih
       have unchanged := (runtime setup).reactive_respond_application leaks activated actor response
-      exact (congrArg PublicView.serviceGrant unchanged.2).trans granted
+      rw [unchanged.2]
+      exact sole
 
 private theorem replay_window_application
     (setup : Setup (Player := Player) (L := L))
@@ -105,7 +106,6 @@ theorem sourceServiceTimedPolicy_sample_phase_law
     (node : nodeView (graph setup) event =
       .sample payload (compilePublicDist refs law) outputEq codeEq)
     (chance : (graph setup).actor? event = none)
-    (granted : execution.application.serviceGrant = some event)
     (network : (runtime setup).NetworkPolicy leaks) (ticks : Nat) :
     let app := application setup leaks
     let replay := fun _ => app.replayPolicy
@@ -128,7 +128,7 @@ theorem sourceServiceTimedPolicy_sample_phase_law
   intro app replay completed
   rw [runInteractionPlan_append,
     sourceServiceTimedPolicy_sample_window setup leaks rosters timing profile event chance network
-      (rosters event) execution granted]
+      (rosters event) execution (soleReady_of_ready setup execution.application ready)]
   apply bind_congr_on_support _
   intro current reached
   have same := replay_window_application setup leaks network (rosters event) execution current

@@ -36,8 +36,9 @@ theorem service_opening_accepted
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (submission : WitnessedSubmission graph)
+    (named : (submission.emit ((runtime.reactiveApplication leaks).submit execution.application
+      owner submission) owner (execution.network.known owner)).call.event? graph = some event)
     (permitted : runtime.freshServiceEnvelope execution.application.publicView
       ⟨(owner, execution.network.nextSerial owner), submission.emit
         ((runtime.reactiveApplication leaks).submit execution.application owner submission)
@@ -50,7 +51,7 @@ theorem service_opening_accepted
   let app := runtime.reactiveApplication leaks
   obtain ⟨candidate, raw, _, owned, associated, _, emitted, guards⟩ :=
     runtime.freshServiceEnvelope_resolution_shape execution.application.publicView owner event
-      payload binding checks outputEq codeEq node granted _ permitted
+      payload binding checks outputEq codeEq node _ named permitted
   change submission.emit (app.submit execution.application owner submission) owner
     (execution.network.known owner) =
       ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ at emitted
@@ -65,7 +66,7 @@ theorem service_opening_accepted
     subst packet
     cases material <;> rfl
   rw [emitted] at permitted
-  obtain ⟨_, ready, timely, _, _, _, _, _, _⟩ :=
+  obtain ⟨ready, timely, _, _, _, _, _, _⟩ :=
     (runtime.freshServiceEnvelope_opening_iff execution.application.publicView
       (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq
         codeEq node candidate raw (some ⟨candidate, raw⟩)).mp permitted
@@ -115,8 +116,9 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (submission : WitnessedSubmission graph)
+    (named : (submission.emit ((runtime.reactiveApplication leaks).submit execution.application
+      owner submission) owner (execution.network.known owner)).call.event? graph = some event)
     (available : (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) ∈
       (bounds.menu runtime leaks).actions owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner))
@@ -133,19 +135,17 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
             (cast (congrArg EventField.Action outputEq.symm) true) := by
   let app := runtime.reactiveApplication leaks
   obtain ⟨next, accepted⟩ := runtime.service_opening_accepted leaks execution owner sound
-    invariant event payload binding checks outputEq codeEq node granted submission permitted
+    invariant event payload binding checks outputEq codeEq node submission named permitted
   obtain ⟨candidate, raw, _, owned, associated, _, emitted, guards⟩ :=
     runtime.freshServiceEnvelope_resolution_shape execution.application.publicView owner event
-      payload binding checks outputEq codeEq node granted _ permitted
+      payload binding checks outputEq codeEq node _ named permitted
   change submission.emit (app.submit execution.application owner submission) owner
     (execution.network.known owner) =
       ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ at emitted
   change execution.application.publicView.openingGuardsAccepted
     (submission.emit (app.submit execution.application owner submission) owner
       (execution.network.known owner)) = true at guards
-  have addressed : submission.call.packet.event? graph = some event := by
-    have named := runtime.freshServiceEnvelope_event execution.application.publicView _ permitted
-    exact named.trans granted
+  have addressed : submission.call.packet.event? graph = some event := named
   have certified : certifiedOpening (submission.emit
       (app.submit execution.application owner submission) owner (execution.network.known owner)) =
         true := by rw [emitted]; simp only [certifiedOpening, decide_true]
@@ -185,8 +185,9 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
   exact congrArg (fun material => (⟨some (.submit material)⟩ : app.Action))
     (normal.symm.trans normalized)
 
-/-- Once the original binding has failed, no effective fresh submission at
-its disclosure phase can pass the public checker. Waiting and known-envelope
+/-- Once the original binding has failed, no effective fresh submission can
+pass the public checker while its disclosure event is the owner's only ready
+event, as a public resolution always is under the barrier order. Waiting and known-envelope
 replay are still available; the hidden failure itself is not charged. -/
 theorem failed_binding_submission_forbidden [Fintype Player] (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
@@ -201,7 +202,8 @@ theorem failed_binding_submission_forbidden [Fintype Player] (bounds : MessageBo
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (unique : ∀ other, execution.application.publicView.EventReady other →
+      graph.actor? other = some owner → other = event)
     (failed : binding.get? execution.application.config.store = some .failure)
     (submission : WitnessedSubmission graph)
     (available : (⟨some (.submit submission)⟩ : (runtime.reactiveApplication leaks).Action) ∈
@@ -216,7 +218,8 @@ theorem failed_binding_submission_forbidden [Fintype Player] (bounds : MessageBo
   have permitted := (runtime.permittedServiceEnvelope_unpublished_iff _ _ _
     (serials.next_unpublished owner)).mp allowed
   obtain ⟨value, stored, _, _⟩ := runtime.service_opening_response leaks bounds execution owner
-    sound invariant recalled event payload binding checks outputEq codeEq node granted submission
+    sound invariant recalled event payload binding checks outputEq codeEq node submission
+      (runtime.freshServiceEnvelope_event_of_owned_unique _ event _ unique permitted.2)
       available permitted.2
   rw [failed] at stored
   cases stored

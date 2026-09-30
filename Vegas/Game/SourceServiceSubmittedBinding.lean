@@ -88,7 +88,8 @@ theorem sourceService_submitted_binding
         sourceServiceMenu_in_compiled setup leaks bounds rosters player past view
           ((menu.uniformResponses_support player past view response).mp supported))
       network owner event payload outputEq codeEq node owned serial ((rosters event).take slot)
-        boundary prior grant (checkpoint.ready event rfl) selected fresh checkpoint.published
+        boundary prior (soleReady_of_ready setup boundary.application (checkpoint.ready event rfl))
+        (checkpoint.ready event rfl) selected fresh checkpoint.published
           checkpoint.serials (checkpoint.unsent owner event (Nat.le_refl _)) reached priorRecorded
   refine ⟨before, value, admitted, serial, remaining, prior, sample, ?_,
     checkpoint.binding_capacity bounds capacity event rfl owner, ?_, ?_, ?_, ?_, beforeSerials,
@@ -160,8 +161,6 @@ theorem sourceService_recorded_binding_resources
     apply (before.application.publicView_eventReady event).mp
     rw [beforePublic]
     exact (control.execution.application.publicView_eventReady event).mpr currentReady
-  have beforeGrant : before.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant beforePublic).trans granted
   let response := (runtime setup).reactiveBinding leaks owner event payload (.success value) serial
   let submitted := before.respond app owner response
   let packet : WitnessedPacket (graph setup) :=
@@ -169,8 +168,6 @@ theorem sourceService_recorded_binding_resources
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, before.network.nextSerial owner), packet⟩
   have application := (runtime setup).reactive_respond_application leaks before owner response
-  have submittedGrant : submitted.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant application.2).trans beforeGrant
   have submittedReady : submitted.application.config.cut.Ready event := by
     rw [application.1]
     exact beforeReady
@@ -182,7 +179,8 @@ theorem sourceService_recorded_binding_resources
       (fun player past view action member => sourceServiceMenu_in_compiled setup leaks bounds
         rosters player past view
           ((menu.uniformResponses_support player past view action).mp member))
-      submitted owner event payload outputEq codeEq node submittedGrant owned submittedReady
+      submitted owner event payload outputEq codeEq node
+      (soleReady_of_ready setup submitted.application submittedReady) owned submittedReady
         submittedRecorded current same recalled player action supported
   have networkEq : submitted.network = (before.network.submit owner packet).2 := rfl
   have packets : submitted.network.Satisfies fun candidate =>

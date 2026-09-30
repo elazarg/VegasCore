@@ -255,7 +255,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
         simpa only [kernel, phase, List.append_assoc, List.cons_append, List.nil_append]
           using reached
       have completed := scheduledBindingActive_config setup leaks bounds network owner event payload
-        outputEq codeEq node owned execution granted ready timely serial candidate vacant unused
+        outputEq codeEq node owned execution ready timely serial candidate vacant unused
         serials published remaining tag.2.1 (rosterOffset setup rosters owner event)
         (future _ slotSupport) (by rw [counted]; exact Nat.add_lt_add_left tag.2.1.isLt _)
         tag.1 (event.val + 1) final supported

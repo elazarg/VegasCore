@@ -45,7 +45,7 @@ theorem conforming_opening_inclusion
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (sole : original.application.publicView.SoleReady event)
     (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩)
     (permitted : runtime.freshServiceEnvelope original.application.publicView ⟨id, packet⟩) :
@@ -57,10 +57,11 @@ theorem conforming_opening_inclusion
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
   obtain ⟨candidate, raw, authored, owned, associated, _, shaped, guards⟩ :=
     runtime.freshServiceEnvelope_resolution_shape original.application.publicView actor event
-      payload binding checks outputEq codeEq node granted ⟨id, packet⟩ permitted
+      payload binding checks outputEq codeEq node ⟨id, packet⟩
+      (runtime.freshServiceEnvelope_event_of_sole _ event sole _ permitted) permitted
   change packet = _ at shaped
   subst packet
-  obtain ⟨_, ready, timely, _, _, _, _, _, _⟩ :=
+  obtain ⟨ready, timely, _, _, _, _, _, _⟩ :=
     (runtime.freshServiceEnvelope_opening_iff original.application.publicView id event actor
       payload binding checks outputEq codeEq node candidate raw (some ⟨candidate, raw⟩)).mp
         permitted
@@ -102,7 +103,7 @@ theorem conforming_foreign_binding_inclusion
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind actor payload)
     (node : nodeView graph event = .bind actor payload outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (sole : original.application.publicView.SoleReady event)
     (fixed : original.application.candidates.lookup
       (actor, .prepared (original.application.publicView.bindingCount actor)) ≠ .fresh)
     (packet : WitnessedPacket graph)
@@ -115,11 +116,11 @@ theorem conforming_foreign_binding_inclusion
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
   obtain ⟨authored, shaped⟩ := runtime.freshServiceEnvelope_binding_shape
-    original.application.publicView actor event payload outputEq codeEq node granted
-      ⟨id, packet⟩ permitted
+    original.application.publicView actor event payload outputEq codeEq node ⟨id, packet⟩
+      (runtime.freshServiceEnvelope_event_of_sole _ event sole _ permitted) permitted
   change packet = _ at shaped
   subst packet
-  have includable := permitted.2.1
+  have includable := permitted.1
   simp only [PublicView.BindingIncludable, node,
     original.application.publicView_eventReady] at includable
   obtain ⟨ready, timely, _, _, vacant, unused⟩ := includable
@@ -203,7 +204,7 @@ theorem resolution_reserved_step
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (sole : original.application.publicView.SoleReady event)
     (permitted : ∀ message ∈ original.network.pending,
       runtime.permittedServiceEnvelope original.application.publicView original.network.ledger
         message = true)
@@ -216,7 +217,7 @@ theorem resolution_reserved_step
   apply frame.latest_step_frame players network event actor _ left right leftSupport rightSupport
   intro id packet found unpublished
   exact frame.conforming_opening_inclusion onlyBindings sound leftBinding rightBinding id event
-    actor payload binding checks outputEq codeEq node granted packet found
+    actor payload binding checks outputEq codeEq node sole packet found
       ((runtime.permittedServiceEnvelope_unpublished_iff _ _ _ unpublished).mp
         (permitted _ (List.mem_of_find?_eq_some found))).2
 
@@ -232,7 +233,7 @@ theorem foreign_binding_reserved_step
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind actor payload)
     (node : nodeView graph event = .bind actor payload outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (sole : original.application.publicView.SoleReady event)
     (fixed : original.application.candidates.lookup
       (actor, .prepared (original.application.publicView.bindingCount actor)) ≠ .fresh)
     (permitted : ∀ message ∈ original.network.pending,
@@ -247,7 +248,7 @@ theorem foreign_binding_reserved_step
   apply frame.latest_step_frame players network event actor _ left right leftSupport rightSupport
   intro id packet found unpublished
   exact frame.conforming_foreign_binding_inclusion onlyBindings id event actor different payload
-    outputEq codeEq node granted fixed packet found
+    outputEq codeEq node sole fixed packet found
       ((runtime.permittedServiceEnvelope_unpublished_iff _ _ _ unpublished).mp
         (permitted _ (List.mem_of_find?_eq_some found))).2
 
@@ -269,7 +270,7 @@ theorem resolution_reserved_tail_coupling
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (sole : original.application.publicView.SoleReady event)
     (permitted : ∀ message ∈ original.network.pending,
       runtime.permittedServiceEnvelope original.application.publicView original.network.ledger
         message = true) (ticks : Nat) :
@@ -296,7 +297,7 @@ theorem resolution_reserved_tail_coupling
   obtain ⟨rightIncluded, rightStep, rightTail⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ second)
   have paired := frame.resolution_reserved_step onlyBindings sound leftBinding rightBinding
-    players network event actor payload binding checks outputEq codeEq node granted permitted
+    players network event actor payload binding checks outputEq codeEq node sole permitted
       leftIncluded rightIncluded leftStep rightStep
   have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
   exact paired.clock_tail_unmodified players network event
@@ -315,7 +316,7 @@ theorem foreign_binding_reserved_tail_coupling
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind actor payload)
     (node : nodeView graph event = .bind actor payload outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (sole : original.application.publicView.SoleReady event)
     (fixed : original.application.candidates.lookup
       (actor, .prepared (original.application.publicView.bindingCount actor)) ≠ .fresh)
     (permitted : ∀ message ∈ original.network.pending,
@@ -344,7 +345,7 @@ theorem foreign_binding_reserved_tail_coupling
   obtain ⟨rightIncluded, rightStep, rightTail⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ second)
   have paired := frame.foreign_binding_reserved_step onlyBindings players network event actor
-    different payload outputEq codeEq node granted fixed permitted
+    different payload outputEq codeEq node sole fixed permitted
       leftIncluded rightIncluded leftStep rightStep
   have noValue : memory.shadow.values (.inr event) = none := by
     cases stored : memory.shadow.values (.inr event) with

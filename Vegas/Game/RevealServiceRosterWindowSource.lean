@@ -122,7 +122,7 @@ theorem roster_global_window_source_step_law [Finite Player]
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val source execution)
     (owner : Player) (owned : (graph setup).actor? event = some owner)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
       (execution.observe (application setup leaks) owner) = some (candidate, raw))
@@ -169,7 +169,7 @@ theorem roster_global_window_source_step_law [Finite Player]
         current := by
     rw [runInteractionPlan_append, runInteractionPlan_append,
       rosterPolicy_window_eq setup leaks rosters timing profile execution current event owner
-        granted owned candidate raw opening unchanged network remaining]
+        sole owned candidate raw opening unchanged network remaining]
     apply bind_congr_on_support _
     intro next _
     exact settlement_players setup leaks _ _ network event owner (event.val + 1) next
@@ -195,7 +195,7 @@ theorem roster_owner_response_source_value [Fintype Player]
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val source boundary)
     (owner : Player) (ownedEvent : (graph setup).actor? event = some owner)
-    (granted : boundary.application.serviceGrant = some event)
+    (sole : boundary.application.publicView.SoleReady event)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
       (boundary.observe (application setup leaks) owner) = some (candidate, raw))
@@ -261,7 +261,7 @@ theorem roster_owner_response_source_value [Fintype Player]
       app.replayPolicy
   let posterior := (app.policyMixture choices family).posterior (after.recall owner)
   obtain ⟨selected, frame, _recorded, _same, exactModes⟩ :=
-    roster_response_posterior setup leaks bounds rosters boundary event owner granted ownedEvent
+    roster_response_posterior setup leaks bounds rosters boundary event owner sole ownedEvent
       candidate raw opening owned valid offset serials published players covered network visited
       current reached owner sample action member (by simp only [↓reduceIte]; omega)
   have frames (mode : Option (Fin ((rosters event).count owner)))
@@ -272,7 +272,7 @@ theorem roster_owner_response_source_value [Fintype Player]
       (visited.count owner + 1) boundary after (by simpa only [↓reduceIte] using frame) choices full
       (by cases selected <;> simpa only [↓reduceIte] using exactModes choices full) mode possible
   have law := roster_global_window_source_step_law setup leaks rosters timing network reveals
-    profile initial event source boundary related owner ownedEvent granted candidate raw opening
+    profile initial event source boundary related owner ownedEvent sole candidate raw opening
     (visited.count owner + 1) after serials remaining complete counts joint chosen frames
   have value := congrArg
     (fun distribution => expect distribution (fun output => output.elim 0 utility)) law
@@ -288,7 +288,7 @@ theorem roster_owner_response_source_value [Fintype Player]
   rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite_support _ _ supportFinite)] at value
   rw [value]
   have conditional := roster_owner_response_value setup leaks bounds rosters boundary event owner
-    granted ownedEvent candidate raw opening owned valid offset serials published players covered
+    sole ownedEvent candidate raw opening owned valid offset serials published players covered
     network visited (by omega) current reached sample action member unopened choice choiceFull
     (timing event owner ownedEvent) timingFull (sourceValue true) (sourceValue false)
   convert conditional using 1

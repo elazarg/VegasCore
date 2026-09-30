@@ -5,7 +5,7 @@ import Vegas.Game.SourceServiceLocalComparison
 /-! # Kinds of native decision sites
 
 Every native information site of the permitted service model is a decision
-during the phase of one granted event. What the acting player faces there is
+during the phase of the one ready event. What the acting player faces there is
 decided by that event, the player's own recall, and its view: a public sample,
 another player's binding or disclosure, or the player's own binding or
 disclosure, before or after its submission. An unsent own disclosure is split
@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- What a player's decision is, given its own recall `past`, its view, and the
-event its view grants. -/
+event its view shows ready. -/
 inductive DecisionSiteKind (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (who : Player) (past : List (application setup leaks).PlayerEntry)
@@ -112,11 +112,11 @@ namespace SourceServiceSpec
 
 variable (service : SourceServiceSpec Player L)
 
-/-- Every native information site is a decision during the phase of one
-granted event, and has a kind. -/
+/-- Every native information site is a decision during the phase of an event
+its view shows ready, and has a kind. -/
 theorem exists_siteKind (who : Player) (site : service.model.InformationSite who) :
     ∃ past view event, site.1 = some (past, view) ∧
-      view.application.publicView.serviceGrant = some event ∧
+      view.application.publicView.EventReady event ∧
       DecisionSiteKind service.setup service.leaks who past view event := by
   obtain ⟨history, _, _⟩ := site.2
   have active := InformationModel.InformationSite.active service.model site history
@@ -133,7 +133,8 @@ theorem exists_siteKind (who : Player) (site : service.model.InformationSite who
     current ▸ history.1.trace
   obtain ⟨phase⟩ := service.exists_decisionPhase who remaining execution trace
   exact ⟨_, _, phase.event, history.2.symm.trans (service.infoOf_decision history.1 current),
-    phase.granted, DecisionSiteKind.classify service.setup service.leaks who _ _ phase.event⟩
+    (execution.application.publicView_eventReady _).mpr phase.ready,
+    DecisionSiteKind.classify service.setup service.leaks who _ _ phase.event⟩
 
 end SourceServiceSpec
 

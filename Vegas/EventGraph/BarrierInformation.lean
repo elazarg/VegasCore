@@ -111,6 +111,47 @@ theorem ready_visible_iff (ordered : graph.BarrierOrdered) (cut : graph.order.Cu
   · intro earlier
     exact ready.2 (ordered.visible_predecessor actor earlier visible)
 
+omit [DecidableEq Player] in
+private theorem actor_output_public_or_binding {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {output : EventField Player L}
+    (code : EventCode layout output) (who : Player) (actor : code.actor = some who) :
+    output.IsPublic ∨ ∃ payload, output = .binding who payload := by
+  cases code with
+  | bind owner payload =>
+      simp only [EventCode.actor, Option.some.injEq] at actor
+      subst owner
+      exact Or.inr ⟨payload, rfl⟩
+  | resolve => exact Or.inl trivial
+  | sample => simp [EventCode.actor] at actor
+
+/-- Each player acts at most at one ready event: a ready public event is the
+only ready event, and one owner's bindings wait for each other. -/
+theorem ready_actor_unique (ordered : graph.BarrierOrdered)
+    (cut : graph.order.Cut) {event other : graph.EventId} {who : Player}
+    (ready : cut.Ready event) (otherReady : cut.Ready other)
+    (actor : graph.actor? event = some who) (otherActor : graph.actor? other = some who) :
+    other = event := by
+  rcases actor_output_public_or_binding (graph.nodes event) who actor with
+    isPublic | ⟨payload, binding⟩
+  · exact ordered.ready_public_unique cut isPublic ready otherReady
+  rcases actor_output_public_or_binding (graph.nodes other) who otherActor with
+    otherPublic | ⟨otherPayload, otherBinding⟩
+  · exact (ordered.ready_public_unique cut otherPublic otherReady ready).symm
+  have forward : (graph.outputLayout other).SameBindingOwner (graph.outputLayout event) := by
+    rw [binding, otherBinding]
+    simp [EventField.SameBindingOwner]
+  have backward : (graph.outputLayout event).SameBindingOwner (graph.outputLayout other) := by
+    rw [binding, otherBinding]
+    simp [EventField.SameBindingOwner]
+  rcases lt_trichotomy other.val event.val with earlier | same | later
+  · exact False.elim (otherReady.1 (ready.2 (ordered event
+      ((mem_barrierOrder graph.outputLayout other event).2
+        ⟨earlier, Or.inr (Or.inr forward)⟩))))
+  · exact Fin.ext same
+  · exact False.elim (ready.1 (otherReady.2 (ordered other
+      ((mem_barrierOrder graph.outputLayout event other).2
+        ⟨later, Or.inr (Or.inr backward)⟩))))
+
 end BarrierOrdered
 
 /-- Initial fields and source-earlier event outputs visible to one player. -/

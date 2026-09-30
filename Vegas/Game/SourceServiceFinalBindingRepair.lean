@@ -113,10 +113,6 @@ theorem final_binding_history_coupling
   have originalReady : original.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, frame.publicView, State.publicView_eventReady]
     exact ready
-  have originalGrant : original.application.serviceGrant = some event := by
-    rw [show original.application.serviceGrant = repaired.application.serviceGrant from
-      congrArg PublicView.serviceGrant frame.publicView]
-    exact granted
   have clocks : original.application.clock = repaired.application.clock :=
     congrArg PublicView.clock frame.publicView
   have activations : original.application.activatedAt = repaired.application.activatedAt :=
@@ -154,7 +150,8 @@ theorem final_binding_history_coupling
     (sourceServiceMenu setup leaks bounds rosters) players network prior sampled reference started
       recalled remaining event payload outputEq codeEq node
       (by rw [counted]; exact (frame.slots _).mpr fresh)
-      (by rw [counted]; exact selected) (by rw [counted]; exact small) default originalGrant
+      (by rw [counted]; exact selected) (by rw [counted]; exact small) default
+      ((soleReady_of_ready setup original.application originalReady).ownTurn owned)
       originalReady originalTimely originalUnused unsent originalVacant originalPublished
       entered ((runtime setup).deadline event) originalActivated due visits absent
       (frame.network ▸ serials)

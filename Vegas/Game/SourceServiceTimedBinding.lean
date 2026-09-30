@@ -147,7 +147,7 @@ theorem sourceServiceTimedFamily_binding_law
       (_position : visits = visited ++ owner :: remaining)
       (_selected : rosterOffset setup rosters owner event + slot.val =
         (execution.recall owner).length + visited.count owner)
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false),
     (runtime setup).runInteractionPlan leaks
       (Function.update (fun _ => (application setup leaks).replayPolicy) owner
@@ -163,7 +163,7 @@ theorem sourceServiceTimedFamily_binding_law
               (application setup leaks).replayPolicy)) network
           (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution := by
-  intro index event slot position selected granted unsent
+  intro index event slot position selected ready unsent
   let app := application setup leaks
   let offset := rosterOffset setup rosters owner event
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
@@ -199,7 +199,7 @@ theorem sourceServiceTimedFamily_binding_law
     (fun current who response _ _ member => app.replayPolicy_cases _ _ response member)
     (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visited current reached
   have same := preserved.1
-  have currentGrant : current.application.serviceGrant = some event := by rw [same]; exact granted
+  have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
   have currentAgree : refs.Agrees source.state current.application.config.store := by
     rw [same]; exact agree
   have currentHistory : decodeHistory setup.program (current.application.config.history.map
@@ -242,7 +242,7 @@ theorem sourceServiceTimedFamily_binding_law
   have activatedUnsent : (runtime setup).eventRecorded leaks (activated.recall owner) event =
       false := currentUnsent
   have sourceLaw := sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile
-    refs source embedding refsBefore rank aligned activated currentAgree currentHistory currentGrant
+    refs source embedding refsBefore rank aligned activated currentAgree currentHistory currentReady
   have responses : sourceServicePolicy setup leaks wholeProfile owner
       (activated.recall owner) (activated.observe app owner) =
         (commitKernel profile (source.view owner)).map raw := by
@@ -345,7 +345,7 @@ theorem sourceServiceTimedPolicy_binding_phase_law
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (owned : (graph setup).actor? event = some owner)
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
     let phase := (rosters event).map ServiceInstruction.player ++
@@ -361,9 +361,9 @@ theorem sourceServiceTimedPolicy_binding_phase_law
                 (fun _ _ => PMF.pure
                   ((runtime setup).reactiveBinding leaks owner event payload choice serial))
                 (application setup leaks).replayPolicy)) network phase execution := by
-  intro index event owned granted unsent counted phase
+  intro index event owned ready unsent counted phase
   rw [sourceServiceTimedPolicy_phase_law setup leaks rosters timing wholeProfile event owner owned
-    network ticks execution granted counted.le]
+    network ticks execution (soleReady_of_ready setup execution.application ready) counted.le]
   conv_rhs => rw [PMF.bind_comm]
   apply bind_congr_on_support _
   intro slot _
@@ -372,7 +372,7 @@ theorem sourceServiceTimedPolicy_binding_phase_law
   have prefixLaw := sourceServiceTimedFamily_binding_law setup leaks rosters fresh guard next
     wholeProfile profile refs source embedding refsBefore rank aligned execution agree history
     serial freshSlot candidate network (rosters event) visited remaining slot position
-    (by rw [counted, selected]) granted unsent
+    (by rw [counted, selected]) ready unsent
   have splitPlan : phase =
       ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         (List.replicate ticks .tick ++ [.expire event]) := by

@@ -92,12 +92,13 @@ theorem foreign_binding_history_tail_coupling
     rw [cursor, split, List.append_assoc, List.getElem?_append_right (Nat.le_refl _),
       Nat.sub_self]
     rfl
-  obtain ⟨_, initial, _, Γ, config, refs, boundary, _, _, _, _, _, _, _, _, granted,
+  obtain ⟨_, initial, _, Γ, config, refs, boundary, _, _, _, _, _, _, ready, _, _granted,
       _, _, _, _, _, conforming⟩ := sourceService_inclusion_boundary setup leaks
     bounds values capacity rosters opportunities network
       ⟨remaining + (ticks + 2), none, repaired⟩ trace rfl event actor selected
-  have originalGrant : original.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant frame.publicView).trans granted
+  have originalSole : original.application.publicView.SoleReady event := by
+    rw [frame.publicView]
+    exact soleReady_of_ready setup repaired.application ready
   have permitted : ∀ message ∈ original.network.pending,
       (runtime setup).permittedServiceEnvelope original.application.publicView
         original.network.ledger message = true := by
@@ -124,7 +125,7 @@ theorem foreign_binding_history_tail_coupling
     cases impossible
   obtain ⟨physical, first, second, related⟩ := frame.foreign_binding_reserved_tail_coupling
     onlyBindings players network event actor different payload outputEq codeEq node
-      originalGrant fixed permitted ticks
+      originalSole fixed permitted ticks
   let coupling := physical.map fun pair => (pair.1, pair.2, memory)
   have leftLaw : coupling.map Prod.fst =
       (runtime setup).runInteractionPlan leaks players network ending original := by

@@ -37,7 +37,6 @@ theorem scheduledBindingWindow_config
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (owned : (graph setup).actor? event = some owner)
     (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
     (serial : Nat)
@@ -94,7 +93,6 @@ theorem scheduledBindingWindow_config
     rw [same]; exact vacant
   have currentUnused : current.application.HandleUnused (owner, .prepared serial) := by
     rw [same]; exact unused
-  have currentGrant : current.application.serviceGrant = some event := by rw [same]; exact granted
   have currentSerials := (runtime setup).runInteractionPlan_serials leaks transport network
     (visited.map ServiceInstruction.player) execution current serials earlier
   have currentPublished : current.network.Satisfies fun message =>
@@ -134,7 +132,8 @@ theorem scheduledBindingWindow_config
   have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion leaks
     bounds transport (fun who past view action supported =>
       bounds.replay_compiled (runtime setup) leaks who past view action supported)
-    network activated owner event payload outputEq codeEq node currentGrant owned currentReady
+    network activated owner event payload outputEq codeEq node
+    (soleReady_of_ready setup current.application currentReady) owned currentReady
       (currentPublished.learn owner sample) (currentSerials.learn owner sample) serial opening
       remaining
   let readout := fun next : app.Execution =>
@@ -186,7 +185,6 @@ theorem scheduledBindingPhase_config
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (owned : (graph setup).actor? event = some owner)
     (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
     (serial : Nat)
@@ -224,7 +222,7 @@ theorem scheduledBindingPhase_config
   obtain ⟨included, supported, continued⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have config := scheduledBindingWindow_config setup leaks bounds network owner event payload
-    outputEq codeEq node owned execution granted ready timely serial fresh vacant unused serials
+    outputEq codeEq node owned execution ready timely serial fresh vacant unused serials
       published roster slot offset notPassed within choice included supported
   have settled : ¬included.application.config.cut.Ready event := by
     rw [config]

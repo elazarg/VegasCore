@@ -66,7 +66,7 @@ attribute [instance] SourceServiceSpec.initialFinite SourceServiceSpec.leaksFini
   SourceServiceSpec.networkFinite
 
 /-- The position of an actual activation of `who`: its event, its slot in that
-event's roster, and the service grant in force. -/
+event's roster, the service grant in force, and the event's readiness. -/
 structure DecisionPhase (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player) (who : Player)
@@ -77,6 +77,7 @@ structure DecisionPhase (setup : Setup (Player := Player) (L := L))
   position : execution.environmentRecall.length =
     (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1
   granted : execution.application.serviceGrant = some event
+  ready : execution.application.config.cut.Ready event
 
 namespace DecisionPhase
 
@@ -85,6 +86,10 @@ variable {setup : Setup (Player := Player) (L := L)}
   {rosters : (graph setup).EventId → List Player} {who : Player}
   {execution : (application setup leaks).Execution}
   (phase : DecisionPhase setup leaks rosters who execution)
+
+/-- The phase's event is the only ready event. -/
+theorem sole : execution.application.publicView.SoleReady phase.event :=
+  soleReady_of_ready setup execution.application phase.ready
 
 /-- The roster visits of the phase that follow the current one. -/
 def visits : List Player := (rosters phase.event).drop (phase.slot + 1)
@@ -172,8 +177,12 @@ theorem exists_decisionPhase (who : Player) (remaining : Nat)
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
-  exact ⟨⟨event, slot, selected, position,
-    (congrArg PublicView.serviceGrant publicEq).trans grant⟩⟩
+  have granted : execution.application.serviceGrant = some event :=
+    (congrArg PublicView.serviceGrant publicEq).trans grant
+  exact ⟨⟨event, slot, selected, position, granted,
+    sourceService_ready_of_grant service.setup service.leaks service.bounds service.values
+      service.capacity service.rosters service.opportunities.binding service.network who
+      ⟨remaining, some who, execution⟩ trace rfl event granted⟩⟩
 
 /-- The native information of the acting player at an actual decision is its
 recall and current view. -/

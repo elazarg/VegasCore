@@ -43,7 +43,6 @@ theorem sourceService_opening_covered
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks)
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (actor : (graph setup).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
@@ -68,6 +67,7 @@ theorem sourceService_opening_covered
         have boundEq : bound = .success value := Option.some.inj same
         simpa only [boundEq] using stored
   obtain ⟨candidate, associated, owned, fixed⟩ := valid.success_provenance binding value stored
+  have serving := ownTurn?_of_ready setup execution.application ready actor
   have canonical : (runtime setup).serviceDecision leaks owner (execution.recall owner)
       (execution.observe app owner) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) =
@@ -86,8 +86,8 @@ theorem sourceService_opening_covered
     rfl
   have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
       (execution.observe app owner) := by
-    rintro ⟨other, otherPayload, otherGrant, otherBinding, _⟩
-    have same : other = event := Option.some.inj (otherGrant.symm.trans granted)
+    rintro ⟨other, otherPayload, otherTurn, otherBinding, _⟩
+    have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
     subst other
     cases otherBinding.symm.trans outputEq
   change _ ∈ sourceServiceActions setup leaks bounds rosters owner (execution.recall owner)
@@ -96,11 +96,11 @@ theorem sourceService_opening_covered
   apply bounds.decision_compiled (runtime setup) leaks owner (execution.recall owner)
     (execution.observe app owner)
   · have publicReady := (execution.application.publicView_eventReady event).mpr ready
-    have grantedView : (execution.observe app owner).application.publicView.serviceGrant =
-        some event := granted
+    have turnView : (execution.observe app owner).application.publicView.ownTurn? owner =
+        some event := serving
     have readyView : (execution.observe app owner).application.publicView.EventReady event :=
       publicReady
-    simp only [MessageBounds.decisionActions, grantedView, actor, readyView, and_self,
+    simp only [MessageBounds.decisionActions, turnView, actor, readyView, and_self,
       ↓reduceIte, node]
     exact Finset.mem_image.mpr ⟨true, Finset.mem_univ _, rfl⟩
   · rw [canonical, (runtime setup).firstSubmission_normalization]
@@ -150,8 +150,7 @@ theorem sourceServiceOpportunity_commit_covered
     let index : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
     let event := embedding.event index
-    ∀ (_granted : execution.application.serviceGrant = some event)
-      (_ready : execution.application.config.cut.Ready event)
+    ∀ (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       response,
       response ∈ (sourceServiceOpportunity setup leaks wholeProfile owner event
@@ -160,7 +159,7 @@ theorem sourceServiceOpportunity_commit_covered
         (execution.recall owner) (execution.observe (application setup leaks) owner) ∧
       (runtime setup).submittedEvent? leaks response = some event := by
   classical
-  intro index event granted ready unsent response supported
+  intro index event ready unsent response supported
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .binding owner payload := by
     change outputLayout setup.program (embedding.event index) = _
@@ -180,7 +179,7 @@ theorem sourceServiceOpportunity_commit_covered
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨value, _sourceSupported, chosenEq⟩ := sourceServicePolicy_commit_supported
     setup leaks fresh guard next wholeProfile profile permitted refs source embedding refsBefore
-    offset aligned execution agree history granted serial selected candidate chosen chosenSupported
+    offset aligned execution agree history ready serial selected candidate chosen chosenSupported
   have transmitted : chosen.transmission ≠ none := by
     rw [chosenEq]
     exact Option.some_ne_none _
@@ -191,7 +190,8 @@ theorem sourceServiceOpportunity_commit_covered
   rw [outputEq] at bounded
   have member := bounds.binding_value_required (runtime setup) leaks owner
     (execution.recall owner) (execution.observe app owner) event payload outputEq codeEq node
-    granted owned ((execution.application.publicView_eventReady event).mpr ready)
+    ((soleReady_of_ready setup execution.application ready).ownTurn owned) owned
+    ((execution.application.publicView_eventReady event).mpr ready)
     unsent serial selected capacity value (bounded value)
   rw [serviceDecision_binding_fresh (runtime setup) leaks execution owner event payload
     outputEq codeEq node serial selected candidate (.success value)] at member
@@ -229,8 +229,7 @@ theorem sourceServiceOpportunity_reveal_covered
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
     let event := embedding.event index
-    ∀ (_granted : execution.application.serviceGrant = some event)
-      (_ready : execution.application.config.cut.Ready event)
+    ∀ (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       response,
       response ∈ (sourceServiceOpportunity setup leaks wholeProfile owner event
@@ -238,7 +237,7 @@ theorem sourceServiceOpportunity_reveal_covered
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions owner
         (execution.recall owner) (execution.observe (application setup leaks) owner) := by
   classical
-  intro index event granted ready unsent response supported
+  intro index event ready unsent response supported
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .publication payload := by
     change outputLayout setup.program (embedding.event index) = _
@@ -259,14 +258,15 @@ theorem sourceServiceOpportunity_reveal_covered
     EventGraphRuntime.nodeView_eq_resolve _ _
   have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
       (execution.observe app owner) := by
-    rintro ⟨other, otherPayload, otherGrant, otherBinding, _⟩
-    have same : other = event := Option.some.inj (otherGrant.symm.trans granted)
+    rintro ⟨other, otherPayload, otherTurn, otherBinding, _⟩
+    have same : other = event := Option.some.inj
+      (otherTurn.symm.trans (ownTurn?_of_ready setup execution.application ready owned))
     subst other
     cases otherBinding.symm.trans outputEq
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte] at supported
   rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
       refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
-        granted, PMF.bind_map] at supported
+        ready, PMF.bind_map] at supported
   obtain ⟨disclose, _chosen, supported⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   simp only [Function.comp_apply] at supported
@@ -314,6 +314,6 @@ theorem sourceServiceOpportunity_reveal_covered
         exact sourceService_opening_covered setup leaks bounds rosters execution valid recalled
           handles values owner event payload (refs.get binding)
           (compileChecks (published := published) refs source.registry source.revelations binding)
-          outputEq codeEq node granted owned ready unsent value resolved
+          outputEq codeEq node owned ready unsent value resolved
 
 end Vegas

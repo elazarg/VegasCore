@@ -42,7 +42,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
     (valid : initial.application.BindingInvariant)
     (ready : initial.application.config.cut.Ready event)
     (timely : initial.application.WithinDeadline runtime event)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (published : initial.network.Satisfies fun message =>
       message.id ∈ initial.network.ledger.map Message.id)
     (serials : initial.network.SerialsBeforeNext)
@@ -100,7 +100,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
           exact accounted
         obtain ⟨result, counters⟩ := ih (activated.respond app who response)
           (by rw [preserved.1]; exact valid) (by rw [preserved.1]; exact ready)
-          (by rw [preserved.1]; exact timely) (by rw [preserved.1]; exact granted)
+          (by rw [preserved.1]; exact timely) (by rw [preserved.1]; exact sole)
           (by rw [preserved.2.1]; exact preserved.2.2.2.2.1)
           ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
             activated who response activeSerials) nextAccounted tail
@@ -110,7 +110,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
         dsimp only [app] at result same
         simpa only [same] using result
       rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding
-        checks outputEq codeEq node granted response allowed with silent | replay |
+        checks outputEq codeEq node sole response allowed with silent | replay |
           ⟨candidate, value, evidence, acting, _, resolved, associated, candidateOwned, _, shape⟩
       · exact transportCase (Or.inl silent)
       · exact transportCase (app.replayPolicy_cases _ _ response replay)
@@ -150,7 +150,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
           runtime.eventRecorded_respond leaks activated owner _ event rfl
         have transport := fun current actor action same recalled supported =>
           runtime.compiled_resolution_tail_transport leaks bounds players lawful submitted owner
-            event payload binding checks outputEq codeEq node granted recorded current same
+            event payload binding checks outputEq codeEq node sole recorded current same
               recalled actor action supported
         have packets : submitted.network.Satisfies fun other =>
             other.id ∈ submitted.network.ledger.map Message.id ∨ other = message := by

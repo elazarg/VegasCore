@@ -204,11 +204,11 @@ theorem run_source_prefix_focal_recall
               obtain ⟨leftAfter, leftAfterLaw, leftAfterCheckpoint, leftAfterRecall⟩ :=
                 leftActive.reveal_response bounds leftPlayers watcher leftWatcher published
                   selected event eventRank actor outputEq codeEq node
-                  (fun ref => refsBefore ref index) decoded leftGrant leftResponse leftMember
+                  (fun ref => refsBefore ref index) decoded leftResponse leftMember
               obtain ⟨rightAfter, rightAfterLaw, rightAfterCheckpoint, rightAfterRecall⟩ :=
                 rightActive.reveal_response bounds rightPlayers watcher rightWatcher published
                   selected event eventRank actor outputEq codeEq node
-                  (fun ref => refsBefore ref index) decoded rightGrant rightResponse rightMember
+                  (fun ref => refsBefore ref index) decoded rightResponse rightMember
               rw [Function.comp_apply, runInteractionPlan_append, leftAfterLaw, PMF.pure_bind]
                 at leftContinued
               rw [Function.comp_apply, runInteractionPlan_append, rightAfterLaw, PMF.pure_bind]

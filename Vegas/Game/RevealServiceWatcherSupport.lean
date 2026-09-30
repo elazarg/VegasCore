@@ -30,13 +30,13 @@ omit [Fintype Player] in
 private theorem opening_shape (owner : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (serving : view.application.publicView.ownTurn? owner = some event)
     (response : (application setup leaks).Action)
     (selected : opening? setup leaks owner past view = some response) :
     ∃ candidate raw evidence,
       response = ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩ := by
   unfold opening? at selected
-  rw [granted] at selected
+  rw [serving] at selected
   simp only [bind, Option.bind_some] at selected
   split at selected
   · cases selected
@@ -64,7 +64,7 @@ private theorem opening_shape (owner : Player)
 private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setup))
     (players : Player → (application setup leaks).Policy) (watcher owner : Player)
     (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event)
+    (serving : execution.application.publicView.ownTurn? owner = some event)
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (leaked : execution.network.leaked = fun _ => [])
@@ -96,7 +96,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     subst next
     exact ⟨pending, leaked, inputs⟩
   · obtain ⟨candidate, raw, evidence, rfl⟩ := opening_shape setup leaks owner _ _ event
-      granted response opening
+      serving response opening
     let submitted := execution.respond app owner
       ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
     let id := (owner, execution.network.nextSerial owner)
@@ -180,7 +180,7 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
     (remaining cursor : Nat) (position : execution.environmentRecall.length = cursor)
     (includeAt : (plan setup watcher)[cursor]? = some (.includeLatest event owner))
     (watcherAt : (plan setup watcher)[cursor + 1]? = some (.player watcher))
-    (granted : execution.application.serviceGrant = some event)
+    (serving : execution.application.publicView.ownTurn? owner = some event)
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (leaked : execution.network.leaked = fun _ => [])
@@ -227,7 +227,7 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
   obtain ⟨next, included, rfl⟩ := middleReached
   obtain ⟨published, quiet, inputPublished⟩ :=
     ordinary_inclusion_published setup leaks bounds players
-    watcher owner event execution granted pending leaked inputs serials response
+    watcher owner event execution serving pending leaked inputs serials response
       (ordinary response supported) next included
   have nextPosition : next.environmentRecall.length = cursor + 1 := by
     have count := (runtime setup).interactionStep_recall leaks players
@@ -332,7 +332,11 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
   obtain ⟨next, stateEq, quiet, pendingPublished, inputPublished⟩ :=
     owner_to_watcher_clean setup leaks bounds players
     watcher owner event execution (horizon setup watcher - blockOffset event.val - 4)
-    (blockOffset event.val + 2) position includeAt watcherAt rfl pending leaked inputs serials
+    (blockOffset event.val + 2) position includeAt watcherAt
+    (ownTurn?_of_ready setup execution.application
+      ((PrefixCheckpoint.toPublic _ _ _ _ _ _ _ _ related).ready event (Nat.zero_add _).symm)
+      owned)
+    pending leaked inputs serials
     (menu_decode_ordinary setup leaks bounds watcher profile owner different _ _)
     history.state stateSupport
   exact ⟨_, stateEq, rfl, quiet, pendingPublished, inputPublished⟩

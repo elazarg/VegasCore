@@ -51,7 +51,6 @@ theorem ServiceBoundary.binding_inclusion
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (owned : (graph setup).actor? event = some owner)
-    (granted : execution.application.serviceGrant = some event)
     (beforeRefs : ∀ {readName cell} (ref : HasVar Γ readName cell),
       FieldBefore event (refs.get ref).field)
     (decoded : ∀ value : L.Val payload, decodeEventAction setup.program event
@@ -85,7 +84,7 @@ theorem ServiceBoundary.binding_inclusion
     beforeCounters, beforeSerials, included, finalApp, finalLedger, finalReceipts,
     finalCounters, finalPublished⟩ := sourceService_binding_roster_support setup leaks bounds
       rosters covered players lawful network owner event payload outputEq codeEq node owned
-        serial capacity (rosters event) execution final granted ready selected candidate
+        serial capacity (rosters event) execution final ready selected candidate
           boundary.published boundary.serials unsent opportunity ends reached
   have beforeReady : before.application.config.cut.Ready event := by rw [beforeApp]; exact ready
   have beforeTimely : before.application.WithinDeadline (runtime setup) event := by
@@ -153,7 +152,7 @@ theorem ServiceBoundary.binding_inclusion
       (.success value) (decoded value)
 
 /-- Every intermediate binding opportunity has the actual readiness, deadline,
-grant and communication invariants used by the service checker. Until the
+sole-readiness and communication invariants used by the service checker. Until the
 owner submits, the complete allocator and public serial accounting remain
 those of the preceding completed boundary. -/
 theorem ServiceBoundary.binding_prefix_resources
@@ -176,13 +175,12 @@ theorem ServiceBoundary.binding_prefix_resources
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (owned : (graph setup).actor? event = some owner)
-    (granted : execution.application.serviceGrant = some event)
     (visits : List Player) (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) execution).support) :
     current.application.config.cut.Ready event ∧
       current.application.WithinDeadline (runtime setup) event ∧
-      current.application.serviceGrant = some event ∧
+      current.application.publicView.SoleReady event ∧
       current.application.BindingInvariant ∧ current.InputRecall (application setup leaks) ∧
       current.SerialRecall (application setup leaks) ∧ current.network.SerialsBeforeNext ∧
       ((runtime setup).eventRecorded leaks (current.recall owner) event = false →
@@ -201,8 +199,8 @@ theorem ServiceBoundary.binding_prefix_resources
   have timely := boundary.timely event atRank (by rw [owned]; rfl)
   have clock := congrArg PublicView.clock publicEq
   have activation := congrArg PublicView.activatedAt publicEq
-  have grant := congrArg PublicView.serviceGrant publicEq
-  refine ⟨by rw [config]; exact ready, ?_, grant.trans granted,
+  have currentReady : current.application.config.cut.Ready event := by rw [config]; exact ready
+  refine ⟨currentReady, ?_, soleReady_of_ready setup current.application currentReady,
     binding, recalled, serialRecall, serials, ?_⟩
   · unfold EventGraphRuntime.State.WithinDeadline at timely ⊢
     change current.application.clock = execution.application.clock at clock
@@ -219,7 +217,8 @@ theorem ServiceBoundary.binding_prefix_resources
       (runtime setup).compiled_binding_unsubmitted_prefix leaks bounds players ordinary network
         owner event payload outputEq codeEq node owned
         (execution.application.publicView.bindingCount owner) visits execution current
-        granted ready selected candidate boundary.published reached unsent
+        (soleReady_of_ready setup execution.application ready) ready selected candidate
+        boundary.published reached unsent
     refine ⟨application, ?_, ?_, published⟩
     · change reactiveFreshSlot
         (((runtime setup).reactiveApplication leaks).observePlayer current.application owner) = _
@@ -253,7 +252,6 @@ theorem ServiceBoundary.binding_prefix_conformance
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (owned : (graph setup).actor? event = some owner)
-    (granted : execution.application.serviceGrant = some event)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true)
@@ -288,9 +286,9 @@ theorem ServiceBoundary.binding_prefix_conformance
         rw [ReactiveApplication.Execution.activation_samples]
         exact PMF.support_map .. ▸ ⟨sample, selected, rfl⟩
       have sampled := (runtime setup).service_sampled_conformance leaks before actor sample prior.1
-      obtain ⟨ready, timely, grant, binding, _, _, _, unsent⟩ :=
+      obtain ⟨ready, timely, sole, binding, _, _, _, unsent⟩ :=
         boundary.binding_prefix_resources bounds players lawful network event atRank
-          owner payload outputEq codeEq node owned granted visits before reachedBefore
+          owner payload outputEq codeEq node owned visits before reachedBefore
       have member := sourceServiceMenu_in_compiled setup leaks bounds rosters actor
         (activated.recall actor) (activated.observe app actor) (lawful actor _ _ response chosen)
       have issued : ∀ record ∈ app.trafficStep (some ⟨0, some actor, activated⟩)
@@ -300,12 +298,12 @@ theorem ServiceBoundary.binding_prefix_conformance
         by_cases acting : actor = owner
         · subst actor
           exact bounds.compiled_binding_traffic (runtime setup) leaks activated binding 0
-            owner event payload outputEq codeEq node grant ready timely
+            owner event payload outputEq codeEq node (sole.ownTurn owned) ready timely
             (fun absent => (unsent absent).2.1)
             (fun absent => (unsent absent).2.2.1 owner)
             (sampled.known owner) response member
-        · exact bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor event grant
-            (by rw [owned]; exact fun equal => acting (Option.some.inj equal).symm)
+        · exact bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor
+            (sole.idle (by rw [owned]; exact fun equal => acting (Option.some.inj equal).symm))
             (sampled.known actor) response member
       refine ⟨(runtime setup).service_response_conformance leaks activated 0 actor response
         sampled issued, ?_⟩
@@ -368,7 +366,7 @@ theorem ServiceBoundary.binding_block
   obtain ⟨included, inclusion, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   obtain ⟨represented, acceptedRecorded, prepared, accounted, published,
     value, admitted, checkpoint⟩ := grantBoundary.binding_inclusion bounds covered players lawful
-      network event atRank name owner payload guard outputEq codeEq node owned grant
+      network event atRank name owner payload guard outputEq codeEq node owned
         beforeRefs decoded opportunity grantedCapacity included inclusion
   have settled : ¬included.application.config.cut.Ready event := by
     intro ready
@@ -432,7 +430,9 @@ theorem ServiceBoundary.binding_block
       fun who past view response member => sourceServiceMenu_in_compiled setup leaks bounds
         rosters who past view (lawful who past view response member)
     rw [(runtime setup).compiled_window_other_events leaks bounds players ordinary network event
-      (rosters event) granted visited grant window observer other otherEvent, grantRecall]
+      (rosters event) granted visited
+      (soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)) window
+      observer other otherEvent, grantRecall]
     exact boundary.unsent observer other (by omega)
 
 end Vegas

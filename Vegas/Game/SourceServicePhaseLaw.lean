@@ -74,11 +74,11 @@ theorem ServiceBoundary.sample_state_law [Fintype Player]
   have chance : (graph setup).actor? event = none := by
     change (toEventGraph setup.program).actor? event = none
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
-  obtain ⟨granted, grantBoundary, grant, _grantApp, _grantRecall, grantLaw⟩ :=
+  obtain ⟨granted, grantBoundary, _grant, _grantApp, _grantRecall, grantLaw⟩ :=
     boundary.grant players network event
   have ready := grantBoundary.ready event atRank
   have phase := sourceServiceLastPolicy_sample_roster setup leaks rosters wholeProfile source refs
-    granted grantBoundary.agrees event ready outputEq distribution codeEq node grant
+    granted grantBoundary.agrees event ready outputEq distribution codeEq node
       grantBoundary.published network (event.val + 1)
   let readout (result : (graph setup).Config × List (MessageId Player × Bool)) :=
     decodeSourcePrefix? (.sample name fresh distribution next) refs source.registry
@@ -175,7 +175,7 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
   obtain ⟨visited, remaining, position, absent⟩ :=
     last_owner_split owner (rosters event) opportunity
-  obtain ⟨granted, grantBoundary, grant, _grantApp, _grantRecall, grantLaw⟩ :=
+  obtain ⟨granted, grantBoundary, _grant, _grantApp, _grantRecall, grantLaw⟩ :=
     boundary.grant players network event
   have ready := grantBoundary.ready event atRank
   obtain ⟨selected, candidate, unused, vacant⟩ :=
@@ -185,7 +185,7 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
       grantBoundary.agrees grantBoundary.history
       (granted.application.publicView.bindingCount owner) selected candidate unused
       grantBoundary.serials grantBoundary.published network visited remaining absent position
-      grant ready (grantBoundary.timely event atRank (by simp only [owned, Option.isSome_some]))
+      ready (grantBoundary.timely event atRank (by simp only [owned, Option.isSome_some]))
       vacant (grantBoundary.unsent owner event atRank.ge)
       (grantBoundary.response_offset event atRank owner)
   let inclusion := (runtime setup).runInteractionPlan leaks players network
@@ -295,7 +295,7 @@ theorem ServiceBoundary.reveal_state_law [Fintype Player]
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
   obtain ⟨visited, remaining, position, absent⟩ :=
     last_owner_split owner (rosters event) opportunity
-  obtain ⟨granted, grantBoundary, grant, _grantApp, _grantRecall, grantLaw⟩ :=
+  obtain ⟨granted, grantBoundary, _grant, _grantApp, _grantRecall, grantLaw⟩ :=
     boundary.grant players network event
   have ready := grantBoundary.ready event atRank
   have strategic : ((graph setup).actor? event).isSome = true := by
@@ -306,7 +306,7 @@ theorem ServiceBoundary.reveal_state_law [Fintype Player]
   have phase := sourceServiceLastPolicy_reveal_roster_readout setup leaks rosters fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore offset aligned granted
     grantBoundary.toSourceCheckpoint grantBoundary.binding entered (event.val + 1)
-    grantBoundary.published grantBoundary.serials network visited remaining absent position grant
+    grantBoundary.published grantBoundary.serials network visited remaining absent position
     ready (grantBoundary.timely event atRank strategic) activated due
     (grantBoundary.unsent owner event atRank.ge)
     (grantBoundary.response_offset event atRank owner)

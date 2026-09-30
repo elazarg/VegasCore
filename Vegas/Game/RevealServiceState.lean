@@ -135,7 +135,7 @@ theorem opening_at_checkpoint (setup : Setup (Player := Player) (L := L))
       ((graph setup).nodes event) = .resolve owner payload (refs.get selected) [])
     (node : nodeView (graph setup) event =
       .resolve owner payload (refs.get selected) [] outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (serving : execution.application.publicView.ownTurn? owner = some event)
     (value : L.Val payload) (bound : source.get selected = .success value) :
     ∃ candidate, execution.application.accepted (refs.get selected).field = some candidate ∧
       candidate.1 = owner ∧
@@ -153,7 +153,7 @@ theorem opening_at_checkpoint (setup : Setup (Player := Player) (L := L))
     valid.success_provenance (refs.get selected) value stored
   refine ⟨candidate, associated, owned, verified, ?_⟩
   let view := execution.observe (application setup leaks) owner
-  have seesGrant : view.application.publicView.serviceGrant = some event := granted
+  have seesTurn : view.application.publicView.ownTurn? owner = some event := serving
   have seesAccepted : view.application.publicView.accepted (refs.get selected).field =
       some candidate := associated
   have resolved : EventGraph.EventCode.resolveOutput? (refs.get selected) [] true
@@ -165,7 +165,7 @@ theorem opening_at_checkpoint (setup : Setup (Player := Player) (L := L))
       EventGraph.GuardCheck.allAccepted?, ↓reduceIte]
     rfl
   change opening? setup leaks owner (execution.recall owner) view = _
-  simp only [opening?, seesGrant, bind, Option.bind_some, ownedEvent, ne_eq, not_true_eq_false,
+  simp only [opening?, seesTurn, bind, Option.bind_some, ownedEvent, ne_eq, not_true_eq_false,
     ↓reduceIte, node, resolved, seesAccepted, owned]
   rfl
 

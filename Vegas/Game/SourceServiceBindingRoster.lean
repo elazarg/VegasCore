@@ -66,8 +66,7 @@ theorem sourceServicePolicy_commit_delayed_service
     let outputEq : (graph setup).outputLayout event = .binding owner payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    ∀ (_granted : execution.application.serviceGrant = some event)
-      (ready : execution.application.config.cut.Ready event)
+    ∀ (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
       (_vacant : execution.application.accepted (.inr event) = none),
     ((sourceServicePolicy setup leaks wholeProfile owner (execution.recall owner)
@@ -82,7 +81,7 @@ theorem sourceServicePolicy_commit_delayed_service
           (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
           execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
   dsimp only
-  intro granted ready timely vacant
+  intro ready timely vacant
   let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
     ⟨0, by simp [eventCount]⟩
   let event := embedding.event headIndex
@@ -101,13 +100,13 @@ theorem sourceServicePolicy_commit_delayed_service
     simpa [event, headIndex, eventOwner?, eventCount] using aligned.actorEq headIndex
   have immediate := sourceServicePolicy_commit_service setup leaks fresh guard next wholeProfile
     profile refs source embedding refsBefore offset aligned execution agree history serial selected
-      candidate unused serials players network granted ready timely vacant
+      candidate unused serials players network ready timely vacant
   apply Eq.trans ?_ immediate
   rw [PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro response supported
   rw [sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile refs source
-    embedding refsBefore offset aligned execution agree history granted,
+    embedding refsBefore offset aligned execution agree history ready,
     PMF.support_map] at supported
   obtain ⟨choice, _, responseEq⟩ := supported
   have physical := serviceDecision_binding_fresh (runtime setup) leaks execution owner event
@@ -116,8 +115,9 @@ theorem sourceServicePolicy_commit_delayed_service
       choice serial := responseEq.symm.trans physical
   rw [responseSame]
   have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion leaks
-    bounds players lawful network execution owner event payload outputEq codeEq node granted owned
-      ready published serials serial opening roster
+    bounds players lawful network execution owner event payload outputEq codeEq node
+      (soleReady_of_ready setup execution.application ready) owned ready
+      published serials serial opening roster
   have projected (opening : Option (Raw L)) := congrArg
     (PMF.map (fun value : EventGraphRuntime.State (graph setup) ×
         List (Message Player (WitnessedPacket (graph setup))) ×

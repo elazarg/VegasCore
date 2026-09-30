@@ -106,7 +106,7 @@ theorem roster_decision_phase
         (fun owner => RevealOnly.uniformPolicy owner setup.program reveals)))^[event.val]
           (PMF.pure (ProtocolState.entry setup.program
             (setup.initialConfig initial)))).support ∧
-      granted.application.serviceGrant = some event ∧
+      granted.application.config.cut.Ready event ∧
       (∀ player, (granted.recall player).length = rosterOffset setup rosters player event) ∧
       granted.network.SerialsBeforeNext ∧
       granted.network.Satisfies (fun message =>
@@ -140,7 +140,8 @@ theorem roster_decision_phase
     (ReactiveApplication.Execution.initial app nativeInitial) boundary
     MessageNetwork.SerialsBeforeNext.empty reached
   refine ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-    related, sourceSupport, grant, ?_, ?_, ?_, phase, same.symm, ?_, position⟩
+    related, sourceSupport, related.ready event (Nat.zero_add _).symm, ?_, ?_, ?_, phase,
+    same.symm, ?_, position⟩
   · intro player
     have counts := roster_prefix_response_counts setup leaks rosters network menu.uniformResponses
       event (ReactiveApplication.Execution.initial app nativeInitial) boundary reached player

@@ -431,8 +431,9 @@ Legitimate opening packets may carry a matching certificate. The checker
 rejects certificates on commitments, withholding and malformed calls, and
 mismatched certificates on openings. `reactive_decision_submission_permitted`
 checks every compiled graph action, including legal source deviations, against
-arbitrary emission states and known packets. `no_grant_no_transmission` checks
-that the prescribed compiler sends nothing without a service grant.
+arbitrary emission states and known packets. `no_turn_no_transmission` checks
+that the prescribed compiler sends nothing unless one of the sender's events is
+ready.
 
 [PassiveDisclosureMonitoring.lean](../Vegas/Examples/PassiveDisclosureMonitoring.lean)
 uses that checker on the actual native witness. Bob's ordinary observation

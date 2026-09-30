@@ -76,8 +76,8 @@ theorem sourceChoiceLaw_reveal {Γ : SourceCtx Player L} {openNames : Finset Var
     (history : decodeHistory setup.program
       (execution.application.config.history.map
         (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
-    (granted : execution.application.serviceGrant =
-      some (embedding.event ⟨0, by simp [eventCount]⟩)) :
+    (ready : execution.application.config.cut.Ready
+      (embedding.event ⟨0, by simp [eventCount]⟩)) :
     sourceChoiceLaw setup leaks wholeProfile owner
         (execution.observe (application setup leaks) owner) =
       revealKernel profile (source.view owner) := by
@@ -96,7 +96,8 @@ theorem sourceChoiceLaw_reveal {Γ : SourceCtx Player L} {openNames : Finset Var
   have node : nodeView (graph setup) event =
       .resolve owner payload (refs.get selected) [] outputEq codeEq :=
     EventGraphRuntime.nodeView_eq_resolve _ _
-  rw [sourceChoiceLaw_at_reveal setup leaks wholeProfile owner execution event granted actor
+  rw [sourceChoiceLaw_at_reveal setup leaks wholeProfile owner execution event
+    (ownTurn?_of_ready setup execution.application ready actor) actor
     owner payload (refs.get selected) [] outputEq codeEq node]
   let observation := setup.eventGraph.fromModeObservation .sequential owner
     ((graph setup).playerObserve owner execution.application.config)

@@ -35,7 +35,7 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
     (owned : graph.actor? event = some owner)
     (serial : Nat) (visits : List Player)
     (initial final : (runtime.reactiveApplication leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ready : initial.application.config.cut.Ready event)
     (selected : reactiveFreshSlot
       (initial.observe (runtime.reactiveApplication leaks) owner).application = some serial)
@@ -81,7 +81,7 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
           obtain ⟨application, ledger, receipts, counters, packets⟩ :=
             runtime.compiled_binding_unsubmitted_prefix leaks bounds players lawful network
               owner event payload outputEq codeEq node owned serial visits initial middle
-                granted ready selected fresh published leading priorRecorded
+                sole ready selected fresh published leading priorRecorded
           have currentSerials := runtime.runInteractionPlan_serials leaks players network
             (visits.map ServiceInstruction.player) initial middle serials leading
           simp only [List.map_cons, List.map_nil, runInteractionPlan, PMF.bind_pure,
@@ -92,10 +92,10 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
           obtain ⟨sample, _, last⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ last)
           obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ last
           let activated := middle.sampledActivation app actor sample
-          have currentGrant : activated.application.serviceGrant = some event := by
-            change middle.application.serviceGrant = some event
+          have currentSole : activated.application.publicView.SoleReady event := by
+            change middle.application.publicView.SoleReady event
             rw [application]
-            exact granted
+            exact sole
           have shape : response ∈ (app.replayPolicy (activated.recall actor)
               (activated.observe app actor)).support ∨
               actor = owner ∧ ∃ value ∈ bounds.typedValues payload,
@@ -113,7 +113,8 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
                 rw [application]
                 exact (initial.application.publicView_eventReady event).mpr ready
               rcases bounds.ordinary_binding_cases runtime leaks owner _ _ event payload outputEq
-                  codeEq node currentGrant owned currentReady serial currentSelected response
+                  codeEq node (currentSole.ownTurn owned) owned currentReady serial currentSelected
+                  response
                     (lawful owner _ _ response chosen) with replay | ⟨value, admitted, _, physical⟩
               · exact Or.inl replay
               · refine Or.inr ⟨rfl, value, admitted, physical.trans ?_⟩
@@ -124,8 +125,9 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
                   exact fresh
                 exact runtime.reactiveBinding_normal_of_fresh leaks owner _ _ event payload
                   (.success value) serial currentFresh
-            · exact Or.inl (bounds.compiled_foreign_transport runtime leaks actor _ _ event
-                currentGrant (fun equal => own (Option.some.inj (owned.symm.trans equal)).symm)
+            · exact Or.inl (bounds.compiled_foreign_transport runtime leaks actor _ _
+                (currentSole.ownTurn?_foreign
+                  (fun equal => own (Option.some.inj (owned.symm.trans equal)).symm))
                   response (lawful actor _ _ response chosen))
           rcases shape with replay | ⟨own, value, admitted, physical⟩
           · have unchanged := runtime.eventRecorded_respond_other leaks activated actor owner

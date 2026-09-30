@@ -33,7 +33,7 @@ theorem sourceService_sample_response_application_law
     (network : (runtime setup).NetworkPolicy leaks)
     (event : (graph setup).EventId) (chance : (graph setup).actor? event = none)
     (who : Player) (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (response : (application setup leaks).Action)
     (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
     (visits : List Player) (ticks : Nat) :
@@ -50,7 +50,7 @@ theorem sourceService_sample_response_application_law
   let after := execution.respond app who response
   have same := ((runtime setup).replay_response_preserves leaks (fun _ => True) execution
     ⟨by simp, by simp, by simp, by simp⟩ who response transport).1
-  have grant : after.application.serviceGrant = some event := by rw [same]; exact granted
+  have afterSole : after.application.publicView.SoleReady event := by rw [same]; exact sole
   have passive : ∀ instruction ∈ ending, instruction ≠ .wire ∧
       (∀ actor, instruction ≠ .player actor) ∧
       ∀ selected actor, instruction ≠ .includeLatest selected actor := by
@@ -59,7 +59,7 @@ theorem sourceService_sample_response_application_law
       List.not_mem_nil, or_false] at member
     rcases member with (rfl | ⟨_, rfl⟩) | rfl <;> simp
   rw [runInteractionPlan_append, sourceServiceTimedPolicy_sample_window setup leaks rosters
-    timing profile event chance network visits after grant, PMF.map_bind]
+    timing profile event chance network visits after afterSole, PMF.map_bind]
   calc
     _ = ((runtime setup).runInteractionPlan leaks (fun _ => app.replayPolicy) network
         (visits.map ServiceInstruction.player) after).bind (fun _ =>

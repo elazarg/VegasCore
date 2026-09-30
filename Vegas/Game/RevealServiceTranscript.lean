@@ -44,7 +44,6 @@ theorem ordinary_response_transcript (setup : Setup (Player := Player) (L := L))
       ((graph setup).nodes event) = .resolve owner payload (refs.get selected) [])
     (node : nodeView (graph setup) event =
       .resolve owner payload (refs.get selected) [] outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (value : L.Val payload) (bound : source.get selected = .success value)
     (ready : execution.application.config.cut.Ready event)
     (response : (application setup leaks).Action)
@@ -95,7 +94,8 @@ theorem ordinary_response_transcript (setup : Setup (Player := Player) (L := L))
       simp only [chosen, ↓reduceIte] at completed network recorded
       obtain ⟨candidate, associated, owned, verified, opening⟩ :=
         opening_at_checkpoint setup leaks selected source refs execution agree valid event
-          ownedEvent outputEq codeEq node granted value bound
+          ownedEvent outputEq codeEq node
+          (ownTurn?_of_ready setup execution.application ready ownedEvent) value bound
       have responseEq := (ordinary_true_iff setup leaks bounds owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) _ opening response member).mp chosen
       have published : publicationPacket? accepted next.application.config.store event =

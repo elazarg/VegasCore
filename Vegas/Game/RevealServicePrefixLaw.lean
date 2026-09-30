@@ -133,15 +133,21 @@ theorem run_source_prefix_option_law
           have node : nodeView (graph setup) event =
               .resolve owner payload (refs.get selected) [] outputEq codeEq :=
             EventGraphRuntime.nodeView_eq_resolve _ _
-          obtain ⟨opportunity, activeCheckpoint, granted, _clock, _activation,
+          obtain ⟨opportunity, activeCheckpoint, _granted, _clock, _activation,
               opportunityLaw, _opportunityRecall⟩ :=
             checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
               event owner
+          have ready : opportunity.application.config.cut.Ready event := by
+            have active : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt
+            have chosenEvent : (⟨offset, active⟩ : (graph setup).EventId) = event :=
+              Fin.ext eventRank.symm
+            rw [← chosenEvent]
+            exact activeCheckpoint.ordered.ready active
           obtain ⟨value, bound⟩ := activeCheckpoint.openable selected
           obtain ⟨candidate, associated, owned, fixed, selectedOpening⟩ :=
             opening_at_checkpoint setup leaks selected source.state refs opportunity
               activeCheckpoint.agrees activeCheckpoint.binding event actor outputEq codeEq node
-              granted value bound
+              (ownTurn?_of_ready setup opportunity.application ready actor) value bound
           have covered := opening_available_of_initial_tables setup leaks bounds initial
             initialSupport opportunity activeCheckpoint.accepted activeCheckpoint.candidates _
             candidate associated owner owned ⟨payload, value⟩ fixed event
@@ -149,7 +155,7 @@ theorem run_source_prefix_option_law
             (opportunity.observe (application setup leaks) owner) _ selectedOpening covered
           rw [sourceChoiceLaw_reveal setup leaks fresh selected unresolved next wholeProfile profile
             refs source embedding refsBefore offset aligned opportunity activeCheckpoint.agrees
-            activeCheckpoint.history granted] at choiceLaw
+            activeCheckpoint.history ready] at choiceLaw
           let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
           let resultRef : EventGraph.FieldRef (graphLayout setup.program) (.publication payload) :=
             ⟨.inr event, outputEq⟩
@@ -195,7 +201,7 @@ theorem run_source_prefix_option_law
           obtain ⟨after, afterLaw, afterCheckpoint, _recall⟩ :=
             activeCheckpoint.reveal_response (bounds.withInitialValues (initialLaw setup)) players
               watcher watcherPolicy published selected event eventRank actor outputEq codeEq node
-              (fun ref => refsBefore ref index) decoded granted response member
+              (fun ref => refsBefore ref index) decoded response member
           simp only [Function.comp_apply]
           rw [runInteractionPlan_append, afterLaw, PMF.pure_bind]
           have nextAligned : CompiledPolicySuffix setup.program wholeProfile next

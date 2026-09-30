@@ -150,8 +150,12 @@ theorem binding_hidden :
   runtime.reactiveBinding_observation leaks false 0 .bool (.success false) (.success true)
     0 initial
 
-private def granted : app.Execution :=
-  { initial with application := { initial.application with serviceGrant := some 0 } }
+/-- The only event is its actor's turn until it completes. -/
+private theorem turn_while_unfinished (view : PublicView graph)
+    (unfinished : view.observation.completionOrder = []) : view.ownTurn? false = some 0 :=
+  view.ownTurn?_of_ownTurn false 0
+    ⟨⟨by simp [unfinished], fun _ member => absurd member (Finset.notMem_empty _)⟩, rfl,
+      fun other _ _ => Subsingleton.elim other 0⟩
 
 private def chooseBit (law : PMF Bool) : graph.BehavioralPolicy false :=
   fun _ _ _ => law.map PublicationResult.success
@@ -159,13 +163,15 @@ private def chooseBit (law : PMF Bool) : graph.BehavioralPolicy false :=
 /-- The actual graph-policy compiler consumes the source random law at the
 first activation and returns a complete submission action. -/
 theorem compiler_samples_on_activation (law : PMF Bool) :
-    runtime.compileReactivePolicy leaks false (chooseBit law) [] (granted.observe app false) =
+    runtime.compileReactivePolicy leaks false (chooseBit law) [] (initial.observe app false) =
       law.map (fun bit => runtime.reactiveDecision leaks false 0 (.success bit)
-        (granted.observe app false).application) := by
+        (initial.observe app false).application) := by
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil]
   have actor : graph.actor? 0 = some false := rfl
+  have turn := turn_while_unfinished (initial.observe app false).application.publicView rfl
   rw [prescribedReactivePolicy_apply]
-  simp [prescribedReactiveResponse, reactiveAlreadySubmitted, granted, initial,
+  simp only [prescribedReactiveResponse, turn]
+  simp [reactiveAlreadySubmitted, initial,
     ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
     EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit,
@@ -175,14 +181,14 @@ theorem compiler_samples_on_activation (law : PMF Bool) :
 every source distribution on Boolean values. -/
 theorem compiled_first_response_available (law : PMF Bool) (action : app.Action)
     (supported : action ∈ (runtime.compileReactivePolicy leaks false (chooseBit law)
-      [] (granted.observe app false)).support) :
-    action ∈ bindingMenu.actions false [] (granted.observe app false) := by
+      [] (initial.observe app false)).support) :
+    action ∈ bindingMenu.actions false [] (initial.observe app false) := by
   rw [compiler_samples_on_activation, PMF.support_map] at supported
   obtain ⟨bit, _, rfl⟩ := supported
   exact binding_menu_compiled_decision false [] _ (.success bit)
 
 private theorem first_slot :
-    reactiveFreshSlot (granted.observe app false).application = some 0 := by
+    reactiveFreshSlot (initial.observe app false).application = some 0 := by
   unfold reactiveFreshSlot
   split
   · congr 1
@@ -191,15 +197,15 @@ private theorem first_slot :
     exact False.elim (impossible ⟨0, rfl⟩)
 
 private def firstAction (bit : Bool) : app.Action :=
-  runtime.reactiveDecision leaks false 0 (.success bit) (granted.observe app false).application
+  runtime.reactiveDecision leaks false 0 (.success bit) (initial.observe app false).application
 
 private def firstResponse (bit : Bool) : app.Execution :=
-  granted.respond app false (firstAction bit)
+  initial.respond app false (firstAction bit)
 
 private theorem first_action (bit : Bool) : firstAction bit =
     ⟨some (.submit ⟨⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩, .none⟩)⟩ := by
   change ReactiveApplication.Action.mk (app := app)
-    ((reactiveFreshSlot (granted.observe app false).application).map _) = _
+    ((reactiveFreshSlot (initial.observe app false).application).map _) = _
   rw [first_slot]
   rfl
 
@@ -218,7 +224,7 @@ private theorem first_consistent (bit : Bool) (law : PMF Bool)
     (runtime.prescribedReactivePolicy leaks false (chooseBit law)).Consistent
       ((firstResponse bit).recall false) := by
   have chosen : firstAction bit ∈ (runtime.compileReactivePolicy leaks false (chooseBit law)
-      [] (granted.observe app false)).support := by
+      [] (initial.observe app false)).support := by
     rw [compiler_samples_on_activation, PMF.support_map]
     exact ⟨bit, supported, rfl⟩
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at chosen
@@ -238,15 +244,16 @@ theorem compiler_does_not_resample (bit : Bool) (law : PMF Bool)
     unfold firstResponse
     rw [first_action]
     rfl
-  have grant : ((firstResponse bit).observe app false).application.publicView.serviceGrant =
+  have turn : ((firstResponse bit).observe app false).application.publicView.ownTurn? false =
       some 0 := by
+    apply turn_while_unfinished
     unfold firstResponse
     rw [first_action]
     rfl
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _
     (first_consistent bit law supported)]
   rw [prescribedReactivePolicy_apply]
-  simp only [prescribedReactiveResponse, grant, sent, ↓reduceIte, PMF.pure_map,
+  simp only [prescribedReactiveResponse, turn, sent, ↓reduceIte, PMF.pure_map,
     PMF.bind_const]
 
 private theorem wrong_response_inconsistent :
@@ -254,7 +261,7 @@ private theorem wrong_response_inconsistent :
       ((firstResponse false).recall false) := by
   intro consistent
   have recalled : (firstResponse false).recall false = [] ++
-      [⟨granted.observe app false, firstAction false,
+      [⟨initial.observe app false, firstAction false,
         some ⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩⟩] := by
     unfold firstResponse
     rw [first_action]
@@ -262,7 +269,7 @@ private theorem wrong_response_inconsistent :
   rw [recalled] at consistent
   have chosen := (ReactiveApplication.Policy.consistent_snoc_iff
     (runtime.prescribedReactivePolicy leaks false (chooseBit (PMF.pure true))) []
-    ⟨granted.observe app false, firstAction false,
+    ⟨initial.observe app false, firstAction false,
       some ⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩⟩).mp consistent
   have law := compiler_samples_on_activation (PMF.pure true)
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at law
@@ -287,9 +294,16 @@ theorem compiler_recovers_wrong_choice :
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     wrong_response_inconsistent]
   have actor : graph.actor? 0 = some false := rfl
+  have turn : ((firstResponse false).observe app false).application.publicView.ownTurn? false =
+      some 0 := by
+    apply turn_while_unfinished
+    unfold firstResponse
+    rw [first_action]
+    rfl
   rw [recoverReactivePolicy_apply]
-  simp [recoverReactiveResponse, firstResponse, first_action, reactiveRecoveryLaw_pure,
-    granted, initial, ReactiveApplication.Execution.respond,
+  simp only [recoverReactiveResponse, turn]
+  simp [firstResponse, first_action, reactiveRecoveryLaw_pure,
+    initial, ReactiveApplication.Execution.respond,
     ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
     app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
     EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit, actor,

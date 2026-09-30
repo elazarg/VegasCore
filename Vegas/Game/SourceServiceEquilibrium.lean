@@ -141,25 +141,26 @@ theorem exists_native_sequentialEquilibrium
           expect comparison.prescribed (utility · who) ≤ comparisonError n := by
       rw [same, sub_self]
       exact errorNonnegative n
-    obtain ⟨past, view, event, observed, granted, kind⟩ := service.exists_siteKind who site
+    obtain ⟨past, view, event, observed, readyView, kind⟩ :=
+      service.exists_siteKind who site
     cases kind with
     | chance actorless =>
         exact Or.inl (zeroGain ((approx n).sample_comparison_eq who site past view observed
-          actorless granted law))
+          actorless readyView law))
     | foreignBinding owner payload foreign outputEq =>
         exact Or.inl (zeroGain ((approx n).foreign_binding_comparison_eq who site past view
-          observed foreign outputEq granted law))
+          observed foreign outputEq readyView law))
     | foreignDisclosure owner payload foreign owned outputEq =>
         exact Or.inl (zeroGain ((approx n).foreign_disclosure_comparison_eq who site past view
-          observed foreign owned outputEq granted law))
+          observed foreign owned outputEq readyView law))
     | recordedBinding payload outputEq recorded =>
         exact Or.inl (zeroGain ((approx n).recorded_comparison_eq who site past view observed
-          outputEq granted recorded law))
+          outputEq readyView recorded law))
     | unsentBinding payload outputEq unsent =>
         obtain ⟨mixture, prescribedEq, alternativeEq⟩ :=
           TimedApproximant.unsent_binding_comparisons service timing timingFull
             (sourceSequence n) (full n) (sourceBayes n) (approx n) rfl who site past view
-            observed outputEq granted unsent law
+            observed outputEq readyView unsent law
         have gain := expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedEq alternativeEq
           (utility · who)
           (payoffIntegrable_of_finite_support _ _
@@ -171,14 +172,14 @@ theorem exists_native_sequentialEquilibrium
         exact Or.inr ⟨mixture, gain.le.trans (le_add_of_nonneg_right (errorNonnegative n))⟩
     | recordedDisclosure payload owned outputEq recorded =>
         exact Or.inl (zeroGain ((approx n).recorded_disclosure_comparison_eq who site past view
-          observed owned outputEq granted recorded law))
+          observed owned outputEq readyView recorded law))
     | absentOpening payload owned outputEq unsent absent =>
         exact Or.inl (zeroGain ((approx n).absent_opening_comparison_eq who site past view
-          observed owned outputEq granted unsent absent law))
+          observed owned outputEq readyView unsent absent law))
     | availableOpening payload owned outputEq unsent candidate raw available =>
         have bound := TimedApproximant.available_opening_gain_le service timing timingFull
           (sourceSequence n) (full n) (sourceBayes n) (approx n) rfl who site past view observed
-          outputEq owned granted unsent candidate raw available (utility · who) (errors who n)
+          outputEq owned readyView unsent candidate raw available (utility · who) (errors who n)
           (sourceGain n who) half (by norm_num [half])
           (fun count inside => by
             have passed := rosterTiming_prefix_le service.setup service.rosters

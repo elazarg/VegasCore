@@ -43,7 +43,7 @@ theorem owner_choices_at_prefix
         offset count state execution →
       ∀ event : (graph setup).EventId, event.val = offset + count →
       (graph setup).actor? event = some who →
-      execution.application.serviceGrant = some event →
+      execution.application.config.cut.Ready event →
       sourceChoiceLaw setup leaks wholeProfile who
           (execution.observe (application setup leaks) who) =
         ((profile who).protocolAction program (ProtocolState.observe who program state)).map
@@ -71,7 +71,7 @@ theorem owner_choices_at_prefix
       exact impossible.elim
   | @reveal Γ openNames published owner name payload fresh selected unresolved next ih =>
       intro reveals profile refs revelations embedding refsBefore offset aligned count within
-        state execution related event eventRank actor granted
+        state execution related event eventRank actor ready
       cases count with
       | zero =>
           obtain ⟨source, rfl, sourceRevelations, checkpoint⟩ := related
@@ -97,9 +97,9 @@ theorem owner_choices_at_prefix
           have law := sourceChoiceLaw_reveal setup leaks fresh selected unresolved next
             wholeProfile profile refs source embedding refsBefore offset alignedSource
             execution checkpoint.agrees checkpoint.history (by
-              change execution.application.serviceGrant = some (embedding.event index)
+              change execution.application.config.cut.Ready (embedding.event index)
               rw [head]
-              exact granted)
+              exact ready)
           refine ⟨?_, ?_⟩
           · rw [law]
             simp only [ProtocolState.entry, ProtocolState.observe, Sum.elim_inl,
@@ -121,7 +121,8 @@ theorem owner_choices_at_prefix
               opening_at_checkpoint setup leaks selected source.state refs execution
                 checkpoint.agrees checkpoint.binding (embedding.event index)
                 (by rw [head]; exact actor) outputEq codeEq node
-                (by rw [head]; exact granted) value bound
+                (by rw [head]; exact ownTurn?_of_ready setup execution.application ready actor)
+                value bound
             refine ⟨⟨_, found, opening_available_of_initial_tables setup leaks bounds initial
               initialSupport execution checkpoint.accepted checkpoint.candidates _ candidate
                 associated owner owned ⟨payload, value⟩ fixed (embedding.event index)⟩, ?_⟩
@@ -163,7 +164,7 @@ theorem owner_choices_at_prefix
               have bound : count < eventCount next := by simpa [eventCount] using within
               have law := ih reveals (afterReveal profile) tailRefs (revelations.reveal selected)
                 tailEmbedding tailBefore (offset + 1) tailAligned count bound state execution
-                related event (by omega) actor granted
+                related event (by omega) actor ready
               simpa only [ProtocolState.observe, Sum.elim_inr, BehavioralPolicy.protocolAction,
                 afterReveal] using law
 

@@ -115,13 +115,13 @@ variable [Fintype Player] (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 open Classical in
-/-- All semantic choices at the granted node, before intersecting with the
-explicit finite target bounds. Samples remain environment commands. -/
+/-- All semantic choices at the player's own turn, before intersecting with
+the explicit finite target bounds. Samples remain environment commands. -/
 def decisionActions (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     Finset (runtime.reactiveApplication leaks).Action :=
-  match view.application.publicView.serviceGrant with
+  match view.application.publicView.ownTurn? who with
   | none => {⟨none⟩}
   | some event =>
       if graph.actor? event = some who ∧ view.application.publicView.EventReady event then
@@ -320,7 +320,7 @@ theorem binding_value_required (who : Player)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (unsent : runtime.eventRecorded leaks past event = false)
@@ -331,8 +331,9 @@ theorem binding_value_required (who : Player)
       (cast (congrArg EventField.Action outputEq.symm) (PublicationResult.success value)) ∈
         bounds.requiredBindingActions runtime leaks who past view := by
   classical
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   apply bounds.decision_required runtime leaks who past view
-  · simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node]
+  · simp only [decisionActions, turnSome, owned, ready, and_self, ↓reduceIte, node]
     exact Finset.mem_image.mpr ⟨value, (bounds.typedValues_mem payload value).mpr
       ⟨⟨payload, value⟩, included, Raw.as?_mk payload value⟩, rfl⟩
   · rw [runtime.serviceDecision_binding leaks who past view event payload outputEq codeEq
@@ -372,7 +373,7 @@ theorem canonical_binding_response_cases (who : Player)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (unsent : runtime.eventRecorded leaks past event = false)
@@ -383,6 +384,7 @@ theorem canonical_binding_response_cases (who : Player)
       (runtime.reactiveApplication leaks).Action) ∈
         bounds.requiredBindingActions runtime leaks who past view ∨
       opening.bind (fun raw => raw.as? payload) = none := by
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   cases opening with
   | none => exact Or.inr rfl
   | some raw =>
@@ -392,7 +394,7 @@ theorem canonical_binding_response_cases (who : Player)
           have same := raw_eq_of_decoded raw payload value decoded
           subst raw
           have represented := bounds.binding_value_required runtime leaks who past view event
-            payload outputEq codeEq node granted owned ready unsent serial fresh capacity
+            payload outputEq codeEq node turn owned ready unsent serial fresh capacity
             value bounded
           rw [runtime.serviceDecision_binding leaks who past view event payload outputEq codeEq
             node serial fresh, runtime.reactiveBinding_normal_of_fresh leaks who past view event
@@ -412,7 +414,7 @@ theorem required_binding_cases (covered : bounds.CoversBindingValues)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (unsent : runtime.eventRecorded leaks past event = false)
@@ -424,6 +426,7 @@ theorem required_binding_cases (covered : bounds.CoversBindingValues)
       response = (runtime.reactiveNormalization leaks).action who past view
         (runtime.reactiveBinding leaks who event payload (.success value) serial) := by
   classical
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   have typed := covered event
   rw [outputEq] at typed
   have usable : ((bounds.decisionActions runtime leaks who past view).filter
@@ -434,7 +437,7 @@ theorem required_binding_cases (covered : bounds.CoversBindingValues)
         (PublicationResult.success (L.someValue payload))), Finset.mem_inter.mpr ⟨?_, ?_⟩⟩
     · apply Finset.mem_filter.mpr
       constructor
-      · simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node]
+      · simp only [decisionActions, turnSome, owned, ready, and_self, ↓reduceIte, node]
         exact Finset.mem_image.mpr ⟨L.someValue payload,
           (bounds.typedValues_mem payload _).mpr
             ⟨⟨payload, L.someValue payload⟩, typed _, Raw.as?_mk payload _⟩, rfl⟩
@@ -449,7 +452,7 @@ theorem required_binding_cases (covered : bounds.CoversBindingValues)
   rw [requiredBindingActions, ite_eq_left usable] at member
   have choices := (Finset.mem_inter.mp member).1
   have choices := (Finset.mem_filter.mp choices).1
-  simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node,
+  simp only [decisionActions, turnSome, owned, ready, and_self, ↓reduceIte, node,
     Finset.mem_image] at choices
   obtain ⟨value, admitted, same⟩ := choices
   refine ⟨value, admitted, same.symm.trans ?_⟩
@@ -467,7 +470,7 @@ theorem ordinary_binding_cases
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (serial : Nat) (fresh : reactiveFreshSlot view.application = some serial)
@@ -479,9 +482,10 @@ theorem ordinary_binding_cases
         response = (runtime.reactiveNormalization leaks).action who past view
           (runtime.reactiveBinding leaks who event payload (.success value) serial) := by
   classical
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | transport
   · obtain ⟨chosen, first⟩ := Finset.mem_filter.mp decision
-    simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node,
+    simp only [decisionActions, turnSome, owned, ready, and_self, ↓reduceIte, node,
       Finset.mem_image] at chosen
     obtain ⟨value, admitted, same⟩ := chosen
     have action := runtime.serviceDecision_binding leaks who past view event payload outputEq
@@ -504,7 +508,7 @@ theorem ordinary_binding_recorded
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (recorded : runtime.eventRecorded leaks past event = true)
@@ -512,16 +516,17 @@ theorem ordinary_binding_recorded
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
     response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support := by
   classical
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   cases slot : reactiveFreshSlot view.application with
   | some serial =>
       rcases bounds.ordinary_binding_cases runtime leaks who past view event payload outputEq codeEq
-        node granted owned ready serial slot response member with transport | ⟨_, _, unsent, _⟩
+        node turn owned ready serial slot response member with transport | ⟨_, _, unsent, _⟩
       · exact transport
       · simp only [recorded, Bool.true_eq_false] at unsent
   | none =>
       rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | transport
       · have chosen := (Finset.mem_filter.mp decision).1
-        simp only [decisionActions, granted, owned, ready, and_self, ↓reduceIte, node,
+        simp only [decisionActions, turnSome, owned, ready, and_self, ↓reduceIte, node,
           Finset.mem_image] at chosen
         obtain ⟨value, _, same⟩ := chosen
         have silent : runtime.serviceDecision leaks who past view event
@@ -534,23 +539,20 @@ theorem ordinary_binding_recorded
           (Finset.mem_insert_self _ _)
       · exact ((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport
 
-/-- Other players retain transport responses at a granted event. They are not
-silently deprived of known pending-envelope retransmission. -/
+/-- A player without a ready event of its own retains transport responses. It
+is not silently deprived of known pending-envelope retransmission. -/
 theorem compiled_foreign_transport
     (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId)
-    (granted : view.application.publicView.serviceGrant = some event)
-    (foreign : graph.actor? event ≠ some who)
+    (idle : view.application.publicView.ownTurn? who = none)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
     response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support := by
   classical
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | transport
   · have chosen := (Finset.mem_filter.mp decision).1
-    simp only [decisionActions, granted, foreign, false_and, ↓reduceIte,
-      Finset.mem_singleton] at chosen
+    simp only [decisionActions, idle, Finset.mem_singleton] at chosen
     cases chosen
     exact (runtime.reactiveApplication leaks).replayPolicy_support past view none
       (Finset.mem_insert_self _ _)

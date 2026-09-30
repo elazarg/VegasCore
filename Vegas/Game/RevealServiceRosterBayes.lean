@@ -42,7 +42,7 @@ theorem roster_owner_source_site
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
-    (grant : control.execution.application.serviceGrant = some event) :
+    (serving : control.execution.application.publicView.ownTurn? who = some event) :
     ∃ site : (setup.informationModel admission).InformationSite who,
       site.1 = setup.protocolObserve who
         (sourcePrefix? setup event.val control.execution.application.config) ∧
@@ -52,8 +52,9 @@ theorem roster_owner_source_site
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have same : actual = event := by
-    rw [unchanged, grantedAt] at grant
-    exact Option.some.inj grant
+    have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
+    rw [unchanged] at eventReady
+    exact ((soleReady_of_ready setup granted.application grantedAt).2 event eventReady).symm
   subst actual
   obtain ⟨site, observed⟩ := roster_source_site setup leaks reveals admission who event owned
     initial initialSupport state granted related sourceSupport

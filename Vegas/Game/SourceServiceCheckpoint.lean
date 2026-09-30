@@ -214,8 +214,7 @@ theorem sourceServicePolicy_commit_checkpoint
     let outputEq : (graph setup).outputLayout event = .binding owner payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-    ∀ (granted : execution.application.serviceGrant = some event)
-      (ready : execution.application.config.cut.Ready event)
+    ∀ (ready : execution.application.config.cut.Ready event)
       (timely : execution.application.WithinDeadline (runtime setup) event)
       (vacant : execution.application.accepted (.inr event) = none)
       (after : (application setup leaks).Execution),
@@ -229,10 +228,10 @@ theorem sourceServicePolicy_commit_checkpoint
           after.application.config ∧
         after.receipts = execution.receipts ++
           [((owner, execution.network.nextSerial owner), true)] := by
-  intro index event outputEq granted ready timely vacant after supported
+  intro index event outputEq ready timely vacant after supported
   have law := sourceServicePolicy_commit_service setup leaks fresh guard next wholeProfile profile
     refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
-    serial selected candidate unused serials players network granted ready timely vacant
+    serial selected candidate unused serials players network ready timely vacant
   have mapped : (after.application.config, after.receipts) ∈
       (((sourceServicePolicy setup leaks wholeProfile owner (execution.recall owner)
         (execution.observe (application setup leaks) owner)).bind fun response =>

@@ -46,7 +46,6 @@ theorem repeated_binding_block_coupling
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
       original.network.ledger.countP (fun message => message.sender = owner))
-    (granted : original.application.serviceGrant = some event)
     (recorded : (runtime setup).eventRecorded leaks (repaired.recall owner) event = true)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline (runtime setup) event)
@@ -100,10 +99,15 @@ theorem repeated_binding_block_coupling
   let finish (execution : app.Execution) : app.Execution :=
     { execution.includePending app message.id with environmentRecall :=
       execution.environmentRecall ++ [⟨execution.observeEnvironment app, .include message.id⟩] }
+  have owned : (graph setup).actor? event = some owner := by
+    have actor := congrArg EventCode.actor codeEq
+    rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor
+    exact actor
   obtain ⟨window, first, second, related⟩ := repeated_roster_stopped_coupling setup leaks bounds
     rosters network players owner event memory original repaired frame reference started
-    leftRecall rightRecall serials repeated granted recorded available before (ending ++ after)
-    visits (by simpa only [ending, List.append_assoc] using split) position
+    leftRecall rightRecall serials repeated
+    (ownTurn?_of_ready setup original.application ready owned) recorded available before
+    (ending ++ after) visits (by simpa only [ending, List.append_assoc] using split) position
   have leftReach (next) (supported : next ∈ window.support) :
       next.1 ∈ ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) original).support := by

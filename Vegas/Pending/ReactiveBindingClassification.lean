@@ -93,7 +93,7 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (turn : execution.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : execution.application.config.cut.Ready event)
     (unsent : runtime.eventRecorded leaks (execution.recall who) event = false)
@@ -117,6 +117,7 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
           (execution.network.known who) ≠ ⟨.commitment event (who, .prepared serial), none⟩) ∨
       (response = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
         response = ⟨some (.replay id)⟩) := by
+  have turnSome := execution.application.publicView.ownTurn?_of_ownTurn who event turn
   let app := runtime.reactiveApplication leaks
   let serial := execution.application.publicView.bindingCount who
   have fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh :=
@@ -159,7 +160,7 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
             have rawBound : bounds.AllowsOpening submission.call.opening := member.1.1.2
             have classified := bounds.canonical_binding_response_cases runtime leaks who
               (execution.recall who) (execution.observe app who) event payload outputEq codeEq node
-              granted owned publicReady unsent serial allocator capacity
+              turn owned publicReady unsent serial allocator capacity
               submission.call.opening rawBound
             rcases classified with legal | unusable
             · exact Or.inl (shape ▸ legal)

@@ -111,9 +111,10 @@ theorem roster_fresh_normal
       who control trace active
   obtain ⟨sentEvent, candidate, raw, sentGrant, ownedEvent, opening, rfl, absent⟩ :=
     rosterFresh?_shape setup leaks rosters who _ _ action fresh
-  change control.execution.application.serviceGrant = some sentEvent at sentGrant
-  rw [unchanged, grant] at sentGrant
-  cases Option.some.inj sentGrant
+  have sentReady := (PublicView.ownTurn?_spec _ who sentEvent sentGrant).1
+  change control.execution.application.publicView.EventReady sentEvent at sentReady
+  rw [unchanged] at sentReady
+  cases (soleReady_of_ready setup granted.application grant).2 sentEvent sentReady
   have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
     setup.program reveals profile (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)
@@ -130,7 +131,8 @@ theorem roster_fresh_normal
     intro player past view response supported
     exact (menu.uniformResponses_support player past view response).mp supported
   obtain ⟨chosen, frame, _, recorded, _⟩ := roster_window_posterior setup leaks bounds rosters
-    granted event who grant ownedEvent candidate raw priorOpening owned valid (offset who) serials
+    granted event who (soleReady_of_ready setup granted.application grant) ownedEvent candidate raw
+    priorOpening owned valid (offset who) serials
     published menu.uniformResponses covered network ((rosters event).take slot)
     (roster_count_before selected).le prior reached
   rw [activated] at absent

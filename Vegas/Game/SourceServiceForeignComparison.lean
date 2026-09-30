@@ -120,7 +120,6 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
     (execution : (application setup leaks).Execution) {config : (graph setup).Config}
     (site : BindingSource setup wholeProfile event config)
     (sameConfig : execution.application.config = config)
-    (granted : execution.application.serviceGrant = some event)
     (unsent : (runtime setup).eventRecorded leaks (execution.recall site.owner) event = false)
     (ready : config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -164,7 +163,7 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
       slot.val = (execution.recall owner).length + visited.count owner := by omega
   have law := sourceServiceTimedFamily_binding_law setup leaks rosters fresh guard next
     wholeProfile residual refs source embedding refsBefore _ aligned execution agree history
-    serial freshSlot candidate network visits visited remaining slot position selected granted
+    serial freshSlot candidate network visits visited remaining slot position selected ready
     unsent
   have splitPlan : (visits.map ServiceInstruction.player ++
       (.includeLatest (embedding.event ⟨0, by simp [eventCount]⟩) owner ::
@@ -189,7 +188,7 @@ theorem binding_slot_config_law (setup : Setup (Player := Player) (L := L))
   rw [servicePlan_players_eq setup leaks _ raw network _ (by simp) (by intro who; simp) current]
     at rest
   apply scheduledBindingPhase_config setup leaks bounds network owner _ payload outputEq codeEq
-    node owned execution granted ready timely serial candidate vacant unused serials published
+    node owned execution ready timely serial candidate vacant unused serials published
     visits slot _ (by omega) (by omega) choice ticks final
   rw [List.append_assoc (visits.map ServiceInstruction.player ++ [_]),
     runInteractionPlan_append, PMF.support_bind]
@@ -211,7 +210,7 @@ theorem foreign_response_transport {who : Player} {remaining : Nat}
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
     {event : (graph service.setup).EventId} {owner : Player}
     (owned : (graph service.setup).actor? event = some owner) (foreign : who ≠ owner)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (response : (application service.setup service.leaks).Action)
     (allowed : response ∈ service.menu.actions who (execution.recall who)
       (execution.observe (application service.setup service.leaks) who)) :
@@ -219,12 +218,11 @@ theorem foreign_response_transport {who : Player} {remaining : Nat}
   have present := roster_fullyMixed_response_support service.setup service.leaks
     service.rosters service.network service.menu approx.players approx.covered approx.assessment
     approx.strategy approx.mixed who remaining execution trace response allowed
-  have grant : PublicView.serviceGrant
-      (execution.observe (application service.setup service.leaks) who).application.publicView =
-        some event := granted
   have notActor : (graph service.setup).actor? event ≠ some who :=
     fun acts => foreign (Option.some.inj (acts.symm.trans owned))
-  simp only [players, sourceServiceTimedPolicy, grant, dite_eq_right notActor] at present
+  simp only [players, sourceServiceTimedPolicy_idle _ _ _ _ _ who _
+    (execution.observe (application service.setup service.leaks) who) (sole.idle notActor)]
+    at present
   exact (application service.setup service.leaks).replayPolicy_cases _ _ response present
 
 /-- At a binding phase, every legal response of a player other than the owner
@@ -289,7 +287,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
       (allowed : response ∈ service.menu.actions who (execution.recall who)
         (execution.observe (application service.setup service.leaks) who)) :
       approx.phaseConfigLaw phase response = posterior.bind target := by
-    have transport := approx.foreign_response_transport trace owned foreign phase.granted
+    have transport := approx.foreign_response_transport trace owned foreign phase.sole
       response allowed
     have preserved := (runtime service.setup).replay_response_preserves service.leaks _
       execution published who response transport
@@ -300,9 +298,9 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
     set after := execution.respond (application service.setup service.leaks) who response
       with afterDef
     have sameApp : after.application = execution.application := preserved.1
-    have afterGrant : after.application.serviceGrant = some phase.event := by
+    have afterSole : after.application.publicView.SoleReady phase.event := by
       rw [sameApp]
-      exact phase.granted
+      exact phase.sole
     have afterPublished : after.network.Satisfies fun message =>
         message.id ∈ after.network.ledger.map Message.id := by
       rw [preserved.2.1]
@@ -325,7 +323,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
       rw [runInteractionPlan_append, runInteractionPlan_append,
         sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
           approx.timing approx.profile phase.event site.owner owned service.network phase.visits
-          after afterGrant]
+          after afterSole]
       apply bind_congr_on_support _
       intro current _
       exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
@@ -348,7 +346,7 @@ theorem foreign_binding_phase_invariant {who : Player} {remaining : Nat}
     · dsimp only [target]
       simp only [inside.1, inside.2, and_self, ↓reduceIte]
       exact binding_slot_config_law service.setup service.leaks service.bounds service.rosters
-        service.network approx.profile after site (by rw [sameApp]) afterGrant
+        service.network approx.profile after site (by rw [sameApp])
         (by rw [sameRecall]; exact unsent) ready (by rw [sameApp]; exact timely) _
         (by change reactiveFreshSlot ((application service.setup service.leaks).observePlayer
               after.application site.owner) = _
@@ -401,7 +399,7 @@ theorem foreign_binding_comparison_eq (who : Player) (site : service.model.Infor
     {event : (graph service.setup).EventId} {owner : Player} {payload : L.Ty}
     (foreign : who ≠ owner)
     (outputEq : (graph service.setup).outputLayout event = .binding owner payload)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
         service.fuel) service.readout
@@ -411,11 +409,11 @@ theorem foreign_binding_comparison_eq (who : Player) (site : service.model.Infor
   intro history remaining execution current info phase first second firstAllowed secondAllowed
   have input := Option.some.inj
     ((service.infoOf_decision history current).symm.trans (info.trans observed))
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) input).trans granted
-  have same : phase.event = event := Option.some.inj (phase.granted.symm.trans grant)
+        pair.2.application.publicView.EventReady event) input).mpr readyView
+  have same : phase.event = event := (phase.sole.2 event readyNow).symm
   subst same
   have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩) := current ▸ history.trace

@@ -165,7 +165,7 @@ theorem successful_serviceDecision_retained [Fintype Player]
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (actor : graph.actor? event = some owner)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
@@ -183,6 +183,7 @@ theorem successful_serviceDecision_retained [Fintype Player]
     response ∈ bounds.compiledActions runtime leaks owner (repaired.recall owner)
       (repaired.observe (runtime.reactiveApplication leaks) owner) := by
   classical
+  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   obtain ⟨rightStored, candidate, leftAssociated, rightAssociated, owned,
     leftFixed, rightFixed⟩ := frame.successful_opening leftBinding rightBinding binding value stored
@@ -207,17 +208,16 @@ theorem successful_serviceDecision_retained [Fintype Player]
     exact moved
   apply bounds.decision_compiled runtime leaks owner (repaired.recall owner)
     (repaired.observe app owner) response _ _ rightAvailable
-  · have rightGrant : repaired.application.serviceGrant = some event := by
-      rw [← show original.application.serviceGrant = repaired.application.serviceGrant from
-        congrArg PublicView.serviceGrant frame.publicView]
-      exact granted
+  · have rightTurn : repaired.application.publicView.ownTurn? owner = some event := by
+      rw [← frame.publicView]
+      exact turnSome
     have rightReady := (repaired.application.publicView_eventReady event).mpr rightFacts.1
-    have grantedView : (repaired.observe app owner).application.publicView.serviceGrant =
-        some event := rightGrant
+    have turnView : (repaired.observe app owner).application.publicView.ownTurn? owner =
+        some event := rightTurn
     have readyView : (repaired.observe app owner).application.publicView.EventReady event :=
       rightReady
     rw [originalResponse, same]
-    simp only [MessageBounds.decisionActions, grantedView, actor, readyView,
+    simp only [MessageBounds.decisionActions, turnView, actor, readyView,
       and_self, ↓reduceIte, node]
     exact Finset.mem_image.mpr ⟨true, Finset.mem_univ _, rfl⟩
   · rw [← frame.firstSubmission response]

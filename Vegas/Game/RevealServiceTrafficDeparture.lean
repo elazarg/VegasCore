@@ -69,9 +69,8 @@ theorem owner_extra_traffic (who : Player) (ordinary : who ≠ watcher)
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val source execution :=
     sameExecution.symm ▸ related
-  have grant : execution.application.serviceGrant = some event := by rw [sameExecution]; rfl
   obtain ⟨submission, same, departure⟩ := prefix_extra_submission setup leaks bounds who reveals
-    initial event owned source execution checkpoint grant response effective excluded
+    initial event owned source execution checkpoint response effective excluded
   subst response
   have serials : execution.network.SerialsBeforeNext :=
     PrefixCheckpoint.runtime_fact (fun next => next.network.SerialsBeforeNext)

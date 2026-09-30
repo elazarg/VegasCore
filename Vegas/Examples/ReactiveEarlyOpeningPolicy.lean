@@ -24,13 +24,14 @@ theorem prescribed_initial :
     runtime.prescribedReactivePolicy leaks () zeroPolicy [] ((activated initial).observe app ()) =
       PMF.pure (runtime.reactiveDecision leaks () 0 (.success 0)
         ((activated initial).observe app ()).application) := by
-  have grant : ((activated initial).observe app ()).application.publicView.serviceGrant =
-      some 0 := rfl
+  have turn : ((activated initial).observe app ()).application.publicView.ownTurn? () =
+      some 0 := by
+    decide
   have ready : ((activated initial).observe app ()).application.publicView.EventReady 0 := by
     decide
   have actor : graph.actor? 0 = some () := rfl
   rw [prescribedReactivePolicy_apply]
-  simp only [prescribedReactiveResponse, grant, reactiveAlreadySubmitted, List.any_nil,
+  simp only [prescribedReactiveResponse, turn, reactiveAlreadySubmitted, List.any_nil,
     Bool.false_eq_true, ite_false, dite_true, ite_eq_left ready, dite_eq_left actor,
     EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero, PMF.pure_map,
     PMF.bind_const]
@@ -97,13 +98,14 @@ theorem compiled_first :
       ((activated contested).recall ()) := contested_inconsistent
   rw [compiled, compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     inconsistent]
-  have grant : ((activated contested).observe app ()).application.publicView.serviceGrant =
-      some 0 := rfl
+  have turn : ((activated contested).observe app ()).application.publicView.ownTurn? () =
+      some 0 := by
+    decide
   have ready : ((activated contested).observe app ()).application.publicView.EventReady 0 := by
     decide
   have actor : graph.actor? 0 = some () := rfl
   rw [recoverReactivePolicy_apply]
-  simp only [recoverReactiveResponse, grant, dite_true, ite_eq_left ready,
+  simp only [recoverReactiveResponse, turn, dite_true, ite_eq_left ready,
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy, Fin.cases_zero,
     reactiveRecoveryLaw_pure (graph := graph), PMF.pure_map, PMF.bind_const]
   change PMF.pure (ReactiveApplication.Action.mk (app := app)
@@ -118,24 +120,35 @@ theorem granted_inconsistent (repair fresh : Bool) :
   apply List.prefix_iff_eq_take.mpr
   cases repair <;> cases fresh <;> rfl
 
+theorem later_ready (repair fresh : Bool) (possible : fresh = true → repair = true) :
+    ((activated (granted repair fresh)).observe app ()).application.publicView.EventReady 1 := by
+  have publicState : ((activated (granted repair fresh)).observe app ()).application.publicView =
+      (disclosed repair fresh).application.publicView := rfl
+  rw [publicState]
+  exact ((disclosed repair fresh).application.publicView_eventReady 1).mpr
+    (disclosure_ready repair fresh possible)
+
+/-- Once the binding is complete the disclosure is the owner's turn; the binding
+precedes it, so it can no longer be ready. -/
+theorem later_turn (repair fresh : Bool) (possible : fresh = true → repair = true) :
+    ((activated (granted repair fresh)).observe app ()).application.publicView.ownTurn? () =
+      some 1 := by
+  have ready := later_ready repair fresh possible
+  refine PublicView.ownTurn?_of_ownTurn _ () 1 ⟨ready, rfl, fun other otherReady _ => ?_⟩
+  fin_cases other
+  · exact absurd (ready.2 0 (by decide)) otherReady.1
+  · rfl
+
 theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair = true) :
     compiled ((activated (granted repair fresh)).recall ())
       ((activated (granted repair fresh)).observe app ()) = PMF.pure (finalOpening fresh) := by
   rw [compiled, compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
     (granted_inconsistent repair fresh)]
-  have grant :
-      ((activated (granted repair fresh)).observe app ()).application.publicView.serviceGrant =
-        some 1 := rfl
-  have publicState : ((activated (granted repair fresh)).observe app ()).application.publicView =
-      (disclosed repair fresh).application.publicView := rfl
-  have ready : ((activated (granted repair fresh)).observe app ()).application.publicView.EventReady
-      1 := by
-    rw [publicState]
-    exact ((disclosed repair fresh).application.publicView_eventReady 1).mpr
-      (disclosure_ready repair fresh possible)
+  have turn := later_turn repair fresh possible
+  have ready := later_ready repair fresh possible
   have actor : graph.actor? 1 = some () := rfl
   rw [recoverReactivePolicy_apply]
-  simp only [recoverReactiveResponse, grant, dite_true, ite_eq_left ready,
+  simp only [recoverReactiveResponse, turn, dite_true, ite_eq_left ready,
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy_resolve,
     reactiveRecoveryLaw_pure (graph := graph), PMF.pure_map, PMF.bind_const]
   congr 1
@@ -164,22 +177,25 @@ theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair
         normal
 
 def earlyPolicy : app.Policy := fun history view =>
-  if view.application.publicView.serviceGrant = some 0 then PMF.pure earlyOpening
+  if view.application.publicView.ownTurn? () = some 0 then PMF.pure earlyOpening
   else compiled history view
 
 theorem earlyPolicy_first :
     earlyPolicy ((activated contested).recall ()) ((activated contested).observe app ()) =
       PMF.pure earlyOpening := by
-  have grant : ((activated contested).observe app ()).application.publicView.serviceGrant =
-      some 0 := rfl
-  simp only [earlyPolicy, grant, ↓reduceIte]
+  have turn : ((activated contested).observe app ()).application.publicView.ownTurn? () =
+      some 0 := by
+    decide
+  simp only [earlyPolicy, turn, ↓reduceIte]
 
 theorem earlyPolicy_later :
     earlyPolicy ((activated (granted false false)).recall ())
       ((activated (granted false false)).observe app ()) = PMF.pure (finalOpening false) := by
   have different :
-      ((activated (granted false false)).observe app ()).application.publicView.serviceGrant ≠
-        some 0 := by decide
+      ((activated (granted false false)).observe app ()).application.publicView.ownTurn? () ≠
+        some 0 := by
+    rw [later_turn false false (by simp)]
+    decide
   rw [earlyPolicy, ite_eq_right different, compiled_later false false (by simp)]
 
 end Vegas.Examples.ReactiveEarlyOpening

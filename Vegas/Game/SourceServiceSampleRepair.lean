@@ -132,7 +132,6 @@ theorem sample_block_stopped_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .sample payload law)
     (node : nodeView (graph setup) event = .sample payload law outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
     (ready : original.application.config.cut.Ready event)
     (remaining : Nat) (visits : List Player) (ticks : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -175,15 +174,11 @@ theorem sample_block_stopped_coupling
     have actor := congrArg EventCode.actor codeEq
     rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor
     exact actor
-  have offTurn : ∀ selected, original.application.serviceGrant = some selected →
-      (graph setup).actor? selected ≠ some owner := by
-    intro selected same
-    cases Option.some.inj (same.symm.trans granted)
-    rw [chance]
-    simp
+  have idle : original.application.publicView.Idle owner :=
+    (soleReady_of_ready setup original.application ready).idle (by rw [chance]; simp)
   obtain ⟨window, first, second, related⟩ := off_turn_roster_stopped_coupling setup leaks bounds
     rosters network source target agrees owner policy available reference memory original repaired
-    frame started leftRecall rightRecall serials offTurn (remaining + ending.length) visits
+    frame started leftRecall rightRecall serials idle (remaining + ending.length) visits
       (by rw [traceRank]; exact trace) before (ending ++ after)
       (by simpa only [ending, List.append_assoc] using split) position
   have existsTail next (supported : next ∈ window.support) :

@@ -42,7 +42,6 @@ private theorem suffix_extra_submission
         offset count source execution →
       ∀ event : (graph setup).EventId, event.val = offset + count →
       (graph setup).actor? event = some who →
-      execution.application.serviceGrant = some event →
       ∀ response : (application setup leaks).Action,
       response ∈ (bounds.menu (runtime setup) leaks).actions who
         (execution.recall who) (execution.observe (application setup leaks) who) →
@@ -67,7 +66,7 @@ private theorem suffix_extra_submission
       exact impossible.elim
   | @reveal Γ openNames published owner name payload fresh selected unresolved next ih =>
       intro reveals profile refs revelations embedding refsBefore offset aligned count within
-        source execution related event eventRank actor granted response effective excluded
+        source execution related event eventRank actor response effective excluded
       cases count with
       | zero =>
           obtain ⟨source, rfl, _sourceRevelations, checkpoint⟩ := related
@@ -97,8 +96,7 @@ private theorem suffix_extra_submission
             EventGraphRuntime.nodeView_eq_resolve _ _
           exact checkpoint_extra_submission setup leaks bounds source refs offset execution
             checkpoint selected (embedding.event index) (by rw [head]; omega)
-            (by rw [head]; exact actor) outputEq codeEq node
-            (by rw [head]; exact granted) response effective excluded
+            (by rw [head]; exact actor) outputEq codeEq node response effective excluded
       | succ count =>
           cases source with
           | inl config => exact related.elim
@@ -129,7 +127,7 @@ private theorem suffix_extra_submission
               exact ih reveals (afterReveal profile) tailRefs (revelations.reveal selected)
                 tailEmbedding tailBefore (offset + 1) tailAligned count
                 (by simpa [eventCount] using within) source execution related event (by omega)
-                actor granted response effective excluded
+                actor response effective excluded
 
 theorem prefix_extra_submission
     (setup : Setup (Player := Player) (L := L))
@@ -141,7 +139,6 @@ theorem prefix_extra_submission
     (related : PrefixCheckpoint setup leaks initial setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val source execution)
-    (granted : execution.application.serviceGrant = some event)
     (response : (application setup leaks).Action)
     (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who
       (execution.recall who) (execution.observe (application setup leaks) who))
@@ -159,7 +156,7 @@ theorem prefix_extra_submission
     profile (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program profile)
-    event.val event.isLt source execution related event (by omega) owned granted
+    event.val event.isLt source execution related event (by omega) owned
     response effective extra
 
 end Vegas

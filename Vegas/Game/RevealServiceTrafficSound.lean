@@ -105,13 +105,11 @@ theorem retained_owner_response_traffic (bounds : MessageBounds (graph setup))
   have service := prefix_current_service setup leaks initial _ _ _ _ 0 event.val source
     execution related event (by omega) strategic
   apply ordinary_response_traffic setup leaks bounds execution watcher who ordinary _
-    recalled binding ?_ ?_ response allowed
-  · intro other granted
-    have equal : event = other := Option.some.inj granted
-    exact equal ▸ service.1
-  · intro other granted
-    have equal : event = other := Option.some.inj granted
-    exact equal ▸ service.2
+    recalled binding ?_ response allowed
+  intro other ready
+  rw [(soleReady_of_ready setup execution.application service.1).2 other
+    ((execution.application.publicView_eventReady other).mpr ready)]
+  exact service.2
 
 /-- Every actual retained transition emits only permitted traffic. -/
 theorem retained_step_traffic (bounds : MessageBounds (graph setup))

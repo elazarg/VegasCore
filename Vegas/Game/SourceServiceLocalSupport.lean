@@ -108,20 +108,21 @@ theorem sourceService_decision_supported
       have node : nodeView (graph setup) (embedding.event index) =
           .bind who payload outputEq codeEq :=
         EventGraphRuntime.nodeView_eq_bind _ _
-      have grantedHead : execution.application.serviceGrant =
-          some (embedding.event index) := by rw [same]; exact grantNow
+      have readyNow : execution.application.config.cut.Ready (embedding.event index) := by
+        rw [same]; exact ready
       have ownedHead : (graph setup).actor? (embedding.event index) = some who := by
         rw [same]; exact owned
       have readyHead : (execution.observe app who).application.publicView.EventReady
           (embedding.event index) := by rw [same]; exact readyView
-      have grantedView : (execution.observe app who).application.publicView.serviceGrant =
-          some (embedding.event index) := grantedHead
-      simp only [MessageBounds.decisionActions, grantedView, ownedHead, readyHead,
+      have turnView : (execution.observe app who).application.publicView.ownTurn? who =
+          some (embedding.event index) :=
+        ownTurn?_of_ready setup execution.application readyNow ownedHead
+      simp only [MessageBounds.decisionActions, turnView, ownedHead, readyHead,
         and_self, ↓reduceIte, node, Finset.mem_image] at decision
       obtain ⟨value, _, choiceEq⟩ := decision
       rw [sourceServicePolicy_commit setup leaks fresh guard next profile remainingProfile
         refs source embedding refsBefore event.val aligned execution checkpoint.agrees
-        checkpoint.history grantedHead, PMF.support_map]
+        checkpoint.history readyNow, PMF.support_map]
       refine ⟨.success value, ?_, choiceEq⟩
       exact (inherited full who).1 rfl (source.view who) (.success value) trivial
   | @reveal Γ names published owner name payload fresh binding unresolved next =>
@@ -150,20 +151,21 @@ theorem sourceService_decision_supported
       have node : nodeView (graph setup) (embedding.event index) =
           .resolve who payload (refs.get binding) checks outputEq codeEq :=
         EventGraphRuntime.nodeView_eq_resolve _ _
-      have grantedHead : execution.application.serviceGrant =
-          some (embedding.event index) := by rw [same]; exact grantNow
+      have readyNow : execution.application.config.cut.Ready (embedding.event index) := by
+        rw [same]; exact ready
       have ownedHead : (graph setup).actor? (embedding.event index) = some who := by
         rw [same]; exact owned
       have readyHead : (execution.observe app who).application.publicView.EventReady
           (embedding.event index) := by rw [same]; exact readyView
-      have grantedView : (execution.observe app who).application.publicView.serviceGrant =
-          some (embedding.event index) := grantedHead
-      simp only [MessageBounds.decisionActions, grantedView, ownedHead, readyHead,
+      have turnView : (execution.observe app who).application.publicView.ownTurn? who =
+          some (embedding.event index) :=
+        ownTurn?_of_ready setup execution.application readyNow ownedHead
+      simp only [MessageBounds.decisionActions, turnView, ownedHead, readyHead,
         and_self, ↓reduceIte, node, Finset.mem_image] at decision
       obtain ⟨disclose, _, choiceEq⟩ := decision
       rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next profile
         remainingProfile refs source embedding refsBefore event.val aligned execution
-        checkpoint.agrees checkpoint.history grantedHead, PMF.support_map]
+        checkpoint.agrees checkpoint.history readyNow, PMF.support_map]
       refine ⟨effectiveDisclosure published binding source disclose, ?_, ?_⟩
       · apply (inherited full who).1 rfl (source.view who)
         simpa only [Config.view, effectiveDisclosureView_observe] using
@@ -199,7 +201,7 @@ theorem sourceService_response_supported
   classical
   let app := application setup leaks
   obtain ⟨event, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, grant,
-      _, _, _, _, publicEq, _, _⟩ :=
+      _, _, _, _, publicEq, checkpoint, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
   have granted : control.execution.application.serviceGrant = some event :=
@@ -211,8 +213,11 @@ theorem sourceService_response_supported
         opportunities network profile full who control trace active event granted owned response
         (Finset.mem_filter.mp decision).1)
     · exact Or.inl (((application setup leaks).mem_replayActions_iff _ _ _).mp replay)
-  · exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks who
+  · have ready : control.execution.application.config.cut.Ready event :=
+      (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
+    exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks who
       (control.execution.recall who) (control.execution.observe app who)
-      event granted owned response member)
+      ((soleReady_of_ready setup control.execution.application ready).ownTurn?_foreign owned)
+      response member)
 
 end Vegas

@@ -31,7 +31,7 @@ def rosterFresh? (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) : Option (application setup leaks).Action := do
-  let event ← view.application.publicView.serviceGrant
+  let event ← view.application.publicView.ownTurn? who
   if (graph setup).actor? event ≠ some who then none else
     let (candidate, raw) ← rosterOpening? setup leaks who event view
     let opening := (runtime setup).windowOpening leaks event candidate raw
@@ -45,7 +45,7 @@ theorem rosterFresh?_shape (setup : Setup (Player := Player) (L := L))
     (view : (application setup leaks).PlayerView) (action : (application setup leaks).Action)
     (found : rosterFresh? setup leaks rosters who past view = some action) :
     ∃ event candidate raw,
-      view.application.publicView.serviceGrant = some event ∧
+      view.application.publicView.ownTurn? who = some event ∧
       (graph setup).actor? event = some who ∧
       rosterOpening? setup leaks who event view = some (candidate, raw) ∧
       action = (runtime setup).windowOpening leaks event candidate raw ∧

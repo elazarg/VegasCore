@@ -32,7 +32,7 @@ theorem repairResponse_binding_available
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (unsent : runtime.eventRecorded leaks past event = false)
@@ -45,17 +45,18 @@ theorem repairResponse_binding_available
     (memory.repairResponse runtime leaks who view
       ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 ∈
         bounds.requiredBindingActions runtime leaks who past view := by
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   cases decoded : opening.bind (fun raw => raw.as? payload) with
   | none =>
       exact repairResponse_required runtime leaks bounds who memory past view event payload
-        outputEq codeEq node granted owned ready unsent serial fresh capacity default opening
+        outputEq codeEq node turn owned ready unsent serial fresh capacity default opening
           originalFresh decoded
   | some value =>
       rw [memory.repairResponse_usable runtime leaks who view event payload outputEq codeEq node
         serial opening originalFresh (reactiveFreshSlot_spec view.application serial fresh)
           value decoded]
       have cases := bounds.canonical_binding_response_cases runtime leaks who past view event
-        payload outputEq codeEq node granted owned ready unsent serial fresh capacity
+        payload outputEq codeEq node turn owned ready unsent serial fresh capacity
         opening bounded
       rcases cases with available | impossible
       · exact available
@@ -76,7 +77,7 @@ theorem retainedImplementation_binding_response
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (unsent : runtime.eventRecorded leaks past event = false)
@@ -93,6 +94,7 @@ theorem retainedImplementation_binding_response
         ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩) :
     (retainedImplementation runtime leaks menu who reference policy).respond memory (past, view) =
       (implementation runtime leaks who reference policy).respond memory (past, view) := by
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   apply retainedImplementation_respond_eq
   intro result supported
   change result ∈ ((policy (memory.restoreRecall runtime leaks past)
@@ -101,7 +103,7 @@ theorem retainedImplementation_binding_response
   obtain ⟨opening, bounded, rfl⟩ := canonical response selected
   apply coverage
   exact repairResponse_binding_available runtime leaks bounds who memory past view event payload
-    outputEq codeEq node granted owned ready unsent serial fresh capacity default opening bounded
+    outputEq codeEq node turn owned ready unsent serial fresh capacity default opening bounded
     originalFresh
 
 end Vegas.EventGraphRuntime.BindingMemory

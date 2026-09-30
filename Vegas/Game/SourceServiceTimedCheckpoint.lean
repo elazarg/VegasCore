@@ -229,7 +229,6 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (owned : (graph setup).actor? event = some owner)
-      (_granted : execution.application.serviceGrant = some event)
       (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
       (_activated : execution.application.activatedAt event = some entered)
@@ -251,7 +250,7 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
           (timing event owner owned) execution disclose).map fun traffic =>
             (some (Sum.inr (ProtocolState.entry next
               (revealSuccessor published binding source disclose))), traffic) := by
-  intro index event owned granted ready timely activated due unsent counted
+  intro index event owned ready timely activated due unsent counted
   let app := application setup leaks
   let phase := (rosters event).map ServiceInstruction.player ++
     (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
@@ -285,7 +284,7 @@ theorem sourceServiceTimedPolicy_reveal_joint_law
   rw [sourceServiceTimedPolicy_reveal_phase_law setup leaks rosters timing fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
     checkpoint.agrees checkpoint.history valid recalled origins effective network ticks owned
-    granted unsent counted, PMF.map_bind]
+    ready unsent counted, PMF.map_bind]
   apply bind_congr_on_support _
   intro disclose supported
   let target : Option
@@ -370,8 +369,7 @@ theorem sourceServiceTimedPolicy_sample_joint_law
     let outputEq : (graph setup).outputLayout event = .publicData payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-    ∀ (granted : execution.application.serviceGrant = some event)
-      (ready : execution.application.config.cut.Ready event),
+    ∀ (ready : execution.application.config.cut.Ready event),
     let app := application setup leaks
     let replay := fun _ => app.replayPolicy
     let completed := fun (current : app.Execution) value =>
@@ -399,7 +397,7 @@ theorem sourceServiceTimedPolicy_sample_joint_law
                 fun final =>
                   (some (Sum.inr (ProtocolState.entry next (sampleSuccessor name source value))),
                     (runtime setup).bindingTraffic leaks focal final) := by
-  intro index event outputEq granted ready app replay completed
+  intro index event outputEq ready app replay completed
   have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .sample payload (compilePublicDist refs distribution) := by
     change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
@@ -420,7 +418,7 @@ theorem sourceServiceTimedPolicy_sample_joint_law
     simpa [event, index, outputEq, decodeEventAction] using action
   rw [sourceServiceTimedPolicy_sample_phase_law setup leaks rosters timing wholeProfile
     source refs execution checkpoint.agrees event ready outputEq distribution codeEq node
-    chance granted network ticks, PMF.map_bind]
+    chance network ticks, PMF.map_bind]
   apply bind_congr_on_support _
   intro current _
   rw [PMF.map_bind]
@@ -483,8 +481,7 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
     let index : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
-    ∀ (owned : (graph setup).actor? event = some owner)
-      (_granted : execution.application.serviceGrant = some event),
+    ∀ (owned : (graph setup).actor? event = some owner),
     ((runtime setup).runInteractionPlan leaks
       (sourceServiceTimedPolicy setup leaks rosters timing wholeProfile) network
       ((rosters event).map ServiceInstruction.player ++
@@ -501,7 +498,7 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
           execution choice).map fun traffic =>
             (some (Sum.inr (ProtocolState.entry next
               (commitSuccessor name guard source choice))), traffic) := by
-  intro index event owned granted
+  intro index event owned
   let app := application setup leaks
   let phase := (rosters event).map ServiceInstruction.player ++
     (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])
@@ -531,7 +528,7 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
     simpa [event, index, outputEq, decodeEventAction] using action
   rw [sourceServiceTimedPolicy_binding_phase_law setup leaks rosters timing fresh guard next
     wholeProfile profile refs source embedding refsBefore rank aligned execution boundary.agrees
-    boundary.history serial freshSlot candidate network ticks owned granted
+    boundary.history serial freshSlot candidate network ticks owned ready
     (boundary.unsent owner event eventRank.ge) counted, PMF.map_bind]
   apply bind_congr_on_support _
   intro choice _
@@ -567,7 +564,7 @@ theorem sourceServiceTimedPolicy_binding_joint_law [Finite Player]
   apply map_congr_on_support _
   intro final reached
   have config := scheduledBindingPhase_config setup leaks bounds network owner event payload
-    outputEq codeEq node owned execution granted ready timely serial candidate vacant unused
+    outputEq codeEq node owned execution ready timely serial candidate vacant unused
     boundary.serials boundary.published (rosters event) slot
     (rosterOffset setup rosters owner event) (by rw [counted]; omega)
     (by rw [counted]; exact Nat.add_lt_add_left slot.isLt _) choice ticks final (by

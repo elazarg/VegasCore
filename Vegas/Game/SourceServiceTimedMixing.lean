@@ -70,14 +70,14 @@ private theorem nonbinding_silence
     (bounds : MessageBounds (graph setup)) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (serving : view.application.publicView.ownTurn? who = some event)
     (owned : (graph setup).actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (nonbinding : ∀ payload, (graph setup).outputLayout event ≠ .binding who payload) :
     (⟨none⟩ : (application setup leaks).Action) ∈
       bounds.decisionActions (runtime setup) leaks who past view := by
   classical
-  simp only [MessageBounds.decisionActions, granted, owned, ready, and_self, ↓reduceIte]
+  simp only [MessageBounds.decisionActions, serving, owned, ready, and_self, ↓reduceIte]
   cases node : nodeView (graph setup) event with
   | sample payload law outputEq codeEq => exact Finset.mem_singleton_self _
   | bind owner payload outputEq codeEq =>
@@ -189,20 +189,22 @@ private theorem required_decision
       bounds.requiredBindingActions (runtime setup) leaks who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view at member
     simpa only [sourceServiceActions, ite_eq_left required] using member
-  obtain ⟨other, payload, otherGrant, binding, _, ready, _, last⟩ := required
-  have same : other = event := Option.some.inj (otherGrant.symm.trans granted)
+  have serving := sourceService_ownTurn_of_grant setup leaks bounds values capacity rosters
+    opportunities network who control trace active event granted owned
+  obtain ⟨other, payload, otherTurn, binding, _, ready, _, last⟩ := required
+  have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
   subst other
   obtain ⟨action, supported⟩ :=
     (sourceServiceOpportunity setup leaks profile who event past view).support_nonempty
   have covered := sourceServiceOpportunity_at_history setup leaks bounds values initialValues
     capacity rosters opportunities network profile permitted who control trace active event
-      granted owned unsent action supported
+      serving owned unsent action supported
   have actionRequired : action ∈
       bounds.requiredBindingActions (runtime setup) leaks who past view := by
     have permittedAction := covered.1
     change action ∈ sourceServiceActions setup leaks bounds rosters who past view at permittedAction
     have selectedRequired : bindingRequired setup leaks rosters who past view :=
-      ⟨event, payload, granted, binding, owned, ready, unsent, last⟩
+      ⟨event, payload, serving, binding, owned, ready, unsent, last⟩
     simpa only [sourceServiceActions, ite_eq_left selectedRequired] using permittedAction
   have nonsilent : action ≠ ⟨none⟩ := by
     intro silent
@@ -246,25 +248,31 @@ theorem sourceServiceTimedPolicy_supported
   let past := control.execution.recall who
   let view := control.execution.observe app who
   obtain ⟨event, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, grant,
-      _, _, _, _, publicEq, _, _⟩ :=
+      _, _, _, _, publicEq, checkpoint, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
   have granted : view.application.publicView.serviceGrant = some event :=
     (congrArg PublicView.serviceGrant publicEq).trans grant
+  have controlReady : control.execution.application.config.cut.Ready event :=
+    (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
+  have sole := soleReady_of_ready setup control.execution.application controlReady
   have ordinary := sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _ member
   change response ∈ bounds.compiledActions (runtime setup) leaks who past view at ordinary
   change response ∈ (sourceServiceTimedPolicy setup leaks rosters timing profile who
     past view).support
   by_cases owned : (graph setup).actor? event = some who
-  · by_cases recorded : (runtime setup).eventRecorded leaks past event = true
+  · have serving : view.application.publicView.ownTurn? who = some event :=
+      PublicView.ownTurn?_of_ownTurn _ who event (sole.ownTurn owned)
+    by_cases recorded : (runtime setup).eventRecorded leaks past event = true
     · rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile who past view
-        event granted recorded]
+        event serving recorded]
       rcases Finset.mem_union.mp (Finset.mem_inter.mp ordinary).1 with decision | replay
       · have first := (Finset.mem_filter.mp decision).2
-        rcases bounds.compiled_current_response (runtime setup) leaks who past view event granted
-          response ordinary with transport | ⟨_, submitted⟩
+        rcases bounds.compiled_current_response (runtime setup) leaks who past view
+          response ordinary with transport | ⟨named, selectedNamed, _, submitted⟩
         · exact transport
-        · have denied := (runtime setup).firstSubmission_false_of_recorded leaks past event
+        · cases Option.some.inj (selectedNamed.symm.trans serving)
+          have denied := (runtime setup).firstSubmission_false_of_recorded leaks past event
             recorded response submitted
           simp only [denied, Bool.false_eq_true] at first
       · exact ((application setup leaks).mem_replayActions_iff _ _ _).mp replay
@@ -277,7 +285,7 @@ theorem sourceServiceTimedPolicy_supported
         values
         capacity rosters opportunities network profile who control trace active event granted owned
           unsent (timing event who owned) current (timingFull event who owned current) count.le
-      simp only [sourceServiceTimedPolicy, granted, dite_eq_left owned]
+      simp only [sourceServiceTimedPolicy, serving, dite_eq_left owned]
       have selected (supported : response ∈
           (sourceServiceOpportunity setup leaks profile who event past view).support) :
           response ∈ ((app.policyMixture (timing event who owned)
@@ -322,18 +330,19 @@ theorem sourceServiceTimedPolicy_supported
             have nonbinding : ∀ payload,
                 (graph setup).outputLayout event ≠ .binding who payload := by
               intro payload binding
-              exact required ⟨event, payload, granted, binding, owned, ready, unsent, final⟩
+              exact required ⟨event, payload, serving, binding, owned, ready, unsent, final⟩
             have silence := sourceService_decision_supported setup leaks bounds values capacity
               rosters opportunities network profile full who control trace active event granted
               owned ⟨none⟩ (nonbinding_silence setup leaks bounds who past view event
-                granted owned ready nonbinding)
+                serving owned ready nonbinding)
             exact selected (opportunity_replay setup leaks profile who event past view
               unsent silence response replay)
         · exact selected (opportunity_source setup leaks profile who event past view
             unsent response source)
-  · simp only [sourceServiceTimedPolicy, granted, dite_eq_right owned]
-    exact bounds.compiled_foreign_transport (runtime setup) leaks who past view event
-      granted owned response ordinary
+  · have idle : view.application.publicView.ownTurn? who = none := sole.ownTurn?_foreign owned
+    simp only [sourceServiceTimedPolicy, idle]
+    exact bounds.compiled_foreign_transport (runtime setup) leaks who past view idle response
+      ordinary
 
 /-- An original source policy with full support at abstract inputs induces
 one genuinely fully mixed retained native strategy under positive shared

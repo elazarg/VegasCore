@@ -56,7 +56,7 @@ theorem foreign_binding_block_stopped_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind actor payload)
     (node : nodeView (graph setup) event = .bind actor payload outputEq codeEq)
-    (granted : repaired.application.serviceGrant = some event)
+    (ready : repaired.application.config.cut.Ready event)
     (remaining : Nat) (visits : List Player) (ticks : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -118,8 +118,6 @@ theorem foreign_binding_block_stopped_coupling
           code.actor) codeEq)
     have rightTrace := menu.toRawTrace (initialLaw setup) (rosterPlan setup rosters).length
       scheduler trace
-    have originalGrant : original.application.serviceGrant = some event :=
-      (congrArg PublicView.serviceGrant frame.publicView).trans granted
     obtain ⟨coupling, first, second, related⟩ := off_turn_roster_stopped_coupling setup leaks
       bounds rosters network source target agrees owner policy available reference memory
         original repaired frame started leftRecall
@@ -128,9 +126,9 @@ theorem foreign_binding_block_stopped_coupling
         (frame.network ▸ app.serialsBeforeNext_history scheduler (initialLaw setup)
           (rosterPlan setup rosters).length rightTrace)
         (by
-          intro selected selectedGrant equality
-          cases Option.some.inj (selectedGrant.symm.trans originalGrant)
-          exact different (Option.some.inj (owned.symm.trans equality)))
+          rw [frame.publicView]
+          exact idle_of_ready setup repaired.application ready
+            (fun equality => different (Option.some.inj (owned.symm.trans equality))))
         (remaining + ending.length) visits windowTrace before (ending ++ after)
         (by simpa only [ending, List.append_assoc] using split) position
     exact ⟨coupling, first, second, fun next member =>

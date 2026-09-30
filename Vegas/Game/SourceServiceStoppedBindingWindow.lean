@@ -281,7 +281,9 @@ theorem binding_window_stopped_coupling
             coupling.map Prod.fst = leftRun response ∧ coupling.map Prod.snd = rightRun response ∧
             ∀ next ∈ coupling.support, good next := by
         rcases (runtime setup).binding_audit_response_cases leaks bounds original owner remaining
-            event payload outputEq codeEq node originalGrant originalFresh recalled originalSerials
+            event payload outputEq codeEq node
+              ((soleReady_of_ready setup original.application originalReady).ownTurn owned)
+              originalFresh recalled originalSerials
               response (covered _ _ response member) with replay | canonical | departure
         · have unchanged : memory.repairResponse (runtime setup) leaks owner
               (repaired.observe app owner) response = (response, memory.shadow) := by
@@ -458,7 +460,8 @@ theorem binding_window_stopped_coupling
             apply required_binding_sourceService
             apply BindingMemory.repairResponse_binding_available (runtime setup) leaks bounds
               owner memory (repaired.recall owner) (repaired.observe app owner) event payload
-              outputEq codeEq node granted owned
+              outputEq codeEq node
+              ((soleReady_of_ready setup repaired.application ready).ownTurn owned) owned
               ((repaired.application.publicView_eventReady event).mpr ready) unsent
               (original.application.publicView.bindingCount owner)
             · rw [counted]

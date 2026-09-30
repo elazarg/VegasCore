@@ -66,7 +66,6 @@ theorem checkpoint_extra_submission
       ((graph setup).nodes event) = .resolve owner payload (refs.get selected) [])
     (node : nodeView (graph setup) event =
       .resolve owner payload (refs.get selected) [] outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (response : (application setup leaks).Action)
     (effective : response ∈ (bounds.menu (runtime setup) leaks).actions owner
       (execution.recall owner) (execution.observe (application setup leaks) owner))
@@ -79,14 +78,12 @@ theorem checkpoint_extra_submission
           ⟨(owner, execution.network.nextSerial owner), packet⟩ = none ∨
         certifiedOpening packet = false := by
   obtain ⟨value, bound⟩ := checkpoint.openable selected
+  have ready : execution.application.config.cut.Ready event :=
+    checkpoint.ready event eventRank
   obtain ⟨candidate, associated, owned, fixed, opening⟩ := opening_at_checkpoint setup leaks
     selected source.state refs execution checkpoint.agrees checkpoint.binding event ownedEvent
-      outputEq codeEq node granted value bound
-  have ready : execution.application.config.cut.Ready event := by
-    have inside : rank < (graph setup).order.eventCount := eventRank ▸ event.isLt
-    have same : (⟨rank, inside⟩ : (graph setup).EventId) = event := Fin.ext eventRank.symm
-    rw [← same]
-    exact checkpoint.ordered.ready inside
+      outputEq codeEq node (ownTurn?_of_ready setup execution.application ready ownedEvent)
+      value bound
   exact extra_response_packet_cases setup leaks bounds execution owner checkpoint.recall
     (checkpoint.known_published owner) event payload (refs.get selected) [] outputEq codeEq node
     ready candidate ⟨payload, value⟩ associated owned fixed opening response effective extra
@@ -157,7 +154,7 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
     watcher owner different site _ _ observed action extra
   obtain ⟨submission, same, departure⟩ := checkpoint_extra_submission setup leaks bounds
     source refs rank control.execution checkpoint selected event eventRank ownedEvent outputEq
-    codeEq node granted response effective excluded
+    codeEq node response effective excluded
   have chosenSubmission : action.1 = some ⟨some (.submit submission)⟩ := by rw [chosen, same]
   have collected := watched_commit_collection setup leaks bounds watcher owner different reveals
     profile (restriction.site owner site) (restriction.informationHistory owner site history)

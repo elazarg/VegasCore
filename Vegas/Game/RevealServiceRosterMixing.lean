@@ -37,8 +37,7 @@ theorem roster_owner_choice_data
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state execution)
     (supported : state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
       (fun owner => RevealOnly.uniformPolicy owner setup.program reveals)))^[event.val]
-        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support)
-    (granted : execution.application.serviceGrant = some event) :
+        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).support) :
     ∃ site : (setup.informationModel admission).InformationSite who,
       site.1 = setup.protocolObserve who (some state) ∧
       sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission profile) who
@@ -57,7 +56,8 @@ theorem roster_owner_choice_data
     setup.program reveals decoded (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program decoded)
-    event.val event.isLt state execution related event (by omega) owned granted
+    event.val event.isLt state execution related event (by omega) owned
+    (related.ready event (Nat.zero_add _).symm)
   refine ⟨site, siteView, ?_, data.2.2⟩
   have encoded : setup.toProtocolBehavioralPolicy admission who (decoded who)
       (((setup.behavioralPolicyEquiv admission who).symm (profile who)).2) = profile who :=
@@ -108,17 +108,20 @@ theorem roster_policy_support_exact
       unchanged, _⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable
       who control trace active
-  have grantNow : (control.execution.observe app who).application.publicView.serviceGrant =
-      some event := by change control.execution.application.serviceGrant = _; rw [unchanged, grant]
+  have grantedSole := soleReady_of_ready setup granted.application grant
+  have sole : (control.execution.observe app who).application.publicView.SoleReady event := by
+    change control.execution.application.publicView.SoleReady event
+    rw [unchanged]
+    exact grantedSole
   by_cases ownedEvent : (graph setup).actor? event = some who
   · obtain ⟨site, _, choiceLaw, candidate, raw, opening, owned, valid, handle, value⟩ :=
       roster_owner_choice_data setup leaks bounds reveals admission source.strategy who event
-        ownedEvent initial initialSupport state granted related sourceSupport grant
+        ownedEvent initial initialSupport state granted related sourceSupport
     have full := rosterSelection_fullSupport _ (timing event who ownedEvent)
       (choiceLaw ▸ setup.reveal_choice_fullSupport reveals admission source mixed who site)
       (timingFull event who ownedEvent)
     have law := rosterPolicy_at_phase setup leaks rosters timing decoded granted control.execution
-      event who grant ownedEvent candidate raw opening unchanged who
+      event who grantedSole ownedEvent candidate raw opening unchanged who
     simp only [EventGraphRuntime.openingWindowMixturePlayers, Function.update_self] at law
     rw [law, activated]
     have covered : ∀ player past view response,
@@ -128,7 +131,8 @@ theorem roster_policy_support_exact
       exact (menu.uniformResponses_support player past view response).mp supported
     refine ⟨?_, ?_⟩
     · intro supported
-      refine roster_owner_coverage setup leaks extended rosters granted event who grant ownedEvent
+      refine roster_owner_coverage setup leaks extended rosters granted event who grantedSole
+        ownedEvent
         candidate raw opening owned valid (offset who) serials published menu.uniformResponses
         covered network ((rosters event).take slot) (roster_count_before selected)
         prior reached sample _ full (fun fresh => ?_) action supported
@@ -142,14 +146,16 @@ theorem roster_policy_support_exact
       rw [activated] at normal
       exact normal
     · intro member
-      exact roster_owner_fullSupport setup leaks extended rosters granted event who grant ownedEvent
+      exact roster_owner_fullSupport setup leaks extended rosters granted event who grantedSole
+        ownedEvent
         candidate raw opening owned valid (offset who) serials published menu.uniformResponses
         covered network ((rosters event).take slot) (roster_count_before selected)
         prior reached sample _ full action member
-  · have waiting : rosterPolicy setup leaks rosters timing decoded who
+  · have idleNow := sole.ownTurn?_foreign ownedEvent
+    have waiting : rosterPolicy setup leaks rosters timing decoded who
         (control.execution.recall who) (control.execution.observe app who) =
           app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
-      simp only [rosterPolicy, grantNow, dite_eq_right ownedEvent]
+      simp only [rosterPolicy, idleNow]
       rfl
     rw [waiting]
     refine ⟨replay_roster setup leaks extended rosters who _ _ action, ?_⟩
@@ -160,9 +166,8 @@ theorem roster_policy_support_exact
     · have absent : rosterFresh? setup leaks rosters who (control.execution.recall who)
           (control.execution.observe app who) = none := by
         unfold rosterFresh?
-        rw [grantNow]
-        dsimp only [Option.bind]
-        exact ite_eq_left ownedEvent
+        rw [idleNow]
+        rfl
       rw [absent] at fresh
       cases fresh
 
@@ -196,9 +201,10 @@ theorem roster_fresh_available
       who control trace active
   obtain ⟨sentEvent, candidate, raw, sentGrant, owned, sentOpening, rfl, _⟩ :=
     rosterFresh?_shape setup leaks rosters who _ _ action fresh
-  change control.execution.application.serviceGrant = some sentEvent at sentGrant
-  rw [unchanged, grant] at sentGrant
-  cases Option.some.inj sentGrant
+  have sentReady := (PublicView.ownTurn?_spec _ who sentEvent sentGrant).1
+  change control.execution.application.publicView.EventReady sentEvent at sentReady
+  rw [unchanged] at sentReady
+  cases (soleReady_of_ready setup granted.application grant).2 sentEvent sentReady
   have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
     setup.program reveals profile (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)

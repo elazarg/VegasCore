@@ -126,7 +126,8 @@ theorem sourceService_unsubmitted_recall
     (fun who past view response supported =>
       sourceServiceMenu_in_compiled setup leaks bounds rosters who past view
         ((menu.uniformResponses_support who past view response).mp supported))
-    network event owner owned ((rosters event).take position) boundary prior grant reached
+    network event owner owned ((rosters event).take position) boundary prior
+      (soleReady_of_ready setup boundary.application (checkpoint.ready event rfl)) reached
       priorUnsent
   obtain ⟨suffix, recalled, legal⟩ := replay_recall setup leaks network owner event
     ((rosters event).take position) boundary prior grant replay

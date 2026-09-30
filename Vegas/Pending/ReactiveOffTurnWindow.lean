@@ -41,7 +41,7 @@ private theorem activation_resources
     (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
       execution).support) :
     next.InputRecall (runtime.reactiveApplication leaks) ∧ next.network.SerialsBeforeNext ∧
-      next.application.serviceGrant = execution.application.serviceGrant := by
+      next.application.publicView = execution.application.publicView := by
   let app := runtime.reactiveApplication leaks
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
@@ -55,8 +55,7 @@ private theorem activation_resources
   obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸
     ((congrArg (fun law : PMF app.Execution => middle ∈ law.support)
       (ReactiveApplication.Execution.activation_samples app execution actor)).mp moved)
-  exact congrArg PublicView.serviceGrant
-    (reactive_respond_application runtime leaks _ actor response).2
+  exact (reactive_respond_application runtime leaks _ actor response).2
 
 omit [Fintype Player] in
 private theorem activation_step_evidence
@@ -137,11 +136,9 @@ private theorem off_turn_owner_activation_coupling
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
-    (offTurn : ∀ event, original.application.serviceGrant = some event →
-      graph.actor? event ≠ some owner)
+    (idle : original.application.publicView.Idle owner)
     (coverage : ∀ past view,
-      (∀ event, view.application.publicView.serviceGrant = some event →
-        graph.actor? event ≠ some owner) →
+      view.application.publicView.Idle owner →
       ∀ response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support,
         response ∈ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
@@ -165,14 +162,13 @@ private theorem off_turn_owner_activation_coupling
   classical
   intro app strategy
   let sample := leaks owner original.network.pending
-  have rightOffTurn : ∀ event, repaired.application.serviceGrant = some event →
-      graph.actor? event ≠ some owner := by
-    intro event granted
-    exact offTurn event ((congrArg PublicView.serviceGrant frame.publicView).trans granted)
+  have rightIdle : repaired.application.publicView.Idle owner := by
+    rw [← frame.publicView]
+    exact idle
   have existsStep (selected) (_supported : selected ∈ sample.support) :=
     (frame.activate owner selected).off_turn_stopped_response_coupling
       bounds menu players reference started leftRecall rightRecall (serials.learn owner selected)
-        0 offTurn (coverage _ _ rightOffTurn) (available _ _)
+        0 idle (coverage _ _ rightIdle) (available _ _)
   let step := fun selected supported => (existsStep selected supported).choose
   refine ⟨sample.bindOnSupport step, ?_, ?_, ?_⟩
   · rw [map_bindOnSupport]
@@ -203,11 +199,9 @@ private theorem off_turn_activation_coupling
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
-    (offTurn : ∀ event, original.application.serviceGrant = some event →
-      graph.actor? event ≠ some owner)
+    (idle : original.application.publicView.Idle owner)
     (coverage : ∀ past view,
-      (∀ event, view.application.publicView.serviceGrant = some event →
-        graph.actor? event ≠ some owner) →
+      view.application.publicView.Idle owner →
       ∀ response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support,
         response ∈ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
@@ -231,7 +225,7 @@ private theorem off_turn_activation_coupling
   · subst actor
     obtain ⟨coupling, first, second, related⟩ :=
       frame.off_turn_owner_activation_coupling bounds menu players reference started
-        leftRecall rightRecall serials offTurn coverage available
+        leftRecall rightRecall serials idle coverage available
     refine ⟨coupling, first, second, ?_⟩
     intro next supported
     rcases related next supported with ⟨record, step, authored, rejected⟩ | good
@@ -285,11 +279,9 @@ theorem run_off_turn_stopped_coupling
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
-    (offTurn : ∀ event, original.application.serviceGrant = some event →
-      graph.actor? event ≠ some owner)
+    (idle : original.application.publicView.Idle owner)
     (coverage : ∀ past view,
-      (∀ event, view.application.publicView.serviceGrant = some event →
-        graph.actor? event ≠ some owner) →
+      view.application.publicView.Idle owner →
       ∀ response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support,
         response ∈ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
@@ -338,7 +330,7 @@ theorem run_off_turn_stopped_coupling
                 next.2.1.application.playerView owner = repaired.application.playerView owner := by
         obtain ⟨actor, rfl⟩ := commands original (by omega) (by omega) command chosen
         obtain ⟨step, first, second, related⟩ := frame.off_turn_activation_coupling
-          bounds menu players reference started leftRecall rightRecall serials offTurn
+          bounds menu players reference started leftRecall rightRecall serials idle
             coverage available actor
         have existsTail (next) (member : next ∈ step.support) :
             ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
@@ -382,7 +374,7 @@ theorem run_off_turn_stopped_coupling
             obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih good.1 good.2.1 valid
               (runtime.private_activation_recall leaks strategy players owner actor repaired memory
                 next.2 rightRecall privateReached) fresh
-              (fun event granted => offTurn event (grant.symm.trans granted))
+              (by rw [grant]; exact idle)
               (offset + 1) nextPosition
               (fun execution lower upper => commands execution (by omega) (by omega))
             refine ⟨coupling, leftLaw, rightLaw, ?_⟩

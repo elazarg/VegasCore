@@ -49,8 +49,8 @@ theorem sourceServicePolicy_commit_supported
     (history : decodeHistory setup.program
       (execution.application.config.history.map
         (setup.eventGraph.fromModeCompletion .sequential)) = source.history)
-    (granted : execution.application.serviceGrant =
-      some (embedding.event ⟨0, by simp [eventCount]⟩))
+    (ready : execution.application.config.cut.Ready
+      (embedding.event ⟨0, by simp [eventCount]⟩))
     (serial : Nat)
     (selected : reactiveFreshSlot (execution.observe
       (application setup leaks) owner).application = some serial)
@@ -76,7 +76,7 @@ theorem sourceServicePolicy_commit_supported
   have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
     EventGraphRuntime.nodeView_eq_bind _ _
   rw [sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile refs source
-    embedding refsBefore offset aligned execution agree history granted,
+    embedding refsBefore offset aligned execution agree history ready,
     PMF.support_map] at supported
   obtain ⟨choice, choiceSupported, responseEq⟩ := supported
   have allowed := permitted.1 rfl (source.view owner) choice choiceSupported

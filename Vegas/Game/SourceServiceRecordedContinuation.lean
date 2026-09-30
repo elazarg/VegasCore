@@ -26,7 +26,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Once an event is recorded, later timed responses are transport-only as
-long as the application grant is unchanged and own recall is retained. -/
+long as the event stays the sole ready one and own recall is retained. -/
 theorem sourceServiceTimedPolicy_recorded_transport
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -36,7 +36,7 @@ theorem sourceServiceTimedPolicy_recorded_transport
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (initial : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (recorded : (runtime setup).eventRecorded leaks (initial.recall owner) event = true)
     (current : (application setup leaks).Execution)
     (same : current.application = initial.application)
@@ -45,10 +45,11 @@ theorem sourceServiceTimedPolicy_recorded_transport
     (supported : response ∈ (sourceServiceTimedPolicy setup leaks rosters timing profile actor
       (current.recall actor) (current.observe (application setup leaks) actor)).support) :
     response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
-  have grant : PublicView.serviceGrant
-      (current.observe (application setup leaks) actor).application.publicView = some event := by
-    change current.application.serviceGrant = _
-    rw [same, granted]
+  have currentSole :
+      (current.observe (application setup leaks) actor).application.publicView.SoleReady event := by
+    change current.application.publicView.SoleReady event
+    rw [same]
+    exact sole
   by_cases isOwner : actor = owner
   · subst actor
     obtain ⟨entry, present, submitted⟩ := ((runtime setup).eventRecorded_iff leaks _ event).mp
@@ -56,12 +57,14 @@ theorem sourceServiceTimedPolicy_recorded_transport
     have still := ((runtime setup).eventRecorded_iff leaks _ event).mpr
       ⟨entry, retained present, submitted⟩
     rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile owner _ _ event
-      grant still] at supported
+      (PublicView.ownTurn?_of_ownTurn _ owner event (currentSole.ownTurn owned)) still]
+      at supported
     exact (application setup leaks).replayPolicy_cases _ _ response supported
   · have different : (graph setup).actor? event ≠ some actor := by
       rw [owned]
       exact fun same => isOwner (Option.some.inj same).symm
-    simp only [sourceServiceTimedPolicy, grant, dite_eq_right different] at supported
+    simp only [sourceServiceTimedPolicy,
+      PublicView.ownTurn?_eq_none _ actor (currentSole.idle different)] at supported
     exact (application setup leaks).replayPolicy_cases _ _ response supported
 
 /-- From any execution after the owner's recorded submission, whose envelope
@@ -78,7 +81,7 @@ theorem sourceService_recorded_plan_application_law
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
     (message : Message Player (WitnessedPacket (graph setup)))
     (authored : message.sender = owner)
@@ -102,7 +105,7 @@ theorem sourceService_recorded_plan_application_law
   have settled := (runtime setup).replay_window_settlement leaks players network owner execution
     (fun current actor action same recalled supported =>
       sourceServiceTimedPolicy_recorded_transport setup leaks rosters timing profile event owner
-        owned execution granted recorded current same recalled actor action supported)
+        owned execution sole recorded current same recalled actor action supported)
     event message authored addressed packets pending unpublished visits
   have applicationLaw := congrArg (PMF.map Prod.fst) settled
   simp only [PMF.map_comp, Function.comp_def, PMF.pure_map] at applicationLaw
@@ -143,7 +146,7 @@ theorem sourceService_recorded_response_application_law
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
     (message : Message Player (WitnessedPacket (graph setup)))
     (authored : message.sender = owner)
@@ -170,9 +173,9 @@ theorem sourceService_recorded_response_application_law
   have unchanged := (runtime setup).replay_response_preserves leaks _ execution packets who
     response transport
   have respondApplication : after.application = execution.application := unchanged.1
-  have grant : after.application.serviceGrant = some event := by
+  have afterSole : after.application.publicView.SoleReady event := by
     rw [unchanged.1]
-    exact granted
+    exact sole
   have still : (runtime setup).eventRecorded leaks (after.recall owner) event = true :=
     (runtime setup).eventRecorded_respond_of_recorded leaks execution who owner response event
       recorded
@@ -185,7 +188,7 @@ theorem sourceService_recorded_response_application_law
     rw [unchanged.2.1]
     exact unpublished
   have law := sourceService_recorded_plan_application_law setup leaks rosters timing profile
-    network event owner owned after grant still message authored addressed safe remains unspent
+    network event owner owned after afterSole still message authored addressed safe remains unspent
     visits ticks
   dsimp only at law
   rw [law]
@@ -269,7 +272,7 @@ theorem recorded_phase_invariant {who : Player} {remaining : Nat}
       service.network service.menu approx.players approx.covered approx.assessment
       approx.strategy approx.mixed who remaining execution trace response allowed
     exact sourceServiceTimedPolicy_recorded_transport service.setup service.leaks service.rosters
-      approx.timing approx.profile phase.event owner owned execution phase.granted recorded
+      approx.timing approx.profile phase.event owner owned execution phase.sole recorded
       execution rfl (List.Subset.refl _) who response supported
   have ending : rosterPhaseEnding service.setup phase.event =
       [.includeLatest phase.event owner] ++
@@ -279,7 +282,7 @@ theorem recorded_phase_invariant {who : Player} {remaining : Nat}
       (allowed : response ∈ service.menu.actions who (execution.recall who)
         (execution.observe (application service.setup service.leaks) who)) :=
     sourceService_recorded_response_application_law service.setup service.leaks service.rosters
-      approx.timing approx.profile service.network phase.event owner owned execution phase.granted
+      approx.timing approx.profile service.network phase.event owner owned execution phase.sole
       recorded message rfl rfl packets pending unpublished who response (transport response allowed)
       phase.visits (phase.event.val + 1)
   have applications := (law first firstAllowed).trans (law second secondAllowed).symm
@@ -296,7 +299,7 @@ theorem recorded_comparison_eq (who : Player) (site : service.model.InformationS
     (observed : site.1 = some (past, view))
     {event : (graph service.setup).EventId} {payload : L.Ty}
     (outputEq : (graph service.setup).outputLayout event = .binding who payload)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (recorded : (runtime service.setup).eventRecorded service.leaks past event = true)
     (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
@@ -307,11 +310,11 @@ theorem recorded_comparison_eq (who : Player) (site : service.model.InformationS
   intro history remaining execution current info phase first second firstAllowed secondAllowed
   have input := Option.some.inj
     ((service.infoOf_decision history current).symm.trans (info.trans observed))
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) input).trans granted
-  have same : phase.event = event := Option.some.inj (phase.granted.symm.trans grant)
+        pair.2.application.publicView.EventReady event) input).mpr readyView
+  have same : phase.event = event := (phase.sole.2 event readyNow).symm
   subst same
   have ownRecall : execution.recall who = past := congrArg Prod.fst input
   have trace : (service.menu.protocol (initialLaw service.setup) service.planLength

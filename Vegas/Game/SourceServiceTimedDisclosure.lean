@@ -165,7 +165,7 @@ theorem sourceServiceOpportunity_reveal
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
-    ∀ (_granted : execution.application.serviceGrant = some event)
+    ∀ (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false),
     sourceServiceOpportunity setup leaks wholeProfile owner event
       (execution.recall owner) (execution.observe (application setup leaks) owner) =
@@ -176,7 +176,7 @@ theorem sourceServiceOpportunity_reveal
             (execution.observe (application setup leaks) owner)
         | some (candidate, raw) =>
             PMF.pure ((runtime setup).windowOpening leaks event candidate raw) := by
-  intro index event granted unsent
+  intro index event ready unsent
   let app := application setup leaks
   have outputEq : (graph setup).outputLayout event = .publication payload := by
     change Vegas.outputLayout setup.program (embedding.event index) = _
@@ -194,7 +194,7 @@ theorem sourceServiceOpportunity_reveal
     EventGraphRuntime.nodeView_eq_resolve _ _
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte]
   rw [sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
-    refs source embedding refsBefore rank aligned execution agree history granted, PMF.bind_map]
+    refs source embedding refsBefore rank aligned execution agree history ready, PMF.bind_map]
   apply bind_congr_on_support _
   intro disclose supported
   rcases effective_reveal_supported fresh binding unresolved next profile source effective
@@ -261,7 +261,7 @@ theorem sourceServiceTimedFamily_reveal_law
       (_position : visits = visited ++ owner :: remaining)
       (_selected : rosterOffset setup rosters owner event + slot.val =
         (execution.recall owner).length + visited.count owner)
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false),
     (runtime setup).runInteractionPlan leaks
       (Function.update (fun _ => (application setup leaks).replayPolicy) owner
@@ -280,7 +280,7 @@ theorem sourceServiceTimedFamily_reveal_law
               (application setup leaks).replayPolicy)) network
           (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution := by
-  intro index event slot position selected granted unsent
+  intro index event slot position selected ready unsent
   let app := application setup leaks
   let offset := rosterOffset setup rosters owner event
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
@@ -321,7 +321,7 @@ theorem sourceServiceTimedFamily_reveal_law
     (fun current who response _ _ member => app.replayPolicy_cases _ _ response member)
     (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visited current reached
   have same := preserved.1
-  have currentGrant : current.application.serviceGrant = some event := by rw [same]; exact granted
+  have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
   have currentAgree : refs.Agrees source.state current.application.config.store := by
     rw [same]; exact agree
   have currentHistory : decodeHistory setup.program (current.application.config.history.map
@@ -355,7 +355,7 @@ theorem sourceServiceTimedFamily_reveal_law
   have sourceLaw := sourceServiceOpportunity_reveal setup leaks fresh binding unresolved next
     wholeProfile profile refs source embedding refsBefore rank aligned activated currentAgree
     currentHistory currentValid currentRecall
-    (origins_sampled setup leaks current currentOrigins owner sample) effective currentGrant
+    (origins_sampled setup leaks current currentOrigins owner sample) effective currentReady
     activatedUnsent
   have openingEq := rosterOpening?_application_eq setup leaks owner event activated execution same
   have actionLaw : opening (activated.recall owner) (activated.observe app owner) =
@@ -468,7 +468,7 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (owned : (graph setup).actor? event = some owner)
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
     let phase := (rosters event).map ServiceInstruction.player ++
@@ -484,9 +484,10 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
             | some (candidate, raw) =>
                 (runtime setup).openingWindowPlayers leaks owner event candidate raw
                   (execution.recall owner).length (some slot)) network phase execution := by
-  intro index event owned granted unsent counted phase
+  intro index event owned ready unsent counted phase
   rw [sourceServiceTimedPolicy_phase_law setup leaks rosters timing wholeProfile event owner owned
-    network ticks execution granted counted.le]
+    network ticks execution (soleReady_of_ready setup execution.application ready)
+    counted.le]
   conv_rhs => rw [PMF.bind_comm]
   apply bind_congr_on_support _
   intro slot _
@@ -496,7 +497,7 @@ theorem sourceServiceTimedPolicy_reveal_phase_law
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
     agree history valid recalled origins effective network (rosters event) visited remaining slot
     position
-    (by rw [counted, selected]) granted unsent
+    (by rw [counted, selected]) ready unsent
   have splitPlan : phase =
       ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         (List.replicate ticks .tick ++ [.expire event]) := by
@@ -573,7 +574,7 @@ theorem sourceServiceTimedPolicy_reveal_traffic
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (owned : (graph setup).actor? event = some owner)
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event),
     ((runtime setup).runInteractionPlan leaks
@@ -584,10 +585,10 @@ theorem sourceServiceTimedPolicy_reveal_traffic
       (revealKernel profile (source.view owner)).bind
         (guardedDisclosureTranscript setup leaks network (rosters event) owner focal event ticks
           (timing event owner owned) execution) := by
-  intro index event owned granted unsent counted
+  intro index event owned ready unsent counted
   rw [sourceServiceTimedPolicy_reveal_phase_law setup leaks rosters timing fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
-    agree history valid recalled origins effective network ticks owned granted unsent counted,
+    agree history valid recalled origins effective network ticks owned ready unsent counted,
     PMF.map_bind]
   apply bind_congr_on_support _
   intro disclose _

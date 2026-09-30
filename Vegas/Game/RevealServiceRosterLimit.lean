@@ -62,7 +62,7 @@ they need only be legal under the retained menu. -/
 theorem roster_owner_mixture_limit
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -123,7 +123,7 @@ theorem roster_owner_mixture_limit
         else app.replayPolicy past view)
     else app.replayPolicy past view)
   obtain ⟨selected, frame, earlier, recorded, posterior⟩ :=
-    roster_window_posterior setup leaks bounds rosters initial event owner granted ownedEvent
+    roster_window_posterior setup leaks bounds rosters initial event owner sole ownedEvent
       candidate raw opening owned valid offset serials published players covered network visits
         inside.le current reached
   have counts : past.length = rosterOffset setup rosters owner event + visits.count owner :=
@@ -214,7 +214,7 @@ theorem rosterLimitPolicy_at_phase
     (profile : BehavioralProfile setup.program)
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (owned : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -233,8 +233,11 @@ theorem rosterLimitPolicy_at_phase
           (fun disclose => if disclose then PMF.pure packet else app.replayPolicy past view)
       else app.replayPolicy past view := by
   have grant :
-      (current.observe (application setup leaks) owner).application.publicView.serviceGrant =
-      some event := by change current.application.serviceGrant = some event; rw [unchanged, granted]
+      (current.observe (application setup leaks) owner).application.publicView.ownTurn? owner =
+        some event := by
+    change current.application.publicView.ownTurn? owner = some event
+    rw [unchanged]
+    exact PublicView.ownTurn?_of_ownTurn _ owner event (sole.ownTurn owned)
   dsimp only
   unfold rosterLimitPolicy
   rw [grant]
@@ -252,7 +255,7 @@ read from the owner's actual application observation. -/
 theorem roster_owner_policy_limit
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -293,11 +296,11 @@ theorem roster_owner_policy_limit
   let app := application setup leaks
   let activated := current.sampledActivation app owner sample
   obtain ⟨selected, frame, _⟩ := roster_window_support setup leaks bounds rosters
-    initial event owner granted ownedEvent candidate raw opening owned valid offset serials
+    initial event owner sole ownedEvent candidate raw opening owned valid offset serials
       published players covered network visits inside.le current reached
   have unchanged : activated.application = initial.application := frame.application
   have actual := roster_owner_mixture_limit setup leaks bounds rosters initial event owner
-    granted ownedEvent candidate raw opening owned valid offset serials published players covered
+    sole ownedEvent candidate raw opening owned valid offset serials published players covered
       network visits inside current reached sample
       (fun n => sourceChoiceLaw setup leaks (profiles n) owner (initial.observe app owner))
       choiceFull (sourceChoiceLaw setup leaks source owner (initial.observe app owner))
@@ -305,11 +308,11 @@ theorem roster_owner_policy_limit
         timingConverges
   dsimp only at actual ⊢
   rw [rosterLimitPolicy_at_phase setup leaks rosters source initial activated event owner
-    granted ownedEvent candidate raw opening unchanged]
+    sole ownedEvent candidate raw opening unchanged]
   convert actual using 1
   ext n action
   have same := rosterPolicy_at_phase setup leaks rosters (timing n) (profiles n)
-    initial activated event owner granted ownedEvent candidate raw opening unchanged owner
+    initial activated event owner sole ownedEvent candidate raw opening unchanged owner
   simpa only [EventGraphRuntime.openingWindowMixturePlayers, Function.update_self] using
     congrArg (fun (law : PMF app.Action) => law action) same
 

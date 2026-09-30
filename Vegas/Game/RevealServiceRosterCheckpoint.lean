@@ -278,7 +278,6 @@ theorem PublicCheckpoint.reveal_roster [Fintype Player]
     (decoded : ∀ disclose, decodeEventAction setup.program event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
         some (.reveal owner name disclose))
-    (granted : execution.application.serviceGrant = some event)
     (offset : (execution.recall owner).length = rosterOffset setup rosters owner event)
     (clean : execution.network.Satisfies fun message =>
       message.id ∈ execution.network.ledger.map Message.id)
@@ -309,7 +308,7 @@ theorem PublicCheckpoint.reveal_roster [Fintype Player]
     roster_menu_reveal_source_step setup leaks bounds rosters published selected source
       checkpoint.emptyRegistry refs execution checkpoint.agrees checkpoint.history event outputEq
         codeEq node before decoded value bound candidate owned associated verified ready timely
-          granted ownedEvent opening offset entered (event.val + 1) activated due clean serials
+          ownedEvent opening offset entered (event.val + 1) activated due clean serials
             players covered network next reached
   have progressed := (runtime setup).runInteractionPlan_facts leaks (setup.eventInputs initial)
     players network _ execution next checkpoint.invariant reached

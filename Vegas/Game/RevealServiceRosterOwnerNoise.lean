@@ -33,8 +33,8 @@ theorem roster_owner_window_coupling
     (left right : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
     (actor : (graph setup).actor? event = some owner)
-    (leftGrant : left.application.serviceGrant = some event)
-    (rightGrant : right.application.serviceGrant = some event)
+    (leftSole : left.application.publicView.SoleReady event)
+    (rightSole : right.application.publicView.SoleReady event)
     (leftCandidate rightCandidate : Handle (graph setup)) (leftRaw rightRaw : Raw L)
     (leftOpening : rosterOpening? setup leaks owner event
       (left.observe (application setup leaks) owner) = some (leftCandidate, leftRaw))
@@ -67,9 +67,9 @@ theorem roster_owner_window_coupling
   have choices := congrArg (sourceChoiceLaw setup leaks profile owner) observed
   have privateView := congrArg ReactiveApplication.PlayerView.application observed
   have publicView := congrArg ReactivePlayerView.publicView privateView
-  rw [rosterPolicy_window_eq setup leaks rosters timing profile left left event owner leftGrant
+  rw [rosterPolicy_window_eq setup leaks rosters timing profile left left event owner leftSole
     actor leftCandidate leftRaw leftOpening rfl network visits,
-    rosterPolicy_window_eq setup leaks rosters timing profile right right event owner rightGrant
+    rosterPolicy_window_eq setup leaks rosters timing profile right right event owner rightSole
     actor leftCandidate leftRaw rightOpening rfl network visits]
   rw [openingWindowMixture_law _ _ _ _ _ _ _ _ _ _ _ leftOffset,
     openingWindowMixture_law _ _ _ _ _ _ _ _ _ _ _ rightOffset, choices]
@@ -90,8 +90,8 @@ theorem roster_owner_activation_coupling
     (left right : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
     (actor : (graph setup).actor? event = some owner)
-    (leftGrant : left.application.serviceGrant = some event)
-    (rightGrant : right.application.serviceGrant = some event)
+    (leftSole : left.application.publicView.SoleReady event)
+    (rightSole : right.application.publicView.SoleReady event)
     (leftCandidate rightCandidate : Handle (graph setup)) (leftRaw rightRaw : Raw L)
     (leftOpening : rosterOpening? setup leaks owner event
       (left.observe (application setup leaks) owner) = some (leftCandidate, leftRaw))
@@ -118,7 +118,7 @@ theorem roster_owner_activation_coupling
         current.environmentStep (application setup leaks) (.activate owner)).map (fun final =>
           (final.recall owner, final.observe (application setup leaks) owner)) := by
   have coupled := roster_owner_window_coupling setup leaks rosters timing profile left right
-    event owner actor leftGrant rightGrant leftCandidate rightCandidate leftRaw rightRaw
+    event owner actor leftSole rightSole leftCandidate rightCandidate leftRaw rightRaw
     leftOpening rightOpening owned leftValid rightValid leftOffset rightOffset leftRecall
     rightRecall network visits observed readouts
   simp only [PMF.map_bind]
@@ -135,7 +135,7 @@ theorem roster_owner_activation_coupling
   rw [leftApplication, rightApplication]
   exact congrArg ReactiveApplication.PlayerView.application observed
 
-/-- At supported granted source checkpoints, the owner's actual next input
+/-- At supported source checkpoints, the owner's actual next input
 remains an observation-dependent channel of the original source state. The
 coupling is derived from the roster interpreter, including early own openings. -/
 theorem roster_owner_information_kernel
@@ -212,7 +212,12 @@ theorem roster_owner_information_kernel
         opening right rightSupport
       exact roster_owner_activation_coupling setup leaks rosters timing profile left right event
         owner
-        actor (granted left leftSupport) (granted right rightSupport) leftCandidate rightCandidate
+        actor
+        (soleReady_of_ready setup left.application
+          (leftCheckpoint.ready event (Nat.zero_add _).symm))
+        (soleReady_of_ready setup right.application
+          (rightCheckpoint.ready event (Nat.zero_add _).symm))
+        leftCandidate rightCandidate
         leftRaw rightRaw leftOpening rightOpening owned leftValid rightValid
         (offset left leftSupport)
         (offset right rightSupport) (recalls left leftSupport) (recalls right rightSupport)

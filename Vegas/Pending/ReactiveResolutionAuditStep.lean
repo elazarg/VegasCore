@@ -40,7 +40,7 @@ theorem resolution_audit_response_cases (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (turn : execution.application.publicView.OwnTurn owner event)
     (first : execution.network.nextSerial owner =
       execution.network.ledger.countP (fun message => message.sender = owner) →
         runtime.eventRecorded leaks (execution.recall owner) event = false)
@@ -93,13 +93,14 @@ theorem resolution_audit_response_cases (bounds : MessageBounds graph)
               record.input.envelope = true
           · have admissible := (runtime.permittedServiceEnvelope_unpublished_iff _ _ _
                 (serials.next_unpublished owner)).mp permitted
+            have named := runtime.freshServiceEnvelope_event_of_owned_unique
+              execution.application.publicView event _ (by exact turn.2.2) admissible.2
             obtain ⟨value, stored, resolved, canonical⟩ := runtime.service_opening_response leaks
               bounds execution owner sound invariant recalled event payload binding checks outputEq
-                codeEq node granted submission available admissible.2
+                codeEq node submission named available admissible.2
             refine Or.inr (Or.inl ⟨value, stored, resolved, canonical, ?_⟩)
             have addressed : runtime.submittedEvent? leaks ⟨some (.submit submission)⟩ =
-                some event := (runtime.freshServiceEnvelope_event execution.application.publicView
-                  _ admissible.2).trans granted
+                some event := named
             simp only [firstSubmission, addressed, first admissible.1, Bool.not_false]
           · refine Or.inr (Or.inr ⟨record, ?_, rfl, Bool.eq_false_iff.mpr permitted⟩)
             exact app.trafficStep_submit execution remaining owner submission
@@ -131,7 +132,7 @@ theorem resolution_stopped_response_coupling
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
     (first : original.network.nextSerial owner =
@@ -160,6 +161,7 @@ theorem resolution_stopped_response_coupling
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
+  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   let law := players owner (original.recall owner) (original.observe app owner)
   let proposed (response : app.Action) :=
@@ -202,7 +204,7 @@ theorem resolution_stopped_response_coupling
   · intro next supported
     obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.resolution_audit_response_cases leaks bounds original owner remaining sound
-        leftBinding leftRecall serials event payload binding checks outputEq codeEq node granted
+        leftBinding leftRecall serials event payload binding checks outputEq codeEq node turn
           first response (available response selected) with replay | canonical | departure
     · have unchanged : memory.repairResponse runtime leaks owner
           (repaired.observe app owner) response = (response, memory.shadow) := by
@@ -241,7 +243,7 @@ theorem resolution_stopped_response_coupling
         dsimp only [proposed]
         rw [unchanged]
         exact frame.successful_serviceDecision_retained bounds leftRecall rightRecall leftBinding
-          rightBinding event payload binding checks outputEq codeEq node granted owned ready timely
+          rightBinding event payload binding checks outputEq codeEq node turn owned ready timely
             value stored resolved response same (available response selected) firstResponse
       right
       dsimp only [adjusted]
@@ -277,7 +279,7 @@ theorem resolution_stopped_activation_coupling
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
     (first : original.network.nextSerial owner =
@@ -313,13 +315,14 @@ theorem resolution_stopped_activation_coupling
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
+  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
   let sample := leaks owner original.network.pending
   have existsStep (selected) (supported : selected ∈ sample.support) :=
     (frame.activate owner selected).resolution_stopped_response_coupling bounds menu players
       reference started leftRecall rightRecall (sound.learn owner selected) leftBinding
-      rightBinding remaining event payload binding checks outputEq codeEq node granted ready
+      rightBinding remaining event payload binding checks outputEq codeEq node turn ready
       timely first (serials.learn owner selected) (coverage selected supported)
       (available selected supported)
   let step := fun selected supported => (existsStep selected supported).choose

@@ -102,8 +102,6 @@ theorem resolution_history_response_coupling
   have rightSerials : repaired.network.SerialsBeforeNext :=
     app.serialsBeforeNext_history scheduler (initialLaw setup) (rosterPlan setup rosters).length
       (menu.toRawTrace (initialLaw setup) (rosterPlan setup rosters).length scheduler trace)
-  have originalGrant : original.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant frame.publicView).trans granted
   have originalReady : original.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, frame.publicView, State.publicView_eventReady]
     exact rightReady
@@ -126,13 +124,15 @@ theorem resolution_history_response_coupling
     rwa [frame.network] at counted
   obtain ⟨coupling, leftLaw, rightLaw, related⟩ := frame.resolution_stopped_response_coupling
     bounds menu players reference started leftRecall rightRecalled sound leftBinding rightBound
-      remaining event payload binding checks outputEq codeEq node originalGrant originalReady
+      remaining event payload binding checks outputEq codeEq node
+        ((soleReady_of_ready setup original.application originalReady).ownTurn owned) originalReady
         originalTimely originalFirst (frame.network ▸ rightSerials) (by
           intro response member
           have optional : ¬ bindingRequired setup leaks rosters owner
               (repaired.recall owner) (repaired.observe app owner) := by
-            rintro ⟨candidate, _, selectedGrant, bindingOutput, _⟩
-            cases Option.some.inj (selectedGrant.symm.trans granted)
+            rintro ⟨candidate, _, selectedTurn, bindingOutput, _⟩
+            cases Option.some.inj (selectedTurn.symm.trans
+              (ownTurn?_of_ready setup repaired.application rightReady owned))
             rw [outputEq] at bindingOutput
             cases bindingOutput
           change response ∈ sourceServiceActions setup leaks bounds rosters owner _ _

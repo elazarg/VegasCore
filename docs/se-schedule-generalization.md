@@ -101,14 +101,18 @@ party that must be live, and possibly one that must not be strategic.
 | `handle`: readiness, deadline, owner and handle checks | Contract code | Contract |
 | `State.activatedAt`, `deadline` (`Vegas/Pending/EventApplication.lean`) | Contract state and parameters | Contract |
 | `.expire`, `.executeSample` | Anyone-can-call contract functions, applied lazily | Contract (effect), service (caller) |
-| `.grant`, `State.serviceGrant`, the order policy | Not enforced by `handle`: an advisory public cursor that prescribed clients respect (`no_grant_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`) and that the audit's conformance check requires (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
+| `.grant`, `State.serviceGrant`, the order policy | Not enforced by `handle`: a public cursor that the fixed calendar still issues. Prescribed clients, response menus and the audit no longer read it: clients act at `PublicView.ownTurn?`, the least ready event the player owns (`no_turn_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`), and the audit's conformance check requires readiness and ownership (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
 | Disclosure reports feeding the audit | The watcher | Service |
 
 The grant is public and computed from public data, so it is not a private
-channel. It is, however, a coordination service that the fixed-calendar proof
-depends on: prescribed owners transmit only when granted, the audit classifies
-a fresh packet as conforming only for the granted event, and a deviator may
-still submit whenever its event is ready.
+channel. It used to be a coordination service that the fixed-calendar proof
+depended on: prescribed owners transmitted only when granted and the audit
+classified a fresh packet as conforming only for the granted event. Since step
+3 below, both use readiness instead, so a prescribed owner acts exactly when a
+deviator could. The calendar proofs still read the grant to name the event a
+decision belongs to and to compare public views, and the event-service stack
+(`Vegas/Pending/EventBindingPolicyService.lean`) still reads it; step 4
+removes these uses.
 
 ### Modeling priorities
 
@@ -441,7 +445,11 @@ design evidence, not proofs.
 3. **D1 runtime.** The asynchronous chain model with a Δ-bounded exogenous
    builder, prescribed owners broadcasting at readiness with
    `r + Δ < deadline`, and the readiness-based audit with its zero-charge and
-   deviation-bound proofs.
+   deviation-bound proofs. Partly done: prescribed clients, response menus and
+   the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`),
+   and `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved
+   against them under the fixed calendar. The exogenous builder is not yet
+   modeled.
 4. **Phase from public history and order-invariant continuations.**
 5. **The general theorem**, with the fixed calendar recovered as an instance.
 6. **Joint transmission-and-ordering deviations**, a separate theorem beyond

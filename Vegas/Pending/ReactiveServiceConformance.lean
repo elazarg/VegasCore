@@ -6,9 +6,11 @@ import Vegas.Pending.ReactiveSubmissionSerial
 
 /-! # Public conformance for binding and guarded disclosure phases
 
-The checker reads an authenticated public phase, its prior ledger and a signed
-envelope. It admits the first canonical opaque binding regardless of hidden
-opening material, and one certified opening whose public guards succeed.
+The checker reads the public view, its prior ledger and a signed envelope. It
+admits, for a ready event within its deadline, the first canonical opaque
+binding regardless of hidden opening material, and one certified opening whose
+public guards succeed. Authorization is readiness: no service grant is
+consulted, so conformance does not depend on how an order serves ready events.
 Already published envelopes and copies of the current pending envelope remain
 permitted. Serial evidence detects another fresh envelope without requiring
 the auditor to have sampled the earlier one. Omitted binding obligations are
@@ -29,13 +31,12 @@ variable {Player : Type} [DecidableEq Player]
 def freshServiceEnvelope (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph)) : Prop :=
   match message.payload.call with
-  | .commitment event candidate =>
-      view.serviceGrant = some event ∧
+  | .commitment _event candidate =>
       view.BindingIncludable runtime ⟨message.id, message.payload.call⟩ ∧
       candidate = (message.sender, .prepared (view.bindingCount message.sender)) ∧
       message.payload.evidence = none
   | .opening event candidate raw =>
-      view.serviceGrant = some event ∧ view.EventReady event ∧
+      view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
         | some entered => view.clock - entered < runtime.deadline event) ∧
@@ -98,7 +99,6 @@ theorem freshServiceEnvelope_binding_iff (view : PublicView graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (evidence : Option (OpeningFact graph)) :
     runtime.freshServiceEnvelope view ⟨id, ⟨.commitment event candidate, evidence⟩⟩ ↔
-      view.serviceGrant = some event ∧
       view.BindingIncludable runtime ⟨id, .commitment event candidate⟩ ∧
       candidate = (id.1, .prepared (view.bindingCount id.1)) ∧ evidence = none := Iff.rfl
 
@@ -111,39 +111,98 @@ theorem freshServiceEnvelope_binding_packet
       ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
     (⟨.commitment event candidate, evidence⟩ : WitnessedPacket graph) =
       ⟨.commitment event (id.1, .prepared (view.bindingCount id.1)), none⟩ := by
-  obtain ⟨_, _, allocated, empty⟩ :=
+  obtain ⟨_, allocated, empty⟩ :=
     (runtime.freshServiceEnvelope_binding_iff view id event candidate evidence).mp permitted
   rw [allocated, empty]
 
-/-- Every conforming fresh call names exactly the publicly granted event. -/
-theorem freshServiceEnvelope_event (view : PublicView graph)
+/-- Every conforming fresh call names a publicly ready event. -/
+theorem freshServiceEnvelope_ready (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
     (permitted : runtime.freshServiceEnvelope view message) :
-    message.payload.call.event? graph = view.serviceGrant := by
+    ∃ event, message.payload.call.event? graph = some event ∧ view.EventReady event := by
   cases call : message.payload.call with
   | commitment event candidate =>
-      simp only [freshServiceEnvelope, call] at permitted
-      exact permitted.1.symm
+      simp only [freshServiceEnvelope, call, PublicView.BindingIncludable] at permitted
+      exact ⟨event, rfl, permitted.1.1⟩
   | opening event candidate raw =>
       simp only [freshServiceEnvelope, call] at permitted
-      exact permitted.1.symm
+      exact ⟨event, rfl, permitted.1⟩
   | withhold event | malformed =>
       simp only [freshServiceEnvelope, call] at permitted
 
-/-- At a granted binding node, the public checker determines the entire
-emitted packet and its author, without an assumed packet-shape premise. -/
+/-- Every conforming fresh call names a ready event whose actor is its sender. -/
+theorem freshServiceEnvelope_owned (view : PublicView graph)
+    (message : Message Player (WitnessedPacket graph))
+    (permitted : runtime.freshServiceEnvelope view message) :
+    ∃ event, message.payload.call.event? graph = some event ∧ view.EventReady event ∧
+      graph.actor? event = some message.sender := by
+  cases call : message.payload.call with
+  | commitment event candidate =>
+      simp only [freshServiceEnvelope, call] at permitted
+      have bound := permitted.1
+      simp only [PublicView.BindingIncludable] at bound
+      cases node : nodeView graph event with
+      | bind owner payload outputEq codeEq =>
+          simp only [node] at bound
+          have authored : message.sender = owner := bound.2.2.1
+          have actor := congrArg EventCode.actor codeEq
+          rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
+          exact ⟨event, rfl, bound.1, authored ▸ actor⟩
+      | sample payload kernel outputEq codeEq =>
+          simp only [node, and_false] at bound
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp only [node, and_false] at bound
+  | opening event candidate raw =>
+      simp only [freshServiceEnvelope, call] at permitted
+      cases node : nodeView graph event with
+      | bind owner payload outputEq codeEq =>
+          simp only [node, and_false] at permitted
+      | sample payload kernel outputEq codeEq =>
+          simp only [node, and_false] at permitted
+      | resolve owner payload binding checks outputEq codeEq =>
+          simp only [node] at permitted
+          have authored : message.sender = owner := permitted.2.2.2.2.1
+          have actor := congrArg EventCode.actor codeEq
+          rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
+          exact ⟨event, rfl, permitted.1, authored ▸ actor⟩
+  | withhold event | malformed =>
+      simp only [freshServiceEnvelope, call] at permitted
+
+/-- While one event is the only ready event, every conforming fresh call names
+it, whoever sends it. -/
+theorem freshServiceEnvelope_event_of_sole (view : PublicView graph) (event : graph.EventId)
+    (sole : view.SoleReady event) (message : Message Player (WitnessedPacket graph))
+    (permitted : runtime.freshServiceEnvelope view message) :
+    message.payload.call.event? graph = some event := by
+  obtain ⟨named, addressed, ready⟩ := runtime.freshServiceEnvelope_ready view message permitted
+  rw [addressed, sole.2 named ready]
+
+/-- When one event is the only ready event owned by the sender, every
+conforming fresh call names it. Under the barrier order each player owns at
+most one ready event, and a ready public event is the only ready event. -/
+theorem freshServiceEnvelope_event_of_owned_unique (view : PublicView graph)
+    (event : graph.EventId) (message : Message Player (WitnessedPacket graph))
+    (unique : ∀ other, view.EventReady other → graph.actor? other = some message.sender →
+      other = event)
+    (permitted : runtime.freshServiceEnvelope view message) :
+    message.payload.call.event? graph = some event := by
+  obtain ⟨named, addressed, ready, actor⟩ := runtime.freshServiceEnvelope_owned view message
+    permitted
+  rw [addressed, unique named ready actor]
+
+/-- For a call addressed to a binding node, the public checker determines the
+entire emitted packet and its author, without an assumed packet-shape premise. -/
 theorem freshServiceEnvelope_binding_shape
     (view : PublicView graph) (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (granted : view.serviceGrant = some event)
     (message : Message Player (WitnessedPacket graph))
+    (named : message.payload.call.event? graph = some event)
     (permitted : runtime.freshServiceEnvelope view message) :
     message.sender = owner ∧ message.payload =
       ⟨.commitment event (owner, .prepared (view.bindingCount owner)), none⟩ := by
-  have named := (runtime.freshServiceEnvelope_event view message permitted).trans granted
   rcases message with ⟨id, ⟨packet, evidence⟩⟩
   cases packet with
   | commitment actual candidate =>
@@ -151,7 +210,7 @@ theorem freshServiceEnvelope_binding_shape
       cases Option.some.inj named
       have allowed := (runtime.freshServiceEnvelope_binding_iff view id event candidate
         evidence).mp permitted
-      have includable := allowed.2.1
+      have includable := allowed.1
       simp only [PublicView.BindingIncludable, node] at includable
       have authored : id.1 = owner := includable.2.2.1
       refine ⟨authored, ?_⟩
@@ -170,7 +229,6 @@ that emits this packet, including missing or mistyped material. -/
 theorem permittedServiceEnvelope_binding
     (state : State graph) (who : Player) (event : graph.EventId)
     (ledger : List (Message Player (WitnessedPacket graph))) (serial : Nat)
-    (granted : state.serviceGrant = some event)
     (includable : state.publicView.BindingIncludable runtime
       ⟨(who, serial), .commitment event (who, .prepared (state.publicView.bindingCount who))⟩)
     (counted : serial = ledger.countP (fun prior => prior.sender = who)) :
@@ -178,7 +236,7 @@ theorem permittedServiceEnvelope_binding
       ⟨(who, serial),
         ⟨.commitment event (who, .prepared (state.publicView.bindingCount who)), none⟩⟩ = true :=
   (runtime.permittedServiceEnvelope_iff _ _ _).mpr
-    (Or.inr ⟨counted, granted, includable, rfl, rfl⟩)
+    (Or.inr ⟨counted, includable, rfl, rfl⟩)
 
 /-- The opening branch exposes exactly the phase, association, certificate and
 public-guard facts used by the existing guarded-response classification. -/
@@ -193,7 +251,7 @@ theorem freshServiceEnvelope_opening_iff
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (candidate : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph)) :
     runtime.freshServiceEnvelope view ⟨id, ⟨.opening event candidate raw, evidence⟩⟩ ↔
-      view.serviceGrant = some event ∧ view.EventReady event ∧
+      view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
         | some entered => view.clock - entered < runtime.deadline event) ∧
@@ -213,14 +271,13 @@ theorem freshServiceEnvelope_resolution_shape
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : view.serviceGrant = some event)
     (message : Message Player (WitnessedPacket graph))
+    (named : message.payload.call.event? graph = some event)
     (permitted : runtime.freshServiceEnvelope view message) :
     ∃ candidate raw, message.sender = owner ∧ candidate.1 = owner ∧
       view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
       message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ ∧
       view.openingGuardsAccepted message.payload = true := by
-  have named := (runtime.freshServiceEnvelope_event view message permitted).trans granted
   rcases message with ⟨id, ⟨packet, evidence⟩⟩
   cases packet with
   | commitment actual candidate =>
@@ -231,7 +288,7 @@ theorem freshServiceEnvelope_resolution_shape
   | opening actual candidate raw =>
       change some actual = some event at named
       cases Option.some.inj named
-      obtain ⟨_, _, _, certified, guards, authored, owned, associated, typed⟩ :=
+      obtain ⟨_, _, certified, guards, authored, owned, associated, typed⟩ :=
         (runtime.freshServiceEnvelope_opening_iff view id event owner payload binding checks
           outputEq codeEq node candidate raw evidence).mp permitted
       have evidenceEq : evidence = some ⟨candidate, raw⟩ := by
@@ -255,9 +312,10 @@ theorem normalize_binding_at_servicePhase
     (outputEq : graph.outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
-    (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : state.serviceGrant = some event) (serial : Nat)
+    (node : nodeView graph event = .bind who payload outputEq codeEq) (serial : Nat)
     (fresh : state.candidates.lookup (who, .prepared (state.publicView.bindingCount who)) = .fresh)
+    (named : (submission.emit ((runtime.reactiveApplication leaks).submit state who submission)
+      who known).call.event? graph = some event)
     (permitted : runtime.freshServiceEnvelope state.publicView
       ⟨(who, serial), submission.emit
         ((runtime.reactiveApplication leaks).submit state who submission) who known⟩) :
@@ -268,6 +326,6 @@ theorem normalize_binding_at_servicePhase
   apply runtime.normalize_binding_of_canonical_packet leaks state who known submission event
     (state.publicView.bindingCount who) fresh
   exact (runtime.freshServiceEnvelope_binding_shape state.publicView who event payload outputEq
-    codeEq node granted _ permitted).2
+    codeEq node _ named permitted).2
 
 end Vegas.EventGraphRuntime

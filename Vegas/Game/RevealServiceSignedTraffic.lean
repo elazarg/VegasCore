@@ -47,7 +47,7 @@ theorem openingTraffic_authored (record : (application setup leaks).TrafficRecor
   | commitment | withhold | malformed => simp only [openingTraffic, call] at allowed
   | opening event candidate raw =>
     simp only [openingTraffic, call] at allowed
-    obtain ⟨_, _, _, _, linked⟩ := allowed
+    obtain ⟨_, _, _, linked⟩ := allowed
     cases node : nodeView (graph setup) event with
     | bind | sample => simp only [node] at linked
     | resolve owner payload binding checks outputEq codeEq =>

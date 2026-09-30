@@ -60,8 +60,7 @@ theorem sourceServicePolicy_commit_service
     let outputEq : (graph setup).outputLayout event = .binding owner payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    ∀ (_granted : execution.application.serviceGrant = some event)
-      (ready : execution.application.config.cut.Ready event)
+    ∀ (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
       (_vacant : execution.application.accepted (.inr event) = none),
     ((sourceServicePolicy setup leaks wholeProfile owner (execution.recall owner)
@@ -76,7 +75,7 @@ theorem sourceServicePolicy_commit_service
           (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice),
           execution.receipts ++ [((owner, execution.network.nextSerial owner), true)]) := by
   dsimp only
-  intro granted ready timely vacant
+  intro ready timely vacant
   let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
     ⟨0, by simp [eventCount]⟩
   let event := embedding.event headIndex
@@ -91,7 +90,7 @@ theorem sourceServicePolicy_commit_service
   have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
     EventGraphRuntime.nodeView_eq_bind _ _
   have policy := sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile
-    refs source embedding refsBefore offset aligned execution agree history granted
+    refs source embedding refsBefore offset aligned execution agree history ready
   dsimp only at policy
   rw [policy]
   have responses :

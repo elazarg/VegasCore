@@ -70,8 +70,9 @@ theorem ServiceBoundary.reveal_block
       response ∈ bounds.compiledActions (runtime setup) leaks who past view :=
     fun who past view response member => sourceServiceMenu_in_compiled setup leaks bounds
       rosters who past view (lawful who past view response member)
-  obtain ⟨granted, grantBoundary, grant, _, grantRecall, grantLaw⟩ :=
+  obtain ⟨granted, grantBoundary, _grant, _, grantRecall, grantLaw⟩ :=
     boundary.grant players network event
+  have sole := soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)
   have ready := grantBoundary.ready event atRank
   have timely := grantBoundary.timely event atRank (by simp only [owned, Option.isSome_some])
   have phase := reached
@@ -84,13 +85,13 @@ theorem ServiceBoundary.reveal_block
   have packets := bounds.compiled_resolution_inclusion_published (runtime setup) leaks
     players ordinary network owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq node (rosters event) granted included grant grantBoundary.published
+      outputEq codeEq node (rosters event) granted included sole grantBoundary.published
       grantBoundary.serials inclusion
   obtain ⟨result, accounted⟩ := bounds.compiled_resolution_settlement (runtime setup) leaks
     players ordinary network owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
       outputEq codeEq node (rosters event) granted included grantBoundary.binding ready timely
-      grant grantBoundary.published grantBoundary.serials grantBoundary.accounted inclusion
+      sole grantBoundary.published grantBoundary.serials grantBoundary.accounted inclusion
   obtain ⟨disclose, effective, config, candidates, accepted, sameNetwork, sameRecall⟩ :
       ∃ disclose, effectiveDisclosure published binding source disclose = disclose ∧
         final.application.config = granted.application.config.complete event ready
@@ -231,7 +232,7 @@ theorem ServiceBoundary.reveal_block
       simpa only [List.filterMap_cons, instructionActor, List.filterMap_nil, List.count_nil,
         Nat.add_zero] using lengths.symm
     rw [includedRecall, (runtime setup).compiled_window_other_events leaks bounds players ordinary
-      network event (rosters event) granted visited grant window observer other
+      network event (rosters event) granted visited sole window observer other
         (by intro equal; subst other; omega), grantRecall]
     exact boundary.unsent observer other (by omega)
 
@@ -270,7 +271,8 @@ theorem ServiceBoundary.reveal_block_conformance
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
-  obtain ⟨granted, grantBoundary, grant, _, _, grantLaw⟩ := boundary.grant players network event
+  obtain ⟨granted, grantBoundary, _grant, _, _, grantLaw⟩ := boundary.grant players network event
+  have sole := soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)
   have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
     (.grant event) (by simp) (by simp) execution granted
     (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
@@ -286,7 +288,7 @@ theorem ServiceBoundary.reveal_block_conformance
       rosters who past view (lawful who past view response member)
   obtain ⟨_, visitedTraffic, _⟩ := bounds.compiled_resolution_window_conformance
     (runtime setup) leaks players ordinary network (rosters event) owner event payload binding
-      checks outputEq codeEq node granted visited grantBoundary.binding grantBoundary.recall grant
+      checks outputEq codeEq node granted visited grantBoundary.binding grantBoundary.recall sole
       (grantBoundary.ready event atRank)
       (grantBoundary.timely event atRank (by simp only [owned, Option.isSome_some]))
       (fun _ => grantBoundary.accounted owner)

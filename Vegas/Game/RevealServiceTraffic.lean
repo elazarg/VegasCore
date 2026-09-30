@@ -9,8 +9,8 @@ import Interaction.ReactiveAuditCollection
 /-! # Public traffic conformance for the revelation service
 
 The checker reads the authenticated transmission phase, broadcaster and prior
-ledger. A fresh ordinary transmission must be a certified opening of the
-currently granted, ready binding. Previously published packets may be replayed.
+ledger. A fresh ordinary transmission must be a certified opening of a ready,
+timely resolution; no service grant is consulted. Previously published packets may be replayed.
 The reporting player transmits nothing on compliant executions; every one of
 its transmissions is therefore outside this source implementation.
 
@@ -37,7 +37,6 @@ private source cells or a player's intended strategy. -/
 def openingTraffic (record : (application setup leaks).TrafficRecord) : Prop :=
   match record.input.envelope.payload.call with
   | .opening event candidate raw =>
-      record.observation.serviceGrant = some event ∧
       record.observation.EventReady event ∧
       (match record.observation.activatedAt event with
         | none => False
@@ -96,7 +95,6 @@ theorem permittedTraffic_opening (watcher owner : Player) (ordinary : owner ≠ 
     (node : nodeView (graph setup) event =
       .resolve owner payload binding checks outputEq codeEq)
     (candidate : Handle (graph setup)) (raw : Raw L) (serial : Nat)
-    (grant : state.serviceGrant = some event)
     (ready : state.config.cut.Ready event)
     (timely : state.WithinDeadline (runtime setup) event)
     (owned : candidate.1 = owner)
@@ -108,9 +106,8 @@ theorem permittedTraffic_opening (watcher owner : Player) (ordinary : owner ≠ 
           true := by
   apply (permittedTraffic_iff setup leaks watcher _).mpr
   refine ⟨ordinary, Or.inr ?_⟩
-  change state.serviceGrant = some event ∧ state.publicView.EventReady event ∧
-    state.WithinDeadline (runtime setup) event ∧ _ ∧ _
-  refine ⟨grant, (state.publicView_eventReady event).mpr ready, timely, rfl, ?_⟩
+  change state.publicView.EventReady event ∧ state.WithinDeadline (runtime setup) event ∧ _ ∧ _
+  refine ⟨(state.publicView_eventReady event).mpr ready, timely, rfl, ?_⟩
   rw [node]
   exact ⟨rfl, rfl, owned, accepted, typed⟩
 
@@ -139,7 +136,7 @@ theorem openingTraffic_accepted
   | malformed | commitment | withhold => simp only [packet] at conforming
   | opening event candidate raw =>
       simp only [packet] at conforming
-      obtain ⟨_grant, ready, timely, carried, linked⟩ := conforming
+      obtain ⟨ready, timely, carried, linked⟩ := conforming
       have unchanged : (application setup leaks).submit execution.application who submission =
           execution.application := by
         rcases submission with ⟨⟨call, material⟩, request⟩
@@ -241,7 +238,6 @@ theorem normalized_opening_traffic
     (node : nodeView (graph setup) event =
       .resolve owner payload binding checks outputEq codeEq)
     (candidate : Handle (graph setup)) (value : L.Val payload)
-    (grant : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
     (owned : candidate.1 = owner)
@@ -266,7 +262,7 @@ theorem normalized_opening_traffic
   subst record
   exact permittedTraffic_opening setup leaks watcher owner ordinary execution.application
     execution.network.ledger event payload binding checks outputEq codeEq node candidate
-    ⟨payload, value⟩ (execution.network.nextSerial owner) grant ready timely owned accepted rfl
+    ⟨payload, value⟩ (execution.network.nextSerial owner) ready timely owned accepted rfl
 
 /-- Every opening returned by the existing owner-local decoder emits allowed
 traffic at a ready, timely opportunity. No source policy is assumed. -/
@@ -275,9 +271,7 @@ theorem decoded_opening_traffic
     (ordinary : who ≠ watcher) (remaining : Nat)
     (recalled : execution.InputRecall (application setup leaks))
     (binding : execution.application.BindingInvariant)
-    (ready : ∀ event, execution.application.serviceGrant = some event →
-      execution.application.config.cut.Ready event)
-    (timely : ∀ event, execution.application.serviceGrant = some event →
+    (timely : ∀ event, execution.application.config.cut.Ready event →
       execution.application.WithinDeadline (runtime setup) event)
     (response : (application setup leaks).Action)
     (selected : opening? setup leaks who (execution.recall who)
@@ -287,8 +281,10 @@ theorem decoded_opening_traffic
       (some ⟨remaining, none, execution.respond (application setup leaks) who response⟩),
       permittedTraffic setup leaks watcher record = true := by
   unfold opening? at selected
-  obtain ⟨event, grant, selected⟩ := Option.bind_eq_some_iff.mp selected
-  change execution.application.serviceGrant = some event at grant
+  obtain ⟨event, serving, selected⟩ := Option.bind_eq_some_iff.mp selected
+  have ready : execution.application.config.cut.Ready event :=
+    (execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event serving).1
   split at selected
   · cases selected
   · rename_i actor
@@ -332,7 +328,7 @@ theorem decoded_opening_traffic
                   rw [← responseEq]
                   exact normalized_opening_traffic setup leaks execution watcher who ordinary
                     remaining recalled event payload ref checks outputEq codeEq node candidate value
-                    grant (ready event grant) (timely event grant) owned accepted fixed
+                    ready (timely event ready) owned accepted fixed
 
 variable [Fintype Player]
 
@@ -343,9 +339,7 @@ theorem ordinary_response_traffic (bounds : MessageBounds (graph setup))
     (ordinary : who ≠ watcher) (remaining : Nat)
     (recalled : execution.InputRecall (application setup leaks))
     (binding : execution.application.BindingInvariant)
-    (ready : ∀ event, execution.application.serviceGrant = some event →
-      execution.application.config.cut.Ready event)
-    (timely : ∀ event, execution.application.serviceGrant = some event →
+    (timely : ∀ event, execution.application.config.cut.Ready event →
       execution.application.WithinDeadline (runtime setup) event)
     (response : (application setup leaks).Action)
     (allowed : response ∈ ordinaryActions setup leaks bounds who (execution.recall who)
@@ -361,7 +355,7 @@ theorem ordinary_response_traffic (bounds : MessageBounds (graph setup))
     simp only [(application setup leaks).trafficStep_silent, List.not_mem_nil,
       IsEmpty.forall_iff, implies_true]
   · exact decoded_opening_traffic setup leaks execution watcher who ordinary remaining recalled
-      binding ready timely response opening
+      binding timely response opening
   · obtain ⟨published, member, rfl⟩ := replay
     cases found : (execution.network.known who).find?
         (fun message => message.id = published.id) with

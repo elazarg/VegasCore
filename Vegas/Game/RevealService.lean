@@ -72,6 +72,31 @@ def runtime (setup : Setup (Player := Player) (L := L)) : EventGraphRuntime (gra
 theorem runtime_deadline_pos (setup : Setup (Player := Player) (L := L))
     (event : (graph setup).EventId) : 0 < (runtime setup).deadline event := Nat.zero_lt_succ _
 
+/-- In the sequentialized graph a ready event is the only ready event, so each
+player either has it as its turn or is idle. -/
+theorem soleReady_of_ready (setup : Setup (Player := Player) (L := L))
+    (state : EventGraphRuntime.State (graph setup)) {event : (graph setup).EventId}
+    (ready : state.config.cut.Ready event) : state.publicView.SoleReady event :=
+  ⟨(state.publicView_eventReady event).mpr ready, fun other otherReady =>
+    setup.eventGraph.sequentialize_ready_unique state.config.cut
+      ((state.publicView_eventReady other).mp otherReady) ready⟩
+
+/-- A ready event is its actor's turn. -/
+theorem ownTurn?_of_ready (setup : Setup (Player := Player) (L := L))
+    (state : EventGraphRuntime.State (graph setup)) {event : (graph setup).EventId}
+    (ready : state.config.cut.Ready event) {who : Player}
+    (owned : (graph setup).actor? event = some who) :
+    state.publicView.ownTurn? who = some event :=
+  state.publicView.ownTurn?_of_ownTurn who event
+    ((soleReady_of_ready setup state ready).ownTurn owned)
+
+/-- While an event is ready, every player other than its actor is idle. -/
+theorem idle_of_ready (setup : Setup (Player := Player) (L := L))
+    (state : EventGraphRuntime.State (graph setup)) {event : (graph setup).EventId}
+    (ready : state.config.cut.Ready event) {who : Player}
+    (foreign : (graph setup).actor? event ≠ some who) : state.publicView.Idle who :=
+  (soleReady_of_ready setup state ready).idle foreign
+
 theorem runtime_deadline_increases (setup : Setup (Player := Player) (L := L))
     (first second : (graph setup).EventId) (before : first.val < second.val) :
     (runtime setup).deadline first < (runtime setup).deadline second := by
@@ -177,11 +202,11 @@ instance scheduler_finiteNature [setup.FiniteInitialLaw] [leaks.FiniteSupport]
 
 abbrev horizon (watcher : Player) : Nat := (plan setup watcher).length
 
-/-- A local view determines the sole canonical opening, when the granted event
+/-- A local view determines the sole canonical opening, when the player's turn
 is an owned, successfully openable resolution. No private global state is read. -/
 def opening? (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) : Option (application setup leaks).Action := do
-  let event ← view.application.publicView.serviceGrant
+  let event ← view.application.publicView.ownTurn? who
   if (graph setup).actor? event ≠ some who then none else
     match nodeView (graph setup) event with
     | .sample .. | .bind .. => none

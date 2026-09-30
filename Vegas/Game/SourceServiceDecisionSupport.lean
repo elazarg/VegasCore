@@ -148,6 +148,96 @@ theorem sourceService_decision_boundary
     grant, phase, activated, same.symm, config, publicEq,
     config.symm ▸ grantedBoundary.toSourceCheckpoint, position, grantedOrigins⟩
 
+/-- At every decision of the fixed calendar the served event is the unique
+ready event and the public grant names it, so a player's own turn is exactly
+the granted event it acts at. -/
+private theorem sourceService_decision_grant_ready
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (rosters : (graph setup).EventId → List Player)
+    (opportunities : BindingOpportunities setup rosters)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (who : Player) (control : (application setup leaks).Control)
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some control)) (active : control.actor = some who) :
+    ∃ event, control.execution.application.serviceGrant = some event ∧
+      control.execution.application.config.cut.Ready event := by
+  obtain ⟨event, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, grant,
+      _, _, _, _, publicEq, checkpoint, _⟩ :=
+    sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
+      network (failureProfile setup.program) who control trace active
+  exact ⟨event, (congrArg PublicView.serviceGrant publicEq).trans grant,
+    (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl⟩
+
+/-- At a calendar decision the granted event is ready. -/
+theorem sourceService_ready_of_grant
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (rosters : (graph setup).EventId → List Player)
+    (opportunities : BindingOpportunities setup rosters)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (who : Player) (control : (application setup leaks).Control)
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some control)) (active : control.actor = some who)
+    (event : (graph setup).EventId)
+    (granted : control.execution.application.serviceGrant = some event) :
+    control.execution.application.config.cut.Ready event := by
+  obtain ⟨served, grant, ready⟩ := sourceService_decision_grant_ready setup leaks bounds values
+    capacity rosters opportunities network who control trace active
+  cases Option.some.inj (grant.symm.trans granted)
+  exact ready
+
+/-- At a calendar decision, a granted event owned by the acting player is its
+own turn. -/
+theorem sourceService_ownTurn_of_grant
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (rosters : (graph setup).EventId → List Player)
+    (opportunities : BindingOpportunities setup rosters)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (who : Player) (control : (application setup leaks).Control)
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some control)) (active : control.actor = some who)
+    (event : (graph setup).EventId)
+    (granted : control.execution.application.serviceGrant = some event)
+    (owned : (graph setup).actor? event = some who) :
+    control.execution.application.publicView.ownTurn? who = some event := by
+  obtain ⟨served, grant, ready⟩ := sourceService_decision_grant_ready setup leaks bounds values
+    capacity rosters opportunities network who control trace active
+  cases Option.some.inj (grant.symm.trans granted)
+  exact ownTurn?_of_ready setup control.execution.application ready owned
+
+/-- At a calendar decision, the acting player's own turn is the granted event. -/
+theorem sourceService_grant_of_ownTurn
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (rosters : (graph setup).EventId → List Player)
+    (opportunities : BindingOpportunities setup rosters)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (who : Player) (control : (application setup leaks).Control)
+    (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
+      (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+        (some control)) (active : control.actor = some who)
+    (event : (graph setup).EventId)
+    (serving : control.execution.application.publicView.ownTurn? who = some event) :
+    control.execution.application.serviceGrant = some event := by
+  obtain ⟨served, grant, ready⟩ := sourceService_decision_grant_ready setup leaks bounds values
+    capacity rosters opportunities network who control trace active
+  have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
+  rw [(soleReady_of_ready setup control.execution.application ready).2 event eventReady]
+  exact grant
+
 /-- Binding resources hold at every legal retained information site, including
 sites reached only after deviations in an implementation. Before submission,
 the actual candidate is fresh and unused and all older packets are published. -/
@@ -203,7 +293,7 @@ theorem sourceService_binding_decision_resources
     (menu.uniformResponses_support player past view response).mp supported
   obtain ⟨ready, timely, _, binding, recalled, serialRecall, serials, unsubmitted⟩ :=
     checkpoint.binding_prefix_resources bounds menu.uniformResponses lawful network event rfl
-      owner payload outputEq codeEq node owned grant ((rosters event).take slot) prior reached
+      owner payload outputEq codeEq node owned ((rosters event).take slot) prior reached
   refine ⟨?_, ?_, ?_, app.environment_inputRecall prior control.execution (.activate who)
     recalled activated, app.environment_serialRecall prior control.execution (.activate who)
       serialRecall activated, ?_, ?_⟩
@@ -294,7 +384,12 @@ theorem sourceService_bindingRequired_iff_no_later_owner
     change control.execution.application.publicView.EventReady event
     rw [publicEq]
     exact (boundary.application.publicView_eventReady event).mpr (checkpoint.ready event rfl)
-  rw [bindingRequired_iff_no_later_owner setup leaks rosters owner _ _ event payload granted
+  have serving : (control.execution.observe app owner).application.publicView.ownTurn? owner =
+      some event := by
+    change control.execution.application.publicView.ownTurn? owner = some event
+    rw [publicEq]
+    exact ownTurn?_of_ready setup boundary.application (checkpoint.ready event rfl) owned
+  rw [bindingRequired_iff_no_later_owner setup leaks rosters owner _ _ event payload serving
     binding owned ready unsent visited remaining split counted]
   exact List.count_eq_zero
 

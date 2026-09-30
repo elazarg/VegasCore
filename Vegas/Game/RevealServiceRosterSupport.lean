@@ -141,7 +141,7 @@ private theorem posterior_response {Index : Type} (choices : PMF Index)
 private theorem fresh_at_phase
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (owned : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -153,11 +153,14 @@ private theorem fresh_at_phase
     who = owner ∧ action = (runtime setup).windowOpening leaks event candidate raw ∧
       ∀ entry ∈ (current.recall owner).drop (rosterOffset setup rosters owner event),
         entry.action ≠ (runtime setup).windowOpening leaks event candidate raw := by
-  obtain ⟨otherEvent, otherCandidate, otherRaw, grant, actor, data, actionEq, fresh⟩ :=
+  obtain ⟨otherEvent, otherCandidate, otherRaw, serving, actor, data, actionEq, fresh⟩ :=
     rosterFresh?_shape setup leaks rosters who _ _ action fresh
-  have currentGrant : current.application.serviceGrant = some event := by rw [unchanged, granted]
-  change current.application.serviceGrant = some otherEvent at grant
-  have eventEq : otherEvent = event := Option.some.inj (grant.symm.trans currentGrant)
+  have currentSole : current.application.publicView.SoleReady event := by
+    rw [unchanged]
+    exact sole
+  have ready := (PublicView.ownTurn?_spec _ who otherEvent serving).1
+  change current.application.publicView.EventReady otherEvent at ready
+  have eventEq : otherEvent = event := currentSole.2 otherEvent ready
   subst otherEvent
   have whoEq : who = owner := Option.some.inj (actor.symm.trans owned)
   subst who
@@ -223,7 +226,7 @@ variable [Fintype Player]
 private theorem frame_response
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -354,7 +357,7 @@ private theorem frame_response
         exact exactModes choices full
   · obtain ⟨whoEq, actionEq, freshAbsent⟩ :=
       fresh_at_phase setup leaks rosters initial current event owner
-        granted ownedEvent candidate raw opening frame.application who action fresh
+        sole ownedEvent candidate raw opening frame.application who action fresh
     subst who
     subst action
     have empty : selected = none := by
@@ -408,7 +411,7 @@ private theorem frame_response
 private theorem frame_run
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -478,7 +481,7 @@ private theorem frame_run
         (rosterOffset setup rosters owner event) selected visits initial current who sample
       obtain ⟨next, responded, nextPast, nextRecorded, nextAbsent, nextModes, nextExact⟩ :=
         frame_response setup leaks bounds rosters
-        initial activated event owner granted ownedEvent candidate raw opening owned valid
+        initial activated event owner sole ownedEvent candidate raw opening owned valid
           selected visits activatedFrame past recorded absent modes exactModes who action
             (covered who _ _ action supported) (by omega)
       have continued := ih (activated.respond app who action) next
@@ -492,7 +495,7 @@ all off-path retained histories, rather than a property of prescribed play. -/
 theorem roster_window_support
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -534,7 +537,7 @@ theorem roster_window_support
         _ selected _ _ before view earlier) (initial.recall owner) offset.le
     rw [dormant]
     exact full mode
-  have result := frame_run setup leaks bounds rosters initial initial event owner granted
+  have result := frame_run setup leaks bounds rosters initial initial event owner sole
     ownedEvent candidate raw opening owned valid none 0 start (by simp) (by simp)
       (by simp only [← offset, List.drop_length, List.not_mem_nil, false_implies, implies_true])
       modes (initial_exact setup leaks rosters initial owner event candidate raw _ offset)
@@ -546,7 +549,7 @@ theorem roster_window_support
 private theorem frame_owner_full
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -589,7 +592,7 @@ private theorem frame_owner_full
             omega
       simpa only [ReactiveApplication.scheduledPolicy, ite_eq_right different] using waiting
   · obtain ⟨_, actionEq, absent⟩ := fresh_at_phase setup leaks rosters initial current event owner
-      granted ownedEvent candidate raw opening frame.application owner action fresh
+      sole ownedEvent candidate raw opening frame.application owner action fresh
     have empty : selected = none := by
       cases selected with
       | none => rfl
@@ -611,7 +614,7 @@ law may be any fully supported timing/never law. -/
 theorem roster_window_posterior
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -667,7 +670,7 @@ theorem roster_window_posterior
     exact full mode
   obtain ⟨selected, frame, past, recorded, absent, _, exactModes⟩ :=
     frame_run setup leaks bounds rosters
-    initial initial event owner granted ownedEvent candidate raw opening owned valid none 0
+    initial initial event owner sole ownedEvent candidate raw opening owned valid none 0
       start (by simp) (by simp)
       (by simp only [← offset, List.drop_length, List.not_mem_nil, false_implies, implies_true])
       modes
@@ -687,7 +690,7 @@ the concrete action and emitted-envelope recall. -/
 theorem roster_response_posterior
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -752,14 +755,14 @@ theorem roster_response_posterior
     rw [exactModes, filter_of_support_subset _ _ _ fun _ _ => by rw [all]; exact Set.mem_univ _]
     exact full mode
   obtain ⟨selected, frame, past, recorded, absent, possible, exactModes⟩ :=
-    frame_run setup leaks bounds rosters initial initial event owner granted ownedEvent
+    frame_run setup leaks bounds rosters initial initial event owner sole ownedEvent
       candidate raw opening owned valid none 0 start (by simp) (by simp)
       (by simp only [← offset, List.drop_length, List.not_mem_nil, false_implies, implies_true])
       modes (initial_exact setup leaks rosters initial owner event candidate raw _ offset)
       players covered network visits (by omega) current reached
   obtain ⟨next, nextFrame, _past, nextRecorded, nextAbsent, _possible, nextModes⟩ :=
     frame_response setup leaks bounds rosters initial (current.sampledActivation app who sample)
-      event owner granted ownedEvent candidate raw opening owned valid selected
+      event owner sole ownedEvent candidate raw opening owned valid selected
       (0 + visits.count owner)
       (frame.activate (runtime setup) leaks owner event candidate raw
         (rosterOffset setup rosters owner event) selected _ initial current who sample)
@@ -792,7 +795,7 @@ observation at the current activation is arbitrary. -/
 theorem roster_owner_fullSupport
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -842,7 +845,7 @@ theorem roster_owner_fullSupport
     rw [dormant]
     exact lawFull mode
   obtain ⟨selected, frame, past, recorded, _, modes, _⟩ := frame_run setup leaks bounds rosters
-    initial initial event owner granted ownedEvent candidate raw opening owned valid
+    initial initial event owner sole ownedEvent candidate raw opening owned valid
       none 0 start (by simp) (by simp)
       (by simp only [← offset, List.drop_length, List.not_mem_nil, false_implies, implies_true])
       modes
@@ -851,7 +854,7 @@ theorem roster_owner_fullSupport
         (by omega) current reached
   apply frame_owner_full setup leaks bounds rosters initial
     (current.sampledActivation (application setup leaks) owner sample) event owner
-      granted ownedEvent
+      sole ownedEvent
       candidate raw opening selected (0 + visits.count owner)
         (frame.activate (runtime setup) leaks owner event candidate raw
           (rosterOffset setup rosters owner event) selected _ initial current owner sample)

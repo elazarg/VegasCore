@@ -6,7 +6,8 @@ import Vegas.Pending.ReactivePolicy
 
 The compiler attaches evidence only to ordinary opening calls, and that evidence
 matches the call's candidate and value. This applies to every source choice,
-including withholding and failure. No service grant means no prescribed traffic.
+including withholding and failure. Without a ready owned event there is no prescribed
+traffic.
 
 These are local emission properties, not a complete protocol-conformance test:
 a packet alone does not establish when it was sent, and this shape check permits
@@ -92,17 +93,17 @@ theorem reactive_decision_submission_permitted (runtime : EventGraphRuntime grap
   | sample =>
       simp [node] at sent
 
-/-- No service grant means the prescribed compiler transmits nothing,
+/-- Without a ready event of its own the prescribed compiler transmits nothing,
 independently of the source strategy, prior intentions, or private values. -/
-theorem no_grant_no_transmission (runtime : EventGraphRuntime graph)
+theorem no_turn_no_transmission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (policy : graph.BehavioralPolicy who)
     (history : List (runtime.reactiveApplication leaks).PlayerEntry)
     (intentions : List (Option graph.Completion))
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (noGrant : view.application.publicView.serviceGrant = none) :
+    (noTurn : view.application.publicView.ownTurn? who = none) :
     runtime.prescribedReactiveResponse leaks who policy history intentions view =
       PMF.pure (⟨none⟩, none) := by
-  simp [prescribedReactiveResponse, noGrant]
+  simp [prescribedReactiveResponse, noTurn]
 
 end Vegas.EventGraphRuntime

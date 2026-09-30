@@ -55,7 +55,7 @@ theorem roster_owner_site
       ∃ event : (graph setup).EventId,
         ∃ _owned : (graph setup).actor? event = some who, ∃ candidate raw,
           ∃ sourceSite : (setup.informationModel admission).InformationSite who,
-          view.application.publicView.serviceGrant = some event ∧
+          view.application.publicView.ownTurn? who = some event ∧
           rosterOpening? setup leaks who event view = some (candidate, raw) ∧
           packet = (runtime setup).windowOpening leaks event candidate raw ∧
           (¬ ∃ entry ∈ past.drop (rosterOffset setup rosters who event),
@@ -93,14 +93,14 @@ theorem roster_owner_site
           equality
       have recallEq : control.execution.recall who = past := congrArg Prod.fst input
       have viewEq : control.execution.observe app who = view := congrArg Prod.snd input
-      have grant : control.execution.application.serviceGrant = some event := by
-        have publicGrant := congrArg (fun seen => seen.application.publicView.serviceGrant) viewEq
-        exact publicGrant.trans granted
+      have serving : control.execution.application.publicView.ownTurn? who = some event := by
+        have publicTurn := congrArg (fun seen => seen.application.publicView.ownTurn? who) viewEq
+        exact publicTurn.trans granted
       obtain ⟨sourceSite, sourceView, sourceDepth⟩ :=
         roster_owner_source_site setup leaks extended rosters network reveals openable admission
-          who control traced active event owned grant
+          who control traced active event owned serving
       have choiceLaw := roster_owner_choice_at_history setup leaks extended rosters network
-        reveals openable admission source.strategy who control traced active event owned grant
+        reveals openable admission source.strategy who control traced active event owned serving
         sourceSite sourceView
       rw [viewEq] at choiceLaw
       obtain ⟨actual, slot, boundary, prior, sample, initial, state, selected, _initialSupport,
@@ -109,8 +109,10 @@ theorem roster_owner_site
         roster_decision_phase setup leaks extended rosters network reveals openable
           who control traced active
       have sameEvent : actual = event := by
-        rw [unchanged, phaseGrant] at grant
-        exact Option.some.inj grant
+        have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
+        rw [unchanged] at eventReady
+        exact ((soleReady_of_ready setup boundary.application phaseGrant).2 event
+          eventReady).symm
       subst actual
       have pastCount : past.length - rosterOffset setup rosters who event =
           ((rosters event).take slot).count who := by

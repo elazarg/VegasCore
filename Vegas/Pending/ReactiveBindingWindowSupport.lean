@@ -35,7 +35,7 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
     (owned : graph.actor? event = some owner)
     (serial : Nat) (visits : List Player)
     (initial final : (runtime.reactiveApplication leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ready : initial.application.config.cut.Ready event)
     (selected : reactiveFreshSlot
       (initial.observe (runtime.reactiveApplication leaks) owner).application = some serial)
@@ -68,7 +68,8 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
         by_cases acting : actor = owner
         · subst actor
           rcases bounds.ordinary_binding_cases runtime leaks owner (activated.recall owner)
-              (activated.observe app owner) event payload outputEq codeEq node granted owned
+              (activated.observe app owner) event payload outputEq codeEq node (sole.ownTurn owned)
+              owned
               ((initial.application.publicView_eventReady event).mpr ready) serial selected response
               (lawful owner _ _ response chosen) with replay | ⟨value, _, _, physical⟩
           · exact replay
@@ -85,8 +86,9 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
               ⟨entry, recalled member, action⟩
             rw [unsent] at finalRecorded
             cases finalRecorded
-        · exact bounds.compiled_foreign_transport runtime leaks actor _ _ event granted
-            (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm)
+        · exact bounds.compiled_foreign_transport runtime leaks actor _ _
+            (sole.ownTurn?_foreign
+              (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm))
             response (lawful actor _ _ response chosen)
       have preserved := runtime.replay_response_preserves leaks _ activated
         (published.learn actor sample) actor response
@@ -98,7 +100,7 @@ theorem compiled_binding_unsubmitted_prefix (runtime : EventGraphRuntime graph)
         rw [preserved.1]
         exact selected
       obtain ⟨application, ledger, receipts, counters, packets⟩ :=
-        ih (activated.respond app actor response) (by rw [preserved.1]; exact granted)
+        ih (activated.respond app actor response) (by rw [preserved.1]; exact sole)
           (by rw [preserved.1]; exact ready) nextSelected
           (by rw [preserved.1]; exact fresh)
           (by rw [preserved.2.1]; exact preserved.2.2.2.2.1) tail

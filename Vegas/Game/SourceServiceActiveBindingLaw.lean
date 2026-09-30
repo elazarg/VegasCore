@@ -61,7 +61,7 @@ theorem sourceServiceTimedFamily_active_binding_law
         rosterOffset setup rosters owner event + slot.val)
       (_within : rosterOffset setup rosters owner event + slot.val <
         (execution.recall owner).length + 1 + remaining.count owner)
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false),
     let app := application setup leaks
     let players := Function.update (fun _ => app.replayPolicy) owner
@@ -77,7 +77,7 @@ theorem sourceServiceTimedFamily_active_binding_law
             app.replayPolicy)
         (app.invoke rawPlayers owner execution).bind
           ((runtime setup).runInteractionPlan leaks rawPlayers network plan) := by
-  intro index event slot notPassed within granted unsent app players plan
+  intro index event slot notPassed within ready unsent app players plan
   let offset := rosterOffset setup rosters owner event
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
   let raw := fun choice => (runtime setup).reactiveBinding leaks owner event payload choice serial
@@ -100,7 +100,7 @@ theorem sourceServiceTimedFamily_active_binding_law
     have node : nodeView (graph setup) event = .bind owner payload outputEq codeEq :=
       EventGraphRuntime.nodeView_eq_bind _ _
     have sourceLaw := sourceServicePolicy_commit setup leaks fresh guard next wholeProfile profile
-      refs source embedding refsBefore rank aligned execution agree history granted
+      refs source embedding refsBefore rank aligned execution agree history ready
     have responses : sourceServicePolicy setup leaks wholeProfile owner
         (execution.recall owner) (execution.observe app owner) =
           (commitKernel profile (source.view owner)).map raw := by
@@ -162,7 +162,7 @@ theorem sourceServiceTimedFamily_active_binding_law
       exact freshSlot
     have currentCandidate : current.application.candidates.lookup (owner, .prepared serial) =
         .fresh := by rw [same]; exact candidate
-    have currentGrant : current.application.serviceGrant = some event := by rw [same]; exact granted
+    have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
     have currentUnsent : (runtime setup).eventRecorded leaks (current.recall owner) event =
         false := by
       rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;>
@@ -182,7 +182,7 @@ theorem sourceServiceTimedFamily_active_binding_law
     exact sourceServiceTimedFamily_binding_law setup leaks rosters fresh guard next
       wholeProfile profile refs source embedding refsBefore rank aligned current currentAgree
       currentHistory serial currentSlot currentCandidate network remaining visited tail slot
-      position selected currentGrant currentUnsent
+      position selected currentReady currentUnsent
 
 /-- At any actual unsent binding decision, the remaining physical execution
 is the source binding kernel followed by the current posterior over submission
@@ -255,6 +255,8 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
           (app.invoke scheduled owner execution).bind
             ((runtime setup).runInteractionPlan leaks scheduled network phase) := by
   intro index event owned granted unsent counted app family posterior players phase
+  have ready := sourceService_ready_of_grant setup leaks bounds values capacity rosters
+    opportunities network owner ⟨remainingFuel, some owner, execution⟩ trace rfl event granted
   have outputEq : (graph setup).outputLayout event = .binding owner payload := by
     change outputLayout setup.program (embedding.event index) = _
     simpa [index, outputLayout, eventCount] using embedding.layout_eq index
@@ -266,7 +268,8 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
     ⟨remainingFuel, some owner, execution⟩ trace rfl event granted owned payload outputEq unsent
     (timing event owner owned) last (full event owner owned last) (by dsimp only [last]; omega)
   rw [sourceServiceTimedPolicy_active_phase_law setup leaks rosters timing wholeProfile event
-    owner owned network remaining ticks execution granted]
+    owner owned network remaining ticks execution
+    (soleReady_of_ready setup execution.application ready)]
   conv_rhs => rw [PMF.bind_comm]
   apply bind_congr_on_support _
   intro slot supported
@@ -277,7 +280,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
     exact Nat.add_lt_add_left slot.isLt _
   have active := sourceServiceTimedFamily_active_binding_law setup leaks rosters fresh guard next
     wholeProfile profile refs source embedding refsBefore rank aligned execution agree history
-    serial freshSlot candidate network remaining slot notPassed within granted unsent
+    serial freshSlot candidate network remaining slot notPassed within ready unsent
   let scheduled := Function.update (fun _ => app.replayPolicy) owner (family slot)
   let raw := fun choice => (runtime setup).reactiveBinding leaks owner event payload choice serial
   let rawPlayers := fun choice => Function.update (fun _ => app.replayPolicy) owner

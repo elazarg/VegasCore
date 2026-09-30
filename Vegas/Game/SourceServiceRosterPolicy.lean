@@ -33,7 +33,7 @@ def sourceServiceLastPolicy (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player)
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
-  match view.application.publicView.serviceGrant with
+  match view.application.publicView.ownTurn? who with
   | none => (application setup leaks).replayPolicy past view
   | some event =>
       if (graph setup).actor? event = some who ∧
@@ -53,23 +53,23 @@ theorem sourceServiceLastPolicy_wait
     (rosters : (graph setup).EventId → List Player)
     (profile : BehavioralProfile setup.program) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (granted : view.application.publicView.serviceGrant = some event)
-    (waiting : (graph setup).actor? event ≠ some who ∨
+    (view : (application setup leaks).PlayerView)
+    (waiting : ∀ event, view.application.publicView.ownTurn? who = some event →
       (runtime setup).eventRecorded leaks past event = true ∨
       past.length + 1 ≠ rosterOffset setup rosters who event + (rosters event).count who) :
     sourceServiceLastPolicy setup leaks rosters profile who past view =
       (application setup leaks).replayPolicy past view := by
   classical
   unfold sourceServiceLastPolicy
-  rw [granted]
-  apply ite_eq_right
-  intro selected
-  rcases waiting with foreign | recorded | earlier
-  · exact foreign selected.1
-  · simp only [recorded, Bool.true_eq_false] at selected
-    exact selected.2.1
-  · exact earlier selected.2.2
+  cases serving : view.application.publicView.ownTurn? who with
+  | none => rfl
+  | some event =>
+      apply ite_eq_right
+      intro selected
+      rcases waiting event serving with recorded | earlier
+      · simp only [recorded, Bool.true_eq_false] at selected
+        exact selected.2.1
+      · exact earlier selected.2.2
 
 /-- At the final unsent opportunity, only the silent branch of the actual
 source compiler is split into harmless transport aliases. -/
@@ -80,7 +80,7 @@ theorem sourceServiceLastPolicy_at_last
     (profile : BehavioralProfile setup.program) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (serving : view.application.publicView.ownTurn? who = some event)
     (owned : (graph setup).actor? event = some who)
     (unsent : (runtime setup).eventRecorded leaks past event = false)
     (last : past.length + 1 = rosterOffset setup rosters who event + (rosters event).count who) :
@@ -90,7 +90,7 @@ theorem sourceServiceLastPolicy_at_last
           (application setup leaks).replayPolicy past view else PMF.pure response) := by
   classical
   unfold sourceServiceLastPolicy
-  rw [granted]
+  rw [serving]
   exact ite_eq_left ⟨owned, unsent, last⟩
 
 /-- A source kernel containing only real submissions is unchanged at its
@@ -103,7 +103,7 @@ theorem sourceServiceLastPolicy_submissions
     (profile : BehavioralProfile setup.program) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (serving : view.application.publicView.ownTurn? who = some event)
     (owned : (graph setup).actor? event = some who)
     (unsent : (runtime setup).eventRecorded leaks past event = false)
     (last : past.length + 1 = rosterOffset setup rosters who event + (rosters event).count who)
@@ -113,7 +113,7 @@ theorem sourceServiceLastPolicy_submissions
       sourceServicePolicy setup leaks profile who past view := by
   classical
   rw [sourceServiceLastPolicy_at_last setup leaks rosters profile who past view event
-    granted owned unsent last]
+    serving owned unsent last]
   conv_rhs => rw [← PMF.bind_pure (sourceServicePolicy setup leaks profile who past view)]
   apply bind_congr_on_support _
   intro response supported

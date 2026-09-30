@@ -37,7 +37,7 @@ theorem roster_owner_choice_at_history
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId) (owned : (graph setup).actor? event = some who)
-    (grant : control.execution.application.serviceGrant = some event)
+    (serving : control.execution.application.publicView.ownTurn? who = some event)
     (sourceSite : (setup.informationModel admission).InformationSite who)
     (sourceView : sourceSite.1 = setup.protocolObserve who
       (sourcePrefix? setup event.val control.execution.application.config)) :
@@ -49,12 +49,13 @@ theorem roster_owner_choice_at_history
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have same : actual = event := by
-    rw [unchanged, grantedAt] at grant
-    exact Option.some.inj grant
+    have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
+    rw [unchanged] at eventReady
+    exact ((soleReady_of_ready setup granted.application grantedAt).2 event eventReady).symm
   subst actual
   obtain ⟨site, observed, choiceLaw, _candidate⟩ :=
     roster_owner_choice_data setup leaks bounds reveals admission profile who event owned
-      initial initialSupport state granted related sourceSupport grantedAt
+      initial initialSupport state granted related sourceSupport
   have decoded := PublicPrefixCheckpoint.decode setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state granted related

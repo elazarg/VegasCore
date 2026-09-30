@@ -133,7 +133,9 @@ def reactiveOriginal (runtime : EventGraphRuntime graph)
         else none).head?).getD completion
 
 /-- One ready owned event takes one activation, with no staging instructions.
-On consistent own histories this policy sends at most one packet per event. -/
+On consistent own histories this policy sends at most one packet per event.
+The client serves its own turn (`PublicView.ownTurn?`); it reads no service
+grant, so it acts as soon as its event is ready. -/
 def prescribedReactiveResponse (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
@@ -142,7 +144,7 @@ def prescribedReactiveResponse (runtime : EventGraphRuntime graph)
     (intentions : List (Option graph.Completion))
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     PMF ((runtime.reactiveApplication leaks).Action × Option graph.Completion) :=
-  match view.application.publicView.serviceGrant with
+  match view.application.publicView.ownTurn? who with
   | none => PMF.pure (⟨none⟩, none)
   | some event =>
       if runtime.reactiveAlreadySubmitted leaks history event then PMF.pure (⟨none⟩, none)
@@ -213,7 +215,7 @@ def recoverReactiveResponse (runtime : EventGraphRuntime graph)
     (intentions : List (Option graph.Completion))
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     PMF ((runtime.reactiveApplication leaks).Action × Option graph.Completion) :=
-  match view.application.publicView.serviceGrant with
+  match view.application.publicView.ownTurn? who with
   | none => PMF.pure (⟨none⟩, none)
   | some event =>
       if owner : view.application.who = who then

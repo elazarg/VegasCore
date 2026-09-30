@@ -121,7 +121,6 @@ theorem sourceService_reveal_prefix_factorization
     let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
-    (∀ seed ∈ prior.support, (execution seed).application.serviceGrant = some event) →
     ∃ nextNoise : Option
         (ProtocolView focal (.reveal published owner name fresh binding unresolved next)) →
           PMF _,
@@ -145,7 +144,7 @@ theorem sourceService_reveal_prefix_factorization
         (revealKernel profile (config.view owner)).map fun disclose =>
           some (Sum.inr (ProtocolState.entry next
             (revealSuccessor published binding config disclose))) := by
-  intro index event granted
+  intro index event
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
@@ -247,7 +246,7 @@ theorem sourceService_reveal_prefix_factorization
       (boundary seed supported).binding (boundary seed supported).recall (origins seed supported)
       (effective seed supported) (boundary seed supported).published
       (boundary seed supported).serials network entered (event.val + 1) focal owned
-      (granted seed supported) ready ((boundary seed supported).timely event eventRank
+      ready ((boundary seed supported).timely event eventRank
         (by simp only [owned, Option.isSome_some])) activated due
       ((boundary seed supported).unsent owner event (Nat.le_of_eq eventRank.symm))
       ((boundary seed supported).response_offset event eventRank owner)
@@ -297,7 +296,6 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
     let index : Fin (eventCount (.commit name owner fresh guard next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
-    (∀ seed ∈ prior.support, (execution seed).application.serviceGrant = some event) →
     ∃ nextNoise : Option (ProtocolView focal (.commit name owner fresh guard next)) → PMF _,
       let law := prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
@@ -317,7 +315,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
       law.map Prod.fst = (prior.map source).bind fun config =>
         (commitKernel profile (config.view owner)).map fun choice =>
           some (Sum.inr (ProtocolState.entry next (commitSuccessor name guard config choice))) := by
-  intro index event granted
+  intro index event
   have eventRank : event.val = rank := by
     simpa only [event, index, Fin.val_zero, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
@@ -391,7 +389,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
     have exactLaw := sourceServiceTimedPolicy_binding_joint_law setup leaks bounds rosters timing
       fresh guard next wholeProfile profile refs (source seed) embedding refsBefore rank
       (aligned seed) (initial seed) (execution seed) (boundary seed supported) network
-      (event.val + 1) focal owned (granted seed supported)
+      (event.val + 1) focal owned
     simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def,
       choice, transcript, advance, embed] using exactLaw
   rw [lawEq]
@@ -434,7 +432,6 @@ theorem sourceService_sample_prefix_factorization
     let index : Fin (eventCount (.sample name fresh distribution next)) :=
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
-    (∀ seed, (execution seed).application.serviceGrant = some event) →
     ∃ nextNoise : Option (ProtocolView focal (.sample name fresh distribution next)) → PMF _,
       let law := prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
@@ -454,7 +451,7 @@ theorem sourceService_sample_prefix_factorization
       law.map Prod.fst = (prior.map source).bind fun config =>
         (L.evalDist distribution (sourcePublicEnv config.state)).map fun value =>
           some (Sum.inr (ProtocolState.entry next (sampleSuccessor name config value))) := by
-  intro index event granted
+  intro index event
   have eventRank : event.val = rank := by
     simpa only [event, index, Nat.add_zero] using
       (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
@@ -527,7 +524,7 @@ theorem sourceService_sample_prefix_factorization
     rw [sourceServiceTimedPolicy_sample_joint_law setup leaks rosters timing fresh distribution
       next wholeProfile profile refs (source seed) embedding refsBefore rank (aligned seed)
       (execution seed) (boundary seed).toSourceCheckpoint network (event.val + 1) focal
-      (granted seed) ((boundary seed).ready event eventRank)]
+      ((boundary seed).ready event eventRank)]
     rw [PMF.bind_comm]
     simp only [transcript, samplePhaseTranscript, PMF.map_bind, PMF.map_comp,
       Function.comp_def, choice, advance, embed]
@@ -538,6 +535,39 @@ theorem sourceService_sample_prefix_factorization
   change joint.map (embed ∘ Prod.fst) = _
   rw [← PMF.map_comp, marginal, PMF.map_bind]
   simp only [PMF.map_comp, choice, advance, embed, Function.comp_def]
+
+/-- Every supported service prefix of an event's rank leaves that event ready:
+the calendar opens exactly one event per rank. -/
+theorem sourceService_prefix_ready [Fintype Player]
+    (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
+    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
+    (rosters : (graph setup).EventId → List Player)
+    (opportunities : BindingOpportunities setup rosters)
+    (network : (runtime setup).NetworkPolicy leaks)
+    (players : Player → (application setup leaks).Policy)
+    (covered : ∀ who, (sourceServiceMenu setup leaks bounds rosters).Admissible
+      (initialLaw setup) (rosterPlan setup rosters).length
+      (rosterScheduler setup leaks rosters network) who (players who))
+    (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
+    (supported : execution ∈ ((initialLaw setup).bind fun initial =>
+      (runtime setup).runInteractionPlan leaks players network
+        (rosterPlanPrefix setup rosters event.val)
+        (ReactiveApplication.Execution.initial (application setup leaks) initial)).support) :
+    execution.application.config.cut.Ready event := by
+  let menu := sourceServiceMenu setup leaks bounds rosters
+  have uniform := roster_restrict_prefix_support setup leaks rosters network menu players
+    covered event.val execution supported
+  obtain ⟨_initial, _selected, _state, _related, _decoded, _ctx, _names, _program, _profile,
+    _source, _refs, _embedding, _before, _aligned, _admitted, _lift, _stateEq, _stepEq,
+    _decodeEq, _effective, _supports, boundary⟩ :=
+    initialized_sourceService_prefix_support setup leaks bounds values capacity rosters
+      opportunities menu.uniformResponses
+      (fun who past view response chosen =>
+        (menu.uniformResponses_support who past view response).mp chosen)
+      network (failureProfile setup.program) event.val event.isLt.le execution uniform
+  exact boundary.ready event rfl
 
 /-- A supported physical prefix supplies all operational induction facts for
 its exact typed source checkpoint. The retained trace and certificate origins
@@ -1086,7 +1116,6 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               distribution next wholeProfile profile refs embedding refsBefore offset prior initial
               source opportunity aligned (fun seed => (opportunityFacts seed).1)
               network focal grantNoise opportunityFactor
-                (fun seed => (opportunityFacts seed).2.1)
           let nextRegistry : Seed → Registry ((name, .publicData payload) :: Γ) :=
             fun seed => (source seed).registry.weaken
           let nextRevelations := fun seed =>
@@ -1197,7 +1226,6 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               guard next wholeProfile profile refs embedding refsBefore offset prior initial
               source opportunity aligned (fun seed _ => (opportunityFacts seed).1)
               network focal grantNoise opportunityFactor
-                (fun seed _ => (opportunityFacts seed).2.1)
           let nextRegistry := fun seed => (commitSuccessor name guard (source seed)
             .failure).registry
           let nextRevelations := fun seed =>
@@ -1306,7 +1334,6 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               source opportunity aligned (fun seed _ => (opportunityFacts seed).1)
               (fun seed _ => grantOrigins seed) (fun seed _ => effective seed owner)
               network focal grantNoise opportunityFactor
-                (fun seed _ => (opportunityFacts seed).2.1)
           let nextRegistry : Seed → Registry ((published, .publication payload) :: Γ) :=
             fun seed => (source seed).registry.weaken
           let nextRevelations := fun seed =>

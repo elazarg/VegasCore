@@ -99,7 +99,7 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     {application : State graph} {execution : (runtime.reactiveApplication leaks).Execution}
     (state : runtime.ResolutionWindowState leaks owner event application execution)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (who : Player) (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who)) :
@@ -108,7 +108,7 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
   let app := runtime.reactiveApplication leaks
   obtain ⟨sameApp, serials, unsentPublished, recordedMessage⟩ := state
   have applicationAfter := bounds.compiled_resolution_application runtime leaks who execution
-    event owner payload binding checks outputEq codeEq node granted response member
+    event owner payload binding checks outputEq codeEq node sole response member
   have serialsAfter := (app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
     execution who response serials
   have transportCase (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) :
@@ -133,7 +133,7 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
       · rw [preserved.2.1]
         exact preserved.2.2.2.2.1
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node granted response member with silent | replay |
+    outputEq codeEq node sole response member with silent | replay |
       ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, first, shape⟩
   · exact transportCase (Or.inl silent)
   · exact transportCase (app.replayPolicy_cases _ _ response replay)
@@ -165,7 +165,7 @@ theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
       exact ((unsentPublished unsent).mono (fun _ prior => Or.inl prior)).submit owner packet
         (Or.inr rfl)
 
-/-- Every point of a retained roster window of a granted resolve phase keeps
+/-- Every point of a retained roster window of a sole resolve phase keeps
 the window state. -/
 theorem ResolutionWindowState.run (bounds : MessageBounds graph)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
@@ -182,7 +182,7 @@ theorem ResolutionWindowState.run (bounds : MessageBounds graph)
     (visits : List Player) {application : State graph}
     (initial final : (runtime.reactiveApplication leaks).Execution)
     (state : runtime.ResolutionWindowState leaks owner event application initial)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support) :
     runtime.ResolutionWindowState leaks owner event application final := by
@@ -201,15 +201,15 @@ theorem ResolutionWindowState.run (bounds : MessageBounds graph)
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app who sample
       have activatedState := state.learn runtime leaks who sample
-      have activatedGrant : activated.application.serviceGrant = some event := granted
+      have activatedSole : activated.application.publicView.SoleReady event := sole
       have next := activatedState.respond runtime leaks bounds owner event payload binding checks
-        outputEq codeEq node activatedGrant who response (lawful who _ _ response chosen)
-      have nextGrant : (activated.respond app who response).application.serviceGrant =
-          some event := by
+        outputEq codeEq node activatedSole who response (lawful who _ _ response chosen)
+      have nextSole : (activated.respond app who response).application.publicView.SoleReady
+          event := by
         rw [bounds.compiled_resolution_application runtime leaks who activated event owner payload
-          binding checks outputEq codeEq node activatedGrant response
+          binding checks outputEq codeEq node activatedSole response
           (lawful who _ _ response chosen)]
-        exact activatedGrant
-      exact ih (activated.respond app who response) next nextGrant tail
+        exact activatedSole
+      exact ih (activated.respond app who response) next nextSole tail
 
 end Vegas.EventGraphRuntime

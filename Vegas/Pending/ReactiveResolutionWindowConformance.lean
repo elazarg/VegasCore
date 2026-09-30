@@ -33,7 +33,7 @@ theorem MessageBounds.compiled_resolution_accounted (bounds : MessageBounds grap
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
         execution.network.ledger.countP (fun message => message.sender = owner))
@@ -46,7 +46,7 @@ theorem MessageBounds.compiled_resolution_accounted (bounds : MessageBounds grap
         next.network.ledger.countP (fun message => message.sender = owner) := by
   apply runtime.event_accounted_response leaks execution who owner event response counted
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node granted response member with rfl | replay |
+    outputEq codeEq node sole response member with rfl | replay |
       ⟨candidate, value, evidence, acting, _, _, _, _, _, shape⟩
   · exact Or.inl (Or.inl rfl)
   · exact Or.inl ((runtime.reactiveApplication leaks).replayPolicy_cases _ _ response replay)
@@ -77,7 +77,7 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
     (initial final : (runtime.reactiveApplication leaks).Execution)
     (invariant : initial.application.BindingInvariant)
     (recalled : initial.InputRecall (runtime.reactiveApplication leaks))
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ready : initial.application.config.cut.Ready event)
     (timely : initial.application.WithinDeadline runtime event)
     (counted : runtime.eventRecorded leaks (initial.recall owner) event = false →
@@ -123,7 +123,7 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
         recalled activation
       have allowed := covered who _ _ response chosen
       have same := bounds.compiled_resolution_application runtime leaks who activated event owner
-        payload binding checks outputEq codeEq node granted response allowed
+        payload binding checks outputEq codeEq node sole response allowed
       have activePackets := runtime.service_sampled_conformance leaks initial who sample packets
       have issued : ∀ record ∈ app.trafficStep (some ⟨0, some who, activated⟩)
           (some ⟨0, none, activated.respond app who response⟩),
@@ -132,15 +132,15 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
         by_cases acting : who = owner
         · subst who
           exact bounds.compiled_resolution_traffic runtime leaks activated activeRecall invariant 0
-            owner event payload binding checks outputEq codeEq node granted ready timely counted
-              (activePackets.known owner) response allowed
-        · exact bounds.compiled_foreign_traffic runtime leaks activated 0 who event granted
-            (fun equal => acting (Option.some.inj (equal.symm.trans owned)))
+            owner event payload binding checks outputEq codeEq node (sole.ownTurn owned) ready
+              timely counted (activePackets.known owner) response allowed
+        · exact bounds.compiled_foreign_traffic runtime leaks activated 0 who
+            (sole.idle (fun equal => acting (Option.some.inj (equal.symm.trans owned))))
             (activePackets.known who) response allowed
       have nextPackets := runtime.service_response_conformance leaks activated 0 who response
         activePackets issued
       have nextCounted := bounds.compiled_resolution_accounted runtime leaks activated who owner
-        event payload binding checks outputEq codeEq node granted counted response allowed
+        event payload binding checks outputEq codeEq node sole counted response allowed
       have nextTraffic : ∀ record ∈ app.executionTraffic (activated.respond app who response),
           runtime.permittedServiceEnvelope record.observation record.ledger
             record.input.envelope = true := by
@@ -152,7 +152,7 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
         · exact issued record emitted
       exact ih (activated.respond app who response) (by rw [same]; exact invariant)
         (app.respond_inputRecall activated who response activeRecall)
-        (by rw [same]; exact granted) (by rw [same]; exact ready)
+        (by rw [same]; exact sole) (by rw [same]; exact ready)
         (by rw [same]; exact timely) nextCounted nextPackets nextTraffic tail
 
 end Vegas.EventGraphRuntime

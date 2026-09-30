@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.EventApplication
+import Vegas.EventGraph.BarrierInformation
 
 /-! # Public tests for event readiness and commitment inclusion -/
 
@@ -42,6 +43,75 @@ def BindingIncludable (runtime : EventGraphRuntime graph) (view : PublicView gra
         | _ => False)
   | _ => False
 
+/-- `event` is `who`'s turn: it is ready, `who` acts there, and `who` acts at
+no other ready event. Under the barrier order every ready strategic event is
+its actor's turn (`State.ownTurn_of_ready`). -/
+def OwnTurn (view : PublicView graph) (who : Player) (event : graph.EventId) : Prop :=
+  view.EventReady event ∧ graph.actor? event = some who ∧
+    ∀ other, view.EventReady other → graph.actor? other = some who → other = event
+
+open Classical in
+/-- The least ready event at which `who` acts, if any. Prescribed clients
+serve this event; no service grant is consulted. -/
+def ownTurn? (view : PublicView graph) (who : Player) : Option graph.EventId :=
+  (List.finRange graph.order.eventCount).find? fun event =>
+    decide (view.EventReady event ∧ graph.actor? event = some who)
+
+theorem ownTurn?_spec (view : PublicView graph) (who : Player) (event : graph.EventId)
+    (selected : view.ownTurn? who = some event) :
+    view.EventReady event ∧ graph.actor? event = some who := by
+  classical
+  unfold ownTurn? at selected
+  have chosen := List.find?_some selected
+  exact of_decide_eq_true chosen
+
+theorem ownTurn?_of_ownTurn (view : PublicView graph) (who : Player) (event : graph.EventId)
+    (turn : view.OwnTurn who event) : view.ownTurn? who = some event := by
+  classical
+  cases selected : view.ownTurn? who with
+  | none =>
+      unfold ownTurn? at selected
+      have missing := List.find?_eq_none.mp selected event (List.mem_finRange event)
+      exact absurd (decide_eq_true ⟨turn.1, turn.2.1⟩) missing
+  | some chosen =>
+      obtain ⟨ready, actor⟩ := view.ownTurn?_spec who chosen selected
+      rw [turn.2.2 chosen ready actor]
+
+/-- `who` acts at no ready event: it is nobody's turn to serve for `who`. -/
+def Idle (view : PublicView graph) (who : Player) : Prop :=
+  ∀ event, view.EventReady event → graph.actor? event ≠ some who
+
+theorem ownTurn?_eq_none (view : PublicView graph) (who : Player) (idle : view.Idle who) :
+    view.ownTurn? who = none := by
+  classical
+  unfold ownTurn?
+  apply List.find?_eq_none.mpr
+  intro event _ selected
+  exact idle event (of_decide_eq_true selected).1 (of_decide_eq_true selected).2
+
+/-- `event` is the only ready event. In a sequentialized graph every ready event
+is; under the barrier order a ready public event is. Other players then have
+no turn while it is served. -/
+def SoleReady (view : PublicView graph) (event : graph.EventId) : Prop :=
+  view.EventReady event ∧ ∀ other, view.EventReady other → other = event
+
+omit [DecidableEq Player] in
+theorem SoleReady.ownTurn {view : PublicView graph} {event : graph.EventId}
+    (sole : view.SoleReady event) {who : Player} (owned : graph.actor? event = some who) :
+    view.OwnTurn who event :=
+  ⟨sole.1, owned, fun other ready _ => sole.2 other ready⟩
+
+omit [DecidableEq Player] in
+theorem SoleReady.idle {view : PublicView graph} {event : graph.EventId}
+    (sole : view.SoleReady event) {who : Player} (foreign : graph.actor? event ≠ some who) :
+    view.Idle who :=
+  fun other ready actor => foreign (sole.2 other ready ▸ actor)
+
+theorem SoleReady.ownTurn?_foreign {view : PublicView graph} {event : graph.EventId}
+    (sole : view.SoleReady event) {who : Player} (foreign : graph.actor? event ≠ some who) :
+    view.ownTurn? who = none :=
+  view.ownTurn?_eq_none who (sole.idle foreign)
+
 end PublicView
 
 omit [DecidableEq Player] in
@@ -60,6 +130,14 @@ theorem State.publicView_eventReady (state : State graph) (event : graph.EventId
       exact unfinished ((state.config.history_exact event).mp inHistory)
     · intro predecessor member
       exact (state.config.history_exact predecessor).mpr (predecessors member)
+
+/-- Under the barrier order every ready event is its actor's turn. -/
+theorem State.ownTurn_of_ready (state : State graph) (ordered : graph.BarrierOrdered)
+    (who : Player) (event : graph.EventId) (ready : state.publicView.EventReady event)
+    (actor : graph.actor? event = some who) : state.publicView.OwnTurn who event :=
+  ⟨ready, actor, fun other otherReady otherActor =>
+    ordered.ready_actor_unique state.config.cut ((state.publicView_eventReady event).mp ready)
+      ((state.publicView_eventReady other).mp otherReady) actor otherActor⟩
 
 theorem State.publicView_bindingIncludable (runtime : EventGraphRuntime graph)
     (state : State graph) (id : MessageId Player) (event : graph.EventId)

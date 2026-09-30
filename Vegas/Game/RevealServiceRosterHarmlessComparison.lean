@@ -34,7 +34,7 @@ private theorem absent_opening_recorded
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
     (candidate : Handle (graph setup)) (raw : Raw L)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (serving : view.application.publicView.ownTurn? who = some event)
     (owned : (graph setup).actor? event = some who)
     (opening : rosterOpening? setup leaks who event view = some (candidate, raw))
     (absent : rosterFresh? setup leaks rosters who past view = none) :
@@ -42,7 +42,7 @@ private theorem absent_opening_recorded
       entry.action = (runtime setup).windowOpening leaks event candidate raw := by
   classical
   unfold rosterFresh? at absent
-  rw [granted] at absent
+  rw [serving] at absent
   simp only [bind, Option.bind_some, owned, ne_eq, not_true_eq_false, ↓reduceIte,
     opening] at absent
   split at absent
@@ -118,7 +118,7 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
   obtain ⟨owner, ownedEvent⟩ := source_owner setup reveals event
   obtain ⟨site, _, choiceLaw, candidate, raw, opening, owned, valid, _⟩ :=
     roster_owner_choice_data setup leaks bounds reveals admission source.strategy owner event
-      ownedEvent initial initialSupport state boundary related sourceSupport grant
+      ownedEvent initial initialSupport state boundary related sourceSupport
   have choiceFull : FullSupport (sourceChoiceLaw setup leaks profile owner
       (boundary.observe app owner)) := by
     rw [choiceLaw]
@@ -131,14 +131,17 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
     · have same : who = owner := not_ne_iff.mp different
       cases same
       right
-      have grantNow : (execution.observe app who).application.publicView.serviceGrant =
-          some event := by change execution.application.serviceGrant = _; rw [unchanged, grant]
+      have turnNow : (execution.observe app who).application.publicView.ownTurn? who =
+          some event := by
+        change execution.application.publicView.ownTurn? who = _
+        rw [unchanged]
+        exact ownTurn?_of_ready setup boundary.application grant ownedEvent
       have openingNow : rosterOpening? setup leaks who event (execution.observe app who) =
           some (candidate, raw) :=
         (rosterOpening?_application_eq setup leaks who event execution boundary unchanged).trans
           opening
       have recorded := absent_opening_recorded setup leaks rosters who
-        (execution.recall who) (execution.observe app who) event candidate raw grantNow
+        (execution.recall who) (execution.observe app who) event candidate raw turnNow
           ownedEvent openingNow absent
       rw [activated] at recorded
       exact recorded
@@ -187,7 +190,8 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
             (fun final => sourceReadout setup leaks (app.finished final)) := by
     rw [activated] at allowed ⊢
     exact roster_harmless_response_source_law setup leaks extended rosters timing network reveals
-      profile initial event state boundary related owner ownedEvent grant candidate raw opening
+      profile initial event state boundary related owner ownedEvent
+      (soleReady_of_ready setup boundary.application grant) candidate raw opening
       owned valid offset serials published menu.uniformResponses
       (fun player past view action supported =>
         (menu.uniformResponses_support player past view action).mp supported)

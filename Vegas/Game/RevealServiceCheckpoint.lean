@@ -152,6 +152,20 @@ theorem Checkpoint.known_published {setup : Setup (Player := Player) (L := L)}
   apply execution.network.known_published who checkpoint.inputs
   simp only [checkpoint.leaked, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
 
+/-- At a checkpoint of some rank, the event of that rank is ready. -/
+theorem PublicCheckpoint.ready {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {initial : State L setup.context} {Γ : SourceCtx Player L}
+    {source : Config Player L Γ} {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
+    {execution : (application setup leaks).Execution}
+    (checkpoint : PublicCheckpoint setup leaks initial source refs rank execution)
+    (event : (graph setup).EventId) (eventRank : event.val = rank) :
+    execution.application.config.cut.Ready event := by
+  have inside : rank < (graph setup).order.eventCount := eventRank ▸ event.isLt
+  have same : (⟨rank, inside⟩ : (graph setup).EventId) = event := Fin.ext eventRank.symm
+  rw [← same]
+  exact checkpoint.ordered.ready inside
+
 /-- At matched source ranks, the actual public metadata formulas make the
 native before-view a function of the source view. This permits different
 initial private states and does not identify the players' replay recalls. -/
@@ -352,7 +366,6 @@ theorem Checkpoint.reveal_response [Fintype Player]
     (decoded : ∀ disclose, decodeEventAction setup.program event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
         some (.reveal owner name disclose))
-    (granted : execution.application.serviceGrant = some event)
     (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
       (execution.observe (application setup leaks) owner)) :
@@ -371,11 +384,8 @@ theorem Checkpoint.reveal_response [Fintype Player]
   let suffix : List (ServiceInstruction (graph setup)) :=
     [.includeLatest event owner, .player watcher, .wire] ++
       List.replicate (event.val + 1) .tick ++ [.expire event]
-  have ready : execution.application.config.cut.Ready event := by
-    have active : rank < (graph setup).order.eventCount := eventRank ▸ event.isLt
-    have selectedEvent : (⟨rank, active⟩ : (graph setup).EventId) = event := Fin.ext eventRank.symm
-    rw [← selectedEvent]
-    exact checkpoint.ordered.ready active
+  have ready : execution.application.config.cut.Ready event :=
+    checkpoint.ready event eventRank
   have strategic : ((graph setup).actor? event).isSome = true := by rw [ownedEvent]; rfl
   have timely := checkpoint.timely event eventRank strategic
   obtain ⟨entered, activated⟩ := checkpoint.invariant.activatedAt_eq_some_of_ready_actor
@@ -388,12 +398,12 @@ theorem Checkpoint.reveal_response [Fintype Player]
   obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
     ordinary_response_settlement setup leaks bounds players watcher policy selected source.state
       refs execution checkpoint.agrees checkpoint.binding event ownedEvent outputEq codeEq node
-      granted value bound ready timely entered (event.val + 1) activated due checkpoint.pending
+      value bound ready timely entered (event.val + 1) activated due checkpoint.pending
       leaked checkpoint.inputs checkpoint.serials response member
   obtain ⟨sourceNext, sourceLaw, store, history⟩ :=
     ordinary_response_source_step setup leaks bounds players watcher policy published selected
       source checkpoint.emptyRegistry refs execution checkpoint.agrees checkpoint.history
-      checkpoint.binding event ownedEvent outputEq codeEq node before decoded granted value bound
+      checkpoint.binding event ownedEvent outputEq codeEq node before decoded value bound
       ready timely entered (event.val + 1) activated due checkpoint.pending leaked checkpoint.inputs
       checkpoint.serials response member
   have sourceSame : sourceNext = next := (PMF.mem_support_pure_iff _ _).mp (by
@@ -440,12 +450,13 @@ theorem Checkpoint.reveal_response [Fintype Player]
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
   have transcript := ordinary_response_transcript setup leaks bounds selected source.state refs
     execution next checkpoint.agrees checkpoint.binding checkpoint.recall checkpoint.serials
-    initialAccepted checkpoint.accepted event ownedEvent outputEq codeEq node granted value bound
+    initialAccepted checkpoint.accepted event ownedEvent outputEq codeEq node value bound
     ready response member checkpoint.ledger checkpoint.receipts checkpoint.counters configEq
     networkEq receiptsEq
   obtain ⟨candidate, associated, _owned, _verified, _opening⟩ :=
     opening_at_checkpoint setup leaks selected source.state refs execution checkpoint.agrees
-      checkpoint.binding event ownedEvent outputEq codeEq node granted value bound
+      checkpoint.binding event ownedEvent outputEq codeEq node
+      (ownTurn?_of_ready setup execution.application ready ownedEvent) value bound
   rw [checkpoint.accepted] at associated
   change initialAccepted (refs.get selected).field = some candidate at associated
   have packetPresence : (publicationPacket? initialAccepted

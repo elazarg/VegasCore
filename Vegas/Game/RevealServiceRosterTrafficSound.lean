@@ -27,7 +27,6 @@ variable {Player : Type} [DecidableEq Player]
 private theorem roster_opening_permitted
     (execution : (application setup leaks).Execution)
     (owner : Player) (event : (graph setup).EventId)
-    (grant : execution.application.serviceGrant = some event)
     (actor : (graph setup).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -72,10 +71,9 @@ private theorem roster_opening_permitted
         · cases opening
         · rename_i owned
           cases Option.some.inj opening
-          change execution.application.serviceGrant = some event ∧
-            execution.application.publicView.EventReady event ∧
+          change execution.application.publicView.EventReady event ∧
             execution.application.WithinDeadline (runtime setup) event ∧ _ ∧ _
-          refine ⟨grant, (execution.application.publicView_eventReady event).mpr ready,
+          refine ⟨(execution.application.publicView_eventReady event).mpr ready,
             timely, rfl, ?_⟩
           rw [node]
           exact ⟨rfl, rfl, not_not.mp owned, associated, rfl⟩
@@ -124,7 +122,8 @@ theorem roster_known_permitted [setup.FiniteInitialLaw]
       rw [← List.count_append, List.take_append_drop]
     omega
   obtain ⟨chosen, frame, _, _, _⟩ := roster_window_posterior setup leaks bounds rosters
-    granted event owner grant ownedEvent candidate raw opening owned valid (offset owner) serials
+    granted event owner (soleReady_of_ready setup granted.application grant) ownedEvent candidate
+    raw opening owned valid (offset owner) serials
     published menu.uniformResponses covered network ((rosters event).take slot) within prior reached
   have packets : control.execution.network.Satisfies fun packet =>
       packet.id ∈ granted.network.ledger.map Message.id ∨
@@ -146,7 +145,7 @@ theorem roster_known_permitted [setup.FiniteInitialLaw]
     have ready : granted.application.config.cut.Ready event := by
       simpa only [Nat.zero_add, Fin.eta] using checkpoint.ordered.ready (by omega)
     have timely := checkpoint.timely event (by omega) (by rw [ownedEvent]; rfl)
-    have admitted := roster_opening_permitted setup leaks granted owner event grant ownedEvent
+    have admitted := roster_opening_permitted setup leaks granted owner event ownedEvent
       ready timely candidate raw opening (granted.network.nextSerial owner)
       (checkpoint.serial_eq_ledger_count setup leaks owner)
     change permittedRosterEnvelope setup leaks
@@ -180,9 +179,10 @@ theorem roster_fresh_traffic [setup.FiniteInitialLaw]
       who control trace active
   obtain ⟨sentEvent, candidate, raw, sentGrant, ownedEvent, opening, rfl, _⟩ :=
     rosterFresh?_shape setup leaks rosters who _ _ response fresh
-  change control.execution.application.serviceGrant = some sentEvent at sentGrant
-  rw [unchanged, grant] at sentGrant
-  cases Option.some.inj sentGrant
+  change control.execution.application.publicView.ownTurn? who = some sentEvent at sentGrant
+  have sentReady := (PublicView.ownTurn?_spec _ who sentEvent sentGrant).1
+  rw [unchanged] at sentReady
+  cases (soleReady_of_ready setup granted.application grant).2 sentEvent sentReady
   let profile : BehavioralProfile setup.program :=
     fun owner => RevealOnly.uniformPolicy owner setup.program reveals
   have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
@@ -204,11 +204,9 @@ theorem roster_fresh_traffic [setup.FiniteInitialLaw]
   have timely : control.execution.application.WithinDeadline (runtime setup) event := by
     rw [unchanged]
     exact checkpoint.timely event (by omega) (by rw [ownedEvent]; rfl)
-  have currentGrant : control.execution.application.serviceGrant = some event := by
-    rw [unchanged, grant]
   have counted := (roster_fresh_iff_serial setup leaks bounds rosters network reveals openable
-    who control trace active event currentGrant ownedEvent candidate raw opening).mp fresh
-  have admitted := roster_opening_permitted setup leaks control.execution who event currentGrant
+    who control trace active event ready ownedEvent candidate raw opening).mp fresh
+  have admitted := roster_opening_permitted setup leaks control.execution who event
     ownedEvent ready timely candidate raw opening (control.execution.network.nextSerial who) counted
   have packet := (runtime setup).windowOpening_packet leaks who event candidate raw
     control.execution.application (control.execution.network.known who) owned

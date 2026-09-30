@@ -38,7 +38,7 @@ private theorem openingTraffic_actor (record : (application setup leaks).Traffic
   | commitment | withhold | malformed => simp only [call] at allowed
   | opening event candidate raw =>
     rw [call] at allowed
-    obtain ⟨_, _, _, _, linked⟩ := allowed
+    obtain ⟨_, _, _, linked⟩ := allowed
     cases node : nodeView (graph setup) event with
     | bind | sample => simp only [node] at linked
     | resolve owner payload binding checks outputEq codeEq =>
@@ -55,11 +55,8 @@ private theorem observer_opening_none
     (view : (application setup leaks).PlayerView) :
     opening? setup leaks watcher past view = none := by
   unfold opening?
-  cases selected : view.application.publicView.serviceGrant with
-  | none => rfl
-  | some event =>
-    change (if (graph setup).actor? event ≠ some watcher then none else _) = none
-    rw [ite_eq_left (observer event)]
+  rw [PublicView.ownTurn?_eq_none _ watcher (fun event _ => observer event)]
+  rfl
 
 include reveals observer openable in
 theorem replay_extra_submission

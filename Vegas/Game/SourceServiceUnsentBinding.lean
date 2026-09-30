@@ -87,7 +87,7 @@ theorem BindingSource.opportunity_law {setup : Setup (Player := Player) (L := L)
     {wholeProfile : BehavioralProfile setup.program} {event : (graph setup).EventId}
     (execution : (application setup leaks).Execution)
     (site : BindingSource setup wholeProfile event execution.application.config)
-    (granted : execution.application.serviceGrant = some event)
+    (ready : execution.application.config.cut.Ready event)
     (unsent : (runtime setup).eventRecorded leaks (execution.recall site.owner) event = false)
     (serial : Nat)
     (freshSlot : reactiveFreshSlot (execution.observe
@@ -104,7 +104,7 @@ theorem BindingSource.opportunity_law {setup : Setup (Player := Player) (L := L)
   dsimp only at *
   subst head
   have policyLaw := sourceServicePolicy_commit setup leaks fresh guard next wholeProfile residual
-    refs source embedding refsBefore _ aligned execution agree history granted
+    refs source embedding refsBefore _ aligned execution agree history ready
   have responses : sourceServicePolicy setup leaks wholeProfile owner
       (execution.recall owner) (execution.observe (application setup leaks) owner) =
         (commitKernel residual (source.view owner)).map fun choice =>
@@ -201,7 +201,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     owner ⟨remaining, some owner, execution⟩ trace rfl phase.event phase.granted owned
     site.payload site.outputEq unsent (approx.timing phase.event owner owned) last
     (approx.timingFull phase.event owner owned last) (by dsimp only [last]; omega)
-  have opening := BindingSource.opportunity_law service.leaks execution site phase.granted unsent
+  have opening := BindingSource.opportunity_law service.leaks execution site phase.ready unsent
     _ freshSlot fresh
   have preserved := (runtime service.setup).replay_response_preserves service.leaks _
     execution published owner response transport
@@ -211,13 +211,14 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     execution owner owner response transport phase.event
   have afterLength := app.respond_recall_length execution owner owner response
   simp only [↓reduceIte] at afterLength
-  have grant : PublicView.serviceGrant
-      (execution.observe app owner).application.publicView = some phase.event :=
-    phase.granted
+  have serving : (execution.observe app owner).application.publicView.ownTurn? owner =
+      some phase.event :=
+    PublicView.ownTurn?_of_ownTurn _ owner phase.event (phase.sole.ownTurn owned)
   have policyEq : approx.players owner (execution.recall owner)
       (execution.observe app owner) =
       mixtureImpl.policy (execution.recall owner) (execution.observe app owner) := by
-    simp only [players, sourceServiceTimedPolicy, grant, owned, ↓reduceDIte]
+    simp only [players, sourceServiceTimedPolicy_turn _ _ _ _ _ owner _ _ phase.event owned
+      serving]
     rfl
   have present := roster_fullyMixed_response_support service.setup service.leaks
     service.rosters service.network service.menu approx.players approx.covered approx.assessment
@@ -230,9 +231,9 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     ⟨witness, witnessAction, witnessSupport⟩
   set after := execution.respond app owner response with afterDef
   have sameApp : after.application = execution.application := preserved.1
-  have afterGrant : after.application.serviceGrant = some phase.event := by
+  have afterSole : after.application.publicView.SoleReady phase.event := by
     rw [sameApp]
-    exact phase.granted
+    exact phase.sole
   have afterPublished : after.network.Satisfies fun message =>
       message.id ∈ after.network.ledger.map Message.id := by
     rw [preserved.2.1]
@@ -251,7 +252,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     rw [runInteractionPlan_append, runInteractionPlan_append,
       sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
         approx.timing approx.profile phase.event owner owned service.network phase.visits
-        after afterGrant]
+        after afterSole]
     apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
@@ -313,7 +314,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
       intro slot member
       obtain ⟨notPassed, within⟩ := later slot member
       exact binding_slot_config_law service.setup service.leaks service.bounds service.rosters
-        service.network approx.profile after site (by rw [sameApp]) afterGrant
+        service.network approx.profile after site (by rw [sameApp])
         (afterUnsent.trans unsent) ready (by rw [sameApp]; exact timely) _
         (by change reactiveFreshSlot (app.observePlayer after.application owner) = _
             rw [sameApp]
@@ -438,17 +439,17 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
       execution.application.config :=
     ⟨Γ, names, name, siteOwner, payload, fresh, guard, next, residual, refs, source, embedding,
       refsBefore, aligned, agree, history, rfl⟩
-  have opening := BindingSource.opportunity_law service.leaks execution site granted unsent serial
+  have opening := BindingSource.opportunity_law service.leaks execution site ready unsent serial
     freshSlot candidate
   have present := roster_fullyMixed_response_support service.setup service.leaks
     service.rosters service.network service.menu
     (sourceServiceTimedPolicy service.setup service.leaks service.rosters timing wholeProfile)
     covered assessment strategy mixed siteOwner remainingFuel execution trace response allowed
-  have grant : PublicView.serviceGrant
-      (execution.observe (application service.setup service.leaks)
-        siteOwner).application.publicView =
-        some (embedding.event ⟨0, by simp [eventCount]⟩) := granted
-  simp only [sourceServiceTimedPolicy, grant, owned, ↓reduceDIte,
+  have serving : (execution.observe (application service.setup service.leaks)
+      siteOwner).application.publicView.ownTurn? siteOwner =
+        some (embedding.event ⟨0, by simp [eventCount]⟩) :=
+    ownTurn?_of_ready service.setup execution.application ready owned
+  simp only [sourceServiceTimedPolicy_turn _ _ _ _ _ siteOwner _ _ _ owned serving,
     ReactiveApplication.policyMixture_policy, PMF.support_bind] at present
   obtain ⟨slot, slotSupport, drawn⟩ := Set.mem_iUnion₂.mp present
   have submitted (other : (application service.setup service.leaks).Action)
@@ -547,7 +548,7 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
               (ProtocolState.observe site.owner service.setup.program state)).map
             (OwnAction.binding site.owner site.name site.payload) =
           commitKernel site.residual (site.source.view site.owner) := by
-  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted⟩ := phase
+  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted, _⟩ := phase
   dsimp only at isBinding ⊢
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
       refsBefore, aligned, _, ⟨_, _, lift, commutes, transport⟩, _, _, _, _, grant, _, _, _, _,
@@ -822,7 +823,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
     ⟨Γ, names, name, siteOwner, sitePayload, fresh', guard, next, residual, refs, source,
       embedding, refsBefore, aligned, agree, history, head⟩
   let values := commitKernel residual (source.view siteOwner)
-  have opening := BindingSource.opportunity_law service.leaks execution site phase.granted unsent
+  have opening := BindingSource.opportunity_law service.leaks execution site phase.ready unsent
     _ freshSlot fresh
   have submitted (value : PublicationResult (L.Val sitePayload))
       (allowed : (runtime service.setup).reactiveBinding service.leaks siteOwner phase.event
@@ -851,9 +852,9 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
         allowed transport, PMF.bind_bind]
     simp only [PMF.pure_bind]
     rfl
-  have grant : PublicView.serviceGrant
-      (execution.observe (application service.setup service.leaks)
-        siteOwner).application.publicView = some phase.event := phase.granted
+  have serving : (execution.observe (application service.setup service.leaks)
+      siteOwner).application.publicView.ownTurn? siteOwner = some phase.event :=
+    PublicView.ownTurn?_of_ownTurn _ siteOwner phase.event (phase.sole.ownTurn owned)
   let mixtureImpl := (application service.setup service.leaks).policyMixture
     (approx.timing phase.event siteOwner owned)
     (sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
@@ -864,7 +865,8 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
         sourceServiceTimedFamily service.setup service.leaks service.rosters approx.profile
           siteOwner phase.event slot (execution.recall siteOwner)
             (execution.observe (application service.setup service.leaks) siteOwner) := by
-    simp only [players, sourceServiceTimedPolicy, grant, owned, ↓reduceDIte]
+    simp only [players, sourceServiceTimedPolicy_turn _ _ _ _ _ siteOwner _ _ phase.event owned
+      serving]
     exact (application service.setup service.leaks).policyMixture_policy _ _ _ _
   have slotLaw (slot : Fin ((service.rosters phase.event).count siteOwner)) :
       (rosterOffset service.setup service.rosters siteOwner phase.event + slot.val =
@@ -960,7 +962,7 @@ theorem site_decision {service : SourceServiceSpec Player L}
     (past : List (application service.setup service.leaks).PlayerEntry)
     (view : (application service.setup service.leaks).PlayerView)
     (observed : site.1 = some (past, view)) {event : (graph service.setup).EventId}
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (history : service.model.InformationHistory who site.1) :
     ∃ (remaining : Nat) (execution : (application service.setup service.leaks).Execution)
       (_ : history.1.state = some ⟨remaining, some who, execution⟩)
@@ -982,11 +984,11 @@ theorem site_decision {service : SourceServiceSpec Player L}
   obtain ⟨phase⟩ := service.exists_decisionPhase who remaining execution trace
   have input := Option.some.inj
     ((service.infoOf_decision history.1 current).symm.trans (history.2.trans observed))
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) input).trans granted
-  exact ⟨remaining, execution, current, phase, Option.some.inj (phase.granted.symm.trans grant),
+        pair.2.application.publicView.EventReady event) input).mpr readyView
+  exact ⟨remaining, execution, current, phase, (phase.sole.2 event readyNow).symm,
     congrArg Prod.fst input, congrArg Prod.snd input⟩
 
 /-- The prescribed local law of a timed approximant at an actual decision is
@@ -1042,7 +1044,7 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     (observed : site.1 = some (past, view))
     {event : (graph service.setup).EventId} {payload : L.Ty}
     (outputEq : (graph service.setup).outputLayout event = .binding who payload)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
     (law : PMF (service.model.Choice who site.1)) :
     ∃ mixture : PMF (service.sourceModel.AssessmentDeviation who),
@@ -1063,7 +1065,7 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
   have owned := binding_actor service.setup event who payload outputEq
   obtain ⟨codeEq, node⟩ := binding_nodeView service.setup event who payload outputEq
   obtain ⟨sourceView, sourceHistories⟩ := owner_site_source_histories service timing
-    timingFull source full sourceBayes approx built who site past view observed owned granted
+    timingFull source full sourceBayes approx built who site past view observed owned readyView
   let admission := CommitmentInterface.values service.setup.program
   let baseline := service.setup.toProtocolBehavioralPolicy admission who (approx.profile who)
     (approx.admitted who) (some sourceView)
@@ -1079,15 +1081,15 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
           execution.observe (application service.setup service.leaks) who = view ∧
           Nonempty (approx.UnsentBindingLaws phase outputEq ready) := by
     obtain ⟨remaining, execution, current, phase, same, recallEq, viewEq⟩ :=
-      site_decision who site past view observed granted history
+      site_decision who site past view observed readyView history
     have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
         service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
       current ▸ history.1.trace
-    obtain ⟨phaseEvent, slot, selected, position, phaseGranted⟩ := phase
+    obtain ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩ := phase
     dsimp only at same
     subst same
     let phase : DecisionPhase service.setup service.leaks service.rosters who execution :=
-      ⟨phaseEvent, slot, selected, position, phaseGranted⟩
+      ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩
     obtain ⟨ready, _⟩ := sourceService_binding_decision_resources service.setup service.leaks
       service.bounds service.values service.capacity service.rosters
       service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace
@@ -1115,7 +1117,7 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     service.setup.exists_admitted_local_law admission approx.profile approx.admitted who
       (some sourceView) sourceLaw
   apply owner_comparisons_of_continuations service timing timingFull source full sourceBayes
-    approx built who site past view observed owned granted law alternative admittedAlternative
+    approx built who site past view observed owned readyView law alternative admittedAlternative
   · intro history _
     obtain ⟨remaining, execution, current, phase, _, trace, ready, recallEq, viewEq,
       ⟨⟨_, values, _, sourceStep, _, _, prescribed, _⟩⟩⟩ := atHistory history

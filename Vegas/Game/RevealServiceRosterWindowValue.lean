@@ -54,7 +54,7 @@ theorem roster_waiting_settlement_value
     (profile : BehavioralProfile setup.program)
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -96,7 +96,7 @@ theorem roster_waiting_settlement_value
         (visited.count owner)) * value initial.application := by
   intro app probability success
   obtain ⟨selected, recorded, law⟩ := roster_remaining_settlement setup leaks bounds rosters
-    timing profile initial event owner granted ownedEvent candidate raw opening owned valid
+    timing profile initial event owner sole ownedEvent candidate raw opening owned valid
     offset serials published players covered network visited remaining complete current reached
     choiceFull timingFull
   have absent : selected = none := by
@@ -127,7 +127,7 @@ theorem roster_owner_response_value
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -172,7 +172,7 @@ theorem roster_owner_response_value
   classical
   intro app packet policies after
   obtain ⟨selected, _frame, _recorded, same, posterior⟩ :=
-    roster_response_posterior setup leaks bounds rosters initial event owner granted ownedEvent
+    roster_response_posterior setup leaks bounds rosters initial event owner sole ownedEvent
       candidate raw opening owned valid offset serials published players covered network visited
       current reached owner sample action member (by simp only [↓reduceIte]; omega)
   have selectedIff : selected.isSome ↔ action = packet := by

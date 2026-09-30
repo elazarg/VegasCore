@@ -52,7 +52,7 @@ private theorem owner_site_position (service : SourceServiceSpec Player L) (who 
     (past : List (application service.setup service.leaks).PlayerEntry)
     (view : (application service.setup service.leaks).PlayerView)
     (observed : site.1 = some (past, view)) {event : (graph service.setup).EventId}
-    (granted : view.application.publicView.serviceGrant = some event) :
+    (readyView : view.application.publicView.EventReady event) :
     ∃ (reference : service.model.InformationHistory who site.1)
       (control : (application service.setup service.leaks).Control)
       (_ : reference.1.state = some control) (visits : List Player) (count : Nat),
@@ -77,11 +77,11 @@ private theorem owner_site_position (service : SourceServiceSpec Player L) (who 
   obtain ⟨phase⟩ := service.exists_decisionPhase who remaining execution trace
   have input := Option.some.inj
     ((service.infoOf_decision reference.1 current).symm.trans (reference.2.trans observed))
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) input).trans granted
-  have same : phase.event = event := Option.some.inj (phase.granted.symm.trans grant)
+        pair.2.application.publicView.EventReady event) input).mpr readyView
+  have same : phase.event = event := (phase.sole.2 event readyNow).symm
   subst same
   have selected : (rosterPlan service.setup service.rosters)[phase.before.length]? =
       some (.player who) := by
@@ -117,7 +117,7 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
     (observed : site.1 = some (past, view))
     {event : (graph service.setup).EventId}
     (owned : (graph service.setup).actor? event = some who)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (alternative : BehavioralPolicy who service.setup.program)
     (admitted : alternative.Admitted service.setup.program
       (CommitmentInterface.values service.setup.program)) :
@@ -138,7 +138,7 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
             deviation).alternative) := by
   subst built
   obtain ⟨reference, control, current, visits, count, selected, before, position⟩ :=
-    owner_site_position service who site past view observed granted
+    owner_site_position service who site past view observed readyView
   obtain ⟨_, mixture, prescribedLaw, alternativeLaw⟩ := sourceService_owner_assessment_comparisons
     service.setup service.leaks service.bounds service.values service.initialValues
     service.capacity service.rosters service.opportunities.binding timing timingFull
@@ -179,7 +179,7 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
     (observed : site.1 = some (past, view))
     {event : (graph service.setup).EventId}
     (owned : (graph service.setup).actor? event = some who)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (law : PMF (service.model.Choice who site.1))
     (alternative : BehavioralPolicy who service.setup.program)
     (admitted : alternative.Admitted service.setup.program
@@ -211,7 +211,7 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
             (fun final => service.setup.protocolReadout final.state) source who
             deviation).alternative) := by
   obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
-    timingFull source full sourceBayes approx built who site past view observed owned granted
+    timingFull source full sourceBayes approx built who site past view observed owned readyView
     alternative admitted
   refine ⟨mixture, ?_, ?_⟩
   · rw [← prescribedLaw]
@@ -246,7 +246,7 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
     (observed : site.1 = some (past, view))
     {event : (graph service.setup).EventId}
     (owned : (graph service.setup).actor? event = some who)
-    (granted : view.application.publicView.serviceGrant = some event) :
+    (readyView : view.application.publicView.EventReady event) :
     ∃ sourceView : SourceProgram.ProtocolView who service.setup.program,
       ∀ history ∈ (approx.assessment.belief who site).support,
         ∃ sourceHistory : (service.setup.executionProtocol
@@ -260,7 +260,7 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
               sourceHistory.trace = some sourceView := by
   subst built
   obtain ⟨reference, control, current, visits, count, selected, before, position⟩ :=
-    owner_site_position service who site past view observed granted
+    owner_site_position service who site past view observed readyView
   let admission := CommitmentInterface.values service.setup.program
   let original := service.setup.decodeBehavioralProfile admission source.strategy
   have permitted (player : Player) : (original player).Admitted service.setup.program admission :=

@@ -43,7 +43,7 @@ theorem roster_owner_history_local_value
     (ownedEvent : (graph setup).actor? event = some who)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
-    (grantView : view.application.publicView.serviceGrant = some event)
+    (servingView : view.application.publicView.ownTurn? who = some event)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (openingView : rosterOpening? setup leaks who event view = some (candidate, raw))
     (unopened : ¬ ∃ entry ∈ past.drop (rosterOffset setup rosters who event),
@@ -101,11 +101,11 @@ theorem roster_owner_history_local_value
   change execution.environmentRecall.length =
     (rosterPlanPrefix setup rosters actual.val).length + 1 + slot + 1 at position
   have sameEvent : actual = event := by
-    have actualGrant : view.application.publicView.serviceGrant = some actual := by
-      rw [← viewEq]
-      change execution.application.serviceGrant = some actual
-      rw [unchanged, grant]
-    exact Option.some.inj (actualGrant.symm.trans grantView)
+    have eventReady := (PublicView.ownTurn?_spec _ who event servingView).1
+    rw [← viewEq] at eventReady
+    change execution.application.publicView.EventReady event at eventReady
+    rw [unchanged] at eventReady
+    exact ((soleReady_of_ready setup boundary.application grant).2 event eventReady).symm
   subst actual
   have opening : rosterOpening? setup leaks who event (boundary.observe app who) =
       some (candidate, raw) := by
@@ -115,7 +115,7 @@ theorem roster_owner_history_local_value
   obtain ⟨sourceSite, sourceObserved, choiceLaw, otherCandidate, otherRaw, otherOpening,
       owner, valid, _handle, _value⟩ :=
     roster_owner_choice_data setup leaks bounds reveals admission source.strategy who event
-      ownedEvent initial initialSupport state boundary related sourceSupport grant
+      ownedEvent initial initialSupport state boundary related sourceSupport
   have sameOpening : (otherCandidate, otherRaw) = (candidate, raw) :=
     Option.some.inj (otherOpening.symm.trans opening)
   have candidateEq : otherCandidate = candidate := congrArg Prod.fst sameOpening
@@ -219,8 +219,9 @@ theorem roster_owner_history_local_value
     rw [← activated, recallEq, viewEq]
     exact member
   have localValue := roster_owner_response_source_value setup leaks extended rosters timing
-    network reveals decoded initial event state boundary related who ownedEvent grant candidate
-    raw opening owner valid (offset who) serials published menu.uniformResponses
+    network reveals decoded initial event state boundary related who ownedEvent
+    (soleReady_of_ready setup boundary.application grant) candidate raw opening owner valid
+    (offset who) serials published menu.uniformResponses
     (fun player past view response supported =>
       (menu.uniformResponses_support player past view response).mp supported)
     ((rosters event).take slot) ((rosters event).drop (slot + 1)) complete prior reached sample

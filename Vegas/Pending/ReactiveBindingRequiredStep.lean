@@ -47,7 +47,7 @@ theorem required_binding_stopped_response_coupling
         some (original.application.publicView.bindingCount owner))
     (capacity : original.application.publicView.bindingCount owner < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (unsent : runtime.eventRecorded leaks (repaired.recall owner) event = false)
     (unbound : original.application.accepted (.inr event) = none)
@@ -85,6 +85,7 @@ theorem required_binding_stopped_response_coupling
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
+  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   let serial := original.application.publicView.bindingCount owner
   let law := players owner (original.recall owner) (original.observe app owner)
@@ -117,10 +118,9 @@ theorem required_binding_stopped_response_coupling
   have rightReady : repaired.application.publicView.EventReady event := by
     rw [← frame.publicView]
     exact (original.application.publicView_eventReady event).mpr ready
-  have rightGrant : repaired.application.serviceGrant = some event := by
-    rw [← show original.application.serviceGrant = repaired.application.serviceGrant from
-      congrArg PublicView.serviceGrant frame.publicView]
-    exact granted
+  have rightTurn : repaired.application.publicView.OwnTurn owner event := by
+    rw [← frame.publicView]
+    exact turn
   have originalFresh : (memory.shadow.inputView runtime leaks
       (repaired.observe app owner)).application.candidates (.prepared serial) = .fresh := by
     rw [frame.observed]
@@ -137,7 +137,7 @@ theorem required_binding_stopped_response_coupling
   · intro next supported
     obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.binding_audit_response_cases leaks bounds original owner remaining event
-        payload outputEq codeEq node granted fresh leftRecall serials response
+        payload outputEq codeEq node turn fresh leftRecall serials response
           (available response selected) with replay | canonical | departure
     · right
       left
@@ -154,7 +154,7 @@ theorem required_binding_stopped_response_coupling
         apply coverage
         exact repairResponse_binding_available runtime leaks bounds owner memory
           (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
-          rightGrant owned rightReady unsent serial actualSlot capacity default opening
+          rightTurn owned rightReady unsent serial actualSlot capacity default opening
           bounded originalFresh
       right
       right
@@ -188,7 +188,7 @@ theorem required_binding_stopped_activation_coupling
         some (original.application.publicView.bindingCount owner))
     (capacity : original.application.publicView.bindingCount owner < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (unsent : runtime.eventRecorded leaks (repaired.recall owner) event = false)
     (unbound : original.application.accepted (.inr event) = none)
@@ -233,13 +233,14 @@ theorem required_binding_stopped_activation_coupling
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length) := by
   classical
+  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
   let sample := leaks owner original.network.pending
   have existsStep (selected) (supported : selected ∈ sample.support) :=
     (frame.activate owner selected).required_binding_stopped_response_coupling bounds menu players
       reference started leftRecall remaining event payload outputEq codeEq node
-      fresh actualSlot capacity default granted ready unsent unbound
+      fresh actualSlot capacity default turn ready unsent unbound
       (published.learn owner selected) entered ticks activated due visits absent
       (serials.learn owner selected)
       (coverage selected supported) (available selected supported)

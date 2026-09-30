@@ -29,21 +29,20 @@ theorem off_turn_replay_sourceService
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
-    (offTurn : ∀ event, view.application.publicView.serviceGrant = some event →
-      (graph setup).actor? event ≠ some who)
+    (idle : view.application.publicView.Idle who)
     (response : (application setup leaks).Action)
     (replay : response ∈ ((application setup leaks).replayPolicy past view).support) :
     response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
   classical
   have optional : ¬ bindingRequired setup leaks rosters who past view := by
-    rintro ⟨event, _, granted, _, owned, _⟩
-    exact offTurn event granted owned
+    rintro ⟨event, _, _, _, owned, ready, _⟩
+    exact idle event ready owned
   change response ∈ sourceServiceActions setup leaks bounds rosters who past view
   rw [sourceServiceActions, ite_eq_right optional]
   exact bounds.replay_compiled (runtime setup) leaks who past view response replay
 
 /-- No source-owner roster restriction is imposed. Every focal visit is
-classified using the actual public grant, while all repaired endpoints remain
+classified by the focal player's idleness, while all repaired endpoints remain
 actual retained histories, even on the stopped branches. -/
 theorem off_turn_roster_stopped_coupling
     (setup : Setup (Player := Player) (L := L))
@@ -70,8 +69,7 @@ theorem off_turn_roster_stopped_coupling
     (leftRecall : original.InputRecall (application setup leaks))
     (rightRecall : repaired.InputRecall (application setup leaks))
     (serials : original.network.SerialsBeforeNext)
-    (offTurn : ∀ event, original.application.serviceGrant = some event →
-      (graph setup).actor? event ≠ some owner)
+    (idle : original.application.publicView.Idle owner)
     (remaining : Nat) (visits : List Player)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -104,7 +102,7 @@ theorem off_turn_roster_stopped_coupling
   let menu := sourceServiceMenu setup leaks bounds rosters
   let scheduler := rosterScheduler setup leaks rosters network
   obtain ⟨coupling, first, second, related⟩ := frame.run_off_turn_stopped_coupling bounds
-    menu players scheduler reference started leftRecall rightRecall serials offTurn
+    menu players scheduler reference started leftRecall rightRecall serials idle
     (off_turn_replay_sourceService setup leaks bounds rosters owner)
     (by simpa only [players, Function.update_self] using available)
     before.length visits.length position

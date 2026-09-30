@@ -80,7 +80,7 @@ theorem owner_extra_collection
   obtain ⟨response, chosen, effective, excluded⟩ := extra_choice_response setup leaks bounds
     watcher who different site _ _ observed action extra
   obtain ⟨submission, same, departure⟩ := prefix_extra_submission setup leaks bounds who reveals
-    initial event owned source execution related rfl response effective excluded
+    initial event owned source execution related response effective excluded
   have chosenSubmission : action.1 = some ⟨some (.submit submission)⟩ := by rw [chosen, same]
   have serials : execution.network.SerialsBeforeNext :=
     PrefixCheckpoint.runtime_fact (fun current => current.network.SerialsBeforeNext)

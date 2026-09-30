@@ -140,7 +140,7 @@ theorem first_binding_block_coupling
       left right paired reference nextStarted
       (app.respond_inputRecall original owner response leftRecall)
       (app.respond_inputRecall repaired owner changed.1 rightRecall)
-      (serials.submit owner packet) repeated grant recorded leftReady leftTimely leftVacant
+      (serials.submit owner packet) repeated recorded leftReady leftTimely leftVacant
       leftUnused data.1 data.2.1 (Or.inl ⟨data.2.2.1, data.2.2.2.1, data.2.2.2.2⟩) pending
       (serials.next_unpublished owner) packets available before after visits ticks split
       (by rw [app.respond_environmentRecall]; exact position)

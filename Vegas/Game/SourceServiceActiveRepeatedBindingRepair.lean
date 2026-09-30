@@ -52,7 +52,6 @@ private theorem recorded_response_tail
     (serials : execution.network.SerialsBeforeNext)
     (repeated : execution.network.nextSerial owner ≠
       execution.network.ledger.countP (fun message => message.sender = owner))
-    (granted : execution.application.serviceGrant = some event)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -139,7 +138,6 @@ private theorem recorded_response_tail
     payload outputEq codeEq node (.prepared serial) nonce memory left right frame
     reference started leftRecall rightRecall serialsNow
     (by rw [frame.network, rightCounter, rightLedger]; exact repeated)
-    ((congrArg PublicView.serviceGrant leftPublic).trans granted)
     (by
       rw [rightEq]
       exact (runtime setup).eventRecorded_respond_of_recorded leaks execution
@@ -181,7 +179,6 @@ private theorem recorded_resume_transport
     (execution right : (application setup leaks).Execution)
     (memory : BindingMemory (runtime setup) leaks)
     (reference : List (application setup leaks).PlayerEntry)
-    (granted : execution.application.serviceGrant = some event)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
     (ready : execution.application.config.cut.Ready event)
     (reached : (right, memory) ∈
@@ -210,7 +207,8 @@ private theorem recorded_resume_transport
     exact actor
   exact ⟨chosen.1, bounds.ordinary_binding_recorded (runtime setup) leaks owner
     (execution.recall owner) (execution.observe app owner) event payload outputEq codeEq node
-      granted owned ((execution.application.publicView_eventReady event).mpr ready) recorded
+      ((soleReady_of_ready setup execution.application ready).ownTurn owned) owned
+      ((execution.application.publicView_eventReady event).mpr ready) recorded
         chosen.1 (sourceServiceMenu_in_compiled setup leaks bounds rosters owner _ _ legal),
     rightEq⟩
 
@@ -392,8 +390,9 @@ theorem recorded_binding_history_response_block_coupling
     intro response member
     have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
         (execution.observe app owner) := by
-      rintro ⟨other, _, otherGrant, _, _, _, unsent, _⟩
-      cases Option.some.inj (otherGrant.symm.trans granted)
+      rintro ⟨other, _, otherTurn, _, _, _, unsent, _⟩
+      cases Option.some.inj (otherTurn.symm.trans
+        (ownTurn?_of_ready setup execution.application ready owned))
       simp only [recorded, Bool.true_eq_false] at unsent
     change response ∈ sourceServiceActions setup leaks bounds rosters owner _ _
     rw [sourceServiceActions, ite_eq_right optional]
@@ -476,11 +475,11 @@ theorem recorded_binding_history_response_block_coupling
         exact app.respond_inputRecall execution owner response recalled
       obtain ⟨response, replay, rightEq⟩ := recorded_resume_transport setup leaks bounds rosters
         players owner event payload outputEq codeEq node execution next.2.1 next.2.2 reference
-          granted recorded ready rightSupport
+          recorded ready rightSupport
       exact recorded_response_tail setup leaks bounds rosters network players owner event payload
         outputEq codeEq node serial nonce value execution next.1 next.2.1 next.2.2 paired
         (by simpa only [BindingMemory.atRecall] using shadow) reference started response replay
-        rightEq recalled leftRecall serials repeated granted recorded ready timely vacant unused
+        rightEq recalled leftRecall serials repeated recorded ready timely vacant unused
         candidate pending unpublished packets
         (by simpa only [players, Function.update_self] using available) before after visits ticks
         split position

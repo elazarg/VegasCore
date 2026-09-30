@@ -47,7 +47,7 @@ theorem binding_window_retained_coupling
       (repaired.observe (runtime.reactiveApplication leaks) owner).application = some serial)
     (capacity : serial < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
-    (granted : repaired.application.serviceGrant = some event)
+    (turn : repaired.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (unsent : runtime.eventRecorded leaks (repaired.recall owner) event = false)
     (coverage : bounds.compiledActions runtime leaks owner (repaired.recall owner)
@@ -68,6 +68,7 @@ theorem binding_window_retained_coupling
       ∀ next ∈ coupling.support,
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length := by
+  have turnSome := repaired.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   have owned : graph.actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
@@ -106,7 +107,7 @@ theorem binding_window_retained_coupling
     · apply bounds.requiredBindingActions_subset_compiled runtime leaks owner
       exact repairResponse_binding_available runtime leaks bounds owner memory
         (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
-        granted owned rightReady unsent serial actualSlot capacity default opening bounded
+        turn owned rightReady unsent serial actualSlot capacity default opening bounded
         originalFresh
   have resumeEq :
       (retainedImplementation runtime leaks menu owner reference (players owner)).resume
@@ -148,7 +149,7 @@ theorem binding_retained_coupling
       (repaired.observe (runtime.reactiveApplication leaks) owner).application = some serial)
     (capacity : serial < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
-    (granted : repaired.application.serviceGrant = some event)
+    (turn : repaired.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (unsent : runtime.eventRecorded leaks (repaired.recall owner) event = false)
     (timely : original.application.WithinDeadline runtime event)
@@ -174,6 +175,7 @@ theorem binding_retained_coupling
             next.1).map fun execution => (execution, next.2)) ∧
       ∀ next ∈ coupling.support,
         Frame runtime leaks next.2.2 owner next.1 next.2.1 := by
+  have turnSome := repaired.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   have owned : graph.actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
@@ -196,7 +198,7 @@ theorem binding_retained_coupling
   have responseEq := retainedImplementation_binding_response runtime leaks bounds menu owner
     reference
     (players owner) memory (repaired.recall owner) (repaired.observe app owner) event payload
-    outputEq codeEq node granted owned rightReady unsent serial actualSlot capacity default
+    outputEq codeEq node turn owned rightReady unsent serial actualSlot capacity default
       originalFresh
       coverage currentCanonical
   have resumeEq :

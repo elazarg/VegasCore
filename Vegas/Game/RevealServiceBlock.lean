@@ -43,7 +43,6 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
       ((graph setup).nodes event) = .resolve owner payload (refs.get selected) [])
     (node : nodeView (graph setup) event =
       .resolve owner payload (refs.get selected) [] outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
     (value : L.Val payload) (bound : source.get selected = .success value)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -106,7 +105,8 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
   | true =>
       obtain ⟨candidate, associated, owned, verified, opening⟩ :=
         opening_at_checkpoint setup leaks selected source refs execution agree valid event
-          ownedEvent outputEq codeEq node granted value bound
+          ownedEvent outputEq codeEq node
+          (ownTurn?_of_ready setup execution.application ready ownedEvent) value bound
       have same := (ordinary_true_iff setup leaks bounds owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) _ opening response member).mp chosen
       obtain ⟨evidence, shape⟩ := (runtime setup).normalized_reveal_response leaks owner
@@ -177,7 +177,6 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
     (decoded : ∀ disclose, decodeEventAction setup.program event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
         some (.reveal owner name disclose))
-    (granted : execution.application.serviceGrant = some event)
     (value : L.Val payload) (bound : source.state.get selected = .success value)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -210,7 +209,7 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
   dsimp only
   obtain ⟨next, law, applicationEq, _networkEq, _receiptsEq, _recallEq⟩ :=
     ordinary_response_settlement setup leaks bounds players watcher policy selected source.state
-      refs execution agree valid event ownedEvent outputEq codeEq node granted value bound
+      refs execution agree valid event ownedEvent outputEq codeEq node value bound
       ready timely entered ticks activated due pending leaked inputs serials response member
   refine ⟨next, law, ?_, ?_⟩
   · have stores :

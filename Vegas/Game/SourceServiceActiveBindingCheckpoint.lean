@@ -35,7 +35,6 @@ theorem scheduledBindingActive_config
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (owned : (graph setup).actor? event = some owner)
     (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
     (serial : Nat)
@@ -108,7 +107,8 @@ theorem scheduledBindingActive_config
       have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion
         leaks bounds transport (fun who past view action member =>
           bounds.replay_compiled (runtime setup) leaks who past view action member)
-        network execution owner event payload outputEq codeEq node granted owned ready
+        network execution owner event payload outputEq codeEq node
+        (soleReady_of_ready setup execution.application ready) owned ready
         published serials serial opening remaining
       have delay : ((runtime setup).runInteractionPlan leaks transport network first
           (execution.respond app owner response)).map readout =
@@ -152,7 +152,7 @@ theorem scheduledBindingActive_config
       have currentCount : (current.recall owner).length = (execution.recall owner).length + 1 := by
         simpa only [↓reduceIte] using app.respond_recall_length execution owner owner action
       have result := scheduledBindingWindow_config setup leaks bounds network owner event payload
-        outputEq codeEq node owned current (by rw [same]; exact granted)
+        outputEq codeEq node owned current
         (by rw [same]; exact ready) (by rw [same]; exact timely) serial
         (by rw [same]; exact fresh) (by rw [same]; exact vacant) (by rw [same]; exact unused)
         ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond

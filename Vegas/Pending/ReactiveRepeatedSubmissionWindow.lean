@@ -43,7 +43,7 @@ private theorem activation_resources
       execution).support) :
     next.InputRecall (runtime.reactiveApplication leaks) ∧ next.network.SerialsBeforeNext ∧
       runtime.eventRecorded leaks (next.recall owner) event = true ∧
-      next.application.serviceGrant = execution.application.serviceGrant ∧
+      next.application.publicView = execution.application.publicView ∧
       (execution.recall owner).length ≤ (next.recall owner).length := by
   let app := runtime.reactiveApplication leaks
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -62,8 +62,7 @@ private theorem activation_resources
   · obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸
       ((congrArg (fun law : PMF app.Execution => middle ∈ law.support)
         (ReactiveApplication.Execution.activation_samples app execution actor)).mp moved)
-    exact congrArg PublicView.serviceGrant
-      (reactive_respond_application runtime leaks _ actor response).2
+    exact (reactive_respond_application runtime leaks _ actor response).2
   · rw [app.respond_recall_length, sameRecall]
     split <;> omega
 
@@ -225,9 +224,9 @@ private theorem repeated_activation_coupling
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
       original.network.ledger.countP (fun message => message.sender = owner))
-    (event : graph.EventId) (granted : original.application.serviceGrant = some event)
+    (event : graph.EventId) (serving : original.application.publicView.ownTurn? owner = some event)
     (recorded : runtime.eventRecorded leaks (repaired.recall owner) event = true)
-    (coverage : ∀ past view, view.application.publicView.serviceGrant = some event →
+    (coverage : ∀ past view, view.application.publicView.ownTurn? owner = some event →
       runtime.eventRecorded leaks past event = true →
         bounds.compiledActions runtime leaks owner past view ⊆ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
@@ -249,11 +248,12 @@ private theorem repeated_activation_coupling
   let app := runtime.reactiveApplication leaks
   by_cases same : actor = owner
   · subst actor
-    have grantRight : repaired.application.serviceGrant = some event := by
-      exact (congrArg PublicView.serviceGrant frame.publicView).symm.trans granted
+    have turnRight : repaired.application.publicView.ownTurn? owner = some event := by
+      rw [← frame.publicView]
+      exact serving
     obtain ⟨coupling, first, second, related⟩ :=
       frame.repeated_submission_stopped_activation_coupling bounds menu players reference started
-        leftRecall rightRecall 0 serials repeated (fun _ _ => coverage _ _ grantRight recorded)
+        leftRecall rightRecall 0 serials repeated (fun _ _ => coverage _ _ turnRight recorded)
         (fun _ _ => available _ _)
     refine ⟨coupling, first, second, ?_⟩
     intro next supported
@@ -311,9 +311,9 @@ theorem run_repeated_stopped_coupling
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
       original.network.ledger.countP (fun message => message.sender = owner))
-    (event : graph.EventId) (granted : original.application.serviceGrant = some event)
+    (event : graph.EventId) (serving : original.application.publicView.ownTurn? owner = some event)
     (recorded : runtime.eventRecorded leaks (repaired.recall owner) event = true)
-    (coverage : ∀ past view, view.application.publicView.serviceGrant = some event →
+    (coverage : ∀ past view, view.application.publicView.ownTurn? owner = some event →
       runtime.eventRecorded leaks past event = true →
         bounds.compiledActions runtime leaks owner past view ⊆ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
@@ -363,7 +363,7 @@ theorem run_repeated_stopped_coupling
         obtain ⟨actor, rfl⟩ := commands original (by omega) (by omega) command chosen
         obtain ⟨step, first, second, related⟩ := frame.repeated_activation_coupling
           bounds menu players reference started leftRecall rightRecall serials repeated event
-            granted recorded coverage available actor
+            serving recorded coverage available actor
         have existsTail (next) (member : next ∈ step.support) :
             ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
               coupling.map Prod.fst = app.runRounds scheduler players count next.1 ∧
@@ -414,7 +414,7 @@ theorem run_repeated_stopped_coupling
                 next.2 rightRecall privateReached) fresh
               (runtime.activation_repeated_of_clean leaks bounds players original next.1 actor owner
                 leftRecall serials repeated available reached bad)
-              (grant.trans granted) recordedRight (offset + 1) nextPosition
+              (by rw [grant]; exact serving) recordedRight (offset + 1) nextPosition
               (fun execution lower upper => commands execution (by omega) (by omega))
             refine ⟨coupling, leftLaw, rightLaw, ?_⟩
             intro final supported

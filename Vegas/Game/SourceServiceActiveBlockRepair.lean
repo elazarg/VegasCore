@@ -144,10 +144,7 @@ theorem active_nonbinding_block_stopped_coupling
             event payload binding checks outputEq codeEq node granted rank trace
     · exact off_turn_history_response_coupling setup leaks bounds rosters network source target
         agrees owner policy available reference memory prior original repaired sampled frame
-        started leftRecall (by
-          intro selected selectedGrant
-          cases Option.some.inj (selectedGrant.symm.trans originalGrant)
-          exact owned) rank trace
+        started leftRecall (idle_of_ready setup original.application ready owned) rank trace
   obtain ⟨step, first, second, related⟩ := existsResponse
   have existsTail next (member : next ∈ step.support) :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
@@ -227,6 +224,9 @@ theorem active_nonbinding_block_stopped_coupling
       have nextPosition : next.1.environmentRecall.length = before.length := by
         rw [← same, app.respond_environmentRecall]
         exact position
+      have nextRepairedReady : next.2.1.application.config.cut.Ready event := by
+        rw [← State.publicView_eventReady, ← paired.publicView, State.publicView_eventReady]
+        exact nextReady
       cases node : nodeView (graph setup) event with
       | sample payload law outputEq codeEq =>
           have actual : (graph setup).actor? event = none :=
@@ -243,7 +243,7 @@ theorem active_nonbinding_block_stopped_coupling
             (paired.network ▸ app.serialsBeforeNext_history scheduler (initialLaw setup)
               (rosterPlan setup rosters).length rawTrace)
             event payload law outputEq codeEq node
-            ((congrArg PublicView.serviceGrant paired.publicView).trans nextGrant) nextReady
+            nextReady
             remaining visits ticks nextTrace before after
             (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
@@ -259,9 +259,9 @@ theorem active_nonbinding_block_stopped_coupling
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := foreign_binding_block_stopped_coupling
             setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
-            nextStarted nextRecall event actor different payload outputEq codeEq node nextGrant
-            remaining visits ticks nextTrace before after (by simpa only [actual] using split)
-            nextPosition
+            nextStarted nextRecall event actor different payload outputEq codeEq node
+            nextRepairedReady remaining visits ticks nextTrace before after
+            (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
             by simpa only [suffix, ending, actual] using rightLaw, connected⟩
       | resolve actor payload binding checks outputEq codeEq =>
@@ -273,8 +273,8 @@ theorem active_nonbinding_block_stopped_coupling
             setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
             nextStarted nextRecall nextSound nextBinding event actor payload binding checks
-            outputEq codeEq node nextGrant remaining visits ticks nextTrace before after
-            (by simpa only [actual] using split) nextPosition
+            outputEq codeEq node nextGrant nextRepairedReady remaining visits ticks nextTrace
+            before after (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
             by simpa only [suffix, ending, actual] using rightLaw, connected⟩
   let tail := fun next member => (existsTail next member).choose

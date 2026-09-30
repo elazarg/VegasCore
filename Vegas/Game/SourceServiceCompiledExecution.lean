@@ -43,7 +43,7 @@ theorem sourceServiceOpportunity_at_history
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (grantedCurrent : control.execution.application.serviceGrant = some event)
+    (serving : control.execution.application.publicView.ownTurn? who = some event)
     (owned : (graph setup).actor? event = some who)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
     (response : (application setup leaks).Action)
@@ -65,11 +65,16 @@ theorem sourceServiceOpportunity_at_history
       publicEq, checkpoint, _position⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
-  have eventEq : selectedEvent = event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans grantedCurrent)
+  have selectedReady : control.execution.application.config.cut.Ready selectedEvent :=
+    (ready_iff_rank setup _ selectedEvent.val checkpoint.ordered selectedEvent).mpr rfl
+  have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
+  have eventEq : selectedEvent = event :=
+    ((soleReady_of_ready setup control.execution.application selectedReady).2 event
+      eventReady).symm
   subst selectedEvent
-  have ready : control.execution.application.config.cut.Ready event :=
-    (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
+  have ready := selectedReady
+  have grantedCurrent : control.execution.application.serviceGrant = some event :=
+    (congrArg PublicView.serviceGrant publicEq).trans grant
   cases remaining with
   | ret result =>
       have count := aligned.graphSuffix.countEq
@@ -122,7 +127,7 @@ theorem sourceServiceOpportunity_at_history
         fresh guard next profile remainingProfile (inherited permitted who) refs source embedding
         refsBefore event.val aligned control.execution checkpoint.agrees checkpoint.history
         (control.execution.application.publicView.bindingCount who) selected candidate room
-        (by simpa only [← same] using grantedCurrent) (by simpa only [← same] using ready)
+        (by simpa only [← same] using ready)
         (by simpa only [← same] using unsent) response (by simpa only [← same] using supported)
       exact ⟨covered.1, fun _ _ => by simpa only [← same] using covered.2⟩
   | @reveal Γ names published owner name sourcePayload fresh binding unresolved next =>
@@ -154,7 +159,7 @@ theorem sourceServiceOpportunity_at_history
       have covered := sourceServiceOpportunity_reveal_covered setup leaks bounds rosters fresh
         binding unresolved next profile remainingProfile refs source embedding refsBefore event.val
         aligned control.execution checkpoint valid recalled bounded.1 candidateValues
-        (by simpa only [← same] using grantedCurrent) (by simpa only [← same] using ready)
+        (by simpa only [← same] using ready)
         (by simpa only [← same] using unsent) response (by simpa only [← same] using supported)
       refine ⟨covered, ?_⟩
       intro payload bound
@@ -192,16 +197,16 @@ theorem sourceServiceLastPolicy_admissible
     exact bounds.replay_compiled (runtime setup) leaks who past view response replay
   change response ∈ (sourceServiceLastPolicy setup leaks rosters profile who past view).support
     at supported
-  cases grant : view.application.publicView.serviceGrant with
+  cases serving : view.application.publicView.ownTurn? who with
   | none =>
-      simp only [sourceServiceLastPolicy, grant] at supported
-      exact replay_covered supported (by rintro ⟨event, _, same, _⟩; simp [grant] at same)
+      simp only [sourceServiceLastPolicy, serving] at supported
+      exact replay_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
   | some event =>
-      simp only [sourceServiceLastPolicy, grant] at supported
+      simp only [sourceServiceLastPolicy, serving] at supported
       split at supported
       · rename_i chosen
         exact (sourceServiceOpportunity_at_history setup leaks bounds values initialValues capacity
-          rosters opportunities network profile permitted who control trace active event grant
+          rosters opportunities network profile permitted who control trace active event serving
           chosen.1 chosen.2.1 response (by
             change response ∈ (sourceServiceOpportunity setup leaks profile who event
               past view).support
@@ -209,8 +214,8 @@ theorem sourceServiceLastPolicy_admissible
               using supported)).1
       · rename_i waiting
         apply replay_covered supported
-        rintro ⟨other, _, otherGrant, _, owned, _, unsent, final⟩
-        have same : other = event := Option.some.inj (otherGrant.symm.trans grant)
+        rintro ⟨other, _, otherTurn, _, owned, _, unsent, final⟩
+        have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
         subst other
         exact waiting ⟨owned, unsent, final⟩
 

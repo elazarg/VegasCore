@@ -33,7 +33,7 @@ theorem binding_audit_response_cases (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (turn : execution.application.publicView.OwnTurn owner event)
     (fresh : execution.application.candidates.lookup
       (owner, .prepared (execution.application.publicView.bindingCount owner)) = .fresh)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
@@ -102,7 +102,9 @@ theorem binding_audit_response_cases (bounds : MessageBounds graph)
               exact equal
             have canonical := runtime.normalize_binding_at_servicePhase leaks
               execution.application owner (execution.network.known owner) submission event payload
-              outputEq codeEq node granted (execution.network.nextSerial owner) fresh admissible.2
+              outputEq codeEq node (execution.network.nextSerial owner) fresh
+              (runtime.freshServiceEnvelope_event_of_owned_unique _ event _ turn.2.2 admissible.2)
+              admissible.2
             rw [normal] at canonical
             exact Or.inr (Or.inl ⟨submission.call.opening, member.1.1.2, admissible.1,
               congrArg (fun material => (⟨some (.submit material)⟩ : app.Action)) canonical⟩)
@@ -138,7 +140,7 @@ theorem binding_stopped_response_coupling
         some (original.application.publicView.bindingCount owner))
     (capacity : original.application.publicView.bindingCount owner < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (first : original.network.nextSerial owner =
       original.network.ledger.countP (fun message => message.sender = owner) →
@@ -200,10 +202,9 @@ theorem binding_stopped_response_coupling
   have rightReady : repaired.application.publicView.EventReady event := by
     rw [← frame.publicView]
     exact (original.application.publicView_eventReady event).mpr ready
-  have rightGrant : repaired.application.serviceGrant = some event := by
-    rw [← show original.application.serviceGrant = repaired.application.serviceGrant from
-      congrArg PublicView.serviceGrant frame.publicView]
-    exact granted
+  have rightTurn : repaired.application.publicView.OwnTurn owner event := by
+    rw [← frame.publicView]
+    exact turn
   have originalFresh : (memory.shadow.inputView runtime leaks
       (repaired.observe app owner)).application.candidates (.prepared serial) = .fresh := by
     rw [frame.observed]
@@ -220,7 +221,7 @@ theorem binding_stopped_response_coupling
   · intro next supported
     obtain ⟨response, selected, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.binding_audit_response_cases leaks bounds original owner remaining event
-        payload outputEq codeEq node granted fresh leftRecall serials response
+        payload outputEq codeEq node turn fresh leftRecall serials response
           (available response selected) with replay | canonical | departure
     · have unchanged : memory.repairResponse runtime leaks owner
           (repaired.observe app owner) response = (response, memory.shadow) := by
@@ -250,7 +251,7 @@ theorem binding_stopped_response_coupling
         apply bounds.requiredBindingActions_subset_compiled runtime leaks owner
         exact repairResponse_binding_available runtime leaks bounds owner memory
           (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
-          rightGrant owned rightReady (first counted) serial actualSlot capacity default opening
+          rightTurn owned rightReady (first counted) serial actualSlot capacity default opening
           bounded originalFresh
       right
       dsimp only [adjusted]
@@ -285,7 +286,7 @@ theorem binding_stopped_activation_coupling
         some (original.application.publicView.bindingCount owner))
     (capacity : original.application.publicView.bindingCount owner < bounds.candidateCount)
     (default : (⟨payload, L.someValue payload⟩ : Raw L) ∈ bounds.values)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (first : original.network.nextSerial owner =
       original.network.ledger.countP (fun message => message.sender = owner) →
@@ -326,7 +327,7 @@ theorem binding_stopped_activation_coupling
   have existsStep (selected) (supported : selected ∈ sample.support) :=
     (frame.activate owner selected).binding_stopped_response_coupling bounds menu players
       reference started leftRecall rightRecall remaining event payload outputEq codeEq node
-      fresh actualSlot capacity default granted ready first (serials.learn owner selected)
+      fresh actualSlot capacity default turn ready first (serials.learn owner selected)
       (coverage selected supported) (available selected supported)
   let step := fun selected supported => (existsStep selected supported).choose
   refine ⟨sample.bindOnSupport step, ?_, ?_, ?_⟩

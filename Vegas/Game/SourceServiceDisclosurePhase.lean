@@ -289,7 +289,7 @@ private theorem foreign_service_law
     (owned : (graph setup).actor? event = some owner)
     (remaining : List Player) (absent : owner ∉ remaining) (ticks : Nat)
     (execution : (application setup leaks).Execution)
-    (granted : execution.application.serviceGrant = some event) :
+    (sole : execution.application.publicView.SoleReady event) :
     (runtime setup).runInteractionPlan leaks
       (sourceServiceLastPolicy setup leaks rosters profile) network
       (remaining.map ServiceInstruction.player ++
@@ -307,7 +307,7 @@ private theorem foreign_service_law
   conv_lhs => rw [(runtime setup).runInteractionPlan_append]
   conv_rhs => rw [(runtime setup).runInteractionPlan_append]
   rw [sourceServiceLastPolicy_foreign_tail setup leaks rosters profile network event owner
-    owned remaining absent execution granted]
+    owned remaining absent execution sole]
   apply bind_congr_on_support _
   intro current _
   exact servicePlan_players_eq setup leaks _ _ network _ (by simp) (by intro who; simp) current
@@ -348,8 +348,7 @@ theorem sourceServiceLastPolicy_reveal_opportunity
     let outputEq : (graph setup).outputLayout event = .publication payload := by
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
-    ∀ (_granted : execution.application.serviceGrant = some event)
-      (ready : execution.application.config.cut.Ready event)
+    ∀ (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
       (_activated : execution.application.activatedAt event = some entered)
       (_due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
@@ -369,7 +368,7 @@ theorem sourceServiceLastPolicy_reveal_opportunity
             (disclosureResult published binding source disclose)),
           if effectiveDisclosure published binding source disclose then execution.receipts ++
             [((owner, execution.network.nextSerial owner), true)] else execution.receipts) := by
-  intro index event outputEq granted ready timely activated due unsent last
+  intro index event outputEq ready timely activated due unsent last
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters wholeProfile
   let transport : Player → app.Policy := fun _ => app.replayPolicy
@@ -396,10 +395,10 @@ theorem sourceServiceLastPolicy_reveal_opportunity
   change (players owner (execution.recall owner) (execution.observe app owner)).bind _ = _
   dsimp only [players]
   rw [sourceServiceLastPolicy_at_last setup leaks rosters wholeProfile owner _ _ event
-    granted owned unsent last,
+    (ownTurn?_of_ready setup execution.application ready owned) owned unsent last,
     sourceServicePolicy_reveal setup leaks fresh binding unresolved next wholeProfile profile
       refs source embedding refsBefore offset aligned execution checkpoint.agrees checkpoint.history
-        granted, PMF.bind_map, PMF.bind_bind, ← PMF.bind_pure_comp, Function.comp_def]
+        ready, PMF.bind_map, PMF.bind_bind, ← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
   intro disclose _
   simp only [Function.comp_apply]
@@ -424,8 +423,8 @@ theorem sourceServiceLastPolicy_reveal_opportunity
       (final.application.config, final.receipts)))
     apply foreign_service_law setup leaks rosters wholeProfile network event owner owned
       remaining absent ticks
-    exact (congrArg PublicView.serviceGrant ((runtime setup).reactive_respond_application leaks
-      observed owner action).2).trans granted
+    rw [((runtime setup).reactive_respond_application leaks observed owner action).2]
+    exact soleReady_of_ready setup execution.application ready
   · have exactLaw := guarded_reveal_replay_service setup leaks published binding source refs
       observed checkpoint.agrees valid event outputEq codeEq node ready timely entered ticks
         activated due packets serials network remaining effective
@@ -472,7 +471,6 @@ theorem sourceServiceLastPolicy_reveal_roster
       change outputLayout setup.program (embedding.event index) = _
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     ∀ (_position : rosters event = visited ++ owner :: remaining)
-      (_granted : execution.application.serviceGrant = some event)
       (ready : execution.application.config.cut.Ready event)
       (_timely : execution.application.WithinDeadline (runtime setup) event)
       (_activated : execution.application.activatedAt event = some entered)
@@ -492,7 +490,7 @@ theorem sourceServiceLastPolicy_reveal_roster
             (disclosureResult published binding source disclose)),
           if effectiveDisclosure published binding source disclose then execution.receipts ++
             [((owner, execution.network.nextSerial owner), true)] else execution.receipts) := by
-  intro index event outputEq position granted ready timely activated due unsent counted
+  intro index event outputEq position ready timely activated due unsent counted
   let app := application setup leaks
   let players := sourceServiceLastPolicy setup leaks rosters wholeProfile
   let expected := (revealKernel profile (source.view owner)).map fun disclose =>
@@ -520,12 +518,11 @@ theorem sourceServiceLastPolicy_reveal_roster
     intro current reached
     obtain ⟨same, ledger, receipts, counters, safe, _⟩ :=
       sourceServiceLastPolicy_waiting_data setup leaks rosters wholeProfile network event owner
-        owned visited execution current granted before _ packets reached
+        owned visited execution current (soleReady_of_ready setup execution.application ready)
+        before _ packets reached
     have currentCheckpoint : SourceCheckpoint setup source refs offset
         current.application.config := by rw [same]; exact checkpoint
     have currentValid : current.application.BindingInvariant := by rw [same]; exact valid
-    have currentGrant : current.application.serviceGrant = some event := by
-      rw [same]; exact granted
     have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
     have currentTimely : current.application.WithinDeadline (runtime setup) event := by
       rw [same]; exact timely
@@ -540,7 +537,8 @@ theorem sourceServiceLastPolicy_reveal_roster
         message.id ∈ current.network.ledger.map Message.id := by rwa [ledger]
     have pureReplay := reached
     rw [sourceServiceLastPolicy_waiting_law setup leaks rosters wholeProfile network event owner
-      owned visited execution granted before] at pureReplay
+      owned visited execution (soleReady_of_ready setup execution.application ready) before]
+      at pureReplay
     have currentUnsent := (replay_window_eventRecorded setup leaks network visited execution current
       pureReplay owner event).trans unsent
     have fixed : (ServiceInstruction.wire : ServiceInstruction (graph setup)) ∉
@@ -556,7 +554,7 @@ theorem sourceServiceLastPolicy_reveal_roster
     have completed := sourceServiceLastPolicy_reveal_opportunity setup leaks rosters fresh binding
       unresolved next wholeProfile profile refs source embedding refsBefore offset aligned current
         currentCheckpoint currentValid entered ticks currentPublished currentSerials network
-        remaining absent currentGrant currentReady currentTimely currentActivated currentDue
+        remaining absent currentReady currentTimely currentActivated currentDue
           currentUnsent last
     simpa only [same, receipts, counters] using completed
   · exact PMF.bind_const _ expected

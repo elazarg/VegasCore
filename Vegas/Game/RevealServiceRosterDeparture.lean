@@ -22,9 +22,9 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-private theorem openingTraffic_granted_actor
+private theorem openingTraffic_sole_actor
     (record : (application setup leaks).TrafficRecord) (event : (graph setup).EventId)
-    (grant : record.observation.serviceGrant = some event)
+    (sole : record.observation.SoleReady event)
     (conforming : openingTraffic setup leaks record) :
     (graph setup).actor? event = some record.input.broadcaster := by
   unfold openingTraffic at conforming
@@ -32,9 +32,8 @@ private theorem openingTraffic_granted_actor
   | commitment | withhold | malformed => simp only [call] at conforming
   | opening actual candidate raw =>
       rw [call] at conforming
-      obtain ⟨granted, _, _, _, linked⟩ := conforming
-      rw [grant] at granted
-      cases Option.some.inj granted
+      obtain ⟨ready, _, _, linked⟩ := conforming
+      cases sole.2 actual ready
       cases node : nodeView (graph setup) event with
       | bind | sample => simp only [node] at linked
       | resolve owner payload binding checks outputEq codeEq =>
@@ -50,7 +49,7 @@ theorem openingTraffic_roster_normalization
     (sound : ((runtime setup).packetEvidence leaks).Sound execution)
     (binding : execution.application.BindingInvariant)
     (event : (graph setup).EventId)
-    (grant : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (owned : candidate.1 = who)
     (fixed : execution.application.candidates.lookup candidate = .openable raw)
@@ -76,10 +75,8 @@ theorem openingTraffic_roster_normalization
   | commitment | withhold | malformed => simp only [call] at conforming
   | opening actual offered claimed =>
       simp only [call] at conforming
-      obtain ⟨granted, _, _, _, linked⟩ := conforming
-      change execution.application.serviceGrant = some actual at granted
-      rw [grant] at granted
-      cases Option.some.inj granted
+      obtain ⟨ready, _, _, linked⟩ := conforming
+      cases sole.2 actual ready
       cases node : nodeView (graph setup) event with
       | bind | sample => simp only [node] at linked
       | resolve owner payload ref checks outputEq codeEq =>
@@ -168,9 +165,11 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
           related, _, grant, _, _, _, _, _, unchanged, _⟩ :=
           roster_decision_phase setup leaks bounds rosters network reveals openable
             who control trace active
-        have currentGrant : control.execution.application.serviceGrant = some event := by
-          rw [unchanged, grant]
-        have ownedEvent := openingTraffic_granted_actor setup leaks record event currentGrant
+        have currentReady : control.execution.application.config.cut.Ready event := by
+          rw [unchanged]
+          exact grant
+        have currentSole := soleReady_of_ready setup control.execution.application currentReady
+        have ownedEvent := openingTraffic_sole_actor setup leaks record event currentSole
           conforming
         let profile : BehavioralProfile setup.program :=
           fun owner => RevealOnly.uniformPolicy owner setup.program reveals
@@ -191,7 +190,7 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
         have currentValid : control.execution.application.candidates.lookup candidate =
             .openable raw := by rw [unchanged]; exact valid
         have fresh := (roster_fresh_iff_serial setup leaks bounds rosters network reveals openable
-          who control trace active event currentGrant ownedEvent candidate raw currentOpening).mpr
+          who control trace active event currentReady ownedEvent candidate raw currentOpening).mpr
             nonce
         have canonical := roster_fresh_normal setup leaks bounds rosters network reveals openable
           who control trace active ((runtime setup).windowOpening leaks event candidate raw) fresh
@@ -205,7 +204,7 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
         have sound := ((runtime setup).packetEvidence leaks).history_sound (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) rawTrace
         have same := openingTraffic_roster_normalization setup leaks control.execution who sound
-          binding event currentGrant candidate raw owned currentValid currentOpening submission
+          binding event currentSole candidate raw owned currentValid currentOpening submission
           conforming
         have recalled := app.history_inputRecall (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) rawTrace

@@ -115,7 +115,7 @@ theorem resolve_response_coupling
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : original.application.serviceGrant = some event)
+    (turn : original.application.publicView.OwnTurn owner event)
     (actor : graph.actor? event = some owner)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
@@ -143,6 +143,7 @@ theorem resolve_response_coupling
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length := by
   classical
+  have turnSome := original.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   let law := players owner (original.recall owner) (original.observe app owner)
   let updated (response : app.Action) := memory.record runtime leaks
@@ -169,7 +170,7 @@ theorem resolve_response_coupling
     · rw [replayLaw] at replay
       exact bounds.replay_compiled runtime leaks owner _ _ response replay
     · exact frame.successful_serviceDecision_retained bounds leftRecall rightRecall leftBinding
-        rightBinding event payload binding checks outputEq codeEq node granted actor ready timely
+        rightBinding event payload binding checks outputEq codeEq node turn actor ready timely
           value stored resolved response same (available response supported) first
   have responseLaw :
       (implementation runtime leaks owner reference (players owner)).respond memory

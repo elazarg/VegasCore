@@ -72,7 +72,7 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
       ((graph setup).nodes event) = .resolve actor payload binding checks}
     (node : nodeView (graph setup) event = .resolve actor payload binding checks outputEq codeEq)
     (current : (application setup leaks).Execution)
-    (granted : current.application.serviceGrant = some event)
+    (sole : current.application.publicView.SoleReady event)
     (absent : rosterOpening? setup leaks actor event
       (current.observe (application setup leaks) actor) = none)
     (who : Player) (response : (application setup leaks).Action)
@@ -80,9 +80,6 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
       (current.recall who) (current.observe (application setup leaks) who)).support) :
     response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
   let app := application setup leaks
-  have grant : PublicView.serviceGrant
-      (current.observe (application setup leaks) who).application.publicView = some event :=
-    granted
   have actorOwned : (graph setup).actor? event = some actor := by
     have acts := congrArg EventGraph.EventCode.actor codeEq
     rw [EventGraph.EventCode.actor_cast outputEq ((graph setup).nodes event)] at acts
@@ -90,7 +87,10 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
   by_cases acts : (graph setup).actor? event = some who
   · have same : actor = who := Option.some.inj (actorOwned.symm.trans acts)
     subst same
-    simp only [sourceServiceTimedPolicy, grant, acts, ↓reduceDIte,
+    have serving : (current.observe (application setup leaks) actor).application.publicView.ownTurn?
+        actor = some event :=
+      PublicView.ownTurn?_of_ownTurn _ actor event (sole.ownTurn acts)
+    simp only [sourceServiceTimedPolicy_turn _ _ _ _ _ actor _ _ event acts serving,
       ReactiveApplication.policyMixture_policy, PMF.support_bind] at supported
     obtain ⟨slot, _, drawn⟩ := Set.mem_iUnion₂.mp supported
     unfold sourceServiceTimedFamily ReactiveApplication.scheduledPolicy at drawn
@@ -98,7 +98,7 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
     · unfold sourceServiceOpportunity at drawn
       split at drawn
       · exact app.replayPolicy_cases _ _ response drawn
-      · rw [sourceServicePolicy_at_event setup leaks profile actor current event granted acts,
+      · rw [sourceServicePolicy_at_event setup leaks profile actor current event serving acts,
           PMF.bind_map, PMF.support_bind] at drawn
         obtain ⟨action, _, drawn⟩ := Set.mem_iUnion₂.mp drawn
         rcases (runtime setup).serviceDecision_resolution_cases leaks actor (current.recall actor)
@@ -112,7 +112,8 @@ theorem sourceServiceTimedPolicy_absent_transport (setup : Setup (Player := Play
         · exact (rosterOpening_none_no_opening setup leaks node _ absent candidate value result
             associated owned).elim
     · exact app.replayPolicy_cases _ _ response drawn
-  · simp only [sourceServiceTimedPolicy, grant, dite_eq_right acts] at supported
+  · rw [sourceServiceTimedPolicy_idle _ _ _ _ _ who _ (current.observe app who)
+      (sole.idle acts)] at supported
     exact app.replayPolicy_cases _ _ response supported
 
 variable [Fintype Player]
@@ -175,7 +176,7 @@ theorem absent_opening_phase_invariant {who : Player} {remaining : Nat}
       service.rosters actor _ _ allowed
     have transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
       rcases service.bounds.compiled_resolution_cases (runtime service.setup) service.leaks actor
-        _ _ phase.event actor payload binding checks isPublication codeEq node phase.granted
+        _ _ phase.event actor payload binding checks isPublication codeEq node phase.sole
         response member with silent | replay | ⟨candidate, value, _, _, _, result, associated,
           candidateOwned, _, _⟩
       · exact Or.inl silent
@@ -199,7 +200,7 @@ theorem absent_opening_phase_invariant {who : Player} {remaining : Nat}
         action = ⟨none⟩ ∨ ∃ id, action = ⟨some (.replay id)⟩ :=
       sourceServiceTimedPolicy_absent_transport service.setup service.leaks service.rosters
         approx.timing approx.profile node current
-        (by rw [currentApp, sameApp]; exact phase.granted)
+        (by rw [currentApp, sameApp]; exact phase.sole)
         ((rosterOpening_congr service.setup service.leaks actor phase.event
           (by change app.observePlayer current.application actor =
                 app.observePlayer execution.application actor
@@ -226,7 +227,7 @@ theorem absent_opening_comparison_eq (who : Player) (site : service.model.Inform
     {event : (graph service.setup).EventId} {payload : L.Ty}
     (owned : (graph service.setup).actor? event = some who)
     (isPublication : (graph service.setup).outputLayout event = .publication payload)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
     (absent : rosterOpening? service.setup service.leaks who event view = none)
     (law : PMF (service.model.Choice who site.1)) :
@@ -238,11 +239,11 @@ theorem absent_opening_comparison_eq (who : Player) (site : service.model.Inform
   intro history remaining execution current info phase first second firstAllowed secondAllowed
   have input := Option.some.inj
     ((service.infoOf_decision history current).symm.trans (info.trans observed))
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) input).trans granted
-  have same : phase.event = event := Option.some.inj (phase.granted.symm.trans grant)
+        pair.2.application.publicView.EventReady event) input).mpr readyView
+  have same : phase.event = event := (phase.sole.2 event readyNow).symm
   subst same
   have ownRecall : execution.recall who = past := congrArg Prod.fst input
   have ownView : execution.observe (application service.setup service.leaks) who = view :=

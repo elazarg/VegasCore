@@ -36,7 +36,7 @@ theorem sourceService_sample_window
     (network : (runtime setup).NetworkPolicy leaks) (event : (graph setup).EventId)
     (chance : (graph setup).actor? event = none)
     (initial final : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (published : initial.network.Satisfies fun message =>
       message.id ∈ initial.network.ledger.map Message.id)
     (visits : List Player)
@@ -58,9 +58,12 @@ theorem sourceService_sample_window
           response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
         intro current who response same _ chosen
         have replay := bounds.compiled_foreign_transport (runtime setup) leaks who
-          (current.recall who) (current.observe app who) event
-          (by change current.application.serviceGrant = some event; rw [same]; exact granted)
-          (by rw [chance]; intro impossible; cases impossible) response
+          (current.recall who) (current.observe app who)
+          (by
+            change current.application.publicView.ownTurn? who = none
+            rw [same]
+            exact sole.ownTurn?_foreign (by rw [chance]; intro impossible; cases impossible))
+          response
           (sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _
             (lawful who _ _ response chosen))
         exact app.replayPolicy_cases _ _ response replay
@@ -105,8 +108,9 @@ theorem ServiceBoundary.sample_block
       ServiceBoundary setup leaks rosters initial (sampleSuccessor name source value)
         (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) final := by
   let app := application setup leaks
-  obtain ⟨granted, grantBoundary, grant, _, grantRecall, grantLaw⟩ :=
+  obtain ⟨granted, grantBoundary, _grant, _, grantRecall, grantLaw⟩ :=
     boundary.grant players network event
+  have sole := soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)
   have phase := reached
   simp only [rosterBlock, chance, List.append_assoc] at phase
   rw [(runtime setup).runInteractionPlan_append] at phase
@@ -114,7 +118,7 @@ theorem ServiceBoundary.sample_block
   rw [(runtime setup).runInteractionPlan_append] at phase
   obtain ⟨visited, window, phase⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   obtain ⟨sameApp, sameLedger, _, sameCounters, published⟩ := sourceService_sample_window
-    setup leaks bounds rosters players lawful network event chance granted visited grant
+    setup leaks bounds rosters players lawful network event chance granted visited sole
       grantBoundary.published (rosters event) window
   have windowCheckpoint : SourceCheckpoint setup source refs rank visited.application.config := by
     rw [sameApp]
@@ -212,7 +216,7 @@ theorem ServiceBoundary.sample_block
       fun who past view response member => sourceServiceMenu_in_compiled setup leaks bounds
         rosters who past view (lawful who past view response member)
     rw [(runtime setup).compiled_window_other_events leaks bounds players ordinary network event
-      (rosters event) granted visited grant window observer other
+      (rosters event) granted visited sole window observer other
         (by intro same; subst other; omega),
         grantRecall]
     exact boundary.unsent observer other (by omega)

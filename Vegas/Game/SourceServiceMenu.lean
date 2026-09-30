@@ -36,7 +36,7 @@ def bindingRequired (setup : Setup (Player := Player) (L := L))
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) : Prop :=
   ∃ event payload,
-    view.application.publicView.serviceGrant = some event ∧
+    view.application.publicView.ownTurn? who = some event ∧
     (graph setup).outputLayout event = .binding who payload ∧
     (graph setup).actor? event = some who ∧
     view.application.publicView.EventReady event ∧
@@ -50,7 +50,7 @@ theorem bindingRequired_iff_last
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
     (event : (graph setup).EventId) (payload : L.Ty)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (selected : view.application.publicView.ownTurn? who = some event)
     (binding : (graph setup).outputLayout event = .binding who payload)
     (owned : (graph setup).actor? event = some who)
     (ready : view.application.publicView.EventReady event)
@@ -58,11 +58,11 @@ theorem bindingRequired_iff_last
     bindingRequired setup leaks rosters who past view ↔
       past.length + 1 = rosterOffset setup rosters who event + (rosters event).count who := by
   constructor
-  · rintro ⟨selected, _, selectedGrant, _, _, _, _, last⟩
-    cases Option.some.inj (selectedGrant.symm.trans granted)
+  · rintro ⟨chosen, _, chosenTurn, _, _, _, _, last⟩
+    cases Option.some.inj (chosenTurn.symm.trans selected)
     exact last
   · intro last
-    exact ⟨event, payload, granted, binding, owned, ready, unsent, last⟩
+    exact ⟨event, payload, selected, binding, owned, ready, unsent, last⟩
 
 /-- At a real roster position, the local count test means there is no later
 owner occurrence. It permits arbitrary intervening visits of other players. -/
@@ -73,7 +73,7 @@ theorem bindingRequired_iff_no_later_owner
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
     (event : (graph setup).EventId) (payload : L.Ty)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (selected : view.application.publicView.ownTurn? who = some event)
     (binding : (graph setup).outputLayout event = .binding who payload)
     (owned : (graph setup).actor? event = some who)
     (ready : view.application.publicView.EventReady event)
@@ -82,7 +82,7 @@ theorem bindingRequired_iff_no_later_owner
     (counted : past.length = rosterOffset setup rosters who event + visited.count who) :
     bindingRequired setup leaks rosters who past view ↔ remaining.count who = 0 := by
   rw [bindingRequired_iff_last setup leaks rosters who past view event payload
-    granted binding owned ready unsent, counted, position, List.count_append]
+    selected binding owned ready unsent, counted, position, List.count_append]
   simp only [List.count_cons_self]
   omega
 
@@ -178,7 +178,7 @@ theorem sourceService_final_binding_cases
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload)
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : (graph setup).actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (unsent : (runtime setup).eventRecorded leaks past event = false)
@@ -191,10 +191,11 @@ theorem sourceService_final_binding_cases
         ((runtime setup).reactiveBinding leaks who event payload (.success value) serial) := by
   classical
   have required := (bindingRequired_iff_last setup leaks rosters who past view event payload
-    granted outputEq owned ready unsent).mpr last
+    (view.application.publicView.ownTurn?_of_ownTurn who event turn) outputEq owned ready
+    unsent).mpr last
   change response ∈ sourceServiceActions setup leaks bounds rosters who past view at member
   rw [sourceServiceActions, ite_eq_left required] at member
   exact bounds.required_binding_cases (runtime setup) leaks covered who past view event payload
-    outputEq codeEq node granted owned ready unsent serial fresh capacity response member
+    outputEq codeEq node turn owned ready unsent serial fresh capacity response member
 
 end Vegas

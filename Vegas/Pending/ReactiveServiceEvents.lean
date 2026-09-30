@@ -5,7 +5,7 @@ import Vegas.Pending.ReactivePlayerWindow
 
 /-! # Event identities in retained service responses
 
-Only the currently granted event can receive a fresh retained submission.
+A fresh retained submission names the submitter's own turn, its ready event.
 Waiting, pending replays and normalized evidence requests do not change this
 fact. Thus a phase cannot consume another event's first-submission opportunity.
 -/
@@ -21,58 +21,66 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- A fresh retained submission names the actual granted event. The statement
+/-- A fresh retained submission names the submitter's own turn. The statement
 is valid at arbitrary local inputs, including exhausted allocators. -/
 theorem MessageBounds.compiled_submitted_event (bounds : MessageBounds graph)
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (granted : view.application.publicView.serviceGrant = some event)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who past view) :
     runtime.submittedEvent? leaks response = none ∨
-      runtime.submittedEvent? leaks response = some event := by
+      ∃ event, view.application.publicView.ownTurn? who = some event ∧
+        runtime.submittedEvent? leaks response = some event := by
   classical
   rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | transport
   · have chosen := (Finset.mem_filter.mp decision).1
-    simp only [MessageBounds.decisionActions, granted] at chosen
-    split at chosen
-    · cases node : nodeView graph event with
-      | sample payload distribution outputEq codeEq =>
-          rw [node] at chosen
-          cases Finset.mem_singleton.mp chosen
+    cases selected : view.application.publicView.ownTurn? who with
+    | none =>
+        simp only [MessageBounds.decisionActions, selected] at chosen
+        cases Finset.mem_singleton.mp chosen
+        exact Or.inl rfl
+    | some event =>
+        refine (Or.imp_right fun named => ⟨event, rfl, named⟩ : _ → _) ?_
+        simp only [MessageBounds.decisionActions, selected] at chosen
+        split at chosen
+        · cases node : nodeView graph event with
+          | sample payload distribution outputEq codeEq =>
+              rw [node] at chosen
+              cases Finset.mem_singleton.mp chosen
+              exact Or.inl rfl
+          | bind owner payload outputEq codeEq =>
+              rw [node] at chosen
+              obtain ⟨value, _, rfl⟩ := Finset.mem_image.mp chosen
+              cases slot : reactiveFreshSlot view.application with
+              | none =>
+                  left
+                  simp only [serviceDecision, reactiveDecision, node, slot, Option.map_none]
+                  rfl
+              | some serial =>
+                  right
+                  have action : runtime.serviceDecision leaks who past view event
+                      (cast (congrArg EventField.Action outputEq.symm)
+                        (PublicationResult.success value)) =
+                      (runtime.reactiveNormalization leaks).action who past view
+                        (runtime.reactiveBinding leaks who event payload (.success value)
+                          serial) := by
+                    simp only [serviceDecision, reactiveDecision, node, slot, Option.map_some,
+                      cast_cast, cast_eq]
+                    rfl
+                  rw [action, runtime.submittedEvent_normalization]
+                  rfl
+          | resolve owner payload binding checks outputEq codeEq =>
+              rw [node] at chosen
+              obtain ⟨choice, _, rfl⟩ := Finset.mem_image.mp chosen
+              rcases runtime.serviceDecision_resolution_cases leaks who past view event owner
+                  payload binding checks outputEq codeEq node choice with silent |
+                    ⟨candidate, value, evidence, _, _, _, emitted⟩
+              · rw [silent]
+                exact Or.inl rfl
+              · rw [emitted]
+                exact Or.inr rfl
+        · cases Finset.mem_singleton.mp chosen
           exact Or.inl rfl
-      | bind owner payload outputEq codeEq =>
-          rw [node] at chosen
-          obtain ⟨value, _, rfl⟩ := Finset.mem_image.mp chosen
-          cases slot : reactiveFreshSlot view.application with
-          | none =>
-              left
-              simp only [serviceDecision, reactiveDecision, node, slot, Option.map_none]
-              rfl
-          | some serial =>
-              right
-              have action : runtime.serviceDecision leaks who past view event
-                  (cast (congrArg EventField.Action outputEq.symm)
-                    (PublicationResult.success value)) =
-                  (runtime.reactiveNormalization leaks).action who past view
-                    (runtime.reactiveBinding leaks who event payload (.success value) serial) := by
-                simp only [serviceDecision, reactiveDecision, node, slot, Option.map_some,
-                  cast_cast, cast_eq]
-                rfl
-              rw [action, runtime.submittedEvent_normalization]
-              rfl
-      | resolve owner payload binding checks outputEq codeEq =>
-          rw [node] at chosen
-          obtain ⟨choice, _, rfl⟩ := Finset.mem_image.mp chosen
-          rcases runtime.serviceDecision_resolution_cases leaks who past view event owner
-              payload binding checks outputEq codeEq node choice with silent |
-                ⟨candidate, value, evidence, _, _, _, emitted⟩
-          · rw [silent]
-            exact Or.inl rfl
-          · rw [emitted]
-            exact Or.inr rfl
-    · cases Finset.mem_singleton.mp chosen
-      exact Or.inl rfl
   · rcases (runtime.reactiveApplication leaks).replayPolicy_cases past view response
         (((runtime.reactiveApplication leaks).mem_replayActions_iff _ _ _).mp transport) with rfl |
             ⟨id, rfl⟩ <;> exact Or.inl rfl
@@ -86,7 +94,7 @@ theorem compiled_window_other_events (bounds : MessageBounds graph)
       response ∈ bounds.compiledActions runtime leaks who past view)
     (network : runtime.NetworkPolicy leaks) (event : graph.EventId)
     (visits : List Player) (initial final : (runtime.reactiveApplication leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support)
     (observer : Player) (other : graph.EventId) (different : other ≠ event) :
@@ -107,18 +115,20 @@ theorem compiled_window_other_events (bounds : MessageBounds graph)
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ moved
       let activated := initial.sampledActivation app actor sample
       have publicEq := (runtime.reactive_respond_application leaks activated actor response).2
-      have grant : (activated.respond app actor response).application.serviceGrant =
-          some event := (congrArg PublicView.serviceGrant publicEq).trans granted
-      rw [ih _ grant tail]
+      have soleAfter : (activated.respond app actor response).application.publicView.SoleReady
+          event := by rw [publicEq]; exact sole
+      rw [ih _ soleAfter tail]
       apply runtime.eventRecorded_respond_other leaks activated actor observer response other
       intro _
       rcases bounds.compiled_submitted_event runtime leaks actor (activated.recall actor)
-          (activated.observe app actor) event granted response
-            (lawful actor _ _ response chosen) with absent | current
+          (activated.observe app actor) response
+            (lawful actor _ _ response chosen) with absent | ⟨named, selected, current⟩
       · rw [absent]
         intro impossible
         cases impossible
-      · rw [current]
+      · have ready := (PublicView.ownTurn?_spec _ actor named selected).1
+        change initial.application.publicView.EventReady named at ready
+        rw [current, sole.2 named ready]
         exact fun equal => different (Option.some.inj equal).symm
 
 end Vegas.EventGraphRuntime

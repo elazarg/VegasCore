@@ -34,7 +34,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-/-- A window of a granted resolve phase under the uniform service menu after
+/-- A window of an open resolve phase under the uniform service menu after
 which the owner's event is still unsent is a replay window: every response in
 it is transport and lies in the support of the replay law. -/
 theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
@@ -49,7 +49,7 @@ theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     (visits : List Player) (initial final : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
       (sourceServiceMenu setup leaks bounds rosters).uniformResponses network
         (visits.map ServiceInstruction.player) initial).support)
@@ -81,7 +81,7 @@ theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
       have replayed : response ∈ (app.replayPolicy (activated.recall actor)
           (activated.observe app actor)).support := by
         rcases bounds.compiled_resolution_cases (runtime setup) leaks actor _ _ event owner
-          payload binding checks outputEq codeEq node granted response member with silent |
+          payload binding checks outputEq codeEq node sole response member with silent |
             replay | ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, _, shape⟩
         · rw [silent]
           exact app.replayPolicy_support _ _ none (Finset.mem_insert_self _ _)
@@ -109,7 +109,7 @@ theorem replay_window_of_unsent (setup : Setup (Player := Player) (L := L))
       refine Set.mem_iUnion₂.mpr ⟨sample, sampleSupport, ?_⟩
       rw [PMF.support_bind]
       exact Set.mem_iUnion₂.mpr ⟨response, replayed,
-        ih _ (by rw [sameApp]; exact granted) reached⟩
+        ih _ (by rw [sameApp]; exact sole) reached⟩
 
 omit [Fintype Player] in
 /-- With an available authentic opening, the source disclosure succeeds with
@@ -169,7 +169,6 @@ theorem RevealSource.opening_config_law (setup : Setup (Player := Player) (L := 
     (network : (runtime setup).NetworkPolicy leaks) {event : (graph setup).EventId}
     (execution : (application setup leaks).Execution)
     (site : RevealSource setup wholeProfile event execution.application.config)
-    (granted : execution.application.serviceGrant = some event)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
     (valid : execution.application.BindingInvariant)
@@ -260,7 +259,8 @@ theorem RevealSource.opening_config_law (setup : Setup (Player := Player) (L := 
           (embedding.event ⟨0, by simp [eventCount]⟩) = true :=
         (runtime setup).eventRecorded_respond leaks execution owner _ _ rfl
       have law := sourceService_recorded_plan_application_law setup leaks rosters timing
-        wholeProfile network _ owner owned after granted recorded
+        wholeProfile network _ owner owned after
+        (soleReady_of_ready setup after.application ready) recorded
         ((runtime setup).windowEnvelope leaks owner
           (embedding.event ⟨0, by simp [eventCount]⟩) actual
           ⟨payload, value⟩ execution) rfl rfl
@@ -370,7 +370,7 @@ theorem RevealSource.opportunity_law {setup : Setup (Player := Player) (L := L)}
     {wholeProfile : BehavioralProfile setup.program} {event : (graph setup).EventId}
     (execution : (application setup leaks).Execution)
     (site : RevealSource setup wholeProfile event execution.application.config)
-    (granted : execution.application.serviceGrant = some event)
+    (ready : execution.application.config.cut.Ready event)
     (unsent : (runtime setup).eventRecorded leaks (execution.recall site.owner) event = false)
     (valid : execution.application.BindingInvariant)
     (recalled : execution.InputRecall (application setup leaks))
@@ -393,7 +393,7 @@ theorem RevealSource.opportunity_law {setup : Setup (Player := Player) (L := L)}
   subst head
   have law := sourceServiceOpportunity_reveal setup leaks fresh binding unresolved next
     wholeProfile residual refs source embedding refsBefore _ aligned execution agree history
-    valid recalled origins effective granted unsent
+    valid recalled origins effective ready unsent
   refine law.trans ?_
   apply bind_congr_on_support _
   intro disclose _
@@ -479,7 +479,8 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
               (ProtocolState.observe site.owner service.setup.program state)).map
             OwnAction.disclosure =
           revealKernel site.residual (site.source.view site.owner) := by
-  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted⟩ := phase
+  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted, phaseReady⟩ :=
+    phase
   dsimp only at isPublication ⊢
   obtain ⟨event, slot, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
       refsBefore, aligned, _, ⟨supported, inherits, lift, commutes, transport⟩, granted, prior,
@@ -550,6 +551,13 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
             ((graph service.setup).nodes _)] at acts
           exact Option.some.inj (acts.symm.trans site.owned)
         subst actorEq
+        have grantedSole : granted.application.publicView.SoleReady
+            (embedding.event ⟨0, by simp [eventCount]⟩) := by
+          rw [← publicEq]
+          exact soleReady_of_ready service.setup execution.application phaseReady
+        have grantedReady : granted.application.config.cut.Ready
+            (embedding.event ⟨0, by simp [eventCount]⟩) :=
+          (granted.application.publicView_eventReady _).mp grantedSole.1
         have windowApp : prior.application = granted.application :=
           service.bounds.compiled_resolution_run_application (runtime service.setup)
             service.leaks service.menu.uniformResponses
@@ -557,7 +565,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
               service.setup service.leaks service.bounds service.rosters player past view
                 ((service.menu.uniformResponses_support player past view response).mp
                   supported)) service.network _ _ actor sitePayload resolveBinding checks
-            outputEq resolveCode node granted prior grant reachedPrior
+            outputEq resolveCode node granted prior grantedSole reachedPrior
         have executionEq : execution = prior.sampledActivation
             (application service.setup service.leaks) who sample := sampled
         have sameApp : execution.application = granted.application := by
@@ -567,7 +575,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
           rw [executionEq]
           rfl
         have replayWindow := replay_window_of_unsent service.setup service.leaks service.bounds
-          service.rosters service.network node _ granted prior grant reachedPrior
+          service.rosters service.network node _ granted prior grantedSole reachedPrior
           (sameRecall ▸ unsent)
         have within : ((service.rosters (embedding.event ⟨0, by simp [eventCount]⟩)).take
             slot).count actor ≤
@@ -579,7 +587,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
           boundary.toSourceCheckpoint.history boundary.binding boundary.recall grantedOrigins
           (inherits effective actor) service.network _ prior timing candidate raw
           ((rosterOpening?_application_eq service.setup service.leaks actor _ granted execution
-            sameApp.symm).trans opening) grant (boundary.unsent actor _ le_rfl)
+            sameApp.symm).trans opening) grantedReady (boundary.unsent actor _ le_rfl)
           (boundary.counts actor) within small replayWindow
         intro chosen
         rw [sameRecall]
@@ -829,7 +837,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     simp only [DecisionPhase.earlier, List.count_append, List.count_cons_self]
     omega
   have effective := inherits approx.effective actor
-  have opportunity := RevealSource.opportunity_law service.leaks execution site phase.granted
+  have opportunity := RevealSource.opportunity_law service.leaks execution site phase.ready
     unsent valid recalled origins effective candidate raw opening
   let offset := rosterOffset service.setup service.rosters actor phase.event
   let family := sourceServiceTimedFamily service.setup service.leaks service.rosters
@@ -847,7 +855,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
       (execution.observe app actor)).support := by
     rcases service.bounds.compiled_resolution_cases (runtime service.setup) service.leaks actor
       _ _ phase.event actor payload resolveBinding checks isPublication resolveCode node
-      phase.granted response member with silent | replay | ⟨_, _, _, _, _, _, _, _, _, shape⟩
+      phase.sole response member with silent | replay | ⟨_, _, _, _, _, _, _, _, _, shape⟩
     · rw [silent]
       exact app.replayPolicy_support _ _ none (Finset.mem_insert_self _ _)
     · exact replay
@@ -908,14 +916,11 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
   have afterRecalled := app.respond_inputRecall execution actor response recalled
   have afterOrigins := origins_replayed service.setup service.leaks execution origins actor
     response transport
-  have grant : PublicView.serviceGrant
-      (execution.observe (application service.setup service.leaks) actor).application.publicView =
-        some phase.event := phase.granted
   set after := execution.respond app actor response with afterDef
   have sameApp : after.application = execution.application := preserved.1
-  have afterGrant : after.application.serviceGrant = some phase.event := by
+  have afterSole : after.application.publicView.SoleReady phase.event := by
     rw [sameApp]
-    exact phase.granted
+    exact phase.sole
   have afterPublished : after.network.Satisfies fun message =>
       message.id ∈ after.network.ledger.map Message.id := by
     rw [preserved.2.1]
@@ -942,7 +947,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     rw [runInteractionPlan_append, runInteractionPlan_append,
       sourceServiceTimedPolicy_window_eq service.setup service.leaks service.rosters
         approx.timing approx.profile phase.event actor owned service.network phase.visits
-        after afterGrant]
+        after afterSole]
     apply bind_congr_on_support _
     intro current _
     exact servicePlan_players_eq service.setup service.leaks _ _ service.network _
@@ -963,7 +968,7 @@ theorem available_transport_expect {who : Player} {remaining : Nat}
     by_cases future : phase.earlier + 1 ≤ slot.val
     · simp only [future, ↓reduceIte]
       exact reveal_slot_config_law service.setup service.leaks service.rosters service.network
-        approx.profile after site (by rw [sameApp]) afterGrant
+        approx.profile after site (by rw [sameApp])
         (afterUnsent.trans unsent) effective ready (by rw [sameApp]; exact timely)
         (by rw [sameApp]; exact valid) afterRecalled afterOrigins entered (phase.event.val + 1)
         (by rw [sameApp]; exact activated) (by rw [sameApp]; exact due) afterSerials
@@ -1159,7 +1164,7 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
     simp only [DecisionPhase.earlier, List.count_append, List.count_cons_self]
     omega
   have effective := inherits approx.effective owner
-  have opportunity := RevealSource.opportunity_law service.leaks execution site phase.granted
+  have opportunity := RevealSource.opportunity_law service.leaks execution site phase.ready
     unsent valid recalled origins effective candidate raw opening
   have old := posterior timing candidate raw approx.effective opening unsent small
   let family := sourceServiceTimedFamily service.setup service.leaks service.rosters
@@ -1192,12 +1197,14 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
     simp only [family, sourceServiceTimedFamily, ReactiveApplication.scheduledPolicy,
       Option.map_some, Option.some.injEq, waiting, ↓reduceIte]
     rfl
-  have grant : PublicView.serviceGrant
-      (execution.observe app owner).application.publicView = some phase.event := phase.granted
+  have serving : (execution.observe app owner).application.publicView.ownTurn? owner =
+      some phase.event :=
+    PublicView.ownTurn?_of_ownTurn _ owner phase.event (phase.sole.ownTurn owned)
   have policyEq : approx.players owner (execution.recall owner) (execution.observe app owner) =
       (mixtureImpl.posterior (execution.recall owner)).bind fun slot =>
         family slot (execution.recall owner) (execution.observe app owner) := by
-    simp only [players, sourceServiceTimedPolicy, grant, owned, ↓reduceDIte]
+    simp only [players, sourceServiceTimedPolicy_turn _ _ _ _ _ owner _ _ phase.event owned
+      serving]
     exact app.policyMixture_policy _ _ _ _
   have allowedOf (response : app.Action)
       (supported : response ∈ (approx.players owner (execution.recall owner)
@@ -1227,7 +1234,7 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
         phase.event candidate raw) =
         approx.boundaryContinuation (phase.event.val + 1) (completion true) := by
     have law := RevealSource.opening_config_law service.setup service.leaks service.rosters
-      approx.timing approx.profile service.network execution site phase.granted ready timely
+      approx.timing approx.profile service.network execution site ready timely
       valid serials published candidate raw opening phase.visits (phase.event.val + 1)
     simp only [List.append_assoc, List.singleton_append] at law
     have configLaw : approx.phaseConfigLaw phase ((runtime service.setup).windowOpening
@@ -1390,7 +1397,7 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     {event : (graph service.setup).EventId} {payload : L.Ty}
     (isPublication : (graph service.setup).outputLayout event = .publication payload)
     (owned : (graph service.setup).actor? event = some who)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
     (candidate : Handle (graph service.setup)) (raw : Raw L)
     (opening : rosterOpening? service.setup service.leaks who event view = some (candidate, raw))
@@ -1415,7 +1422,7 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     subst built
     rfl
   obtain ⟨sourceView, sourceHistories⟩ := owner_site_source_histories service timing
-    timingFull source full sourceBayes approx built who site past view observed owned granted
+    timingFull source full sourceBayes approx built who site past view observed owned readyView
   let admission := CommitmentInterface.values service.setup.program
   let baseline := service.setup.toProtocolBehavioralPolicy admission who (approx.profile who)
     (approx.admitted who) (some sourceView)
@@ -1443,15 +1450,15 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
           some sourceView ∧
         laws.disclosures = (baseline.map Subtype.val).map OwnAction.disclosure := by
     obtain ⟨remaining, execution, current, phase, same, recallEq, viewEq⟩ :=
-      site_decision who site past view observed granted history
+      site_decision who site past view observed readyView history
     have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
         service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
       current ▸ history.1.trace
-    obtain ⟨phaseEvent, slot, selected, position, phaseGranted⟩ := phase
+    obtain ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩ := phase
     dsimp only at same
     subst same
     let phase : DecisionPhase service.setup service.leaks service.rosters who execution :=
-      ⟨phaseEvent, slot, selected, position, phaseGranted⟩
+      ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩
     have counted := service.recall_count trace phase
     rw [recallEq] at counted
     change past.length = rosterOffset service.setup service.rosters who phaseEvent +
@@ -1659,7 +1666,7 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
         (q * expect (approx.assessment.belief who site) (value true) +
           (1 - q) * expect (approx.assessment.belief who site) (value false)) ≤ error := by
     obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
-      timingFull source full sourceBayes approx built who site past view observed owned granted
+      timingFull source full sourceBayes approx built who site past view observed owned readyView
       (alternative disclose) (admittedAlternative disclose)
     have prescribedIntegrable := payoffIntegrable_of_finite_support _ utility
       (bind_support_finite (p := approx.assessment.belief who site) (Set.toFinite _)

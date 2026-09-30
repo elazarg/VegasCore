@@ -56,19 +56,21 @@ theorem roster_policy_converges
       unchanged, _⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable
       who control trace active
-  have grantNow : (control.execution.observe app who).application.publicView.serviceGrant =
-      some event := by change control.execution.application.serviceGrant = _; rw [unchanged, grant]
+  have soleNow : (control.execution.observe app who).application.publicView.SoleReady event := by
+    change control.execution.application.publicView.SoleReady event
+    rw [unchanged]
+    exact soleReady_of_ready setup granted.application grant
   by_cases ownedEvent : (graph setup).actor? event = some who
   · obtain ⟨site, siteView, _, candidate, raw, opening, owned, valid, _, _⟩ :=
       roster_owner_choice_data setup leaks bounds reveals admission source who event ownedEvent
-        initial initialSupport state granted related sourceSupport grant
+        initial initialSupport state granted related sourceSupport
     have law (profile : Profile (setup.informationModel admission).behavioralSignature) :
         sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission profile) who
           (granted.observe app who) =
         (profile who site.1).map (fun choice => OwnAction.disclosure choice.1) := by
       obtain ⟨otherSite, otherView, otherLaw, _⟩ := roster_owner_choice_data setup leaks bounds
         reveals admission profile who event ownedEvent initial initialSupport state granted
-          related sourceSupport grant
+          related sourceSupport
       rw [otherView] at otherLaw
       rw [siteView]
       exact otherLaw
@@ -87,8 +89,9 @@ theorem roster_policy_converges
       exact (converges who site).map (fun choice => OwnAction.disclosure choice.1)
     obtain ⟨last, final, timingLimit⟩ := timingConverges event who ownedEvent
     rw [activated]
-    exact roster_owner_policy_limit setup leaks extended rosters granted event who grant ownedEvent
-      candidate raw opening owned valid (offset who) serials published menu.uniformResponses
+    exact roster_owner_policy_limit setup leaks extended rosters granted event who
+      (soleReady_of_ready setup granted.application grant) ownedEvent candidate raw opening owned
+      valid (offset who) serials published menu.uniformResponses
       (fun player past view response supported =>
         (menu.uniformResponses_support player past view response).mp supported)
       network ((rosters event).take slot) (roster_count_before selected) prior reached sample
@@ -100,20 +103,18 @@ theorem roster_policy_converges
         rosterPolicy setup leaks rosters when profile who (control.execution.recall who)
           (control.execution.observe app who) =
           app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
-      have grant := grantNow
-      generalize input : control.execution.observe app who = view at grant ⊢
+      have idle := PublicView.ownTurn?_eq_none _ who (soleNow.idle ownedEvent)
+      generalize input : control.execution.observe app who = view at idle ⊢
       unfold rosterPolicy
-      rw [grant]
-      exact dite_eq_right ownedEvent
+      rw [idle]
     have limitWaiting : rosterLimitPolicy setup leaks rosters
         (setup.decodeBehavioralProfile admission source) who (control.execution.recall who)
         (control.execution.observe app who) =
           app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
-      have grant := grantNow
-      generalize input : control.execution.observe app who = view at grant ⊢
+      have idle := PublicView.ownTurn?_eq_none _ who (soleNow.idle ownedEvent)
+      generalize input : control.execution.observe app who = view at idle ⊢
       unfold rosterLimitPolicy
-      rw [grant]
-      exact ite_eq_right ownedEvent
+      rw [idle]
     change PMFConvergesPointwise
       (fun n => rosterPolicy setup leaks rosters (timing n)
         (setup.decodeBehavioralProfile admission (sequence n).strategy) who

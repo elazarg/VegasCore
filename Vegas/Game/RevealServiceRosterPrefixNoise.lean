@@ -424,14 +424,16 @@ theorem run_roster_source_prefix_noise
             simp only [advanced, PMF.bind_bind, PMF.bind_map, continuePoint]
             apply bind_congr_on_support _
             intro seed _
+            have opportunityReady : (opportunity seed).application.config.cut.Ready event :=
+              (opportunityFacts seed).1.ready event eventRank
             have phaseLaw := rosterPolicy_phase_law setup leaks rosters timing wholeProfile
-              (opportunity seed) event owner (opportunityFacts seed).2.1 actor (candidate seed)
+              (opportunity seed) event owner opportunityReady actor (candidate seed)
               ⟨payload, value seed⟩ (candidateFacts seed).2.2.2 (Nat.le_of_eq (ownerOffset seed))
               network (event.val + 1)
             have choiceLaw := sourceChoiceLaw_reveal setup leaks fresh selected unresolved next
               wholeProfile profile refs (source seed) embedding refsBefore offset (aligned seed)
               (opportunity seed) (opportunityFacts seed).1.agrees
-                (opportunityFacts seed).1.history (opportunityFacts seed).2.1
+                (opportunityFacts seed).1.history opportunityReady
             rw [runInteractionPlan_append, grantLaw, PMF.pure_bind, runInteractionPlan_append]
             change (((runtime setup).runInteractionPlan leaks players network phase
               (opportunity seed)).bind _).map _ = _

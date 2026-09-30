@@ -33,7 +33,7 @@ theorem sourceServiceLastPolicy_waiting_law
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (visits : List Player) (initial : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (before : (initial.recall owner).length + visits.count owner <
       rosterOffset setup rosters owner event + (rosters event).count owner) :
     (runtime setup).runInteractionPlan leaks
@@ -54,19 +54,20 @@ theorem sourceServiceLastPolicy_waiting_law
       apply bind_congr_on_support _
       intro sample _
       let activated := initial.sampledActivation app who sample
-      have wait := sourceServiceLastPolicy_wait setup leaks rosters profile who
-        (activated.recall who) (activated.observe app who) event granted
       have law : sourceServiceLastPolicy setup leaks rosters profile who
           (activated.recall who) (activated.observe app who) =
           app.replayPolicy (activated.recall who) (activated.observe app who) := by
-        apply wait
-        by_cases same : who = owner
-        · subst who
-          apply Or.inr (Or.inr ?_)
-          change (initial.recall owner).length + 1 ≠ _
-          simp only [List.count_cons_self] at before
-          omega
-        · exact Or.inl (fun equal => same (Option.some.inj (equal.symm.trans owned)))
+        apply sourceServiceLastPolicy_wait setup leaks rosters profile who
+          (activated.recall who) (activated.observe app who)
+        intro selected serving
+        have facts := PublicView.ownTurn?_spec _ who selected serving
+        change initial.application.publicView.EventReady selected ∧ _ at facts
+        cases sole.2 selected facts.1
+        cases Option.some.inj (facts.2.symm.trans owned)
+        apply Or.inr
+        change (initial.recall owner).length + 1 ≠ _
+        simp only [List.count_cons_self] at before
+        omega
       change (sourceServiceLastPolicy setup leaks rosters profile who
         (activated.recall who) (activated.observe app who)).bind _ =
         (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
@@ -75,7 +76,7 @@ theorem sourceServiceLastPolicy_waiting_law
       intro response supported
       have unchanged : (activated.respond app who response).application = initial.application := by
         rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> rfl
-      apply ih _ (by rw [unchanged]; exact granted)
+      apply ih _ (by rw [unchanged]; exact sole)
       rw [app.respond_recall_length]
       change (initial.recall owner).length + (if who = owner then 1 else 0) + rest.count owner < _
       by_cases same : who = owner
@@ -97,7 +98,7 @@ theorem sourceServiceLastPolicy_waiting_data
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (visits : List Player) (initial final : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (before : (initial.recall owner).length + visits.count owner <
       rosterOffset setup rosters owner event + (rosters event).count owner)
     (safe : Message Player (WitnessedPacket (graph setup)) → Prop)
@@ -109,7 +110,7 @@ theorem sourceServiceLastPolicy_waiting_data
       final.receipts = initial.receipts ∧ final.network.nextSerial = initial.network.nextSerial ∧
       final.network.Satisfies safe ∧ initial.network.pending ⊆ final.network.pending := by
   rw [sourceServiceLastPolicy_waiting_law setup leaks rosters profile network event owner owned
-    visits initial granted before] at reached
+    visits initial sole before] at reached
   exact (runtime setup).replay_window_preserves leaks (fun _ =>
     (application setup leaks).replayPolicy) network owner initial
       (fun current who response _ _ supported => (application setup leaks).replayPolicy_cases
@@ -145,7 +146,7 @@ theorem sourceServiceLastPolicy_foreign_tail
     (owned : (graph setup).actor? event = some owner)
     (visits : List Player) (absent : owner ∉ visits)
     (initial : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event) :
+    (sole : initial.application.publicView.SoleReady event) :
     (runtime setup).runInteractionPlan leaks
         (sourceServiceLastPolicy setup leaks rosters profile) network
         (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial =
@@ -168,8 +169,11 @@ theorem sourceServiceLastPolicy_foreign_tail
       intro sample _
       let activated := initial.sampledActivation app who sample
       have law := sourceServiceLastPolicy_wait setup leaks rosters profile who
-        (activated.recall who) (activated.observe app who) event granted
-          (Or.inl (fun equal => foreign (Option.some.inj (equal.symm.trans owned))))
+        (activated.recall who) (activated.observe app who) fun selected serving => by
+          have facts := PublicView.ownTurn?_spec _ who selected serving
+          change initial.application.publicView.EventReady selected ∧ _ at facts
+          cases sole.2 selected facts.1
+          exact absurd (Option.some.inj (facts.2.symm.trans owned)) foreign
       change (sourceServiceLastPolicy setup leaks rosters profile who
         (activated.recall who) (activated.observe app who)).bind _ =
         (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
@@ -177,7 +181,7 @@ theorem sourceServiceLastPolicy_foreign_tail
       apply bind_congr_on_support _
       intro response supported
       apply ih restAbsent
-      rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> exact granted
+      rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> exact sole
 
 theorem replay_window_eventRecorded
     (setup : Setup (Player := Player) (L := L))

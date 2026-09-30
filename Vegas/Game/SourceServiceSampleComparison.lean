@@ -34,7 +34,7 @@ theorem sample_response_transport {who : Player} {remaining : Nat}
     (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
     {event : (graph service.setup).EventId} (chance : (graph service.setup).actor? event = none)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (response : (application service.setup service.leaks).Action)
     (allowed : response ∈ service.menu.actions who (execution.recall who)
       (execution.observe (application service.setup service.leaks) who)) :
@@ -42,11 +42,9 @@ theorem sample_response_transport {who : Player} {remaining : Nat}
   have present := roster_fullyMixed_response_support service.setup service.leaks
     service.rosters service.network service.menu approx.players approx.covered approx.assessment
     approx.strategy approx.mixed who remaining execution trace response allowed
-  have grant : PublicView.serviceGrant
-      (execution.observe (application service.setup service.leaks) who).application.publicView =
-        some event := granted
-  simp only [players, sourceServiceTimedPolicy, grant, chance, reduceCtorEq, ↓reduceDIte]
-    at present
+  simp only [players, sourceServiceTimedPolicy_idle _ _ _ _ _ who _
+    (execution.observe (application service.setup service.leaks) who)
+    (sole.idle (by rw [chance]; exact (Option.some_ne_none who).symm))] at present
   exact (application service.setup service.leaks).replayPolicy_cases _ _ response present
 
 open Classical in
@@ -57,7 +55,7 @@ theorem sample_comparison_eq (who : Player) (site : service.model.InformationSit
     (view : (application service.setup service.leaks).PlayerView)
     (observed : site.1 = some (past, view))
     {event : (graph service.setup).EventId} (chance : (graph service.setup).actor? event = none)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (readyView : view.application.publicView.EventReady event)
     (law : PMF (service.model.Choice who site.1)) :
     let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
         service.fuel) service.readout
@@ -66,11 +64,11 @@ theorem sample_comparison_eq (who : Player) (site : service.model.InformationSit
   apply approx.comparison_eq_of_phase_invariant who site
   intro history remaining execution current info phase first second firstAllowed secondAllowed
   have input := (service.infoOf_decision history current).symm.trans (info.trans observed)
-  have grant : execution.application.serviceGrant = some event :=
+  have readyNow :=
     (congrArg (fun pair : List (application service.setup service.leaks).PlayerEntry ×
       (application service.setup service.leaks).PlayerView =>
-        pair.2.application.publicView.serviceGrant) (Option.some.inj input)).trans granted
-  have same : phase.event = event := Option.some.inj (phase.granted.symm.trans grant)
+        pair.2.application.publicView.EventReady event) (Option.some.inj input)).mpr readyView
+  have same : phase.event = event := (phase.sole.2 event readyNow).symm
   subst same
   have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩) := current ▸ history.trace
@@ -82,8 +80,9 @@ theorem sample_comparison_eq (who : Player) (site : service.model.InformationSit
       (allowed : response ∈ service.menu.actions who (execution.recall who)
         (execution.observe (application service.setup service.leaks) who)) :=
     sourceService_sample_response_application_law service.setup service.leaks service.rosters
-      approx.timing approx.profile service.network phase.event chance who execution grant response
-      (approx.sample_response_transport trace chance grant response allowed) phase.visits
+      approx.timing approx.profile service.network phase.event chance who execution phase.sole
+      response
+      (approx.sample_response_transport trace chance phase.sole response allowed) phase.visits
       (phase.event.val + 1)
   have applications := (law first firstAllowed).trans (law second secondAllowed).symm
   simp only [phaseConfigLaw, phaseLaw, DecisionPhase.tail, ending]

@@ -188,6 +188,9 @@ theorem event_block_stopped_coupling
             record.input.envelope = false) ∨
           next.1.application.publicView.missedBindingBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
+    have repairedReady : (advance repaired).application.config.cut.Ready event := by
+      change repaired.application.config.cut.Ready event
+      exact boundary.ready event rfl
     cases node : nodeView (graph setup) event with
     | sample payload law outputEq codeEq =>
       have owned : (graph setup).actor? event = none :=
@@ -207,7 +210,7 @@ theorem event_block_stopped_coupling
         (advance original) (advance repaired) paired onlyBindings nextStarted leftNextRecall
         rightRecall (by rw [paired.network]; exact boundary.serials)
         event payload law outputEq codeEq node
-        rfl ready remaining (rosters event) (event.val + 1) phaseTrace
+        ready remaining (rosters event) (event.val + 1) phaseTrace
         (before ++ [.grant event]) after
         (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
       refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
@@ -242,7 +245,7 @@ theorem event_block_stopped_coupling
           leaks bounds values capacity rosters opportunities network source target agrees
           owner policy available reference memory (advance original) (advance repaired) paired
           onlyBindings nextStarted leftNextRecall event actor same payload outputEq codeEq node
-          granted remaining (rosters event) (event.val + 1) phaseTrace
+          repairedReady remaining (rosters event) (event.val + 1) phaseTrace
           (before ++ [.grant event]) after
           (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
         refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
@@ -258,7 +261,8 @@ theorem event_block_stopped_coupling
         bounds values capacity rosters opportunities network source target agrees owner
         policy available reference memory (advance original) (advance repaired) paired onlyBindings
         nextStarted leftNextRecall leftSound leftNextBinding event actor payload binding checks
-        outputEq codeEq node granted remaining (rosters event) (event.val + 1) phaseTrace
+        outputEq codeEq node granted repairedReady remaining (rosters event)
+        (event.val + 1) phaseTrace
         (before ++ [.grant event]) after
         (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
       refine ⟨coupling, ?_, ?_, fun next member => ?_⟩

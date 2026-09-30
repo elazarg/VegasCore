@@ -119,7 +119,7 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (grantedNow : control.execution.application.serviceGrant = some event)
+    (readyNow : control.execution.application.config.cut.Ready event)
     (ownedEvent : (graph setup).actor? event = some who)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (openingNow : rosterOpening? setup leaks who event
@@ -139,8 +139,10 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have samePhase : phase = event := by
-    rw [unchanged, grant] at grantedNow
-    exact Option.some.inj grantedNow
+    have now : granted.application.publicView.EventReady event := by
+      rw [← unchanged]
+      exact (control.execution.application.publicView_eventReady event).mpr readyNow
+    exact ((soleReady_of_ready setup granted.application grant).2 event now).symm
   subst phase
   have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
     setup.program reveals profile
@@ -160,7 +162,8 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
     intro player past view response supported
     exact (menu.uniformResponses_support player past view response).mp supported
   obtain ⟨chosen, frame, earlier, recorded, _⟩ := roster_window_posterior setup leaks bounds rosters
-    granted event who grant ownedEvent candidate raw priorOpening owned valid (offset who) serials
+    granted event who (soleReady_of_ready setup granted.application grant) ownedEvent candidate
+    raw priorOpening owned valid (offset who) serials
     published menu.uniformResponses covered network ((rosters event).take slot)
     (roster_count_before selected).le prior reached
   obtain ⟨context, source, refs, checkpoint⟩ := related.checkpoint setup.program
@@ -190,8 +193,9 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
   · intro fresh
     obtain ⟨otherEvent, _, _, otherGrant, _, _, _, absent⟩ :=
       rosterFresh?_shape setup leaks rosters who _ _ _ fresh
-    change prior.application.serviceGrant = some otherEvent at otherGrant
-    rw [frame.application, grant] at otherGrant
+    change prior.application.publicView.ownTurn? who = some otherEvent at otherGrant
+    rw [frame.application, ownTurn?_of_ready setup granted.application grant ownedEvent]
+      at otherGrant
     cases Option.some.inj otherGrant
     cases chosen with
     | none => rfl
@@ -205,12 +209,11 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
       have seen := recorded.mpr present
       rw [unopened] at seen
       cases seen
-    have currentGrant :
-        (prior.sampledActivation (application setup leaks) who sample).application.serviceGrant =
-          some event := by
-      change prior.application.serviceGrant = some event
+    have currentTurn : ((prior.sampledActivation (application setup leaks) who sample).observe
+        (application setup leaks) who).application.publicView.ownTurn? who = some event := by
+      change prior.application.publicView.ownTurn? who = some event
       rw [frame.application]
-      exact grant
+      exact ownTurn?_of_ready setup granted.application grant ownedEvent
     have currentOpening : rosterOpening? setup leaks who event
         ((prior.sampledActivation (application setup leaks) who sample).observe
           (application setup leaks) who) = some (candidate, raw) := by
@@ -219,7 +222,7 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
       exact priorOpening
     unfold rosterFresh?
     apply Option.bind_eq_some_iff.mpr
-    refine ⟨event, currentGrant, ?_⟩
+    refine ⟨event, currentTurn, ?_⟩
     rw [ite_eq_right (not_not_intro ownedEvent)]
     apply Option.bind_eq_some_iff.mpr
     refine ⟨(candidate, raw), currentOpening, ?_⟩

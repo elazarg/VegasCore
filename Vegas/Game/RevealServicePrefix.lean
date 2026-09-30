@@ -326,6 +326,27 @@ theorem PublicPrefixCheckpoint.checkpoint
               simpa only [Nat.add_assoc, Nat.add_comm 1 count] using
                 ih next _ _ _ (offset + 1) state execution related
 
+/-- The event at a related prefix's rank is ready. -/
+theorem PublicPrefixCheckpoint.ready
+    {setup : Setup (Player := Player) (L := L)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    {initial : State L setup.context} {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {program : SourceProgram Player L Γ openNames} {refs : ContextRefs (graph setup).layout Γ}
+    {revelations : Revelations Γ}
+    {outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)}
+    {offset count : Nat} {state : ProtocolState program}
+    {execution : (application setup leaks).Execution}
+    (related : PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
+      offset count state execution)
+    (event : (graph setup).EventId) (rank : event.val = offset + count) :
+    execution.application.config.cut.Ready event := by
+  obtain ⟨_, _, _, checkpoint⟩ := PublicPrefixCheckpoint.checkpoint program refs revelations
+    outputs offset count state execution related
+  have active : offset + count < (graph setup).order.eventCount := rank ▸ event.isLt
+  have chosen : (⟨offset + count, active⟩ : (graph setup).EventId) = event := Fin.ext rank.symm
+  rw [← chosen]
+  exact checkpoint.ordered.ready active
+
 /-- Every operationally related prefix decodes to its complete existing source
 state. In particular the partial decoder never fails on these prefixes. -/
 theorem PublicPrefixCheckpoint.decode

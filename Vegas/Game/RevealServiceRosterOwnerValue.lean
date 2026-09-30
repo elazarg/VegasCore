@@ -72,7 +72,7 @@ theorem roster_owner_context_value
           (rosterScheduler setup leaks rosters network)).InformationSite who)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (observed : site.1 = some (past, view))
-    (grantView : view.application.publicView.serviceGrant = some event)
+    (servingView : view.application.publicView.ownTurn? who = some event)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (openingView : rosterOpening? setup leaks who event view = some (candidate, raw))
     (unopened : ¬ ∃ entry ∈ past.drop (rosterOffset setup rosters who event),
@@ -137,7 +137,7 @@ theorem roster_owner_context_value
     dsimp only at observed
     subst info
     have value := roster_owner_history_local_value setup leaks bounds rosters network reveals
-      openable admission source mixed timing timingFull who event ownedEvent past view grantView
+      openable admission source mixed timing timingFull who event ownedEvent past view servingView
       candidate raw openingView unopened joint chosen utility history.1 remaining execution
       current history.2 law
     rw [strategy]

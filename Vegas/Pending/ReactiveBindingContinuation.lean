@@ -203,7 +203,7 @@ theorem repairResponse_required [Fintype Player] (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.OwnTurn who event)
     (owned : graph.actor? event = some who)
     (ready : view.application.publicView.EventReady event)
     (unsent : runtime.eventRecorded leaks past event = false)
@@ -217,11 +217,12 @@ theorem repairResponse_required [Fintype Player] (bounds : MessageBounds graph)
     (memory.repairResponse runtime leaks who view
       ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 ∈
       bounds.requiredBindingActions runtime leaks who past view := by
+  have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   have actualFresh := reactiveFreshSlot_spec view.application serial fresh
   rw [memory.repairResponse_unusable runtime leaks who view event payload outputEq codeEq node
     serial opening originalFresh actualFresh unusable]
   have represented := bounds.binding_value_required runtime leaks who past view event payload
-    outputEq codeEq node granted owned ready unsent serial fresh capacity
+    outputEq codeEq node turn owned ready unsent serial fresh capacity
     (L.someValue payload) default
   rw [runtime.serviceDecision_binding leaks who past view event payload outputEq codeEq node
     serial fresh, runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _

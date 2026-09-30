@@ -105,8 +105,14 @@ theorem run_roster_source_prefix_option_law
           have node : nodeView (graph setup) event =
               .resolve owner payload (refs.get selected) [] outputEq codeEq :=
             EventGraphRuntime.nodeView_eq_resolve _ _
-          obtain ⟨opportunity, activeCheckpoint, granted, grantRecall, grantNetwork, grantLaw⟩ :=
+          obtain ⟨opportunity, activeCheckpoint, _granted, grantRecall, grantNetwork, grantLaw⟩ :=
             checkpoint.grant (rosterPolicy setup leaks rosters timing wholeProfile) network event
+          have ready : opportunity.application.config.cut.Ready event := by
+            have active : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt
+            have chosenEvent : (⟨offset, active⟩ : (graph setup).EventId) = event :=
+              Fin.ext eventRank.symm
+            rw [← chosenEvent]
+            exact activeCheckpoint.ordered.ready active
           have ownerOffset : (opportunity.recall owner).length =
               rosterOffset setup rosters owner event := by
             rw [grantRecall, counts owner]
@@ -118,7 +124,7 @@ theorem run_roster_source_prefix_option_law
                 value bound
           have choiceLaw := sourceChoiceLaw_reveal setup leaks fresh selected unresolved next
             wholeProfile profile refs source embedding refsBefore offset aligned opportunity
-              activeCheckpoint.agrees activeCheckpoint.history granted
+              activeCheckpoint.agrees activeCheckpoint.history ready
           let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
           let resultRef : EventGraph.FieldRef (graphLayout setup.program) (.publication payload) :=
             ⟨.inr event, outputEq⟩
@@ -238,7 +244,7 @@ theorem run_roster_source_prefix_option_law
             exact (bind_congr_on_support _ constant).trans (PMF.bind_const _ _)
           rw [planEq, runInteractionPlan_append, grantLaw, PMF.pure_bind,
             runInteractionPlan_append, rosterPolicy_phase_law setup leaks rosters timing
-              wholeProfile opportunity event owner granted actor candidate ⟨payload, value⟩
+              wholeProfile opportunity event owner ready actor candidate ⟨payload, value⟩
                 opening (Nat.le_of_eq ownerOffset) network (event.val + 1), choiceLaw,
                   PMF.bind_bind, PMF.map_bind,
                     ProtocolState.behavioralStatePrefix_reveal, PMF.map_bind]

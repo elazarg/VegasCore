@@ -45,7 +45,7 @@ theorem roster_remaining_settlement
     (profile : BehavioralProfile setup.program)
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -89,7 +89,7 @@ theorem roster_remaining_settlement
   intro app choices
   have full : FullSupport choices := rosterSelection_fullSupport _ _ choiceFull timingFull
   obtain ⟨selected, frame, _past, recorded, exactModes⟩ :=
-    roster_window_posterior setup leaks bounds rosters initial event owner granted ownedEvent
+    roster_window_posterior setup leaks bounds rosters initial event owner sole ownedEvent
       candidate raw opening owned valid offset serials
       published players covered network visited (by omega) current reached
   let family := fun mode : Option (Fin ((rosters event).count owner)) =>
@@ -133,7 +133,7 @@ theorem roster_remaining_settlement
         (remaining.map ServiceInstruction.player ++ [.includeLatest event owner]) current := by
     rw [runInteractionPlan_append, runInteractionPlan_append,
       rosterPolicy_window_eq setup leaks rosters timing profile initial current event owner
-        granted ownedEvent candidate raw opening frame.application network remaining]
+        sole ownedEvent candidate raw opening frame.application network remaining]
     apply bind_congr_on_support _
     intro next _
     exact inclusion_players setup leaks _ _ network event owner next

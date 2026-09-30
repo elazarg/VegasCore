@@ -33,7 +33,7 @@ so no posterior equality with a source information set is needed. -/
 theorem roster_harmless_response_disclosure
     (initial : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (ownedEvent : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -81,11 +81,11 @@ theorem roster_harmless_response_disclosure
   · rw [app.respond_recall_other activated who owner foreign.symm action,
       app.respond_recall_other activated who owner foreign.symm alternative]
   · obtain ⟨firstMode, _, _, firstOpen, firstPosterior⟩ :=
-      roster_response_posterior setup leaks bounds rosters initial event owner granted ownedEvent
+      roster_response_posterior setup leaks bounds rosters initial event owner sole ownedEvent
         candidate raw opening owned valid offset serials published players covered network visits
         current reached who sample action member within
     obtain ⟨secondMode, _, _, secondOpen, secondPosterior⟩ :=
-      roster_response_posterior setup leaks bounds rosters initial event owner granted ownedEvent
+      roster_response_posterior setup leaks bounds rosters initial event owner sole ownedEvent
         candidate raw opening owned valid offset serials published players covered network visits
         current reached who sample alternative alternativeMember within
     have firstSome := firstOpen.mpr (Or.inl recorded)
@@ -112,7 +112,7 @@ theorem roster_harmless_response_source_law
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (Revelations.initial setup.context) (outputRef setup.program) 0 event.val source boundary)
     (owner : Player) (ownedEvent : (graph setup).actor? event = some owner)
-    (granted : boundary.application.serviceGrant = some event)
+    (sole : boundary.application.publicView.SoleReady event)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
       (boundary.observe (application setup leaks) owner) = some (candidate, raw))
@@ -192,20 +192,20 @@ theorem roster_harmless_response_source_law
           (ProtocolState.step setup.program source (joint mode.isSome)).bind
             (ProtocolState.continuationLaw setup.program profile)).map some := by
     obtain ⟨selected, frame, _, _, exactModes⟩ :=
-      roster_response_posterior setup leaks bounds rosters boundary event owner granted ownedEvent
+      roster_response_posterior setup leaks bounds rosters boundary event owner sole ownedEvent
         candidate raw opening owned valid (offset owner) serials published players covered network
         visited current reached who sample response allowed within
     have frames := roster_response_frames setup leaks rosters owner event candidate raw selected
       visits boundary (after response) frame choices full
       (by cases selected <;> exact exactModes choices full)
     exact roster_global_window_source_step_law setup leaks rosters timing network reveals profile
-      initial event source boundary related owner ownedEvent granted candidate raw opening visits
+      initial event source boundary related owner ownedEvent sole candidate raw opening visits
       (after response) serials remaining complete
       (roster_after_response_counts setup leaks rosters network players event boundary current
         offset visited remaining who split reached sample response) joint chosen frames
   rw [sourceLaw action member, sourceLaw alternative alternativeMember]
   have same := roster_harmless_response_disclosure setup leaks bounds rosters boundary event
-    owner granted ownedEvent candidate raw opening owned valid (offset owner) serials published
+    owner sole ownedEvent candidate raw opening owned valid (offset owner) serials published
     players covered network visited current reached who sample action alternative member
     alternativeMember within harmless choices full
   have mapped := congrArg (fun law : PMF Bool =>

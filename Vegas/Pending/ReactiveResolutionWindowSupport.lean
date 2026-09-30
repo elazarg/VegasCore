@@ -35,14 +35,14 @@ theorem MessageBounds.compiled_resolution_recorded_transport (bounds : MessageBo
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (sole : execution.application.publicView.SoleReady event)
     (recorded : runtime.eventRecorded leaks (execution.recall owner) event = true)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who)) :
     response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
-    outputEq codeEq node granted response member with rfl | replay |
+    outputEq codeEq node sole response member with rfl | replay |
       ⟨candidate, value, evidence, acting, _, _, _, _, first, shape⟩
   · exact Or.inl rfl
   · exact (runtime.reactiveApplication leaks).replayPolicy_cases _ _ response replay
@@ -72,7 +72,7 @@ theorem compiled_resolution_tail_transport (bounds : MessageBounds graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (recorded : runtime.eventRecorded leaks (initial.recall owner) event = true)
     (current : (runtime.reactiveApplication leaks).Execution)
     (same : current.application = initial.application)
@@ -83,7 +83,7 @@ theorem compiled_resolution_tail_transport (bounds : MessageBounds graph)
     response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
   obtain ⟨entry, member, submitted⟩ := (runtime.eventRecorded_iff leaks _ event).mp recorded
   exact bounds.compiled_resolution_recorded_transport runtime leaks current who owner event payload
-    binding checks outputEq codeEq node (by rw [same]; exact granted)
+    binding checks outputEq codeEq node (by rw [same]; exact sole)
     ((runtime.eventRecorded_iff leaks _ event).mpr ⟨entry, recalled member, submitted⟩)
     response (lawful who _ _ response supported)
 
@@ -104,7 +104,7 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (visits : List Player)
     (initial final : (runtime.reactiveApplication leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (published : initial.network.Satisfies fun message =>
       message.id ∈ initial.network.ledger.map Message.id)
     (serials : initial.network.SerialsBeforeNext)
@@ -139,12 +139,12 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
             message.id ∈ final.network.ledger.map Message.id) := by
         have preserved := runtime.replay_response_preserves leaks _ activated
           (published.learn who sample) who response transport
-        exact ih (activated.respond app who response) (by rw [preserved.1]; exact granted)
+        exact ih (activated.respond app who response) (by rw [preserved.1]; exact sole)
           (by rw [preserved.2.1]; exact preserved.2.2.2.2.1)
           ((app.serialsBeforeNextInvariant (fun _ _ => PMF.pure .wait)).respond
             activated who response (serials.learn who sample)) tail
       rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding
-        checks outputEq codeEq node granted response allowed with silent | replay |
+        checks outputEq codeEq node sole response allowed with silent | replay |
           ⟨candidate, value, evidence, acting, _, _, _, candidateOwned, _, shape⟩
       · exact transportCase (Or.inl silent)
       · exact transportCase (app.replayPolicy_cases _ _ response replay)
@@ -165,7 +165,7 @@ theorem MessageBounds.compiled_resolution_inclusion_published (bounds : MessageB
           submission event rfl activePublished activeSerials
           (fun current actor action same recalled supported =>
             runtime.compiled_resolution_tail_transport leaks bounds players lawful submitted owner
-              event payload binding checks outputEq codeEq node granted recorded current same
+              event payload binding checks outputEq codeEq node sole recorded current same
                 recalled actor action supported) rest final tail
 
 end Vegas.EventGraphRuntime

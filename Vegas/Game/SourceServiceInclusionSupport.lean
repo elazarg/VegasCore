@@ -301,7 +301,7 @@ theorem sourceService_inclusion_boundary
           rw [EventGraph.EventCode.actor_cast outputEq ((graph setup).nodes event)] at actual
           exact actual
         exact (bounded.binding_prefix_conformance bounds menu.uniformResponses lawful network
-          event rfl actor payload outputEq codeEq node ownership granted boundaryTraffic
+          event rfl actor payload outputEq codeEq node ownership boundaryTraffic
           (rosters event) control.execution afterGrant).1
     | resolve actor payload binding checks outputEq codeEq =>
         have ownership : (graph setup).actor? event = some actor := by
@@ -314,7 +314,9 @@ theorem sourceService_inclusion_boundary
             sourceServiceMenu_in_compiled setup leaks bounds rosters who past view
               (lawful who past view response supported)) network (rosters event)
           actor event payload binding checks outputEq codeEq node boundary control.execution
-          bounded.binding bounded.recall granted (bounded.ready event rfl)
+          bounded.binding bounded.recall
+          (soleReady_of_ready setup boundary.application (bounded.ready event rfl))
+          (bounded.ready event rfl)
           (bounded.timely event rfl (by rw [ownership]; rfl))
           (fun _ => bounded.accounted actor)
           ((runtime setup).service_published_conformance leaks boundary bounded.published)
@@ -369,7 +371,7 @@ theorem sourceService_inclusion_binding_candidate
       (fun who past view response => (menu.uniformResponses_support who past view response).mp)
       network owner event payload outputEq codeEq node owned serial
       (checkpoint.binding_capacity bounds capacity event rfl owner) (rosters event)
-      boundary final granted (checkpoint.ready event rfl) slot fresh checkpoint.published
+      boundary final (checkpoint.ready event rfl) slot fresh checkpoint.published
       checkpoint.serials (checkpoint.unsent owner event (Nat.le_refl _))
       (opportunities event owner payload outputEq)
       (by rw [checkpoint.response_offset event rfl owner]) whole

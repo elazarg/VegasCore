@@ -157,10 +157,12 @@ private theorem recalled_binding_not_selected
         exact Bool.or_eq_false_iff.mp unsent |>.1
       have response := sourceServiceOpportunity_at_history setup leaks bounds values initialValues
         capacity rosters opportunities network profile permitted who previous traced acting event
-        (by
-          change (previous.execution.observe app who).application.publicView.serviceGrant = _
-          rw [viewEq]
-          exact granted) owned previousUnsent entry.action
+        (sourceService_ownTurn_of_grant setup leaks bounds values capacity rosters opportunities
+          network who previous traced acting event
+          (by
+            change (previous.execution.observe app who).application.publicView.serviceGrant = _
+            rw [viewEq]
+            exact granted) owned) owned previousUnsent entry.action
         (by
           change entry.action ∈ (sourceServiceOpportunity setup leaks profile who event
             (previous.execution.recall who) (previous.execution.observe app who)).support
@@ -364,26 +366,28 @@ theorem sourceServiceTimedPolicy_admissible
     exact bounds.replay_compiled (runtime setup) leaks who past view response replay
   change response ∈ (sourceServiceTimedPolicy setup leaks rosters timing profile who
     past view).support at supported
-  cases grant : view.application.publicView.serviceGrant with
+  cases serving : view.application.publicView.ownTurn? who with
   | none =>
-      simp only [sourceServiceTimedPolicy, grant] at supported
-      exact replay_covered supported (by rintro ⟨event, _, same, _⟩; simp [grant] at same)
+      simp only [sourceServiceTimedPolicy, serving] at supported
+      exact replay_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
   | some event =>
+      have grant := sourceService_grant_of_ownTurn setup leaks bounds values capacity rosters
+        opportunities network who control trace active event serving
       by_cases owned : (graph setup).actor? event = some who
       · by_cases recorded : (runtime setup).eventRecorded leaks past event = true
         · rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile who past view
-            event grant recorded] at supported
+            event serving recorded] at supported
           apply replay_covered supported
-          rintro ⟨other, _, otherGrant, _, _, _, unsent, _⟩
-          have same : other = event := Option.some.inj (otherGrant.symm.trans grant)
+          rintro ⟨other, _, otherTurn, _, _, _, unsent, _⟩
+          have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
           subst other
           simp only [recorded, Bool.true_eq_false] at unsent
         · have unsent : (runtime setup).eventRecorded leaks past event = false :=
             Bool.eq_false_iff.mpr recorded
-          simp only [sourceServiceTimedPolicy, grant, dite_eq_left owned] at supported
+          simp only [sourceServiceTimedPolicy, serving, dite_eq_left owned] at supported
           by_cases required : bindingRequired setup leaks rosters who past view
-          · obtain ⟨other, payload, otherGrant, binding, _, _, _, last⟩ := required
-            have same : other = event := Option.some.inj (otherGrant.symm.trans grant)
+          · obtain ⟨other, payload, otherTurn, binding, _, _, _, last⟩ := required
+            have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
             subst other
             have physical := sourceServiceTimedMixture_binding_last setup leaks bounds values
               initialValues capacity rosters opportunities network profile permitted who control
@@ -396,7 +400,7 @@ theorem sourceServiceTimedPolicy_admissible
             rw [physical] at supported
             exact (sourceServiceOpportunity_at_history setup leaks bounds values initialValues
               capacity rosters opportunities network profile permitted who control trace active
-                event grant owned unsent response supported).1
+                event serving owned unsent response supported).1
           · rw [app.policyMixture_policy] at supported
             obtain ⟨slot, _, produced⟩ := Set.mem_iUnion₂.mp
               (PMF.support_bind .. ▸ supported)
@@ -407,12 +411,12 @@ theorem sourceServiceTimedPolicy_admissible
             split at produced
             · exact (sourceServiceOpportunity_at_history setup leaks bounds values initialValues
                 capacity rosters opportunities network profile permitted who control trace active
-                  event grant owned unsent response produced).1
+                  event serving owned unsent response produced).1
             · exact replay_covered produced required
-      · simp only [sourceServiceTimedPolicy, grant, dite_eq_right owned] at supported
+      · simp only [sourceServiceTimedPolicy, serving, dite_eq_right owned] at supported
         apply replay_covered supported
-        rintro ⟨other, _, otherGrant, _, actor, _⟩
-        have same : other = event := Option.some.inj (otherGrant.symm.trans grant)
+        rintro ⟨other, _, otherTurn, _, actor, _⟩
+        have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
         subst other
         exact owned actor
 

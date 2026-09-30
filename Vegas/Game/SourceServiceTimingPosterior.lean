@@ -62,7 +62,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
       (candidate : Handle (graph setup)) (raw : Raw L)
       (_opening : rosterOpening? setup leaks owner event
         (execution.observe (application setup leaks) owner) = some (candidate, raw))
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length =
         rosterOffset setup rosters owner event + count)
@@ -85,7 +85,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         1 - ((revealKernel profile (source.view owner)) true).toReal else 1) /
           PMF.deferredSurvival (((revealKernel profile (source.view owner)) true).toReal)
             timing (count + visits.count owner) := by
-  intro index event timing count candidate raw opening granted unsent counted within small old
+  intro index event timing count candidate raw opening ready unsent counted within small old
     reached
   let app := application setup leaks
   let choice := revealKernel profile (source.view owner)
@@ -123,8 +123,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         actor response casesResponse
       have currentOpening := (rosterOpening?_application_eq setup leaks owner event current
         execution same).trans opening
-      have currentGrant : current.application.serviceGrant = some event := by rw [same]; exact
-        granted
+      have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
       have currentUnsent : (runtime setup).eventRecorded leaks (current.recall owner) event =
           false := by
         by_cases equal : actor = owner
@@ -147,7 +146,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
         have selectedLaw := sourceServiceOpportunity_reveal setup leaks fresh binding unresolved
           next
           wholeProfile profile refs source embedding refsBefore rank aligned activated agree history
-          valid recalled (origins.learn owner sample) effective granted unsent
+          valid recalled (origins.learn owner sample) effective ready unsent
         have activatedOpening : rosterOpening? setup leaks owner event
             (activated.observe app owner) = some (candidate, raw) :=
           (rosterOpening?_application_eq setup leaks owner event activated execution rfl).trans
@@ -224,7 +223,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
           exact update
         have tail := ih current currentAgree currentHistory currentValid currentRecall
           currentOrigins
-          (count + 1) currentOpening currentGrant currentUnsent currentCount (by
+          (count + 1) currentOpening currentReady currentUnsent currentCount (by
             simp only [List.count_cons_self] at within
             omega) updated reached
         simpa only [List.count_cons_self, Nat.add_assoc, Nat.add_comm 1] using tail
@@ -232,7 +231,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior
           app.respond_recall_other activated actor owner (Ne.symm sameOwner) response
         have tail := ih current currentAgree currentHistory currentValid currentRecall
           currentOrigins
-          count currentOpening currentGrant currentUnsent
+          count currentOpening currentReady currentUnsent
           ((congrArg List.length unchanged).trans counted) (by
             simpa only [List.count_cons_of_ne sameOwner] using within)
           (by simpa only [unchanged] using old) reached
@@ -279,7 +278,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
       (candidate : Handle (graph setup)) (raw : Raw L)
       (_opening : rosterOpening? setup leaks owner event
         (execution.observe (application setup leaks) owner) = some (candidate, raw))
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length = rosterOffset setup rosters owner event)
       (_within : visits.count owner ≤ (rosters event).count owner)
@@ -294,7 +293,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
         1 - ((revealKernel profile (source.view owner)) true).toReal else 1) /
           PMF.deferredSurvival (((revealKernel profile (source.view owner)) true).toReal)
             timing (visits.count owner) := by
-  intro index event timing candidate raw opening granted unsent counted within small reached
+  intro index event timing candidate raw opening ready unsent counted within small reached
   let app := application setup leaks
   let family := sourceServiceTimedFamily setup leaks rosters wholeProfile owner event
   have dormant := app.policyMixture_posterior_dormant timing family app.replayPolicy
@@ -313,7 +312,7 @@ theorem sourceServiceTimedMixture_replay_window_posterior_initial
   have result := sourceServiceTimedMixture_replay_window_posterior setup leaks rosters fresh binding
     unresolved next wholeProfile profile refs source embedding refsBefore rank aligned execution
     agree history valid recalled origins effective network visits final timing 0 candidate raw
-    opening granted unsent (by simpa only [Nat.add_zero] using counted)
+    opening ready unsent (by simpa only [Nat.add_zero] using counted)
     (by simpa only [Nat.zero_add] using within) small old reached
   simpa only [Nat.zero_add] using result
 

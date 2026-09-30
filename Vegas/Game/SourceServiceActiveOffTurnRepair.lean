@@ -49,8 +49,7 @@ theorem off_turn_history_response_coupling
     (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (application setup leaks))
-    (offTurn : ∀ event, original.application.serviceGrant = some event →
-      (graph setup).actor? event ≠ some owner)
+    (idle : original.application.publicView.Idle owner)
     (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -89,12 +88,12 @@ theorem off_turn_history_response_coupling
         (repaired.observe app owner)).support) :
       response ∈ menu.actions owner (repaired.recall owner) (repaired.observe app owner) := by
     apply off_turn_replay_sourceService setup leaks bounds rosters owner _ _ _ response supported
-    intro event granted
-    apply offTurn event
-    exact (congrArg PublicView.serviceGrant frame.publicView).trans granted
+    change repaired.application.publicView.Idle owner
+    rw [← frame.publicView]
+    exact idle
   obtain ⟨coupling, leftLaw, rightLaw, related⟩ := frame.off_turn_stopped_response_coupling
     bounds menu players reference started leftRecall rightRecall (frame.network ▸ rightSerials)
-      remaining offTurn coverage
+      remaining idle coverage
         (by simpa only [players, Function.update_self] using available _ _)
   refine ⟨coupling, leftLaw, rightLaw, ?_⟩
   intro next member

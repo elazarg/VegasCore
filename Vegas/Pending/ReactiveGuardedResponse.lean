@@ -91,7 +91,7 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (turn : execution.application.publicView.OwnTurn owner event)
     (actor : graph.actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (submission : WitnessedSubmission graph)
@@ -117,6 +117,7 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
       bounds.compiledActions runtime leaks owner (execution.recall owner)
         (execution.observe (runtime.reactiveApplication leaks) owner) := by
   classical
+  have turnSome := execution.application.publicView.ownTurn?_of_ownTurn owner event turn
   let app := runtime.reactiveApplication leaks
   obtain ⟨candidate, value, associated, owned, stored, resolved, normalized⟩ :=
     runtime.accepted_guarded_opening_normalization leaks execution.application next owner event
@@ -162,11 +163,11 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
     (execution.observe app owner) ⟨some (.submit submission)⟩ _ first available
   rw [response]
   have publicReady := (execution.application.publicView_eventReady event).mpr ready
-  have grantedView : (execution.observe app owner).application.publicView.serviceGrant =
-      some event := granted
+  have turnView : (execution.observe app owner).application.publicView.ownTurn? owner =
+      some event := turnSome
   have readyView : (execution.observe app owner).application.publicView.EventReady event :=
     publicReady
-  simp only [MessageBounds.decisionActions, grantedView, actor, readyView, and_self, ↓reduceIte,
+  simp only [MessageBounds.decisionActions, turnView, actor, readyView, and_self, ↓reduceIte,
     node]
   exact Finset.mem_image.mpr ⟨true, Finset.mem_univ _, rfl⟩
 

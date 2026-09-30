@@ -92,7 +92,7 @@ def rosterPolicy (setup : Setup (Player := Player) (L := L))
       PMF (Fin ((rosters event).count who)))
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
-  match view.application.publicView.serviceGrant with
+  match view.application.publicView.ownTurn? who with
   | none => (application setup leaks).replayPolicy past view
   | some event =>
       if owned : (graph setup).actor? event = some who then
@@ -116,7 +116,7 @@ def rosterLimitPolicy (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player)
     (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
-  match view.application.publicView.serviceGrant with
+  match view.application.publicView.ownTurn? who with
   | none => (application setup leaks).replayPolicy past view
   | some event =>
       if (graph setup).actor? event = some who then
@@ -282,7 +282,7 @@ theorem rosterPolicy_at_phase (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program)
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (owned : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -297,12 +297,16 @@ theorem rosterPolicy_at_phase (setup : Setup (Player := Player) (L := L))
             (initial.observe (application setup leaks) owner))
           (timing event owner owned)) who (current.recall who)
             (current.observe (application setup leaks) who) := by
-  have grant : (current.observe (application setup leaks) who).application.publicView.serviceGrant =
-      some event := by change current.application.serviceGrant = some event; rw [unchanged, granted]
+  have soleNow : current.application.publicView.SoleReady event := by
+    rw [unchanged]
+    exact sole
   unfold rosterPolicy
-  simp only [grant]
   by_cases active : who = owner
   · subst who
+    have serving : (current.observe (application setup leaks) owner).application.publicView.ownTurn?
+        owner = some event :=
+      current.application.publicView.ownTurn?_of_ownTurn owner event (soleNow.ownTurn owned)
+    simp only [serving]
     rw [dite_eq_left owned,
       rosterOpening?_application_eq setup leaks owner event current initial unchanged, opening,
       sourceChoiceLaw_application_eq setup leaks profile owner current initial unchanged]
@@ -310,8 +314,9 @@ theorem rosterPolicy_at_phase (setup : Setup (Player := Player) (L := L))
   · have foreign : (graph setup).actor? event ≠ some who := by
       rw [owned]
       exact fun same => active (Option.some.inj same).symm
-    rw [dite_eq_right foreign]
-    simp only [EventGraphRuntime.openingWindowMixturePlayers, Function.update_of_ne active]
+    have idle : (current.observe (application setup leaks) who).application.publicView.ownTurn?
+        who = none := soleNow.ownTurn?_foreign foreign
+    simp only [idle, EventGraphRuntime.openingWindowMixturePlayers, Function.update_of_ne active]
 
 /-- The actual global policy evaluates every finite prefix of a phase as its
 single locally recovered timing mixture. No phase-specific strategy is assumed
@@ -324,7 +329,7 @@ theorem rosterPolicy_window_eq (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program)
     (initial current : (application setup leaks).Execution)
     (event : (graph setup).EventId) (owner : Player)
-    (granted : initial.application.serviceGrant = some event)
+    (sole : initial.application.publicView.SoleReady event)
     (owned : (graph setup).actor? event = some owner)
     (candidate : Handle (graph setup)) (raw : Raw L)
     (opening : rosterOpening? setup leaks owner event
@@ -355,7 +360,7 @@ theorem rosterPolicy_window_eq (setup : Setup (Player := Player) (L := L))
       intro sample _
       let activated := current.sampledActivation app who sample
       have law := rosterPolicy_at_phase setup leaks rosters timing profile initial activated
-        event owner granted owned candidate raw opening unchanged who
+        event owner sole owned candidate raw opening unchanged who
       change (rosterPolicy setup leaks rosters timing profile who (activated.recall who)
         (activated.observe app who)).bind _ = _
       rw [law]

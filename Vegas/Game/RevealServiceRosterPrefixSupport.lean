@@ -157,7 +157,7 @@ theorem run_roster_source_prefix_support
             activeCheckpoint.reveal_roster bounds rosters players covered network published
               selected
               event eventRank actor outputEq codeEq node (fun ref => refsBefore ref index) decoded
-                granted ownerOffset (grantNetwork ▸ clean) (grantNetwork ▸ serials) after
+                ownerOffset (grantNetwork ▸ clean) (grantNetwork ▸ serials) after
                   blockReached
           have afterCounts (who : Player) : (after.recall who).length =
               (((List.finRange (graph setup).order.eventCount).take (offset + 1)).flatMap

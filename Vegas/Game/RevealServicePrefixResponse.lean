@@ -125,7 +125,7 @@ theorem prefix_response_option_law
           obtain ⟨after, afterLaw, afterCheckpoint, _afterRecall⟩ :=
             checkpoint.reveal_response (bounds.withInitialValues (initialLaw setup)) players
               watcher watcherPolicy published selected event eventRank actor outputEq codeEq node
-              (fun ref => refsBefore ref index) decoded granted response member
+              (fun ref => refsBefore ref index) decoded response member
           have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs
               (revealSuccessor published selected source

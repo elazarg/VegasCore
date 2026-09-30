@@ -5,8 +5,8 @@ import Vegas.Pending.ReactiveBindingAuditStep
 /-! # Off-turn transmissions in the stopped private repair
 
 The ordinary public checker permits a fresh envelope only from the actor of
-the currently granted event. A different player still has its complete raw
-response interface. Known replays and silence preserve the paired executions;
+a ready event. An idle player, with no ready event of its own, still has its
+complete raw response interface. Known replays and silence preserve the paired executions;
 every fresh submission supplies an attributed forbidden traffic record.
 -/
 
@@ -20,57 +20,20 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
 
-theorem freshServiceEnvelope_actor (view : PublicView graph)
-    (message : Message Player (WitnessedPacket graph))
-    (permitted : runtime.freshServiceEnvelope view message) :
-    ∃ event, view.serviceGrant = some event ∧ graph.actor? event = some message.sender := by
-  cases call : message.payload.call with
-  | commitment event candidate =>
-      simp only [freshServiceEnvelope, call] at permitted
-      have bound := permitted.2.1
-      simp only [PublicView.BindingIncludable] at bound
-      cases node : nodeView graph event with
-      | bind owner payload outputEq codeEq =>
-          simp only [node] at bound
-          have authored : message.sender = owner := bound.2.2.1
-          have actor := congrArg EventCode.actor codeEq
-          rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
-          exact ⟨event, permitted.1, authored ▸ actor⟩
-      | sample payload kernel outputEq codeEq =>
-          simp only [node, and_false] at bound
-      | resolve owner payload binding checks outputEq codeEq =>
-          simp only [node, and_false] at bound
-  | opening event candidate raw =>
-      simp only [freshServiceEnvelope, call] at permitted
-      cases node : nodeView graph event with
-      | bind owner payload outputEq codeEq =>
-          simp only [node, and_false] at permitted
-      | sample payload kernel outputEq codeEq =>
-          simp only [node, and_false] at permitted
-      | resolve owner payload binding checks outputEq codeEq =>
-          simp only [node] at permitted
-          have authored : message.sender = owner := permitted.2.2.2.2.2.1
-          have actor := congrArg EventCode.actor codeEq
-          rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
-          exact ⟨event, permitted.1, authored ▸ actor⟩
-  | withhold event | malformed =>
-      simp only [freshServiceEnvelope, call] at permitted
-
-/-- Public actor mismatch rejects a fresh envelope, including at actorless
-chance events. Already published replay IDs are deliberately excluded here. -/
+/-- A fresh envelope from an idle sender is rejected. Already published replay
+IDs are deliberately excluded here. -/
 theorem permittedServiceEnvelope_off_turn (view : PublicView graph)
     (ledger : List (Message Player (WitnessedPacket graph)))
     (message : Message Player (WitnessedPacket graph))
     (unpublished : message.id ∉ ledger.map Message.id)
-    (offTurn : ∀ event, view.serviceGrant = some event →
-      graph.actor? event ≠ some message.sender) :
+    (idle : view.Idle message.sender) :
     runtime.permittedServiceEnvelope view ledger message = false := by
   apply Bool.eq_false_iff.mpr
   intro permitted
   have fresh := (runtime.permittedServiceEnvelope_unpublished_iff view ledger message
     unpublished).mp permitted |>.2
-  obtain ⟨event, granted, actor⟩ := runtime.freshServiceEnvelope_actor view message fresh
-  exact offTurn event granted actor
+  obtain ⟨event, _, ready, actor⟩ := runtime.freshServiceEnvelope_owned view message fresh
+  exact idle event ready actor
 
 variable [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -81,8 +44,7 @@ theorem off_turn_audit_response_cases (bounds : MessageBounds graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
     (remaining : Nat) (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (serials : execution.network.SerialsBeforeNext)
-    (offTurn : ∀ event, execution.application.serviceGrant = some event →
-      graph.actor? event ≠ some owner)
+    (idle : execution.application.publicView.Idle owner)
     (response : (runtime.reactiveApplication leaks).Action)
     (available : response ∈ (bounds.menu runtime leaks).actions owner (execution.recall owner)
       (execution.observe (runtime.reactiveApplication leaks) owner)) :
@@ -124,7 +86,7 @@ theorem off_turn_audit_response_cases (bounds : MessageBounds graph)
           refine Or.inr ⟨record, app.trafficStep_submit execution remaining owner submission,
             rfl, ?_⟩
           exact runtime.permittedServiceEnvelope_off_turn _ _ _
-            (serials.next_unpublished owner) offTurn
+            (serials.next_unpublished owner) idle
 
 namespace BindingMemory.Frame
 
@@ -142,8 +104,7 @@ theorem off_turn_stopped_response_coupling
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext) (remaining : Nat)
-    (offTurn : ∀ event, original.application.serviceGrant = some event →
-      graph.actor? event ≠ some owner)
+    (idle : original.application.publicView.Idle owner)
     (coverage : ∀ response ∈ ((runtime.reactiveApplication leaks).replayPolicy
       (repaired.recall owner) (repaired.observe (runtime.reactiveApplication leaks) owner)).support,
         response ∈ menu.actions owner (repaired.recall owner)
@@ -203,7 +164,7 @@ theorem off_turn_stopped_response_coupling
   · intro next supported
     obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ supported
     rcases runtime.off_turn_audit_response_cases leaks bounds original owner remaining
-        leftRecall serials offTurn response (available response chosen) with replay | forbidden
+        leftRecall serials idle response (available response chosen) with replay | forbidden
     · have unchanged : memory.repairResponse runtime leaks owner
           (repaired.observe app owner) response = (response, memory.shadow) := by
         rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl

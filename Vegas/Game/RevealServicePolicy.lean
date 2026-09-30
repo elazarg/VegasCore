@@ -30,12 +30,12 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- Reuse the compiled source policy at the granted event. The checked identity
+/-- Reuse the compiled source policy at the player's turn. The checked identity
 only totalizes malformed local inputs; actual player observations carry it. -/
 def sourceChoiceLaw (profile : BehavioralProfile setup.program) (who : Player)
     (view : (application setup leaks).PlayerView) : PMF Bool :=
   if identity : view.application.who = who then
-    match view.application.publicView.serviceGrant with
+    match view.application.publicView.ownTurn? who with
     | none => PMF.pure false
     | some event =>
         if owned : (graph setup).actor? event = some who then
@@ -52,7 +52,7 @@ def sourceChoiceLaw (profile : BehavioralProfile setup.program) (who : Player)
 theorem sourceChoiceLaw_at_reveal (profile : BehavioralProfile setup.program)
     (who : Player) (execution : (application setup leaks).Execution)
     (event : (graph setup).EventId)
-    (granted : execution.application.serviceGrant = some event)
+    (selected : execution.application.publicView.ownTurn? who = some event)
     (owned : (graph setup).actor? event = some who)
     (owner : Player) (payload : L.Ty)
     (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
@@ -70,10 +70,10 @@ theorem sourceChoiceLaw_at_reveal (profile : BehavioralProfile setup.program)
   unfold sourceChoiceLaw
   rw [dite_eq_left (show (execution.observe (application setup leaks) who).application.who = who
     from rfl)]
-  change (match execution.application.serviceGrant with
+  change (match execution.application.publicView.ownTurn? who with
     | none => _
-    | some selected => _) = _
-  simp only [granted]
+    | some chosen => _) = _
+  simp only [selected]
   rw [dite_eq_left owned, node]
   rfl
 

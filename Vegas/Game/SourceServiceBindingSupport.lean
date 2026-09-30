@@ -43,7 +43,6 @@ theorem sourceService_binding_roster_support
     (owned : (graph setup).actor? event = some owner)
     (serial : Nat) (capacity : serial < bounds.candidateCount)
     (visits : List Player) (initial final : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
     (ready : initial.application.config.cut.Ready event)
     (selected : reactiveFreshSlot (initial.observe
       (application setup leaks) owner).application = some serial)
@@ -99,15 +98,18 @@ theorem sourceService_binding_roster_support
         · subst actor
           rcases bounds.ordinary_binding_cases (runtime setup) leaks owner
               (activated.recall owner) (activated.observe app owner) event payload
-              outputEq codeEq node granted owned
-              ((initial.application.publicView_eventReady event).mpr ready) serial selected response
-              (ordinary owner _ _ response chosen) with transport | ⟨value, admitted, _, physical⟩
+              outputEq codeEq node
+              ((soleReady_of_ready setup initial.application ready).ownTurn owned) owned
+              ((initial.application.publicView_eventReady event).mpr ready) serial selected
+              response (ordinary owner _ _ response chosen) with
+                transport | ⟨value, admitted, _, physical⟩
           · exact Or.inl transport
           · refine Or.inr ⟨rfl, value, admitted, physical.trans ?_⟩
             exact (runtime setup).reactiveBinding_normal_of_fresh leaks owner _ _ event payload
               (.success value) serial candidate
-        · exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks actor _ _ event
-            granted (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm)
+        · exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks actor _ _
+            ((soleReady_of_ready setup initial.application ready).ownTurn?_foreign
+              (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm))
               response (ordinary actor _ _ response chosen))
       rcases casesResponse with transport | ⟨acting, value, admitted, physical⟩
       · have shape := app.replayPolicy_cases _ _ response transport
@@ -123,7 +125,8 @@ theorem sourceService_binding_roster_support
           obtain ⟨value, _, physical⟩ :=
             sourceService_final_binding_cases setup leaks bounds rosters
             covered owner (activated.recall owner) (activated.observe app owner)
-              event payload outputEq codeEq node granted owned
+              event payload outputEq codeEq node
+              ((soleReady_of_ready setup initial.application ready).ownTurn owned) owned
               ((initial.application.publicView_eventReady event).mpr ready) unsent last serial
                 selected capacity response (lawful owner _ _ response chosen)
           rw [(runtime setup).reactiveBinding_normal_of_fresh leaks owner _ _ event payload
@@ -157,7 +160,7 @@ theorem sourceService_binding_roster_support
         obtain ⟨before, immediate, value, admitted, beforeApp, beforeLedger, beforeReceipts,
           beforeCounters, beforeSerials, immediateSupport, finalApp, finalLedger, finalReceipts,
           finalCounters, finalPublished⟩ := ih (activated.respond app actor response)
-            (by rw [preserved.1]; exact granted) (by rw [preserved.1]; exact ready)
+            (by rw [preserved.1]; exact ready)
             nextSelected (by rw [preserved.1]; exact candidate)
             (by rw [preserved.2.1]; exact preserved.2.2.2.2.1) nextSerials nextUnsent
             restOpportunity nextEnds tail
@@ -170,7 +173,8 @@ theorem sourceService_binding_roster_support
         obtain ⟨immediate, included, finalApp, finalLedger, finalReceipts, finalCounters,
           finalPublished⟩ :=
           (runtime setup).rawBinding_delayed_support leaks bounds players ordinary
-            network activated owner event payload outputEq codeEq node granted owned ready
+            network activated owner event payload outputEq codeEq node
+              (soleReady_of_ready setup initial.application ready) owned ready
               (published.learn owner sample) (serials.learn owner sample) serial
               (some ⟨payload, value⟩) rest final tail
         exact ⟨activated, immediate, value, admitted, rfl, rfl, rfl, rfl,
