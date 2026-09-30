@@ -57,6 +57,7 @@ theorem event_block_stopped_coupling
         (some ⟨remaining + (rosterBlock setup rosters event).length, none, repaired⟩))
     (before after : List (ServiceInstruction (graph setup)))
     (split : rosterPlan setup rosters = before ++ rosterBlock setup rosters event ++ after)
+    (prefixEq : before = rosterPlanPrefix setup rosters event.val)
     (position : original.environmentRecall.length = before.length) :
     let app := application setup leaks
     let players := Function.update ((bounds.menu (runtime setup) leaks).decodeProfile
@@ -89,79 +90,37 @@ theorem event_block_stopped_coupling
       | none => .sample event :: List.replicate (event.val + 1) .tick ++ [.expire event]
       | some actor => .includeLatest event actor ::
           List.replicate (event.val + 1) .tick ++ [.expire event])
-  have block : rosterBlock setup rosters event = [.grant event] ++ body := by
+  have block : rosterBlock setup rosters event = body := by
     cases owned : (graph setup).actor? event <;>
       simp only [rosterBlock, body, owned, List.append_assoc, List.cons_append, List.nil_append]
   have cursor : repaired.environmentRecall.length = before.length := by
     rw [← frame.service]
     exact position
-  have selected : (rosterPlan setup rosters)[repaired.environmentRecall.length]? =
-      some (.grant event) := by
-    rw [cursor, split, block, List.append_assoc,
-      List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]
-    rfl
-  obtain ⟨initial, _, Γ, config, refs, boundary⟩ := sourceService_grant_boundary setup leaks
+  have planPrefix : (rosterPlan setup rosters).take repaired.environmentRecall.length =
+      rosterPlanPrefix setup rosters event.val := by
+    rw [cursor, split, List.append_assoc, List.take_left, prefixEq]
+  obtain ⟨initial, _, Γ, config, refs, boundary⟩ := sourceService_phase_boundary setup leaks
     bounds values capacity rosters opportunities network
       ⟨remaining + (rosterBlock setup rosters event).length, none, repaired⟩ trace rfl event
-      selected
-  have phase := (roster_grant_prefix setup rosters _ event selected).1
-  let advance (execution : app.Execution) : app.Execution := {
-    execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  have grantEnvironment (execution : app.Execution) :
-      execution.environmentStep app (.application (.grant event)) =
-        PMF.pure (advance execution) := by
-    simp only [ReactiveApplication.Execution.environmentStep, app, application,
-      reactiveApplication, environmentStep, PMF.pure_map]
-    rfl
-  have grantStep (execution : app.Execution) :
-      (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        PMF.pure (advance execution) := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-      ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
-    change ((execution.environmentStep app (.application (.grant event))).bind
-      (app.resume players none)).bind PMF.pure = _
-    rw [grantEnvironment]
-    simp only [PMF.pure_bind, ReactiveApplication.resume]
-  have paired := frame.grant event
-  change BindingMemory.Frame (runtime setup) leaks memory owner
-    (advance original) (advance repaired) at paired
-  have moved (execution : app.Execution) : advance execution ∈
-      (execution.environmentStep app (.application (.grant event))).support := by
-    rw [grantEnvironment]
-    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+      planPrefix
+  have phase : before.length = (rosterPlanPrefix setup rosters event.val).length := by
+    rw [prefixEq]
+  have paired := frame
   have nextTrace :
       (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length scheduler).Trace
-      (some ⟨remaining + body.length, none, advance repaired⟩) := by
-    apply Classical.choice
-    exact menu.trace_environment (initialLaw setup) (rosterPlan setup rosters).length
-      scheduler (remaining + body.length) repaired (advance repaired)
-      (.application (.grant event)) (by
-        have size : remaining + body.length + 1 =
-            remaining + (rosterBlock setup rosters event).length := by
-          simp only [block, List.length_append, List.length_singleton]
-          omega
-        rw [size]
-        exact trace)
-      (by
-        simp only [scheduler, rosterScheduler, selected, interactionInstruction]
-        exact (PMF.mem_support_pure_iff _ _).mpr rfl) (moved repaired)
-  have nextPosition : (advance original).environmentRecall.length =
-      (before ++ [ServiceInstruction.grant event]).length := by
-    simp only [advance, List.length_append, List.length_singleton, position]
-  have nextSplit : rosterPlan setup rosters = (before ++ [.grant event]) ++ body ++ after := by
-    simpa only [block, List.append_assoc] using split
+      (some ⟨remaining + body.length, none, repaired⟩) := by
+    rw [← block]
+    exact trace
+  have nextPosition := position
+  have nextSplit : rosterPlan setup rosters = before ++ body ++ after := by
+    rw [← block]
+    exact split
   have rightRecall := app.history_inputRecall (initialLaw setup) (rosterPlan setup rosters).length
     scheduler (menu.toRawTrace (initialLaw setup) (rosterPlan setup rosters).length
       scheduler nextTrace)
-  have leftNextRecall := app.environment_inputRecall original (advance original)
-    (.application (.grant event)) leftRecall (moved original)
-  have leftSound := ((runtime setup).packetEvidence leaks).sound_environment original
-    (advance original) (.application (.grant event)) sound (moved original)
-  have leftNextBinding : (advance original).application.BindingInvariant :=
-    leftBinding.copy rfl rfl rfl
+  have leftNextRecall := leftRecall
+  have leftSound := sound
+  have leftNextBinding := leftBinding
   have total : body.length = (rosters event).length + ((event.val + 1) + 2) := by
     cases owned : (graph setup).actor? event <;>
       simp only [body, owned, List.length_append, List.length_map, List.length_cons,
@@ -169,15 +128,15 @@ theorem event_block_stopped_coupling
   have phaseTrace :
       (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length scheduler).Trace
       (some ⟨remaining + (rosters event).length + ((event.val + 1) + 2),
-        none, advance repaired⟩) := by
+        none, repaired⟩) := by
     simpa only [total, Nat.add_assoc] using nextTrace
-  have nextStarted : reference.length ≤ ((advance repaired).recall owner).length := started
+  have nextStarted : reference.length ≤ (repaired.recall owner).length := started
   have existsBody : ∃ coupling : PMF
       (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
-        body (advance original) ∧
+        body original ∧
       coupling.map Prod.snd = strategy.runJoint owner players scheduler body.length
-        (advance repaired) memory ∧
+        repaired memory ∧
       ∀ next ∈ coupling.support,
         Nonempty ((menu.protocol (initialLaw setup)
           (rosterPlan setup rosters).length scheduler).Trace
@@ -187,30 +146,22 @@ theorem event_block_stopped_coupling
             record.input.envelope = false) ∨
           next.1.application.publicView.missedBindingBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
-    have repairedReady : (advance repaired).application.config.cut.Ready event := by
-      change repaired.application.config.cut.Ready event
-      exact boundary.ready event rfl
+    have repairedReady : repaired.application.config.cut.Ready event := boundary.ready event rfl
     cases node : nodeView (graph setup) event with
     | sample payload law outputEq codeEq =>
       have owned : (graph setup).actor? event = none :=
         (EventCode.actor_cast outputEq ((graph setup).nodes event)).symm.trans
           (congrArg (fun code : EventCode (graph setup).layout (.publicData payload) =>
             code.actor) codeEq)
-      have ready : (advance original).application.config.cut.Ready event := by
-        have same := cut_eq_of_completionOrder_eq original.application.config
-          repaired.application.config (congrArg
-            (fun view : PublicView (graph setup) => view.observation.completionOrder)
-            frame.publicView)
-        change original.application.config.cut.Ready event
-        rw [same]
-        exact boundary.ready event rfl
+      have ready : original.application.config.cut.Ready event :=
+        ready_of_publicView_eq frame.publicView repairedReady
       obtain ⟨coupling, first, second, related⟩ := sample_block_stopped_coupling setup leaks bounds
         rosters network source target agrees owner policy available reference memory
-        (advance original) (advance repaired) paired onlyBindings nextStarted leftNextRecall
+        original repaired paired onlyBindings nextStarted leftNextRecall
         rightRecall (by rw [paired.network]; exact boundary.serials)
         event payload law outputEq codeEq node
         ready remaining (rosters event) (event.val + 1) phaseTrace
-        (before ++ [.grant event]) after
+        before after
         (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
       refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
       · simpa only [body, owned] using first
@@ -226,12 +177,12 @@ theorem event_block_stopped_coupling
         have deadline : (runtime setup).deadline event = event.val + 1 := rfl
         obtain ⟨coupling, first, second, related⟩ := binding_phase_stopped_coupling setup leaks
           bounds values capacity rosters opportunities network source target agrees owner
-          policy available reference memory (advance original) (advance repaired) paired
+          policy available reference memory original repaired paired
           nextStarted leftNextRecall event payload outputEq codeEq node repairedReady
           (boundary.unsent owner event (Nat.le_refl _)) remaining phaseTrace
-          (before ++ [.grant event]) after
+          before after
           (by simpa only [body, owned, deadline, List.append_assoc] using nextSplit) nextPosition
-          (by simp only [List.length_append, List.length_singleton]; rw [cursor] at phase; omega)
+          phase
         refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
         · simpa only [body, owned, deadline] using first
         · simpa only [body, owned, deadline] using second
@@ -242,10 +193,10 @@ theorem event_block_stopped_coupling
           · exact Or.inr (Or.inr framed)
       · obtain ⟨coupling, first, second, related⟩ := foreign_binding_block_stopped_coupling setup
           leaks bounds values capacity rosters opportunities network source target agrees
-          owner policy available reference memory (advance original) (advance repaired) paired
+          owner policy available reference memory original repaired paired
           onlyBindings nextStarted leftNextRecall event actor same payload outputEq codeEq node
           repairedReady remaining (rosters event) (event.val + 1) phaseTrace
-          (before ++ [.grant event]) after
+          before after
           (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
         refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
         · simpa only [body, owned] using first
@@ -258,11 +209,11 @@ theorem event_block_stopped_coupling
             code.actor) codeEq)
       obtain ⟨coupling, first, second, related⟩ := resolution_block_stopped_coupling setup leaks
         bounds values capacity rosters opportunities network source target agrees owner
-        policy available reference memory (advance original) (advance repaired) paired onlyBindings
+        policy available reference memory original repaired paired onlyBindings
         nextStarted leftNextRecall leftSound leftNextBinding event actor payload binding checks
         outputEq codeEq node repairedReady remaining (rosters event)
         (event.val + 1) phaseTrace
-        (before ++ [.grant event]) after
+        before after
         (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition
       refine ⟨coupling, ?_, ?_, fun next member => ?_⟩
       · simpa only [body, owned] using first
@@ -270,12 +221,9 @@ theorem event_block_stopped_coupling
       · exact ⟨(related next member).1, ((related next member).2).imp_right Or.inr⟩
   obtain ⟨coupling, first, second, related⟩ := existsBody
   refine ⟨coupling, ?_, ?_, related⟩
-  · rw [block, runInteractionPlan_append, grantStep, PMF.pure_bind]
+  · rw [block]
     exact first
-  · rw [block, List.length_append, ReactiveApplication.Implementation.runJoint_add,
-      roster_segment_runJoint setup leaks rosters network strategy owner players before
-        [.grant event] (body ++ after) (by simpa only [block, List.append_assoc] using split)
-        (by simp) repaired memory cursor, grantStep, PMF.pure_map, PMF.pure_bind]
+  · rw [block]
     exact second
 
 end Vegas

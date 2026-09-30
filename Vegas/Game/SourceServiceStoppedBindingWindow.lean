@@ -77,7 +77,7 @@ theorem binding_window_stopped_coupling
     (unsent : (runtime setup).eventRecorded leaks (repaired.recall owner) event = false)
     (visited visits : List Player) (roster : rosters event = visited ++ owner :: visits)
     (slot : original.environmentRecall.length =
-      (rosterPlanPrefix setup rosters event.val).length + 1 + visited.length + 1)
+      (rosterPlanPrefix setup rosters event.val).length + visited.length + 1)
     (before after : List (ServiceInstruction (graph setup)))
     (split : rosterPlan setup rosters = before ++ visits.map ServiceInstruction.player ++
       (.includeLatest event owner :: List.replicate ((runtime setup).deadline event) .tick ++
@@ -353,7 +353,7 @@ theorem binding_window_stopped_coupling
             have newRoster : rosters event = nextVisited ++ owner :: rest := by
               simpa only [nextVisited, visitsEq, List.append_assoc, List.cons_append] using roster
             have newSlot : next.1.environmentRecall.length =
-                (rosterPlanPrefix setup rosters event.val).length + 1 + nextVisited.length + 1 := by
+                (rosterPlanPrefix setup rosters event.val).length + nextVisited.length + 1 := by
               simp only [nextVisited, List.length_append, List.length_cons]
               omega
             have newSplit : rosterPlan setup rosters =

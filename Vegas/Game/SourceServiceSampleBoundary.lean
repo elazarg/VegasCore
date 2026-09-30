@@ -108,24 +108,20 @@ theorem ServiceBoundary.sample_block
       ServiceBoundary setup leaks rosters initial (sampleSuccessor name source value)
         (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) final := by
   let app := application setup leaks
-  obtain ⟨granted, grantBoundary, _grant, _, grantRecall, grantLaw⟩ :=
-    boundary.grant players network event
-  have sole := soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)
+  have sole := soleReady_of_ready setup execution.application (boundary.ready event atRank)
   have phase := reached
   simp only [rosterBlock, chance, List.append_assoc] at phase
   rw [(runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at phase
-  rw [(runtime setup).runInteractionPlan_append] at phase
   obtain ⟨visited, window, phase⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   obtain ⟨sameApp, sameLedger, _, sameCounters, published⟩ := sourceService_sample_window
-    setup leaks bounds rosters players lawful network event chance granted visited sole
-      grantBoundary.published (rosters event) window
+    setup leaks bounds rosters players lawful network event chance execution visited sole
+      boundary.published (rosters event) window
   have windowCheckpoint : SourceCheckpoint setup source refs rank visited.application.config := by
     rw [sameApp]
-    exact grantBoundary.toSourceCheckpoint
+    exact boundary.toSourceCheckpoint
   have ready : visited.application.config.cut.Ready event := by
     rw [sameApp]
-    exact grantBoundary.ready event atRank
+    exact boundary.ready event atRank
   simp only [List.cons_append, List.nil_append, runInteractionPlan] at phase
   obtain ⟨sampled, step, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   rw [(runtime setup).interactionStep_sample,
@@ -183,7 +179,7 @@ theorem ServiceBoundary.sample_block
     dsimp only [completed]
     apply EventGraphRuntime.State.PreparedPrefix.complete_public
     · rw [sameApp]
-      exact grantBoundary.prepared who
+      exact boundary.prepared who
     · rw [outputEq]
       trivial
   · rw [afterApp, sampledApp]
@@ -191,13 +187,13 @@ theorem ServiceBoundary.sample_block
     dsimp only [completed]
     apply EventGraphRuntime.State.CandidatesRepresented.complete
     rw [sameApp]
-    exact grantBoundary.represented
+    exact boundary.represented
   · rw [afterApp, sampledApp]
     change completed.AcceptedRecorded
     dsimp only [completed]
     apply EventGraphRuntime.State.AcceptedRecorded.complete
     · rw [sameApp]
-      exact grantBoundary.acceptedRecorded
+      exact boundary.acceptedRecorded
     · intro owner kind
       rw [outputEq]
       intro impossible
@@ -208,7 +204,7 @@ theorem ServiceBoundary.sample_block
     change ∀ who, visited.network.nextSerial who =
       visited.network.ledger.countP (fun message => message.sender = who)
     rw [sameCounters, sameLedger]
-    exact grantBoundary.accounted
+    exact boundary.accounted
   · intro observer other future
     rw [afterRecall, sampledRecall]
     have ordinary : ∀ who past view response, response ∈ (players who past view).support →
@@ -216,9 +212,8 @@ theorem ServiceBoundary.sample_block
       fun who past view response member => sourceServiceMenu_in_compiled setup leaks bounds
         rosters who past view (lawful who past view response member)
     rw [(runtime setup).compiled_window_other_events leaks bounds players ordinary network event
-      (rosters event) granted visited sole window observer other
-        (by intro same; subst other; omega),
-        grantRecall]
+      (rosters event) execution visited sole window observer other
+        (by intro same; subst other; omega)]
     exact boundary.unsent observer other (by omega)
 
 end Vegas

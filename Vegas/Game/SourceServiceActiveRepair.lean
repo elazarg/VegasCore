@@ -83,7 +83,7 @@ theorem active_history_stopped_coupling
   let visits := (rosters event).drop (slot + 1)
   let events := (List.finRange (graph setup).order.eventCount).drop (event.val + 1)
   let future := events.flatMap (rosterBlock setup rosters)
-  let before := rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+  let before := rosterPlanPrefix setup rosters event.val ++
     visited.map ServiceInstruction.player ++ [.player owner]
   let ending : List (ServiceInstruction (graph setup)) :=
     match (graph setup).actor? event with
@@ -114,6 +114,9 @@ theorem active_history_stopped_coupling
     cases owned : (graph setup).actor? event <;>
       simpa only [before, current, ending, rosterBlock, roster, owned, List.map_append,
         List.map_cons, List.append_assoc, List.cons_append, List.nil_append, deadline] using full
+  have prefixNext : before ++ current = rosterPlanPrefix setup rosters (event.val + 1) := by
+    rw [rosterPlanPrefix_succ]
+    exact List.append_cancel_right (split.symm.trans full)
   have position : execution.environmentRecall.length = before.length := by
     simp only [before, List.length_append, List.length_singleton, List.length_map, visitedLength]
     exact currentPosition
@@ -324,7 +327,8 @@ theorem active_history_stopped_coupling
         available reference next.2.2 next.1 next.2.1 paired nextMemory nextStarted nextRecall
         nextSound
         nextBinding events 0 (by simpa only [Nat.zero_add] using nextTrace) (before ++ current) []
-        (by simpa only [List.append_nil] using split) nextPosition
+        (by simpa only [List.append_nil] using split) (event.val + 1) rfl prefixNext
+        nextPosition
       exact ⟨coupling, first, second, fun final supported => (related final supported).2.2⟩
   let tail := fun next member => (existsTail next member).choose
   let coupling := firstBlock.bindOnSupport tail

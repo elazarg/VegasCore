@@ -4,7 +4,7 @@ import Vegas.Game.SourceServiceStoppedBindingWindow
 import Vegas.Game.SourceServiceResolutionBlock
 import Vegas.Game.SourceServiceSampleRepair
 import Vegas.Game.SourceServiceForeignBindingRepair
-import Vegas.Game.SourceServiceGrantSupport
+import Vegas.Game.SourceServicePhaseStart
 
 /-! # Composing the actual service blocks in private continuation repair
 
@@ -109,7 +109,7 @@ theorem binding_phase_stopped_coupling
       (.includeLatest event owner :: List.replicate ((runtime setup).deadline event) .tick ++
         [.expire event]) ++ after)
     (position : original.environmentRecall.length = before.length)
-    (phase : before.length = (rosterPlanPrefix setup rosters event.val).length + 1) :
+    (phase : before.length = (rosterPlanPrefix setup rosters event.val).length) :
     let app := application setup leaks
     let players := Function.update ((bounds.menu (runtime setup) leaks).decodeProfile
       (initialLaw setup) (rosterPlan setup rosters).length

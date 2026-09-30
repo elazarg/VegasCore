@@ -99,7 +99,7 @@ theorem roster_owner_history_local_value
   change execution = prior.sampledActivation app who sample at activated
   change execution.application = boundary.application at unchanged
   change execution.environmentRecall.length =
-    (rosterPlanPrefix setup rosters actual.val).length + 1 + slot + 1 at position
+    (rosterPlanPrefix setup rosters actual.val).length + slot + 1 at position
   have sameEvent : actual = event := by
     have eventReady := (PublicView.ownTurn?_spec _ who event servingView).1
     rw [← viewEq] at eventReady
@@ -174,7 +174,7 @@ theorem roster_owner_history_local_value
     dsimp only [residual]
     rw [pastCount, ← viewEq,
       sourceChoiceLaw_application_eq setup leaks decoded who execution boundary unchanged]
-  let before := rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+  let before := rosterPlanPrefix setup rosters event.val ++
     ((rosters event).take (slot + 1)).map ServiceInstruction.player
   let rest := (((rosters event).drop (slot + 1)).map ServiceInstruction.player ++
     (.includeLatest event who :: List.replicate (event.val + 1) .tick ++ [.expire event])) ++
@@ -186,7 +186,7 @@ theorem roster_owner_history_local_value
     (roster_phase_suffix setup rosters event who ownedEvent (slot + 1))
     (by
       dsimp only [before]
-      simp only [List.length_append, List.length_cons, List.length_nil, List.length_map,
+      simp only [List.length_append, List.length_map,
         List.length_take]
       have inside : slot < (rosters event).length := (List.getElem?_eq_some_iff.mp selected).1
       omega) observed law

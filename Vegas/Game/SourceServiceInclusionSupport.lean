@@ -28,54 +28,50 @@ private theorem rosterBlock_includeLatest
     (block event : (graph setup).EventId) (owner : Player) (index : Nat)
     (found : (rosterBlock setup rosters block)[index]? = some (.includeLatest event owner)) :
     block = event ∧ (graph setup).actor? event = some owner ∧
-      index = 1 + (rosters event).length := by
-  change ([.grant block] ++ (rosters block).map ServiceInstruction.player ++
+      index = (rosters event).length := by
+  change ((rosters block).map ServiceInstruction.player ++
     (match (graph setup).actor? block with
     | none => [.sample block]
     | some actor => [.includeLatest block actor]) ++
       List.replicate (block.val + 1) .tick ++ [.expire block])[index]? = _ at found
-  simp only [List.append_assoc, List.cons_append, List.nil_append] at found
-  cases index with
-  | zero => cases found
-  | succ index =>
-      simp only [List.getElem?_cons_succ] at found
-      by_cases inside : index < (rosters block).length
-      · rw [List.getElem?_append_left (by simpa only [List.length_map] using inside),
-          List.getElem?_map] at found
-        obtain ⟨_, _, impossible⟩ := Option.map_eq_some_iff.mp found
-        cases impossible
-      · rw [List.getElem?_append_right (by simp only [List.length_map]; omega)] at found
-        simp only [List.length_map] at found
-        cases owned : (graph setup).actor? block with
-        | none =>
+  simp only [List.append_assoc] at found
+  by_cases inside : index < (rosters block).length
+  · rw [List.getElem?_append_left (by simpa only [List.length_map] using inside),
+      List.getElem?_map] at found
+    obtain ⟨_, _, impossible⟩ := Option.map_eq_some_iff.mp found
+    cases impossible
+  · rw [List.getElem?_append_right (by simp only [List.length_map]; omega)] at found
+    simp only [List.length_map] at found
+    cases owned : (graph setup).actor? block with
+    | none =>
+        have member := List.mem_of_getElem? found
+        simp only [owned, List.mem_append, List.mem_singleton, List.mem_replicate] at member
+        rcases member with impossible | impossible | impossible <;> simp_all
+    | some actor =>
+        simp only [owned, List.singleton_append] at found
+        cases offset : index - (rosters block).length with
+        | zero =>
+            rw [offset, List.getElem?_cons_zero] at found
+            obtain ⟨rfl, rfl⟩ := ServiceInstruction.includeLatest.inj (Option.some.inj found)
+            exact ⟨rfl, owned, by omega⟩
+        | succ rest =>
+            rw [offset, List.getElem?_cons_succ] at found
             have member := List.mem_of_getElem? found
-            simp only [owned, List.mem_append, List.mem_singleton, List.mem_replicate] at member
-            rcases member with impossible | impossible | impossible <;> simp_all
-        | some actor =>
-            simp only [owned, List.singleton_append] at found
-            cases offset : index - (rosters block).length with
-            | zero =>
-                rw [offset, List.getElem?_cons_zero] at found
-                obtain ⟨rfl, rfl⟩ := ServiceInstruction.includeLatest.inj (Option.some.inj found)
-                exact ⟨rfl, owned, by omega⟩
-            | succ rest =>
-                rw [offset, List.getElem?_cons_succ] at found
-                have member := List.mem_of_getElem? found
-                simp only [List.mem_append, List.mem_replicate, List.mem_singleton] at member
-                rcases member with ⟨_, impossible⟩ | impossible <;> cases impossible
+            simp only [List.mem_append, List.mem_replicate, List.mem_singleton] at member
+            rcases member with ⟨_, impossible⟩ | impossible <;> cases impossible
 
 /-- The actual protected-inclusion command uniquely determines the preceding
-complete source phases, grant and full activation roster. -/
+complete source phases and the full activation roster. -/
 theorem roster_inclusion_prefix
     (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player)
     (index : Nat) (event : (graph setup).EventId) (owner : Player)
     (found : (rosterPlan setup rosters)[index]? = some (.includeLatest event owner)) :
     (graph setup).actor? event = some owner ∧
-      index = (rosterPlanPrefix setup rosters event.val).length + 1 + (rosters event).length ∧
+      index = (rosterPlanPrefix setup rosters event.val).length + (rosters event).length ∧
       (rosterPlan setup rosters).take index =
         rosterPlanPrefix setup rosters event.val ++
-          [.grant event] ++ (rosters event).map ServiceInstruction.player := by
+          (rosters event).map ServiceInstruction.player := by
   obtain ⟨rank, block, offset, selected, located, position⟩ := flatMap_position
     (List.finRange (graph setup).order.eventCount) (rosterBlock setup rosters) index
       (.includeLatest event owner) found
@@ -85,24 +81,20 @@ theorem roster_inclusion_prefix
   have bound := (List.getElem?_eq_some_iff.mp selected).1
   rw [List.getElem?_eq_getElem bound, List.getElem_finRange] at selected
   have rankEq : rank = event.val := congrArg Fin.val (Option.some.inj selected)
-  have indexEq : index = (rosterPlanPrefix setup rosters event.val).length + 1 +
+  have indexEq : index = (rosterPlanPrefix setup rosters event.val).length +
       (rosters event).length := by
     change index = (rosterPlanPrefix setup rosters rank).length + offset at position
     rw [rankEq, offsetEq] at position
-    omega
+    exact position
   refine ⟨owned, indexEq, ?_⟩
   obtain ⟨after, split⟩ := rosterPlan_split setup rosters event
   rw [indexEq, split, List.append_assoc, List.take_append,
     List.take_of_length_le (by omega), show
-      (rosterPlanPrefix setup rosters event.val).length + 1 + (rosters event).length -
-        (rosterPlanPrefix setup rosters event.val).length = (rosters event).length + 1 by omega]
+      (rosterPlanPrefix setup rosters event.val).length + (rosters event).length -
+        (rosterPlanPrefix setup rosters event.val).length = (rosters event).length by omega]
   rw [rosterBlock_of_owner setup rosters event owner owned]
-  simp only [List.append_assoc, List.singleton_append]
-  rw [List.take_append_of_le_length (by
-      simp only [List.length_cons, List.length_append, List.length_map,
-        List.length_replicate, List.length_nil]; omega), List.take_succ_cons,
-    List.take_append_of_le_length (by simp only [List.length_map]; exact Nat.le_refl _),
-    List.take_of_length_le (by simp only [List.length_map]; exact Nat.le_refl _)]
+  simp only [List.append_assoc]
+  exact congrArg _ (List.take_left' (List.length_map _))
 
 private theorem environment_openable_origin
     (setup : Setup (Player := Player) (L := L))
@@ -219,14 +211,14 @@ theorem sourceService_inclusion_boundary
           (rosterPlanPrefix setup rosters event.val)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
         (fun before => (runtime setup).runInteractionPlan leaks menu.uniformResponses network
-          ([.grant event] ++ (rosters event).map ServiceInstruction.player) before)).support := by
+          ((rosters event).map ServiceInstruction.player) before)).support := by
     have equal :
         ((initialLaw setup).bind fun state =>
           (runtime setup).runInteractionPlan leaks menu.uniformResponses network
             (rosterPlanPrefix setup rosters event.val)
             (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
           (fun before => (runtime setup).runInteractionPlan leaks menu.uniformResponses network
-            ([.grant event] ++ (rosters event).map ServiceInstruction.player) before) =
+            ((rosters event).map ServiceInstruction.player) before) =
         (initialLaw setup).bind fun state =>
           (runtime setup).runInteractionPlan leaks menu.uniformResponses network
             ((rosterPlan setup rosters).take control.execution.environmentRecall.length)
@@ -234,14 +226,14 @@ theorem sourceService_inclusion_boundary
       rw [PMF.bind_bind]
       apply bind_congr_on_support _
       intro state _
-      rw [planPrefix, List.append_assoc]
+      rw [planPrefix]
       exact ((runtime setup).runInteractionPlan_append leaks menu.uniformResponses network
         (rosterPlanPrefix setup rosters event.val)
-        ([.grant event] ++ (rosters event).map ServiceInstruction.player)
+        ((rosters event).map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).symm
     rw [equal]
     exact reached
-  obtain ⟨prior, before, afterGrant⟩ :=
+  obtain ⟨prior, before, reachedWindow⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ factored)
   obtain ⟨initial, initialSupport, _, _, _, Γ, names, remaining, remainingProfile, source,
       refs, embedding, refsBefore, _, _, _, _, _, _, _, _, checkpoint⟩ :=
@@ -250,37 +242,23 @@ theorem sourceService_inclusion_boundary
       (fun who past view response member =>
         (menu.uniformResponses_support who past view response).mp member)
       network (failureProfile setup.program) event.val event.isLt.le prior before
-  obtain ⟨boundary, bounded, granted, _, _, grantLaw⟩ :=
-    checkpoint.grant menu.uniformResponses network event
   have beforeTraffic := initialized_sourceService_prefix_conformance bounds values capacity
     opportunities menu.uniformResponses lawful network event.val event.isLt.le prior before
-  have grantTraffic := (runtime setup).executionTraffic_passive_step leaks menu.uniformResponses
-    network (.grant event) (by simp) (by simp) prior boundary
-    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  have boundaryTraffic : ∀ record ∈ (application setup leaks).executionTraffic boundary,
-      (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
-    rw [grantTraffic]
-    exact beforeTraffic
-  change control.execution ∈ (((runtime setup).interactionStep leaks menu.uniformResponses network
-    (.grant event) prior).bind fun middle =>
-      (runtime setup).runInteractionPlan leaks menu.uniformResponses network
-        ((rosters event).map ServiceInstruction.player) middle).support at afterGrant
-  rw [grantLaw, PMF.pure_bind] at afterGrant
+  have boundaryTraffic := beforeTraffic
   obtain ⟨config, publicEq⟩ := (runtime setup).player_window_application leaks menu.uniformResponses
-    network (rosters event) boundary control.execution afterGrant
-  obtain ⟨validState, validBinding, recalled, serialRecall, serials⟩ := bounded.run_core
+    network (rosters event) prior control.execution reachedWindow
+  obtain ⟨validState, validBinding, recalled, serialRecall, serials⟩ := checkpoint.run_core
     menu.uniformResponses network ((rosters event).map ServiceInstruction.player)
-      control.execution afterGrant
-  refine ⟨owned, initial, initialSupport, Γ, source, refs, boundary, bounded,
-    afterGrant, config, publicEq, config.symm ▸ bounded.toSourceCheckpoint,
+      control.execution reachedWindow
+  refine ⟨owned, initial, initialSupport, Γ, source, refs, prior, checkpoint,
+    reachedWindow, config, publicEq, config.symm ▸ checkpoint.toSourceCheckpoint,
     ?_, ?_, validState, validBinding, recalled, serialRecall, serials, ?_⟩
   · rw [config]
-    exact bounded.ready event rfl
-  · have timely := bounded.timely event rfl (by rw [owned]; rfl)
-    have clock : control.execution.application.clock = boundary.application.clock :=
+    exact checkpoint.ready event rfl
+  · have timely := checkpoint.timely event rfl (by rw [owned]; rfl)
+    have clock : control.execution.application.clock = prior.application.clock :=
       congrArg PublicView.clock publicEq
-    have activated : control.execution.application.activatedAt = boundary.application.activatedAt :=
+    have activated : control.execution.application.activatedAt = prior.application.activatedAt :=
       congrArg PublicView.activatedAt publicEq
     unfold EventGraphRuntime.State.WithinDeadline at timely ⊢
     rw [activated, clock]
@@ -297,9 +275,9 @@ theorem sourceService_inclusion_boundary
           have actual := congrArg EventGraph.EventCode.actor codeEq
           rw [EventGraph.EventCode.actor_cast outputEq ((graph setup).nodes event)] at actual
           exact actual
-        exact (bounded.binding_prefix_conformance bounds menu.uniformResponses lawful network
+        exact (checkpoint.binding_prefix_conformance bounds menu.uniformResponses lawful network
           event rfl actor payload outputEq codeEq node ownership boundaryTraffic
-          (rosters event) control.execution afterGrant).1
+          (rosters event) control.execution reachedWindow).1
     | resolve actor payload binding checks outputEq codeEq =>
         have ownership : (graph setup).actor? event = some actor := by
           have actual := congrArg EventGraph.EventCode.actor codeEq
@@ -310,14 +288,14 @@ theorem sourceService_inclusion_boundary
           (fun who past view response supported =>
             sourceServiceMenu_in_compiled setup leaks bounds rosters who past view
               (lawful who past view response supported)) network (rosters event)
-          actor event payload binding checks outputEq codeEq node boundary control.execution
-          bounded.binding bounded.recall
-          (soleReady_of_ready setup boundary.application (bounded.ready event rfl))
-          (bounded.ready event rfl)
-          (bounded.timely event rfl (by rw [ownership]; rfl))
-          (fun _ => bounded.accounted actor)
-          ((runtime setup).service_published_conformance leaks boundary bounded.published)
-          boundaryTraffic afterGrant).1
+          actor event payload binding checks outputEq codeEq node prior control.execution
+          checkpoint.binding checkpoint.recall
+          (soleReady_of_ready setup prior.application (checkpoint.ready event rfl))
+          (checkpoint.ready event rfl)
+          (checkpoint.timely event rfl (by rw [ownership]; rfl))
+          (fun _ => checkpoint.accounted actor)
+          ((runtime setup).service_published_conformance leaks prior checkpoint.published)
+          boundaryTraffic reachedWindow).1
 
 /-- Before every actual protected binding inclusion, the current canonical
 candidate already contains an admitted typed value. This includes arbitrary

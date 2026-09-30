@@ -126,11 +126,11 @@ theorem roster_owner_site
           simpa only [activated, ReactiveApplication.Execution.sampledActivation] using recallEq
         rw [priorRecall] at counted
         omega
-      let before := rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      let before := rosterPlanPrefix setup rosters event.val ++
         ((rosters event).take slot).map ServiceInstruction.player
       have beforeLength : before.length =
-          (rosterPlanPrefix setup rosters event.val).length + 1 + slot := by
-        simp only [before, List.length_append, List.length_singleton, List.length_map,
+          (rosterPlanPrefix setup rosters event.val).length + slot := by
+        simp only [before, List.length_append, List.length_map,
           List.length_take_of_le (List.getElem?_eq_some_iff.mp selected).1.le]
       have suffix := roster_phase_suffix setup rosters event who owned slot
       have prefixLaw : (rosterPlan setup rosters).take before.length = before := by

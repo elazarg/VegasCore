@@ -59,8 +59,9 @@ The service of `SourceServiceSpec` is a fixed calendar:
 
 - `SourceServiceSpec.scheduler` is `rosterScheduler`, which plays `rosterPlan`
   (`Vegas/Game/ServiceRoster.lean`). The plan visits every event in numeric
-  order. Each event gets a fixed block: grant, the roster activations,
-  include-latest or sample, `event.val + 1` clock ticks, and expiry.
+  order. Each event gets a fixed block: the roster activations,
+  include-latest or sample, `event.val + 1` clock ticks, and expiry. The block
+  issues no grant.
 - The next instruction is selected by the length of the history. Only
   delivery, through the network policy, is randomized.
 - The graph is `EventGraph.sequentialize` of the compiled graph
@@ -101,7 +102,7 @@ party that must be live, and possibly one that must not be strategic.
 | `handle`: readiness, deadline, owner and handle checks | Contract code | Contract |
 | `State.activatedAt`, `deadline` (`Vegas/Pending/EventApplication.lean`) | Contract state and parameters | Contract |
 | `.expire`, `.executeSample` | Anyone-can-call contract functions, applied lazily | Contract (effect), service (caller) |
-| `.grant`, `State.serviceGrant`, the order policy | Not enforced by `handle`: a public cursor that the fixed calendar still issues. Prescribed clients, response menus and the audit no longer read it: clients act at `PublicView.ownTurn?`, the least ready event the player owns (`no_turn_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`), and the audit's conformance check requires readiness and ownership (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
+| `.grant`, `State.serviceGrant`, the order policy | Not enforced by `handle`: a public cursor. The fixed calendar no longer issues it. Prescribed clients, response menus and the audit no longer read it: clients act at `PublicView.ownTurn?`, the least ready event the player owns (`no_turn_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`), and the audit's conformance check requires readiness and ownership (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
 | Disclosure reports feeding the audit | The watcher | Service |
 
 The grant is public and computed from public data, so it is not a private
@@ -110,10 +111,11 @@ depended on: prescribed owners transmitted only when granted and the audit
 classified a fresh packet as conforming only for the granted event. Since step
 3 below, both use readiness instead, so a prescribed owner acts exactly when a
 deviator could, and the calendar proofs identify the event a decision belongs
-to by readiness as well. The grant survives only as a field of the public view,
-so view equality still compares it, and in the event-service stack
-(`Vegas/Pending/EventBindingPolicyService.lean`); step 4 removes the field and
-these uses.
+to by readiness as well. The calendar no longer issues grants at all, so its
+executions keep the empty grant throughout. The field and the command survive
+for the watcher calendar and the event-service stack
+(`Vegas/Pending/EventBindingPolicyService.lean`); removing them is the rest of
+step 4.
 
 ### Modeling priorities
 
@@ -451,7 +453,10 @@ design evidence, not proofs.
    and `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved
    against them under the fixed calendar. The exogenous builder is not yet
    modeled.
-4. **Phase from public history and order-invariant continuations.**
+4. **Phase from public history and order-invariant continuations.** Started:
+   the roster calendar issues no grant, and a phase start is identified by its
+   plan position (`sourceService_phase_boundary`). The watcher calendar, the
+   event-service stack and the grant field itself remain.
 5. **The general theorem**, with the fixed calendar recovered as an instance.
 6. **Joint transmission-and-ordering deviations**, a separate theorem beyond
    the target, if players that can buy the order are to be covered.

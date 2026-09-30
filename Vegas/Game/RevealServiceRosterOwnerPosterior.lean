@@ -87,7 +87,7 @@ theorem roster_owner_information_law
         (setup.decodeBehavioralProfile admission source.strategy)
       let executions := (initialLaw setup).bind fun state =>
         (runtime setup).runInteractionPlan leaks players network
-          (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+          (rosterPlanPrefix setup rosters event.val ++
             visits.map ServiceInstruction.player)
           (ReactiveApplication.Execution.initial (application setup leaks) state)
       (executions.bind fun current =>
@@ -124,79 +124,24 @@ theorem roster_owner_information_law
     exact (runtime setup).runInteractionPlan_inputRecall leaks players network
       (rosterPlanPrefix setup rosters event.val) (ReactiveApplication.Execution.initial app initial)
         execution (app.initial_inputRecall initial) reached
-  obtain ⟨previousGrant, fixedGrant⟩ := roster_prefix_serviceGrant setup leaks rosters players
-    network event.val event.isLt.le
   have previous (execution : app.Execution) (supported : execution ∈ prior.support) :
-      execution.application.serviceGrant = previousGrant := by
+      execution.application.serviceGrant = none := by
     obtain ⟨initial, initialSupport, reached⟩ :=
       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-    apply fixedGrant (ReactiveApplication.Execution.initial app initial) execution _ reached
+    rw [roster_prefix_serviceGrant setup leaks rosters players network event.val
+      (ReactiveApplication.Execution.initial app initial) execution reached]
     obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ initialSupport
     rfl
-  obtain ⟨noise, prefixFactor⟩ := roster_compiled_prefix_noise setup leaks rosters timing network
+  obtain ⟨noise, factor⟩ := roster_compiled_prefix_noise setup leaks rosters timing network
     reveals openable decoded owner event.val event.isLt.le
-  obtain ⟨grantedNoise, grantFactor⟩ := roster_prefix_grant_observation_kernel setup leaks prior
-    event.val (fun execution supported => by
+  obtain ⟨channel, law⟩ := roster_owner_information_kernel setup leaks rosters timing decoded
+    event owner owned prior (fun execution supported => by
       obtain ⟨initial, _, state, related, readout⟩ := checkpoint execution supported
       exact ⟨initial, state, related, readout⟩)
-    event owner players network previousGrant previous noise prefixFactor
-  let granted : app.Execution → app.Execution := fun execution =>
-    { execution with
-      application := { execution.application with serviceGrant := some event }
-      environmentRecall := execution.environmentRecall ++
-        [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  have grantLaw (execution : app.Execution) :
-      (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        PMF.pure (granted execution) := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-      ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, PMF.pure_map,
-      ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-    rfl
-  let after := prior.map granted
-  have grantedCheckpoint (execution : app.Execution) (supported : execution ∈ after.support) :
-      ∃ initial ∈ setup.initialLaw.support, ∃ state,
-        PublicPrefixCheckpoint setup leaks initial setup.program
-          (ContextRefs.initial setup.context (outputLayout setup.program))
-          (Revelations.initial setup.context) (outputRef setup.program)
-          0 event.val state execution ∧
-        sourcePrefix? setup event.val execution.application.config = some state := by
-    obtain ⟨before, beforeSupport, rfl⟩ := PMF.support_map .. ▸ supported
-    obtain ⟨initial, initialSupport, state, related, readout⟩ := checkpoint before beforeSupport
-    obtain ⟨actual, actualCheckpoint, _, _, _, actualLaw⟩ := related.grant players network event
-    have same : granted before = actual := by
-      apply (PMF.mem_support_pure_iff _ _).mp
-      rw [← actualLaw, grantLaw]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl
-    exact ⟨initial, initialSupport, state, same ▸ actualCheckpoint, readout⟩
-  have afterSource : (after.map fun execution =>
-      sourcePrefix? setup event.val execution.application.config) =
-        prior.map (fun execution => sourcePrefix? setup event.val execution.application.config) :=
-    by rw [PMF.map_comp]; rfl
-  have factor : after.map (fun execution =>
-      (sourcePrefix? setup event.val execution.application.config,
-        (app.messageView execution, execution.recall owner))) =
-      (after.map fun execution => sourcePrefix? setup event.val execution.application.config).bind
-        fun state => (grantedNoise (setup.protocolObserve owner state)).map
-          fun extra => (state, extra) := by
-    rw [afterSource]
-    have grants : (runtime setup).runInteractionPlan leaks players network [.grant event] =
-        fun execution => PMF.pure (granted execution) := funext grantLaw
-    have afterEq : prior.bind
-        ((runtime setup).runInteractionPlan leaks players network [.grant event]) = after := by
-      rw [grants]
-      exact PMF.bind_pure_comp _ _
-    simpa only [afterEq] using grantFactor
-  obtain ⟨channel, law⟩ := roster_owner_information_kernel setup leaks rosters timing decoded
-    event owner owned after (fun execution supported => by
-      obtain ⟨initial, _, state, related, readout⟩ := grantedCheckpoint execution supported
-      exact ⟨initial, state, related, readout⟩)
-    (fun execution supported => by
-      obtain ⟨before, _, rfl⟩ := PMF.support_map .. ▸ supported
-      rfl)
+    none previous
     (fun execution supported => by
       obtain ⟨initial, initialSupport, state, related, _⟩ :=
-        grantedCheckpoint execution supported
+        checkpoint execution supported
       have current : execution.application.config.cut.Ready event :=
         related.ready event (Nat.zero_add _).symm
       have data := owner_choices_at_prefix setup leaks bounds decoded owner initial initialSupport
@@ -207,26 +152,15 @@ theorem roster_owner_information_law
         event.val event.isLt state execution related event (by omega) owned current
       obtain ⟨candidate, raw, opening, author, valid, _⟩ := data.2.2
       exact ⟨candidate, raw, opening, author, valid⟩)
-    (fun execution supported => by
-      obtain ⟨before, member, rfl⟩ := PMF.support_map .. ▸ supported
-      exact (counts before member).le)
-    (fun execution supported => by
-      obtain ⟨before, member, rfl⟩ := PMF.support_map .. ▸ supported
-      exact app.environment_inputRecall before (granted before) (.application (.grant event))
-        (recalls before member) (by
-          simp only [ReactiveApplication.Execution.environmentStep, app, application,
-            reactiveApplication, environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _]
-          rfl)) network visits grantedNoise factor
+    (fun execution supported => (counts execution supported).le) recalls network visits noise
+    factor
   refine ⟨channel, ?_⟩
   have sourceLaw := roster_compiled_prefix_law setup leaks rosters timing network reveals openable
     admission source.strategy event.val event.isLt.le
-  rw [afterSource, sourceLaw] at law
+  rw [sourceLaw] at law
   dsimp only
   refine Eq.trans ?_ law
-  have expandedGrant := grantLaw
-  dsimp only [players, decoded] at expandedGrant
-  simp only [runInteractionPlan_append, expandedGrant, PMF.pure_bind, PMF.bind_bind,
-    PMF.map_bind, after, PMF.bind_map, prior]
+  simp only [runInteractionPlan_append, PMF.bind_bind, PMF.map_bind, prior]
   apply bind_congr_on_support _
   intro initial _
   apply bind_congr_on_support _
@@ -234,7 +168,7 @@ theorem roster_owner_information_law
   apply bind_congr_on_support _
   intro current reached
   have unchanged := rosterPolicy_run_application setup leaks rosters timing decoded network
-    visits (granted boundary) current reached
+    visits boundary current reached
   apply map_congr_on_support _
   intro final activated
   obtain ⟨_, sampleSupport, rfl⟩ := PMF.support_map .. ▸ activated
@@ -262,18 +196,18 @@ theorem roster_owner_supported_application [Finite Player]
       (setup.decodeBehavioralProfile admission source.strategy)
     let executions := (initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)
     final ∈ (executions.bind fun current =>
       current.environmentStep (application setup leaks) (.activate owner)).support →
-    ∃ initial state granted,
+    ∃ initial state boundary,
       PublicPrefixCheckpoint setup leaks initial setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) (outputRef setup.program)
-        0 event.val state granted ∧
+        0 event.val state boundary ∧
       sourcePrefix? setup event.val final.application.config = some state ∧
-      final.application = granted.application := by
+      final.application = boundary.application := by
   intro players executions supported
   simp only [executions, runInteractionPlan_append, PMF.bind_bind] at supported
   obtain ⟨initial, initialSupport, moved⟩ :=
@@ -289,20 +223,18 @@ theorem roster_owner_supported_application [Finite Player]
   obtain ⟨input, _, state, related, _⟩ := roster_compiled_prefix_checkpoint setup leaks bounds
     rosters network reveals openable admission source mixed timing timingFull
     event.val event.isLt.le boundary boundaryPresent
-  obtain ⟨granted, grantedRelated, _, _, _, grantLaw⟩ := related.grant players network event
-  rw [grantLaw, PMF.pure_bind] at moved
   obtain ⟨current, currentSupport, observed⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
   have unchanged := rosterPolicy_run_application setup leaks rosters timing
-    (setup.decodeBehavioralProfile admission source.strategy) network visits granted current
+    (setup.decodeBehavioralProfile admission source.strategy) network visits boundary current
       currentSupport
-  have finalApplication : final.application = granted.application := by
+  have finalApplication : final.application = boundary.application := by
     obtain ⟨_, sampleSupport, rfl⟩ := PMF.support_map .. ▸ observed
     obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ sampleSupport
     exact unchanged
-  refine ⟨input, state, granted, grantedRelated, ?_, finalApplication⟩
+  refine ⟨input, state, boundary, related, ?_, finalApplication⟩
   rw [finalApplication]
-  exact PublicPrefixCheckpoint.decode setup.program _ _ _ 0 event.val state granted grantedRelated
+  exact PublicPrefixCheckpoint.decode setup.program _ _ _ 0 event.val state boundary related
 
 omit [Fintype Player] in
 theorem roster_owner_information_projects [Finite Player]
@@ -323,7 +255,7 @@ theorem roster_owner_information_projects [Finite Player]
       (setup.decodeBehavioralProfile admission source.strategy)
     let executions := ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun current => current.environmentStep (application setup leaks) (.activate owner)
@@ -371,7 +303,7 @@ theorem roster_owner_state_posterior
       (setup.decodeBehavioralProfile admission source.strategy)
     let executions := ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun current => current.environmentStep (application setup leaks) (.activate owner)

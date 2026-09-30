@@ -151,7 +151,7 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
     have drop := List.drop_eq_getElem_cons (List.getElem?_eq_some_iff.mp selected).1
     rw [(List.getElem?_eq_some_iff.mp selected).2] at drop
     simpa only [visited, tail, drop] using ((rosters event).take_append_drop slot).symm
-  let before := rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+  let before := rosterPlanPrefix setup rosters event.val ++
     ((rosters event).take (slot + 1)).map ServiceInstruction.player
   let rest := tail.map ServiceInstruction.player ++
     (.includeLatest event owner :: List.replicate (event.val + 1) .tick ++ [.expire event]) ++
@@ -160,7 +160,7 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
   have splitPlan : rosterPlan setup rosters = before ++ rest :=
     roster_phase_suffix setup rosters event owner ownedEvent (slot + 1)
   have beforePosition : execution.environmentRecall.length = before.length := by
-    simp only [before, List.length_append, List.length_singleton, List.length_map,
+    simp only [before, List.length_append, List.length_map,
       List.length_take_of_le (Nat.succ_le_of_lt (List.getElem?_eq_some_iff.mp selected).1)]
     omega
   have choiceAllowed (choice : model.Choice who (model.infoOf who history.trace)) :

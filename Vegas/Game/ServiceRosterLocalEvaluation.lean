@@ -146,7 +146,7 @@ theorem roster_phase_suffix
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId)
     (owner : Player) (owned : (graph setup).actor? event = some owner) (visits : Nat) :
     rosterPlan setup rosters =
-      (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      (rosterPlanPrefix setup rosters event.val ++
         ((rosters event).take visits).map ServiceInstruction.player) ++
       (((rosters event).drop visits).map ServiceInstruction.player ++
         (.includeLatest event owner :: List.replicate (event.val + 1) .tick ++ [.expire event]) ++

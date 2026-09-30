@@ -76,21 +76,21 @@ theorem sourceService_decision_boundary
                 (HAdd.hAdd event.val more) store history =
               (decodeSourcePrefix? remaining refs source.registry source.revelations
                 embedding.ref more store history).map lift) ∧
-        ∃ granted prior sample,
-          ServiceBoundary setup leaks rosters initial source refs event.val granted ∧
+        ∃ boundary prior sample,
+          ServiceBoundary setup leaks rosters initial source refs event.val boundary ∧
           control.execution.application.publicView.SoleReady event ∧
           prior ∈ ((runtime setup).runInteractionPlan leaks
             (sourceServiceMenu setup leaks bounds rosters).uniformResponses network
-            (((rosters event).take slot).map ServiceInstruction.player) granted).support ∧
+            (((rosters event).take slot).map ServiceInstruction.player) boundary).support ∧
           control.execution ∈
             (prior.environmentStep (application setup leaks) (.activate who)).support ∧
           control.execution = prior.sampledActivation (application setup leaks) who sample ∧
-          control.execution.application.config = granted.application.config ∧
-          control.execution.application.publicView = granted.application.publicView ∧
+          control.execution.application.config = boundary.application.config ∧
+          control.execution.application.publicView = boundary.application.publicView ∧
           SourceCheckpoint setup source refs event.val control.execution.application.config ∧
           control.execution.environmentRecall.length =
-            (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 ∧
-          (runtime setup).ResolutionEvidenceOrigins leaks granted := by
+            (rosterPlanPrefix setup rosters event.val).length + slot + 1 ∧
+          (runtime setup).ResolutionEvidenceOrigins leaks boundary := by
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨event, slot, boundary, prior, selected, position, boundarySupport, phase, activated⟩ :=
     roster_decision_boundary setup leaks rosters network menu who control trace active
@@ -102,54 +102,37 @@ theorem sourceService_decision_boundary
       (fun owner past view response supported =>
         (menu.uniformResponses_support owner past view response).mp supported)
       network profile event.val event.isLt.le boundary boundarySupport
-  obtain ⟨granted, grantedBoundary, grant, _, _, grantLaw⟩ :=
-    checkpoint.grant menu.uniformResponses network event
-  change prior ∈ (((runtime setup).interactionStep leaks menu.uniformResponses network
-    (.grant event) boundary).bind fun execution =>
-      (runtime setup).runInteractionPlan leaks menu.uniformResponses network
-        (((rosters event).take slot).map ServiceInstruction.player) execution).support at phase
-  have grantedOrigins : (runtime setup).ResolutionEvidenceOrigins leaks granted := by
+  have boundaryOrigins : (runtime setup).ResolutionEvidenceOrigins leaks boundary := by
     obtain ⟨state, stateSupport, reachedBoundary⟩ :=
       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ boundarySupport)
-    have grantedReached : granted ∈ ((runtime setup).runInteractionPlan leaks
-        menu.uniformResponses network (rosterPlanPrefix setup rosters event.val ++
-          [.grant event]) (ReactiveApplication.Execution.initial (application setup leaks)
-            state)).support := by
-      rw [(runtime setup).runInteractionPlan_append, PMF.support_bind]
-      refine Set.mem_iUnion₂.mpr ⟨boundary, reachedBoundary, ?_⟩
-      change granted ∈ (((runtime setup).interactionStep leaks menu.uniformResponses network
-        (.grant event) boundary).bind fun next => PMF.pure next).support
-      rw [grantLaw, PMF.pure_bind]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl
     obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ stateSupport
     exact ((runtime setup).resolutionEvidenceOrigins_run leaks bounds menu.uniformResponses
       (fun owner past view response supported => sourceServiceMenu_in_compiled setup leaks bounds
         rosters owner past view ((menu.uniformResponses_support owner past view response).mp
-          supported)) network _ _ granted
+          supported)) network _ _ boundary
       (State.initial_bindingInvariant (graph := graph setup) (setup.eventInputs initial))
       ((application setup leaks).initial_inputRecall _) MessageNetwork.Satisfies.empty
-      grantedReached).2.2
-  rw [grantLaw, PMF.pure_bind] at phase
+      reachedBoundary).2.2
   have sampling := activated
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at sampling
   obtain ⟨sample, _, same⟩ := sampling
   have unchanged := (runtime setup).player_window_application leaks menu.uniformResponses network
-    ((rosters event).take slot) granted prior phase
-  have config : control.execution.application.config = granted.application.config := by
+    ((rosters event).take slot) boundary prior phase
+  have config : control.execution.application.config = boundary.application.config := by
     rw [← same]
     exact unchanged.1
-  have publicEq : control.execution.application.publicView = granted.application.publicView := by
+  have publicEq : control.execution.application.publicView = boundary.application.publicView := by
     rw [← same]
     exact unchanged.2
   have sole : control.execution.application.publicView.SoleReady event := by
     rw [publicEq]
-    exact soleReady_of_ready setup granted.application (grantedBoundary.ready event rfl)
+    exact soleReady_of_ready setup boundary.application (checkpoint.ready event rfl)
   exact ⟨event, slot, initial, selected, initialSupport, Γ, names, remaining, remainingProfile,
     source, refs, embedding, refsBefore, aligned, admitted,
     ⟨supported, effective, lift, commutes, transport⟩,
-    granted, prior, sample, grantedBoundary,
+    boundary, prior, sample, checkpoint,
     sole, phase, activated, same.symm, config, publicEq,
-    config.symm ▸ grantedBoundary.toSourceCheckpoint, position, grantedOrigins⟩
+    config.symm ▸ checkpoint.toSourceCheckpoint, position, boundaryOrigins⟩
 
 /-- At every decision of the fixed calendar exactly one event is ready. -/
 theorem sourceService_decision_sole
@@ -288,7 +271,7 @@ theorem sourceService_bindingRequired_iff_no_later_owner
     (visited remaining : List Player)
     (split : rosters event = visited ++ owner :: remaining)
     (position : control.execution.environmentRecall.length =
-      (rosterPlanPrefix setup rosters event.val).length + 1 + visited.length + 1) :
+      (rosterPlanPrefix setup rosters event.val).length + visited.length + 1) :
     bindingRequired setup leaks rosters owner (control.execution.recall owner)
       (control.execution.observe (application setup leaks) owner) ↔ owner ∉ remaining := by
   let app := application setup leaks

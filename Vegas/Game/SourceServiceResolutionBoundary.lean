@@ -70,46 +70,41 @@ theorem ServiceBoundary.reveal_block
       response ∈ bounds.compiledActions (runtime setup) leaks who past view :=
     fun who past view response member => sourceServiceMenu_in_compiled setup leaks bounds
       rosters who past view (lawful who past view response member)
-  obtain ⟨granted, grantBoundary, _grant, _, grantRecall, grantLaw⟩ :=
-    boundary.grant players network event
-  have sole := soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)
-  have ready := grantBoundary.ready event atRank
-  have timely := grantBoundary.timely event atRank (by simp only [owned, Option.isSome_some])
+  have sole := soleReady_of_ready setup execution.application (boundary.ready event atRank)
+  have ready := boundary.ready event atRank
+  have timely := boundary.timely event atRank (by simp only [owned, Option.isSome_some])
   have phase := reached
-  rw [rosterBlock_of_owner setup rosters event owner owned,
+  rw [rosterBlock_of_owner setup rosters event owner owned, List.append_assoc,
     (runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at phase
-  simp only [List.append_assoc] at phase
-  rw [← List.append_assoc, (runtime setup).runInteractionPlan_append] at phase
   obtain ⟨included, inclusion, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   have packets := bounds.compiled_resolution_inclusion_published (runtime setup) leaks
     players ordinary network owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq node (rosters event) granted included sole grantBoundary.published
-      grantBoundary.serials inclusion
+      outputEq codeEq node (rosters event) execution included sole boundary.published
+      boundary.serials inclusion
   obtain ⟨result, accounted⟩ := bounds.compiled_resolution_settlement (runtime setup) leaks
     players ordinary network owner event payload (refs.get binding)
       (compileChecks (published := published) refs source.registry source.revelations binding)
-      outputEq codeEq node (rosters event) granted included grantBoundary.binding ready timely
-      sole grantBoundary.published grantBoundary.serials grantBoundary.accounted inclusion
+      outputEq codeEq node (rosters event) execution included boundary.binding ready timely
+      sole boundary.published boundary.serials boundary.accounted inclusion
   obtain ⟨disclose, effective, config, candidates, accepted, sameNetwork, sameRecall⟩ :
       ∃ disclose, effectiveDisclosure published binding source disclose = disclose ∧
-        final.application.config = granted.application.config.complete event ready
+        final.application.config = execution.application.config.complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (disclosureResult published binding source disclose)) ∧
-        final.application.candidates = granted.application.candidates ∧
-        final.application.accepted = granted.application.accepted ∧
+        final.application.candidates = execution.application.candidates ∧
+        final.application.accepted = execution.application.accepted ∧
         final.network = included.network ∧ final.recall = included.recall := by
     rcases result with silent | ⟨value, resolved, completed⟩
     · obtain ⟨entered, activated⟩ := Option.isSome_iff_exists.mp
-        ((grantBoundary.invariant.activated_iff event).mpr
+        ((boundary.invariant.activated_iff event).mpr
           ⟨ready, by simp only [owned, Option.isSome_some]⟩)
       have due : (runtime setup).deadline event ≤
           included.application.clock + (event.val + 1) - entered := by
         rw [silent]
-        have earlier := grantBoundary.invariant.activated_le event entered activated
-        change event.val + 1 ≤ granted.application.clock + (event.val + 1) - entered
+        have earlier := boundary.invariant.activated_le event entered activated
+        change event.val + 1 ≤ execution.application.clock + (event.val + 1) - entered
         omega
       obtain ⟨after, exactTail, afterApp, afterNetwork, _, afterRecall⟩ :=
         (runtime setup).canonical_silent_expiry leaks players network included owner event payload
@@ -124,13 +119,13 @@ theorem ServiceBoundary.reveal_block
       · rw [afterApp]
         simp only [EventGraphRuntime.State.complete, silent, disclosureResult_false]
       · rw [afterApp]
-        change included.application.candidates = granted.application.candidates
+        change included.application.candidates = execution.application.candidates
         exact congrArg EventGraphRuntime.State.candidates silent
       · rw [afterApp]
-        change included.application.accepted = granted.application.accepted
+        change included.application.accepted = execution.application.accepted
         exact congrArg EventGraphRuntime.State.accepted silent
     · have sourceResult := compiled_disclosure_result published binding source refs
-        granted.application.config.store grantBoundary.agrees true
+        execution.application.config.store boundary.agrees true
       rw [EventGraph.EventCode.resolveOutput?_playerStore, resolved] at sourceResult
       have success : disclosureResult published binding source true = .success value :=
         (Option.some.inj sourceResult).symm
@@ -152,11 +147,11 @@ theorem ServiceBoundary.reveal_block
         rfl
       · rw [afterApp, completed]
         rfl
-  have checkpoint := grantBoundary.toSourceCheckpoint.reveal published binding event atRank
+  have checkpoint := boundary.toSourceCheckpoint.reveal published binding event atRank
     ready outputEq beforeRefs disclose (decoded disclose)
   change SourceCheckpoint setup (revealSuccessor published binding source disclose)
     (refs.cons (name := published) ⟨.inr event, outputEq⟩) (rank + 1)
-      (granted.application.config.complete event ready
+      (execution.application.config.complete event ready
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
         (cast (congrArg EventGraph.EventField.Value outputEq.symm)
           (disclosureResult published binding source disclose))) at checkpoint
@@ -165,7 +160,7 @@ theorem ServiceBoundary.reveal_block
     (rosterBlock setup rosters event) final reached
   obtain ⟨clock, timely⟩ := boundary.roster_successor_timing players network event atRank final
     reached checkpoint.ordered
-  let completed := granted.application.complete event ready
+  let completed := execution.application.complete event ready
     (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
     (cast (congrArg EventGraph.EventField.Value outputEq.symm)
       (disclosureResult published binding source disclose))
@@ -188,7 +183,7 @@ theorem ServiceBoundary.reveal_block
     clock := clock
     timely := timely }⟩
   · intro who serial
-    have prior := (grantBoundary.prepared who).complete_public event ready
+    have prior := (boundary.prepared who).complete_public event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
       (cast (congrArg EventGraph.EventField.Value outputEq.symm)
         (disclosureResult published binding source disclose)) publicOutput serial
@@ -200,14 +195,14 @@ theorem ServiceBoundary.reveal_block
       rw [completedConfig]
     rw [candidates, count]
     exact prior
-  · apply (grantBoundary.represented.complete event ready
+  · apply (boundary.represented.complete event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
       (cast (congrArg EventGraph.EventField.Value outputEq.symm)
         (disclosureResult published binding source disclose))).transport accepted candidates
     intro field value stored
     rw [completedConfig]
     exact stored
-  · apply grantBoundary.acceptedRecorded.complete_of_config event ready
+  · apply boundary.acceptedRecorded.complete_of_config event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
       (cast (congrArg EventGraph.EventField.Value outputEq.symm)
         (disclosureResult published binding source disclose)) _ config accepted
@@ -232,8 +227,8 @@ theorem ServiceBoundary.reveal_block
       simpa only [List.filterMap_cons, instructionActor, List.filterMap_nil, List.count_nil,
         Nat.add_zero] using lengths.symm
     rw [includedRecall, (runtime setup).compiled_window_other_events leaks bounds players ordinary
-      network event (rosters event) granted visited sole window observer other
-        (by intro equal; subst other; omega), grantRecall]
+      network event (rosters event) execution visited sole window observer other
+        (by intro equal; subst other; omega)]
     exact boundary.unsent observer other (by omega)
 
 /-- Every actual historical traffic record still passes the public checker
@@ -271,15 +266,10 @@ theorem ServiceBoundary.reveal_block_conformance
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
-  obtain ⟨granted, grantBoundary, _grant, _, _, grantLaw⟩ := boundary.grant players network event
-  have sole := soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)
-  have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
-    (.grant event) (by simp) (by simp) execution granted
-    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
+  have sole := soleReady_of_ready setup execution.application (boundary.ready event atRank)
   have phase := reached
-  rw [rosterBlock_of_owner setup rosters event owner owned,
-    (runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, PMF.pure_bind, List.append_assoc] at phase
+  rw [rosterBlock_of_owner setup rosters event owner owned] at phase
+  simp only [List.append_assoc] at phase
   rw [(runtime setup).runInteractionPlan_append] at phase
   obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   have ordinary : ∀ who past view response, response ∈ (players who past view).support →
@@ -288,12 +278,12 @@ theorem ServiceBoundary.reveal_block_conformance
       rosters who past view (lawful who past view response member)
   obtain ⟨_, visitedTraffic, _⟩ := bounds.compiled_resolution_window_conformance
     (runtime setup) leaks players ordinary network (rosters event) owner event payload binding
-      checks outputEq codeEq node granted visited grantBoundary.binding grantBoundary.recall sole
-      (grantBoundary.ready event atRank)
-      (grantBoundary.timely event atRank (by simp only [owned, Option.isSome_some]))
-      (fun _ => grantBoundary.accounted owner)
-      ((runtime setup).service_published_conformance leaks granted grantBoundary.published)
-      (by rw [grantTraffic]; exact traffic) window
+      checks outputEq codeEq node execution visited boundary.binding boundary.recall sole
+      (boundary.ready event atRank)
+      (boundary.timely event atRank (by simp only [owned, Option.isSome_some]))
+      (fun _ => boundary.accounted owner)
+      ((runtime setup).service_published_conformance leaks execution boundary.published)
+      traffic window
   have exactTraffic := (runtime setup).executionTraffic_passive_plan leaks players network
     ([.includeLatest event owner] ++ List.replicate (event.val + 1) .tick ++ [.expire event])
     (by

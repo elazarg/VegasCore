@@ -126,7 +126,7 @@ theorem sourceService_owner_information_law [Fintype Player]
     let players := sourceServiceTimedPolicy setup leaks rosters timing normalized
     let executions := ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun before => before.environmentStep (application setup leaks) (.activate owner)
@@ -164,72 +164,34 @@ theorem sourceService_owner_information_law [Fintype Player]
     exact (runtime setup).runInteractionPlan_inputRecall leaks players network
       (rosterPlanPrefix setup rosters event.val) (ReactiveApplication.Execution.initial app initial)
         execution (app.initial_inputRecall initial) reached
-  let granted : app.Execution → app.Execution := fun execution =>
-    { execution with
-      application := { execution.application with serviceGrant := some event }
-      environmentRecall := execution.environmentRecall ++
-        [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  have grantLaw (execution : app.Execution) :
-      execution.environmentStep app (.application (.grant event)) =
-        PMF.pure (granted execution) := by
-    simp only [ReactiveApplication.Execution.environmentStep, app, application,
-      reactiveApplication, environmentStep, PMF.pure_map]
-    rfl
-  have grantPlan (execution : app.Execution) :
-      (runtime setup).runInteractionPlan leaks players network [.grant event] execution =
-        PMF.pure (granted execution) := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-      ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, PMF.pure_map,
-      ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-    rfl
-  obtain ⟨grantNoise, grantFactor⟩ := source_maintenance_factorization setup leaks owner
-    prefixLaw read (setup.protocolObserve owner) (fun execution => execution) noise
-      (by rw [marginal]; exact factor)
-      (.grant event) (by intro other; simp)
-  let afterGrant := prefixLaw.map granted
-  have grantMarginal : afterGrant.map read = prior := by
-    rw [PMF.map_comp]
-    exact marginal
-  have grantedFactor : afterGrant.map (fun execution =>
+  have prefixFactor : prefixLaw.map (fun execution =>
       (read execution, (runtime setup).bindingTraffic leaks owner execution)) =
-        (afterGrant.map read).bind (fun state =>
-          (grantNoise (setup.protocolObserve owner state)).map fun extra => (state, extra)) := by
-    change prefixLaw.bind (fun execution =>
-      (execution.environmentStep app (.application (.grant event))).map fun final =>
-        (read execution, (runtime setup).bindingTraffic leaks owner final)) = _ at grantFactor
-    simp only [grantLaw, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind,
-      PMF.pure_bind] at grantFactor
-    rw [grantMarginal, ← marginal]
-    simpa only [afterGrant, ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
-      using grantFactor
+        (prefixLaw.map read).bind (fun state =>
+          (noise (setup.protocolObserve owner state)).map fun extra => (state, extra)) := by
+    rw [marginal]
+    exact factor
   let policy := (app.policyMixture (timing event owner owned)
     (sourceServiceTimedFamily setup leaks rosters normalized owner event)).policy
-  have grantedRecall (execution : app.Execution) (supported : execution ∈ afterGrant.support) :
-      execution.InputRecall app := by
-    obtain ⟨before, reached, rfl⟩ := PMF.support_map .. ▸ supported
-    exact recalls before reached
-  obtain ⟨windowNoise, windowFactor⟩ := owner_window_factorization setup leaks owner afterGrant
-    read (setup.protocolObserve owner) (fun execution => execution) grantedRecall grantNoise
-      grantedFactor network visits policy
-  let window := afterGrant.bind fun execution =>
+  obtain ⟨windowNoise, windowFactor⟩ := owner_window_factorization setup leaks owner prefixLaw
+    read (setup.protocolObserve owner) (fun execution => execution) recalls noise
+      prefixFactor network visits policy
+  let window := prefixLaw.bind fun execution =>
     (runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) execution
-  have windowLaw (execution : app.Execution) (supported : execution ∈ afterGrant.support) :
+  have windowLaw (execution : app.Execution) (supported : execution ∈ prefixLaw.support) :
       (runtime setup).runInteractionPlan leaks players network
           (visits.map ServiceInstruction.player) execution =
         (runtime setup).runInteractionPlan leaks
           (Function.update (fun _ => app.replayPolicy) owner policy) network
           (visits.map ServiceInstruction.player) execution := by
-    obtain ⟨before, beforeSupport, rfl⟩ := PMF.support_map .. ▸ supported
     exact sourceServiceTimedPolicy_window_eq setup leaks rosters timing normalized event owner
-      owned network visits (granted before)
-      (soleReady_of_ready setup (granted before).application
+      owned network visits execution
+      (soleReady_of_ready setup execution.application
         (sourceService_prefix_ready setup leaks bounds values capacity rosters opportunities
           network players (sourceServiceTimedPolicy_admissible setup leaks bounds values
             initialValues capacity rosters opportunities network timing full normalized
             (normalized_sourceService_admitted setup original permitted))
-          event before beforeSupport))
+          event execution supported))
   have kept (execution final : app.Execution)
       (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
         (visits.map ServiceInstruction.player) execution).support) : read final = read execution :=
@@ -240,7 +202,7 @@ theorem sourceService_owner_information_law [Fintype Player]
       (read execution, (runtime setup).bindingTraffic leaks owner execution)) =
         prior.bind (fun state =>
           (windowNoise (setup.protocolObserve owner state)).map fun extra => (state, extra)) := by
-    rw [grantMarginal] at windowFactor
+    rw [marginal] at windowFactor
     refine Eq.trans ?_ windowFactor
     simp only [window, PMF.map_bind]
     apply bind_congr_on_support _
@@ -259,8 +221,7 @@ theorem sourceService_owner_information_law [Fintype Player]
   refine ⟨channel, ?_⟩
   have executionsEq : executions = window.bind fun before =>
       before.environmentStep app (.activate owner) := by
-    simp only [executions, window, afterGrant, prefixLaw, runInteractionPlan_append,
-      PMF.bind_bind, PMF.bind_map, grantPlan, PMF.pure_bind]
+    simp only [executions, window, prefixLaw, runInteractionPlan_append, PMF.bind_bind]
     rfl
   rw [executionsEq, PMF.map_bind]
   rw [windowMarginal] at inputFactor
@@ -270,36 +231,23 @@ theorem sourceService_owner_information_law [Fintype Player]
   simp only [ReactiveApplication.Execution.activation_samples, PMF.map_comp]
   rfl
 
-private theorem grant_window_config
+private theorem window_config
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (players : Player → (application setup leaks).Policy)
     (network : (runtime setup).NetworkPolicy leaks)
-    (event : (graph setup).EventId) (visits : List Player) (owner : Player)
+    (visits : List Player) (owner : Player)
     (execution final : (application setup leaks).Execution)
     (reached : final ∈ (((runtime setup).runInteractionPlan leaks players network
-      ([.grant event] ++ visits.map ServiceInstruction.player) execution).bind
+      (visits.map ServiceInstruction.player) execution).bind
         fun before => before.environmentStep (application setup leaks) (.activate owner)).support) :
     final.application.config = execution.application.config := by
-  let app := application setup leaks
-  let granted : app.Execution :=
-    { execution with
-      application := { execution.application with serviceGrant := some event }
-      environmentRecall := execution.environmentRecall ++
-        [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-  have grantLaw : (runtime setup).runInteractionPlan leaks players network [.grant event]
-      execution = PMF.pure granted := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction, PMF.pure_bind,
-      ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-      reactiveApplication, environmentStep, PMF.pure_map,
-      ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-    rfl
-  rw [runInteractionPlan_append, grantLaw, PMF.pure_bind, PMF.support_bind] at reached
+  rw [PMF.support_bind] at reached
   obtain ⟨before, beforeSupport, active⟩ := Set.mem_iUnion₂.mp reached
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at active
   obtain ⟨sample, _, rfl⟩ := active
   exact ((runtime setup).player_window_application leaks players network visits
-    granted before beforeSupport).1
+    execution before beforeSupport).1
 
 /-- A supported pending decision retains the source checkpoint at phase
 entry, even after arbitrary private registrations and replay responses. -/
@@ -319,7 +267,7 @@ theorem sourceService_owner_checkpoint [Fintype Player]
     (final : (application setup leaks).Execution)
     (reached : final ∈ (((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun before => before.environmentStep (application setup leaks) (.activate owner)).support) :
@@ -333,7 +281,7 @@ theorem sourceService_owner_checkpoint [Fintype Player]
       (ReactiveApplication.Execution.initial (application setup leaks) state)
   have combined : final ∈ (prefixLaw.bind fun execution =>
       ((runtime setup).runInteractionPlan leaks players network
-        ([.grant event] ++ visits.map ServiceInstruction.player) execution).bind
+        (visits.map ServiceInstruction.player) execution).bind
           fun before => before.environmentStep
             (application setup leaks) (.activate owner)).support :=
     by simpa only [prefixLaw, runInteractionPlan_append, PMF.bind_bind] using reached
@@ -342,7 +290,7 @@ theorem sourceService_owner_checkpoint [Fintype Player]
   obtain ⟨state, checkpoint⟩ := sourceService_timed_prefix_checkpoint setup leaks bounds values
     capacity rosters opportunities network players covered event.val event.isLt.le
       before beforeSupport
-  have unchanged := grant_window_config setup leaks players network event visits owner
+  have unchanged := window_config setup leaks players network visits owner
     before final tailSupport
   exact ⟨state, unchanged ▸ checkpoint⟩
 
@@ -374,7 +322,7 @@ theorem sourceService_owner_posterior [Fintype Player]
     let players := sourceServiceTimedPolicy setup leaks rosters timing normalized
     let executions := ((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun before => before.environmentStep (application setup leaks) (.activate owner)

@@ -58,7 +58,7 @@ private theorem owner_site_position (service : SourceServiceSpec Player L) (who 
       (_ : reference.1.state = some control) (visits : List Player) (count : Nat),
       (rosterPlan service.setup service.rosters)[count]? = some (.player who) ∧
       (rosterPlan service.setup service.rosters).take count =
-        rosterPlanPrefix service.setup service.rosters event.val ++ [.grant event] ++
+        rosterPlanPrefix service.setup service.rosters event.val ++
           visits.map ServiceInstruction.player ∧
       control.execution.environmentRecall.length = count + 1 := by
   obtain ⟨reference, _, _⟩ := site.2
@@ -88,7 +88,7 @@ private theorem owner_site_position (service : SourceServiceSpec Player L) (who 
     rw [phase.plan_split]
     simp
   have before : (rosterPlan service.setup service.rosters).take phase.before.length =
-      rosterPlanPrefix service.setup service.rosters phase.event.val ++ [.grant phase.event] ++
+      rosterPlanPrefix service.setup service.rosters phase.event.val ++
         ((service.rosters phase.event).take phase.slot).map ServiceInstruction.player := by
     rw [phase.plan_split, List.append_assoc, List.take_append_of_le_length le_rfl,
       List.take_length]

@@ -65,7 +65,7 @@ theorem sourceService_owner_assessment_comparisons
     (count : Nat)
     (selected : (rosterPlan setup rosters)[count]? = some (.player owner))
     (before : (rosterPlan setup rosters).take count =
-      rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      rosterPlanPrefix setup rosters event.val ++
         visits.map ServiceInstruction.player)
     (site : ((sourceServiceMenu setup leaks bounds rosters).information (initialLaw setup)
       (rosterPlan setup rosters).length
@@ -121,7 +121,7 @@ theorem sourceService_owner_assessment_comparisons
   let players := sourceServiceTimedPolicy setup leaks rosters timing normalized
   let executions := ((initialLaw setup).bind fun state =>
     (runtime setup).runInteractionPlan leaks players network
-      (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      (rosterPlanPrefix setup rosters event.val ++
         visits.map ServiceInstruction.player)
       (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
     fun prior => prior.environmentStep (application setup leaks) (.activate owner)

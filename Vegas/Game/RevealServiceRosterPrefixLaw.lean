@@ -105,26 +105,24 @@ theorem run_roster_source_prefix_option_law
           have node : nodeView (graph setup) event =
               .resolve owner payload (refs.get selected) [] outputEq codeEq :=
             EventGraphRuntime.nodeView_eq_resolve _ _
-          obtain ⟨opportunity, activeCheckpoint, _granted, grantRecall, grantNetwork, grantLaw⟩ :=
-            checkpoint.grant (rosterPolicy setup leaks rosters timing wholeProfile) network event
-          have ready : opportunity.application.config.cut.Ready event := by
+          have ready : execution.application.config.cut.Ready event := by
             have active : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt
             have chosenEvent : (⟨offset, active⟩ : (graph setup).EventId) = event :=
               Fin.ext eventRank.symm
             rw [← chosenEvent]
-            exact activeCheckpoint.ordered.ready active
-          have ownerOffset : (opportunity.recall owner).length =
+            exact checkpoint.ordered.ready active
+          have ownerOffset : (execution.recall owner).length =
               rosterOffset setup rosters owner event := by
-            rw [grantRecall, counts owner]
+            rw [counts owner]
             simp only [rosterOffset, eventRank]
-          obtain ⟨value, bound⟩ := activeCheckpoint.openable selected
+          obtain ⟨value, bound⟩ := checkpoint.openable selected
           obtain ⟨candidate, associated, owned, valid, opening⟩ :=
-            roster_opening_at_checkpoint setup leaks selected source.state refs opportunity
-              activeCheckpoint.agrees activeCheckpoint.binding event outputEq codeEq node
+            roster_opening_at_checkpoint setup leaks selected source.state refs execution
+              checkpoint.agrees checkpoint.binding event outputEq codeEq node
                 value bound
           have choiceLaw := sourceChoiceLaw_reveal setup leaks fresh selected unresolved next
-            wholeProfile profile refs source embedding refsBefore offset aligned opportunity
-              activeCheckpoint.agrees activeCheckpoint.history ready
+            wholeProfile profile refs source embedding refsBefore offset aligned execution
+              checkpoint.agrees checkpoint.history ready
           let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
           let resultRef : EventGraph.FieldRef (graphLayout setup.program) (.publication payload) :=
             ⟨.inr event, outputEq⟩
@@ -149,7 +147,7 @@ theorem run_roster_source_prefix_option_law
           have planEq : (((List.finRange (eventCount
               (.reveal published owner name fresh selected unresolved next))).take
                 (count + 1)).flatMap fun i => rosterBlock setup rosters (embedding.event i)) =
-              [.grant event] ++ (phase ++ remaining) := by
+              (phase ++ remaining) := by
             simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             change rosterBlock setup rosters event ++ remaining = _
@@ -167,7 +165,7 @@ theorem run_roster_source_prefix_option_law
           have finishSlot (slot : Option (Fin ((rosters event).count owner))) :
               (((runtime setup).runInteractionPlan leaks
                 ((runtime setup).openingWindowPlayers leaks owner event candidate ⟨payload, value⟩
-                  (rosterOffset setup rosters owner event) slot) network phase opportunity).bind
+                  (rosterOffset setup rosters owner event) slot) network phase execution).bind
                 fun after => (runtime setup).runInteractionPlan leaks
                   (rosterPolicy setup leaks rosters timing wholeProfile)
                     network remaining after).map
@@ -186,7 +184,7 @@ theorem run_roster_source_prefix_option_law
                 (reached : after ∈ ((runtime setup).runInteractionPlan leaks
                   ((runtime setup).openingWindowPlayers leaks owner event candidate ⟨payload, value⟩
                     (rosterOffset setup rosters owner event) slot) network phase
-                      opportunity).support) :
+                      execution).support) :
                 ((runtime setup).runInteractionPlan leaks
                   (rosterPolicy setup leaks rosters timing wholeProfile)
                     network remaining after).map
@@ -201,19 +199,19 @@ theorem run_roster_source_prefix_option_law
                         (revealSuccessor published selected source slot.isSome)))).map
                           (Sum.inr (α := Config Player L Γ))).map some := by
               obtain ⟨afterCheckpoint, afterClean, _afterGrant⟩ :=
-                activeCheckpoint.reveal_scheduled rosters network
+                checkpoint.reveal_scheduled rosters network
                 published selected event eventRank actor outputEq codeEq node
                   (fun ref => refsBefore ref index) decoded value bound candidate owned associated
-                    valid ownerOffset (grantNetwork ▸ clean) (grantNetwork ▸ serials) slot after
+                    valid ownerOffset clean serials slot after
                       (phaseForm ▸ reached)
               have afterCounts (who : Player) : (after.recall who).length =
                   (((List.finRange (graph setup).order.eventCount).take (offset + 1)).flatMap
                     rosters).count who := by
                 have advanced := fixed_plan_response_counts setup leaks network _ phase
-                  (by simp [phase]) opportunity after reached who
+                  (by simp [phase]) execution after reached who
                 have actors : phase.filterMap instructionActor = rosters event := by
                   simp [phase, instructionActor]
-                rw [actors, grantRecall, counts who] at advanced
+                rw [actors, counts who] at advanced
                 have phases := congrArg
                   (fun instructions : List (ServiceInstruction (graph setup)) =>
                     (instructions.filterMap instructionActor).count who)
@@ -222,7 +220,7 @@ theorem run_roster_source_prefix_option_law
                   rosterPlanPrefix_actors, rosterBlock_actors, eventRank] at phases
                 exact advanced.trans phases.symm
               have afterSerials := (runtime setup).runInteractionPlan_serials leaks _ network
-                phase opportunity after (grantNetwork ▸ serials) reached
+                phase execution after serials reached
               have nextAligned : CompiledPolicySuffix setup.program wholeProfile next
                   (afterReveal profile) tailRefs
                   (revealSuccessor published selected source slot.isSome).revelations
@@ -242,9 +240,8 @@ theorem run_roster_source_prefix_option_law
               · rfl
               · simp only [PMF.map_comp, Function.comp_def]
             exact (bind_congr_on_support _ constant).trans (PMF.bind_const _ _)
-          rw [planEq, runInteractionPlan_append, grantLaw, PMF.pure_bind,
-            runInteractionPlan_append, rosterPolicy_phase_law setup leaks rosters timing
-              wholeProfile opportunity event owner ready actor candidate ⟨payload, value⟩
+          rw [planEq, runInteractionPlan_append, rosterPolicy_phase_law setup leaks rosters timing
+              wholeProfile execution event owner ready actor candidate ⟨payload, value⟩
                 opening (Nat.le_of_eq ownerOffset) network (event.val + 1), choiceLaw,
                   PMF.bind_bind, PMF.map_bind,
                     ProtocolState.behavioralStatePrefix_reveal, PMF.map_bind]

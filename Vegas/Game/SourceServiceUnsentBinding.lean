@@ -57,8 +57,8 @@ theorem recall_count {who : Player} {remaining : Nat}
   subst same
   have sameSlot : slot = phase.slot := by
     have lengths := position.symm.trans phase.position
-    change (rosterPlanPrefix service.setup service.rosters phase.event.val).length + 1 + slot + 1 =
-      (rosterPlanPrefix service.setup service.rosters phase.event.val).length + 1 + phase.slot + 1
+    change (rosterPlanPrefix service.setup service.rosters phase.event.val).length + slot + 1 =
+      (rosterPlanPrefix service.setup service.rosters phase.event.val).length + phase.slot + 1
       at lengths
     omega
   subst sameSlot

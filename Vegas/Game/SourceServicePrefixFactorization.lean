@@ -834,36 +834,9 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
       let initial := fun seed => (actualFacts seed).1.choose
       have boundary (seed : Seed) : ServiceBoundary setup leaks rosters (initial seed)
           (source seed) refs offset (execution seed) := (actualFacts seed).1.choose_spec.2
-      let opportunity := fun seed => ((boundary seed).grant players network event).choose
-      have opportunityFacts (seed : Seed) := ((boundary seed).grant players network
-        event).choose_spec
-      have grantLaw (seed : Seed) : (runtime setup).interactionStep leaks players network
-          (.grant event) (execution seed) = PMF.pure (opportunity seed) :=
-        (opportunityFacts seed).2.2.2.2
-      have grantEnvironment (seed : Seed) : (execution seed).environmentStep app
-          (.application (.grant event)) = PMF.pure (opportunity seed) := by
-        have law := grantLaw seed
-        simp only [interactionStep, interactionInstruction, PMF.pure_bind] at law
-        change ((execution seed).environmentStep app (.application (.grant event))).bind
-          PMF.pure = _ at law
-        simpa only [PMF.bind_pure] using law
-      have grantOrigins (seed : Seed) :
-          (runtime setup).ResolutionEvidenceOrigins leaks (opportunity seed) :=
-        (runtime setup).resolutionEvidenceOrigins_environment leaks (execution seed)
-          (opportunity seed) (boundary seed).binding (actualFacts seed).2
-            (.application (.grant event)) (by rw [grantEnvironment]; simp)
-      obtain ⟨grantNoise, grantFactor⟩ := source_maintenance_factorization setup leaks focal prior
-        source (fun config => config.view focal) execution noise factor (.grant event)
-          (fun _ impossible => by cases impossible)
-      have opportunityFactor : prior.map (fun seed => (source seed,
-          (runtime setup).bindingTraffic leaks focal (opportunity seed))) =
-          (prior.map source).bind fun config =>
-            (grantNoise (config.view focal)).map fun extra => (config, extra) := by
-        change (prior.bind fun seed =>
-          ((execution seed).environmentStep app (.application (.grant event))).map fun final =>
-            (source seed, (runtime setup).bindingTraffic leaks focal final)) = _ at grantFactor
-        simpa only [grantEnvironment, PMF.pure_map, ← PMF.bind_pure_comp, Function.comp_def,
-          PMF.bind_bind, PMF.pure_bind] using grantFactor
+      let opportunity := execution
+      have boundaryOrigins (seed : Seed) :
+          (runtime setup).ResolutionEvidenceOrigins leaks (opportunity seed) := (actualFacts seed).2
       have nextPhysical (seed : Seed) (final : app.Execution)
           (moved : final ∈ ((runtime setup).runInteractionPlan leaks players network
             (rosterBlock setup rosters event) (execution seed)).support) :
@@ -1114,8 +1087,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           obtain ⟨phaseNoise, phaseFactor, phaseMarginal⟩ :=
             sourceService_sample_prefix_factorization setup leaks rosters timing fresh
               distribution next wholeProfile profile refs embedding refsBefore offset prior initial
-              source opportunity aligned (fun seed => (opportunityFacts seed).1)
-              network focal grantNoise opportunityFactor
+              source opportunity aligned (fun seed => boundary seed)
+              network focal noise factor
           let nextRegistry : Seed → Registry ((name, .publicData payload) :: Γ) :=
             fun seed => (source seed).registry.weaken
           let nextRevelations := fun seed =>
@@ -1152,15 +1125,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                   ((rosters event).map ServiceInstruction.player ++
                     (.sample event :: List.replicate (event.val + 1) .tick ++
                       [.expire event])) (opportunity seed) := by
-              simp only [rosterBlock, chance]
-              change ((runtime setup).interactionStep leaks players network (.grant event)
-                (execution seed)).bind _ = _
-              rw [grantLaw, PMF.pure_bind]
-              change (runtime setup).runInteractionPlan leaks players network
-                (((rosters event).map ServiceInstruction.player ++ [.sample event]) ++
-                  List.replicate (event.val + 1) .tick ++ [.expire event]) (opportunity seed) = _
-              congr 1
-              simp only [List.append_assoc, List.singleton_append]
+              simp only [rosterBlock, chance, List.append_assoc, List.singleton_append]
+              rfl
             simp only [block]
             simpa only [stepSource, configNoise, encoded, decode, PMF.bind_bind,
               PMF.bind_map, Option.map_some, ProtocolState.observe, Sum.elim_inr,
@@ -1224,8 +1190,8 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
           obtain ⟨phaseNoise, phaseFactor, phaseMarginal⟩ :=
             sourceService_binding_prefix_factorization setup leaks bounds rosters timing fresh
               guard next wholeProfile profile refs embedding refsBefore offset prior initial
-              source opportunity aligned (fun seed _ => (opportunityFacts seed).1)
-              network focal grantNoise opportunityFactor
+              source opportunity aligned (fun seed _ => boundary seed)
+              network focal noise factor
           let nextRegistry := fun seed => (commitSuccessor name guard (source seed)
             .failure).registry
           let nextRevelations := fun seed =>
@@ -1262,9 +1228,6 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                     (.includeLatest event owner :: List.replicate (event.val + 1) .tick ++
                       [.expire event])) (opportunity seed) := by
               rw [rosterBlock_of_owner setup rosters event owner owned]
-              change ((runtime setup).interactionStep leaks players network (.grant event)
-                (execution seed)).bind _ = _
-              rw [grantLaw, PMF.pure_bind]
               simp only [List.append_assoc, List.singleton_append]
               rfl
             simp only [block]
@@ -1331,9 +1294,9 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
             sourceService_reveal_prefix_factorization setup leaks rosters timing fresh
               binding unresolved next wholeProfile profile refs embedding refsBefore offset
                 prior initial
-              source opportunity aligned (fun seed _ => (opportunityFacts seed).1)
-              (fun seed _ => grantOrigins seed) (fun seed _ => effective seed owner)
-              network focal grantNoise opportunityFactor
+              source opportunity aligned (fun seed _ => boundary seed)
+              (fun seed _ => boundaryOrigins seed) (fun seed _ => effective seed owner)
+              network focal noise factor
           let nextRegistry : Seed → Registry ((published, .publication payload) :: Γ) :=
             fun seed => (source seed).registry.weaken
           let nextRevelations := fun seed =>
@@ -1372,9 +1335,6 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
                     (.includeLatest event owner :: List.replicate (event.val + 1) .tick ++
                       [.expire event])) (opportunity seed) := by
               rw [rosterBlock_of_owner setup rosters event owner owned]
-              change ((runtime setup).interactionStep leaks players network (.grant event)
-                (execution seed)).bind _ = _
-              rw [grantLaw, PMF.pure_bind]
               simp only [List.append_assoc, List.singleton_append]
               rfl
             simp only [block]

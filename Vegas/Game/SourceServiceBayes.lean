@@ -58,7 +58,7 @@ theorem sourceService_owner_bayes_posterior
     (count : Nat)
     (selected : (rosterPlan setup rosters)[count]? = some (.player owner))
     (before : (rosterPlan setup rosters).take count =
-      rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      rosterPlanPrefix setup rosters event.val ++
         visits.map ServiceInstruction.player)
     (reference : (application setup leaks).Execution) :
     let normalized := normalizeDisclosureProfile setup.program []
@@ -150,7 +150,7 @@ theorem sourceService_owner_bayes_posterior
       reference
   have supported : reference ∈ (((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun current => current.environmentStep (application setup leaks) (.activate owner)).support :=
@@ -195,7 +195,7 @@ theorem sourceService_owner_bayes_at_history
     (count : Nat)
     (selected : (rosterPlan setup rosters)[count]? = some (.player owner))
     (before : (rosterPlan setup rosters).take count =
-      rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      rosterPlanPrefix setup rosters event.val ++
         visits.map ServiceInstruction.player) :
     let normalized := normalizeDisclosureProfile setup.program []
       (Revelations.initial setup.context) original

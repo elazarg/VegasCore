@@ -96,59 +96,54 @@ theorem roster_decision_phase
     (trace : ((rosterMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who) :
-    ∃ event : (graph setup).EventId, ∃ slot granted prior sample initial state,
+    ∃ event : (graph setup).EventId, ∃ slot boundary prior sample initial state,
       (rosters event)[slot]? = some who ∧ initial ∈ setup.initialLaw.support ∧
       PublicPrefixCheckpoint setup leaks initial setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) (outputRef setup.program)
-        0 event.val state granted ∧
+        0 event.val state boundary ∧
       state ∈ ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
         (fun owner => RevealOnly.uniformPolicy owner setup.program reveals)))^[event.val]
           (PMF.pure (ProtocolState.entry setup.program
             (setup.initialConfig initial)))).support ∧
-      granted.application.config.cut.Ready event ∧
-      (∀ player, (granted.recall player).length = rosterOffset setup rosters player event) ∧
-      granted.network.SerialsBeforeNext ∧
-      granted.network.Satisfies (fun message =>
-        message.id ∈ granted.network.ledger.map Message.id) ∧
+      boundary.application.config.cut.Ready event ∧
+      (∀ player, (boundary.recall player).length = rosterOffset setup rosters player event) ∧
+      boundary.network.SerialsBeforeNext ∧
+      boundary.network.Satisfies (fun message =>
+        message.id ∈ boundary.network.ledger.map Message.id) ∧
       prior ∈ ((runtime setup).runInteractionPlan leaks
         (rosterMenu setup leaks bounds rosters).uniformResponses network
-        (((rosters event).take slot).map ServiceInstruction.player) granted).support ∧
+        (((rosters event).take slot).map ServiceInstruction.player) boundary).support ∧
       control.execution = prior.sampledActivation (application setup leaks) who sample ∧
-      control.execution.application = granted.application ∧
+      control.execution.application = boundary.application ∧
       control.execution.environmentRecall.length =
-        (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 := by
+        (rosterPlanPrefix setup rosters event.val).length + slot + 1 := by
   let app := application setup leaks
   let menu := rosterMenu setup leaks bounds rosters
   obtain ⟨event, slot, boundary, prior, selected, position, boundarySupport, phase, activated,
       initial, initialSupport, state, checkpoint, _, sourceSupport, clean⟩ :=
     roster_decision_source setup leaks bounds rosters network reveals openable
       who control trace active
-  obtain ⟨granted, related, grant, recall, net, law⟩ :=
-    checkpoint.grant menu.uniformResponses network event
-  rw [runInteractionPlan_append, law, PMF.pure_bind] at phase
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at activated
   obtain ⟨sample, _, same⟩ := activated
   have unchanged := roster_run_application setup leaks bounds rosters menu.uniformResponses
     (fun player past view response supported =>
       (menu.uniformResponses_support player past view response).mp supported)
-    network ((rosters event).take slot) granted prior phase
+    network ((rosters event).take slot) boundary prior phase
   rw [PMF.support_bind] at boundarySupport
   obtain ⟨nativeInitial, _, reached⟩ := Set.mem_iUnion₂.mp boundarySupport
   have serials := (runtime setup).runInteractionPlan_serials leaks menu.uniformResponses network
     (rosterPlanPrefix setup rosters event.val)
     (ReactiveApplication.Execution.initial app nativeInitial) boundary
     MessageNetwork.SerialsBeforeNext.empty reached
-  refine ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-    related, sourceSupport, related.ready event (Nat.zero_add _).symm, ?_, ?_, ?_, phase,
+  refine ⟨event, slot, boundary, prior, sample, initial, state, selected, initialSupport,
+    checkpoint, sourceSupport, checkpoint.ready event (Nat.zero_add _).symm, ?_, serials, clean,
+    phase,
     same.symm, ?_, position⟩
   · intro player
     have counts := roster_prefix_response_counts setup leaks rosters network menu.uniformResponses
       event (ReactiveApplication.Execution.initial app nativeInitial) boundary reached player
-    rw [recall]
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add] using counts
-  · rwa [net]
-  · rwa [net]
   · rw [← same]
     exact unchanged
 

@@ -79,7 +79,8 @@ theorem roster_successor_observation_kernel
     (serials : ∀ seed ∈ prior.support, (execution seed).network.SerialsBeforeNext)
     (clean : ∀ seed ∈ prior.support, (execution seed).network.Satisfies fun message =>
       message.id ∈ (execution seed).network.ledger.map Message.id)
-    (granted : ∀ seed ∈ prior.support, (execution seed).application.serviceGrant = some event)
+    (grant : Option (graph setup).EventId)
+    (granted : ∀ seed ∈ prior.support, (execution seed).application.serviceGrant = grant)
     (roster : List Player) (timing : PMF (Fin (roster.count owner)))
     (network : (runtime setup).NetworkPolicy leaks) (focal : Player)
     (noise : DecisionView focal Γ → PMF ((application setup leaks).MessageReadout ×

@@ -120,7 +120,7 @@ theorem roster_owner_bayes_posterior
     (count : Nat)
     (selected : (rosterPlan setup rosters)[count]? = some (.player owner))
     (before : (rosterPlan setup rosters).take count =
-      rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      rosterPlanPrefix setup rosters event.val ++
         visits.map ServiceInstruction.player)
     (reference : (application setup leaks).Execution) :
     let players := rosterPolicy setup leaks rosters timing
@@ -218,7 +218,7 @@ theorem roster_owner_bayes_posterior
     openable admission source mixed timing timingFull event owner owned visits reference
   have supported : reference ∈ (((initialLaw setup).bind fun state =>
       (runtime setup).runInteractionPlan leaks players network
-        (rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+        (rosterPlanPrefix setup rosters event.val ++
           visits.map ServiceInstruction.player)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun current => current.environmentStep (application setup leaks) (.activate owner)).support :=
@@ -249,7 +249,7 @@ theorem roster_owner_bayes_at_history
     (count : Nat)
     (selected : (rosterPlan setup rosters)[count]? = some (.player owner))
     (before : (rosterPlan setup rosters).take count =
-      rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      rosterPlanPrefix setup rosters event.val ++
         visits.map ServiceInstruction.player) :
     let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
     let scheduler := rosterScheduler setup leaks rosters network
@@ -344,7 +344,7 @@ theorem roster_owner_bayes_source_state
     (count : Nat)
     (selected : (rosterPlan setup rosters)[count]? = some (.player owner))
     (before : (rosterPlan setup rosters).take count =
-      rosterPlanPrefix setup rosters event.val ++ [.grant event] ++
+      rosterPlanPrefix setup rosters event.val ++
         visits.map ServiceInstruction.player) :
     let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
     let scheduler := rosterScheduler setup leaks rosters network

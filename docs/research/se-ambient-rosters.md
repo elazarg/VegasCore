@@ -2,8 +2,9 @@
 
 ## Service contract and theorem boundary
 
-The roster service grants one event, visits a fixed finite list of players,
-includes the current event's protected packet, and finishes the timeout service.
+For each event in order, the roster service visits a fixed finite list of
+players, includes the current event's protected packet, and finishes the
+timeout service. It issues no grants: players act on the event that is ready.
 The list may repeat the owner and other players. Every visit retains the full
 bounded raw response menu and passive observation rule. The fixed finite service
 calendar is an explicit restriction on scheduling; arbitrary extra visits are
@@ -51,7 +52,7 @@ comparisons and common limit construction below.
 ## Repeated current-owner visits
 
 A phase rule should permit a matching canonical opening while its event is
-granted and ready, regardless of which owner visit emits it. Rejecting an early
+ready, regardless of which owner visit emits it. Rejecting an early
 owner opening solely because it missed a designated microstep would require
 additional authenticated scheduling evidence and would enforce an incidental
 compiler schedule.
@@ -211,8 +212,8 @@ sampler laws for pools with different replay multiplicities.
 ## Audit evidence and attribution
 
 `TrafficRecord` contains the public application observation, ledger and
-network input. The application observation carries the grant and public event
-progress, but no global step index. Equal application views
+network input. The application observation carries the public event progress,
+but no global step index. Equal application views
 can recur. A checker using only those records cannot distinguish two owner
 visits in the same unchanged phase; the phase rule above does not need to.
 
@@ -296,7 +297,7 @@ now covers every completed source prefix. Conditional on a player's source
 observation, the full accumulated message transcript and that player's native
 recall carry no additional information about the hidden source state. The
 proof derives initialization from the empty network and iterates the actual
-grant, response, inclusion, tick and expiry instructions. It permits arbitrary
+response, inclusion, tick and expiry instructions. It permits arbitrary
 correlated initial states, source profiles, timing distributions and passive
 sampling rules.
 

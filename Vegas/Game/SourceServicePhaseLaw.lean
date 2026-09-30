@@ -74,12 +74,10 @@ theorem ServiceBoundary.sample_state_law [Fintype Player]
   have chance : (graph setup).actor? event = none := by
     change (toEventGraph setup.program).actor? event = none
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
-  obtain ⟨granted, grantBoundary, _grant, _grantApp, _grantRecall, grantLaw⟩ :=
-    boundary.grant players network event
-  have ready := grantBoundary.ready event atRank
+  have ready := boundary.ready event atRank
   have phase := sourceServiceLastPolicy_sample_roster setup leaks rosters wholeProfile source refs
-    granted grantBoundary.agrees event ready outputEq distribution codeEq node
-      grantBoundary.published network (event.val + 1)
+    execution boundary.agrees event ready outputEq distribution codeEq node
+      boundary.published network (event.val + 1)
   let readout (result : (graph setup).Config × List (MessageId Player × Bool)) :=
     decodeSourcePrefix? (.sample name fresh distribution next) refs source.registry
       source.revelations embedding.ref 1 result.1.store
@@ -90,9 +88,7 @@ theorem ServiceBoundary.sample_state_law [Fintype Player]
   change ((runtime setup).runInteractionPlan leaks players network
     (rosterBlock setup rosters event) execution).map _ = _
   rw [rosterBlock, chance]
-  simp only [List.append_assoc, List.cons_append, List.nil_append,
-    runInteractionPlan, grantLaw,
-    PMF.pure_bind]
+  simp only [List.append_assoc, List.cons_append, List.nil_append]
   refine mapped.trans ?_
   rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
@@ -103,7 +99,7 @@ theorem ServiceBoundary.sample_state_law [Fintype Player]
     have action := aligned.actionEq index
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
     simpa [event, index, outputEq, decodeEventAction] using action
-  have completed := grantBoundary.toSourceCheckpoint.sample name event atRank ready outputEq
+  have completed := boundary.toSourceCheckpoint.sample name event atRank ready outputEq
     (fun ref => refsBefore ref index) decoded value
   have recovered := completed.decode next (fun tail => embedding.ref tail.succ)
   dsimp only [readout]
@@ -175,21 +171,19 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
   obtain ⟨visited, remaining, position, absent⟩ :=
     last_owner_split owner (rosters event) opportunity
-  obtain ⟨granted, grantBoundary, _grant, _grantApp, _grantRecall, grantLaw⟩ :=
-    boundary.grant players network event
-  have ready := grantBoundary.ready event atRank
+  have ready := boundary.ready event atRank
   obtain ⟨selected, candidate, unused, vacant⟩ :=
-    grantBoundary.binding_resources event atRank owner
+    boundary.binding_resources event atRank owner
   have phase := sourceServiceLastPolicy_commit_roster setup leaks bounds rosters fresh guard next
-    wholeProfile profile refs source embedding refsBefore offset aligned granted
-      grantBoundary.agrees grantBoundary.history
-      (granted.application.publicView.bindingCount owner) selected candidate unused
-      grantBoundary.serials grantBoundary.published network visited remaining absent position
-      ready (grantBoundary.timely event atRank (by simp only [owned, Option.isSome_some]))
-      vacant (grantBoundary.unsent owner event atRank.ge)
-      (grantBoundary.response_offset event atRank owner)
+    wholeProfile profile refs source embedding refsBefore offset aligned execution
+      boundary.agrees boundary.history
+      (execution.application.publicView.bindingCount owner) selected candidate unused
+      boundary.serials boundary.published network visited remaining absent position
+      ready (boundary.timely event atRank (by simp only [owned, Option.isSome_some]))
+      vacant (boundary.unsent owner event atRank.ge)
+      (boundary.response_offset event atRank owner)
   let inclusion := (runtime setup).runInteractionPlan leaks players network
-    ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) granted
+    ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) execution
   have settled : ∀ middle ∈ inclusion.support, ¬middle.application.config.cut.Ready event := by
     intro middle reached
     have observed : (middle.application.config, middle.receipts) ∈
@@ -215,17 +209,8 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
       (rosterBlock setup rosters event) execution = inclusion.bind
         ((runtime setup).runInteractionPlan leaks players network
           (List.replicate (event.val + 1) .tick ++ [.expire event])) := by
-    rw [rosterBlock_of_owner setup rosters event owner owned,
+    rw [rosterBlock_of_owner setup rosters event owner owned, List.append_assoc,
       (runtime setup).runInteractionPlan_append]
-    simp only [runInteractionPlan, grantLaw, PMF.pure_bind]
-    have splitPlan :
-        ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner] ++
-          List.replicate (event.val + 1) .tick ++ [.expire event] :
-            List (ServiceInstruction (graph setup))) =
-          ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) ++
-            (List.replicate (event.val + 1) .tick ++ [.expire event]) :=
-      List.append_assoc _ _ _
-    rw [splitPlan, (runtime setup).runInteractionPlan_append]
   change ((runtime setup).runInteractionPlan leaks players network
     (rosterBlock setup rosters event) execution).map _ = _
   rw [executionEq]
@@ -240,7 +225,7 @@ theorem ServiceBoundary.commit_state_law [Fintype Player]
     have action := aligned.actionEq index
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
     simpa [event, index, outputEq, decodeEventAction] using action
-  have completed := grantBoundary.toSourceCheckpoint.commit name guard event atRank ready
+  have completed := boundary.toSourceCheckpoint.commit name guard event atRank ready
     outputEq (fun ref => refsBefore ref index) choice decoded
   have recovered := completed.decode next (fun tail => embedding.ref tail.succ)
   dsimp only [readout]
@@ -295,26 +280,22 @@ theorem ServiceBoundary.reveal_state_law [Fintype Player]
     simpa [event, index, eventOwner?, eventCount] using aligned.actorEq index
   obtain ⟨visited, remaining, position, absent⟩ :=
     last_owner_split owner (rosters event) opportunity
-  obtain ⟨granted, grantBoundary, _grant, _grantApp, _grantRecall, grantLaw⟩ :=
-    boundary.grant players network event
-  have ready := grantBoundary.ready event atRank
+  have ready := boundary.ready event atRank
   have strategic : ((graph setup).actor? event).isSome = true := by
     simp only [owned, Option.isSome_some]
   obtain ⟨entered, activated⟩ :=
-    grantBoundary.invariant.activatedAt_eq_some_of_ready_actor event ready strategic
-  have due := grantBoundary.invariant.due_after_deadline (runtime setup) event entered activated
+    boundary.invariant.activatedAt_eq_some_of_ready_actor event ready strategic
+  have due := boundary.invariant.due_after_deadline (runtime setup) event entered activated
   have phase := sourceServiceLastPolicy_reveal_roster_readout setup leaks rosters fresh binding
-    unresolved next wholeProfile profile refs source embedding refsBefore offset aligned granted
-    grantBoundary.toSourceCheckpoint grantBoundary.binding entered (event.val + 1)
-    grantBoundary.published grantBoundary.serials network visited remaining absent position
-    ready (grantBoundary.timely event atRank strategic) activated due
-    (grantBoundary.unsent owner event atRank.ge)
-    (grantBoundary.response_offset event atRank owner)
+    unresolved next wholeProfile profile refs source embedding refsBefore offset aligned execution
+    boundary.toSourceCheckpoint boundary.binding entered (event.val + 1)
+    boundary.published boundary.serials network visited remaining absent position
+    ready (boundary.timely event atRank strategic) activated due
+    (boundary.unsent owner event atRank.ge)
+    (boundary.response_offset event atRank owner)
   change ((runtime setup).runInteractionPlan leaks players network
     (rosterBlock setup rosters event) execution).map _ = _
-  rw [rosterBlock_of_owner setup rosters event owner owned,
-    (runtime setup).runInteractionPlan_append]
-  simp only [runInteractionPlan, grantLaw, PMF.pure_bind]
+  rw [rosterBlock_of_owner setup rosters event owner owned]
   simp only [List.append_assoc, List.singleton_append] at phase ⊢
   exact phase.trans (effective_reveal_state_law fresh binding unresolved next profile source
     effective)

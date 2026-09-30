@@ -111,8 +111,6 @@ theorem run_roster_source_prefix_support
           have node : nodeView (graph setup) event =
               .resolve owner payload (refs.get selected) [] outputEq codeEq :=
             EventGraphRuntime.nodeView_eq_resolve _ _
-          obtain ⟨opportunity, activeCheckpoint, granted, grantRecall, grantNetwork,
-              grantLaw⟩ := checkpoint.grant players network event
           let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
           let resultRef : EventGraph.FieldRef (graphLayout setup.program) (.publication payload) :=
             ⟨.inr event, outputEq⟩
@@ -141,11 +139,10 @@ theorem run_roster_source_prefix_support
           obtain ⟨after, blockReached, continued⟩ :=
             Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
           have originalReached := blockReached
-          rw [rosterBlock_of_owner setup rosters event owner actor,
-            runInteractionPlan_append, grantLaw, PMF.pure_bind] at blockReached
-          have ownerOffset : (opportunity.recall owner).length =
+          rw [rosterBlock_of_owner setup rosters event owner actor] at blockReached
+          have ownerOffset : (execution.recall owner).length =
               rosterOffset setup rosters owner event := by
-            rw [grantRecall, counts owner]
+            rw [counts owner]
             simp only [rosterOffset, eventRank]
           have decoded (disclose : Bool) : decodeEventAction setup.program event
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
@@ -154,10 +151,10 @@ theorem run_roster_source_prefix_support
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
             simpa [event, index, outputEq, decodeEventAction] using embedded
           obtain ⟨disclose, afterCheckpoint, afterClean⟩ :=
-            activeCheckpoint.reveal_roster bounds rosters players covered network published
+            checkpoint.reveal_roster bounds rosters players covered network published
               selected
               event eventRank actor outputEq codeEq node (fun ref => refsBefore ref index) decoded
-                ownerOffset (grantNetwork ▸ clean) (grantNetwork ▸ serials) after
+                ownerOffset clean serials after
                   blockReached
           have afterCounts (who : Player) : (after.recall who).length =
               (((List.finRange (graph setup).order.eventCount).take (offset + 1)).flatMap

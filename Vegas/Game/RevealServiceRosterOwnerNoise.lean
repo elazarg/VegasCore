@@ -153,7 +153,8 @@ theorem roster_owner_information_kernel
         (Revelations.initial setup.context) (outputRef setup.program)
         0 event.val state execution ∧
       sourcePrefix? setup event.val execution.application.config = some state)
-    (granted : ∀ execution ∈ prior.support, execution.application.serviceGrant = some event)
+    (grant : Option (graph setup).EventId)
+    (granted : ∀ execution ∈ prior.support, execution.application.serviceGrant = grant)
     (opening : ∀ execution ∈ prior.support, ∃ candidate raw,
       rosterOpening? setup leaks owner event (execution.observe (application setup leaks) owner) =
         some (candidate, raw) ∧ candidate.1 = owner ∧

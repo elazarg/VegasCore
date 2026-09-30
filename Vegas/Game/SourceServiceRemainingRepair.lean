@@ -96,6 +96,8 @@ theorem remaining_events_stopped_coupling
     (before after : List (ServiceInstruction (graph setup)))
     (split : rosterPlan setup rosters = before ++ events.flatMap (rosterBlock setup rosters) ++
       after)
+    (rank : Nat) (eventsEq : events = (List.finRange (graph setup).order.eventCount).drop rank)
+    (beforeEq : before = rosterPlanPrefix setup rosters rank)
     (position : original.environmentRecall.length = before.length) :
     let app := application setup leaks
     let players := Function.update ((bounds.menu (runtime setup) leaks).decodeProfile
@@ -131,7 +133,7 @@ theorem remaining_events_stopped_coupling
         (initialLaw setup) (rosterPlan setup rosters).length scheduler source target agrees who
   have covered := BindingMemory.retainedImplementation_response_available
     (runtime setup) leaks menu owner reference (players owner)
-  induction events generalizing original repaired memory before with
+  induction events generalizing original repaired memory before rank with
   | nil =>
       refine ⟨PMF.pure (original, repaired, memory), ?_, ?_, ?_⟩
       · simp only [List.flatMap_nil, runInteractionPlan, PMF.pure_map]
@@ -143,6 +145,7 @@ theorem remaining_events_stopped_coupling
   | cons event rest ih =>
       let block := rosterBlock setup rosters event
       let suffix := rest.flatMap (rosterBlock setup rosters)
+      obtain ⟨eventRank, restEq⟩ := finRange_drop_cons eventsEq
       obtain ⟨step, first, second, related⟩ := event_block_stopped_coupling setup leaks bounds
         values capacity rosters opportunities network source target agrees owner policy
           available reference memory original repaired frame onlyBindings started leftRecall sound
@@ -156,7 +159,7 @@ theorem remaining_events_stopped_coupling
               exact trace)
             before (suffix ++ after)
             (by simpa only [List.flatMap_cons, List.append_assoc, block, suffix] using split)
-            position
+            (by rw [beforeEq, eventRank]) position
       have existsTail next (member : next ∈ step.support) :
           ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup)
             leaks),
@@ -234,7 +237,7 @@ theorem remaining_events_stopped_coupling
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih next.2.2 next.1 next.2.1 paired
             nextMemory nextStarted nextRecall nextSound nextBinding nextTrace (before ++ block)
             (by simpa only [List.flatMap_cons, List.append_assoc, block, suffix] using split)
-            nextPosition
+            (rank + 1) restEq (by rw [beforeEq, ← eventRank, rosterPlanPrefix_succ]) nextPosition
           exact ⟨coupling, leftLaw, rightLaw, fun final supported =>
             (connected final supported).2.2⟩
       let tail := fun next member => (existsTail next member).choose

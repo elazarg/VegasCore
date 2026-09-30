@@ -114,18 +114,13 @@ theorem ServiceBoundary.binding_block_conformance
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
-  obtain ⟨granted, grantBoundary, _, _, _, grantLaw⟩ := boundary.grant players network event
-  have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
-    (.grant event) (by simp) (by simp) execution granted
-    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-  rw [rosterBlock_of_owner setup rosters event owner owned,
-    (runtime setup).runInteractionPlan_append] at reached
-  simp only [runInteractionPlan, grantLaw, PMF.pure_bind, List.append_assoc] at reached
+  rw [rosterBlock_of_owner setup rosters event owner owned] at reached
+  simp only [List.append_assoc] at reached
   rw [(runtime setup).runInteractionPlan_append] at reached
   obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have visitedTraffic := (grantBoundary.binding_prefix_conformance bounds players lawful network
+  have visitedTraffic := (boundary.binding_prefix_conformance bounds players lawful network
     event atRank owner payload outputEq codeEq node owned
-      (by rw [grantTraffic]; exact traffic) (rosters event) visited window).2
+      traffic (rosters event) visited window).2
   have exactTraffic := (runtime setup).executionTraffic_passive_plan leaks players network
     ([.includeLatest event owner] ++ List.replicate (event.val + 1) .tick ++ [.expire event])
     (by
@@ -156,18 +151,12 @@ theorem ServiceBoundary.sample_block_conformance
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
         record.input.envelope = true := by
-  obtain ⟨granted, grantBoundary, _, _, _, grantLaw⟩ := boundary.grant players network event
-  have grantTraffic := (runtime setup).executionTraffic_passive_step leaks players network
-    (.grant event) (by simp) (by simp) execution granted
-    (by rw [grantLaw]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   simp only [rosterBlock, chance, List.append_assoc] at reached
-  rw [(runtime setup).runInteractionPlan_append] at reached
-  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at reached
   rw [(runtime setup).runInteractionPlan_append] at reached
   obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have visitedTraffic := (sourceService_sample_window_conformance bounds players lawful network
-    event chance (soleReady_of_ready setup granted.application (grantBoundary.ready event atRank))
-    grantBoundary.published (by rw [grantTraffic]; exact traffic)
+    event chance (soleReady_of_ready setup execution.application (boundary.ready event atRank))
+    boundary.published traffic
       (rosters event) visited window).2
   have exactTraffic := (runtime setup).executionTraffic_passive_plan leaks players network
     ([.sample event] ++ List.replicate (event.val + 1) .tick ++ [.expire event])

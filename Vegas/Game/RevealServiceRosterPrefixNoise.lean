@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.RevealServiceRosterGrantNoise
+import Vegas.Game.RevealServiceRosterNoise
+import Vegas.Game.ServiceRoster
+import Vegas.Game.RevealServicePrefixInformation
 import Vegas.Game.RevealServiceRosterPrefixLaw
 import GameTheoryExtensions.Math.Probability.Support
 
@@ -153,52 +155,32 @@ theorem run_roster_source_prefix_noise
               .resolve owner payload (refs.get selected) [] outputEq codeEq :=
             EventGraphRuntime.nodeView_eq_resolve _ _
           let players := rosterPolicy setup leaks rosters timing wholeProfile
-          let opportunity := fun seed => ((checkpoint seed).grant players network event).choose
-          have opportunityFacts (seed : Seed) :=
-            ((checkpoint seed).grant players network event).choose_spec
-          have grantLaw (seed : Seed) :
-              (runtime setup).runInteractionPlan leaks players network [.grant event]
-                (execution seed) = PMF.pure (opportunity seed) :=
-            (opportunityFacts seed).2.2.2.2
-          have opportunityNetwork (seed : Seed) :
-              (opportunity seed).network = (execution seed).network :=
-            (opportunityFacts seed).2.2.2.1
+          let opportunity := execution
           let value := fun seed => (checkpoint seed).openable selected |>.choose
           have openable (seed : Seed) : (source seed).state.get selected = .success (value seed) :=
             ((checkpoint seed).openable selected).choose_spec
           let candidate := fun seed => (roster_opening_at_checkpoint setup leaks selected
-            (source seed).state refs (opportunity seed) (opportunityFacts seed).1.agrees
-              (opportunityFacts seed).1.binding event outputEq codeEq node
+            (source seed).state refs (opportunity seed) (checkpoint seed).agrees
+              (checkpoint seed).binding event outputEq codeEq node
                 (value seed) (openable seed)).choose
           have candidateFacts (seed : Seed) := (roster_opening_at_checkpoint setup leaks selected
-            (source seed).state refs (opportunity seed) (opportunityFacts seed).1.agrees
-              (opportunityFacts seed).1.binding event outputEq codeEq node
+            (source seed).state refs (opportunity seed) (checkpoint seed).agrees
+              (checkpoint seed).binding event outputEq codeEq node
                 (value seed) (openable seed)).choose_spec
           have ownerOffset (seed : Seed) : ((opportunity seed).recall owner).length =
               rosterOffset setup rosters owner event := by
-            rw [(opportunityFacts seed).2.2.1, counts seed owner]
+            rw [counts seed owner]
             simp only [rosterOffset, eventRank]
-          obtain ⟨grantNoise, grantFactor⟩ := roster_grant_observation_kernel setup leaks refs
-            offset prior initial source execution (fun seed _ => checkpoint seed) event focal
-              players network grant (fun seed _ => granted seed) noise factor
-          simp only [grantLaw, PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def]
-            at grantFactor
-          have opportunityRecall (seed : Seed) :
-              (opportunity seed).InputRecall (application setup leaks) :=
-            (runtime setup).runInteractionPlan_inputRecall leaks players network [.grant event]
-              (execution seed)
-              (opportunity seed) (recalls seed) (by
-                rw [(opportunityFacts seed).2.2.2.2]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
           obtain ⟨nextNoise, nextFactor⟩ := roster_successor_observation_kernel setup leaks
             published selected refs offset event eventRank actor outputEq codeEq node prior initial
-            source opportunity (fun seed _ => (opportunityFacts seed).1) value
+            source opportunity (fun seed _ => checkpoint seed) value
               (fun seed _ => openable seed) candidate (fun seed _ => (candidateFacts seed).2.1)
               (fun seed _ => (candidateFacts seed).1) (fun seed _ => (candidateFacts seed).2.2.1)
-              (fun seed _ => opportunityRecall seed)
-              (fun seed _ => (opportunityFacts seed).2.2.2.1 ▸ serials seed)
-              (fun seed _ => (opportunityFacts seed).2.2.2.1 ▸ clean seed)
-              (fun seed _ => (opportunityFacts seed).2.1) (rosters event)
-              (timing event owner actor) network focal grantNoise grantFactor
+              (fun seed _ => recalls seed)
+              (fun seed _ => serials seed)
+              (fun seed _ => clean seed)
+              grant (fun seed _ => granted seed) (rosters event)
+              (timing event owner actor) network focal noise factor
               (fun config => revealKernel profile (config.view owner))
           let phase : List (ServiceInstruction (graph setup)) :=
             ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner])
@@ -266,17 +248,17 @@ theorem run_roster_source_prefix_noise
               (nextInitial point) (nextSource point) tailRefs (offset + 1) (nextExecution point) ∧
               (nextExecution point).network.Satisfies (fun message =>
                 message.id ∈ (nextExecution point).network.ledger.map Message.id) ∧
-              (nextExecution point).application.serviceGrant = some event := by
+              (nextExecution point).application.serviceGrant = grant := by
             obtain ⟨slot, disclosure, reached⟩ := nextSupported point
-            have result := (opportunityFacts point.val.1).1.reveal_scheduled rosters network
+            have result := (checkpoint point.val.1).reveal_scheduled rosters network
               published selected event eventRank actor outputEq codeEq node
               (fun ref => refsBefore ref index) decoded (value point.val.1) (openable point.val.1)
               (candidate point.val.1) (candidateFacts point.val.1).2.1
               (candidateFacts point.val.1).1 (candidateFacts point.val.1).2.2.1
-              (ownerOffset point.val.1) (by rw [opportunityNetwork]; exact clean point.val.1)
-              (by rw [opportunityNetwork]; exact serials point.val.1) slot point.val.2.2 reached
+              (ownerOffset point.val.1) (clean point.val.1)
+              (serials point.val.1) slot point.val.2.2 reached
             exact ⟨by simpa only [disclosure] using result.1, result.2.1,
-              result.2.2.trans (opportunityFacts point.val.1).2.1⟩
+              result.2.2.trans (granted point.val.1)⟩
           have nextCounts (point : NextSeed) (who : Player) :
               ((nextExecution point).recall who).length =
                 (((List.finRange (graph setup).order.eventCount).take (offset + 1)).flatMap
@@ -286,7 +268,7 @@ theorem run_roster_source_prefix_noise
               (by simp [phase]) (opportunity point.val.1) point.val.2.2 reached who
             have actors : phase.filterMap instructionActor = rosters event := by
               simp [phase, instructionActor]
-            rw [actors, (opportunityFacts point.val.1).2.2.1, counts point.val.1 who] at counted
+            rw [actors, counts point.val.1 who] at counted
             have phases := congrArg
               (fun instructions : List (ServiceInstruction (graph setup)) =>
                 (instructions.filterMap instructionActor).count who)
@@ -298,14 +280,13 @@ theorem run_roster_source_prefix_noise
               (nextExecution point).network.SerialsBeforeNext := by
             obtain ⟨slot, _disclosure, reached⟩ := nextSupported point
             exact (runtime setup).runInteractionPlan_serials leaks _ network phase
-              (opportunity point.val.1) point.val.2.2 (by
-                rw [opportunityNetwork]; exact serials point.val.1) reached
+              (opportunity point.val.1) point.val.2.2 (serials point.val.1) reached
           have nextRecalls (point : NextSeed) :
               (nextExecution point).InputRecall (application setup leaks) := by
             obtain ⟨slot, _disclosure, reached⟩ := nextSupported point
             exact (runtime setup).runInteractionPlan_inputRecall leaks _ network phase
               (opportunity point.val.1)
-              point.val.2.2 (opportunityRecall point.val.1) reached
+              point.val.2.2 (recalls point.val.1) reached
           have nextAligned (point : NextSeed) : CompiledPolicySuffix setup.program wholeProfile next
               (afterReveal profile) tailRefs (nextSource point).revelations [] tailEmbedding
                 tailBefore (offset + 1) := by
@@ -355,7 +336,7 @@ theorem run_roster_source_prefix_noise
           obtain ⟨tailNoise, tailLaw⟩ := ih reveals (afterReveal profile) tailRefs tailEmbedding
             tailBefore (offset + 1) nextPrior nextInitial nextSource nextExecution nextAligned
             (fun point => (nextFacts point).1) nextCounts (fun point => (nextFacts point).2.1)
-            nextSerials nextRecalls (some event) (fun point => (nextFacts point).2.2)
+            nextSerials nextRecalls grant (fun point => (nextFacts point).2.2)
             nextNoise advancedFactor count (by simpa [eventCount] using within)
           let remaining := ((List.finRange (eventCount next)).take count).flatMap fun tail =>
             rosterBlock setup rosters (tailEmbedding.event tail)
@@ -389,15 +370,14 @@ theorem run_roster_source_prefix_noise
           have planEq : (((List.finRange (eventCount
               (.reveal published owner name fresh selected unresolved next))).take
                 (count + 1)).flatMap fun i => rosterBlock setup rosters (embedding.event i)) =
-              [.grant event] ++ (phase ++ remaining) := by
+              (phase ++ remaining) := by
             simp only [eventCount, List.finRange_succ, List.take_succ_cons, ← List.map_take,
               List.flatMap_cons, List.flatMap_map]
             change rosterBlock setup rosters event ++ remaining = _
             rw [rosterBlock_of_owner setup rosters event owner actor]
-            simp only [phase, List.append_assoc, List.cons_append, List.nil_append]
           have jointEq : (prior.bind fun seed =>
               ((runtime setup).runInteractionPlan leaks players network
-                ([.grant event] ++ (phase ++ remaining)) (execution seed)).map fun final =>
+                ((phase ++ remaining)) (execution seed)).map fun final =>
                   (decodePrefix? (.reveal published owner name fresh selected unresolved next)
                     refs (source seed).revelations embedding.ref (count + 1)
                     final.application.config.store (decodeHistory setup.program
@@ -425,16 +405,16 @@ theorem run_roster_source_prefix_noise
             apply bind_congr_on_support _
             intro seed _
             have opportunityReady : (opportunity seed).application.config.cut.Ready event :=
-              (opportunityFacts seed).1.ready event eventRank
+              (checkpoint seed).ready event eventRank
             have phaseLaw := rosterPolicy_phase_law setup leaks rosters timing wholeProfile
               (opportunity seed) event owner opportunityReady actor (candidate seed)
               ⟨payload, value seed⟩ (candidateFacts seed).2.2.2 (Nat.le_of_eq (ownerOffset seed))
               network (event.val + 1)
             have choiceLaw := sourceChoiceLaw_reveal setup leaks fresh selected unresolved next
               wholeProfile profile refs (source seed) embedding refsBefore offset (aligned seed)
-              (opportunity seed) (opportunityFacts seed).1.agrees
-                (opportunityFacts seed).1.history opportunityReady
-            rw [runInteractionPlan_append, grantLaw, PMF.pure_bind, runInteractionPlan_append]
+              (opportunity seed) (checkpoint seed).agrees
+                (checkpoint seed).history opportunityReady
+            rw [runInteractionPlan_append]
             change (((runtime setup).runInteractionPlan leaks players network phase
               (opportunity seed)).bind _).map _ = _
             have branchLaw : (runtime setup).runInteractionPlan leaks players network phase

@@ -40,54 +40,49 @@ private theorem rosterBlock_player (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (event : (graph setup).EventId)
     (index : Nat) (who : Player)
     (found : (rosterBlock setup rosters event)[index]? = some (.player who)) :
-    ∃ slot, index = slot + 1 ∧ (rosters event)[slot]? = some who := by
-  simp only [rosterBlock, List.append_assoc, List.cons_append, List.nil_append] at found
-  cases index with
-  | zero => cases found
-  | succ index =>
-      simp only [List.getElem?_cons_succ] at found
-      by_cases inside : index < (rosters event).length
-      · rw [List.getElem?_append_left (by simpa only [List.length_map] using inside),
-          List.getElem?_map] at found
-        obtain ⟨owner, selected, same⟩ := Option.map_eq_some_iff.mp found
-        cases ServiceInstruction.player.inj same
-        exact ⟨index, rfl, selected⟩
-      · rw [List.getElem?_append_right (by simp only [List.length_map]; omega)] at found
-        have member := List.mem_of_getElem? found
-        cases ownership : (graph setup).actor? event <;> simp [ownership] at member
+    (rosters event)[index]? = some who := by
+  simp only [rosterBlock, List.append_assoc] at found
+  by_cases inside : index < (rosters event).length
+  · rw [List.getElem?_append_left (by simpa only [List.length_map] using inside),
+      List.getElem?_map] at found
+    obtain ⟨owner, selected, same⟩ := Option.map_eq_some_iff.mp found
+    cases ServiceInstruction.player.inj same
+    exact selected
+  · rw [List.getElem?_append_right (by simp only [List.length_map]; omega)] at found
+    have member := List.mem_of_getElem? found
+    cases ownership : (graph setup).actor? event <;> simp [ownership] at member
 
 /-- A selected player response has one concrete phase and roster position.
-The preceding plan contains exactly the completed phases, grant and earlier
+The preceding plan contains exactly the completed phases and the earlier
 responses of this phase. -/
 theorem roster_activation_prefix (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (index : Nat) (who : Player)
     (found : (rosterPlan setup rosters)[index]? = some (.player who)) :
     ∃ event : (graph setup).EventId, ∃ slot,
       (rosters event)[slot]? = some who ∧
-      index = (rosterPlanPrefix setup rosters event.val).length + 1 + slot ∧
+      index = (rosterPlanPrefix setup rosters event.val).length + slot ∧
       (rosterPlan setup rosters).take index =
         rosterPlanPrefix setup rosters event.val ++
-          [.grant event] ++ ((rosters event).take slot).map ServiceInstruction.player := by
-  obtain ⟨rank, event, offset, selected, located, position⟩ := flatMap_position
+          ((rosters event).take slot).map ServiceInstruction.player := by
+  obtain ⟨rank, event, slot, selected, located, position⟩ := flatMap_position
     (List.finRange (graph setup).order.eventCount) (rosterBlock setup rosters) index
       (.player who) found
   have bound := (List.getElem?_eq_some_iff.mp selected).1
   rw [List.getElem?_eq_getElem bound, List.getElem_finRange] at selected
   have rankEq : rank = event.val := congrArg Fin.val (Option.some.inj selected)
-  obtain ⟨slot, offsetEq, player⟩ := rosterBlock_player setup rosters event offset who located
+  have player := rosterBlock_player setup rosters event slot who located
   have slotBound : slot < (rosters event).length := (List.getElem?_eq_some_iff.mp player).1
-  have indexEq : index = (rosterPlanPrefix setup rosters event.val).length + 1 + slot := by
-    change index = (rosterPlanPrefix setup rosters rank).length + offset at position
-    rw [rankEq, offsetEq] at position
-    omega
+  have indexEq : index = (rosterPlanPrefix setup rosters event.val).length + slot := by
+    change index = (rosterPlanPrefix setup rosters rank).length + slot at position
+    rw [rankEq] at position
+    exact position
   refine ⟨event, slot, player, indexEq, ?_⟩
   obtain ⟨after, split⟩ := rosterPlan_split setup rosters event
   rw [indexEq, split, List.append_assoc, List.take_append,
     List.take_of_length_le (by omega), show
-      (rosterPlanPrefix setup rosters event.val).length + 1 + slot -
-        (rosterPlanPrefix setup rosters event.val).length = slot + 1 by omega]
-  simp only [rosterBlock, List.append_assoc, List.singleton_append]
-  rw [List.take_append_of_le_length (by
-    simp only [List.length_cons, List.length_map]; omega), List.take_succ_cons, List.map_take]
+      (rosterPlanPrefix setup rosters event.val).length + slot -
+        (rosterPlanPrefix setup rosters event.val).length = slot by omega]
+  simp only [rosterBlock, List.append_assoc]
+  rw [List.take_append_of_le_length (by simp only [List.length_map]; omega), List.map_take]
 
 end Vegas

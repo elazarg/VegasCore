@@ -75,7 +75,7 @@ structure DecisionPhase (setup : Setup (Player := Player) (L := L))
   slot : Nat
   selected : (rosters event)[slot]? = some who
   position : execution.environmentRecall.length =
-    (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1
+    (rosterPlanPrefix setup rosters event.val).length + slot + 1
   ready : execution.application.config.cut.Ready event
 
 namespace DecisionPhase
@@ -95,7 +95,7 @@ def visits : List Player := (rosters phase.event).drop (phase.slot + 1)
 
 /-- The service plan up to the current activation. -/
 def before : List (ServiceInstruction (graph setup)) :=
-  rosterPlanPrefix setup rosters phase.event.val ++ [.grant phase.event] ++
+  rosterPlanPrefix setup rosters phase.event.val ++
     ((rosters phase.event).take phase.slot).map ServiceInstruction.player
 
 /-- The instructions left in the current event's phase. -/
@@ -129,7 +129,7 @@ theorem plan_split :
 theorem position_before :
     execution.environmentRecall.length = phase.before.length + 1 := by
   have inside := (List.getElem?_eq_some_iff.mp phase.selected).1
-  simp only [before, List.length_append, List.length_singleton, List.length_map,
+  simp only [before, List.length_append, List.length_map,
     List.length_take_of_le inside.le]
   exact phase.position
 

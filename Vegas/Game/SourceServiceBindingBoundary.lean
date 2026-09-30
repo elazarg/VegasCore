@@ -351,23 +351,14 @@ theorem ServiceBoundary.binding_block
         (commitSuccessor name guard source (.success value))
         (refs.cons (name := name) ⟨.inr event, outputEq⟩) (rank + 1) final := by
   let app := application setup leaks
-  obtain ⟨granted, grantBoundary, grant, grantApp, grantRecall, grantLaw⟩ :=
-    boundary.grant players network event
-  have grantedCapacity : granted.application.publicView.bindingCount owner <
-      bounds.candidateCount := by
-    rw [grantApp]
-    exact capacity
   have phase := reached
-  rw [rosterBlock_of_owner setup rosters event owner owned,
+  rw [rosterBlock_of_owner setup rosters event owner owned, List.append_assoc,
     (runtime setup).runInteractionPlan_append] at phase
-  simp only [runInteractionPlan, grantLaw, PMF.pure_bind] at phase
-  simp only [List.append_assoc] at phase
-  rw [← List.append_assoc, (runtime setup).runInteractionPlan_append] at phase
   obtain ⟨included, inclusion, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ phase)
   obtain ⟨represented, acceptedRecorded, prepared, accounted, published,
-    value, admitted, checkpoint⟩ := grantBoundary.binding_inclusion bounds covered players lawful
+    value, admitted, checkpoint⟩ := boundary.binding_inclusion bounds covered players lawful
       network event atRank name owner payload guard outputEq codeEq node owned
-        beforeRefs decoded opportunity grantedCapacity included inclusion
+        beforeRefs decoded opportunity capacity included inclusion
   have settled : ¬included.application.config.cut.Ready event := by
     intro ready
     have next := (ready_iff_rank setup _ (rank + 1) checkpoint.ordered event).mp ready
@@ -430,9 +421,9 @@ theorem ServiceBoundary.binding_block
       fun who past view response member => sourceServiceMenu_in_compiled setup leaks bounds
         rosters who past view (lawful who past view response member)
     rw [(runtime setup).compiled_window_other_events leaks bounds players ordinary network event
-      (rosters event) granted visited
-      (soleReady_of_ready setup granted.application (grantBoundary.ready event atRank)) window
-      observer other otherEvent, grantRecall]
+      (rosters event) execution visited
+      (soleReady_of_ready setup execution.application (boundary.ready event atRank)) window
+      observer other otherEvent]
     exact boundary.unsent observer other (by omega)
 
 end Vegas

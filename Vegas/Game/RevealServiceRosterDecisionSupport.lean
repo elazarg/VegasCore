@@ -34,13 +34,13 @@ theorem roster_decision_boundary (setup : Setup (Player := Player) (L := L))
     ∃ event : (graph setup).EventId, ∃ slot boundary prior,
       (rosters event)[slot]? = some who ∧
       control.execution.environmentRecall.length =
-        (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 ∧
+        (rosterPlanPrefix setup rosters event.val).length + slot + 1 ∧
       boundary ∈ ((initialLaw setup).bind fun state =>
         (runtime setup).runInteractionPlan leaks responses.uniformResponses network
           (rosterPlanPrefix setup rosters event.val)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).support ∧
       prior ∈ ((runtime setup).runInteractionPlan leaks responses.uniformResponses network
-        ([.grant event] ++ ((rosters event).take slot).map ServiceInstruction.player)
+        (((rosters event).take slot).map ServiceInstruction.player)
         boundary).support ∧
       control.execution ∈
         (prior.environmentStep (application setup leaks) (.activate who)).support := by
@@ -54,7 +54,7 @@ theorem roster_decision_boundary (setup : Setup (Player := Player) (L := L))
           (rosterPlanPrefix setup rosters event.val)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
         (fun boundary => (runtime setup).runInteractionPlan leaks responses.uniformResponses
-          network ([.grant event] ++ ((rosters event).take slot).map ServiceInstruction.player)
+          network (((rosters event).take slot).map ServiceInstruction.player)
           boundary)).support :=
       by
     simpa only [planPrefix, runInteractionPlan_append, PMF.bind_bind] using priorSupport
@@ -80,7 +80,7 @@ theorem roster_decision_source (setup : Setup (Player := Player) (L := L))
     ∃ event : (graph setup).EventId, ∃ slot boundary prior,
       (rosters event)[slot]? = some who ∧
       control.execution.environmentRecall.length =
-        (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1 ∧
+        (rosterPlanPrefix setup rosters event.val).length + slot + 1 ∧
       boundary ∈ ((initialLaw setup).bind fun state =>
         (runtime setup).runInteractionPlan leaks
           (rosterMenu setup leaks bounds rosters).uniformResponses network
@@ -88,7 +88,7 @@ theorem roster_decision_source (setup : Setup (Player := Player) (L := L))
           (ReactiveApplication.Execution.initial (application setup leaks) state)).support ∧
       prior ∈ ((runtime setup).runInteractionPlan leaks
         (rosterMenu setup leaks bounds rosters).uniformResponses network
-        ([.grant event] ++ ((rosters event).take slot).map ServiceInstruction.player)
+        (((rosters event).take slot).map ServiceInstruction.player)
         boundary).support ∧
       control.execution ∈
         (prior.environmentStep (application setup leaks) (.activate who)).support ∧
