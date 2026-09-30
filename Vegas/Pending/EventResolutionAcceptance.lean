@@ -161,7 +161,7 @@ theorem runServicePlan_compiled_resolve_includeLatest
     (viewNode : nodeView graph event =
       .resolve owner payload binding checks outputEq codeEq)
     (playersOwner : players owner = runtime.compilePlayerPolicy owner policy)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (ready : execution.native.application.config.cut.Ready event)
     (timely : execution.native.application.WithinDeadline runtime event)
     (invariant : execution.native.application.BindingInvariant)
@@ -179,7 +179,7 @@ theorem runServicePlan_compiled_resolve_includeLatest
           (execution.native.application.config.step event ready) := by
   rw [runtime.runServicePlan_append players wire]
   rw [runtime.runServicePlan_compiled_resolve_block owner policy players wire execution
-    event owner payload binding checks outputEq codeEq viewNode playersOwner grant ready actor
+    event owner payload binding checks outputEq codeEq viewNode playersOwner turn actor
     stage notSubmitted emptyCache]
   rw [PMF.bind_bind, PMF.map_bind]
   apply bind_congr_on_support _

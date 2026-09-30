@@ -120,8 +120,8 @@ theorem resolutionOrigins_initial (runtime : EventGraphRuntime graph)
     simp [MessageApplication.PolicyExecution.initial, MessageApplication.State.initial,
       MessagePool.empty] at *
 
-/-- At a ready resolution grant, every supported compiled submission is the
-one generated from the coherent cached action. -/
+/-- At the owner's turn for a resolution, every supported compiled submission
+is the one generated from the coherent cached action. -/
 theorem compilePlayerPolicy_resolution_submission
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
@@ -134,8 +134,7 @@ theorem compilePlayerPolicy_resolution_submission
       (graph.nodes event) = .resolve bindingOwner payload binding checks)
     (viewNode : nodeView graph event =
       .resolve bindingOwner payload binding checks outputEq codeEq)
-    (grant : execution.native.application.serviceGrant = some event)
-    (ready : execution.native.application.config.cut.Ready event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (notSubmitted : submittedAt (execution.principalHistory owner) event = false)
     (coherent : PolicyCoherent runtime execution owner event)
     (packet : Payload graph)
@@ -147,27 +146,24 @@ theorem compilePlayerPolicy_resolution_submission
           (MessageApplication.State.observe runtime.application execution.native owner) =
         .submit packet := by
   have stageAtLeast := runtime.compilePlayerPolicy_submit_stage owner policy execution event
-    grant packet member
+    turn packet member
   have stageExactly : stagingCount (execution.principalHistory owner) event = 2 := by
     have stageLe := coherent.stage_le
     omega
   obtain ⟨action, cached⟩ := coherent.cached_of_stage (by omega)
-  have publicReady : execution.native.application.publicView.EventReady event :=
-    (State.publicView_eventReady execution.native.application event).2 ready
   have policyEq := runtime.compilePlayerPolicy_resolve_stage_two owner policy
     (execution.principalHistory owner)
     (MessageApplication.State.observe runtime.application execution.native owner)
-    event bindingOwner payload binding checks outputEq codeEq viewNode action (by
-      change execution.native.application.serviceGrant = some event
-      exact grant) notSubmitted rfl publicReady coherent.actor (by omega) (by
+    event bindingOwner payload binding checks outputEq codeEq viewNode action turn
+    notSubmitted rfl coherent.actor (by omega) (by
       change (State.playerView execution.native.application owner).remembered event = some action
       simpa [State.playerView, coherent.actor] using cached)
   rw [policyEq, PMF.mem_support_pure_iff _ _] at member
   exact ⟨action, cached, member.symm⟩
 
-/-- The address of every supported compiled submission is exactly its current
-service grant. -/
-theorem compilePlayerPolicy_submit_grant
+/-- The address of every supported compiled submission is exactly the owner's
+current turn. -/
+theorem compilePlayerPolicy_submit_turn
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (history : List (Entry runtime)) (view : runtime.application.View)
@@ -175,15 +171,15 @@ theorem compilePlayerPolicy_submit_grant
     (member : (.submit packet : Command runtime) ∈
       (runtime.compilePlayerPolicy owner policy history view).support)
     (addressed : packet.event? graph = some event) :
-    view.application.publicView.serviceGrant = some event := by
-  cases grantEq : view.application.publicView.serviceGrant with
+    view.application.publicView.ownTurn? owner = some event := by
+  cases turnEq : view.application.publicView.ownTurn? owner with
   | none =>
       unfold compilePlayerPolicy at member
-      rw [grantEq] at member
+      rw [turnEq] at member
       simp at member
   | some query =>
       have atQuery := runtime.compilePlayerPolicy_commandAt owner policy history view query
-        grantEq (.submit packet) member
+        turnEq (.submit packet) member
       rcases atQuery with wait | staged | ⟨actual, commandEq, actualAddress⟩
       · contradiction
       · simp [stagesEvent] at staged
@@ -194,26 +190,25 @@ theorem compilePlayerPolicy_submit_grant
         subst query
         rfl
 
-/-- A supported compiled submission is emitted only while its grant is ready
-and has no earlier submission entry. -/
+/-- A supported compiled submission is emitted only at a ready turn with no
+earlier submission entry. -/
 theorem compilePlayerPolicy_submit_ready_notSubmitted
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (history : List (Entry runtime)) (view : runtime.application.View)
     (event : graph.EventId) (packet : Payload graph)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.ownTurn? owner = some event)
     (member : (.submit packet : Command runtime) ∈
       (runtime.compilePlayerPolicy owner policy history view).support) :
     view.application.publicView.EventReady event ∧ submittedAt history event = false := by
+  refine ⟨(view.application.publicView.ownTurn?_spec owner event turn).1, ?_⟩
   unfold compilePlayerPolicy at member
-  rw [grant] at member
+  rw [turn] at member
   repeat' first | split at member
   all_goals subst_vars
   all_goals simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map,
     Set.mem_image, reduceCtorEq, MessageInterface.PlayerCommand.submit.injEq,
     Option.some.injEq, submit_ne_bindingStageCommand]
-  all_goals try { rcases member with ⟨_, _, impossible⟩; contradiction }
-  all_goals aesop
 
 theorem ResolutionPacketValid.serviceStep
     (runtime : EventGraphRuntime graph) (inputs : graph.Inputs)
@@ -334,26 +329,22 @@ theorem serviceStep_resolutionOrigins
             have sameOwner : who = owner := sender
             subst who
             rw [prescribed] at commandMem
-            have observedGrant := runtime.compilePlayerPolicy_submit_grant owner policy
+            have observedTurn := runtime.compilePlayerPolicy_submit_turn owner policy
               (before.principalHistory owner)
               (MessageApplication.State.observe runtime.application before.native owner)
               packet event commandMem addressed
-            have grant : before.native.application.serviceGrant = some event := by
-              change (MessageApplication.State.observe runtime.application before.native
-                owner).application.publicView.serviceGrant = some event
-              exact observedGrant
+            have turn : before.native.application.publicView.ownTurn? owner = some event :=
+              observedTurn
             have context := runtime.compilePlayerPolicy_submit_ready_notSubmitted owner policy
               (before.principalHistory owner)
               (MessageApplication.State.observe runtime.application before.native owner)
-              event packet observedGrant commandMem
-            have ready :=
-              (State.publicView_eventReady before.native.application event).mp context.1
+              event packet observedTurn commandMem
             have actor := runtime.compilePlayerPolicy_nonwait_actor owner policy
               (before.principalHistory owner)
               (MessageApplication.State.observe runtime.application before.native owner)
-              event observedGrant (.submit packet) (by simp) commandMem
+              event observedTurn (.submit packet) (by simp) commandMem
             have origin := runtime.compilePlayerPolicy_resolution_submission owner policy before
-              event payload bindingOwner binding checks outputEq codeEq viewNode grant ready
+              event payload bindingOwner binding checks outputEq codeEq viewNode turn
               context.2 (coherent event actor) packet commandMem
             obtain ⟨action, cached, submission⟩ := origin
             have stepEq : after = runtime.application.afterSubmit before owner packet := by
@@ -361,7 +352,8 @@ theorem serviceStep_resolutionOrigins
                 PMF.mem_support_pure_iff _ _] using step
             subst after
             right
-            refine ⟨action, ready, cached, ?_⟩
+            refine ⟨action, (State.publicView_eventReady before.native.application event).mp
+              context.1, cached, ?_⟩
             simpa [resolutionSubmission, resolutionPayload,
               MessageApplication.State.observe, MessageApplication.afterSubmit, application,
               State.playerView]

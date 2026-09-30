@@ -284,7 +284,7 @@ theorem runServicePlan_compiled_bind_includeLatest (runtime : EventGraphRuntime 
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
     (playersOwner : players owner = runtime.compilePlayerPolicy owner policy)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (ready : execution.native.application.config.cut.Ready event)
     (actor : graph.actor? event = some owner)
     (stage : stagingCount (execution.principalHistory owner) event = 0)
@@ -304,7 +304,7 @@ theorem runServicePlan_compiled_bind_includeLatest (runtime : EventGraphRuntime 
           (execution.native.application.config.step event ready) := by
   rw [runtime.runServicePlan_append,
     runtime.runServicePlan_compiled_bind_block owner policy players wire execution
-      event owner payload outputEq codeEq viewNode playersOwner grant ready actor
+      event owner payload outputEq codeEq viewNode playersOwner turn actor
       stage notSubmitted emptyCache, PMF.bind_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro action _

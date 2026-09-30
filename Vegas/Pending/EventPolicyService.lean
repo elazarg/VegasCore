@@ -100,9 +100,9 @@ theorem environmentPolicyStep_policyCoherentAll
   · exact congrFun histories owner
   · exact congrFun remembered event
 
-/-- The compiled owner invocation preserves coherence whether the current
-public grant is present or absent. -/
-theorem compilePlayerPolicy_invoke_policyCoherentAll_anyGrant
+/-- The compiled owner invocation preserves coherence whether or not the owner
+currently has a turn. -/
+theorem compilePlayerPolicy_invoke_policyCoherentAll_anyTurn
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (players : Player → runtime.application.PlayerPolicy)
@@ -113,21 +113,19 @@ theorem compilePlayerPolicy_invoke_policyCoherentAll_anyGrant
     (supported : next ∈
       (runtime.application.invoke players environment execution (.player owner)).support) :
     PolicyCoherentAll runtime next owner := by
-  cases grant : execution.native.application.serviceGrant with
+  cases turn : execution.native.application.publicView.ownTurn? owner with
   | some event =>
       exact runtime.compilePlayerPolicy_invoke_policyCoherentAll owner policy players environment
-        execution next event ownerCompiled grant coherent supported
+        execution next event ownerCompiled turn coherent supported
   | none =>
       simp only [MessageApplication.invoke, ownerCompiled, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, commandMem, stepMem⟩ := supported
-      have observedGrant :
+      have observedTurn :
           (MessageApplication.State.observe runtime.application execution.native
-            owner).application.publicView.serviceGrant = none := by
-        change execution.native.application.serviceGrant = none
-        exact grant
+            owner).application.publicView.ownTurn? owner = none := turn
       unfold compilePlayerPolicy at commandMem
-      rw [observedGrant] at commandMem
+      rw [observedTurn] at commandMem
       simp only [PMF.mem_support_pure_iff _ _] at commandMem
       subst command
       rw [runtime.application.playerStep_wait] at stepMem
@@ -152,7 +150,7 @@ theorem playerInvoke_policyCoherentAll
     PolicyCoherentAll runtime next owner := by
   by_cases same : who = owner
   · subst who
-    exact runtime.compilePlayerPolicy_invoke_policyCoherentAll_anyGrant owner policy players
+    exact runtime.compilePlayerPolicy_invoke_policyCoherentAll_anyTurn owner policy players
       environment execution next ownerCompiled coherent supported
   · simp only [MessageApplication.invoke, PMF.support_bind, Set.mem_iUnion] at supported
     obtain ⟨command, _, stepMem⟩ := supported

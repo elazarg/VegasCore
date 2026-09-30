@@ -22,10 +22,11 @@ After the complete sweep, the service advances the block clock once and checks
 expiry at every event. Expiry checks do not themselves advance time.
 
 A grant is a public service announcement, not an authorization check on
-packets. Arbitrary players can submit, replay, and prepare competing candidates
-at their invocations. The wire policy can deliver or include any pending
-packet at its slots, including a packet for an event other than the grant. It
-cannot insert extra clock advances or sample triggers.
+packets, and no prescribed policy reads it. Arbitrary players can submit,
+replay, and prepare competing candidates at their invocations. The wire policy
+can deliver or include any pending packet at its slots, including a packet for
+an event other than the grant. It cannot insert extra clock advances or sample
+triggers.
 
 The reserved selector uses only the authenticated sender and public event
 address. It selects the latest matching pending packet; a later unrelated
@@ -86,9 +87,12 @@ No outcome or strategic law is a field of the service configuration.
 
 ## Prescribed policies and local refinement
 
-The prescribed policy uses a public grant only when that event is ready and
-owned by the player. Readiness is computed from public completion identities.
-The three uninterrupted owner opportunities have a fixed shape:
+A prescribed owner serves its own turn, `PublicView.ownTurn?`: the least
+ready event it owns, computed from public completion identities. Under the
+barrier order this is its only ready event. The owner acts at any invocation,
+including reaction slots of other events' visits, not only at its own event's
+reserved opportunities; no grant is consulted. Its opportunities for one event
+have a fixed shape:
 
 1. Sample the normalized graph policy and privately remember its action.
 2. Privately prepare the opening material, or repeat the remembered action
@@ -106,7 +110,7 @@ Policies outside this prescribed image remain unrestricted.
 `runServicePlan_compiled_bind_block` proves an exact distribution law for the
 three actual owner invocations: one normalized graph-policy draw followed by
 its private preparation and submission. The empty cache, unused staging
-history, grant, and readiness premises are explicit. This is a local block law;
+history, and turn premises are explicit. This is a local block law;
 it does not assume that arbitrary service prefixes satisfy these premises.
 `runServicePlan_compiled_resolve_block` gives the corresponding law for
 resolution events, including a true disclosure rejected by its guards.

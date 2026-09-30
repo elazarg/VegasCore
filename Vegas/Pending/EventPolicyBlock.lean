@@ -96,6 +96,15 @@ policy command; pending-message observations remain included in the view. -/
         cases execution.native.application.remembered event <;> rfl
       · rw [privateStep, dite_eq_right owned]
 
+/-- Private commands leave the public view, and hence every player's turn,
+unchanged. -/
+@[simp] theorem afterPrivate_publicView (runtime : EventGraphRuntime graph)
+    (execution : runtime.application.PolicyExecution) (who : Player)
+    (command : PrivateCommand graph) :
+    (runtime.application.afterPrivate execution who command).native.application.publicView =
+      execution.native.application.publicView :=
+  privateStep_publicView execution.native.application who command
+
 theorem afterPrivate_remembered_same (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution) (who : Player)
     (event : graph.EventId) (action : graph.Action event)
@@ -118,10 +127,9 @@ theorem compilePlayerPolicy_bind_stage_zero
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.ownTurn? who = some event)
     (notSubmitted : submittedAt history event = false)
     (viewOwner : view.application.who = who)
-    (ready : view.application.publicView.EventReady event)
     (actor : graph.actor? event = some who)
     (stage : stagingCount history event = 0) :
     runtime.compilePlayerPolicy who policy history view =
@@ -129,8 +137,8 @@ theorem compilePlayerPolicy_bind_stage_zero
         (viewOwner ▸ view.application.observation)).map fun action =>
           .privateCommand (.remember event action) := by
   unfold compilePlayerPolicy
-  rw [grant]
-  simp [notSubmitted, viewOwner, ready, actor, viewNode, stage]
+  rw [turn]
+  simp [notSubmitted, viewOwner, actor, viewNode, stage]
 
 /-- At the second opportunity, the immutable remembered binding action alone
 determines private preparation. No graph policy is sampled again. -/
@@ -144,18 +152,17 @@ theorem compilePlayerPolicy_bind_stage_one
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
     (action : graph.Action event)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.ownTurn? who = some event)
     (notSubmitted : submittedAt history event = false)
     (viewOwner : view.application.who = who)
-    (ready : view.application.publicView.EventReady event)
     (actor : graph.actor? event = some who)
     (stage : stagingCount history event = 1)
     (remembered : view.application.remembered event = some action) :
     runtime.compilePlayerPolicy who policy history view =
       PMF.pure (bindingStageCommand runtime event payload outputEq action) := by
   unfold compilePlayerPolicy
-  rw [grant]
-  simp [notSubmitted, viewOwner, ready, actor, viewNode, stage, remembered]
+  rw [turn]
+  simp [notSubmitted, viewOwner, actor, viewNode, stage, remembered]
 
 /-- At the third opportunity, a binding event emits the uniform opaque
 commitment packet, independent of whether its remembered action succeeds. -/
@@ -168,10 +175,9 @@ theorem compilePlayerPolicy_bind_stage_two
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.ownTurn? who = some event)
     (notSubmitted : submittedAt history event = false)
     (viewOwner : view.application.who = who)
-    (ready : view.application.publicView.EventReady event)
     (actor : graph.actor? event = some who)
     (stage : 2 ≤ stagingCount history event) :
     runtime.compilePlayerPolicy who policy history view =
@@ -179,8 +185,8 @@ theorem compilePlayerPolicy_bind_stage_two
   obtain ⟨extra, countEq⟩ := Nat.exists_eq_add_of_le stage
   have countEq' : stagingCount history event = extra + 2 := by omega
   unfold compilePlayerPolicy
-  rw [grant]
-  simp [notSubmitted, viewOwner, ready, actor, viewNode, countEq']
+  rw [turn]
+  simp [notSubmitted, viewOwner, actor, viewNode, countEq']
 
 /-- The exact three-command continuation after the unique graph-policy sample
 has chosen a binding action. It uses the shared player transition throughout. -/
@@ -210,8 +216,7 @@ theorem runServicePlan_compiled_bind_block
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
     (playersWho : players who = runtime.compilePlayerPolicy who policy)
-    (grant : execution.native.application.serviceGrant = some event)
-    (ready : execution.native.application.config.cut.Ready event)
+    (turn : execution.native.application.publicView.ownTurn? who = some event)
     (actor : graph.actor? event = some who)
     (stage : stagingCount (execution.principalHistory who) event = 0)
     (notSubmitted : submittedAt (execution.principalHistory who) event = false)
@@ -223,24 +228,18 @@ theorem runServicePlan_compiled_bind_block
   change runtime.runServicePlan players wire
     [.player who, .player who, .player who] execution = _
   simp only [runServicePlan, serviceStep, MessageApplication.invoke, playersWho]
-  have initialReady : execution.native.application.publicView.EventReady event :=
-    (State.publicView_eventReady execution.native.application event).2 ready
   rw [runtime.compilePlayerPolicy_bind_stage_zero who policy
     (execution.principalHistory who)
     (MessageApplication.State.observe runtime.application execution.native who)
-    event owner payload outputEq codeEq viewNode (by
-      change execution.native.application.serviceGrant = some event
-      exact grant) notSubmitted rfl
-    initialReady actor stage]
+    event owner payload outputEq codeEq viewNode turn notSubmitted rfl actor stage]
   rw [PMF.bind_map, Function.comp_def, PMF.bind_bind]
   apply bind_congr_on_support _
   intro action _
   rw [runtime.application.playerStep_private_eq execution who (.remember event action),
     PMF.pure_bind]
   let first := runtime.application.afterPrivate execution who (.remember event action)
-  have firstReady : first.native.application.publicView.EventReady event := by
-    apply (State.publicView_eventReady first.native.application event).2
-    simpa [first] using ready
+  have firstTurn : first.native.application.publicView.ownTurn? who = some event := by
+    simpa only [first, afterPrivate_publicView] using turn
   have firstRemembered : first.native.application.remembered event = some action := by
     exact runtime.afterPrivate_remembered_same execution who event action actor emptyCache
   have firstStage : stagingCount (first.principalHistory who) event = 1 := by
@@ -255,10 +254,8 @@ theorem runServicePlan_compiled_bind_block
   have firstPolicy := runtime.compilePlayerPolicy_bind_stage_one who policy
     (first.principalHistory who)
     (MessageApplication.State.observe runtime.application first.native who)
-    event owner payload outputEq codeEq viewNode action (by
-      change first.native.application.serviceGrant = some event
-      simpa [first] using grant)
-    firstNotSubmitted rfl firstReady actor firstStage (by
+    event owner payload outputEq codeEq viewNode action firstTurn
+    firstNotSubmitted rfl actor firstStage (by
       simp only [MessageApplication.State.observe]
       change (State.playerView first.native.application who).remembered event = some action
       simp [State.playerView, actor, firstRemembered])
@@ -270,9 +267,8 @@ theorem runServicePlan_compiled_bind_block
     runtime.bindingStageCommand_is_private event payload outputEq action
   rw [commandEq, runtime.application.playerStep_private_eq, PMF.pure_bind]
   let second := runtime.application.afterPrivate first who command
-  have secondReady : second.native.application.publicView.EventReady event := by
-    apply (State.publicView_eventReady second.native.application event).2
-    simpa [second, first] using ready
+  have secondTurn : second.native.application.publicView.ownTurn? who = some event := by
+    simpa only [second, afterPrivate_publicView] using firstTurn
   have secondStage : 2 ≤ stagingCount (second.principalHistory who) event := by
     change 2 ≤ stagingCount
       ((runtime.application.afterPrivate first who command).principalHistory who) event
@@ -286,9 +282,8 @@ theorem runServicePlan_compiled_bind_block
   rw [runtime.compilePlayerPolicy_bind_stage_two who policy
     (second.principalHistory who)
     (MessageApplication.State.observe runtime.application second.native who)
-    event owner payload outputEq codeEq viewNode (by
-      change second.native.application.serviceGrant = some event
-      simpa [second, first] using grant) secondNotSubmitted rfl secondReady actor secondStage]
+    event owner payload outputEq codeEq viewNode secondTurn secondNotSubmitted rfl actor
+    secondStage]
   simp [runtime.application.playerStep_submit_eq]
 
 end Vegas.EventGraphRuntime

@@ -234,7 +234,8 @@ protection and the compiler correspondence laws.
 ## 7. How a source policy compiles
 
 The source compiler builds the typed graph, with dependency barriers selected
-by the execution mode. At a ready owned grant, the reactive policy:
+by the execution mode. At its own turn, the least ready event it owns, the
+reactive policy:
 
 1. Reconstructs its graph observation and normalizes event-order metadata.
    Bindings use the value that took effect; disclosure intentions can be

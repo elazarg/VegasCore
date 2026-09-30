@@ -516,7 +516,7 @@ theorem runServicePlan_bind_partial_reactions_complete
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
-    (grant : before.native.application.serviceGrant = some event)
+    (turn : before.native.application.publicView.ownTurn? owner = some event)
     (ready : before.native.application.config.cut.Ready event)
     (timely : before.native.application.WithinDeadline runtime event)
     (coherent : BindingPolicyCoherent runtime before owner event payload outputEq)
@@ -537,7 +537,7 @@ theorem runServicePlan_bind_partial_reactions_complete
   simp only [Set.mem_iUnion] at member
   obtain ⟨submitted, blockMem, tailMem⟩ := member
   have actualSubmission := runtime.runServicePlan_compiled_bind_partial_submitted owner policy
-    players wire before submitted event payload outputEq codeEq viewNode prescribed grant ready
+    players wire before submitted event payload outputEq codeEq viewNode prescribed turn
     coherent notSubmitted blockMem
   have blockProgress := runtime.runServicePlan_facts inputs players wire
     (List.replicate 3 (.player owner)) before submitted invariant blockMem
@@ -587,7 +587,7 @@ theorem runServicePlan_resolve_partial_reactions_complete
       (graph.nodes event) = .resolve owner payload binding checks)
     (viewNode : nodeView graph event =
       .resolve owner payload binding checks outputEq codeEq)
-    (grant : before.native.application.serviceGrant = some event)
+    (turn : before.native.application.publicView.ownTurn? owner = some event)
     (ready : before.native.application.config.cut.Ready event)
     (timely : before.native.application.WithinDeadline runtime event)
     (coherent : PolicyCoherent runtime before owner event)
@@ -605,7 +605,7 @@ theorem runServicePlan_resolve_partial_reactions_complete
   obtain ⟨submitted, blockMem, tailMem⟩ := member
   have actualSubmission := runtime.runServicePlan_compiled_resolve_partial_submitted owner policy
     players wire before submitted event owner payload binding checks outputEq codeEq viewNode
-    prescribed grant ready coherent notSubmitted blockMem
+    prescribed turn coherent notSubmitted blockMem
   have blockProgress := runtime.runServicePlan_facts inputs players wire
     (List.replicate 3 (.player owner)) before submitted originHolds.1 blockMem
   rcases blockProgress.ready_or_completed event ready with completed | submittedReady
@@ -654,7 +654,7 @@ theorem runServicePlan_bind_partial_reactions_sample_complete
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
-    (grant : before.native.application.serviceGrant = some event)
+    (turn : before.native.application.publicView.ownTurn? owner = some event)
     (ready : before.native.application.config.cut.Ready event)
     (timely : before.native.application.WithinDeadline runtime event)
     (coherent : BindingPolicyCoherent runtime before owner event payload outputEq)
@@ -679,7 +679,7 @@ theorem runServicePlan_bind_partial_reactions_sample_complete
   simp only [Set.mem_iUnion] at member
   obtain ⟨included, prefixMem, sampleMem⟩ := member
   have completed := runtime.runServicePlan_bind_partial_reactions_complete inputs owner policy
-    players prescribed wire reactions before included event payload outputEq codeEq viewNode grant
+    players prescribed wire reactions before included event payload outputEq codeEq viewNode turn
     ready timely coherent notSubmitted invariant authorship canonical resources submissions
     clockFree prefixMem
   have includedInvariant := (runtime.runServicePlan_facts inputs players wire
@@ -704,7 +704,7 @@ theorem runServicePlan_resolve_partial_reactions_sample_complete
       (graph.nodes event) = .resolve owner payload binding checks)
     (viewNode : nodeView graph event =
       .resolve owner payload binding checks outputEq codeEq)
-    (grant : before.native.application.serviceGrant = some event)
+    (turn : before.native.application.publicView.ownTurn? owner = some event)
     (ready : before.native.application.config.cut.Ready event)
     (timely : before.native.application.WithinDeadline runtime event)
     (coherent : PolicyCoherent runtime before owner event)
@@ -726,7 +726,7 @@ theorem runServicePlan_resolve_partial_reactions_sample_complete
   obtain ⟨included, prefixMem, sampleMem⟩ := member
   have completed := runtime.runServicePlan_resolve_partial_reactions_complete inputs ordered owner
     policy players prescribed wire reactions before included event payload binding checks outputEq
-    codeEq viewNode grant ready timely coherent notSubmitted originHolds authorship bindingInvariant
+    codeEq viewNode turn ready timely coherent notSubmitted originHolds authorship bindingInvariant
     clockFree prefixMem
   have includedInvariant := (runtime.runServicePlan_facts inputs players wire
     (List.replicate 3 (.player owner) ++ reactions ++ [.includeLatest event owner]) before included

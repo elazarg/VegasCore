@@ -48,16 +48,23 @@ of at least two ticks, this protects it from expiry. An event enabled after
 its visit remains timely through the next sweep. The age argument concerns
 prescribed events only: focal withholding may legitimately expire.
 
+Prescribed owners serve their turn at any invocation, so an owner can submit
+an event before that event's own visit, for instance during another event's
+reaction slots. The boundary invariant therefore does not require unfinished
+events to be unsubmitted. It requires that every unfinished event the owner
+has submitted is ready and still has a matching pending packet
+(`OwnerSubmissionsPending`). `OwnerEventProtection` carries that packet
+through clock-free service until it is included, and the event's reserved
+inclusion completes it.
+
 Checked local results establish cache/history coherence, canonical binding
 resources, and resolution-packet provenance at every supported service prefix.
 Three owner calls finish sampling and submission from any unsubmitted coherent
 stage. An acceptable pending packet survives arbitrary clock-free reactions
 or completes its event, and reserved inclusion completes an available prescribed
-packet. `runServicePlan_submission_tail_complete` handles the first
-submission anywhere in a visit: if it has not already completed, its packet
-survives to the reserved inclusion. Thus unfinished prescribed events are
-unsubmitted at visit boundaries; a persistent global pending-packet assumption
-is unnecessary.
+packet. `runServicePlan_submission_tail_complete` handles a submission made during a
+visit or before it: if the event has not already completed, its packet
+survives to the reserved inclusion.
 
 `ServiceReachable.ownerActivationAgeOne` proves the deadline bound at every
 actual control prefix. The induction restores the prescribed-owner boundary

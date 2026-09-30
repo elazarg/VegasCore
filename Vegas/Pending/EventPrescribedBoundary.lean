@@ -14,33 +14,43 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
-/-- At an epoch boundary an unfinished event of the prescribed owner has not
-yet spent its unique addressed submission. -/
-def OwnerUnsubmitted (runtime : EventGraphRuntime graph)
+/-- At a boundary between whole event visits, every unfinished event of the
+prescribed owner that it has already submitted is ready, and a matching packet
+from the owner is still pending. The owner serves its turn at any activation,
+so a submission may precede the event's own visit. -/
+def OwnerSubmissionsPending (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution) (owner : Player) : Prop :=
   ∀ event, graph.actor? event = some owner →
     event ∉ execution.native.application.config.cut.completed →
-      submittedAt (execution.principalHistory owner) event = false
+    submittedAt (execution.principalHistory owner) event = true →
+      execution.native.application.config.cut.Ready event ∧
+        ∃ message ∈ execution.native.pool.pending, Payload.Matches event owner message
 
-theorem ownerUnsubmitted_initial (runtime : EventGraphRuntime graph)
+theorem ownerSubmissionsPending_initial (runtime : EventGraphRuntime graph)
     (inputs : graph.Inputs) (owner : Player) :
-    OwnerUnsubmitted runtime
+    OwnerSubmissionsPending runtime
       (MessageApplication.PolicyExecution.initial runtime.application
         (MessageApplication.State.initial runtime.application (State.initial inputs))) owner := by
-  intro event actor unfinished
-  rfl
+  intro event actor unfinished submitted
+  simp [MessageApplication.PolicyExecution.initial, submittedAt] at submitted
 
-theorem OwnerUnsubmitted.frame
+/-- Steps that only add completions, keep the owner's history, and keep the
+pending pool preserve the invariant: readiness persists until completion. -/
+theorem OwnerSubmissionsPending.frame
     {runtime : EventGraphRuntime graph}
     {before after : runtime.application.PolicyExecution} {owner : Player}
-    (holds : OwnerUnsubmitted runtime before owner)
+    (holds : OwnerSubmissionsPending runtime before owner)
     (completed : before.native.application.config.cut.completed ⊆
       after.native.application.config.cut.completed)
-    (history : after.principalHistory owner = before.principalHistory owner) :
-    OwnerUnsubmitted runtime after owner := by
-  intro event actor unfinished
-  rw [history]
-  exact holds event actor (fun done => unfinished (completed done))
+    (history : after.principalHistory owner = before.principalHistory owner)
+    (pool : after.native.pool.pending = before.native.pool.pending) :
+    OwnerSubmissionsPending runtime after owner := by
+  intro event actor unfinished submitted
+  rw [history] at submitted
+  obtain ⟨ready, pending⟩ := holds event actor (fun done => unfinished (completed done)) submitted
+  refine ⟨⟨unfinished, fun predecessor member => completed (ready.2 member)⟩, ?_⟩
+  rw [pool]
+  exact pending
 
 /-- The invariants needed at a boundary between whole event visits for one
 prescribed owner. Other players and the wire remain unrestricted. -/
@@ -59,7 +69,7 @@ structure PrescribedOwnerBoundary (runtime : EventGraphRuntime graph)
     (PrescribedBindingSubmissions (graph := graph) owner)
   resolutionOrigins : ResolutionOrigins runtime execution owner
   bindingInvariant : execution.native.application.BindingInvariant
-  unsubmitted : OwnerUnsubmitted runtime execution owner
+  pending : OwnerSubmissionsPending runtime execution owner
 
 theorem prescribedOwnerBoundary_initial
     (runtime : EventGraphRuntime graph) (inputs : graph.Inputs) (owner : Player) :
@@ -72,6 +82,6 @@ theorem prescribedOwnerBoundary_initial
     MessageApplication.PolicyExecution.initial_authorship runtime.application _,
     MessagePool.Satisfies.empty, State.canonicalResources_initial inputs owner,
     MessagePool.Satisfies.empty, runtime.resolutionOrigins_initial inputs owner,
-    State.initial_bindingInvariant inputs, runtime.ownerUnsubmitted_initial inputs owner⟩
+    State.initial_bindingInvariant inputs, runtime.ownerSubmissionsPending_initial inputs owner⟩
 
 end Vegas.EventGraphRuntime

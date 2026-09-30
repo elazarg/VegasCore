@@ -460,4 +460,24 @@ theorem environmentPolicyStep_remembered
       exact environmentStep_remembered runtime execution.native.application state
         applicationCommand stateMem
 
+/-- Application commands (clock, sampling, expiry, grants) change only the
+application state, never the message pool. -/
+theorem environmentPolicyStep_application_pool
+    (runtime : EventGraphRuntime graph)
+    (execution next : runtime.application.PolicyExecution)
+    (command : EnvironmentCommand graph)
+    (supported : next ∈
+      (runtime.application.environmentPolicyStep execution (.application command)).support) :
+    next.native.pool = execution.native.pool := by
+  have native : next.native ∈
+      ((runtime.application.environmentPolicyStep execution (.application command)).map
+        MessageInterface.PolicyExecution.native).support := by
+    rw [PMF.support_map]
+    exact ⟨next, supported, rfl⟩
+  rw [runtime.application.environmentStep_native] at native
+  simp only [MessageApplication.EnvironmentPolicyCommand.toAction,
+    MessageApplication.step, PMF.support_map, Set.mem_image] at native
+  obtain ⟨state, _, same⟩ := native
+  exact (congrArg (fun result : runtime.application.State => result.pool) same).symm
+
 end Vegas.EventGraphRuntime

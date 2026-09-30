@@ -16,14 +16,15 @@ already in the player's own recall.
 The compiler has three components in
 [ReactivePolicy.lean](../Vegas/Pending/ReactivePolicy.lean):
 
-1. **Prescribed play.** At a ready owned grant, sample the source decision,
+1. **Prescribed play.** At its own turn, the least ready event it owns,
+   sample the source decision,
    remember its intention, and submit one packet. Wait on later activations
    for that event.
 2. **Consistency of own recall.** Check each recorded response against the
    support of the prescribed policy at its original local view and recall
    prefix. A possible random choice is consistent; it need not equal a new
    independent draw.
-3. **Recovery.** After any unsupported earlier response, a ready owned grant
+3. **Recovery.** After any unsupported earlier response, the player's turn
    permits another submission. Reuse the most recently remembered choice for
    that event which is supported by the current source decision law. If none
    exists, sample that law. Retain the choice in private implementation state

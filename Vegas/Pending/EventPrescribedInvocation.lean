@@ -123,9 +123,9 @@ theorem compiledPrescribed_invoke_prescribedContinuation
       execution.native.application.prescribedContinuation profile prescribed := by
   simp only [MessageApplication.invoke, ownerCompiled, PMF.bind_bind]
   unfold compilePlayerPolicy
-  cases grant :
+  cases turn :
       (MessageApplication.State.observe runtime.application execution.native
-        owner).application.publicView.serviceGrant with
+        owner).application.publicView.ownTurn? owner with
   | none =>
       rw [PMF.pure_bind]
       exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed owner execution
@@ -138,122 +138,118 @@ theorem compiledPrescribed_invoke_prescribedContinuation
           execution .wait (by simp)
       · split
         · rename_i viewOwner
+          have ready : execution.native.application.config.cut.Ready event :=
+            (State.publicView_eventReady _ _).mp
+              (PublicView.ownTurn?_spec _ owner event turn).1
           split
-          · rename_i readyView
-            have ready : execution.native.application.config.cut.Ready event :=
-              (State.publicView_eventReady _ _).mp readyView
-            split
-            · rename_i actor
-              cases view : nodeView graph event with
-              | sample payload law outputEq codeEq =>
-                  rw [PMF.pure_bind]
-                  exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed
-                    owner execution .wait (by simp)
-              | bind nodeOwner payload outputEq codeEq =>
-                  simp only
-                  cases stageEq : stagingCount (execution.principalHistory owner) event with
-                  | zero =>
-                      simp only [PMF.bind_map]
-                      change ((graph.normalizePolicy owner (profile owner) event actor
-                        (graph.playerObserve owner execution.native.application.config)).bind
-                          fun action =>
-                            (runtime.application.playerStep owner execution
-                              (.privateCommand (.remember event action))).bind fun next =>
-                                next.native.application.prescribedContinuation profile
-                                  prescribed) = _
-                      exact runtime.playerStep_prescribed_remember_prescribedContinuation
-                        prescribed ordered profile owner prescribedOwner execution event ready
-                        actor ((coherent event actor).empty_iff.mp stageEq)
-                  | succ n =>
-                      cases n with
-                      | zero =>
-                          obtain ⟨action, cached⟩ :=
-                            (coherent event actor).cached_of_stage (by omega)
-                          have viewCached :
-                              (MessageApplication.State.observe runtime.application
-                                execution.native owner).application.remembered event =
-                                some action := by
-                            change (State.playerView execution.native.application
-                              owner).remembered event = some action
-                            simpa [State.playerView, actor] using cached
-                          rw [viewCached, PMF.pure_bind]
-                          unfold bindingStageCommand
-                          generalize cast (congrArg EventField.Action outputEq) action = result
-                          cases result with
-                          | failure =>
-                              apply runtime.playerStep_private_prescribedContinuation_of_cached
-                                profile prescribed owner execution (.remember event action)
-                              intro query selected same
-                              injection same with queryEq
-                              subst query
-                              simp [cached]
-                          | success value =>
-                              apply runtime.playerStep_private_prescribedContinuation_of_cached
-                                profile prescribed owner execution
-                                (.prepare event.val ⟨payload, value⟩)
-                              intro query selected impossible
-                              contradiction
-                      | succ later =>
-                          rw [PMF.pure_bind]
-                          exact runtime.playerStep_nonprivate_prescribedContinuation profile
-                            prescribed owner execution
-                            (.submit (.commitment event (owner, eventSlot event)))
-                            (by simp)
-              | resolve nodeOwner payload binding checks outputEq codeEq =>
-                  simp only
-                  cases stageEq : stagingCount (execution.principalHistory owner) event with
-                  | zero =>
-                      simp only [PMF.bind_map]
-                      change ((graph.normalizePolicy owner (profile owner) event actor
-                        (graph.playerObserve owner execution.native.application.config)).bind
-                          fun action =>
-                            (runtime.application.playerStep owner execution
-                              (.privateCommand (.remember event action))).bind fun next =>
-                                next.native.application.prescribedContinuation profile
-                                  prescribed) = _
-                      exact runtime.playerStep_prescribed_remember_prescribedContinuation
-                        prescribed ordered profile owner prescribedOwner execution event ready
-                        actor ((coherent event actor).empty_iff.mp stageEq)
-                  | succ n =>
-                      cases n with
-                      | zero =>
-                          obtain ⟨action, cached⟩ :=
-                            (coherent event actor).cached_of_stage (by omega)
-                          have viewCached :
-                              (MessageApplication.State.observe runtime.application
-                                execution.native owner).application.remembered event =
-                                some action := by
-                            change (State.playerView execution.native.application
-                              owner).remembered event = some action
-                            simpa [State.playerView, actor] using cached
-                          rw [viewCached, PMF.pure_bind]
-                          apply runtime.playerStep_private_prescribedContinuation_of_cached
-                            profile prescribed owner execution (.remember event action)
-                          intro query selected same
-                          injection same with queryEq
-                          subst query
-                          simp [cached]
-                      | succ later =>
-                          cases memory :
-                              (MessageApplication.State.observe runtime.application
-                                execution.native owner).application.remembered event with
-                          | none =>
-                              rw [PMF.pure_bind]
-                              exact runtime.playerStep_nonprivate_prescribedContinuation profile
-                                prescribed owner execution (.submit (.withhold event)) (by simp)
-                          | some action =>
-                              rw [PMF.pure_bind]
-                              apply runtime.playerStep_nonprivate_prescribedContinuation profile
-                                prescribed owner execution
-                                (runtime.resolutionSubmission owner event payload binding checks
-                                  outputEq action
-                                  (MessageApplication.State.observe runtime.application
-                                    execution.native owner))
-                              intro privateCommand
-                              simp [resolutionSubmission]
-            · rw [PMF.pure_bind]
-              exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed owner
-                execution .wait (by simp)
+          · rename_i actor
+            cases view : nodeView graph event with
+            | sample payload law outputEq codeEq =>
+                rw [PMF.pure_bind]
+                exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed
+                  owner execution .wait (by simp)
+            | bind nodeOwner payload outputEq codeEq =>
+                simp only
+                cases stageEq : stagingCount (execution.principalHistory owner) event with
+                | zero =>
+                    simp only [PMF.bind_map]
+                    change ((graph.normalizePolicy owner (profile owner) event actor
+                      (graph.playerObserve owner execution.native.application.config)).bind
+                        fun action =>
+                          (runtime.application.playerStep owner execution
+                            (.privateCommand (.remember event action))).bind fun next =>
+                              next.native.application.prescribedContinuation profile
+                                prescribed) = _
+                    exact runtime.playerStep_prescribed_remember_prescribedContinuation
+                      prescribed ordered profile owner prescribedOwner execution event ready
+                      actor ((coherent event actor).empty_iff.mp stageEq)
+                | succ n =>
+                    cases n with
+                    | zero =>
+                        obtain ⟨action, cached⟩ :=
+                          (coherent event actor).cached_of_stage (by omega)
+                        have viewCached :
+                            (MessageApplication.State.observe runtime.application
+                              execution.native owner).application.remembered event =
+                              some action := by
+                          change (State.playerView execution.native.application
+                            owner).remembered event = some action
+                          simpa [State.playerView, actor] using cached
+                        rw [viewCached, PMF.pure_bind]
+                        unfold bindingStageCommand
+                        generalize cast (congrArg EventField.Action outputEq) action = result
+                        cases result with
+                        | failure =>
+                            apply runtime.playerStep_private_prescribedContinuation_of_cached
+                              profile prescribed owner execution (.remember event action)
+                            intro query selected same
+                            injection same with queryEq
+                            subst query
+                            simp [cached]
+                        | success value =>
+                            apply runtime.playerStep_private_prescribedContinuation_of_cached
+                              profile prescribed owner execution
+                              (.prepare event.val ⟨payload, value⟩)
+                            intro query selected impossible
+                            contradiction
+                    | succ later =>
+                        rw [PMF.pure_bind]
+                        exact runtime.playerStep_nonprivate_prescribedContinuation profile
+                          prescribed owner execution
+                          (.submit (.commitment event (owner, eventSlot event)))
+                          (by simp)
+            | resolve nodeOwner payload binding checks outputEq codeEq =>
+                simp only
+                cases stageEq : stagingCount (execution.principalHistory owner) event with
+                | zero =>
+                    simp only [PMF.bind_map]
+                    change ((graph.normalizePolicy owner (profile owner) event actor
+                      (graph.playerObserve owner execution.native.application.config)).bind
+                        fun action =>
+                          (runtime.application.playerStep owner execution
+                            (.privateCommand (.remember event action))).bind fun next =>
+                              next.native.application.prescribedContinuation profile
+                                prescribed) = _
+                    exact runtime.playerStep_prescribed_remember_prescribedContinuation
+                      prescribed ordered profile owner prescribedOwner execution event ready
+                      actor ((coherent event actor).empty_iff.mp stageEq)
+                | succ n =>
+                    cases n with
+                    | zero =>
+                        obtain ⟨action, cached⟩ :=
+                          (coherent event actor).cached_of_stage (by omega)
+                        have viewCached :
+                            (MessageApplication.State.observe runtime.application
+                              execution.native owner).application.remembered event =
+                              some action := by
+                          change (State.playerView execution.native.application
+                            owner).remembered event = some action
+                          simpa [State.playerView, actor] using cached
+                        rw [viewCached, PMF.pure_bind]
+                        apply runtime.playerStep_private_prescribedContinuation_of_cached
+                          profile prescribed owner execution (.remember event action)
+                        intro query selected same
+                        injection same with queryEq
+                        subst query
+                        simp [cached]
+                    | succ later =>
+                        cases memory :
+                            (MessageApplication.State.observe runtime.application
+                              execution.native owner).application.remembered event with
+                        | none =>
+                            rw [PMF.pure_bind]
+                            exact runtime.playerStep_nonprivate_prescribedContinuation profile
+                              prescribed owner execution (.submit (.withhold event)) (by simp)
+                        | some action =>
+                            rw [PMF.pure_bind]
+                            apply runtime.playerStep_nonprivate_prescribedContinuation profile
+                              prescribed owner execution
+                              (runtime.resolutionSubmission owner event payload binding checks
+                                outputEq action
+                                (MessageApplication.State.observe runtime.application
+                                  execution.native owner))
+                            intro privateCommand
+                            simp [resolutionSubmission]
           · rw [PMF.pure_bind]
             exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed owner
               execution .wait (by simp)

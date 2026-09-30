@@ -42,25 +42,25 @@ theorem compilePlayerPolicy_binding_submission
       subst actualPayload
       have proofEq : actualOutput = outputEq := Subsingleton.elim _ _
       cases proofEq
-      cases grant : view.application.publicView.serviceGrant with
+      cases turn : view.application.publicView.ownTurn? owner with
       | none =>
           unfold compilePlayerPolicy at supported
-          rw [grant] at supported
+          rw [turn] at supported
           simp only [PMF.mem_support_pure_iff _ _, reduceCtorEq] at supported
-      | some granted =>
+      | some current =>
           have atEvent := runtime.compilePlayerPolicy_commandAt owner policy history view
-            granted grant (.submit packet) supported
+            current turn (.submit packet) supported
           rcases atEvent with wait | staged | ⟨actual, commandEq, actualAddress⟩
           · simp at wait
           · simp [stagesEvent] at staged
           · have packetEq : packet = actual :=
               MessageInterface.PlayerCommand.submit.inj commandEq
             subst actual
-            have same : granted = event :=
+            have same : current = event :=
               Option.some.inj (actualAddress.symm.trans addressed)
-            subst granted
+            subst current
             unfold compilePlayerPolicy at supported
-            rw [grant] at supported
+            rw [turn] at supported
             simp only at supported
             rw [viewNode] at supported
             repeat' first | split at supported

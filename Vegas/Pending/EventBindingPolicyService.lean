@@ -223,30 +223,13 @@ theorem BindingPolicyCoherent.afterSubmit_other
 
 /-- At stage one of a binding event, the supported compiled private command
 is exactly the canonical binding-stage command for the cached action. -/
-theorem compilePlayerPolicy_nonwait_ready
-    (runtime : EventGraphRuntime graph) (owner : Player)
-    (policy : graph.BehavioralPolicy owner)
-    (history : List (Entry runtime)) (view : runtime.application.View)
-    (event : graph.EventId)
-    (grant : view.application.publicView.serviceGrant = some event)
-    (command : Command runtime) (notWait : command ≠ .wait)
-    (member : command ∈ (runtime.compilePlayerPolicy owner policy history view).support) :
-    view.application.publicView.EventReady event := by
-  unfold compilePlayerPolicy at member
-  rw [grant] at member
-  repeat' first | split at member
-  all_goals subst_vars
-  all_goals
-    simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
-      reduceCtorEq, Option.some.injEq]
-
 theorem compilePlayerPolicy_binding_stage_one_command
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (execution : runtime.application.PolicyExecution)
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (stage : stagingCount (execution.principalHistory owner) event = 1)
     (coherent : BindingPolicyCoherent runtime execution owner event payload outputEq)
     (command : PrivateCommand graph)
@@ -255,15 +238,6 @@ theorem compilePlayerPolicy_binding_stage_one_command
         (MessageApplication.State.observe runtime.application execution.native owner)).support) :
     ∃ action, execution.native.application.remembered event = some action ∧
       runtime.bindingStageCommand event payload outputEq action = .privateCommand command := by
-  have viewGrant :
-      (MessageApplication.State.observe runtime.application execution.native
-        owner).application.publicView.serviceGrant = some event := by
-    change execution.native.application.serviceGrant = some event
-    exact grant
-  have ready := runtime.compilePlayerPolicy_nonwait_ready owner policy
-    (execution.principalHistory owner)
-    (MessageApplication.State.observe runtime.application execution.native owner)
-    event viewGrant (.privateCommand command) (by simp) member
   have notSubmitted : submittedAt (execution.principalHistory owner) event = false := by
     cases submitted : submittedAt (execution.principalHistory owner) event
     · rfl
@@ -275,11 +249,9 @@ theorem compilePlayerPolicy_binding_stage_one_command
         owner).application.remembered event = some action := by
     change (State.playerView execution.native.application owner).remembered event = some action
     simpa [State.playerView, coherent.1.actor] using cached
-  have observedGrant :
+  have observedTurn :
       (MessageApplication.State.observe runtime.application execution.native
-        owner).application.publicView.serviceGrant = some event := by
-    change execution.native.application.serviceGrant = some event
-    exact grant
+        owner).application.publicView.ownTurn? owner = some event := turn
   cases viewEq : nodeView graph event with
   | bind actualOwner actualPayload actualOutput codeEq =>
       have sameOutput : EventField.binding owner payload =
@@ -292,7 +264,7 @@ theorem compilePlayerPolicy_binding_stage_one_command
       have policyEq := runtime.compilePlayerPolicy_bind_stage_one owner policy
         (execution.principalHistory owner)
         (MessageApplication.State.observe runtime.application execution.native owner)
-        event owner payload outputEq codeEq viewEq action observedGrant notSubmitted rfl ready
+        event owner payload outputEq codeEq viewEq action observedTurn notSubmitted rfl
         coherent.1.actor stage viewCached
       rw [policyEq] at member
       simp only [PMF.mem_support_pure_iff _ _] at member
@@ -472,7 +444,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
     (policy : graph.BehavioralPolicy owner)
     (execution next : runtime.application.PolicyExecution)
     (event : graph.EventId)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (coherent : BindingPolicyCoherentAll runtime execution owner)
     (command : Command runtime)
     (commandMem : command ∈
@@ -483,9 +455,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
   have atEvent := runtime.compilePlayerPolicy_commandAt owner policy
     (execution.principalHistory owner)
     (MessageApplication.State.observe runtime.application execution.native owner)
-    event (by
-      change execution.native.application.serviceGrant = some event
-      exact grant) command commandMem
+    event turn command commandMem
   cases command with
   | wait =>
       rw [runtime.application.playerStep_wait] at stepMem
@@ -500,15 +470,16 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
       rw [runtime.application.playerStep_private_eq] at stepMem
       simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
-      obtain ⟨stagedEvent, stagedGrant, stageLt, staged⟩ :=
+      obtain ⟨stagedEvent, stagedTurn, stageLt, staged⟩ :=
         runtime.compilePlayerPolicy_private_stage owner policy
           (execution.principalHistory owner)
           (MessageApplication.State.observe runtime.application execution.native owner)
           privateCommand commandMem
       have stagedEq : stagedEvent = event := by
-        change execution.native.application.serviceGrant = some stagedEvent at stagedGrant
-        rw [grant] at stagedGrant
-        exact Option.some.inj stagedGrant.symm
+        change execution.native.application.publicView.ownTurn? owner = some stagedEvent
+          at stagedTurn
+        rw [turn] at stagedTurn
+        exact Option.some.inj stagedTurn.symm
       subst stagedEvent
       intro query payload outputEq actor unfinished
       have unfinishedBefore : query ∉ execution.native.application.config.cut.completed := by
@@ -523,7 +494,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
             (stagingCount (execution.principalHistory owner) event) with stageZero | stagePositive
         · obtain ⟨action, commandEq⟩ :=
             runtime.compilePlayerPolicy_private_zero_is_remember owner policy execution event
-              grant stageZero privateCommand commandMem
+              turn stageZero privateCommand commandMem
           subst privateCommand
           exact current.afterRemember runtime execution owner event payload outputEq stageZero
             action
@@ -531,7 +502,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
             omega
           obtain ⟨action, cached, commandEq⟩ :=
             runtime.compilePlayerPolicy_binding_stage_one_command owner policy execution event
-              payload outputEq grant stageOne current privateCommand commandMem
+              payload outputEq turn stageOne current privateCommand commandMem
           exact current.afterBindingStage runtime execution owner event payload outputEq stageOne
             action cached privateCommand commandEq
       · have notStage := runtime.stagesEvent_other_of_stagesEvent event query privateCommand
@@ -542,9 +513,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
             have nonwait := runtime.compilePlayerPolicy_nonwait_actor owner policy
               (execution.principalHistory owner)
               (MessageApplication.State.observe runtime.application execution.native owner)
-              event (by
-                change execution.native.application.serviceGrant = some event
-                exact grant) (.privateCommand privateCommand) (by simp) commandMem
+              event turn (.privateCommand privateCommand) (by simp) commandMem
             exact nonwait)
           same staged
         have candidate := runtime.privateStep_candidate_other_of_stagesEvent
@@ -558,10 +527,8 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
       have eventActor := runtime.compilePlayerPolicy_nonwait_actor owner policy
         (execution.principalHistory owner)
         (MessageApplication.State.observe runtime.application execution.native owner)
-        event (by
-          change execution.native.application.serviceGrant = some event
-          exact grant) (.submit packet) (by simp) commandMem
-      have stageGe := runtime.compilePlayerPolicy_submit_stage owner policy execution event grant
+        event turn (.submit packet) (by simp) commandMem
+      have stageGe := runtime.compilePlayerPolicy_submit_stage owner policy execution event turn
         packet commandMem
       rcases atEvent with wait | stagedCommand | addressed
       · contradiction
@@ -589,7 +556,7 @@ theorem compilePlayerPolicy_playerStep_bindingPolicyCoherentAll
               (MessageApplication.State.observe runtime.application execution.native owner)
               target candidate (packetEq ▸ commandMem)).1
 
-theorem compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyGrant
+theorem compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyTurn
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (players : Player → runtime.application.PlayerPolicy)
@@ -600,24 +567,22 @@ theorem compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyGrant
     (supported : next ∈
       (runtime.application.invoke players environment execution (.player owner)).support) :
     BindingPolicyCoherentAll runtime next owner := by
-  cases grant : execution.native.application.serviceGrant with
+  cases turn : execution.native.application.publicView.ownTurn? owner with
   | some event =>
       simp only [MessageApplication.invoke, ownerCompiled, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, commandMem, stepMem⟩ := supported
       exact runtime.compilePlayerPolicy_playerStep_bindingPolicyCoherentAll owner policy execution
-        next event grant coherent command commandMem stepMem
+        next event turn coherent command commandMem stepMem
   | none =>
       simp only [MessageApplication.invoke, ownerCompiled, PMF.support_bind,
         Set.mem_iUnion] at supported
       obtain ⟨command, commandMem, stepMem⟩ := supported
-      have observedGrant :
+      have observedTurn :
           (MessageApplication.State.observe runtime.application execution.native
-            owner).application.publicView.serviceGrant = none := by
-        change execution.native.application.serviceGrant = none
-        exact grant
+            owner).application.publicView.ownTurn? owner = none := turn
       unfold compilePlayerPolicy at commandMem
-      rw [observedGrant] at commandMem
+      rw [observedTurn] at commandMem
       simp only [PMF.mem_support_pure_iff _ _] at commandMem
       subst command
       rw [runtime.application.playerStep_wait] at stepMem
@@ -641,7 +606,7 @@ theorem playerInvoke_bindingPolicyCoherentAll
     BindingPolicyCoherentAll runtime next owner := by
   by_cases same : who = owner
   · subst who
-    exact runtime.compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyGrant owner policy
+    exact runtime.compilePlayerPolicy_invoke_bindingPolicyCoherentAll_anyTurn owner policy
       players environment execution next ownerCompiled coherent supported
   · simp only [MessageApplication.invoke, PMF.support_bind, Set.mem_iUnion] at supported
     obtain ⟨command, _, stepMem⟩ := supported

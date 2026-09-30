@@ -112,6 +112,19 @@ private def grantedExecution : runtime.application.PolicyExecution :=
   MessageApplication.PolicyExecution.initial runtime.application
     (MessageApplication.State.initial runtime.application granted)
 
+/-- Player `false` owns the only ready event, so it is that player's turn. -/
+private theorem granted_turn :
+    (observed granted).application.publicView.ownTurn? false = some 0 := by
+  apply EventGraphRuntime.PublicView.ownTurn?_of_ownTurn
+  refine ⟨?_, rfl, ?_⟩
+  · change granted.publicView.EventReady 0
+    exact (granted.publicView_eventReady 0).mpr (by
+      change (EventOrder.Cut.empty pairOrder).Ready 0
+      decide)
+  · intro other _ actor
+    revert actor
+    fin_cases other <;> decide
+
 /-- The exact actual four-instruction service law is inhabited, for successful
 and failed choices alike. Other players need no prescribed policy here. -/
 example (choice : PublicationResult Bool)
@@ -139,7 +152,7 @@ example (choice : PublicationResult Bool)
     grantedExecution, MessageApplication.PolicyExecution.initial,
     MessageApplication.State.initial] using
     runtime.runServicePlan_compiled_bind_includeLatest false (fixedPolicy choice)
-      players wire grantedExecution 0 .bool rfl rfl rfl prescribed rfl ready rfl
+      players wire grantedExecution 0 .bool rfl rfl rfl prescribed granted_turn ready rfl
       rfl rfl rfl (by change 0 < 2; decide) rfl rfl unused rfl
 
 /-- The whole prescribed pending block is opaque to the other player, even
@@ -180,12 +193,14 @@ example (choice : PublicationResult Bool) :
     runtime.compilePlayerPolicy false (fixedPolicy choice) [] (observed granted) =
       PMF.pure (.privateCommand (.remember 0 choice)) := by
   have actor : pairGraph.actor? 0 = some false := rfl
-  simp [PMF.pure_map, EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,
+  simp only [EventGraphRuntime.compilePlayerPolicy]
+  rw [granted_turn]
+  simp [PMF.pure_map, EventGraphRuntime.submittedAt,
     EventGraphRuntime.stagingCount, observed, granted,
     Interaction.MessageApplication.State.observe,
     Interaction.MessageApplication.State.initial,
     EventGraphRuntime.application, EventGraphRuntime.State.playerView,
-    EventGraphRuntime.State.publicView, EventGraphRuntime.PublicView.EventReady,
+    EventGraphRuntime.State.publicView,
     Vegas.EventGraph.publicObserve, Vegas.EventGraph.Config.initial,
     EventGraphRuntime.State.initial, EventGraphRuntime.nodeView,
     Vegas.EventGraph.normalizePolicy, fixedPolicy, actor]
@@ -195,6 +210,14 @@ every selected value, including failure. -/
 example (left right : PublicationResult Bool) :
     (staged left).publicView = (staged right).publicView := by
   cases left <;> cases right <;> rfl
+
+/-- Private staging keeps the owner's turn. -/
+private theorem staged_turn (choice : PublicationResult Bool) :
+    (observed (staged choice)).application.publicView.ownTurn? false = some 0 := by
+  change (staged choice).publicView.ownTurn? false = some 0
+  rw [show (staged choice).publicView = granted.publicView by
+    simp only [staged, remembered, EventGraphRuntime.privateStep_publicView]]
+  exact granted_turn
 
 /-- The common packet's private candidate meaning is exactly the chosen
 binding action, including genuine failure rather than an in-domain default. -/
@@ -209,8 +232,10 @@ example (choice : PublicationResult Bool) :
         (stagedHistory choice) (observed (staged choice)) =
       PMF.pure (.submit (.commitment 0 (false, .prepared 0))) := by
   have actor : pairGraph.actor? 0 = some false := rfl
+  simp only [EventGraphRuntime.compilePlayerPolicy]
+  rw [staged_turn]
   cases choice <;>
-    simp [EventGraphRuntime.compilePlayerPolicy, EventGraphRuntime.submittedAt,
+    simp [EventGraphRuntime.submittedAt,
       EventGraphRuntime.stagingCount, EventGraphRuntime.stagesEvent,
       EventGraphRuntime.eventSlot, stagedHistory, firstEntry, preparation,
       staged, remembered, observed, granted,
@@ -218,7 +243,7 @@ example (choice : PublicationResult Bool) :
       Interaction.MessageApplication.State.initial,
       EventGraphRuntime.application, EventGraphRuntime.privateStep,
       EventGraphRuntime.State.playerView, EventGraphRuntime.State.publicView,
-      EventGraphRuntime.PublicView.EventReady, Vegas.EventGraph.publicObserve,
+      Vegas.EventGraph.publicObserve,
       Vegas.EventGraph.Config.initial, EventGraphRuntime.State.initial,
       EventGraphRuntime.nodeView, actor, Function.update]
 

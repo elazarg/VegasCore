@@ -568,7 +568,7 @@ theorem prescribedPlayer_afterInvoke
     (leftCoherent : PolicyCoherentAll runtime left owner)
     (rightCoherent : PolicyCoherentAll runtime right owner)
     (event : graph.EventId)
-    (grant : left.native.application.serviceGrant = some event)
+    (turn : left.native.application.publicView.ownTurn? owner = some event)
     (compiled : players owner = runtime.compilePlayerPolicy owner policy)
     (resolutionPayloadEq : ∀ (payload : L.Ty)
       (binding : FieldRef graph.layout (.binding owner payload))
@@ -599,12 +599,11 @@ theorem prescribedPlayer_afterInvoke
   obtain ⟨rightCommand, rightChosen, rightStep⟩ := rightSupported
   let leftView := MessageApplication.State.observe runtime.application left.native owner
   let rightView := MessageApplication.State.observe runtime.application right.native owner
-  have leftGrant : leftView.application.publicView.serviceGrant = some event := by
-    change left.native.application.serviceGrant = some event
-    exact grant
-  have rightGrant : rightView.application.publicView.serviceGrant = some event := by
-    change right.native.application.serviceGrant = some event
-    exact (congrArg PublicView.serviceGrant replay.publicView).symm.trans grant
+  have leftTurn : leftView.application.publicView.ownTurn? owner = some event := turn
+  have rightTurn : rightView.application.publicView.ownTurn? owner = some event := by
+    change right.native.application.publicView.ownTurn? owner = some event
+    rw [← replay.publicView]
+    exact turn
   have leftOwner : leftView.application.who = owner := by
     change owner = owner
     rfl
@@ -630,12 +629,12 @@ theorem prescribedPlayer_afterInvoke
       have leftLaw : runtime.compilePlayerPolicy owner policy
           (left.principalHistory owner) leftView = PMF.pure .wait := by
         unfold compilePlayerPolicy
-        rw [leftGrant]
+        rw [leftTurn]
         simp [submitted]
       have rightLaw : runtime.compilePlayerPolicy owner policy
           (right.principalHistory owner) rightView = PMF.pure .wait := by
         unfold compilePlayerPolicy
-        rw [rightGrant]
+        rw [rightTurn]
         simp [rightSubmitted]
       rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
       rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
@@ -647,254 +646,223 @@ theorem prescribedPlayer_afterInvoke
       have rightNotSubmitted : submittedAt (right.principalHistory owner) event = false := by
         rw [← submittedEq]
         exact leftNotSubmitted
-      by_cases ready : leftView.application.publicView.EventReady event
-      · have rightReady : rightView.application.publicView.EventReady event := readyEq.mp ready
-        by_cases actor : graph.actor? event = some owner
-        · cases viewNode : nodeView graph event with
-          | sample payload law outputEq codeEq =>
-              have leftLaw : runtime.compilePlayerPolicy owner policy
-                  (left.principalHistory owner) leftView = PMF.pure .wait := by
-                unfold compilePlayerPolicy
-                rw [leftGrant]
-                simp [leftNotSubmitted, leftOwner, ready, actor, viewNode]
-              have rightLaw : runtime.compilePlayerPolicy owner policy
-                  (right.principalHistory owner) rightView = PMF.pure .wait := by
-                unfold compilePlayerPolicy
-                rw [rightGrant]
-                simp [rightNotSubmitted, rightOwner, rightReady, actor, viewNode]
-              rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
-              rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
-              subst leftCommand
-              subst rightCommand
-              exact .wait
-          | bind eventOwner payload outputEq codeEq =>
-              cases countEq : stagingCount (left.principalHistory owner) event with
-              | zero =>
-                  have rightCount : stagingCount (right.principalHistory owner) event = 0 := by
-                    rw [← stageEq]
-                    exact countEq
-                  have leftLaw := runtime.compilePlayerPolicy_bind_stage_zero owner policy
-                    (left.principalHistory owner) leftView event eventOwner payload outputEq
-                    codeEq viewNode leftGrant leftNotSubmitted leftOwner ready actor countEq
-                  have rightLaw := runtime.compilePlayerPolicy_bind_stage_zero owner policy
-                    (right.principalHistory owner) rightView event eventOwner payload outputEq
-                    codeEq viewNode rightGrant rightNotSubmitted rightOwner rightReady actor
-                    rightCount
-                  rw [leftLaw, PMF.support_map] at leftChosen
-                  rw [rightLaw, PMF.support_map] at rightChosen
-                  obtain ⟨leftAction, _, rfl⟩ := leftChosen
-                  obtain ⟨rightAction, _, rfl⟩ := rightChosen
-                  exact .privateCommand _ _ (by intro query; simp [stagesEvent])
-              | succ count =>
-                  cases count with
-                  | zero =>
-                      have rightCount :
-                          stagingCount (right.principalHistory owner) event = 1 := by
-                        rw [← stageEq]
-                        exact countEq
-                      obtain ⟨leftAction, leftCached⟩ :=
-                        (leftCoherent event actor).cached_of_stage (by omega)
-                      obtain ⟨rightAction, rightCached⟩ :=
-                        (rightCoherent event actor).cached_of_stage (by omega)
-                      have leftRemembered : leftView.application.remembered event =
-                          some leftAction := by
-                        change (if graph.actor? event = some owner then
-                          left.native.application.remembered event else none) = some leftAction
-                        simp [actor, leftCached]
-                      have rightRemembered : rightView.application.remembered event =
-                          some rightAction := by
-                        change (if graph.actor? event = some owner then
-                          right.native.application.remembered event else none) = some rightAction
-                        simp [actor, rightCached]
-                      have leftLaw := runtime.compilePlayerPolicy_bind_stage_one owner policy
-                        (left.principalHistory owner) leftView event eventOwner payload outputEq
-                        codeEq viewNode leftAction leftGrant leftNotSubmitted leftOwner ready
-                        actor countEq leftRemembered
-                      have rightLaw := runtime.compilePlayerPolicy_bind_stage_one owner policy
-                        (right.principalHistory owner) rightView event eventOwner payload outputEq
-                        codeEq viewNode rightAction rightGrant rightNotSubmitted rightOwner
-                        rightReady actor rightCount rightRemembered
-                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
-                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
-                      subst leftCommand
-                      subst rightCommand
-                      obtain ⟨leftPrivate, leftPrivateEq⟩ :=
-                        runtime.bindingStageCommand_is_private event payload outputEq leftAction
-                      obtain ⟨rightPrivate, rightPrivateEq⟩ :=
-                        runtime.bindingStageCommand_is_private event payload outputEq rightAction
-                      rw [leftPrivateEq, rightPrivateEq]
-                      have leftStages : stagesEvent event
-                          (.privateCommand leftPrivate : Command runtime) = true := by
-                        rw [← leftPrivateEq]
-                        exact stagesEvent_bindingStageCommand runtime event eventOwner payload
-                          outputEq leftAction
-                      have rightStages : stagesEvent event
-                          (.privateCommand rightPrivate : Command runtime) = true := by
-                        rw [← rightPrivateEq]
-                        exact stagesEvent_bindingStageCommand runtime event eventOwner payload
-                          outputEq rightAction
-                      exact .privateCommand leftPrivate rightPrivate (by
-                        intro query
-                        by_cases same : query = event
-                        · subst query
-                          rw [leftStages, rightStages]
-                        · rw [runtime.stagesEvent_other_of_stagesEvent event query _ same
-                              leftStages,
-                            runtime.stagesEvent_other_of_stagesEvent event query _ same
-                              rightStages])
-                  | succ extra =>
-                      have leftStage : 2 ≤ stagingCount (left.principalHistory owner) event := by
-                        omega
-                      have rightStage : 2 ≤ stagingCount (right.principalHistory owner) event := by
-                        rw [← stageEq]
-                        exact leftStage
-                      have leftLaw := runtime.compilePlayerPolicy_bind_stage_two owner policy
-                        (left.principalHistory owner) leftView event eventOwner payload outputEq
-                        codeEq viewNode leftGrant leftNotSubmitted leftOwner ready actor leftStage
-                      have rightLaw := runtime.compilePlayerPolicy_bind_stage_two owner policy
-                        (right.principalHistory owner) rightView event eventOwner payload outputEq
-                        codeEq viewNode rightGrant rightNotSubmitted rightOwner rightReady actor
-                        rightStage
-                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
-                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
-                      subst leftCommand
-                      subst rightCommand
-                      exact .submit _
-          | resolve eventOwner payload binding checks outputEq codeEq =>
-              have eventOwnerEq : eventOwner = owner := by
-                apply Option.some.inj
-                calc
-                  some eventOwner = EventCode.actor
-                      (cast (congrArg (EventCode graph.layout) outputEq)
-                        (graph.nodes event)) := by rw [codeEq]; rfl
-                  _ = EventCode.actor (graph.nodes event) :=
-                    EventCode.actor_cast outputEq (graph.nodes event)
-                  _ = some owner := actor
-              subst eventOwner
-              cases countEq : stagingCount (left.principalHistory owner) event with
-              | zero =>
-                  have rightCount : stagingCount (right.principalHistory owner) event = 0 := by
-                    rw [← stageEq]
-                    exact countEq
-                  have leftLaw := runtime.compilePlayerPolicy_resolve_stage_zero owner policy
-                    (left.principalHistory owner) leftView event owner payload binding checks
-                    outputEq codeEq viewNode leftGrant leftNotSubmitted leftOwner ready actor
-                    countEq
-                  have rightLaw := runtime.compilePlayerPolicy_resolve_stage_zero owner policy
-                    (right.principalHistory owner) rightView event owner payload binding checks
-                    outputEq codeEq viewNode rightGrant rightNotSubmitted rightOwner rightReady
-                    actor rightCount
-                  rw [leftLaw, PMF.support_map] at leftChosen
-                  rw [rightLaw, PMF.support_map] at rightChosen
-                  obtain ⟨leftAction, _, rfl⟩ := leftChosen
-                  obtain ⟨rightAction, _, rfl⟩ := rightChosen
-                  exact .privateCommand _ _ (by intro query; simp [stagesEvent])
-              | succ count =>
-                  cases count with
-                  | zero =>
-                      have rightCount :
-                          stagingCount (right.principalHistory owner) event = 1 := by
-                        rw [← stageEq]
-                        exact countEq
-                      obtain ⟨leftAction, leftCached⟩ :=
-                        (leftCoherent event actor).cached_of_stage (by omega)
-                      obtain ⟨rightAction, rightCached⟩ :=
-                        (rightCoherent event actor).cached_of_stage (by omega)
-                      have leftRemembered : leftView.application.remembered event =
-                          some leftAction := by
-                        change (if graph.actor? event = some owner then
-                          left.native.application.remembered event else none) = some leftAction
-                        simp [actor, leftCached]
-                      have rightRemembered : rightView.application.remembered event =
-                          some rightAction := by
-                        change (if graph.actor? event = some owner then
-                          right.native.application.remembered event else none) = some rightAction
-                        simp [actor, rightCached]
-                      have leftLaw := runtime.compilePlayerPolicy_resolve_stage_one owner policy
-                        (left.principalHistory owner) leftView event owner payload binding
-                        checks outputEq codeEq viewNode leftAction leftGrant leftNotSubmitted
-                        leftOwner ready actor countEq leftRemembered
-                      have rightLaw := runtime.compilePlayerPolicy_resolve_stage_one owner policy
-                        (right.principalHistory owner) rightView event owner payload binding
-                        checks outputEq codeEq viewNode rightAction rightGrant rightNotSubmitted
-                        rightOwner rightReady actor rightCount rightRemembered
-                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
-                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
-                      subst leftCommand
-                      subst rightCommand
-                      exact .privateCommand _ _ (by intro query; simp [stagesEvent])
-                  | succ extra =>
-                      have leftStage : 2 ≤ stagingCount (left.principalHistory owner) event := by
-                        omega
-                      have rightStage : 2 ≤ stagingCount (right.principalHistory owner) event := by
-                        rw [← stageEq]
-                        exact leftStage
-                      obtain ⟨leftAction, leftCached⟩ :=
-                        (leftCoherent event actor).cached_of_stage (by omega)
-                      obtain ⟨rightAction, rightCached⟩ :=
-                        (rightCoherent event actor).cached_of_stage (by omega)
-                      have leftRemembered : leftView.application.remembered event =
-                          some leftAction := by
-                        change (if graph.actor? event = some owner then
-                          left.native.application.remembered event else none) = some leftAction
-                        simp [actor, leftCached]
-                      have rightRemembered : rightView.application.remembered event =
-                          some rightAction := by
-                        change (if graph.actor? event = some owner then
-                          right.native.application.remembered event else none) = some rightAction
-                        simp [actor, rightCached]
-                      have leftLaw := runtime.compilePlayerPolicy_resolve_stage_two owner policy
-                        (left.principalHistory owner) leftView event owner payload binding
-                        checks outputEq codeEq viewNode leftAction leftGrant leftNotSubmitted
-                        leftOwner ready actor leftStage leftRemembered
-                      have rightLaw := runtime.compilePlayerPolicy_resolve_stage_two owner policy
-                        (right.principalHistory owner) rightView event owner payload binding
-                        checks outputEq codeEq viewNode rightAction rightGrant rightNotSubmitted
-                        rightOwner rightReady actor rightStage rightRemembered
-                      rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
-                      rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
-                      have packetEq := resolutionPayloadEq payload binding checks outputEq codeEq
-                        viewNode actor
-                        ((State.publicView_eventReady left.native.application event).mp ready)
-                        ((State.publicView_eventReady right.native.application event).mp rightReady)
-                        leftAction rightAction leftCached rightCached
-                      simp only [resolutionSubmission] at leftChosen rightChosen
-                      subst leftCommand
-                      subst rightCommand
-                      rw [packetEq]
-                      exact .submit _
-        · have leftLaw : runtime.compilePlayerPolicy owner policy
+      have ready : leftView.application.publicView.EventReady event :=
+        (PublicView.ownTurn?_spec _ owner event leftTurn).1
+      have rightReady : rightView.application.publicView.EventReady event := readyEq.mp ready
+      have actor : graph.actor? event = some owner :=
+        (PublicView.ownTurn?_spec _ owner event leftTurn).2
+      cases viewNode : nodeView graph event with
+      | sample payload law outputEq codeEq =>
+          have leftLaw : runtime.compilePlayerPolicy owner policy
               (left.principalHistory owner) leftView = PMF.pure .wait := by
             unfold compilePlayerPolicy
-            rw [leftGrant]
-            simp [leftNotSubmitted, leftOwner, ready, actor]
+            rw [leftTurn]
+            simp [leftNotSubmitted, leftOwner, actor, viewNode]
           have rightLaw : runtime.compilePlayerPolicy owner policy
               (right.principalHistory owner) rightView = PMF.pure .wait := by
             unfold compilePlayerPolicy
-            rw [rightGrant]
-            simp [rightNotSubmitted, rightOwner, rightReady, actor]
+            rw [rightTurn]
+            simp [rightNotSubmitted, rightOwner, actor, viewNode]
           rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
           rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
           subst leftCommand
           subst rightCommand
           exact .wait
-      · have rightReady : ¬rightView.application.publicView.EventReady event :=
-          fun rightReady => ready (readyEq.mpr rightReady)
-        have leftLaw : runtime.compilePlayerPolicy owner policy
-            (left.principalHistory owner) leftView = PMF.pure .wait := by
-          unfold compilePlayerPolicy
-          rw [leftGrant]
-          simp [leftNotSubmitted, leftOwner, ready]
-        have rightLaw : runtime.compilePlayerPolicy owner policy
-            (right.principalHistory owner) rightView = PMF.pure .wait := by
-          unfold compilePlayerPolicy
-          rw [rightGrant]
-          simp [rightNotSubmitted, rightOwner, rightReady]
-        rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
-        rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
-        subst leftCommand
-        subst rightCommand
-        exact .wait
+      | bind eventOwner payload outputEq codeEq =>
+          cases countEq : stagingCount (left.principalHistory owner) event with
+          | zero =>
+              have rightCount : stagingCount (right.principalHistory owner) event = 0 := by
+                rw [← stageEq]
+                exact countEq
+              have leftLaw := runtime.compilePlayerPolicy_bind_stage_zero owner policy
+                (left.principalHistory owner) leftView event eventOwner payload outputEq
+                codeEq viewNode leftTurn leftNotSubmitted leftOwner actor countEq
+              have rightLaw := runtime.compilePlayerPolicy_bind_stage_zero owner policy
+                (right.principalHistory owner) rightView event eventOwner payload outputEq
+                codeEq viewNode rightTurn rightNotSubmitted rightOwner actor
+                rightCount
+              rw [leftLaw, PMF.support_map] at leftChosen
+              rw [rightLaw, PMF.support_map] at rightChosen
+              obtain ⟨leftAction, _, rfl⟩ := leftChosen
+              obtain ⟨rightAction, _, rfl⟩ := rightChosen
+              exact .privateCommand _ _ (by intro query; simp [stagesEvent])
+          | succ count =>
+              cases count with
+              | zero =>
+                  have rightCount :
+                      stagingCount (right.principalHistory owner) event = 1 := by
+                    rw [← stageEq]
+                    exact countEq
+                  obtain ⟨leftAction, leftCached⟩ :=
+                    (leftCoherent event actor).cached_of_stage (by omega)
+                  obtain ⟨rightAction, rightCached⟩ :=
+                    (rightCoherent event actor).cached_of_stage (by omega)
+                  have leftRemembered : leftView.application.remembered event =
+                      some leftAction := by
+                    change (if graph.actor? event = some owner then
+                      left.native.application.remembered event else none) = some leftAction
+                    simp [actor, leftCached]
+                  have rightRemembered : rightView.application.remembered event =
+                      some rightAction := by
+                    change (if graph.actor? event = some owner then
+                      right.native.application.remembered event else none) = some rightAction
+                    simp [actor, rightCached]
+                  have leftLaw := runtime.compilePlayerPolicy_bind_stage_one owner policy
+                    (left.principalHistory owner) leftView event eventOwner payload outputEq
+                    codeEq viewNode leftAction leftTurn leftNotSubmitted leftOwner actor countEq
+                      leftRemembered
+                  have rightLaw := runtime.compilePlayerPolicy_bind_stage_one owner policy
+                    (right.principalHistory owner) rightView event eventOwner payload outputEq
+                    codeEq viewNode rightAction rightTurn rightNotSubmitted rightOwner
+                    actor rightCount rightRemembered
+                  rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                  rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
+                  subst leftCommand
+                  subst rightCommand
+                  obtain ⟨leftPrivate, leftPrivateEq⟩ :=
+                    runtime.bindingStageCommand_is_private event payload outputEq leftAction
+                  obtain ⟨rightPrivate, rightPrivateEq⟩ :=
+                    runtime.bindingStageCommand_is_private event payload outputEq rightAction
+                  rw [leftPrivateEq, rightPrivateEq]
+                  have leftStages : stagesEvent event
+                      (.privateCommand leftPrivate : Command runtime) = true := by
+                    rw [← leftPrivateEq]
+                    exact stagesEvent_bindingStageCommand runtime event eventOwner payload
+                      outputEq leftAction
+                  have rightStages : stagesEvent event
+                      (.privateCommand rightPrivate : Command runtime) = true := by
+                    rw [← rightPrivateEq]
+                    exact stagesEvent_bindingStageCommand runtime event eventOwner payload
+                      outputEq rightAction
+                  exact .privateCommand leftPrivate rightPrivate (by
+                    intro query
+                    by_cases same : query = event
+                    · subst query
+                      rw [leftStages, rightStages]
+                    · rw [runtime.stagesEvent_other_of_stagesEvent event query _ same
+                          leftStages,
+                        runtime.stagesEvent_other_of_stagesEvent event query _ same
+                          rightStages])
+              | succ extra =>
+                  have leftStage : 2 ≤ stagingCount (left.principalHistory owner) event := by
+                    omega
+                  have rightStage : 2 ≤ stagingCount (right.principalHistory owner) event := by
+                    rw [← stageEq]
+                    exact leftStage
+                  have leftLaw := runtime.compilePlayerPolicy_bind_stage_two owner policy
+                    (left.principalHistory owner) leftView event eventOwner payload outputEq
+                    codeEq viewNode leftTurn leftNotSubmitted leftOwner actor leftStage
+                  have rightLaw := runtime.compilePlayerPolicy_bind_stage_two owner policy
+                    (right.principalHistory owner) rightView event eventOwner payload outputEq
+                    codeEq viewNode rightTurn rightNotSubmitted rightOwner actor
+                    rightStage
+                  rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                  rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
+                  subst leftCommand
+                  subst rightCommand
+                  exact .submit _
+      | resolve eventOwner payload binding checks outputEq codeEq =>
+          have eventOwnerEq : eventOwner = owner := by
+            apply Option.some.inj
+            calc
+              some eventOwner = EventCode.actor
+                  (cast (congrArg (EventCode graph.layout) outputEq)
+                    (graph.nodes event)) := by rw [codeEq]; rfl
+              _ = EventCode.actor (graph.nodes event) :=
+                EventCode.actor_cast outputEq (graph.nodes event)
+              _ = some owner := actor
+          subst eventOwner
+          cases countEq : stagingCount (left.principalHistory owner) event with
+          | zero =>
+              have rightCount : stagingCount (right.principalHistory owner) event = 0 := by
+                rw [← stageEq]
+                exact countEq
+              have leftLaw := runtime.compilePlayerPolicy_resolve_stage_zero owner policy
+                (left.principalHistory owner) leftView event owner payload binding checks
+                outputEq codeEq viewNode leftTurn leftNotSubmitted leftOwner actor
+                countEq
+              have rightLaw := runtime.compilePlayerPolicy_resolve_stage_zero owner policy
+                (right.principalHistory owner) rightView event owner payload binding checks
+                outputEq codeEq viewNode rightTurn rightNotSubmitted rightOwner actor rightCount
+              rw [leftLaw, PMF.support_map] at leftChosen
+              rw [rightLaw, PMF.support_map] at rightChosen
+              obtain ⟨leftAction, _, rfl⟩ := leftChosen
+              obtain ⟨rightAction, _, rfl⟩ := rightChosen
+              exact .privateCommand _ _ (by intro query; simp [stagesEvent])
+          | succ count =>
+              cases count with
+              | zero =>
+                  have rightCount :
+                      stagingCount (right.principalHistory owner) event = 1 := by
+                    rw [← stageEq]
+                    exact countEq
+                  obtain ⟨leftAction, leftCached⟩ :=
+                    (leftCoherent event actor).cached_of_stage (by omega)
+                  obtain ⟨rightAction, rightCached⟩ :=
+                    (rightCoherent event actor).cached_of_stage (by omega)
+                  have leftRemembered : leftView.application.remembered event =
+                      some leftAction := by
+                    change (if graph.actor? event = some owner then
+                      left.native.application.remembered event else none) = some leftAction
+                    simp [actor, leftCached]
+                  have rightRemembered : rightView.application.remembered event =
+                      some rightAction := by
+                    change (if graph.actor? event = some owner then
+                      right.native.application.remembered event else none) = some rightAction
+                    simp [actor, rightCached]
+                  have leftLaw := runtime.compilePlayerPolicy_resolve_stage_one owner policy
+                    (left.principalHistory owner) leftView event owner payload binding
+                    checks outputEq codeEq viewNode leftAction leftTurn leftNotSubmitted
+                    leftOwner actor countEq leftRemembered
+                  have rightLaw := runtime.compilePlayerPolicy_resolve_stage_one owner policy
+                    (right.principalHistory owner) rightView event owner payload binding
+                    checks outputEq codeEq viewNode rightAction rightTurn rightNotSubmitted
+                    rightOwner actor rightCount rightRemembered
+                  rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                  rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
+                  subst leftCommand
+                  subst rightCommand
+                  exact .privateCommand _ _ (by intro query; simp [stagesEvent])
+              | succ extra =>
+                  have leftStage : 2 ≤ stagingCount (left.principalHistory owner) event := by
+                    omega
+                  have rightStage : 2 ≤ stagingCount (right.principalHistory owner) event := by
+                    rw [← stageEq]
+                    exact leftStage
+                  obtain ⟨leftAction, leftCached⟩ :=
+                    (leftCoherent event actor).cached_of_stage (by omega)
+                  obtain ⟨rightAction, rightCached⟩ :=
+                    (rightCoherent event actor).cached_of_stage (by omega)
+                  have leftRemembered : leftView.application.remembered event =
+                      some leftAction := by
+                    change (if graph.actor? event = some owner then
+                      left.native.application.remembered event else none) = some leftAction
+                    simp [actor, leftCached]
+                  have rightRemembered : rightView.application.remembered event =
+                      some rightAction := by
+                    change (if graph.actor? event = some owner then
+                      right.native.application.remembered event else none) = some rightAction
+                    simp [actor, rightCached]
+                  have leftLaw := runtime.compilePlayerPolicy_resolve_stage_two owner policy
+                    (left.principalHistory owner) leftView event owner payload binding
+                    checks outputEq codeEq viewNode leftAction leftTurn leftNotSubmitted
+                    leftOwner actor leftStage leftRemembered
+                  have rightLaw := runtime.compilePlayerPolicy_resolve_stage_two owner policy
+                    (right.principalHistory owner) rightView event owner payload binding
+                    checks outputEq codeEq viewNode rightAction rightTurn rightNotSubmitted
+                    rightOwner actor rightStage rightRemembered
+                  rw [leftLaw, PMF.mem_support_pure_iff _ _] at leftChosen
+                  rw [rightLaw, PMF.mem_support_pure_iff _ _] at rightChosen
+                  have packetEq := resolutionPayloadEq payload binding checks outputEq codeEq
+                    viewNode actor
+                    ((State.publicView_eventReady left.native.application event).mp ready)
+                    ((State.publicView_eventReady right.native.application event).mp rightReady)
+                    leftAction rightAction leftCached rightCached
+                  simp only [resolutionSubmission] at leftChosen rightChosen
+                  subst leftCommand
+                  subst rightCommand
+                  rw [packetEq]
+                  exact .submit _
   exact replay.nonfocalPlayerStep runtime focal owner different paired leftStep rightStep
 
 /-- One invocation of a fixed pure focal policy selects the same command from

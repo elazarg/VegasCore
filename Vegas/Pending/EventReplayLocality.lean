@@ -540,7 +540,7 @@ theorem prescribedPlayerStep (runtime : EventGraphRuntime graph)
     (rest : List (ServiceInstruction graph))
     (leftPlan : left.plan = .player owner :: rest)
     (event : graph.EventId)
-    (grant : left.execution.native.application.serviceGrant = some event)
+    (turn : left.execution.native.application.publicView.ownTurn? owner = some event)
     (resolutionPayloadEq : ∀ (payload : L.Ty)
       (binding : FieldRef graph.layout (.binding owner payload))
       (checks : List (GuardCheck graph.layout payload))
@@ -579,11 +579,11 @@ theorem prescribedPlayerStep (runtime : EventGraphRuntime graph)
     { epochs := replay.epochs
       plan := rfl
       native := replay.native.prescribedPlayer_afterInvoke runtime focal owner different policy
-        players (runtime.application.wireEnvironment wire) leftCoherent rightCoherent event grant
+        players (runtime.application.wireEnvironment wire) leftCoherent rightCoherent event turn
         prescribed resolutionPayloadEq leftExecutionMem rightExecutionMem }
 
-/-- A prescribed nonfocal player waits when no service event is granted. -/
-theorem prescribedPlayerStep_noGrant (runtime : EventGraphRuntime graph)
+/-- A prescribed nonfocal player waits when it has no turn. -/
+theorem prescribedPlayerStep_noTurn (runtime : EventGraphRuntime graph)
     (roster : List Player) (reactionRounds : Nat)
     (players : Player → runtime.application.PlayerPolicy)
     (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
@@ -594,7 +594,7 @@ theorem prescribedPlayerStep_noGrant (runtime : EventGraphRuntime graph)
     (replay : ServiceReplay runtime focal left right)
     (rest : List (ServiceInstruction graph))
     (leftPlan : left.plan = .player owner :: rest)
-    (grant : left.execution.native.application.serviceGrant = none)
+    (turn : left.execution.native.application.publicView.ownTurn? owner = none)
     (leftSupported : leftNext ∈
       (runtime.serviceControlStep roster reactionRounds players wire order left).support)
     (rightSupported : rightNext ∈
@@ -611,19 +611,19 @@ theorem prescribedPlayerStep_noGrant (runtime : EventGraphRuntime graph)
     at leftExecutionMem rightExecutionMem
   obtain ⟨leftCommand, leftChosen, leftStep⟩ := leftExecutionMem
   obtain ⟨rightCommand, rightChosen, rightStep⟩ := rightExecutionMem
-  have rightGrant : right.execution.native.application.serviceGrant = none := by
-    have grantEq := congrArg PublicView.serviceGrant replay.native.publicView
-    change left.execution.native.application.serviceGrant =
-      right.execution.native.application.serviceGrant at grantEq
-    exact grantEq.symm.trans grant
-  have leftViewGrant : (MessageApplication.State.observe runtime.application
-      left.execution.native owner).application.publicView.serviceGrant = none := grant
-  have rightViewGrant : (MessageApplication.State.observe runtime.application
-      right.execution.native owner).application.publicView.serviceGrant = none := rightGrant
+  have rightTurn : right.execution.native.application.publicView.ownTurn? owner = none := by
+    have turnEq := congrArg (fun view => view.ownTurn? owner) replay.native.publicView
+    change left.execution.native.application.publicView.ownTurn? owner =
+      right.execution.native.application.publicView.ownTurn? owner at turnEq
+    exact turnEq.symm.trans turn
+  have leftViewTurn : (MessageApplication.State.observe runtime.application
+      left.execution.native owner).application.publicView.ownTurn? owner = none := turn
+  have rightViewTurn : (MessageApplication.State.observe runtime.application
+      right.execution.native owner).application.publicView.ownTurn? owner = none := rightTurn
   rw [prescribed] at leftChosen rightChosen
   unfold compilePlayerPolicy at leftChosen rightChosen
-  rw [leftViewGrant, PMF.mem_support_pure_iff _ _] at leftChosen
-  rw [rightViewGrant, PMF.mem_support_pure_iff _ _] at rightChosen
+  rw [leftViewTurn, PMF.mem_support_pure_iff _ _] at leftChosen
+  rw [rightViewTurn, PMF.mem_support_pure_iff _ _] at rightChosen
   subst leftCommand
   subst rightCommand
   exact
@@ -956,7 +956,7 @@ theorem pairedControlStep (runtime : EventGraphRuntime graph)
       (_prescribed : players owner = runtime.compilePlayerPolicy owner policy)
       (rest : List (ServiceInstruction graph)) (event : graph.EventId),
       left.plan = .player owner :: rest →
-      left.execution.native.application.serviceGrant = some event →
+      left.execution.native.application.publicView.ownTurn? owner = some event →
       ∀ (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
         (checks : List (GuardCheck graph.layout payload))
         (outputEq : graph.outputLayout event = .publication payload)
@@ -991,16 +991,16 @@ theorem pairedControlStep (runtime : EventGraphRuntime graph)
             exact replay.focalPlayerStep runtime roster reactionRounds players wire order focal
               focalResponse fixedFocal rest leftPlanEq leftSupported rightSupported
           · obtain ⟨policy, prescribed⟩ := prescribedOthers who same
-            cases grant : left.execution.native.application.serviceGrant with
+            cases turn : left.execution.native.application.publicView.ownTurn? who with
             | none =>
-                exact replay.prescribedPlayerStep_noGrant runtime roster reactionRounds players
-                  wire order focal who same policy prescribed rest leftPlanEq grant leftSupported
+                exact replay.prescribedPlayerStep_noTurn runtime roster reactionRounds players
+                  wire order focal who same policy prescribed rest leftPlanEq turn leftSupported
                   rightSupported
             | some event =>
                 exact replay.prescribedPlayerStep runtime inputs roster reactionRounds players
                   wire order focal who same policy prescribed leftReachable rightReachable rest
-                  leftPlanEq event grant
-                  (resolutionPayloadEq who same policy prescribed rest event leftPlanEq grant)
+                  leftPlanEq event turn
+                  (resolutionPayloadEq who same policy prescribed rest event leftPlanEq turn)
                   leftSupported rightSupported
       | wire =>
           exact replay.wireStep runtime inputs roster reactionRounds players wire order ordered
@@ -1075,7 +1075,7 @@ theorem pairedControlStep_of_endpoint (runtime : EventGraphRuntime graph)
   apply replay.pairedControlStep runtime inputs roster reactionRounds players wire order ordered
     focal focalResponse fixedFocal wireResponse fixedWire orderResponse fixedOrder
     prescribedOthers leftReachable rightReachable leftSupported rightSupported
-  · intro owner different policy prescribed rest event leftPlan grant payload binding checks
+  · intro owner different policy prescribed rest event leftPlan turn payload binding checks
       outputEq codeEq viewNode actor leftReady rightReady leftAction rightAction leftCached
       rightCached
     have completedAtEnd

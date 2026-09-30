@@ -345,7 +345,7 @@ theorem PolicyCoherent.afterSubmit
 
 /-- A private command by the same owner preserves every event it neither
 stages nor mutates in the remembered table.  This is the frame used for all
-owned events other than the current service grant. -/
+owned events other than the owner's current turn. -/
 theorem PolicyCoherent.afterPrivate_irrelevant
     (runtime : EventGraphRuntime graph)
     (execution : runtime.application.PolicyExecution)
@@ -504,12 +504,12 @@ theorem compilePlayerPolicy_commandAt
     (policy : graph.BehavioralPolicy owner)
     (history : List (Entry runtime)) (view : runtime.application.View)
     (event : graph.EventId)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.ownTurn? owner = some event)
     (command : Command runtime)
     (member : command ∈ (runtime.compilePlayerPolicy owner policy history view).support) :
     runtime.CommandAt event command := by
   unfold compilePlayerPolicy at member
-  rw [grant] at member
+  rw [turn] at member
   repeat' first | split at member
   all_goals subst_vars
   all_goals
@@ -531,7 +531,7 @@ theorem compilePlayerPolicy_private_stage
     (command : PrivateCommand graph)
     (member : (.privateCommand command : Command runtime) ∈
       (runtime.compilePlayerPolicy owner policy history view).support) :
-    ∃ event, view.application.publicView.serviceGrant = some event ∧
+    ∃ event, view.application.publicView.ownTurn? owner = some event ∧
       stagingCount history event < 2 ∧
       stagesEvent event (.privateCommand command : Command runtime) = true := by
   unfold compilePlayerPolicy at member
@@ -581,26 +581,24 @@ theorem stagesEvent_other_of_stagesEvent
       exact different (Fin.ext same.symm)
 
 /-- At private stage zero, every supported compiled private command is the
-remember command carrying the freshly sampled action for the granted event. -/
+remember command carrying the freshly sampled action for the owner's turn. -/
 theorem compilePlayerPolicy_private_zero_is_remember
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (execution : runtime.application.PolicyExecution)
     (event : graph.EventId)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (stage : stagingCount (execution.principalHistory owner) event = 0)
     (command : PrivateCommand graph)
     (member : (.privateCommand command : Command runtime) ∈
       (runtime.compilePlayerPolicy owner policy (execution.principalHistory owner)
         (MessageApplication.State.observe runtime.application execution.native owner)).support) :
     ∃ action, command = .remember event action := by
-  have observedGrant :
+  have observedTurn :
       (MessageApplication.State.observe runtime.application execution.native
-        owner).application.publicView.serviceGrant = some event := by
-    change execution.native.application.serviceGrant = some event
-    exact grant
+        owner).application.publicView.ownTurn? owner = some event := turn
   unfold compilePlayerPolicy at member
-  rw [observedGrant] at member
+  rw [observedTurn] at member
   repeat' first | split at member
   all_goals
     simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
@@ -629,25 +627,23 @@ theorem compilePlayerPolicy_private_zero_is_remember
   (runtime.bindingStageCommand_ne_submit event owner payload outputEq action packet).symm
 
 /-- A supported compiled submission occurs only after both private stages of
-the granted event. -/
+the owner's turn. -/
 theorem compilePlayerPolicy_submit_stage
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (execution : runtime.application.PolicyExecution)
     (event : graph.EventId)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (packet : Payload graph)
     (member : (.submit packet : Command runtime) ∈
       (runtime.compilePlayerPolicy owner policy (execution.principalHistory owner)
         (MessageApplication.State.observe runtime.application execution.native owner)).support) :
     2 ≤ stagingCount (execution.principalHistory owner) event := by
-  have observedGrant :
+  have observedTurn :
       (MessageApplication.State.observe runtime.application execution.native
-        owner).application.publicView.serviceGrant = some event := by
-    change execution.native.application.serviceGrant = some event
-    exact grant
+        owner).application.publicView.ownTurn? owner = some event := turn
   unfold compilePlayerPolicy at member
-  rw [observedGrant] at member
+  rw [observedTurn] at member
   generalize countEq : stagingCount (execution.principalHistory owner) event = count at member
   repeat' first | split at member
   all_goals subst_vars
@@ -659,26 +655,26 @@ theorem compilePlayerPolicy_submit_stage
     | omega
     | (rcases member with ⟨_, _, impossible⟩; contradiction)
 
-/-- Any non-wait command supported by the compiled policy at a grant is
-authenticated to the graph actor of that granted event. -/
+/-- Any non-wait command supported by the compiled policy at a turn is
+authenticated to the graph actor of that event. -/
 theorem compilePlayerPolicy_nonwait_actor
     (runtime : EventGraphRuntime graph) (owner : Player)
     (policy : graph.BehavioralPolicy owner)
     (history : List (Entry runtime)) (view : runtime.application.View)
     (event : graph.EventId)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.ownTurn? owner = some event)
     (command : Command runtime) (notWait : command ≠ .wait)
     (member : command ∈ (runtime.compilePlayerPolicy owner policy history view).support) :
     graph.actor? event = some owner := by
   unfold compilePlayerPolicy at member
-  rw [grant] at member
+  rw [turn] at member
   repeat' first | split at member
   all_goals subst_vars
   all_goals
     simp_all only [PMF.mem_support_pure_iff _ _, PMF.support_map, Set.mem_image,
       reduceCtorEq, Option.some.injEq]
 
-/-- At stage one, any private command that stages the granted event advances
+/-- At stage one, any private command that stages the turn's event advances
 to stage two while retaining the already immutable cached action. -/
 theorem PolicyCoherent.afterPrivate_stageOne
     (runtime : EventGraphRuntime graph)
@@ -730,7 +726,7 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
     (policy : graph.BehavioralPolicy owner)
     (execution next : runtime.application.PolicyExecution)
     (event : graph.EventId)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (coherent : PolicyCoherentAll runtime execution owner)
     (command : Command runtime)
     (commandMem : command ∈
@@ -741,9 +737,7 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
   have atEvent := runtime.compilePlayerPolicy_commandAt owner policy
     (execution.principalHistory owner)
     (MessageApplication.State.observe runtime.application execution.native owner)
-    event (by
-      change execution.native.application.serviceGrant = some event
-      exact grant) command commandMem
+    event turn command commandMem
   cases command with
   | wait =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
@@ -757,23 +751,22 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
       rw [runtime.application.playerStep_private_eq] at stepMem
       simp only [PMF.mem_support_pure_iff _ _] at stepMem
       subst next
-      obtain ⟨stagedEvent, stagedGrant, stageLt, staged⟩ :=
+      obtain ⟨stagedEvent, stagedTurn, stageLt, staged⟩ :=
         runtime.compilePlayerPolicy_private_stage owner policy
           (execution.principalHistory owner)
           (MessageApplication.State.observe runtime.application execution.native owner)
           privateCommand commandMem
       have stagedEq : stagedEvent = event := by
-        change execution.native.application.serviceGrant = some stagedEvent at stagedGrant
-        rw [grant] at stagedGrant
-        exact Option.some.inj stagedGrant.symm
+        change execution.native.application.publicView.ownTurn? owner = some stagedEvent
+          at stagedTurn
+        rw [turn] at stagedTurn
+        exact Option.some.inj stagedTurn.symm
       subst stagedEvent
       have eventActor : graph.actor? event = some owner :=
         runtime.compilePlayerPolicy_nonwait_actor owner policy
           (execution.principalHistory owner)
           (MessageApplication.State.observe runtime.application execution.native owner)
-          event (by
-            change execution.native.application.serviceGrant = some event
-            exact grant) (.privateCommand privateCommand) (by simp) commandMem
+          event turn (.privateCommand privateCommand) (by simp) commandMem
       have current := coherent event eventActor
       have currentAfter : PolicyCoherent runtime
           (runtime.application.afterPrivate execution owner privateCommand) owner event := by
@@ -781,7 +774,7 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
             (stagingCount (execution.principalHistory owner) event) with stageZero | stagePositive
         · obtain ⟨action, commandEq⟩ :=
             runtime.compilePlayerPolicy_private_zero_is_remember owner policy execution event
-              grant stageZero privateCommand commandMem
+              turn stageZero privateCommand commandMem
           subst privateCommand
           exact current.afterRemember runtime execution owner event stageZero action
         · have stageOne : stagingCount (execution.principalHistory owner) event = 1 := by
@@ -805,11 +798,9 @@ theorem compilePlayerPolicy_playerStep_policyCoherentAll
         runtime.compilePlayerPolicy_nonwait_actor owner policy
           (execution.principalHistory owner)
           (MessageApplication.State.observe runtime.application execution.native owner)
-          event (by
-            change execution.native.application.serviceGrant = some event
-            exact grant) (.submit packet) (by simp) commandMem
+          event turn (.submit packet) (by simp) commandMem
       have stageGe := runtime.compilePlayerPolicy_submit_stage owner policy execution event
-        grant packet commandMem
+        turn packet commandMem
       have stage : stagingCount (execution.principalHistory owner) event = 2 := by
         have stageLe := (coherent event eventActor).stage_le
         omega
@@ -840,7 +831,7 @@ theorem compilePlayerPolicy_invoke_policyCoherentAll
     (execution next : runtime.application.PolicyExecution)
     (event : graph.EventId)
     (ownerCompiled : players owner = runtime.compilePlayerPolicy owner policy)
-    (grant : execution.native.application.serviceGrant = some event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (coherent : PolicyCoherentAll runtime execution owner)
     (supported : next ∈
       (runtime.application.invoke players environment execution (.player owner)).support) :
@@ -849,6 +840,6 @@ theorem compilePlayerPolicy_invoke_policyCoherentAll
     Set.mem_iUnion] at supported
   obtain ⟨command, commandMem, stepMem⟩ := supported
   exact runtime.compilePlayerPolicy_playerStep_policyCoherentAll owner policy execution next
-    event grant coherent command commandMem stepMem
+    event turn coherent command commandMem stepMem
 
 end Vegas.EventGraphRuntime

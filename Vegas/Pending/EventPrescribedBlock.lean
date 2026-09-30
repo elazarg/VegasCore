@@ -46,11 +46,11 @@ theorem compilePlayerPolicy_wait_of_submitted
     (policy : graph.BehavioralPolicy owner)
     (history : List (Entry runtime)) (view : runtime.application.View)
     (event : graph.EventId)
-    (grant : view.application.publicView.serviceGrant = some event)
+    (turn : view.application.publicView.ownTurn? owner = some event)
     (submitted : submittedAt history event = true) :
     runtime.compilePlayerPolicy owner policy history view = PMF.pure .wait := by
   unfold compilePlayerPolicy
-  rw [grant]
+  rw [turn]
   simp [submitted]
 
 /-- From any coherent, not-yet-submitted binding stage, the three reserved
@@ -68,8 +68,7 @@ theorem runServicePlan_compiled_bind_partial_submitted
       (graph.nodes event) = .bind owner payload)
     (viewNode : nodeView graph event = .bind owner payload outputEq codeEq)
     (ownerCompiled : players owner = runtime.compilePlayerPolicy owner policy)
-    (grant : execution.native.application.serviceGrant = some event)
-    (ready : execution.native.application.config.cut.Ready event)
+    (turn : execution.native.application.publicView.ownTurn? owner = some event)
     (coherent : BindingPolicyCoherent runtime execution owner event payload outputEq)
     (notSubmitted : submittedAt (execution.principalHistory owner) event = false)
     (supported : next ∈
@@ -79,15 +78,13 @@ theorem runServicePlan_compiled_bind_partial_submitted
       AuthoredPending runtime execution next owner
         (.commitment event (owner, eventSlot event)) := by
   have actor := coherent.1.actor
-  have publicReady : execution.native.application.publicView.EventReady event :=
-    (State.publicView_eventReady execution.native.application event).2 ready
   change next ∈ (runtime.runServicePlan players wire
     [.player owner, .player owner, .player owner] execution).support at supported
   rcases Nat.eq_zero_or_pos
       (stagingCount (execution.principalHistory owner) event) with stageZero | stagePositive
   · have empty := coherent.1.empty_iff.mp stageZero
     have block := runtime.runServicePlan_compiled_bind_block owner policy players wire execution
-      event owner payload outputEq codeEq viewNode ownerCompiled grant ready actor stageZero
+      event owner payload outputEq codeEq viewNode ownerCompiled turn actor stageZero
       notSubmitted empty
     have block' : runtime.runServicePlan players wire
         [.player owner, .player owner, .player owner] execution =
@@ -124,17 +121,13 @@ theorem runServicePlan_compiled_bind_partial_submitted
       have firstPolicy := runtime.compilePlayerPolicy_bind_stage_one owner policy
         (execution.principalHistory owner)
         (MessageApplication.State.observe runtime.application execution.native owner)
-        event owner payload outputEq codeEq viewNode action (by
-          change execution.native.application.serviceGrant = some event
-          exact grant) notSubmitted rfl publicReady actor stageOne viewCached
+        event owner payload outputEq codeEq viewNode action turn notSubmitted rfl actor stageOne
+          viewCached
       obtain ⟨privateCommand, commandEq⟩ :=
         runtime.bindingStageCommand_is_private event payload outputEq action
       let first := runtime.application.afterPrivate execution owner privateCommand
-      have firstGrant : first.native.application.serviceGrant = some event := by
-        simpa [first] using grant
-      have firstReady : first.native.application.publicView.EventReady event := by
-        apply (State.publicView_eventReady first.native.application event).2
-        simpa [first] using ready
+      have firstTurn : first.native.application.publicView.ownTurn? owner = some event := by
+        simpa only [first, afterPrivate_publicView] using turn
       have firstStage : 2 ≤ stagingCount (first.principalHistory owner) event := by
         change 2 ≤ stagingCount
           ((runtime.application.afterPrivate execution owner privateCommand).principalHistory
@@ -147,9 +140,8 @@ theorem runServicePlan_compiled_bind_partial_submitted
       have secondPolicy := runtime.compilePlayerPolicy_bind_stage_two owner policy
         (first.principalHistory owner)
         (MessageApplication.State.observe runtime.application first.native owner)
-        event owner payload outputEq codeEq viewNode (by
-          change first.native.application.serviceGrant = some event
-          exact firstGrant) firstNotSubmitted rfl firstReady actor firstStage
+        event owner payload outputEq codeEq viewNode firstTurn firstNotSubmitted rfl actor
+          firstStage
       simp only [runServicePlan, serviceStep, MessageApplication.invoke, ownerCompiled] at supported
       rw [firstPolicy, PMF.pure_bind, commandEq,
         runtime.application.playerStep_private_eq, PMF.pure_bind] at supported
@@ -167,15 +159,14 @@ theorem runServicePlan_compiled_bind_partial_submitted
         (.commitment event (owner, eventSlot event))
       have secondSubmitted : submittedAt (second.principalHistory owner) event = true := by
         simp [second, first, MessageApplication.afterSubmit, submittedAt, Payload.event?]
-      have secondGrant :
+      have secondTurn :
           (MessageApplication.State.observe runtime.application second.native
-            owner).application.publicView.serviceGrant = some event := by
-        change first.native.application.serviceGrant = some event
-        exact firstGrant
+            owner).application.publicView.ownTurn? owner = some event :=
+          firstTurn
       rw [runtime.compilePlayerPolicy_wait_of_submitted owner policy
         (second.principalHistory owner)
         (MessageApplication.State.observe runtime.application second.native owner)
-        event secondGrant secondSubmitted,
+        event secondTurn secondSubmitted,
         PMF.pure_bind, runtime.application.playerStep_wait,
         PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next
@@ -192,9 +183,7 @@ theorem runServicePlan_compiled_bind_partial_submitted
       have firstPolicy := runtime.compilePlayerPolicy_bind_stage_two owner policy
         (execution.principalHistory owner)
         (MessageApplication.State.observe runtime.application execution.native owner)
-        event owner payload outputEq codeEq viewNode (by
-          change execution.native.application.serviceGrant = some event
-          exact grant) notSubmitted rfl publicReady actor (by omega)
+        event owner payload outputEq codeEq viewNode turn notSubmitted rfl actor (by omega)
       simp only [runServicePlan, serviceStep, MessageApplication.invoke, ownerCompiled] at supported
       rw [firstPolicy, PMF.pure_bind, runtime.application.playerStep_submit_eq,
         PMF.pure_bind] at supported
@@ -202,15 +191,14 @@ theorem runServicePlan_compiled_bind_partial_submitted
         (.commitment event (owner, eventSlot event))
       have firstSubmitted : submittedAt (first.principalHistory owner) event = true := by
         simp [first, MessageApplication.afterSubmit, submittedAt, Payload.event?]
-      have firstGrant :
+      have firstTurn :
           (MessageApplication.State.observe runtime.application first.native
-            owner).application.publicView.serviceGrant = some event := by
-        change execution.native.application.serviceGrant = some event
-        exact grant
+            owner).application.publicView.ownTurn? owner = some event :=
+          turn
       rw [runtime.compilePlayerPolicy_wait_of_submitted owner policy
         (first.principalHistory owner)
         (MessageApplication.State.observe runtime.application first.native owner)
-        event firstGrant firstSubmitted,
+        event firstTurn firstSubmitted,
         PMF.pure_bind, runtime.application.playerStep_wait, PMF.pure_bind] at supported
       let second : runtime.application.PolicyExecution :=
         { first with principalHistory := fun other =>
@@ -219,15 +207,14 @@ theorem runServicePlan_compiled_bind_partial_submitted
             else first.principalHistory other }
       have secondSubmitted : submittedAt (second.principalHistory owner) event = true := by
         simpa [second, submittedAt, stagesEvent] using firstSubmitted
-      have secondGrant :
+      have secondTurn :
           (MessageApplication.State.observe runtime.application second.native
-            owner).application.publicView.serviceGrant = some event := by
-        change first.native.application.serviceGrant = some event
-        exact firstGrant
+            owner).application.publicView.ownTurn? owner = some event :=
+          firstTurn
       rw [runtime.compilePlayerPolicy_wait_of_submitted owner policy
         (second.principalHistory owner)
         (MessageApplication.State.observe runtime.application second.native owner)
-        event secondGrant secondSubmitted,
+        event secondTurn secondSubmitted,
         PMF.pure_bind, runtime.application.playerStep_wait,
         PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next
@@ -258,8 +245,7 @@ theorem runServicePlan_compiled_resolve_partial_submitted
     (viewNode : nodeView graph event =
       .resolve owner payload binding checks outputEq codeEq)
     (whoCompiled : players who = runtime.compilePlayerPolicy who policy)
-    (grant : execution.native.application.serviceGrant = some event)
-    (ready : execution.native.application.config.cut.Ready event)
+    (turn : execution.native.application.publicView.ownTurn? who = some event)
     (coherent : PolicyCoherent runtime execution who event)
     (notSubmitted : submittedAt (execution.principalHistory who) event = false)
     (supported : next ∈
@@ -269,15 +255,13 @@ theorem runServicePlan_compiled_resolve_partial_submitted
       ResolutionAuthoredPending runtime execution next who event payload binding checks
         outputEq := by
   have actor := coherent.actor
-  have publicReady : execution.native.application.publicView.EventReady event :=
-    (State.publicView_eventReady execution.native.application event).2 ready
   change next ∈ (runtime.runServicePlan players wire
     [.player who, .player who, .player who] execution).support at supported
   rcases Nat.eq_zero_or_pos
       (stagingCount (execution.principalHistory who) event) with stageZero | stagePositive
   · have empty := coherent.empty_iff.mp stageZero
     have block := runtime.runServicePlan_compiled_resolve_block who policy players wire execution
-      event owner payload binding checks outputEq codeEq viewNode whoCompiled grant ready actor
+      event owner payload binding checks outputEq codeEq viewNode whoCompiled turn actor
       stageZero notSubmitted empty
     have block' : runtime.runServicePlan players wire
         [.player who, .player who, .player who] execution =
@@ -335,15 +319,11 @@ theorem runServicePlan_compiled_resolve_partial_submitted
     · have firstPolicy := runtime.compilePlayerPolicy_resolve_stage_one who policy
         (execution.principalHistory who)
         (MessageApplication.State.observe runtime.application execution.native who)
-        event owner payload binding checks outputEq codeEq viewNode action (by
-          change execution.native.application.serviceGrant = some event
-          exact grant) notSubmitted rfl publicReady actor stageOne viewCached
+        event owner payload binding checks outputEq codeEq viewNode action turn notSubmitted rfl
+          actor stageOne viewCached
       let first := runtime.application.afterPrivate execution who (.remember event action)
-      have firstGrant : first.native.application.serviceGrant = some event := by
-        simpa [first] using grant
-      have firstReady : first.native.application.publicView.EventReady event := by
-        apply (State.publicView_eventReady first.native.application event).2
-        simpa [first] using ready
+      have firstTurn : first.native.application.publicView.ownTurn? who = some event := by
+        simpa only [first, afterPrivate_publicView] using turn
       have firstStage : 2 ≤ stagingCount (first.principalHistory who) event := by
         simp [first, stageOne]
       have firstNotSubmitted : submittedAt (first.principalHistory who) event = false := by
@@ -356,9 +336,8 @@ theorem runServicePlan_compiled_resolve_partial_submitted
       have secondPolicy := runtime.compilePlayerPolicy_resolve_stage_two who policy
         (first.principalHistory who)
         (MessageApplication.State.observe runtime.application first.native who)
-        event owner payload binding checks outputEq codeEq viewNode action (by
-          change first.native.application.serviceGrant = some event
-          exact firstGrant) firstNotSubmitted rfl firstReady actor firstStage (by
+        event owner payload binding checks outputEq codeEq viewNode action firstTurn
+          firstNotSubmitted rfl actor firstStage (by
           change (State.playerView first.native.application who).remembered event = some action
           simp [State.playerView, actor, firstRemembered])
       obtain ⟨packet, submission, addressed⟩ := runtime.resolutionSubmission_address who event
@@ -380,15 +359,14 @@ theorem runServicePlan_compiled_resolve_partial_submitted
       let second := runtime.application.afterSubmit first who packet
       have secondSubmitted : submittedAt (second.principalHistory who) event = true := by
         simp [second, first, MessageApplication.afterSubmit, submittedAt, addressed]
-      have secondGrant :
+      have secondTurn :
           (MessageApplication.State.observe runtime.application second.native
-            who).application.publicView.serviceGrant = some event := by
-        change first.native.application.serviceGrant = some event
-        exact firstGrant
+            who).application.publicView.ownTurn? who = some event :=
+          firstTurn
       rw [runtime.compilePlayerPolicy_wait_of_submitted who policy
         (second.principalHistory who)
         (MessageApplication.State.observe runtime.application second.native who)
-        event secondGrant secondSubmitted,
+        event secondTurn secondSubmitted,
         PMF.pure_bind, runtime.application.playerStep_wait,
         PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next
@@ -407,9 +385,8 @@ theorem runServicePlan_compiled_resolve_partial_submitted
     · have firstPolicy := runtime.compilePlayerPolicy_resolve_stage_two who policy
         (execution.principalHistory who)
         (MessageApplication.State.observe runtime.application execution.native who)
-        event owner payload binding checks outputEq codeEq viewNode action (by
-          change execution.native.application.serviceGrant = some event
-          exact grant) notSubmitted rfl publicReady actor (by omega) viewCached
+        event owner payload binding checks outputEq codeEq viewNode action turn notSubmitted rfl
+          actor (by omega) viewCached
       obtain ⟨packet, submission, addressed⟩ := runtime.resolutionSubmission_address who event
         payload binding checks outputEq action
         (MessageApplication.State.observe runtime.application execution.native who)
@@ -419,15 +396,14 @@ theorem runServicePlan_compiled_resolve_partial_submitted
       let first := runtime.application.afterSubmit execution who packet
       have firstSubmitted : submittedAt (first.principalHistory who) event = true := by
         simp [first, MessageApplication.afterSubmit, submittedAt, addressed]
-      have firstGrant :
+      have firstTurn :
           (MessageApplication.State.observe runtime.application first.native
-            who).application.publicView.serviceGrant = some event := by
-        change execution.native.application.serviceGrant = some event
-        exact grant
+            who).application.publicView.ownTurn? who = some event :=
+          turn
       rw [runtime.compilePlayerPolicy_wait_of_submitted who policy
         (first.principalHistory who)
         (MessageApplication.State.observe runtime.application first.native who)
-        event firstGrant firstSubmitted,
+        event firstTurn firstSubmitted,
         PMF.pure_bind, runtime.application.playerStep_wait, PMF.pure_bind] at supported
       let second : runtime.application.PolicyExecution :=
         { first with principalHistory := fun other =>
@@ -436,15 +412,14 @@ theorem runServicePlan_compiled_resolve_partial_submitted
             else first.principalHistory other }
       have secondSubmitted : submittedAt (second.principalHistory who) event = true := by
         simpa [second, submittedAt] using firstSubmitted
-      have secondGrant :
+      have secondTurn :
           (MessageApplication.State.observe runtime.application second.native
-            who).application.publicView.serviceGrant = some event := by
-        change first.native.application.serviceGrant = some event
-        exact firstGrant
+            who).application.publicView.ownTurn? who = some event :=
+          firstTurn
       rw [runtime.compilePlayerPolicy_wait_of_submitted who policy
         (second.principalHistory who)
         (MessageApplication.State.observe runtime.application second.native who)
-        event secondGrant secondSubmitted,
+        event secondTurn secondSubmitted,
         PMF.pure_bind, runtime.application.playerStep_wait,
         PMF.pure_bind, PMF.mem_support_pure_iff _ _] at supported
       subst next

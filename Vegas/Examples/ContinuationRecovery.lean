@@ -88,7 +88,12 @@ theorem compiled_waits_after_badSubmission :
         (afterBadSubmission.principalHistory ())
         (MessageApplication.State.observe runtime.application
           afterBadSubmission.native ()) = PMF.pure .wait := by
-  simp [compilePlayerPolicy, submittedAt, afterBadSubmission,
+  simp only [compilePlayerPolicy]
+  split
+  · rfl
+  rename_i event _
+  obtain rfl : event = 0 := Subsingleton.elim _ _
+  simp [submittedAt, afterBadSubmission,
     MessageApplication.afterSubmit, initialExecution,
     MessageApplication.PolicyExecution.initial, badPacket, Payload.event?,
     MessageApplication.State.observe, MessageApplication.State.initial,

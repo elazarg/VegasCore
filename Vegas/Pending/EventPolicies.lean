@@ -220,54 +220,56 @@ theorem resolutionSubmission_address (runtime : EventGraphRuntime graph)
                   · simp [owned, Payload.event?]
 
 /-- Compile one normalized graph policy to the event-addressed pending
-runtime.  The definition is total on malformed histories and views: it waits
-when private state needed for staging is absent, and uses withholding rather
-than fabricating opening material. -/
+runtime. The player serves its own turn, `PublicView.ownTurn?`: the least
+ready event it owns, which is its only ready event under the barrier order.
+No service grant is consulted. The ownership test only supplies the proof the
+graph policy needs; `ownTurn?` already guarantees it. The definition is total
+on malformed histories and views: it waits when private state needed for
+staging is absent, and uses withholding rather than fabricating opening
+material. -/
 def compilePlayerPolicy (runtime : EventGraphRuntime graph) (who : Player)
     (policy : graph.BehavioralPolicy who) : runtime.application.PlayerPolicy :=
   fun history view =>
-    match _grant : view.application.publicView.serviceGrant with
+    match view.application.publicView.ownTurn? who with
     | none => PMF.pure .wait
     | some event =>
         if _already : submittedAt history event then PMF.pure .wait
         else if viewOwner : view.application.who = who then
-          if _ready : view.application.publicView.EventReady event then
-            if actor : graph.actor? event = some who then
-              let observation : graph.PlayerObservation who :=
-                viewOwner ▸ view.application.observation
-              let normalized := graph.normalizePolicy who policy
-              match nodeView graph event with
-              | .sample .. => PMF.pure .wait
-              | .bind _owner payload outputEq _codeEq =>
-                  match stagingCount history event with
-                  | 0 =>
-                      (normalized event actor observation).map fun action =>
-                        .privateCommand (.remember event action)
-                  | 1 =>
-                      match view.application.remembered event with
-                      | none => PMF.pure .wait
-                      | some action =>
-                          PMF.pure
-                            (bindingStageCommand runtime event payload outputEq action)
-                  | _ + 2 => PMF.pure
-                      (.submit (.commitment event (who, eventSlot event)))
-              | .resolve _owner payload binding checks outputEq _codeEq =>
-                  match stagingCount history event with
-                  | 0 =>
-                      (normalized event actor observation).map fun action =>
-                        .privateCommand (.remember event action)
-                  | 1 =>
-                      match view.application.remembered event with
-                      | none => PMF.pure .wait
-                      | some action => PMF.pure
-                          (.privateCommand (.remember event action))
-                  | _ + 2 =>
-                      match view.application.remembered event with
-                      | none => PMF.pure (.submit (.withhold event))
-                      | some action => PMF.pure
-                          (resolutionSubmission runtime who event payload binding checks
-                            outputEq action view)
-            else PMF.pure .wait
+          if actor : graph.actor? event = some who then
+            let observation : graph.PlayerObservation who :=
+              viewOwner ▸ view.application.observation
+            let normalized := graph.normalizePolicy who policy
+            match nodeView graph event with
+            | .sample .. => PMF.pure .wait
+            | .bind _owner payload outputEq _codeEq =>
+                match stagingCount history event with
+                | 0 =>
+                    (normalized event actor observation).map fun action =>
+                      .privateCommand (.remember event action)
+                | 1 =>
+                    match view.application.remembered event with
+                    | none => PMF.pure .wait
+                    | some action =>
+                        PMF.pure
+                          (bindingStageCommand runtime event payload outputEq action)
+                | _ + 2 => PMF.pure
+                    (.submit (.commitment event (who, eventSlot event)))
+            | .resolve _owner payload binding checks outputEq _codeEq =>
+                match stagingCount history event with
+                | 0 =>
+                    (normalized event actor observation).map fun action =>
+                      .privateCommand (.remember event action)
+                | 1 =>
+                    match view.application.remembered event with
+                    | none => PMF.pure .wait
+                    | some action => PMF.pure
+                        (.privateCommand (.remember event action))
+                | _ + 2 =>
+                    match view.application.remembered event with
+                    | none => PMF.pure (.submit (.withhold event))
+                    | some action => PMF.pure
+                        (resolutionSubmission runtime who event payload binding checks
+                          outputEq action view)
           else PMF.pure .wait
         else PMF.pure .wait
 
