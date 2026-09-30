@@ -41,6 +41,7 @@ import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheoryExtensions.Analysis.Protocol.DisclosureObstruction
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Analysis.Protocol.ReadoutBayesProjection
+import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.ConditionalOneShot
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDeviation
 import GameTheoryExtensions.Analysis.Protocol.ContinuationBranch
