@@ -33,8 +33,9 @@ fixed-depth Bayes projections of `Vegas/Game/SourceServiceBayes.lean` and
 `Vegas/Game/RevealServiceRosterBayes.lean`, which the reach-weight transport
 can replace, and the restriction extensions of
 `Vegas/Game/SourceServiceRestrictionExtension.lean` and
-`Vegas/Game/RevealServiceRosterAudit.lean`, which need it at retained sites
-only. The roster plan's remaining role is operational: it identifies the
+`Vegas/Game/RevealServiceRosterAudit.lean`, which need it at retained sites.
+Under the fixed calendar the rank supplies that depth; under an adaptive order
+nothing yet does (Step C). The roster plan's remaining role is operational: it identifies the
 granted event and phase at each history.
 
 ## What the theorem fixes
@@ -69,7 +70,8 @@ matter are:
 
 The theorem asserts that *some* target sequential equilibrium has the source
 law. Off-path observations that carry no verifiable evidence can therefore be
-neutralized through beliefs.
+neutralized through beliefs. Observations that do carry verified evidence
+cannot, and the pending pool can contain such evidence (below).
 
 ### A candidate counterexample and why it fails
 
@@ -88,19 +90,33 @@ babbling equilibrium of cheap talk.
 
 ### What an adaptive order can and cannot read
 
-The scheduler cannot inspect hidden meanings. Anything it reads from the
-pending pool, including a raw opening, is unverified. Verified evidence appears
-only when a message is included, and inclusion is public under the fixed
-calendar as well. An order policy that reads the pool therefore transmits cheap
-talk, which beliefs can neutralize.
+The pending pool holds two kinds of content. A raw claim, such as an unwitnessed
+opening, is unverified; an order policy that reacts only to such claims
+transmits cheap talk, which beliefs can neutralize. A packet can also carry a
+sound certificate, issued at emission rather than at inclusion
+(`WitnessedSubmission.emit` in `Vegas/Pending/OpeningEvidence.lean`): a single
+response can fix a fresh commitment and put its authentic opening into the
+pool before any inclusion (`reactive_commitment_disclosure` in
+`Vegas/Pending/ReactivePacketEvidence.lean`). A public order policy that reads
+certificates in the pool can therefore reveal verified values through the grant
+order, and trembles that ignore hidden values do not neutralize that.
 
-Two effects cannot be neutralized through beliefs:
+The following effects cannot be neutralized through beliefs:
 
 - **Hard evidence reaching a player before the source allows it**, such as an
-  early opening. The audit and deposit already deter these messages.
-- **Changes to opportunities.** In concurrent mode the only opportunity an order
-  can change is the relative order of different-owner bindings that are hidden
-  from one another. Step A below argues that this order does not affect the game.
+  early opening. The audit and deposit deter sending such messages, but the
+  order policy's reaction to a certificate in the pool is part of every
+  continuation after that deviation, and the players' information there is
+  verified. This is the off-path disclosure effect of
+  [the SPE criterion](spe-incentive-criterion.md#information-after-earlier-deviations).
+  The proof must either restrict order policies to the unauthenticated part of
+  the pool or show that the continuation after every certificate-bearing
+  forbidden transmission still admits rational play with the source law; it
+  is an explicit obligation, not a consequence of deterrence.
+- **Changes to opportunities.** In concurrent mode an order changes the
+  relative order of different-owner bindings that are hidden from one another,
+  and, through the deadline timers, whether each owner still has a timely
+  opportunity (Step A).
 
 ### The scheduler contract
 
@@ -111,6 +127,9 @@ A valid schedule for this purpose:
 - grants only ready events;
 - keeps the protected block at every grant: an activation of the event's owner,
   include-latest, the deadline, and expiry;
+- gives every granted event's owner a timely opportunity: the owner's
+  activation and the inclusion of its message precede the event's deadline,
+  which is measured from when the event became ready, not from its grant;
 - lets the audit record the actual grant history as each message's phase;
 - has a bounded plan length, so the deposit and horizon remain finite.
 
@@ -141,6 +160,20 @@ calendar order, because grants are not inclusion authorization
 ([active tower](active-tower.md)). Either sequentialize along π, or have the
 handler accept only packets for the granted event.
 
+Enforcing the order is not enough. A deadline timer starts when its event
+becomes ready (`State.refreshActivated` in `Vegas/Pending/EventApplication.lean`),
+not when it is granted. In the sequentialized graph an event becomes ready only
+after its predecessor completes, so its timer starts at its own block. In the
+concurrent graph several bindings are ready at once and their timers run
+together. With the current deadlines, `event.val + 1`, and blocks of
+`event.val + 1` ticks, three bindings ready at clock zero are granted at clocks
+0, 1 and 3; the third, with deadline 3, has already expired, so its honest
+owner cannot bind and the source law is lost although no event is starved.
+Step A therefore needs timely owner opportunities as an explicit requirement,
+either by starting timers at the grant or by deadlines that cover the grant
+offset; with inclusion gating alone the existing theorem does not apply
+unchanged.
+
 The existing theorem then applies to the permuted program without change. The
 graph-level commutation results in `Vegas/EventGraph/Commutation.lean` and
 `Vegas/EventGraph/PolicyCommutation.lean` supply the graph half of the
@@ -167,10 +200,22 @@ Step C therefore generalizes the existing proof:
 - **Phase from the grant history.** Replace the rank-indexed calendar,
   `DecisionPhase.position` together with `rosterPlanPrefix` and
   `rosterPlanSuffix`, by a phase read from the public grant history. About 94
-  files under `Vegas` refer to the roster plan. The equilibrium layer does not
-  need the rank as a clock (see above); the replacement concerns the
-  operational invariants, and the retained-site depth of the restriction
-  extension.
+  files under `Vegas` refer to the roster plan. The one-shot principle and the
+  Bayes transport no longer need the rank as a clock (see above); the
+  replacement concerns the operational invariants.
+- **Retained-site depth.** The extension across the audited restriction still
+  requires every retained site to have a common decision depth
+  (`ActionRestriction.sequentialEquilibrium_extends_of_continuation` in
+  [RestrictionExtension.lean](../GameTheory/GameTheory/Analysis/Protocol/RestrictionExtension.lean)).
+  An adaptive order breaks this without changing any player's information: a
+  scheduler that inserts zero or one wait before the same grant satisfies the
+  contract above, yet the two histories reach the same information at
+  different depths, because a wait updates only the environment's recall. The
+  grant history and the clock-free Bayes transport do not supply the depth.
+  Step C therefore needs either a clock-free restriction extension, a separate
+  library result to be added as a prerequisite, or a contract under which
+  players' information determines decision depth, for example by making every
+  scheduler step publicly observed.
 - **Order-invariant continuations.** Prove that the compiled continuation law
   of the typed source readout is the same under every valid order policy, from
   any reachable public history. The pending-message laws prove this from the
