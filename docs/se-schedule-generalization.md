@@ -142,8 +142,10 @@ remain:
 - **Deadlines sized against targeted censorship.** Their data concern blanket
   compliance censorship. The threat to a game is an opponent paying proposers
   to exclude one move until its deadline passes, which must succeed in every
-  slot of the window. Each deadline should span enough slots that this costs
-  more than the game's stakes.
+  slot of the window (Winzer, Herd and Faust, "Temporary Censorship Attacks in
+  the Presence of Rational Miners", IEEE EuroS&PW 2019, analyze such bribes).
+  Each deadline should span enough slots that this costs more than the game's
+  stakes.
 
 The current service is more synchronous than this:
 epochs visit events in an order, activate owners from a roster, and reserve
