@@ -91,8 +91,9 @@ def invokeNativeFor (runtime : EventGraphRuntime graph) (who : Player)
 
 def compileResponse (runtime : EventGraphRuntime graph) (who : Player)
     (policy : NativePolicy graph) (count : Nat) : NativeResponsePolicy graph count := fun input =>
-  pmfToSubtype ((runtime.nativeLocalResponse who).transcript (Function.uncurry policy) count input)
-    ((runtime.nativeLocalResponse who).transcript_length (Function.uncurry policy) count input)
+  pmfToSubtype (SequentialSampling.transcript (runtime.nativeLocalResponse who).update
+    (Function.uncurry policy) count input)
+    (SequentialSampling.transcript_length _ (Function.uncurry policy) count input)
 
 def invokeResponse (runtime : EventGraphRuntime graph) (who : Player) {count : Nat}
     (policy : NativeResponsePolicy graph count) (execution : NativeExecution runtime) :
@@ -103,18 +104,20 @@ def invokeResponse (runtime : EventGraphRuntime graph) (who : Player) {count : N
 private theorem nativeTranscript_law (runtime : EventGraphRuntime graph) (who : Player)
     (policy : NativePolicy graph) (count : Nat) (execution : NativeExecution runtime)
     (counters : execution.Counters runtime) :
-    ((runtime.nativeLocalResponse who).transcript (Function.uncurry policy) count
+    (SequentialSampling.transcript (runtime.nativeLocalResponse who).update
+    (Function.uncurry policy) count
       (runtime.nativeInput who execution)).map (runtime.takeActions who execution) =
         runtime.invokeNativeFor who policy count execution := by
   induction count generalizing execution with
-  | zero => simp only [LocalResponse.transcript, PMF.pure_map, takeActions,
+  | zero => simp only [SequentialSampling.transcript, PMF.pure_map, takeActions,
       List.foldl_nil, invokeNativeFor]
   | succ count ih =>
-      simp only [LocalResponse.transcript, PMF.map_bind, PMF.map_comp,
+      simp only [SequentialSampling.transcript, PMF.map_bind, PMF.map_comp,
         invokeNativeFor, invokeNative, actionStep, PMF.bind_bind, PMF.pure_bind]
       apply bind_congr_on_support _
       intro action _
-      change (((runtime.nativeLocalResponse who).transcript (Function.uncurry policy) count
+      change ((SequentialSampling.transcript (runtime.nativeLocalResponse who).update
+    (Function.uncurry policy) count
         ((runtime.nativeInput who execution).afterAction action)).map
           (runtime.takeActions who (runtime.takeAction who execution action))) = _
       rw [← runtime.nativeInput_takeAction who execution action counters]

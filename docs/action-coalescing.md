@@ -54,12 +54,14 @@ entry information. No other principal or environment invocation may interleave.
 | No new information inside the block | A fixed packet batch cannot react to a message received afterward. |
 | Correlated sampling | Later internal choices can depend on the player's earlier random choices. |
 
-The generic Lean theorem
-[`LocalResponse.transcript_eq_iteration`](../GameTheoryExtensions/Protocol/Coalescing.lean)
+The generic upstream theorem
+[`SequentialSampling.transcript_eq_iteration`](../GameTheory/GameTheory/Math/Probability/SequentialSampling.lean)
 samples a finite transcript from the entry view and proves that applying it
 has exactly the same full endpoint distribution as successive policy calls.
-`LocalResponse.continuation_eq` extends the equality through any continuation kernel.
-`LocalResponse.transcript_length` retains the number of constituent action slots.
+`SequentialSampling.continuation_eq` extends the equality through any
+continuation kernel, and `SequentialSampling.transcript_length` retains the
+number of constituent action slots. A [`LocalResponse`](../GameTheoryExtensions/Protocol/Coalescing.lean)
+packages the view update these theorems need.
 
 The converse needs enough own recall to reproduce the conditional law of the
 next action given the already executed prefix. The locality equation alone
@@ -72,9 +74,9 @@ Both directions are checked for a native response:
   batch sampler from any native invocation policy and proves equality of the
   complete native endpoint law. It applies whenever the counter invariant
   holds, including every initialized native history.
-- [`ResponseSampling.run_next`](../GameTheoryExtensions/Protocol/ResponseSampling.lean)
-  reconstructs any finitely supported fixed-length list law by conditioning
-  on previously selected actions.
+- [`SequentialSampling.run_next`](../GameTheory/GameTheory/Math/Probability/SequentialSampling.lean)
+  reconstructs any fixed-length list law, including one with infinite support,
+  by conditioning on previously selected actions.
 - [`sampleResponsePolicy_law`](../Vegas/Pending/NativeResponseSampling.lean)
   realizes such a law through actual native invocations. The policy takes the
   desired law and own recall length at the response entry, then consults only

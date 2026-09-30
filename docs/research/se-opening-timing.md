@@ -73,7 +73,7 @@ players can deliberately correlate timing with hidden information. Forward SE
 extension selects a suitable implementation and must still defeat deviations
 from it.
 
-Existing `LocalResponse.transcript_eq_iteration` handles execution coalescing
+Existing `SequentialSampling.transcript_eq_iteration` handles execution coalescing
 when there is no incoming information. It does not erase other players' recall
 or prove SE preservation. `splitKernel_project` and `split_prob` supply
 the finite action-splitting algebra. The concrete one-phase transcript and

@@ -163,9 +163,10 @@ percentage estimate.
   `SourceServiceSpec.audited_raw_sequentialEquilibrium_preserved` in
   [SourceServiceCompilation.lean](../Vegas/Game/SourceServiceCompilation.lean),
   restated and pinned in `Paper.lean` as
-  `Vegas.Paper.source_audited_raw_sequential_equilibrium`, with the two horizon
-  lemmas `Vegas.Paper.source_protocol_horizon` and
-  `Vegas.Paper.raw_service_horizon`. The statement covers programs whose
+  `Vegas.Paper.source_audited_raw_sequential_equilibrium`. Both equilibria and
+  both laws are of complete (terminal) play; the horizon lemmas
+  `Vegas.Paper.source_protocol_horizon` and `Vegas.Paper.raw_service_horizon`
+  certify termination. The statement covers programs whose
   commitment payload types are finite; it gives the joint law of the typed
   terminal state and settlement, and no charge on the equilibrium's paths. One
   `SourceServiceSpec` supplies both edges: R4 takes its rosters, network,

@@ -55,7 +55,7 @@ reasonable and what it leaves outside the claim.
 | Utility of initial parameters and public outcome | The source utility is the raw utility evaluated on the typed source readout, invariant under private response normalization. | Utilities that read repaired private future values are outside the claim. |
 | Public chance | A sample draws exactly from its kernel, conditional on the preceding execution, and players cannot withhold or replace the draw. | A realization needs a randomness beacon that players cannot predict or bias, read after the draw's inputs are final; players' own commit–reveal and block hashes do not qualify. With bounded randomness only dyadic weights are exact. |
 | Final inclusion | An included message stays included. | Reorganizations before finality are outside the model; a reorganized grant would make lawful messages look forbidden to the audit. |
-| Finite source information histories (instance argument) | Required by the finite SE definition of the pinned GameTheory library to state the source SE; finiteness of all source histories then follows from consistency and the bounded source horizon. | No premise beyond that definition. |
+| Complete play | Both sequential equilibria and both joint laws are of terminal play. The source instruction bound and the native fuel certify termination (`Vegas.SourceServiceSpec.sourceTerminates`, `Vegas.SourceServiceSpec.rawTerminates`). | Standard sequential equilibrium; no step count enters the statement. |
 
 The theorem asserts no cryptographic or EVM refinement: commitments are ideal,
 and signed evidence is attributed to accounts, not to physical senders.

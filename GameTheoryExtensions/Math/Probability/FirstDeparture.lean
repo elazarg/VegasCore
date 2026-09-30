@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Math.Probability.Tremble
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Bounding first departures in finite interaction
 

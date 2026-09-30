@@ -71,7 +71,6 @@ import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
 import GameTheoryExtensions.Analysis.Protocol.OneShotLimit
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Math.Probability.Tremble
 import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Paper theorem audit

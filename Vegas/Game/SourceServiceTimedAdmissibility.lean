@@ -7,7 +7,6 @@ import GameTheory.Protocol.TremblingPlans
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Math.Probability.Tremble
 
 /-! # Legal shared timing at full-source decisions
 

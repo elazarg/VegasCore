@@ -2,7 +2,6 @@
 
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDeviation
 import GameTheory.Analysis.Protocol.BeliefTransport
-import GameTheoryExtensions.Math.Probability.Tremble
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Math.Probability.Support

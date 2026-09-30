@@ -1,7 +1,6 @@
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 import GameTheoryExtensions.Analysis.Protocol.TerminalAuditCoupling
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
-import GameTheoryExtensions.Math.Probability.Tremble
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.DeferredChoice
 import GameTheoryExtensions.Math.Probability.FirstDeparture
@@ -12,7 +11,6 @@ import GameTheoryExtensions.Math.Probability.PriorityChoice
 import GameTheoryExtensions.Math.Probability.SiteDraw
 import GameTheoryExtensions.Protocol.BehavioralContinuation
 import GameTheoryExtensions.Protocol.Coalescing
-import GameTheoryExtensions.Protocol.ResponseSampling
 import GameTheoryExtensions.Protocol.Knowledge
 import GameTheoryExtensions.Protocol.ObservationRecall
 import GameTheoryExtensions.Protocol.SequentialChoices

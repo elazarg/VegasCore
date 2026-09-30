@@ -2,7 +2,7 @@
 
 import Vegas.Pending.NativeResponse
 import Vegas.Pending.ResponseRecall
-import GameTheoryExtensions.Protocol.ResponseSampling
+import GameTheory.Math.Probability.SequentialSampling
 
 /-! # Implementing a response law through native invocation policies
 
@@ -36,22 +36,22 @@ theorem actionsSince_takeAction (runtime : EventGraphRuntime graph) (who : Playe
 /-- The entry offset and desired law are private data available when a
 response starts. Subsequent choices read only the player's actual recall. -/
 def sampleResponsePolicy (law : PMF (List (PlayerAction graph))) (start : Nat) :
-    NativePolicy graph := fun history _ => ResponseSampling.next law (actionsSince start history)
+    NativePolicy graph := fun history _ => SequentialSampling.next law (actionsSince start history)
 
 private theorem sampleResponsePolicy_run (runtime : EventGraphRuntime graph) (who : Player)
     (law : PMF (List (PlayerAction graph))) (start count : Nat)
     (execution : NativeExecution runtime)
     (within : start ≤ (execution.principalHistory who).length) :
     runtime.invokeNativeFor who (sampleResponsePolicy law start) count execution =
-      (ResponseSampling.run (fun past => ResponseSampling.next law
+      (SequentialSampling.run (fun past => SequentialSampling.next law
         (actionsSince start (execution.principalHistory who) ++ past)) count).map
           (runtime.takeActions who execution) := by
   induction count generalizing execution with
-  | zero => simp only [invokeNativeFor, ResponseSampling.run, PMF.pure_map,
+  | zero => simp only [invokeNativeFor, SequentialSampling.run_zero, PMF.pure_map,
       takeActions, List.foldl_nil]
   | succ count ih =>
       simp only [invokeNativeFor, invokeNative, sampleResponsePolicy, actionStep,
-        PMF.bind_bind, PMF.pure_bind, ResponseSampling.run, List.append_nil,
+        PMF.bind_bind, PMF.pure_bind, SequentialSampling.run_succ, List.append_nil,
         PMF.map_bind, PMF.map_comp]
       apply bind_congr_on_support _
       intro action _
@@ -74,7 +74,7 @@ theorem sampleResponsePolicy_law (runtime : EventGraphRuntime graph) (who : Play
       law.map (fun response => runtime.takeActions who execution response.1) := by
   rw [runtime.sampleResponsePolicy_run who _ _ _ execution (Nat.le_refl _)]
   simp only [actionsSince, List.drop_length, List.map_nil, List.nil_append]
-  rw [ResponseSampling.run_next]
+  rw [SequentialSampling.run_next]
   · rw [PMF.map_comp]
     rfl
   · intro actions supported
@@ -90,7 +90,7 @@ action prefix are reconstructed from the actual private invocation arguments. -/
 def expandResponsePolicy (budget : NativeInput graph → Nat) (policy : ResponsePolicy budget) :
     NativePolicy graph := fun history view =>
   let fragment := responsePosition budget (history, view)
-  ResponseSampling.next ((policy fragment.entry).map Subtype.val) fragment.actions
+  SequentialSampling.next ((policy fragment.entry).map Subtype.val) fragment.actions
 
 private theorem expandResponsePolicy_run (runtime : EventGraphRuntime graph) (who : Player)
     (budget : NativeInput graph → Nat) (policy : ResponsePolicy budget)
@@ -98,27 +98,27 @@ private theorem expandResponsePolicy_run (runtime : EventGraphRuntime graph) (wh
     (position : responsePosition budget (runtime.nativeInput who execution) = fragment)
     (within : fragment.actions.length + count ≤ budget fragment.entry) :
     runtime.invokeNativeFor who (expandResponsePolicy budget policy) count execution =
-      (ResponseSampling.run (fun past => ResponseSampling.next
+      (SequentialSampling.run (fun past => SequentialSampling.next
         ((policy fragment.entry).map Subtype.val) (fragment.actions ++ past)) count).map
           (runtime.takeActions who execution) := by
   induction count generalizing execution fragment with
-  | zero => simp only [invokeNativeFor, ResponseSampling.run, PMF.pure_map,
+  | zero => simp only [invokeNativeFor, SequentialSampling.run_zero, PMF.pure_map,
       takeActions, List.foldl_nil]
   | succ count ih =>
       have chosen : expandResponsePolicy budget policy (execution.principalHistory who)
           (runtime.nativeView execution.native who) =
-          ResponseSampling.next ((policy fragment.entry).map Subtype.val) fragment.actions := by
-        change ResponseSampling.next
+          SequentialSampling.next ((policy fragment.entry).map Subtype.val) fragment.actions := by
+        change SequentialSampling.next
           ((policy (responsePosition budget (runtime.nativeInput who execution)).entry).map
             Subtype.val) (responsePosition budget (runtime.nativeInput who execution)).actions = _
         rw [position]
       simp only [invokeNativeFor, invokeNative, chosen, actionStep,
-        PMF.bind_bind, PMF.pure_bind, ResponseSampling.run, List.append_nil,
+        PMF.bind_bind, PMF.pure_bind, SequentialSampling.run_succ, List.append_nil,
         PMF.map_bind, PMF.map_comp]
       apply bind_congr_on_support _
       intro action _
       cases count with
-      | zero => simp only [invokeNativeFor, ResponseSampling.run, PMF.pure_map,
+      | zero => simp only [invokeNativeFor, SequentialSampling.run_zero, PMF.pure_map,
           Function.comp_apply, takeActions, List.foldl_cons, List.foldl_nil]
       | succ count =>
           have unfinished : (fragment.actions ++ [action]).length < budget fragment.entry := by
@@ -149,7 +149,7 @@ theorem expandResponsePolicy_law (runtime : EventGraphRuntime graph) (who : Play
       rw [boundary]
       rfl) (by simp only [List.length_nil, Nat.zero_add, le_refl])]
   simp only [List.nil_append]
-  rw [ResponseSampling.run_next]
+  rw [SequentialSampling.run_next]
   · rw [PMF.map_comp]
     rfl
   · intro actions supported

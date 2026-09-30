@@ -154,9 +154,10 @@ public chance and guarded disclosure, the
 [full-language compiler theorem](Vegas/Game/SourceServiceCompilation.lean)
 (`Vegas.Paper.source_audited_raw_sequential_equilibrium`) preserves every
 source SE in the audited bounded raw runtime, for programs whose commitment
-payload types are finite. The native SE has the source joint law of the typed
-terminal state and payoff, with the payoff realized as settlement, and the
-audit charges no player on its paths. The native service, activation rosters,
+payload types are finite. Both equilibria are standard sequential equilibria of
+complete play. The native SE has the source joint law of the typed terminal
+state and payoff, with the payoff realized as settlement, and the audit charges
+no player on its paths. The native service, activation rosters,
 audit backend and deposits are fixed before an equilibrium is chosen.
 Authentic partial audit evidence, positive conditional collection coverage
 over closed communication, protected service with a non-strategic
