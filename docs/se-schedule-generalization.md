@@ -9,6 +9,34 @@ contract on the scheduler, and proposes a proof in three steps. The first two
 reduce to the existing theorem; the third, adaptive orders, needs a direct
 generalization of the proof.
 
+## What the library no longer requires
+
+The pinned GameTheory library defines sequential rationality on terminal play,
+so a decision site no longer carries a remaining step count, and the pinned
+theorem states standard sequential equilibrium of complete play. Three upstream
+results remove the equilibrium-theoretic reasons for a common decision clock:
+
+- the one-shot deviation principle at consistent assessments,
+  `BehavioralAssessment.IsSequentiallyConsistent.continuation_value_le_of_locallyOptimal`
+  in [SequentialOneShot.lean](../GameTheory/GameTheory/Analysis/Protocol/SequentialOneShot.lean),
+  assumes finitely many histories and decision recall but no clock;
+- a site's mass is the probability that terminal play passes through it
+  (`informationMass_eq_passage`), and Bayes beliefs transport along any history
+  map whose reach weights sum over its fibers (`bayesBelief_projection_of_reach`),
+  both in [BeliefTransport.lean](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean);
+- extension across an action restriction
+  ([RestrictionExtension.lean](../GameTheory/GameTheory/Analysis/Protocol/RestrictionExtension.lean))
+  needs common decision depths only at the retained sites.
+
+In the full-language proof a common depth is still used in two places: the
+fixed-depth Bayes projections of `Vegas/Game/SourceServiceBayes.lean` and
+`Vegas/Game/RevealServiceRosterBayes.lean`, which the reach-weight transport
+can replace, and the restriction extensions of
+`Vegas/Game/SourceServiceRestrictionExtension.lean` and
+`Vegas/Game/RevealServiceRosterAudit.lean`, which need it at retained sites
+only. The roster plan's remaining role is operational: it identifies the
+granted event and phase at each history.
+
 ## What the theorem fixes
 
 The service of `SourceServiceSpec` is a fixed calendar:
@@ -139,14 +167,19 @@ Step C therefore generalizes the existing proof:
 - **Phase from the grant history.** Replace the rank-indexed calendar,
   `DecisionPhase.position` together with `rosterPlanPrefix` and
   `rosterPlanSuffix`, by a phase read from the public grant history. About 94
-  files under `Vegas` refer to the roster plan.
+  files under `Vegas` refer to the roster plan. The equilibrium layer does not
+  need the rank as a clock (see above); the replacement concerns the
+  operational invariants, and the retained-site depth of the restriction
+  extension.
 - **Order-invariant continuations.** Prove that the compiled continuation law
   of the typed source readout is the same under every valid order policy, from
   any reachable public history. The pending-message laws prove this from the
   start of play; Step C needs it from arbitrary reachable states.
 - **Beliefs.** At information sets created by order choices, build beliefs
   from trembles that do not depend on hidden values, so that observers keep
-  their source beliefs.
+  their source beliefs. Transport them with the reach-weight Bayes projection,
+  which does not require an information set's histories to share a depth, as
+  they need not under an adaptive order.
 
 Adaptive rosters, whose activations respond to traffic, belong to Step C as
 well.
@@ -161,4 +194,8 @@ well.
 2. **Step A.** It admits concurrent mode under a fixed calendar and reuses the
    entire existing proof.
 3. **Step B.**
-4. **Step C**, the substantial part.
+4. **Clock-free beliefs.** Move the two fixed-depth Bayes projections of the
+   current proof to the reach-weight transport. This is independent of the
+   schedule and removes the remaining clock outside the restriction
+   extensions.
+5. **Step C**, the substantial part.
