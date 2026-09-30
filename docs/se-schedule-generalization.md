@@ -122,9 +122,30 @@ of it. The target chain model is as asynchronous as the guarantees allow:
   bound: a packet broadcast at tick `t` is included by tick `t + Δ`;
 - a prescribed client broadcasts within `r` ticks of its event becoming ready.
 
-Bounded inclusion delay is the only synchrony assumption. Deadline enforcement
-rests on it, and censorship beyond Δ is assumed away, as it is for every
-timeout-based contract. The current service is more synchronous than this:
+Bounded inclusion delay is the only synchrony assumption, and deadline
+enforcement rests on it. It is Δ-censorship-resilience in the sense of
+Wahrstätter et al.
+([Blockchain Censorship](https://doi.org/10.1145/3589334.3645431), WWW 2024,
+Definition 6): a transaction given to the honest validators is committed within
+Δ except with negligible probability. Their measurements support it for
+censorship by omission. After the Merge, 46% of Ethereum blocks were built by
+actors censoring Tornado Cash transactions, yet those transactions were still
+included, with a mean delay of 29.3 ± 23.9 seconds against 8.7 ± 8.3 seconds
+for comparable uncensored ones. When a fraction p of proposers omit a
+transaction, its wait exceeds k slots with probability pᵏ. Two conditions
+remain:
+
+- **A censoring minority.** Their Theorem 7 shows that no proof-of-stake
+  protocol is censorship-resilient once more than half of the validators
+  censor, including by refusing to attest to blocks that contain the
+  transaction.
+- **Deadlines sized against targeted censorship.** Their data concern blanket
+  compliance censorship. The threat to a game is an opponent paying proposers
+  to exclude one move until its deadline passes, which must succeed in every
+  slot of the window. Each deadline should span enough slots that this costs
+  more than the game's stakes.
+
+The current service is more synchronous than this:
 epochs visit events in an order, activate owners from a roster, and reserve
 inclusion at the visit. Replacing that service by the Δ-bounded builder is part
 of the work for D1 (below).
