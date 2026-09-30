@@ -23,11 +23,6 @@ open GameTheory.DecisionExperiment.Protocol
 
 variable {State Signal Action : Type} [Nonempty Action] [Finite State] [Finite Action]
 
-omit [Finite State] [Finite Action] in
-/-- Terminal play of the decision arena, certified by its horizon. -/
-theorem certificate (prior : PMF State) : (arena (Action := Action) prior).WellFoundedHistories :=
-  (bounded prior).wellFoundedHistories
-
 /-- The terminal decision is a continuation decision of terminal play. -/
 def decision (prior : PMF State) (observe : State → Signal)
     (site : (model (Action := Action) prior observe).InformationSite ())

@@ -2,7 +2,6 @@
 
 import GameTheoryExtensions.Analysis.Protocol.ObservationRequirement
 import GameTheoryExtensionsTests.ContinuationDecision
-import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Fixed-payoff observation requirements at actual protocol sites
 
@@ -78,9 +77,8 @@ def reporting : bitModel.BehavioralAssessment :=
   assessment biasedBit id (fun bit => PMF.pure bit)
 
 theorem reporting_sequential_equilibrium :
-    reporting.IsSequentialEquilibriumFor (antichain biasedBit id)
-      (fun _ site => reporting.truncatedContinuationContext site
-        (fun history => payoff (reportUtility id) history.state) 2) := by
+    reporting.IsSequentialEquilibrium (antichain biasedBit id)
+      (certificate biasedBit) (fun _ history => payoff (reportUtility id) history.state) := by
   apply (isSequentialEquilibrium_iff biasedBit id _ _).mpr
   refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun signal alternative _ => ?_⟩
   unfold localValue
@@ -115,7 +113,6 @@ theorem state_aware_macro_executes_equilibrium :
   refine ⟨fun bit => by simpa using reporting_response bit, ?_⟩
   rintro ⟨respond, factors⟩
   exact merged_bits_not_sequentially_rational (fun _ => ()) id respond reporting factors rfl
-    ((reporting.isSequentialEquilibrium_iff_truncated_of_bounded bitModel _
-      (certificate biasedBit) (bounded biasedBit) _).mpr reporting_sequential_equilibrium).1
+    reporting_sequential_equilibrium.1
 
 end GameTheoryExtensionsTests.ObservationRequirement

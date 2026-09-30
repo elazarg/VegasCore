@@ -34,9 +34,9 @@ def restricted (keep : Bool) : (model (Action := Retained keep) prior id).Behavi
 /-- Deleting an available action changes the game, even with no hidden
 information, no off-path decision sites, and a fixed payoff. -/
 theorem restricted_equilibrium (keep : Bool) :
-    (restricted keep).IsSequentialEquilibriumFor (antichain prior id)
-      (fun _ site => (restricted keep).truncatedContinuationContext site
-        (fun history => payoff (fun state action => reward state action.1) history.state) 2) := by
+    (restricted keep).IsSequentialEquilibrium (antichain prior id)
+      (certificate prior) (fun _ history => payoff (fun state action => reward state action.1)
+          history.state) := by
   apply (isSequentialEquilibrium_iff prior id _ _).mpr
   rw [fullInformation_optimal_iff]
   refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun state _ action => ?_⟩
@@ -56,9 +56,8 @@ theorem restored_consistent (keep : Bool) :
   assessment_consistent prior id _
 
 theorem restored_equilibrium_iff (keep : Bool) :
-    (restored keep).IsSequentialEquilibriumFor (antichain prior id)
-      (fun _ site => (restored keep).truncatedContinuationContext site
-        (fun history => payoff reward history.state) 2) ↔ keep = true := by
+    (restored keep).IsSequentialEquilibrium (antichain prior id)
+      (certificate prior) (fun _ history => payoff reward history.state) ↔ keep = true := by
   rw [restored, isSequentialEquilibrium_iff, fullInformation_optimal_iff]
   constructor
   · intro optimal
@@ -71,9 +70,8 @@ theorem restored_equilibrium_iff (keep : Bool) :
 /-- A standard SE may give a legal action exactly zero probability. Its
 consistency proof uses fully mixed approximating profiles in the full game. -/
 theorem equilibrium_with_zero_probability_action :
-    (restored true).IsSequentialEquilibriumFor (antichain prior id)
-        (fun _ site => (restored true).truncatedContinuationContext site
-          (fun history => payoff reward history.state) 2) ∧
+    (restored true).IsSequentialEquilibrium (antichain prior id)
+        (certificate prior) (fun _ history => payoff reward history.state) ∧
       ((response prior id ((restored true).strategy ()) ()) false).toReal = 0 ∧
       (arena (Action := Bool) prior).Legal (.decision ()) (fun _ => some false) := by
   refine ⟨(restored_equilibrium_iff true).mpr rfl, ?_, decision_legal prior () false⟩
@@ -82,7 +80,7 @@ theorem equilibrium_with_zero_probability_action :
 def decision : (model (Action := Bool) prior id).ContinuationDecision
     (fun _ history => payoff reward history.state)
     ((model (Action := Bool) prior id).runBehavioralTerminalFrom
-      (GameTheoryExtensionsTests.ContinuationDecision.certificate prior)) Unit Bool :=
+      (certificate prior)) Unit Bool :=
   GameTheoryExtensionsTests.ContinuationDecision.decision prior id
     (site prior id () ((PMF.mem_support_pure_iff _ _).mpr rfl)) reward
 
@@ -102,7 +100,7 @@ theorem zero_probability_is_not_deletion :
     (restored false).IsSequentiallyConsistent (antichain prior id) ∧
       ((decision.response (restored false).strategy) true).toReal = 0 ∧
       ¬ (restored false).IsSequentiallyRational
-          (GameTheoryExtensionsTests.ContinuationDecision.certificate prior)
+          (certificate prior)
           (fun _ history => payoff reward history.state) := by
   refine ⟨restored_consistent false, ?_, ?_⟩
   · rw [restored_response]
@@ -117,7 +115,7 @@ retaining `true` suffices because `false` is dominated at every history. -/
 theorem dominated_omission_rational :
     (restored true).IsSequentiallyRationalAt decision.site
       ((restored true).continuationContext
-        (GameTheoryExtensionsTests.ContinuationDecision.certificate prior) decision.site
+        (certificate prior) decision.site
         (fun history => payoff reward history.state)) := by
   apply decision.rationalAt_of_omitted_dominated (restored true) {true}
   · intro action kept
@@ -132,9 +130,8 @@ theorem dominated_omission_rational :
 `false` outcome when `true` is restored as an available alternative. -/
 theorem no_equilibrium_with_restricted_false_outcome
     (target : (model (Action := Bool) prior id).BehavioralAssessment)
-    (equilibrium : target.IsSequentialEquilibriumFor (antichain prior id)
-      (fun _ site => target.truncatedContinuationContext site
-        (fun history => payoff reward history.state) 2)) :
+    (equilibrium : target.IsSequentialEquilibrium (antichain prior id)
+      (certificate prior) (fun _ history => payoff reward history.state)) :
     observedLaw prior id id target ≠ PMF.pure ((), false) := by
   intro same
   have responseEq := congrArg (fun law : PMF (Unit × Bool) => law.map Prod.snd) same

@@ -840,13 +840,13 @@ theorem terminal_sequential_observation_classification {State Signal Fact : Type
     (prior : PMF State) (observe : State → Signal) (fact : State → Fact) :
     (∀ utility : Fact → Fact → ℝ,
       ∀ source : (model (Action := Fact) prior observe).BehavioralAssessment,
-        source.IsSequentialEquilibriumFor (antichain prior observe)
-          (fun _ site => source.truncatedContinuationContext site
-            (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
+        source.IsSequentialEquilibrium (antichain prior observe)
+          (certificate prior) (fun _ history => payoff (fun state => utility (fact state))
+              history.state) →
         ∃ target : (model (Action := Fact) prior id).BehavioralAssessment,
-          target.IsSequentialEquilibriumFor (antichain prior id)
-            (fun _ site => target.truncatedContinuationContext site
-              (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
+          target.IsSequentialEquilibrium (antichain prior id)
+            (certificate prior) (fun _ history => payoff (fun state => utility (fact state))
+                history.state) ∧
           observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       DecisionExperiment.Determines prior observe fact :=
   preserves_all_sequentialEquilibria_iff_determines prior observe fact
@@ -867,13 +867,13 @@ theorem terminal_fixed_payoff_sequential_classification {State Signal Fact Actio
     (prior : PMF State) (observe : State → Signal) (fact : State → Fact)
     (utility : Fact → Action → ℝ) :
     (∀ source : (model (Action := Action) prior observe).BehavioralAssessment,
-      source.IsSequentialEquilibriumFor (antichain prior observe)
-        (fun _ site => source.truncatedContinuationContext site
-          (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
+      source.IsSequentialEquilibrium (antichain prior observe)
+        (certificate prior) (fun _ history => payoff (fun state => utility (fact state))
+            history.state) →
       ∃ target : (model (Action := Action) prior id).BehavioralAssessment,
-        target.IsSequentialEquilibriumFor (antichain prior id)
-          (fun _ site => target.truncatedContinuationContext site
-            (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
+        target.IsSequentialEquilibrium (antichain prior id)
+          (certificate prior) (fun _ history => payoff (fun state => utility (fact state))
+              history.state) ∧
         observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       DecisionExperiment.HasCommonMaximizer prior observe (fun state => utility (fact state)) :=
   preserves_fixed_payoff_sequentialEquilibria_iff_commonMaximizer prior observe fact utility
@@ -893,16 +893,14 @@ strategy and belief translations into this target are excluded. -/
 theorem declared_payoff_sequential_separation (Claim : Type) [Fintype Claim]
     (defaultClaim : Claim) :
     ∃ source : (NamedSource.model Claim).BehavioralAssessment,
-      source.IsSequentialEquilibriumFor
+      source.IsSequentialEquilibrium
         ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
-        (fun who site => source.truncatedContinuationContext site (NamedSource.payoff who)
-          (2 * NamedSource.horizon + 1)) ∧
+        (NamedSource.terminates Claim) NamedSource.payoff ∧
       expect (sourcePayoutLaw source.strategy) id = 0 ∧
       ∀ target : nativeModel.BehavioralAssessment,
-        (target.IsSequentiallyRationalFor fun who site =>
-            target.truncatedContinuationContext site (fun history => nativeUtility who
-                history.state) (2 * nativeHorizon + 1)) →
+        target.IsSequentiallyRational nativeTerminates
+            (fun who history => nativeUtility who history.state) →
         sourcePayoutLaw source.strategy ≠ nativePayoutLaw target.strategy :=
   exists_source_equilibrium_no_native_payout_match Claim defaultClaim
 
@@ -939,12 +937,11 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
       (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : service.sourceModel.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibriumFor
+    (equilibrium : source.IsSequentialEquilibrium
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
-      (fun who site => source.truncatedContinuationContext site
-        (fun final => (service.setup.protocolReadout final.state).elim 0
-          (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (instructionCount service.setup.program + 1))) :
+      service.sourceTerminates
+      (fun who final => (service.setup.protocolReadout final.state).elim 0
+        (fun state => utility (service.setup.parameterOutcome parameter state) who))) :
     let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
     let base := baseUtility service.setup service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
@@ -958,21 +955,22 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
       (sourceServiceAudit service.setup service.leaks sample) deposit
     ∃ target : (raw.information (initialLaw service.setup) service.planLength
         service.scheduler).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
+      target.IsSequentialEquilibrium
         (raw.decisionInformationAntichain (initialLaw service.setup) service.planLength
-          service.scheduler)
-        (fun who site => target.truncatedContinuationContext site
-          (fun history => payoff history.state who) service.fuel) ∧
+          service.scheduler) service.rawTerminates
+        (fun who history => payoff history.state who) ∧
       (∀ final ∈ ((raw.information (initialLaw service.setup) service.planLength
-          service.scheduler).runBehavioral target.strategy service.fuel).support, ∀ who,
+          service.scheduler).runBehavioralTerminalFrom service.rawTerminates target.strategy
+            service.rawInitial).support, ∀ who,
         TerminalAudit.charge ((runtime service.setup).serviceAuditObservation service.leaks)
           (sourceServiceAudit service.setup service.leaks sample) final.state who = 0) ∧
       ((raw.information (initialLaw service.setup) service.planLength
-          service.scheduler).runBehavioral target.strategy service.fuel).bind
+          service.scheduler).runBehavioralTerminalFrom service.rawTerminates target.strategy
+            service.rawInitial).bind
           (fun final => (settle final.state).map (fun payoffs =>
             (sourceReadout service.setup service.leaks final.state, payoffs))) =
-        (service.sourceModel.runBehavioral source.strategy
-            (instructionCount service.setup.program + 1)).map
+        (service.sourceModel.runBehavioralTerminalFrom service.sourceTerminates source.strategy
+            service.sourceInitial).map
               (fun final => (service.setup.protocolReadout final.state,
                 fun who => (service.setup.protocolReadout final.state).elim 0
                   (fun state => utility (service.setup.parameterOutcome parameter state)
@@ -986,9 +984,8 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
 #print axioms Vegas.Paper.source_audited_raw_sequential_equilibrium
 
 open Vegas.SourceProgram in
-/-- The source horizon of `source_audited_raw_sequential_equilibrium` covers
-complete play: every history of the source protocol has ended by then, so its
-continuation values are those of standard sequential equilibrium. -/
+/-- Every history of the source protocol ends within its instruction bound; this
+certifies the terminal play in `source_audited_raw_sequential_equilibrium`. -/
 theorem source_protocol_horizon [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program) :
@@ -1001,8 +998,8 @@ theorem source_protocol_horizon [IExpr.ResultTypes L]
 #print axioms Vegas.Paper.source_protocol_horizon
 
 open Vegas.EventGraphRuntime in
-/-- The native horizon of `source_audited_raw_sequential_equilibrium` covers
-complete play of the bounded raw runtime. -/
+/-- Every history of the bounded raw runtime ends within its fuel; this certifies
+the native terminal play in `source_audited_raw_sequential_equilibrium`. -/
 theorem raw_service_horizon [Fintype Player] [IExpr.ResultTypes L]
     (service : SourceServiceSpec Player L) :
     ((service.bounds.rawMenu (runtime service.setup) service.leaks).protocol
@@ -1106,11 +1103,11 @@ axioms: [propext, Classical.choice, Quot.sound] -/
 #print axioms GameTheory.Math.Probability.PMFConvergesPointwise.toOuterMeasure_toReal_le
 
 /-- info:
-'GameTheory.Protocol.InformationModel.BehavioralAssessment.truncatedContinuationContext_value_eq_expect_commit' depends on axioms:
+'GameTheory.Protocol.InformationModel.BehavioralAssessment.continuationContextWith_value_eq_expect_commit' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
-#print axioms BehavioralAssessment.truncatedContinuationContext_value_eq_expect_commit
+#print axioms BehavioralAssessment.continuationContextWith_value_eq_expect_commit
 
 /-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.profile_guesser_rational' depends on
 axioms:

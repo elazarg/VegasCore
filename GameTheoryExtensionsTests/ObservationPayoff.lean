@@ -78,13 +78,12 @@ open Protocol in
 outcome impossibility; a utility-dependent translator cannot repair it. -/
 theorem fixed_reporting_payoff_not_preserved :
     ¬ (∀ source : (model (Action := Bool) prior (fun _ => ())).BehavioralAssessment,
-      source.IsSequentialEquilibriumFor (antichain prior (fun _ => ()))
-        (fun _ site => source.truncatedContinuationContext site
-          (fun history => payoff (reportUtility (id : Bool → Bool)) history.state) 2) →
+      source.IsSequentialEquilibrium (antichain prior (fun _ => ())) (certificate prior)
+        (fun _ history => payoff (reportUtility (id : Bool → Bool)) history.state) →
       ∃ target : (model (Action := Bool) prior id).BehavioralAssessment,
-        target.IsSequentialEquilibriumFor (antichain prior id)
-          (fun _ site => target.truncatedContinuationContext site
-            (fun history => payoff (reportUtility (id : Bool → Bool)) history.state) 2) ∧
+        target.IsSequentialEquilibrium (antichain prior id)
+          (certificate prior) (fun _ history => payoff (reportUtility (id : Bool → Bool))
+              history.state) ∧
         observedLaw prior id id target = observedLaw prior (fun _ => ()) id source) := by
   intro preserves
   exact reporting_has_no_common_action

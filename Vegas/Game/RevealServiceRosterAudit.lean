@@ -104,7 +104,10 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
     rw [mul_div_cancel₀ _ (positive who).ne']
     linarith
   exact bounds.audited_raw_sequential_equilibrium (runtime setup) leaks initial count scheduler
-    retained included depth clock (envelopeEvidence setup leaks)
+    retained included (fun who site => depth who
+      ((included.actionRestriction initial count scheduler).site who site))
+    (fun who site => clock who ((included.actionRestriction initial count scheduler).site who site))
+    (envelopeEvidence setup leaks)
     (fun evidence => evidence.2.2.sender)
     (permittedRosterEnvelope setup leaks) sample authentic
     (roster_history_traffic setup leaks bounds rosters network reveals openable)

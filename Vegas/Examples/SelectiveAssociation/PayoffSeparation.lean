@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.Separation
 import Vegas.Examples.SelectiveAssociation.Settlement
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Sequential-equilibrium separation when utility is the returned payoff
 
@@ -69,28 +70,40 @@ theorem source_equilibrium_payout_zero (Claim : Type) [Fintype Claim] (defaultCl
     expect (sourcePayoutLaw (NamedSource.profile Claim defaultClaim)) id = 0 := by
   rw [source_payout_expectation, NamedSource.prescribed_initial_alice_payoff]
 
+/-- Every history of the named-source protocol ends within its calendar bound. -/
+theorem NamedSource.terminates (Claim : Type) [Fintype Claim] :
+    (NamedSource.arena Claim).WellFoundedHistories :=
+  ((NamedSource.menu Claim).bounded _ _ _).wellFoundedHistories
+
+/-- Every history of the native runtime ends within its fuel. -/
+theorem nativeTerminates : nativeArena.WellFoundedHistories :=
+  (nativeMenu.bounded _ _ _).wellFoundedHistories
+
 /-- Even Alice's returned-payoff law cannot be preserved. The payoff function
-is fixed in the program, and no restriction is placed on the translator. -/
+is fixed in the program, and no restriction is placed on the translator. Both
+the source equilibrium and native rationality are of complete (terminal) play. -/
 theorem exists_source_equilibrium_no_native_payout_match (Claim : Type) [Fintype Claim]
     (defaultClaim : Claim) :
     ∃ source : (NamedSource.model Claim).BehavioralAssessment,
-      source.IsSequentialEquilibriumFor
+      source.IsSequentialEquilibrium
         ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
-        (fun who site => source.truncatedContinuationContext site (NamedSource.payoff who)
-          (2 * NamedSource.horizon + 1)) ∧
+        (NamedSource.terminates Claim) NamedSource.payoff ∧
       expect (sourcePayoutLaw source.strategy) id = 0 ∧
       ∀ target : nativeModel.BehavioralAssessment,
-        (target.IsSequentiallyRationalFor fun who site =>
-            target.truncatedContinuationContext site (fun history => nativeUtility who
-                history.state) (2 * nativeHorizon + 1)) →
+        target.IsSequentiallyRational nativeTerminates
+            (fun who history => nativeUtility who history.state) →
         sourcePayoutLaw source.strategy ≠ nativePayoutLaw target.strategy := by
   obtain ⟨source, strategy, equilibrium, _law⟩ :=
     NamedSource.exists_sequentialEquilibrium Claim defaultClaim
   have zero : expect (sourcePayoutLaw source.strategy) id = 0 := by
     rw [strategy, source_equilibrium_payout_zero]
-  refine ⟨source, equilibrium, zero, fun target rational sameLaw => ?_⟩
-  have gain := native_sequential_payout_bound target rational
+  refine ⟨source, (source.isSequentialEquilibrium_iff_truncated_of_bounded _ _
+    (NamedSource.terminates Claim) ((NamedSource.menu Claim).bounded _ _ _) _).mpr equilibrium,
+    zero, fun target rational sameLaw => ?_⟩
+  have gain := native_sequential_payout_bound target
+    ((target.isSequentiallyRational_iff_truncated_of_bounded nativeTerminates
+      (nativeMenu.bounded _ _ _) _).mp rational)
   rw [← sameLaw, zero] at gain
   norm_num at gain
 

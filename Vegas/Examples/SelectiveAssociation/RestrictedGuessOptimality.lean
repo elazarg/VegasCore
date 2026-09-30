@@ -166,9 +166,13 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
   have once : model.ActsOnceWhereItMatters := model.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
       (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler))
-  rw [assessment.truncatedContinuationContext_value_eq_expect_commit once site
-    (menu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon scheduler
-      who site) _ (2 * nativeHorizon) alternative
+  rw [show (assessment.truncatedContinuationContext site
+      (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)).value alternative =
+      _ from assessment.continuationContextWith_value_eq_expect_commit
+    (model.truncatedRunner (2 * nativeHorizon + 1)) site
+    (model.runnerFactorsAt_truncated once
+      (menu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon scheduler
+        who site) (2 * nativeHorizon)) _ alternative
       (nativeUtility_continuation_integrable assessment site _ _),
     profile_guesser_context assessment strategy who guesser site past view information granted]
   refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun choice _ => ?_
@@ -176,8 +180,8 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     information granted alternative choice
   calc
     _ ≤ expect (assessment.belief who site) (fun history => guessReward guess history.1.state) := by
-      simp only [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
-        expect_bind_of_finite, strategy]
+      simp only [InformationModel.BehavioralAssessment.continuationContextWith_value,
+        InformationModel.truncatedRunner, expect_bind_of_finite, strategy]
       refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
         (payoffIntegrable_of_finite _ _)
       exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ (bound history)

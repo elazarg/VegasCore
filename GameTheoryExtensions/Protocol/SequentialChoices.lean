@@ -77,81 +77,60 @@ theorem actsOnce_of_decisionInformationAntichain
           exact antichain player site ⟨prior, same⟩ ⟨⟨source, trace⟩, rfl⟩
             oldJoint oldLegal next moved fuel path
 
-/-- Replacing the current response law makes the continuation law a mixture,
-over that response, of the laws with one fixed current response. -/
-theorem BehavioralAssessment.truncatedContinuationContext_outcome_withLaw
-    (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
-    (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (payoff : E.History → ℝ) (fuel : Nat) (law : PMF (M.Choice who site.1)) :
-    (assessment.truncatedContinuationContext site payoff (fuel + 1)).outcome
-        ((assessment.strategy who).withLaw site.1 law) =
-      law.bind fun choice => (assessment.truncatedContinuationContext site payoff (fuel +
-          1)).outcome
-        ((assessment.strategy who).commit site.1 choice) := by
-  change (assessment.belief who site).bind _ =
-    law.bind fun choice => (assessment.belief who site).bind _
-  rw [← PMF.bind_comm]
-  apply bind_congr_on_support
-  intro history _
-  exact M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
-    (assessment.strategy who) site.1 law history.1 history.2 (nonterminal history)
-      (InformationSite.active M site history) fuel
-
+omit [Fintype ι] in
 /-- A complete policy deviation's continuation law is a mixture of the laws
-of policies with the same future behavior and one fixed current response. -/
-theorem BehavioralAssessment.truncatedContinuationContext_outcome_eq_bind_commit
-    (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
-    (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who) :
-    (assessment.truncatedContinuationContext site payoff (fuel + 1)).outcome alternative =
+of policies with the same future behavior and one fixed current response,
+whenever the runner factors a law installed at the site. -/
+theorem BehavioralAssessment.continuationContextWith_outcome_eq_bind_commit
+    (assessment : M.BehavioralAssessment) (run : M.ContinuationRunner)
+    (site : M.InformationSite who) (hfactor : M.RunnerFactorsAt run who site)
+    (payoff : E.History → ℝ) (alternative : M.BehavioralPolicy who) :
+    (assessment.continuationContextWith run site payoff).outcome alternative =
       (alternative site.1).bind fun choice =>
-        (assessment.truncatedContinuationContext site payoff (fuel + 1)).outcome
+        (assessment.continuationContextWith run site payoff).outcome
           (alternative.commit site.1 choice) := by
-  change (assessment.belief who site).bind _ =
-    (alternative site.1).bind fun choice => (assessment.belief who site).bind _
-  rw [← PMF.bind_comm]
-  apply bind_congr_on_support
-  intro history _
-  have split := M.runBehavioralFrom_update_withLaw_eq_bind once assessment.strategy who
-    alternative site.1 (alternative site.1) history.1 history.2 (nonterminal history)
-      (InformationSite.active M site history) fuel
+  have split := assessment.continuationContextWith_outcome_withLaw run site hfactor payoff
+    alternative (alternative site.1)
   rwa [BehavioralPolicy.withLaw_eq_self] at split
 
-theorem BehavioralAssessment.truncatedContinuationContext_value_withLaw
-    (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
-    (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (payoff : E.History → ℝ) (fuel : Nat) (law : PMF (M.Choice who site.1))
-    (integrable : (assessment.truncatedContinuationContext site payoff (fuel + 1)).IntegrableAt
+omit [Fintype ι] in
+/-- Where the runner factors a law installed at the site, the continuation value
+of that law is the average value of the fixed current responses. -/
+theorem BehavioralAssessment.continuationContextWith_value_withLaw
+    (assessment : M.BehavioralAssessment) (run : M.ContinuationRunner)
+    (site : M.InformationSite who) (hfactor : M.RunnerFactorsAt run who site)
+    (payoff : E.History → ℝ) (law : PMF (M.Choice who site.1))
+    (integrable : (assessment.continuationContextWith run site payoff).IntegrableAt
       ((assessment.strategy who).withLaw site.1 law)) :
-    (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
+    (assessment.continuationContextWith run site payoff).value
         ((assessment.strategy who).withLaw site.1 law) =
       expect law (fun choice =>
-        (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
+        (assessment.continuationContextWith run site payoff).value
           ((assessment.strategy who).commit site.1 choice)) := by
   unfold Context.IntegrableAt at integrable
   unfold Context.value
-  rw [assessment.truncatedContinuationContext_outcome_withLaw once site nonterminal payoff fuel law]
-    at integrable ⊢
+  rw [assessment.continuationContextWith_outcome_withLaw run site hfactor payoff] at integrable ⊢
   exact expect_bind_tower _ _ _ integrable
 
+omit [Fintype ι] in
 /-- A complete policy deviation with a finite expected payoff has the average
 value of policies with the same future behavior and one fixed current
-response. This identity requires no optimality assumption on the original
-assessment or on the alternative policy. -/
-theorem BehavioralAssessment.truncatedContinuationContext_value_eq_expect_commit
-    (assessment : M.BehavioralAssessment) (once : M.ActsOnceWhereItMatters)
-    (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
-    (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who)
-    (integrable : (assessment.truncatedContinuationContext site payoff (fuel + 1)).IntegrableAt
+response, whenever the runner factors a law installed at the site. This
+identity requires no optimality assumption on the original assessment or on
+the alternative policy. -/
+theorem BehavioralAssessment.continuationContextWith_value_eq_expect_commit
+    (assessment : M.BehavioralAssessment) (run : M.ContinuationRunner)
+    (site : M.InformationSite who) (hfactor : M.RunnerFactorsAt run who site)
+    (payoff : E.History → ℝ) (alternative : M.BehavioralPolicy who)
+    (integrable : (assessment.continuationContextWith run site payoff).IntegrableAt
       alternative) :
-    (assessment.truncatedContinuationContext site payoff (fuel + 1)).value alternative =
+    (assessment.continuationContextWith run site payoff).value alternative =
       expect (alternative site.1) (fun choice =>
-        (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
+        (assessment.continuationContextWith run site payoff).value
           (alternative.commit site.1 choice)) := by
   unfold Context.IntegrableAt at integrable
   unfold Context.value
-  rw [assessment.truncatedContinuationContext_outcome_eq_bind_commit once site nonterminal payoff
-      fuel
+  rw [assessment.continuationContextWith_outcome_eq_bind_commit run site hfactor payoff
     alternative] at integrable ⊢
   exact expect_bind_tower _ _ _ integrable
 

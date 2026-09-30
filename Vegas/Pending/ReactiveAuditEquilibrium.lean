@@ -8,10 +8,11 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Terminal traffic auditing in the bounded native runtime
 
-Any retained response menu with the stated traffic certificates and decision
-clock extends to the full bounded raw game. The scheduler, initial law and
-application graph are arbitrary. This is an enforcement and private-alias edge;
-source correspondence is a separate compiler obligation.
+Any retained response menu with the stated traffic certificates and a decision
+clock at its own decision sites extends to the full bounded raw game. The
+scheduler, initial law and application graph are arbitrary. This is an
+enforcement and private-alias edge; source correspondence is a separate
+compiler obligation.
 
 Authentic partial audit records and a fixed collectible deposit vector preserve
 the exact joint observation and realized settlement law. No strategic reporter,
@@ -39,10 +40,10 @@ open Classical in
 randomized settlement law. Audit randomness and player verdicts may be correlated. -/
 theorem audited_raw_sequential_equilibrium
     [(runtime.reactiveApplication leaks).FiniteNature initial service]
-    (depth : ∀ who,
-      ((bounds.menu runtime leaks).information initial count service).InformationSite who → Nat)
+    (depth : ∀ who, (retained.information initial count service).InformationSite who → Nat)
     (clock : ∀ who site, InformationModel.InformationSite.CommonDepth
-      ((bounds.menu runtime leaks).information initial count service) site (depth who site))
+      ((bounds.menu runtime leaks).information initial count service)
+      ((included.actionRestriction initial count service).site who site) (depth who site))
     {Evidence : Type}
     (project : (runtime.reactiveApplication leaks).TrafficRecord → Evidence)
     (attribution : Evidence → Player) (permitted : Evidence → Bool)
@@ -140,33 +141,33 @@ theorem audited_raw_sequential_equilibrium
         (restriction.history history.1)).map (fun final => app.stateTraffic final.state)).bind
           audit).map (fun verdict => verdict who)) true).toReal := by
     have length : (restriction.history history.1).trace.length =
-        depth who (restriction.site who site) := by
-      have same := clock who (restriction.site who site)
+        depth who site := by
+      have same := clock who site
         (restriction.informationHistory who site history)
       simpa only [InformationModel.ActionRestriction.informationHistory_val] using same
     rw [InformationModel.runBehavioralTerminalFrom_eq_remaining _ targetCertificate _
       targetBounded, length]
-    have within : depth who (restriction.site who site) < 2 * count + 1 := by
+    have within : depth who site < 2 * count + 1 := by
       obtain ⟨reference, running, _action⟩ := site.2
-      have sameDepth := clock who (restriction.site who site)
+      have sameDepth := clock who site
         (restriction.informationHistory who site reference)
       simp only [InformationModel.ActionRestriction.informationHistory_val,
         restriction.length] at sameDepth
       by_contra late
       exact running (retained.bounded initial count service reference.1.state reference.1.trace
         (by
-          change ¬ depth who (restriction.site who site) < 2 * count + 1 at late
+          change ¬ depth who site < 2 * count + 1 at late
           omega))
     have bound := effective.trafficAudit_collection_after_step initial count service
       project attribution permitted
       sample who (probability who) (coverage who)
       (Profile.update profile who ((profile who).commit (restriction.site who site).1 action))
-      (2 * count + 1 - depth who (restriction.site who site) - 1)
+      (2 * count + 1 - depth who site - 1)
       (restriction.history history.1)
       (by simpa only [ReactiveApplication.ResponseMenu.trafficAudit_eq_stateTraffic] using
         evidence profile who site action extra history)
-    have fuel : 1 + (2 * count + 1 - depth who (restriction.site who site) - 1) =
-        2 * count + 1 - depth who (restriction.site who site) := by omega
+    have fuel : 1 + (2 * count + 1 - depth who site - 1) =
+        2 * count + 1 - depth who site := by omega
     have readout : effective.trafficAudit initial count service =
         fun final => app.stateTraffic final.state :=
       funext (effective.trafficAudit_eq_stateTraffic initial count service)
@@ -177,8 +178,7 @@ theorem audited_raw_sequential_equilibrium
       targetCertificate (effective.uniformAssessment initial count service)
       (effective.uniform_fullyMixed initial count service)
       (effective.decisionRecall initial count service)
-      (fun who site => depth who (restriction.site who site))
-      (fun who site => clock who (restriction.site who site))
+      depth clock
       (fun final who => base final.state who) (fun final who => base final.state who)
       (fun final => app.stateTraffic final.state) audit (fun _ _ => rfl) sound
       lower upper probability deposit nonnegative below above sufficient collection source

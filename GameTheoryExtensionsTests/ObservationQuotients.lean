@@ -113,13 +113,13 @@ theorem retainsFact_iff_preserves_all_sequentialEquilibria (quotient : QuotientM
     retainsFact quotient ↔
       (∀ utility : Bool → Bool → ℝ,
         ∀ source : (model (Action := Bool) prior quotient).BehavioralAssessment,
-          source.IsSequentialEquilibriumFor (antichain prior quotient)
-            (fun _ site => source.truncatedContinuationContext site
-              (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
+          source.IsSequentialEquilibrium (antichain prior quotient)
+            (certificate prior) (fun _ history => payoff (fun state => utility (fact state))
+                history.state) →
           ∃ target : (model (Action := Bool) prior id).BehavioralAssessment,
-            target.IsSequentialEquilibriumFor (antichain prior id)
-              (fun _ site => target.truncatedContinuationContext site
-                (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
+            target.IsSequentialEquilibrium (antichain prior id)
+              (certificate prior) (fun _ history => payoff (fun state => utility (fact state))
+                  history.state) ∧
             observedLaw prior id fact target = observedLaw prior quotient fact source) := by
   rw [preserves_all_sequentialEquilibria_iff_determines,
     determines_iff_of_fullSupport prior PMF.mem_support_uniformOfFintype]

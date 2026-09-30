@@ -111,8 +111,11 @@ theorem signed_audit_source_sequential_equilibrium_preserved
     (runtime setup) leaks (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     (replayMenu setup leaks extended watcher) (replay_in_effective setup leaks extended watcher)
     (fun who site => decisionDepth setup leaks watcher who site.1)
-    (menu_common_decision_depth setup leaks (extended.menu (runtime setup) leaks) watcher
-      reveals observer)
+    (fun who site => menu_common_decision_depth setup leaks (extended.menu (runtime setup) leaks)
+      watcher reveals observer who
+      (((replay_in_effective setup leaks extended watcher).actionRestriction
+        (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)).site who
+          site))
     (envelopeEvidence setup leaks) (fun evidence => evidence.2.2.sender)
     (permittedEnvelope setup leaks) sample authentic
     (replay_history_traffic setup leaks extended watcher reveals observer openable)
