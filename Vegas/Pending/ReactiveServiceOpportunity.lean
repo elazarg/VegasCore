@@ -2,7 +2,7 @@
 
 import Vegas.Pending.ReactiveServiceCompletion
 import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.EventHonestDeadline
+import Vegas.Pending.EventActivationAge
 
 /-! # Timely recurring owner opportunities after dependency settlement
 

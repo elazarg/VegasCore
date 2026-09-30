@@ -2,7 +2,8 @@
 
 import Vegas.Pending.EventPrescribedBoundary
 import Vegas.Pending.EventServiceReachability
-import Vegas.Pending.EventHonestBlockBase
+import Vegas.Pending.EventServiceLaw
+import Vegas.EventGraph.StateCongruence
 import Vegas.Pending.EventServiceGrant
 import Vegas.Pending.EventServicePosition
 import Vegas.Pending.EventSubmissionCompletion
@@ -18,6 +19,29 @@ open GameTheory.Math.Probability Interaction Vegas.EventGraph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
+
+/-- The concrete execution record after a public service grant. -/
+def afterGrant (runtime : EventGraphRuntime graph)
+    (execution : runtime.application.PolicyExecution) (event : graph.EventId) :
+    runtime.application.PolicyExecution :=
+  { execution with
+    native := { execution.native with
+      application := { execution.native.application with serviceGrant := some event } }
+    environmentHistory := execution.environmentHistory ++
+      [⟨MessageApplication.State.environmentView runtime.application execution.native,
+        .application (.grant event)⟩]
+    nativeTrace := execution.nativeTrace ++ [.environment (.grant event)] }
+
+theorem serviceStep_grant_eq (runtime : EventGraphRuntime graph)
+    (players : Player → runtime.application.PlayerPolicy) (wire : runtime.application.WirePolicy)
+    (execution : runtime.application.PolicyExecution) (event : graph.EventId) :
+    runtime.serviceStep players wire (.grant event) execution =
+      PMF.pure (runtime.afterGrant execution event) := by
+  simp only [serviceStep, MessageApplication.environmentPolicyStep,
+    MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.advance,
+    MessageApplication.step]
+  simp only [application, environmentStep, PMF.pure_map, PMF.pure_bind]
+  rfl
 
 theorem append_cons_eq_append_cases {α : Type} (marker : α) :
     ∀ (before after executed remaining : List α),

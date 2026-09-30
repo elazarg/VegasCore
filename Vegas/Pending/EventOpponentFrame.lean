@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventHonestBoundary
+import Vegas.Pending.EventBindingService
+import Vegas.Pending.EventPolicyBlock
 
 /-! # Native frames for opponent-owned events
 

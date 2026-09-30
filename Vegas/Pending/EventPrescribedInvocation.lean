@@ -1,10 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventDeviationPotential
+import Vegas.Pending.EventPrescribedPotential
 import Vegas.Pending.EventPolicyCoherence
 import Vegas.Pending.EventPolicyService
 
-/-! # Deviation-potential conservation across player invocations -/
+/-! # Prescribed-continuation conservation across player invocations -/
 
 noncomputable section
 
@@ -18,14 +18,15 @@ variable {graph : Vegas.EventGraph Player L}
 
 /-- Public message commands do not alter the event application state before
 their packets are separately included. -/
-theorem playerStep_nonprivate_deviationContinuation
+theorem playerStep_nonprivate_prescribedContinuation
     (runtime : EventGraphRuntime graph) (profile : graph.BehavioralProfile)
-    (focal who : Player) (execution : runtime.application.PolicyExecution)
+    (prescribed : Player → Prop) [DecidablePred prescribed]
+    (who : Player) (execution : runtime.application.PolicyExecution)
     (command : runtime.application.PlayerCommand)
     (nonprivate : ∀ privateCommand, command ≠ .privateCommand privateCommand) :
     (runtime.application.playerStep who execution command).bind
-        (fun next => next.native.application.deviationContinuation profile focal) =
-      execution.native.application.deviationContinuation profile focal := by
+        (fun next => next.native.application.prescribedContinuation profile prescribed) =
+      execution.native.application.prescribedContinuation profile prescribed := by
   cases command with
   | privateCommand command => exact False.elim (nonprivate command rfl)
   | submit payload =>
@@ -39,37 +40,39 @@ theorem playerStep_nonprivate_deviationContinuation
         MessageApplication.advance, PMF.pure_bind]
 
 /-- A private command whose first-write table is unchanged at every prescribed
-opponent event preserves the focal-erased continuation. -/
-theorem playerStep_private_deviationContinuation_of_remembered
+event preserves the prescribed continuation. -/
+theorem playerStep_private_prescribedContinuation_of_remembered
     (runtime : EventGraphRuntime graph) (profile : graph.BehavioralProfile)
-    (focal who : Player) (execution : runtime.application.PolicyExecution)
+    (prescribed : Player → Prop) [DecidablePred prescribed]
+    (who : Player) (execution : runtime.application.PolicyExecution)
     (command : PrivateCommand graph)
-    (remembered : ∀ event, graph.actor? event ≠ some focal →
+    (remembered : ∀ event, graph.PrescribedEvent prescribed event →
       (privateStep execution.native.application who command).remembered event =
         execution.native.application.remembered event) :
     (runtime.application.playerStep who execution (.privateCommand command)).bind
-        (fun next => next.native.application.deviationContinuation profile focal) =
-      execution.native.application.deviationContinuation profile focal := by
+        (fun next => next.native.application.prescribedContinuation profile prescribed) =
+      execution.native.application.prescribedContinuation profile prescribed := by
   rw [runtime.application.playerStep_private_eq, PMF.pure_bind]
-  apply State.deviationContinuation_congr _ _ profile focal
+  apply State.prescribedContinuation_congr prescribed _ _ profile
   · exact (privateStep_facts execution.native.application who command).1
-  · intro event unfinished other
-    exact remembered event other
+  · intro event unfinished prescribedEvent
+    exact remembered event prescribedEvent
 
 /-- Preparation never changes remembered actions, and first-write remembering
 is inert once the addressed action is already cached. -/
-theorem playerStep_private_deviationContinuation_of_cached
+theorem playerStep_private_prescribedContinuation_of_cached
     (runtime : EventGraphRuntime graph) (profile : graph.BehavioralProfile)
-    (focal who : Player) (execution : runtime.application.PolicyExecution)
+    (prescribed : Player → Prop) [DecidablePred prescribed]
+    (who : Player) (execution : runtime.application.PolicyExecution)
     (command : PrivateCommand graph)
     (cached : ∀ event action, command = .remember event action →
       execution.native.application.remembered event ≠ none) :
     (runtime.application.playerStep who execution (.privateCommand command)).bind
-        (fun next => next.native.application.deviationContinuation profile focal) =
-      execution.native.application.deviationContinuation profile focal := by
-  apply runtime.playerStep_private_deviationContinuation_of_remembered profile focal who
+        (fun next => next.native.application.prescribedContinuation profile prescribed) =
+      execution.native.application.prescribedContinuation profile prescribed := by
+  apply runtime.playerStep_private_prescribedContinuation_of_remembered profile prescribed who
     execution command
-  intro event other
+  intro event _
   cases command with
   | prepare serial raw => rfl
   | remember query action =>
@@ -81,40 +84,43 @@ theorem playerStep_private_deviationContinuation_of_cached
           · simp [privateStep, owned, remembered]
           · simp [privateStep, owned]
 
-/-- An arbitrary focal-player invocation preserves the continuation after the
-focal player's implementation state has been erased from the potential. -/
-theorem focalPlayer_invoke_deviationContinuation
+/-- An arbitrary invocation of a free player preserves the continuation, which
+ignores that player's implementation state. -/
+theorem freePlayer_invoke_prescribedContinuation
     (runtime : EventGraphRuntime graph) (profile : graph.BehavioralProfile)
-    (focal : Player) (players : Player → runtime.application.PlayerPolicy)
+    (prescribed : Player → Prop) [DecidablePred prescribed]
+    (who : Player) (free : ¬ prescribed who)
+    (players : Player → runtime.application.PlayerPolicy)
     (environment : runtime.application.EnvironmentPolicy)
     (execution : runtime.application.PolicyExecution) :
-    (runtime.application.invoke players environment execution (.player focal)).bind
-        (fun next => next.native.application.deviationContinuation profile focal) =
-      execution.native.application.deviationContinuation profile focal := by
+    (runtime.application.invoke players environment execution (.player who)).bind
+        (fun next => next.native.application.prescribedContinuation profile prescribed) =
+      execution.native.application.prescribedContinuation profile prescribed := by
   simp only [MessageApplication.invoke, PMF.bind_bind]
   calc
-    _ = (players focal (execution.principalHistory focal)
-        (MessageApplication.State.observe runtime.application execution.native focal)).bind
-          (fun _ => execution.native.application.deviationContinuation profile focal) := by
+    _ = (players who (execution.principalHistory who)
+        (MessageApplication.State.observe runtime.application execution.native who)).bind
+          (fun _ => execution.native.application.prescribedContinuation profile prescribed) := by
       apply bind_congr_on_support _
       intro command _
-      exact runtime.playerStep_focal_deviationContinuation profile focal execution command
+      exact runtime.playerStep_free_prescribedContinuation prescribed profile who free
+        execution command
     _ = _ := PMF.bind_const _ _
 
-/-- An invocation of an unchanged opponent's compiled graph policy conserves
-the continuation with the focal player's private cache erased. -/
-theorem compiledOpponent_invoke_deviationContinuation
+/-- An invocation of a prescribed player's compiled graph policy conserves
+the prescribed continuation. -/
+theorem compiledPrescribed_invoke_prescribedContinuation
     (runtime : EventGraphRuntime graph) (ordered : graph.BarrierOrdered)
-    (profile : graph.BehavioralProfile) (focal owner : Player)
-    (other : owner ≠ focal)
+    (profile : graph.BehavioralProfile) (prescribed : Player → Prop) [DecidablePred prescribed]
+    (owner : Player) (prescribedOwner : prescribed owner)
     (players : Player → runtime.application.PlayerPolicy)
     (environment : runtime.application.EnvironmentPolicy)
     (execution : runtime.application.PolicyExecution)
     (coherent : PolicyCoherentAll runtime execution owner)
     (ownerCompiled : players owner = runtime.compilePlayerPolicy owner (profile owner)) :
     (runtime.application.invoke players environment execution (.player owner)).bind
-        (fun next => next.native.application.deviationContinuation profile focal) =
-      execution.native.application.deviationContinuation profile focal := by
+        (fun next => next.native.application.prescribedContinuation profile prescribed) =
+      execution.native.application.prescribedContinuation profile prescribed := by
   simp only [MessageApplication.invoke, ownerCompiled, PMF.bind_bind]
   unfold compilePlayerPolicy
   cases grant :
@@ -122,14 +128,14 @@ theorem compiledOpponent_invoke_deviationContinuation
         owner).application.publicView.serviceGrant with
   | none =>
       rw [PMF.pure_bind]
-      exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner execution
+      exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed owner execution
         .wait (by simp)
   | some event =>
       simp only
       split
       · rw [PMF.pure_bind]
-        exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner execution
-          .wait (by simp)
+        exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed owner
+          execution .wait (by simp)
       · split
         · rename_i viewOwner
           split
@@ -141,8 +147,8 @@ theorem compiledOpponent_invoke_deviationContinuation
               cases view : nodeView graph event with
               | sample payload law outputEq codeEq =>
                   rw [PMF.pure_bind]
-                  exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner
-                    execution .wait (by simp)
+                  exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed
+                    owner execution .wait (by simp)
               | bind nodeOwner payload outputEq codeEq =>
                   simp only
                   cases stageEq : stagingCount (execution.principalHistory owner) event with
@@ -153,10 +159,11 @@ theorem compiledOpponent_invoke_deviationContinuation
                           fun action =>
                             (runtime.application.playerStep owner execution
                               (.privateCommand (.remember event action))).bind fun next =>
-                                next.native.application.deviationContinuation profile focal) = _
-                      exact runtime.playerStep_opponent_remember_deviationContinuation ordered
-                        profile focal owner other execution event ready actor
-                        ((coherent event actor).empty_iff.mp stageEq)
+                                next.native.application.prescribedContinuation profile
+                                  prescribed) = _
+                      exact runtime.playerStep_prescribed_remember_prescribedContinuation
+                        prescribed ordered profile owner prescribedOwner execution event ready
+                        actor ((coherent event actor).empty_iff.mp stageEq)
                   | succ n =>
                       cases n with
                       | zero =>
@@ -174,21 +181,23 @@ theorem compiledOpponent_invoke_deviationContinuation
                           generalize cast (congrArg EventField.Action outputEq) action = result
                           cases result with
                           | failure =>
-                              apply runtime.playerStep_private_deviationContinuation_of_cached
-                                profile focal owner execution (.remember event action)
+                              apply runtime.playerStep_private_prescribedContinuation_of_cached
+                                profile prescribed owner execution (.remember event action)
                               intro query selected same
                               injection same with queryEq
                               subst query
                               simp [cached]
                           | success value =>
-                              apply runtime.playerStep_private_deviationContinuation_of_cached
-                                profile focal owner execution (.prepare event.val ⟨payload, value⟩)
+                              apply runtime.playerStep_private_prescribedContinuation_of_cached
+                                profile prescribed owner execution
+                                (.prepare event.val ⟨payload, value⟩)
                               intro query selected impossible
                               contradiction
                       | succ later =>
                           rw [PMF.pure_bind]
-                          exact runtime.playerStep_nonprivate_deviationContinuation profile focal
-                            owner execution (.submit (.commitment event (owner, eventSlot event)))
+                          exact runtime.playerStep_nonprivate_prescribedContinuation profile
+                            prescribed owner execution
+                            (.submit (.commitment event (owner, eventSlot event)))
                             (by simp)
               | resolve nodeOwner payload binding checks outputEq codeEq =>
                   simp only
@@ -200,10 +209,11 @@ theorem compiledOpponent_invoke_deviationContinuation
                           fun action =>
                             (runtime.application.playerStep owner execution
                               (.privateCommand (.remember event action))).bind fun next =>
-                                next.native.application.deviationContinuation profile focal) = _
-                      exact runtime.playerStep_opponent_remember_deviationContinuation ordered
-                        profile focal owner other execution event ready actor
-                        ((coherent event actor).empty_iff.mp stageEq)
+                                next.native.application.prescribedContinuation profile
+                                  prescribed) = _
+                      exact runtime.playerStep_prescribed_remember_prescribedContinuation
+                        prescribed ordered profile owner prescribedOwner execution event ready
+                        actor ((coherent event actor).empty_iff.mp stageEq)
                   | succ n =>
                       cases n with
                       | zero =>
@@ -217,8 +227,8 @@ theorem compiledOpponent_invoke_deviationContinuation
                               owner).remembered event = some action
                             simpa [State.playerView, actor] using cached
                           rw [viewCached, PMF.pure_bind]
-                          apply runtime.playerStep_private_deviationContinuation_of_cached
-                            profile focal owner execution (.remember event action)
+                          apply runtime.playerStep_private_prescribedContinuation_of_cached
+                            profile prescribed owner execution (.remember event action)
                           intro query selected same
                           injection same with queryEq
                           subst query
@@ -229,12 +239,12 @@ theorem compiledOpponent_invoke_deviationContinuation
                                 execution.native owner).application.remembered event with
                           | none =>
                               rw [PMF.pure_bind]
-                              exact runtime.playerStep_nonprivate_deviationContinuation profile
-                                focal owner execution (.submit (.withhold event)) (by simp)
+                              exact runtime.playerStep_nonprivate_prescribedContinuation profile
+                                prescribed owner execution (.submit (.withhold event)) (by simp)
                           | some action =>
                               rw [PMF.pure_bind]
-                              apply runtime.playerStep_nonprivate_deviationContinuation profile
-                                focal owner execution
+                              apply runtime.playerStep_nonprivate_prescribedContinuation profile
+                                prescribed owner execution
                                 (runtime.resolutionSubmission owner event payload binding checks
                                   outputEq action
                                   (MessageApplication.State.observe runtime.application
@@ -242,11 +252,11 @@ theorem compiledOpponent_invoke_deviationContinuation
                               intro privateCommand
                               simp [resolutionSubmission]
             · rw [PMF.pure_bind]
-              exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner
+              exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed owner
                 execution .wait (by simp)
           · rw [PMF.pure_bind]
-            exact runtime.playerStep_nonprivate_deviationContinuation profile focal owner execution
-              .wait (by simp)
+            exact runtime.playerStep_nonprivate_prescribedContinuation profile prescribed owner
+              execution .wait (by simp)
         · rename_i notOwner
           exact False.elim (notOwner rfl)
 

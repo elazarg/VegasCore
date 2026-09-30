@@ -3,7 +3,7 @@
 import Vegas.Pending.EventPrescribedBlock
 import Vegas.Pending.EventPrescribedAction
 import Vegas.Pending.EventResolutionOrigin
-import Vegas.Pending.EventHonestDeadline
+import Vegas.Pending.EventActivationAge
 
 /-! # Actual prescribed-owner event service -/
 

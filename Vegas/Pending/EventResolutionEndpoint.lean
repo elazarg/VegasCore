@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventDeviationEnvironment
+import Vegas.Pending.EventPrescribedEnvironment
 import Vegas.Pending.EventDeviationLaw
 import Vegas.Pending.EventOpeningObservation
 import Vegas.Pending.EventPrescribedReachability
@@ -27,7 +27,7 @@ theorem environmentPolicyStep_prescribed_resolution_completion
     (runtime : EventGraphRuntime graph) (feasible : runtime.ServiceFeasible)
     (ordered : graph.BarrierOrdered) (focal owner : Player) (other : owner ≠ focal)
     (execution after : runtime.application.PolicyExecution)
-    (assumptions : DeviationEnvironmentState runtime execution focal)
+    (assumptions : PrescribedEnvironmentState runtime execution (· ≠ focal))
     (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -170,7 +170,7 @@ theorem serviceControlStep_prescribed_resolution_completion
     (focal owner : Player) (other : owner ≠ focal)
     (before after : ServiceControl runtime)
     (reachable : ServiceReachable runtime inputs roster reactionRounds players wire order before)
-    (assumptions : DeviationEnvironmentState runtime before.execution focal)
+    (assumptions : PrescribedEnvironmentState runtime before.execution (· ≠ focal))
     (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -305,8 +305,9 @@ theorem ServiceControlPath.prescribed_resolution_output
         .step reachable step
       by_cases middleCompleted :
           event ∈ middle.execution.native.application.config.cut.completed
-      · have assumptions := ServiceReachable.deviationEnvironmentState runtime ordered inputs
-          profile roster reactionRounds players wire order focal before reachable opponentCompiled
+      · have assumptions := ServiceReachable.prescribedEnvironmentState runtime ordered inputs
+          profile roster reactionRounds players wire order (· ≠ focal) before reachable
+          opponentCompiled
           (fun prescribed different =>
             ServiceReachable.ownerActivationAgeOne runtime inputs ordered feasible prescribed
               (profile prescribed) roster reactionRounds players

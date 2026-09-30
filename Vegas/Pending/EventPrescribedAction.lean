@@ -3,7 +3,7 @@
 import Vegas.Pending.EventBindingPolicyService
 import Vegas.Pending.EventCanonicalResources
 import Vegas.Pending.EventDeviationAction
-import Vegas.Pending.EventDeviationPotential
+import Vegas.Pending.EventPrescribedPotential
 import Vegas.Pending.EventResolutionOrigin
 import Vegas.Pending.EventServiceLaw
 import Interaction.MessageApplicationAuthorship
@@ -273,12 +273,12 @@ theorem handle_canonical_commitment_cached_action
   · exact runtime.handle_remembered state next _ accepted
 
 /-- The prescribed cached-action identification immediately conserves the
-focal-erased continuation when the accepted binding belongs to an unchanged
-opponent. -/
-theorem handle_canonical_commitment_deviationContinuation
+prescribed continuation when the accepted binding belongs to a prescribed
+player. -/
+theorem handle_canonical_commitment_prescribedContinuation
     (runtime : EventGraphRuntime graph) (ordered : graph.BarrierOrdered)
-    (profile : graph.BehavioralProfile) (focal owner : Player)
-    (other : owner ≠ focal)
+    (profile : graph.BehavioralProfile) (prescribed : Player → Prop) [DecidablePred prescribed]
+    (owner : Player) (prescribedOwner : prescribed owner)
     (execution : runtime.application.PolicyExecution)
     (authorship : runtime.application.Authorship execution)
     (coherent : BindingPolicyCoherentAll runtime execution owner)
@@ -299,15 +299,15 @@ theorem handle_canonical_commitment_deviationContinuation
     (next : State graph)
     (accepted : runtime.handle execution.native.application
       ⟨(owner, nonce), .commitment event (owner, eventSlot event)⟩ = some next) :
-    next.deviationContinuation profile focal =
-      execution.native.application.deviationContinuation profile focal := by
+    next.prescribedContinuation profile prescribed =
+      execution.native.application.prescribedContinuation profile prescribed := by
   obtain ⟨member, _, memory⟩ := runtime.handle_canonical_commitment_cached_action
     execution owner authorship coherent resources event payloadTy outputEq codeEq view ready
     timely actor action cached nonce pending next accepted
-  apply State.deviationContinuation_eq_of_effective_step execution.native.application next
-    ordered profile focal owner event ready actor action member memory
-  · intro same
-    exact False.elim (other same)
+  apply State.prescribedContinuation_eq_of_effective_step prescribed execution.native.application
+    next ordered profile owner event ready actor action member memory
+  · intro free
+    exact False.elim (free prescribedOwner)
   · intro _
     exact cached
 

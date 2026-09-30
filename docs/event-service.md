@@ -116,8 +116,9 @@ reserved message inclusion. Under fresh candidate and sender-serial entry
 conditions, its configuration law is exactly the normalized graph-policy
 kernel followed by the graph step. The proof uses the real message pool,
 authenticated event-addressed selection, packet handler, and acceptance receipt.
-It covers both successful bindings and failed bindings. Intervening wire and
-reaction instructions are covered by the honest block laws below.
+It covers both successful bindings and failed bindings. The honest outcome
+law below does not compose these block laws; it conserves a potential at every
+service step.
 `runServicePlan_compiled_resolve_includeLatest` proves the matching resolution
 law under typed accepted-handle provenance and a fresh sender serial.
 
@@ -165,45 +166,37 @@ each relative deadline is at least two ticks. Source compilation supplies the
 graph certificate, so `eventPendingGame_honest_law` gives the full-source result
 without imposing a source-language fragment.
 
-The proof carries `HonestBoundary` between event blocks. Its pending pool is
-empty; every unfinished event has an empty cache, no previous staging or
-submission, no accepted output, and a fresh unused canonical handle. Completed
-events retain their actual histories and cached actions.
+The proof conserves one potential at every service step rather than composing
+event blocks. `State.prescribedContinuation` is the graph's canonical
+continuation from the current configuration, using a cached action wherever a
+prescribed player has already sampled one. Honest play is the case in which
+every player is prescribed. The [deviation proof](event-pending-deviation.md)
+uses the same potential with every player except the deviator prescribed, so
+both results are instances of one induction,
+`runServiceControlSteps_reached_prescribedContinuation`.
 
-For a ready binding or resolution, the three owner invocations draw, stage, and
-submit the prescribed action. During the reaction slots all prescribed players
-wait. The wire can still deliver or include the packet, and these actions retain
-their histories and receipts. The singleton-packet invariant shows that either
-the packet is still pending or it has already been accepted exactly once.
-Reserved inclusion flushes the former case and leaves the latter unchanged.
-Both cases implement the graph kernel and restore the boundary. A ready sample
-executes its original chance kernel; an unavailable event block stutters.
+Each step preserves the potential in expectation. A prescribed owner's first
+private sample is a draw from its normalized policy at a ready cut, and the
+barrier order makes that draw independent of when it happens
+(`playerStep_prescribed_remember_prescribedContinuation`). Staging and
+submission leave the configuration unchanged. An accepted packet completes its
+event with the cached action, by owner-local policy coherence and binding
+provenance. Chance executes its original kernel. Expiry is inert: owner-local
+activation ages (`ServiceReachable.ownerActivationAgeOne`) keep every
+prescribed event within a deadline of at least two ticks. No step needs an
+empty pending pool or a fresh cache at an event boundary.
 
-`ready_event_block` packages these configuration and boundary laws. At a clean
-boundary, `State.continuationLaw` equals the graph's canonical continuation:
-remembered actions at completed events cannot affect future execution.
-The graph's barrier-order commutation theorem shows that any ready event kernel
-preserves this distribution-valued potential. `runEventSweep` composes the
-actual block laws, including the adaptively chosen event order.
-
-At epoch entry, each live activation is at most one tick old. Every event
-already ready then completes during the sweep. Any activation left unfinished
-was created during that sweep, so after the tick it is only one tick old.
-Deadlines of at least two ticks make the expiry sweep inert. This establishes
-both deadline protection and the next epoch's age invariant.
-
-`serviceEpoch_honest` and `runService_honest` conserve the continuation law through
-the concrete service. At its proved completion horizon, the continuation is a
-point mass at the terminal semantic state. Projecting to the store yields the
-graph-to-native law; composing with the source-to-graph theorem gives
-`Vegas.Paper.source_event_pending_honest_law`. Equality concerns semantic outcomes,
-not chronological traces.
+At the proved completion horizon, the continuation is a point mass at the
+terminal semantic state. Projecting to the store yields the graph-to-native
+law; composing with the source-to-graph theorem gives
+`Vegas.Paper.source_event_pending_honest_law`. Equality concerns semantic
+outcomes, not chronological traces.
 
 ## Arbitrary unilateral deviations
 
-An arbitrary deviator can leave pending packets and staged candidates behind;
-the honest-boundary invariant is therefore not a unilateral-deviation theorem.
-The native binding-provenance and completion results hold under arbitrary
+The deviation theorem conserves the same potential, now with the deviator's
+caches left out: its graph policy is matched at each of its effective
+completions instead. The native binding-provenance and completion results hold under arbitrary
 policies. The setup-wide deviation theorem uses owner-local coherence and
 deadline protection for unchanged players. It translates every native
 unilateral policy into a finite mixture of canonical graph policies, with one

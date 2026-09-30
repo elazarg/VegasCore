@@ -2,7 +2,7 @@
 
 import Vegas.Pending.EventServiceCompletion
 
-/-! # Deadline protection for honest event service epochs -/
+/-! # Activation ages and deadline protection across service epochs -/
 
 noncomputable section
 

@@ -152,7 +152,10 @@ event. The other instruction cases follow from actual native replay.
 
 The continuation memoizes only unchanged opponents' samples. Focal native
 memory is arbitrary implementation state and is erased from this memo table;
-the extracted graph policy governs that coordinate instead.
+the extracted graph policy governs that coordinate instead. In Lean this is
+`State.prescribedContinuation` with every player except the deviator
+prescribed. With every player prescribed, the same induction proves the honest
+outcome law.
 
 For a native state `s`, write `C(s)` for the canonical graph outcome law with
 that filtered table. The local equations are:
@@ -168,13 +171,15 @@ that filtered table. The local equations are:
   opponent events do not expire; focal expiry contributes its effective failure
   action.
 
-`EventDeviationPotential` checks the focal command, prescribed sample, cached
-step, chance, grant, and clock equations. `EventDeviationInvocation` checks
-actual player invocations, including partial staging. `EventDeviationEnvironment`
-checks actual inclusion, delivery, sampling, clock, and expiry instructions
-under local action matching and protected-opponent age. `EventDeviationLaw`
-checks the whole-service induction and finite-mixture averaging using
-focal-action functionality and the unchanged-owner activation-age bound.
+`EventPrescribedPotential` checks the free-player command, prescribed sample,
+cached step, chance, grant, and clock equations. `EventPrescribedInvocation`
+checks actual player invocations, including partial staging.
+`EventPrescribedEnvironment` checks actual inclusion, delivery, sampling, clock,
+and expiry instructions under local action matching and protected-owner age.
+`EventPrescribedLaw` checks the whole-service induction for any set of
+prescribed players. `EventDeviationLaw` instantiates it with every player but
+the focal one, using focal-action functionality and the unchanged-owner
+activation-age bound, and averages over the finite mixture.
 `EventGraphRuntime.exists_deviation_mixture_store_law` discharges both with the
 locality and service-protection theorems. At the proved terminal horizon, `C`
 is the point mass at the terminal semantic state, yielding the terminal store law.

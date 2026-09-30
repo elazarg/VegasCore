@@ -1,8 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.EventHonestEpoch
+import Vegas.Pending.EventPrescribedLaw
+import Vegas.Pending.EventPrescribedReachability
 
-/-! # Honest outcome laws of the asynchronous pending-message service -/
+/-! # Honest outcome laws of the asynchronous pending-message service
+
+Honest play is the case of the prescribed-continuation argument in which every
+player is prescribed, so no player's graph policy has to be matched at an
+effective completion.
+-/
 
 noncomputable section
 
@@ -11,79 +17,8 @@ namespace Vegas.EventGraphRuntime
 open GameTheory.Math.Probability Interaction Vegas.EventGraph
 
 variable {Player : Type} [DecidableEq Player]
-variable {L : IExpr} [R : IExpr.ResultTypes L]
+variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
-
-/-- Concrete adaptive epochs preserve both their boundary conditions and the
-future semantic law. Histories and pending delivery remain in the actual run. -/
-theorem runService_honest (runtime : EventGraphRuntime graph) (inputs : graph.Inputs)
-    (ordered : graph.BarrierOrdered) (feasible : runtime.ServiceFeasible)
-    (profile : graph.BehavioralProfile) (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (count : Nat) (execution : runtime.application.PolicyExecution)
-    (boundary : HonestBoundary runtime inputs execution)
-    (age : execution.native.application.ActivationAgeOne) :
-    (runtime.runService roster reactionRounds (runtime.compileProfile profile) wire order
-        count execution).bind (fun next => next.native.application.continuationLaw profile) =
-      execution.native.application.continuationLaw profile ∧
-    ∀ next ∈ (runtime.runService roster reactionRounds (runtime.compileProfile profile)
-        wire order count execution).support,
-      HonestBoundary runtime inputs next ∧ next.native.application.ActivationAgeOne := by
-  induction count generalizing execution with
-  | zero =>
-      simp only [runService, PMF.pure_bind, PMF.mem_support_pure_iff _ _]
-      exact ⟨trivial, fun next same => same ▸ ⟨boundary, age⟩⟩
-  | succ count ih =>
-      have epoch := runtime.serviceEpoch_honest inputs ordered feasible profile roster
-        reactionRounds wire order execution boundary age
-      constructor
-      · rw [runService, PMF.bind_bind]
-        calc
-          _ = (runtime.serviceEpoch roster reactionRounds (runtime.compileProfile profile)
-                wire order execution).bind
-                  (fun middle => middle.native.application.continuationLaw profile) := by
-              apply bind_congr_on_support _
-              intro middle member
-              exact (ih middle (epoch.2 middle member).1 (epoch.2 middle member).2).1
-          _ = _ := epoch.1
-      · intro next member
-        simp only [runService, PMF.support_bind, Set.mem_iUnion] at member
-        obtain ⟨middle, middleMem, tailMem⟩ := member
-        exact (ih middle (epoch.2 middle middleMem).1 (epoch.2 middle middleMem).2).2 next tailMem
-
-/-- At the concrete service horizon, continuation conservation becomes equality
-of complete terminal semantic laws. No chronological trace equality is asserted. -/
-theorem runService_honest_semantic_law (runtime : EventGraphRuntime graph)
-    (ordered : graph.BarrierOrdered) (feasible : runtime.ServiceFeasible)
-    (inputs : graph.Inputs) (profile : graph.BehavioralProfile)
-    (roster : List Player) (reactionRounds : Nat)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy) :
-    (runtime.runService roster reactionRounds (runtime.compileProfile profile) wire order
-      runtime.serviceEpochs
-      (MessageApplication.PolicyExecution.initial runtime.application
-        (MessageApplication.State.initial runtime.application (State.initial inputs)))).map
-        (fun next => graph.semanticKey next.native.application.config) =
-      (graph.runPolicies graph.canonicalScheduler (graph.normalizeProfile profile) inputs).map
-        graph.semanticKey := by
-  let initial := MessageApplication.PolicyExecution.initial runtime.application
-    (MessageApplication.State.initial runtime.application (State.initial inputs))
-  have boundary := runtime.initial_honestBoundary inputs
-  have conserved := (runtime.runService_honest inputs ordered feasible profile roster reactionRounds
-    wire order runtime.serviceEpochs initial boundary (State.initial_activationAgeOne inputs)).1
-  calc
-    _ = (runtime.runService roster reactionRounds (runtime.compileProfile profile) wire order
-          runtime.serviceEpochs initial).bind
-            (fun next => next.native.application.continuationLaw profile) := by
-      rw [← PMF.bind_pure_comp, Function.comp_def]
-      apply bind_congr_on_support _
-      intro next member
-      have terminal := runtime.runService_terminal inputs roster reactionRounds
-        (runtime.compileProfile profile) wire order initial next boundary.invariant member
-      exact (State.continuationLaw_terminal next.native.application profile terminal).symm
-    _ = initial.native.application.continuationLaw profile := conserved
-    _ = graph.canonicalContinuation profile (Config.initial inputs) :=
-      boundary.continuationLaw_eq runtime inputs profile initial
-    _ = _ := graph.canonicalContinuation_initial profile inputs
 
 /-- One prescribed profile serves every draw of private setup. The complete
 typed terminal-store law agrees with canonical normalized graph execution. -/
@@ -97,16 +32,27 @@ theorem servicedEventGame_honest_store_law (runtime : EventGraphRuntime graph)
       inputs.bind fun input =>
         (graph.runPolicies graph.canonicalScheduler (graph.normalizeProfile profile) input).map
           (fun config => config.store) := by
+  let players := runtime.compileProfile profile
+  have compiled : ∀ owner, (fun _ => True) owner →
+      players owner = runtime.compilePlayerPolicy owner (profile owner) := fun _ _ => rfl
+  have selected : FreeActionsSelected runtime inputs roster reactionRounds players wire order
+      profile (fun _ => True) := by
+    intro _ _ _ _ _ _ _ _ _ _ free
+    exact (free trivial).elim
+  have environmentState : ∀ control,
+      ServiceReachable runtime inputs roster reactionRounds players wire order control →
+      PrescribedEnvironmentState runtime control.execution (fun _ => True) := by
+    intro control reachable
+    refine reachable.prescribedEnvironmentState runtime ordered inputs profile roster
+      reactionRounds players wire order (fun _ => True) control compiled ?_
+    intro owner _
+    exact ServiceReachable.ownerActivationAgeOne runtime inputs ordered feasible owner
+      (profile owner) roster reactionRounds players rfl wire order control reachable
   change (inputs.bind _).map _ = _
   rw [PMF.map_bind]
   apply bind_congr_on_support _
-  intro input _
-  have semanticLaw := runtime.runService_honest_semantic_law ordered feasible input profile
-    roster reactionRounds wire order
-  have projected := congrArg (fun measure : PMF graph.SemanticKey =>
-    measure.map fun key => key.2.1) semanticLaw
-  simp only [PMF.map_comp, Function.comp_def, semanticKey, storeRecall] at projected
-  convert projected using 1
-  rfl
+  intro input inputMem
+  exact runtime.runService_store_law feasible ordered inputs input inputMem profile roster
+    reactionRounds players wire order (fun _ => True) selected compiled environmentState
 
 end Vegas.EventGraphRuntime
