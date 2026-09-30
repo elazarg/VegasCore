@@ -97,7 +97,7 @@ theorem binding_phase_stopped_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (granted : repaired.application.serviceGrant = some event)
+    (ready : repaired.application.config.cut.Ready event)
     (unsent : (runtime setup).eventRecorded leaks (repaired.recall owner) event = false)
     (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -203,11 +203,10 @@ theorem binding_phase_stopped_coupling
       obtain ⟨observed, _, equal⟩ := PMF.support_map .. ▸ sampled
       rw [← equal]
       rfl
-    have nextGrant : next.2.1.application.serviceGrant = some event :=
-      (congrArg PublicView.serviceGrant paired.publicView).symm.trans
-        ((congrArg PublicView.serviceGrant currentPublic).trans
-          ((congrArg PublicView.serviceGrant priorPublic).trans
-            ((congrArg PublicView.serviceGrant frame.publicView).trans granted)))
+    have nextReady : next.2.1.application.config.cut.Ready event :=
+      ready_of_publicView_eq paired.publicView.symm
+        (ready_of_publicView_eq currentPublic
+          (ready_of_publicView_eq priorPublic (ready_of_publicView_eq frame.publicView ready)))
     have currentPosition : next.1.environmentRecall.length = before.length + foreign.length + 1 :=
       by
         have priorPosition := (runtime setup).runInteractionPlan_recall leaks players network
@@ -221,7 +220,7 @@ theorem binding_phase_stopped_coupling
       network source target agrees owner policy available reference event payload outputEq
         codeEq node rank prior next.1 next.2.1 sampled next.2.2 paired nextTrace nextStarted
           recalled
-        nextGrant nextUnsent foreign rest roster
+        nextReady nextUnsent foreign rest roster
         (by rw [currentPosition, phase])
         (before ++ foreign.map ServiceInstruction.player ++ [.player owner]) after
         (by simpa only [suffix, ending, List.append_assoc, List.singleton_append,

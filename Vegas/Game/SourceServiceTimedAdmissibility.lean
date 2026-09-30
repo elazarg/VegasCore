@@ -107,7 +107,7 @@ private theorem recalled_binding_not_selected
     (entry : (application setup leaks).PlayerEntry)
     (later : List (application setup leaks).PlayerEntry)
     (recalled : control.execution.recall who = earlier ++ entry :: later)
-    (granted : entry.beforeView.application.publicView.serviceGrant = some event)
+    (readyEntry : entry.beforeView.application.publicView.EventReady event)
     (selected : entry.action ∈ (sourceServiceOpportunity setup leaks profile who event
       earlier entry.beforeView).support) : False := by
   let app := application setup leaks
@@ -157,12 +157,16 @@ private theorem recalled_binding_not_selected
         exact Bool.or_eq_false_iff.mp unsent |>.1
       have response := sourceServiceOpportunity_at_history setup leaks bounds values initialValues
         capacity rosters opportunities network profile permitted who previous traced acting event
-        (sourceService_ownTurn_of_grant setup leaks bounds values capacity rosters opportunities
-          network who previous traced acting event
-          (by
-            change (previous.execution.observe app who).application.publicView.serviceGrant = _
+        (by
+          obtain ⟨served, previousSole, _⟩ := sourceService_decision_sole setup leaks bounds values
+            capacity rosters opportunities network who previous traced acting
+          have eventReady : previous.execution.application.publicView.EventReady event := by
+            change (previous.execution.observe app who).application.publicView.EventReady event
             rw [viewEq]
-            exact granted) owned) owned previousUnsent entry.action
+            exact readyEntry
+          cases previousSole.2 event eventReady
+          exact PublicView.ownTurn?_of_ownTurn _ who _ (previousSole.ownTurn owned))
+        owned previousUnsent entry.action
         (by
           change entry.action ∈ (sourceServiceOpportunity setup leaks profile who event
             (previous.execution.recall who) (previous.execution.observe app who)).support
@@ -193,7 +197,7 @@ theorem sourceServiceTimedMixture_binding_future
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some who)
     (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
@@ -210,11 +214,11 @@ theorem sourceServiceTimedMixture_binding_future
   let family := sourceServiceTimedFamily setup leaks rosters profile who event
   let offset := rosterOffset setup rosters who event
   have witnessSupported := sourceServiceTimedPolicy_future_supported setup leaks bounds values
-    capacity rosters opportunities network profile who control trace active event granted owned
+    capacity rosters opportunities network profile who control trace active event ready owned
       unsent timing witness positive future
   obtain ⟨past, suffix, recalled, count, legal⟩ := sourceService_unsubmitted_recall setup leaks
     bounds values capacity rosters opportunities network who control trace active
-      event granted owned unsent
+      event ready owned unsent
   intro selected selectedSupported
   by_contra notFuture
   have passed : offset + selected.val < (control.execution.recall who).length :=
@@ -287,7 +291,7 @@ theorem sourceServiceTimedMixture_binding_last
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some who)
     (payload : L.Ty) (binding : (graph setup).outputLayout event = .binding who payload)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
@@ -310,7 +314,7 @@ theorem sourceServiceTimedMixture_binding_last
     dsimp only [offset, current]
     omega
   have future := sourceServiceTimedMixture_binding_future setup leaks bounds values initialValues
-    capacity rosters opportunities network profile permitted who control trace active event granted
+    capacity rosters opportunities network profile permitted who control trace active event ready
       owned payload binding unsent timing current (full current) currentTime.ge
   have selectedNow : ∀ selected ∈ ((app.policyMixture timing family).posterior
       (control.execution.recall who)).support,
@@ -371,8 +375,9 @@ theorem sourceServiceTimedPolicy_admissible
       simp only [sourceServiceTimedPolicy, serving] at supported
       exact replay_covered supported (by rintro ⟨event, _, same, _⟩; simp [serving] at same)
   | some event =>
-      have grant := sourceService_grant_of_ownTurn setup leaks bounds values capacity rosters
-        opportunities network who control trace active event serving
+      have ready : control.execution.application.config.cut.Ready event :=
+        (control.execution.application.publicView_eventReady event).mp
+          (PublicView.ownTurn?_spec _ who event serving).1
       by_cases owned : (graph setup).actor? event = some who
       · by_cases recorded : (runtime setup).eventRecorded leaks past event = true
         · rw [sourceServiceTimedPolicy_recorded setup leaks rosters timing profile who past view
@@ -391,7 +396,7 @@ theorem sourceServiceTimedPolicy_admissible
             subst other
             have physical := sourceServiceTimedMixture_binding_last setup leaks bounds values
               initialValues capacity rosters opportunities network profile permitted who control
-              trace active event grant owned payload binding unsent (timing event who owned)
+              trace active event ready owned payload binding unsent (timing event who owned)
               (full event who owned) last
             change response ∈ (((app.policyMixture (timing event who owned)
               (sourceServiceTimedFamily setup leaks rosters profile who event)).policy

@@ -55,7 +55,6 @@ theorem active_nonbinding_block_stopped_coupling
     (leftBinding : original.application.BindingInvariant)
     (event : (graph setup).EventId)
     (notBinding : ∀ payload, (graph setup).outputLayout event ≠ .binding owner payload)
-    (granted : repaired.application.serviceGrant = some event)
     (ready : original.application.config.cut.Ready event)
     (remaining : Nat) (visits : List Player) (ticks : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -102,8 +101,8 @@ theorem active_nonbinding_block_stopped_coupling
   let rank := remaining + visits.length + (ticks + 2)
   have length : suffix.length = visits.length + (ticks + 2) := by
     cases actual : (graph setup).actor? event <;> simp [suffix, ending, actual]
-  have originalGrant : original.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant frame.publicView).trans granted
+  have repairedReady : repaired.application.config.cut.Ready event :=
+    ready_of_publicView_eq frame.publicView.symm ready
   have existsResponse :
       ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
         coupling.map Prod.fst = app.invoke players owner original ∧
@@ -141,7 +140,7 @@ theorem active_nonbinding_block_stopped_coupling
           exact resolution_history_response_coupling setup leaks bounds values capacity rosters
             opportunities network source target agrees owner policy available reference
             memory prior original repaired sampled frame started leftRecall sound leftBinding
-            event payload binding checks outputEq codeEq node granted rank trace
+            event payload binding checks outputEq codeEq node repairedReady rank trace
     · exact off_turn_history_response_coupling setup leaks bounds rosters network source target
         agrees owner policy available reference memory prior original repaired sampled frame
         started leftRecall (idle_of_ready setup original.application ready owned) rank trace
@@ -214,10 +213,6 @@ theorem active_nonbinding_block_stopped_coupling
         exact ((runtime setup).reactiveBindingInvariant leaks).respond original owner response
           leftBinding
       have unchanged := (runtime setup).reactive_respond_application leaks original owner response
-      have nextGrant : next.2.1.application.serviceGrant = some event := by
-        rw [← same] at paired
-        exact (congrArg PublicView.serviceGrant paired.publicView).symm.trans
-          ((congrArg PublicView.serviceGrant unchanged.2).trans originalGrant)
       have nextReady : next.1.application.config.cut.Ready event := by
         rw [← same, unchanged.1]
         exact ready
@@ -273,7 +268,7 @@ theorem active_nonbinding_block_stopped_coupling
             setup leaks bounds values capacity rosters opportunities network source target
             agrees owner policy available reference next.2.2 next.1 next.2.1 paired nextMemory
             nextStarted nextRecall nextSound nextBinding event actor payload binding checks
-            outputEq codeEq node nextGrant nextRepairedReady remaining visits ticks nextTrace
+            outputEq codeEq node nextRepairedReady remaining visits ticks nextTrace
             before after (by simpa only [actual] using split) nextPosition
           exact ⟨coupling, by simpa only [suffix, ending, actual] using leftLaw,
             by simpa only [suffix, ending, actual] using rightLaw, connected⟩

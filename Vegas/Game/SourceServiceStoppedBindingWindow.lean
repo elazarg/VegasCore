@@ -73,7 +73,7 @@ theorem binding_window_stopped_coupling
         (some ⟨remaining, some owner, repaired⟩))
     (started : reference.length ≤ (repaired.recall owner).length)
     (recalled : original.InputRecall (application setup leaks))
-    (granted : repaired.application.serviceGrant = some event)
+    (ready : repaired.application.config.cut.Ready event)
     (unsent : (runtime setup).eventRecorded leaks (repaired.recall owner) event = false)
     (visited visits : List Player) (roster : rosters event = visited ++ owner :: visits)
     (slot : original.environmentRecall.length =
@@ -180,7 +180,7 @@ theorem binding_window_stopped_coupling
     · obtain ⟨coupling, first, second, related⟩ := final_binding_history_coupling setup leaks
         bounds values capacity rosters opportunities network players owner remaining
           prior original repaired sampled memory frame trace reference started recalled event
-          payload outputEq codeEq node granted unsent (covered _ _) before after visits last
+          payload outputEq codeEq node ready unsent (covered _ _) before after visits last
           (by simpa only [List.append_assoc, List.singleton_append, List.cons_append,
             List.nil_append] using split)
           position
@@ -199,13 +199,13 @@ theorem binding_window_stopped_coupling
           (repaired.observe app owner) := by
         rw [sourceService_bindingRequired_iff_no_later_owner setup leaks bounds values capacity
           rosters opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl
-            event granted payload outputEq owned unsent visited visits roster
+            event ready payload outputEq owned unsent visited visits roster
             (by rw [← frame.service]; exact slot)]
         exact last
       obtain ⟨ready, timely, _, rightRecall, _, serials, firstResources⟩ :=
         sourceService_binding_decision_resources setup leaks bounds values capacity rosters
           opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl
-            event granted owner payload outputEq codeEq node owned
+            event ready owner payload outputEq codeEq node owned
       obtain ⟨small, selected, fresh, unused, vacant, accounted, published⟩ := firstResources unsent
       have counted : original.application.publicView.bindingCount owner =
           repaired.application.publicView.bindingCount owner :=
@@ -213,10 +213,6 @@ theorem binding_window_stopped_coupling
       have originalReady : original.application.config.cut.Ready event := by
         rw [← State.publicView_eventReady, frame.publicView, State.publicView_eventReady]
         exact ready
-      have originalGrant : original.application.serviceGrant = some event := by
-        rw [show original.application.serviceGrant = repaired.application.serviceGrant from
-          congrArg PublicView.serviceGrant frame.publicView]
-        exact granted
       have originalFresh : original.application.candidates.lookup
           (owner, .prepared (original.application.publicView.bindingCount owner)) = .fresh := by
         rw [counted]
@@ -312,7 +308,7 @@ theorem binding_window_stopped_coupling
                   omega
                 rw [same]
                 exact trace) recalled rightRecall response replay optional
-              event granted unsent before
+              event ready unsent before
               (rest.map ServiceInstruction.player ++ tail ++ after)
               (by simpa only [tail, visitsEq, List.map_append, List.map_cons, List.append_assoc,
                 List.cons_append, List.nil_append] using split) position
@@ -334,7 +330,7 @@ theorem binding_window_stopped_coupling
                     (fun resumed => strategy.runJoint owner players scheduler restPlan.length
                       resumed.1 resumed.2) ∧
                 ∀ final ∈ coupling.support, good final := by
-            obtain ⟨paired, memoryEq, ⟨nextTrace⟩, nextRecall, nextGrant, nextUnsent,
+            obtain ⟨paired, memoryEq, ⟨nextTrace⟩, nextRecall, nextReady, nextUnsent,
                 predecessor, reached, activated⟩ := related next chosen
             have advanced := (runtime setup).runInteractionPlan_recall leaks players network
               (foreign.map ServiceInstruction.player) (original.respond app owner response)
@@ -377,7 +373,7 @@ theorem binding_window_stopped_coupling
               omega
             obtain ⟨coupling, left, right, good⟩ := ih rest.length shorter
               (remaining - (foreign.length + 1)) predecessor next.1 next.2.1 activated next.2.2
-              paired nextTrace nextStarted nextRecall nextGrant nextUnsent nextVisited rest
+              paired nextTrace nextStarted nextRecall nextReady nextUnsent nextVisited rest
               newRoster newSlot nextBefore newSplit newPosition newEnough rfl
             refine ⟨coupling, left, ?_, good⟩
             rw [restLength]
@@ -481,7 +477,7 @@ theorem binding_window_stopped_coupling
             bounds rosters network players owner event payload outputEq codeEq node
               (original.application.publicView.bindingCount owner) opening memory original repaired
               frame reference started recalled rightRecall originalSerials countedSerial
-              originalGrant originalFresh originalReady originalTimely originalVacant originalUnused
+              originalFresh originalReady originalTimely originalVacant originalUnused
               originalPublished covered before after visits ((runtime setup).deadline event)
               split position
           refine ⟨coupling, first, ?_, ?_⟩

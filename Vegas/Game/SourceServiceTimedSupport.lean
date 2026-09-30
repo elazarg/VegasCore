@@ -30,7 +30,7 @@ private theorem replay_recall
     (network : (runtime setup).NetworkPolicy leaks) (owner : Player)
     (event : (graph setup).EventId) (visits : List Player)
     (initial final : (application setup leaks).Execution)
-    (granted : initial.application.serviceGrant = some event)
+    (ready : initial.application.publicView.EventReady event)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
       (fun _ => (application setup leaks).replayPolicy) network
         (visits.map ServiceInstruction.player) initial).support) :
@@ -38,7 +38,7 @@ private theorem replay_recall
       ∀ before entry after, suffix = before ++ entry :: after →
         entry.action ∈ ((application setup leaks).replayPolicy
           (initial.recall owner ++ before) entry.beforeView).support ∧
-        entry.beforeView.application.publicView.serviceGrant = some event := by
+        entry.beforeView.application.publicView.EventReady event := by
   let app := application setup leaks
   induction visits generalizing initial with
   | nil =>
@@ -53,12 +53,11 @@ private theorem replay_recall
       obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app actor sample
-      have nextGrant : (activated.respond app actor response).application.serviceGrant =
-          some event := (congrArg PublicView.serviceGrant
-            ((runtime setup).reactive_respond_application leaks activated actor response).2).trans
-              granted
+      have nextReady : (activated.respond app actor response).application.publicView.EventReady
+          event :=
+        ((runtime setup).reactive_respond_application leaks activated actor response).2 ▸ ready
       obtain ⟨suffix, recalled, legal⟩ :=
-        ih (activated.respond app actor response) nextGrant reached
+        ih (activated.respond app actor response) nextReady reached
       by_cases same : actor = owner
       · subst actor
         obtain ⟨entry, entryRecall, entryView, entryAction⟩ :=
@@ -72,7 +71,7 @@ private theorem replay_recall
               simp only [List.nil_append, List.cons.injEq] at split
               rcases split with ⟨rfl, rfl⟩
               rw [List.append_nil, entryView, entryAction]
-              exact ⟨chosen, granted⟩
+              exact ⟨chosen, ready⟩
           | cons earlier before =>
               simp only [List.cons_append, List.cons.injEq] at split
               rcases split with ⟨rfl, split⟩
@@ -86,7 +85,7 @@ private theorem replay_recall
 variable [Fintype Player]
 
 /-- The current unsent phase contributes only genuinely supported replay
-responses to own recall, at their actual local views and current grant. -/
+responses to own recall, at actual local views that show the event ready. -/
 theorem sourceService_unsubmitted_recall
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -100,7 +99,7 @@ theorem sourceService_unsubmitted_recall
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some owner)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall owner) event = false)
     : ∃ past suffix, control.execution.recall owner = past ++ suffix ∧
@@ -108,16 +107,16 @@ theorem sourceService_unsubmitted_recall
       ∀ before entry after, suffix = before ++ entry :: after →
         entry.action ∈ ((application setup leaks).replayPolicy
           (past ++ before) entry.beforeView).support ∧
-        entry.beforeView.application.publicView.serviceGrant = some event := by
+        entry.beforeView.application.publicView.EventReady event := by
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨selectedEvent, position, initial, _, _, Γ, names, program, programProfile, source,
-      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, sole, reached,
       _, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network (failureProfile setup.program) owner control trace active
-  have eventEq : selectedEvent = event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
+  have eventEq : selectedEvent = event :=
+    (sole.2 event ((control.execution.application.publicView_eventReady event).mpr ready)).symm
   subst selectedEvent
   have priorUnsent : (runtime setup).eventRecorded leaks (prior.recall owner) event = false := by
     rw [sampled] at unsent
@@ -130,7 +129,8 @@ theorem sourceService_unsubmitted_recall
       (soleReady_of_ready setup boundary.application (checkpoint.ready event rfl)) reached
       priorUnsent
   obtain ⟨suffix, recalled, legal⟩ := replay_recall setup leaks network owner event
-    ((rosters event).take position) boundary prior grant replay
+    ((rosters event).take position) boundary prior
+    ((boundary.application.publicView_eventReady event).mpr (checkpoint.ready event rfl)) replay
   refine ⟨boundary.recall owner, suffix, ?_, checkpoint.response_offset event rfl owner, legal⟩
   rw [sampled]
   exact recalled
@@ -151,7 +151,7 @@ theorem sourceServiceTimedPolicy_future_supported
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some owner)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall owner) event = false)
     (timing : PMF (Fin ((rosters event).count owner)))
@@ -165,7 +165,7 @@ theorem sourceServiceTimedPolicy_future_supported
   let family := sourceServiceTimedFamily setup leaks rosters profile owner event
   obtain ⟨past, suffix, recalled, offset, legal⟩ := sourceService_unsubmitted_recall setup leaks
     bounds values capacity rosters opportunities network owner control trace active
-    event granted owned unsent
+    event ready owned unsent
   have dormant := app.policyMixture_posterior_dormant timing family app.replayPolicy
     (rosterOffset setup rosters owner event)
     (fun slot past view earlier => app.scheduledPolicy_before _ _ _ _ past view earlier)

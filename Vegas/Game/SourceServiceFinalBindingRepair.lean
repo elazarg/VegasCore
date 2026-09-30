@@ -49,7 +49,7 @@ theorem final_binding_history_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (granted : repaired.application.serviceGrant = some event)
+    (ready : repaired.application.config.cut.Ready event)
     (unsent : (runtime setup).eventRecorded leaks (repaired.recall owner) event = false)
     (available : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (application setup leaks) owner)).support,
@@ -88,7 +88,7 @@ theorem final_binding_history_coupling
   obtain ⟨ready, timely, _, _, _, serials, beforeFirst⟩ :=
     sourceService_binding_decision_resources setup leaks bounds values capacity rosters
       opportunities network owner ⟨remaining, some owner, repaired⟩ trace rfl event
-        granted owner payload outputEq codeEq node owned
+        ready owner payload outputEq codeEq node owned
   obtain ⟨small, selected, fresh, unused, vacant, _, published⟩ := beforeFirst unsent
   obtain ⟨_, _, initial, _, _, Γ, names, residual, residualProfile, source, refs, embedding,
       refsBefore, _, _, _, boundary, _, _, checkpoint, _, _, _, _, _, publicEq, _, _⟩ :=

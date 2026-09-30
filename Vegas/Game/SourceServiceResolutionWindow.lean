@@ -84,7 +84,7 @@ theorem resolution_roster_stopped_coupling
     (leftRecall : original.InputRecall (application setup leaks))
     (sound : ((runtime setup).packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
-    (granted : repaired.application.serviceGrant = some event)
+    (ready : repaired.application.config.cut.Ready event)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining + visits.length, none, repaired⟩))
@@ -165,7 +165,7 @@ theorem resolution_roster_stopped_coupling
           exact resolution_history_activation_coupling setup leaks bounds values capacity rosters
             opportunities network source target agrees owner policy available reference
               memory original repaired frame started leftRecall sound leftBinding event payload
-                binding checks outputEq codeEq node granted (remaining + rest.length)
+                binding checks outputEq codeEq node ready (remaining + rest.length)
                   currentTrace selected
         · obtain ⟨physical, first, second, related⟩ :=
             frame.foreign_activation_coupling players actor same
@@ -258,16 +258,15 @@ theorem resolution_roster_stopped_coupling
               interactionInstruction, PMF.pure_bind, PMF.bind_pure] using reached
           have publicEq := ((runtime setup).player_window_application leaks players network [actor]
             original next.1 single).2
-          have nextGrant : next.2.1.application.serviceGrant = some event :=
-            (congrArg PublicView.serviceGrant paired.publicView).symm.trans
-              ((congrArg PublicView.serviceGrant publicEq).trans
-                ((congrArg PublicView.serviceGrant frame.publicView).trans granted))
+          have nextReady : next.2.1.application.config.cut.Ready event :=
+            ready_of_publicView_eq paired.publicView.symm
+              (ready_of_publicView_eq publicEq (ready_of_publicView_eq frame.publicView ready))
           have nextPosition : next.1.environmentRecall.length =
               (before ++ [ServiceInstruction.player actor]).length := by
             rw [app.dispatch_environmentRecall players (.activate actor) original next.1 reached]
             simp only [List.length_append, List.length_singleton, position]
           obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih next.2.2 next.1 next.2.1
-            paired begun recalled certified valid nextGrant nextTrace
+            paired begun recalled certified valid nextReady nextTrace
               (before ++ [ServiceInstruction.player actor])
               (by simpa only [List.map_cons, List.append_assoc, List.singleton_append] using split)
                 nextPosition

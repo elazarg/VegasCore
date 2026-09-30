@@ -172,7 +172,6 @@ theorem event_block_stopped_coupling
         none, advance repaired⟩) := by
     simpa only [total, Nat.add_assoc] using nextTrace
   have nextStarted : reference.length ≤ ((advance repaired).recall owner).length := started
-  have granted : (advance repaired).application.serviceGrant = some event := rfl
   have existsBody : ∃ coupling : PMF
       (app.Execution × app.Execution × BindingMemory (runtime setup) leaks),
       coupling.map Prod.fst = (runtime setup).runInteractionPlan leaks players network
@@ -228,7 +227,7 @@ theorem event_block_stopped_coupling
         obtain ⟨coupling, first, second, related⟩ := binding_phase_stopped_coupling setup leaks
           bounds values capacity rosters opportunities network source target agrees owner
           policy available reference memory (advance original) (advance repaired) paired
-          nextStarted leftNextRecall event payload outputEq codeEq node granted
+          nextStarted leftNextRecall event payload outputEq codeEq node repairedReady
           (boundary.unsent owner event (Nat.le_refl _)) remaining phaseTrace
           (before ++ [.grant event]) after
           (by simpa only [body, owned, deadline, List.append_assoc] using nextSplit) nextPosition
@@ -261,7 +260,7 @@ theorem event_block_stopped_coupling
         bounds values capacity rosters opportunities network source target agrees owner
         policy available reference memory (advance original) (advance repaired) paired onlyBindings
         nextStarted leftNextRecall leftSound leftNextBinding event actor payload binding checks
-        outputEq codeEq node granted repairedReady remaining (rosters event)
+        outputEq codeEq node repairedReady remaining (rosters event)
         (event.val + 1) phaseTrace
         (before ++ [.grant event]) after
         (by simpa only [body, owned, List.append_assoc] using nextSplit) nextPosition

@@ -53,8 +53,7 @@ theorem recall_count {who : Player} {remaining : Nat}
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans phase.granted)
+  have same : event = phase.event := phase.sole.2 event grant.1
   subst same
   have sameSlot : slot = phase.slot := by
     have lengths := position.symm.trans phase.position
@@ -168,7 +167,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
   obtain ⟨_, timely, _, _, _, serials, resources⟩ := sourceService_binding_decision_resources
     service.setup service.leaks service.bounds service.values service.capacity service.rosters
     service.opportunities.binding service.network owner ⟨remaining, some owner,
-      execution⟩ trace rfl phase.event phase.granted owner site.payload site.outputEq codeEq
+      execution⟩ trace rfl phase.event phase.ready owner site.payload site.outputEq codeEq
     node owned
   obtain ⟨_, freshSlot, fresh, unused, vacant, _, published⟩ := resources unsent
   let offset := rosterOffset service.setup service.rosters owner phase.event
@@ -198,7 +197,7 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
   have posteriorFuture := sourceServiceTimedMixture_binding_future service.setup service.leaks
     service.bounds service.values service.initialValues service.capacity service.rosters
     service.opportunities.binding service.network approx.profile approx.admitted
-    owner ⟨remaining, some owner, execution⟩ trace rfl phase.event phase.granted owned
+    owner ⟨remaining, some owner, execution⟩ trace rfl phase.event phase.ready owned
     site.payload site.outputEq unsent (approx.timing phase.event owner owned) last
     (approx.timingFull phase.event owner owned last) (by dsimp only [last]; omega)
   have opening := BindingSource.opportunity_law service.leaks execution site phase.ready unsent
@@ -381,7 +380,6 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
       (application service.setup service.leaks) owner).application = some serial)
     (candidate : execution.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (remaining : List Player) (before : List (ServiceInstruction (graph service.setup)))
-    (granted : execution.application.serviceGrant = some event)
     (unsent : (runtime service.setup).eventRecorded service.leaks (execution.recall owner) event =
       false)
     (counted : (execution.recall owner).length + 1 + remaining.count owner =
@@ -431,7 +429,7 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
     service.opportunities.binding timing timingFull service.network wholeProfile permitted
     effective covered assessment strategy mixed fresh guard next residual refs source embedding
     refsBefore _ aligned execution remainingFuel trace agree history serial freshSlot candidate
-    remaining before outputEq owned granted unsent counted ready timely vacant unused serials
+    remaining before outputEq owned unsent counted ready timely vacant unused serials
     published split position response allowed
   dsimp only at law
   refine law.trans ?_
@@ -548,7 +546,7 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
               (ProtocolState.observe site.owner service.setup.program state)).map
             (OwnAction.binding site.owner site.name site.payload) =
           commitKernel site.residual (site.source.view site.owner) := by
-  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted, _⟩ := phase
+  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseReady⟩ := phase
   dsimp only at isBinding ⊢
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
       refsBefore, aligned, _, ⟨_, _, lift, commutes, transport⟩, _, _, _, _, grant, _, _, _, _,
@@ -556,8 +554,8 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phaseEvent := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans phaseGranted)
+  have same : event = phaseEvent :=
+    (soleReady_of_ready service.setup execution.application phaseReady).2 event grant.1
   subst same
   cases remaining with
   | ret result =>
@@ -789,7 +787,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
   obtain ⟨_, timely, _, _, _, serials, resources⟩ := sourceService_binding_decision_resources
     service.setup service.leaks service.bounds service.values service.capacity service.rosters
     service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace rfl
-    phase.event phase.granted who payload outputEq codeEq node owned
+    phase.event phase.ready who payload outputEq codeEq node owned
   obtain ⟨_, freshSlot, fresh, unused, vacant, _, published⟩ := resources unsent
   have counted := service.recall_count trace phase
   have visitsCount : ((service.rosters phase.event).take phase.slot).count who + 1 +
@@ -839,7 +837,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
     exact BindingSource.submission_readout service approx.timing approx.timingFull
       approx.profile approx.admitted approx.effective approx.covered approx.assessment
       approx.strategy approx.mixed execution site siteOwner rfl remaining trace _ freshSlot
-      fresh phase.visits phase.before phase.granted unsent (by rw [counted]; omega) ready
+      fresh phase.visits phase.before unsent (by rw [counted]; omega) ready
       timely vacant unused serials published split phase.position_before value allowed
   have transported (response : (application service.setup service.leaks).Action)
       (allowed : response ∈ service.menu.actions siteOwner (execution.recall siteOwner)
@@ -1085,15 +1083,15 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
         service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
       current ▸ history.1.trace
-    obtain ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩ := phase
+    obtain ⟨phaseEvent, slot, selected, position, phaseReady⟩ := phase
     dsimp only at same
     subst same
     let phase : DecisionPhase service.setup service.leaks service.rosters who execution :=
-      ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩
+      ⟨phaseEvent, slot, selected, position, phaseReady⟩
     obtain ⟨ready, _⟩ := sourceService_binding_decision_resources service.setup service.leaks
       service.bounds service.values service.capacity service.rosters
       service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace
-      rfl phaseEvent phaseGranted who payload outputEq codeEq node owned
+      rfl phaseEvent phaseReady who payload outputEq codeEq node owned
     have unsentNow : (runtime service.setup).eventRecorded service.leaks (execution.recall who)
         phaseEvent = false := recallEq ▸ unsent
     exact ⟨remaining, execution, current, phase, rfl, trace, ready, recallEq, viewEq,

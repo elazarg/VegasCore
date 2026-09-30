@@ -61,8 +61,8 @@ theorem sourceServiceOpportunity_at_history
   let scheduler := rosterScheduler setup leaks rosters network
   obtain ⟨selectedEvent, slot, initial, _selected, _initialSupport, Γ, names, remaining,
       remainingProfile, source, refs, embedding, refsBefore, aligned, inherited, _,
-      granted, prior, sample, boundary, grant, _phase, _activated, _sampled, _config,
-      publicEq, checkpoint, _position⟩ :=
+      granted, prior, sample, boundary, _sole, _phase, _activated, _sampled, _config,
+      _publicEq, checkpoint, _position⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
   have selectedReady : control.execution.application.config.cut.Ready selectedEvent :=
@@ -73,8 +73,6 @@ theorem sourceServiceOpportunity_at_history
       eventReady).symm
   subst selectedEvent
   have ready := selectedReady
-  have grantedCurrent : control.execution.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant publicEq).trans grant
   cases remaining with
   | ret result =>
       have count := aligned.graphSuffix.countEq
@@ -121,7 +119,7 @@ theorem sourceServiceOpportunity_at_history
         EventGraphRuntime.nodeView_eq_bind _ _
       obtain ⟨_, _, _, _, _, _, resources⟩ := sourceService_binding_decision_resources
         setup leaks bounds values capacity rosters opportunities network who control
-          trace active event grantedCurrent who _ outputEq codeEq node owned
+          trace active event ready who _ outputEq codeEq node owned
       obtain ⟨room, selected, candidate, _, _, _, _⟩ := resources unsent
       have covered := sourceServiceOpportunity_commit_covered setup leaks bounds values rosters
         fresh guard next profile remainingProfile (inherited permitted who) refs source embedding

@@ -92,7 +92,7 @@ theorem foreign_binding_history_tail_coupling
     rw [cursor, split, List.append_assoc, List.getElem?_append_right (Nat.le_refl _),
       Nat.sub_self]
     rfl
-  obtain ⟨_, initial, _, Γ, config, refs, boundary, _, _, _, _, _, _, ready, _, _granted,
+  obtain ⟨_, initial, _, Γ, config, refs, boundary, _, _, _, _, _, ready, _,
       _, _, _, _, _, conforming⟩ := sourceService_inclusion_boundary setup leaks
     bounds values capacity rosters opportunities network
       ⟨remaining + (ticks + 2), none, repaired⟩ trace rfl event actor selected

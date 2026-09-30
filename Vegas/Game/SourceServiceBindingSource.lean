@@ -158,8 +158,7 @@ theorem exists_bindingSource (profile : BehavioralProfile service.setup.program)
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans phase.granted)
+  have same : event = phase.event := phase.sole.2 event grant.1
   subst same
   cases remaining with
   | ret result =>
@@ -210,8 +209,7 @@ theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans phase.granted)
+  have same : event = phase.event := phase.sole.2 event grant.1
   subst same
   cases remaining with
   | ret result =>

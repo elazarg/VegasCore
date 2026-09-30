@@ -37,7 +37,7 @@ theorem sourceService_submitted_binding
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -69,12 +69,12 @@ theorem sourceService_submitted_binding
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨selectedEvent, slot, initial, _, _, Γ, names, program, programProfile, source,
-      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, sole, reached,
       _, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network (failureProfile setup.program) who control trace active
-  have eventEq : selectedEvent = event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
+  have eventEq : selectedEvent = event :=
+    (sole.2 event ((control.execution.application.publicView_eventReady event).mpr ready)).symm
   subst selectedEvent
   let serial := boundary.application.publicView.bindingCount owner
   obtain ⟨selected, fresh, unused, vacant⟩ := checkpoint.binding_resources event rfl owner
@@ -122,7 +122,7 @@ theorem sourceService_recorded_binding_resources
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -152,10 +152,10 @@ theorem sourceService_recorded_binding_resources
   obtain ⟨before, value, admitted, serial, remaining, prior, sample, serialEq, capacityBound,
       beforePublic, fresh, _, vacant, beforeSerials, accounted, published, tail, sampled⟩ :=
     sourceService_submitted_binding setup leaks bounds values capacity rosters opportunities
-      network who control trace active event granted owner payload outputEq codeEq node
+      network who control trace active event ready owner payload outputEq codeEq node
         owned recorded
   have currentReady := (sourceService_binding_decision_resources setup leaks bounds values
-    capacity rosters opportunities network who control trace active event granted owner
+    capacity rosters opportunities network who control trace active event ready owner
       payload outputEq codeEq node owned).1
   have beforeReady : before.application.config.cut.Ready event := by
     apply (before.application.publicView_eventReady event).mp

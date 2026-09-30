@@ -35,7 +35,7 @@ theorem sourceService_decision_resources
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owner : Player) (owned : (graph setup).actor? event = some owner) :
     control.execution.application.config.cut.Ready event ∧
       control.execution.application.WithinDeadline (runtime setup) event ∧
@@ -49,12 +49,12 @@ theorem sourceService_decision_resources
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨selectedEvent, slot, initial, _, _, Γ, names, remaining, remainingProfile, source,
-      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, sole, reached,
       activated, sampled, config, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network (failureProfile setup.program) who control trace active
-  have eventEq : selectedEvent = event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
+  have eventEq : selectedEvent = event :=
+    (sole.2 event ((control.execution.application.publicView_eventReady event).mpr ready)).symm
   subst selectedEvent
   obtain ⟨_, binding, recalled, serialRecall, serials⟩ := checkpoint.run_core
     menu.uniformResponses network (((rosters event).take slot).map ServiceInstruction.player)

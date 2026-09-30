@@ -179,7 +179,6 @@ theorem sourceService_inclusion_boundary
       (source : Config Player L Γ) (refs : ContextRefs (graph setup).layout Γ)
       (boundary : (application setup leaks).Execution),
       ServiceBoundary setup leaks rosters initial source refs event.val boundary ∧
-      boundary.application.serviceGrant = some event ∧
       control.execution ∈ ((runtime setup).runInteractionPlan leaks
         (sourceServiceMenu setup leaks bounds rosters).uniformResponses network
         ((rosters event).map ServiceInstruction.player) boundary).support ∧
@@ -188,7 +187,6 @@ theorem sourceService_inclusion_boundary
       SourceCheckpoint setup source refs event.val control.execution.application.config ∧
       control.execution.application.config.cut.Ready event ∧
       control.execution.application.WithinDeadline (runtime setup) event ∧
-      control.execution.application.serviceGrant = some event ∧
       EventGraphRuntime.State.Invariant (graph := graph setup)
         (setup.eventInputs initial) control.execution.application ∧
       control.execution.application.BindingInvariant ∧
@@ -274,10 +272,9 @@ theorem sourceService_inclusion_boundary
   obtain ⟨validState, validBinding, recalled, serialRecall, serials⟩ := bounded.run_core
     menu.uniformResponses network ((rosters event).map ServiceInstruction.player)
       control.execution afterGrant
-  refine ⟨owned, initial, initialSupport, Γ, source, refs, boundary, bounded, granted,
+  refine ⟨owned, initial, initialSupport, Γ, source, refs, boundary, bounded,
     afterGrant, config, publicEq, config.symm ▸ bounded.toSourceCheckpoint,
-    ?_, ?_, (congrArg PublicView.serviceGrant publicEq).trans granted,
-    validState, validBinding, recalled, serialRecall, serials, ?_⟩
+    ?_, ?_, validState, validBinding, recalled, serialRecall, serials, ?_⟩
   · rw [config]
     exact bounded.ready event rfl
   · have timely := bounded.timely event rfl (by rw [owned]; rfl)
@@ -351,7 +348,7 @@ theorem sourceService_inclusion_binding_candidate
           .openable ⟨payload, value⟩ := by
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
-  obtain ⟨owned, initial, _, Γ, source, refs, boundary, checkpoint, granted, reached,
+  obtain ⟨owned, initial, _, Γ, source, refs, boundary, checkpoint, reached,
       _, publicEq, _⟩ := sourceService_inclusion_boundary setup leaks bounds values capacity
     rosters opportunities network control trace idle event owner selected
   let serial := boundary.application.publicView.bindingCount owner

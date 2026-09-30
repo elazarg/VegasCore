@@ -43,7 +43,6 @@ theorem first_binding_block_coupling
     (serials : original.network.SerialsBeforeNext)
     (counted : original.network.nextSerial owner =
       original.network.ledger.countP (fun message => message.sender = owner))
-    (granted : original.application.serviceGrant = some event)
     (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline (runtime setup) event)
@@ -130,8 +129,6 @@ theorem first_binding_block_coupling
   have recorded : (runtime setup).eventRecorded leaks (right.recall owner) event = true := by
     rw [← (runtime setup).eventRecorded_congr leaks _ _ paired.submissions event]
     exact (runtime setup).eventRecorded_respond leaks original owner response event rfl
-  have grant : left.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant unchanged.2).trans granted
   have nextStarted : reference.length ≤ (right.recall owner).length := by
     rw [app.respond_recall_length]
     omega

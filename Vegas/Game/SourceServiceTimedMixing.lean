@@ -33,7 +33,7 @@ private theorem current_slot
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event) :
+    (ready : control.execution.application.config.cut.Ready event) :
     ∃ slot : Fin ((rosters event).count who),
       (control.execution.recall who).length = rosterOffset setup rosters who event + slot.val ∧
       (control.execution.observe (application setup leaks) who).application.publicView.EventReady
@@ -41,12 +41,12 @@ private theorem current_slot
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨selectedEvent, visit, initial, selected, _, Γ, names, program, programProfile, source,
-      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, sole, reached,
       _, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network (failureProfile setup.program) who control trace active
-  have eventEq : selectedEvent = event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans granted)
+  have eventEq : selectedEvent = event :=
+    (sole.2 event ((control.execution.application.publicView_eventReady event).mpr ready)).symm
   subst selectedEvent
   let slot : Fin ((rosters event).count who) :=
     ⟨((rosters event).take visit).count who, roster_count_before selected⟩
@@ -170,7 +170,7 @@ private theorem required_decision
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (event : (graph setup).EventId)
-    (granted : control.execution.application.serviceGrant = some event)
+    (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some who)
     (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
     (required : bindingRequired setup leaks rosters who (control.execution.recall who)
@@ -189,8 +189,7 @@ private theorem required_decision
       bounds.requiredBindingActions (runtime setup) leaks who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view at member
     simpa only [sourceServiceActions, ite_eq_left required] using member
-  have serving := sourceService_ownTurn_of_grant setup leaks bounds values capacity rosters
-    opportunities network who control trace active event granted owned
+  have serving := ownTurn?_of_ready setup control.execution.application ready owned
   obtain ⟨other, payload, otherTurn, binding, _, ready, _, last⟩ := required
   have same : other = event := Option.some.inj (otherTurn.symm.trans serving)
   subst other
@@ -247,12 +246,10 @@ theorem sourceServiceTimedPolicy_supported
   let app := application setup leaks
   let past := control.execution.recall who
   let view := control.execution.observe app who
-  obtain ⟨event, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, grant,
-      _, _, _, _, publicEq, checkpoint, _⟩ :=
+  obtain ⟨event, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+      _, _, _, _, _, checkpoint, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
-  have granted : view.application.publicView.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant publicEq).trans grant
   have controlReady : control.execution.application.config.cut.Ready event :=
     (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
   have sole := soleReady_of_ready setup control.execution.application controlReady
@@ -279,11 +276,12 @@ theorem sourceServiceTimedPolicy_supported
     · have unsent : (runtime setup).eventRecorded leaks past event = false :=
         Bool.eq_false_iff.mpr recorded
       obtain ⟨current, count, ready⟩ := current_slot setup leaks bounds values capacity rosters
-        opportunities network who control trace active event granted
+        opportunities network who control trace active event controlReady
       change past.length = rosterOffset setup rosters who event + current.val at count
       have currentSupported := sourceServiceTimedPolicy_future_supported setup leaks bounds
         values
-        capacity rosters opportunities network profile who control trace active event granted owned
+        capacity rosters opportunities network profile who control trace active
+          event controlReady owned
           unsent (timing event who owned) current (timingFull event who owned current) count.le
       simp only [sourceServiceTimedPolicy, serving, dite_eq_left owned]
       have selected (supported : response ∈
@@ -296,12 +294,13 @@ theorem sourceServiceTimedPolicy_supported
           Option.map_some, ← count, ↓reduceIte] using supported
       by_cases required : bindingRequired setup leaks rosters who past view
       · have decision := required_decision setup leaks bounds values initialValues capacity rosters
-          opportunities network profile permitted who control trace active event granted owned
+          opportunities network profile permitted who control trace active event controlReady owned
             unsent required response member
         apply selected
         exact opportunity_source setup leaks profile who event past view unsent response
           (sourceService_decision_supported setup leaks bounds values capacity rosters opportunities
-            network profile full who control trace active event granted owned response decision)
+            network profile full who control trace active
+              event controlReady owned response decision)
       · rcases sourceService_response_supported setup leaks bounds values capacity rosters
           opportunities network profile full who control trace active response member with
           replay | source
@@ -312,7 +311,8 @@ theorem sourceServiceTimedPolicy_supported
               omega
             have nextSupported := sourceServiceTimedPolicy_future_supported setup leaks bounds
               values
-              capacity rosters opportunities network profile who control trace active event granted
+              capacity rosters opportunities network profile who control trace active
+                event controlReady
                 owned unsent (timing event who owned) next (timingFull event who owned next) later
             apply app.policyMixture_action_support _ _ past view next response nextSupported
             have waiting : some (rosterOffset setup rosters who event + next.val) ≠
@@ -332,7 +332,7 @@ theorem sourceServiceTimedPolicy_supported
               intro payload binding
               exact required ⟨event, payload, serving, binding, owned, ready, unsent, final⟩
             have silence := sourceService_decision_supported setup leaks bounds values capacity
-              rosters opportunities network profile full who control trace active event granted
+              rosters opportunities network profile full who control trace active event controlReady
               owned ⟨none⟩ (nonbinding_silence setup leaks bounds who past view event
                 serving owned ready nonbinding)
             exact selected (opportunity_replay setup leaks profile who event past view

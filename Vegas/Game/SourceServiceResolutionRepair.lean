@@ -59,7 +59,7 @@ theorem resolution_history_activation_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks)
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (granted : repaired.application.serviceGrant = some event)
+    (ready : repaired.application.config.cut.Ready event)
     (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
@@ -106,7 +106,7 @@ theorem resolution_history_activation_coupling
     exact actor
   obtain ⟨ready, timely, rightBinding, rightRecall, _, serials, first⟩ :=
     sourceService_decision_resources setup leaks bounds values capacity rosters opportunities
-      network owner ⟨remaining, some owner, activated⟩ activeTrace rfl event granted
+      network owner ⟨remaining, some owner, activated⟩ activeTrace rfl event ready
         owner owned
   have rightReady : repaired.application.config.cut.Ready event := ready
   have rightTimely : repaired.application.WithinDeadline (runtime setup) event := timely

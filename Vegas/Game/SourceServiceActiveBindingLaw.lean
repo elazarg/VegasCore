@@ -232,7 +232,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
       ⟨0, by simp [eventCount]⟩
     let event : (graph setup).EventId := embedding.event index
     ∀ (owned : (graph setup).actor? event = some owner)
-      (_granted : execution.application.serviceGrant = some event)
+      (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (_counted : (execution.recall owner).length + 1 + remaining.count owner =
         rosterOffset setup rosters owner event + (rosters event).count owner),
@@ -254,9 +254,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
               app.replayPolicy)
           (app.invoke scheduled owner execution).bind
             ((runtime setup).runInteractionPlan leaks scheduled network phase) := by
-  intro index event owned granted unsent counted app family posterior players phase
-  have ready := sourceService_ready_of_grant setup leaks bounds values capacity rosters
-    opportunities network owner ⟨remainingFuel, some owner, execution⟩ trace rfl event granted
+  intro index event owned ready unsent counted app family posterior players phase
   have outputEq : (graph setup).outputLayout event = .binding owner payload := by
     change outputLayout setup.program (embedding.event index) = _
     simpa [index, outputLayout, eventCount] using embedding.layout_eq index
@@ -265,7 +263,7 @@ theorem sourceServiceTimedPolicy_active_binding_law [Fintype Player]
   let last : Fin ((rosters event).count owner) := ⟨(rosters event).count owner - 1, by omega⟩
   have future := sourceServiceTimedMixture_binding_future setup leaks bounds values initialValues
     capacity rosters opportunities network wholeProfile permitted owner
-    ⟨remainingFuel, some owner, execution⟩ trace rfl event granted owned payload outputEq unsent
+    ⟨remainingFuel, some owner, execution⟩ trace rfl event ready owned payload outputEq unsent
     (timing event owner owned) last (full event owner owned last) (by dsimp only [last]; omega)
   rw [sourceServiceTimedPolicy_active_phase_law setup leaks rosters timing wholeProfile event
     owner owned network remaining ticks execution

@@ -75,7 +75,7 @@ theorem active_history_stopped_coupling
   intro app players reference memory strategy scheduler
   let menu := sourceServiceMenu setup leaks bounds rosters
   obtain ⟨event, slot, initial, selected, _, Γ, names, sourceProgram, sourceProfile, config,
-      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, grant, reached,
+      refs, embedding, refsBefore, _, _, _, boundary, prior, sample, checkpoint, _, reached,
       activated, sampled, configEq, publicEq, _, currentPosition, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network (failureProfile setup.program) owner ⟨remaining, some owner, execution⟩ trace rfl
@@ -130,8 +130,6 @@ theorem active_history_stopped_coupling
       at account
     rw [position] at account
     omega
-  have granted : execution.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant publicEq).trans grant
   have ready : execution.application.config.cut.Ready event := by
     rw [configEq]
     exact checkpoint.ready event rfl
@@ -186,7 +184,7 @@ theorem active_history_stopped_coupling
           · obtain ⟨coupling, first, second, related⟩ :=
               recorded_binding_history_response_block_coupling setup leaks bounds values capacity
                 rosters opportunities network source target agrees owner policy available
-                prior execution activated event payload shape codeEq node granted recorded
+                prior execution activated event payload shape codeEq node ready recorded
                 remaining trace
                 before future visits ((runtime setup).deadline event)
                 (by simpa only [tailEq, List.append_assoc] using split) position
@@ -201,7 +199,7 @@ theorem active_history_stopped_coupling
               setup leaks bounds values capacity rosters opportunities network source target
               agrees owner policy available reference event payload shape codeEq node remaining
               prior
-              execution execution activated memory frame trace (Nat.le_refl _) recalled granted
+              execution execution activated memory frame trace (Nat.le_refl _) recalled ready
               (Bool.eq_false_iff.mpr recorded) visited visits roster
               (by rw [visitedLength]; exact currentPosition) before future
               (by simpa only [tailEq, List.append_assoc] using split) position
@@ -227,7 +225,7 @@ theorem active_history_stopped_coupling
         onlyBindings
         (Nat.le_refl _) recalled sound binding event
         (fun payload shape => ownBinding ⟨payload, shape⟩)
-        granted ready future.length visits ((runtime setup).deadline event) (by
+        ready future.length visits ((runtime setup).deadline event) (by
           have same : future.length + visits.length + ((runtime setup).deadline event + 2) =
               remaining := by rw [remainingEq, currentLength]; omega
           rw [same]

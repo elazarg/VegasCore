@@ -66,7 +66,7 @@ attribute [instance] SourceServiceSpec.initialFinite SourceServiceSpec.leaksFini
   SourceServiceSpec.networkFinite
 
 /-- The position of an actual activation of `who`: its event, its slot in that
-event's roster, the service grant in force, and the event's readiness. -/
+event's roster, and the event's readiness. -/
 structure DecisionPhase (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player) (who : Player)
@@ -76,7 +76,6 @@ structure DecisionPhase (setup : Setup (Player := Player) (L := L))
   selected : (rosters event)[slot]? = some who
   position : execution.environmentRecall.length =
     (rosterPlanPrefix setup rosters event.val).length + 1 + slot + 1
-  granted : execution.application.serviceGrant = some event
   ready : execution.application.config.cut.Ready event
 
 namespace DecisionPhase
@@ -173,16 +172,12 @@ theorem exists_decisionPhase (who : Player) (remaining : Nat)
       service.scheduler).Trace (some ⟨remaining, some who, execution⟩)) :
     Nonempty (DecisionPhase service.setup service.leaks service.rosters who execution) := by
   obtain ⟨event, slot, _, selected, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-      grant, _, _, _, _, publicEq, _, position, _⟩ :=
+      sole, _, _, _, _, _, _, position, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
-  have granted : execution.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant publicEq).trans grant
-  exact ⟨⟨event, slot, selected, position, granted,
-    sourceService_ready_of_grant service.setup service.leaks service.bounds service.values
-      service.capacity service.rosters service.opportunities.binding service.network who
-      ⟨remaining, some who, execution⟩ trace rfl event granted⟩⟩
+  exact ⟨⟨event, slot, selected, position,
+    (execution.application.publicView_eventReady event).mp sole.1⟩⟩
 
 /-- The native information of the acting player at an actual decision is its
 recall and current view. -/

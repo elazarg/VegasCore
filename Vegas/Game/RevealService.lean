@@ -97,6 +97,16 @@ theorem idle_of_ready (setup : Setup (Player := Player) (L := L))
     (foreign : (graph setup).actor? event ≠ some who) : state.publicView.Idle who :=
   (soleReady_of_ready setup state ready).idle foreign
 
+omit [DecidableEq Player] in
+/-- Readiness is public: states with the same public view have the same ready
+events. -/
+theorem ready_of_publicView_eq {graph : EventGraph Player L}
+    {first second : EventGraphRuntime.State graph}
+    (same : first.publicView = second.publicView) {event : graph.EventId}
+    (ready : second.config.cut.Ready event) : first.config.cut.Ready event := by
+  rw [← State.publicView_eventReady, same, State.publicView_eventReady]
+  exact ready
+
 theorem runtime_deadline_increases (setup : Setup (Player := Player) (L := L))
     (first second : (graph setup).EventId) (before : first.val < second.val) :
     (runtime setup).deadline first < (runtime setup).deadline second := by

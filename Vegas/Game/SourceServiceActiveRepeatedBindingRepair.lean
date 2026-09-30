@@ -226,7 +226,7 @@ private theorem recorded_binding_resources
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (ready : execution.application.config.cut.Ready event)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
     (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -261,17 +261,17 @@ private theorem recorded_binding_resources
     exact actor
   obtain ⟨ready, timely, _, recalled, _, serials, _⟩ :=
     sourceService_binding_decision_resources setup leaks bounds values capacity rosters
-      opportunities network owner ⟨remaining, some owner, execution⟩ trace rfl event granted
+      opportunities network owner ⟨remaining, some owner, execution⟩ trace rfl event ready
         owner payload outputEq codeEq node owned
   obtain ⟨value, _, _, candidate, vacant, nextSerial, pending, packets, _, _⟩ :=
     sourceService_recorded_binding_resources setup leaks bounds values capacity rosters
-      opportunities network owner ⟨remaining, some owner, execution⟩ trace rfl event granted
+      opportunities network owner ⟨remaining, some owner, execution⟩ trace rfl event ready
         owner payload outputEq codeEq node owned recorded
   dsimp only at ready timely recalled serials candidate vacant nextSerial pending packets
   have unused : execution.application.HandleUnused (owner, .prepared serial) := by
     obtain ⟨before, _, _, selected, _, _, _, selectedEq, _, publicEq, _, unused, _⟩ :=
       sourceService_submitted_binding setup leaks bounds values capacity rosters opportunities
-        network owner ⟨remaining, some owner, execution⟩ trace rfl event granted owner
+        network owner ⟨remaining, some owner, execution⟩ trace rfl event ready owner
           payload outputEq codeEq node owned recorded
     rw [selectedEq] at unused
     intro field associated
@@ -284,7 +284,7 @@ private theorem recorded_binding_resources
     obtain ⟨before, value, _, selected, visits, middle, sample, _, _, _, _, _, _, beforeSerials,
         accounted, _, reached, sampled⟩ :=
       sourceService_submitted_binding setup leaks bounds values capacity rosters opportunities
-        network owner ⟨remaining, some owner, execution⟩ trace rfl event granted owner
+        network owner ⟨remaining, some owner, execution⟩ trace rfl event ready owner
           payload outputEq codeEq node owned recorded
     have ledger := (runtime setup).player_window_ledger leaks menu.uniformResponses network visits
       (before.respond app owner
@@ -329,7 +329,7 @@ theorem recorded_binding_history_response_block_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (granted : execution.application.serviceGrant = some event)
+    (ready : execution.application.config.cut.Ready event)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
     (remaining : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -383,7 +383,7 @@ theorem recorded_binding_history_response_block_coupling
   obtain ⟨value, ready, timely, recalled, serials, unused, repeated, candidate, vacant,
       pending, unpublished, packets⟩ :=
     recorded_binding_resources setup leaks bounds values capacity rosters opportunities network
-      owner execution event payload outputEq codeEq node granted recorded remaining trace
+      owner execution event payload outputEq codeEq node ready recorded remaining trace
   have coverage : bounds.compiledActions (runtime setup) leaks owner (execution.recall owner)
       (execution.observe app owner) ⊆ menu.actions owner (execution.recall owner)
         (execution.observe app owner) := by

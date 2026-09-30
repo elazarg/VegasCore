@@ -109,10 +109,11 @@ channel. It used to be a coordination service that the fixed-calendar proof
 depended on: prescribed owners transmitted only when granted and the audit
 classified a fresh packet as conforming only for the granted event. Since step
 3 below, both use readiness instead, so a prescribed owner acts exactly when a
-deviator could. The calendar proofs still read the grant to name the event a
-decision belongs to and to compare public views, and the event-service stack
-(`Vegas/Pending/EventBindingPolicyService.lean`) still reads it; step 4
-removes these uses.
+deviator could, and the calendar proofs identify the event a decision belongs
+to by readiness as well. The grant survives only as a field of the public view,
+so view equality still compares it, and in the event-service stack
+(`Vegas/Pending/EventBindingPolicyService.lean`); step 4 removes the field and
+these uses.
 
 ### Modeling priorities
 

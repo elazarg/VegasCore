@@ -479,7 +479,7 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
               (ProtocolState.observe site.owner service.setup.program state)).map
             OwnAction.disclosure =
           revealKernel site.residual (site.source.view site.owner) := by
-  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseGranted, phaseReady⟩ :=
+  obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseReady⟩ :=
     phase
   dsimp only at isPublication ⊢
   obtain ⟨event, slot, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
@@ -490,8 +490,8 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phaseEvent := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans phaseGranted)
+  have same : event = phaseEvent :=
+    (soleReady_of_ready service.setup execution.application phaseReady).2 event grant.1
   subst same
   have sameSlot : slot = phaseSlot := by
     have lengths := position.symm.trans phasePosition
@@ -1454,11 +1454,11 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
         service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
       current ▸ history.1.trace
-    obtain ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩ := phase
+    obtain ⟨phaseEvent, slot, selected, position, phaseReady⟩ := phase
     dsimp only at same
     subst same
     let phase : DecisionPhase service.setup service.leaks service.rosters who execution :=
-      ⟨phaseEvent, slot, selected, position, phaseGranted, phaseReady⟩
+      ⟨phaseEvent, slot, selected, position, phaseReady⟩
     have counted := service.recall_count trace phase
     rw [recallEq] at counted
     change past.length = rosterOffset service.setup service.rosters who phaseEvent +

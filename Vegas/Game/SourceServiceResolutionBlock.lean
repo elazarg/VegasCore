@@ -60,7 +60,6 @@ theorem resolution_block_stopped_coupling
     (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve actor payload binding checks)
     (node : nodeView (graph setup) event = .resolve actor payload binding checks outputEq codeEq)
-    (granted : repaired.application.serviceGrant = some event)
     (ready : repaired.application.config.cut.Ready event)
     (remaining : Nat) (visits : List Player) (ticks : Nat)
     (trace : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -123,7 +122,7 @@ theorem resolution_block_stopped_coupling
         bounds values capacity rosters opportunities network source target agrees owner
           policy available reference event payload binding checks outputEq codeEq node
             (remaining + ending.length) visits memory original repaired frame started leftRecall
-              sound leftBinding granted windowTrace before (ending ++ after)
+              sound leftBinding ready windowTrace before (ending ++ after)
                 (by simpa only [ending, List.append_assoc] using split) position
       exact ⟨coupling, first, second, fun next member =>
         ⟨(related next member).1, ((related next member).2).imp_right And.left⟩⟩

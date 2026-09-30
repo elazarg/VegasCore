@@ -89,7 +89,6 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     let event : (graph setup).EventId := embedding.event index
     ∀ (outputEq : (graph setup).outputLayout event = .binding owner payload)
       (owned : (graph setup).actor? event = some owner)
-      (granted : execution.application.serviceGrant = some event)
       (unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false)
       (counted : (execution.recall owner).length + 1 + remaining.count owner =
         rosterOffset setup rosters owner event + (rosters event).count owner)
@@ -136,7 +135,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
             (execution.application.config.complete event ready
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) tag.1)
               (cast (congrArg EventGraph.EventField.Value outputEq.symm) tag.1)))).map some := by
-  intro index event outputEq owned granted unsent counted ready timely vacant unused serials
+  intro index event outputEq owned unsent counted ready timely vacant unused serials
     published
     app players phase later split position response allowed posterior branch tags
   let menu := sourceServiceMenu setup leaks bounds rosters
@@ -167,7 +166,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     have law := sourceServiceTimedPolicy_active_binding_law setup leaks bounds values initialValues
       capacity rosters opportunities timing full network fresh guard next wholeProfile permitted
       profile refs source embedding refsBefore rank aligned execution remainingFuel trace agree
-      history serial freshSlot candidate remaining (event.val + 1) owned granted unsent counted
+      history serial freshSlot candidate remaining (event.val + 1) owned ready unsent counted
     simpa only [ReactiveApplication.invoke, PMF.bind_map, PMF.bind_bind,
       Function.update_self, tags, kernel, scheduled, branch, responses, continued, posterior,
       phase, players, Function.comp_def] using law
@@ -208,7 +207,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     exact sourceServiceTimedMixture_binding_future setup leaks bounds values initialValues capacity
       rosters opportunities network wholeProfile permitted owner
       ⟨remainingFuel, some owner, execution⟩
-      trace rfl event granted owned payload outputEq unsent (timing event owner owned) last
+      trace rfl event ready owned payload outputEq unsent (timing event owner owned) last
       (full event owner owned last) (by dsimp only [last]; omega)
   have codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload := by

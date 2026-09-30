@@ -42,7 +42,7 @@ theorem sourceService_decision_supported
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control)) (active : control.actor = some who)
     (target : (graph setup).EventId)
-    (grantedTarget : control.execution.application.serviceGrant = some target)
+    (readyTarget : control.execution.application.config.cut.Ready target)
     (owned : (graph setup).actor? target = some who)
     (response : (application setup leaks).Action)
     (member : response ∈ bounds.decisionActions (runtime setup) leaks who
@@ -54,16 +54,15 @@ theorem sourceService_decision_supported
   let execution := control.execution
   obtain ⟨event, slot, initial, _, _, Γ, names, remaining, remainingProfile, source,
       refs, embedding, refsBefore, aligned, _, ⟨inherited, _⟩,
-      granted, prior, sample, _, grant, _, _, _, _, publicEq, checkpoint, _⟩ :=
+      granted, prior, sample, _, sole, _, _, _, _, _, checkpoint, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
-  have grantNow : execution.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant publicEq).trans grant
   have ready : execution.application.config.cut.Ready event :=
     (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
   have readyView : (execution.observe app who).application.publicView.EventReady event :=
     (execution.application.publicView_eventReady event).mpr ready
-  have same : target = event := Option.some.inj (grantedTarget.symm.trans grantNow)
+  have same : target = event :=
+    sole.2 target ((execution.application.publicView_eventReady target).mpr readyTarget)
   subst target
   have decision := member
   change response ∈ bounds.decisionActions (runtime setup) leaks who
@@ -200,22 +199,20 @@ theorem sourceService_response_supported
       (control.execution.observe (application setup leaks) who)).support := by
   classical
   let app := application setup leaks
-  obtain ⟨event, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, grant,
-      _, _, _, _, publicEq, checkpoint, _⟩ :=
+  obtain ⟨event, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+      _, _, _, _, _, checkpoint, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
-  have granted : control.execution.application.serviceGrant = some event :=
-    (congrArg PublicView.serviceGrant publicEq).trans grant
+  have ready : control.execution.application.config.cut.Ready event :=
+    (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
   have member := sourceServiceMenu_in_compiled setup leaks bounds rosters who _ _ member
   by_cases owned : (graph setup).actor? event = some who
   · rcases Finset.mem_union.mp (Finset.mem_inter.mp member).1 with decision | replay
     · exact Or.inr (sourceService_decision_supported setup leaks bounds values capacity rosters
-        opportunities network profile full who control trace active event granted owned response
+        opportunities network profile full who control trace active event ready owned response
         (Finset.mem_filter.mp decision).1)
     · exact Or.inl (((application setup leaks).mem_replayActions_iff _ _ _).mp replay)
-  · have ready : control.execution.application.config.cut.Ready event :=
-      (ready_iff_rank setup _ event.val checkpoint.ordered event).mpr rfl
-    exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks who
+  · exact Or.inl (bounds.compiled_foreign_transport (runtime setup) leaks who
       (control.execution.recall who) (control.execution.observe app who)
       ((soleReady_of_ready setup control.execution.application ready).ownTurn?_foreign owned)
       response member)

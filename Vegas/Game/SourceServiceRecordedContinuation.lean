@@ -250,7 +250,7 @@ theorem recorded_phase_invariant {who : Player} {remaining : Nat}
   obtain ⟨value, _, _, _, _, _, pending, packets, _, selected⟩ :=
     sourceService_recorded_binding_resources service.setup service.leaks service.bounds
       service.values service.capacity service.rosters service.opportunities.binding
-      service.network who ⟨remaining, some who, execution⟩ trace rfl phase.event phase.granted
+      service.network who ⟨remaining, some who, execution⟩ trace rfl phase.event phase.ready
       owner payload outputEq codeEq node owned recorded
   have unpublished : message.id ∉ execution.network.ledger.map Message.id := by
     unfold reactiveLatest at selected

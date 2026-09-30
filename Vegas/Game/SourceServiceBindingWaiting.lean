@@ -81,7 +81,7 @@ theorem binding_waiting_opportunity
     (optional : ¬ bindingRequired setup leaks rosters owner (repaired.recall owner)
       (repaired.observe (application setup leaks) owner))
     (event : (graph setup).EventId)
-    (granted : repaired.application.serviceGrant = some event)
+    (ready : repaired.application.config.cut.Ready event)
     (unsent : (runtime setup).eventRecorded leaks (repaired.recall owner) event = false)
     (before after : List (ServiceInstruction (graph setup)))
     (split : rosterPlan setup rosters = before ++ visits.map ServiceInstruction.player ++
@@ -110,7 +110,7 @@ theorem binding_waiting_opportunity
           Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
             (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
               (some ⟨remaining, some owner, next.2.1⟩)) ∧
-          next.1.InputRecall app ∧ next.2.1.application.serviceGrant = some event ∧
+          next.1.InputRecall app ∧ next.2.1.application.config.cut.Ready event ∧
           (runtime setup).eventRecorded leaks (next.2.1.recall owner) event = false ∧
           ∃ prior ∈ ((runtime setup).runInteractionPlan leaks players network
               (visits.map ServiceInstruction.player) (original.respond app owner response)).support,
@@ -159,13 +159,8 @@ theorem binding_waiting_opportunity
     exact foreign_roster_recall (runtime setup) leaks players network owner visits absent
       (original.respond app owner response) prior priorSupport
   refine ⟨paired, memoryEq, nextTrace, currentRecall, ?_, ?_, prior, priorSupport, sampled⟩
-  · rw [← show next.1.application.serviceGrant = next.2.1.application.serviceGrant from
-      congrArg PublicView.serviceGrant paired.publicView,
-      show next.1.application.serviceGrant = original.application.serviceGrant from
-        congrArg PublicView.serviceGrant currentApplication,
-      show original.application.serviceGrant = repaired.application.serviceGrant from
-        congrArg PublicView.serviceGrant frame.publicView]
-    exact granted
+  · exact ready_of_publicView_eq paired.publicView.symm
+      (ready_of_publicView_eq currentApplication (ready_of_publicView_eq frame.publicView ready))
   · rw [← (runtime setup).eventRecorded_congr leaks _ _ paired.submissions event, currentOwn,
       (runtime setup).eventRecorded_respond_other leaks original owner owner response event
         (by intro _; rw [unchanged]; simp),

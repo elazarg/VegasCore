@@ -227,7 +227,7 @@ theorem disclosure_decision_resources {who : Player} {remaining : Nat}
   obtain ⟨ready, timely, valid, recalled, _, _, _⟩ := sourceService_decision_resources
     service.setup service.leaks service.bounds service.values service.capacity service.rosters
     service.opportunities.binding service.network who ⟨remaining, some who, execution⟩ trace rfl
-    phase.event phase.granted owner owned
+    phase.event phase.ready owner owned
   have origins := sourceService_resolutionEvidence service.setup service.leaks service.bounds
     service.rosters _ _ ⟨remaining, some who, execution⟩ trace
   obtain ⟨event, slot, _, _, _, _, _, _, _, _, _, _, _, _, _, _, granted, prior, sample, boundary,
@@ -235,8 +235,7 @@ theorem disclosure_decision_resources {who : Player} {remaining : Nat}
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := Option.some.inj
-    (((congrArg PublicView.serviceGrant publicEq).trans grant).symm.trans phase.granted)
+  have same : event = phase.event := phase.sole.2 event grant.1
   subst same
   obtain ⟨actor, binding, checks, codeEq, node⟩ :=
     publication_nodeView service.setup phase.event payload isPublication
