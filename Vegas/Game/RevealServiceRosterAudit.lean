@@ -59,7 +59,7 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
     (equilibrium : source.IsSequentialEquilibriumFor
       ((rosterMenu setup leaks bounds rosters).decisionInformationAntichain (initialLaw setup)
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network))
-      (fun who site => source.continuationContext site (fun final => base final.state who)
+      (fun who site => source.truncatedContinuationContext site (fun final => base final.state who)
         (2 * (rosterPlan setup rosters).length + 1))) :
     let deposit := rosterAuditDeposit setup leaks bounds rosters network base probability
     let audit := (application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
@@ -72,7 +72,8 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
       target.IsSequentialEquilibriumFor
         ((bounds.rawMenu (runtime setup) leaks).decisionInformationAntichain (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network))
-        (fun who site => target.continuationContext site (fun final => utility final.state who)
+        (fun who site => target.truncatedContinuationContext site (fun final => utility final.state
+            who)
           (2 * (rosterPlan setup rosters).length + 1)) ∧
       (((bounds.rawMenu (runtime setup) leaks).information (initialLaw setup)
         (rosterPlan setup rosters).length

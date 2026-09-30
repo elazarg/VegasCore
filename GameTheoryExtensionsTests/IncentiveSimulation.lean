@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Protocol.ContinuationSimulation
+import GameTheory.Analysis.IncentiveSimulation
 import GameTheoryExtensionsTests.IncentiveCone
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform
@@ -18,7 +18,7 @@ the exact incentive-cone condition.
 
 noncomputable section
 
-namespace GameTheoryExtensionsTests.ContinuationSimulation
+namespace GameTheoryExtensionsTests.IncentiveSimulation
 
 open GameTheory GameTheory.Math.Probability
 
@@ -33,21 +33,20 @@ def middle (_who _comparison : Unit) : IncentiveComparison (Bool × Bool) :=
 def target (_who : Unit) (_comparison : Bool) : IncentiveComparison (Bool × Bool) :=
   middle () ()
 
-def first : GameTheory.ContinuationSimulation source middle where
-  alternatives _ _ := coin
+def first : GameTheory.IncentiveSimulation source middle where
+  mixing _ _ := coin
   prescribed _ _ := rfl
   alternative _ _ := rfl
-  finite _ _ := Set.toFinite _
 
-def second : GameTheory.ContinuationSimulation middle target :=
+def second : GameTheory.IncentiveSimulation middle target :=
   .ofMap (fun _ _ => ()) (fun _ _ => rfl) (fun _ _ => rfl)
 
-def composed : GameTheory.ContinuationSimulation source target := first.trans second
+def composed : GameTheory.IncentiveSimulation source target := first.trans second
 
 theorem composition_retains_mixture (who : Unit) (comparison : Bool) :
-    composed.alternatives who comparison = coin := by
-  simp only [composed, GameTheory.ContinuationSimulation.trans, second,
-    GameTheory.ContinuationSimulation.ofMap, PMF.pure_bind, first]
+    composed.mixing who comparison = coin := by
+  simp only [composed, GameTheory.IncentiveSimulation.trans, second,
+    GameTheory.IncentiveSimulation.ofMap, PMF.pure_bind, first]
 
 /-- A deterministic source-site decoder cannot supply the same certificate. -/
 theorem no_single_source_prescribed (branch : Bool) :
@@ -66,19 +65,20 @@ inequalities, including utilities depending on the source-site label. -/
 theorem preserves_all_utilities (utility : (Bool × Bool) → Unit → ℝ)
     (respected : ∀ who branch, (source who branch).Holds (utility · who)) :
     ∀ who comparison, (target who comparison).Holds (utility · who) :=
-  composed.preserves utility respected fun _ _ =>
-    ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _⟩
+  composed.preserves utility respected
+    (fun _ _ => ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _⟩)
+    (fun _ _ => ⟨payoffIntegrable_of_finite _ _, payoffIntegrable_of_finite _ _⟩)
 
 /-- The exact cone criterion can hold even when no law-pair mixture certificate
 exists. Failure to find this certificate therefore does not prove impossibility. -/
 theorem cone_preservation_without_simulation :
     IncentiveCone.target.difference ∈ IncentiveComparison.cone IncentiveCone.source ∧
-      ¬ Nonempty (GameTheory.ContinuationSimulation
+      ¬ Nonempty (GameTheory.IncentiveSimulation
         (fun _who : Unit => IncentiveCone.source)
         (fun (_who _comparison : Unit) => IncentiveCone.target)) := by
   refine ⟨IncentiveCone.target_in_cone, ?_⟩
   rintro ⟨simulation⟩
-  exact IncentiveCone.no_prescribed_root_mixture (simulation.alternatives () ())
+  exact IncentiveCone.no_prescribed_root_mixture (simulation.mixing () ())
     (simulation.prescribed () ())
 
 def neutral (branch : Bool) : IncentiveComparison Bool :=
@@ -104,4 +104,4 @@ theorem separate_law_matching_insufficient :
       (payoffIntegrable_pure _ _) (payoffIntegrable_pure _ _)).mpr le_rfl
   · norm_num [crossed, IncentiveComparison.Holds, expect_pure]
 
-end GameTheoryExtensionsTests.ContinuationSimulation
+end GameTheoryExtensionsTests.IncentiveSimulation

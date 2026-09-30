@@ -3,7 +3,8 @@
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveRoundReachability
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Support

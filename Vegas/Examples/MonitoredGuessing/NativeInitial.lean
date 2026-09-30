@@ -290,7 +290,7 @@ theorem initial_alice_finish_value (deposit : ℝ) (players : Player → nativeA
 theorem initial_alice_context_value (deposit : ℝ)
     (assessment : nativeModel.BehavioralAssessment) (bit : Bool)
     (alternative : nativeModel.BehavioralPolicy alice) :
-    (assessment.continuationContext (initialAliceSite bit)
+    (assessment.truncatedContinuationContext (initialAliceSite bit)
       (fun history => nativeUtility deposit alice history.state)
         (2 * nativeHorizon + 1)).value alternative =
       let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler

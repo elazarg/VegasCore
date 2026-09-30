@@ -2,6 +2,8 @@
 
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheory.Analysis.Protocol.CounterfactualReach
+import GameTheory.Math.Probability.Convergence
+import GameTheory.Analysis.Protocol.BeliefTransport
 
 /-! # Continuity of finite behavioral continuation values
 
@@ -55,31 +57,6 @@ theorem expect_bindOnSupport_tendsto_of_support_finite {α β : Type*} (law : PM
   apply expect_tendsto_of_support_finite law finite
   intro entry supported
   simpa only [value, supported, ↓reduceDIte] using converges entry supported
-
-/-- Removing a vanishing full-support perturbation retains the same law
-limit, even when the unperturbed response varies along the sequence. -/
-theorem PMFConvergesPointwise.of_mix_vanishing {α : Type*}
-    (reference : PMF α) (responses : ℕ → PMF α) (limit : PMF α)
-    (weight : ℕ → ℝ) (nonnegative : ∀ n, 0 ≤ weight n)
-    (belowOne : ∀ n, weight n < 1) (vanishes : Tendsto weight atTop (nhds 0))
-    (converges : PMFConvergesPointwise
-      (fun n => mix (weight n) (nonnegative n) (belowOne n).le reference (responses n))
-      limit) : PMFConvergesPointwise responses limit := by
-  rw [pmfConvergesPointwise_iff_toReal] at converges ⊢
-  intro value
-  have numerator := (converges value).sub (vanishes.mul_const ((reference value).toReal))
-  have denominator := (tendsto_const_nhds (x := (1 : ℝ))).sub vanishes
-  have quotient := numerator.div denominator (by norm_num : (1 : ℝ) - 0 ≠ 0)
-  have same (n : ℕ) :
-      (((mix (weight n) (nonnegative n) (belowOne n).le reference (responses n)) value).toReal -
-          weight n * (reference value).toReal) / (1 - weight n) =
-        ((responses n) value).toReal := by
-    rw [mix_apply_toReal]
-    have nonzero : 1 - weight n ≠ 0 := (sub_pos.mpr (belowOne n)).ne'
-    field_simp
-    ring
-  simp only [zero_mul, sub_zero, div_one] at quotient
-  exact quotient.congr' (Filter.Eventually.of_forall same)
 
 end GameTheory.Math.Probability
 
@@ -220,92 +197,16 @@ theorem runBehavioralFrom_expect_tendsto
         intro target realized
         exact induction _
 
-/-- Reach weights converge with the behavioral strategies. A reach weight is a
-finite product along one trace, so no finiteness of menus or transitions is
-needed. -/
-theorem BehavioralAssessmentConvergesPointwise.historyReachWeight
-    {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
-    (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
-    (history : E.History) :
-    Tendsto (fun n => M.historyReachWeight (sequence n).strategy history) atTop
-      (nhds (M.historyReachWeight assessment.strategy history)) := by
-  classical
-  apply (ENNReal.tendsto_toReal_iff (fun _ => PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)).mp
-  obtain ⟨state, trace⟩ := history
-  induction trace with
-  | start => exact tendsto_const_nhds
-  | @extend source target prior joint legal realized induction =>
-      change Tendsto (fun n => (M.historyReachWeight (sequence n).strategy
-          ⟨target, prior.extend joint legal realized⟩).toReal) atTop
-        (nhds (M.historyReachWeight assessment.strategy
-          ⟨target, prior.extend joint legal realized⟩).toReal)
-      change Tendsto (fun n => (M.historyReachWeight (sequence n).strategy
-          ⟨source, prior⟩).toReal) atTop
-        (nhds (M.historyReachWeight assessment.strategy ⟨source, prior⟩).toReal) at induction
-      refine Tendsto.congr (fun n => (historyReachProbability_extend M (sequence n).strategy
-        prior joint legal realized).symm) ?_
-      rw [historyReachProbability_extend M assessment.strategy prior joint legal realized]
-      simp only [stepProb]
-      apply induction.mul
-      apply Tendsto.mul_const
-      simp only [behavioralJoint_prob_eq_prod]
-      apply tendsto_finsetProd
-      intro player _
-      by_cases active : E.active source player
-      · obtain ⟨⟨info, decision⟩, same⟩ :=
-          M.exists_informationSite_of_active player ⟨source, prior⟩ legal.1 active
-        change info = M.infoOf player prior at same
-        subst same
-        exact (converges.strategy player ⟨_, decision⟩).toReal _
-      · simp only [M.behavioral_eq_of_not_active ((sequence _).strategy player)
-          (assessment.strategy player) prior active]
-        exact tendsto_const_nhds
-
-theorem BehavioralAssessmentConvergesPointwise.informationMass
-    {sequence : ℕ → M.BehavioralAssessment} {assessment : M.BehavioralAssessment}
-    (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
-    (who : ι) (site : M.InformationSite who)
-    [Finite (M.InformationHistory who site.1)] :
-    Tendsto (fun n => M.informationMass (sequence n).strategy who site) atTop
-      (nhds (M.informationMass assessment.strategy who site)) := by
-  let _ : Fintype (M.InformationHistory who site.1) := Fintype.ofFinite _
-  simp only [InformationModel.informationMass, tsum_fintype]
-  exact tendsto_finsetSum Finset.univ fun history _ => converges.historyReachWeight history.1
-
-/-- Sequential consistency enforces ordinary Bayes conditioning at every
-positive-mass information set of the limit strategy. Off-path beliefs remain
-those supplied by the common approximating sequence. -/
-theorem BehavioralAssessment.IsSequentiallyConsistent.isBayesConsistent
-    {assessment : M.BehavioralAssessment}
-    [∀ who (site : M.InformationSite who), Finite (M.InformationHistory who site.1)]
-    (antichain : M.DecisionInformationAntichain)
-    (consistent : assessment.IsSequentiallyConsistent antichain) :
-    BehavioralAssessment.IsBayesConsistent M assessment antichain := by
-  obtain ⟨sequence, approximates, converges⟩ := consistent
-  intro who site positive history
-  have ratios := ENNReal.Tendsto.div
-    (converges.historyReachWeight history.1) (Or.inr positive.ne')
-    (converges.informationMass who site)
-    (Or.inl (ne_top_of_le_ne_top ENNReal.one_ne_top
-      (M.informationMass_le_one assessment.strategy who site (antichain who site))))
-  have equality (n : ℕ) : (sequence n).belief who site history =
-      M.historyReachWeight (sequence n).strategy history.1 /
-        M.informationMass (sequence n).strategy who site :=
-    (approximates n).2 who site
-      (M.informationMass_pos_of_fullSupport _ (approximates n).1 who site) history
-  exact tendsto_nhds_unique (converges.belief who site history)
-    (ratios.congr' (Filter.Eventually.of_forall fun n => (equality n).symm))
-
 variable [DecidableEq ι]
 
 omit [Fintype ι] in
-theorem continuationContext_integrableAt_of_finite
+theorem truncatedContinuationContext_integrableAt_of_finite
     [Fintype ι] [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
     (transitions : E.FiniteTransitions)
     (assessment : M.BehavioralAssessment) {who : ι} (site : M.InformationSite who)
     [Finite (M.InformationHistory who site.1)]
     (payoff : E.History → ℝ) (fuel : ℕ) (alternative : M.BehavioralPolicy who) :
-    (assessment.continuationContext site payoff fuel).IntegrableAt alternative :=
+    (assessment.truncatedContinuationContext site payoff fuel).IntegrableAt alternative :=
   payoffIntegrable_bind_of_finite _ _ _ fun _ => payoffIntegrable_of_finite_support _ _
     (runBehavioralFrom_support_finite transitions _ fuel _)
 
@@ -320,14 +221,15 @@ theorem BehavioralAssessmentConvergesPointwise.context_value
     (alternatives : ℕ → M.BehavioralPolicy who) (alternative : M.BehavioralPolicy who)
     (alternativesConverge : ∀ decision : M.InformationSite who,
       PMFConvergesPointwise (fun n => alternatives n decision.1) (alternative decision.1)) :
-    Tendsto (fun n => ((sequence n).continuationContext site payoff fuel).value
+    Tendsto (fun n => ((sequence n).truncatedContinuationContext site payoff fuel).value
       (alternatives n)) atTop
-      (nhds ((assessment.continuationContext site payoff fuel).value alternative)) := by
+      (nhds ((assessment.truncatedContinuationContext site payoff fuel).value alternative)) := by
   let _ : Fintype (M.InformationHistory who site.1) := Fintype.ofFinite _
   have tower (current : M.BehavioralAssessment) (policy : M.BehavioralPolicy who) :=
-    current.continuationContext_value_tower site payoff fuel policy
-      (continuationContext_integrableAt_of_finite transitions current site payoff fuel policy)
-  simp_rw [tower]
+    current.continuationContextWith_value_tower (M.truncatedRunner fuel) site payoff policy
+      (truncatedContinuationContext_integrableAt_of_finite transitions current site payoff fuel
+          policy)
+  simp_rw [BehavioralAssessment.truncatedContinuationContext, tower]
   apply (converges.belief who site).expect_varying_finite
   intro history
   apply runBehavioralFrom_expect_tendsto transitions
@@ -354,13 +256,15 @@ theorem BehavioralAssessmentConvergesPointwise.rationalAt_of_optimal_responses
       PMFConvergesPointwise (fun n => responses n decision.1)
         (assessment.strategy who decision.1))
     (optimal : ∀ n alternative,
-      ((sequence n).continuationContext site payoff fuel).value alternative ≤
-        ((sequence n).continuationContext site payoff fuel).value (responses n)) :
-    assessment.IsSequentiallyRationalAt site (assessment.continuationContext site payoff fuel) := by
+      ((sequence n).truncatedContinuationContext site payoff fuel).value alternative ≤
+        ((sequence n).truncatedContinuationContext site payoff fuel).value (responses n)) :
+    assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site payoff
+        fuel) := by
   refine (Context.isLocallyOptimal_iff_of_integrable
-    (continuationContext_integrableAt_of_finite transitions assessment site payoff fuel _)
+    (truncatedContinuationContext_integrableAt_of_finite transitions assessment site payoff fuel _)
     fun alternative _ =>
-      continuationContext_integrableAt_of_finite transitions assessment site payoff fuel _).mpr
+      truncatedContinuationContext_integrableAt_of_finite transitions assessment site payoff
+        fuel _).mpr
     fun alternative _ => ?_
   exact le_of_tendsto_of_tendsto
     (converges.context_value transitions site payoff fuel (fun _ => alternative) alternative

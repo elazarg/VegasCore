@@ -95,10 +95,10 @@ theorem resolution_final_site_dominates (deposit : ℝ) (nonnegative : 0 ≤ dep
     (information : site.1 = some (past, view))
     (granted : view.application.publicView.serviceGrant = some alicePublication)
     (alternative : nativeModel.BehavioralPolicy alice) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun history => nativeUtility deposit alice history.state)
         (2 * nativeHorizon + 1)).value alternative ≤
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun history => nativeUtility deposit alice history.state)
         (2 * nativeHorizon + 1)).value (assessment.strategy alice) := by
   rw [nativeMenu.context_value_finish nativeInitialLaw nativeHorizon nativeScheduler,

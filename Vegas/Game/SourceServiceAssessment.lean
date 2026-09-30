@@ -2,7 +2,9 @@
 
 import Vegas.Game.SourceServiceBayes
 import Vegas.Game.DisclosureAssessment
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Original assessment comparisons under actual native beliefs
 
@@ -89,19 +91,25 @@ theorem sourceService_owner_assessment_comparisons
     (∃ view ∈ (prefixLaw.map (ProtocolState.observe owner setup.program)).support,
       SourceProgram.ProtocolView.actor owner setup.program view = some owner ∧
       decodedBelief =
-        (fiberConditional prefixLaw (ProtocolState.observe owner setup.program) view).map some) ∧
+        (fiberPosterior prefixLaw (ProtocolState.observe owner setup.program) view).map some) ∧
     ∃ mixture : PMF ((setup.informationModel
         (CommitmentInterface.values setup.program)).AssessmentDeviation owner),
       ((decodedBelief.bind (setup.continuationLaw normalized)).map some) =
         mixture.bind (fun deviation => ((setup.informationModel
-          (CommitmentInterface.values setup.program)).assessmentComparison
-            (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
+          (CommitmentInterface.values
+              setup.program)).assessmentComparisonWith ((setup.informationModel
+          (CommitmentInterface.values
+              setup.program)).truncatedRunner (instructionCount setup.program + 1)) (fun final =>
+                  setup.protocolReadout final.state)
               source owner deviation).prescribed) ∧
       ((decodedBelief.bind
         (setup.continuationLaw (Function.update normalized owner alternative))).map some) =
         mixture.bind (fun deviation => ((setup.informationModel
-          (CommitmentInterface.values setup.program)).assessmentComparison
-            (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
+          (CommitmentInterface.values
+              setup.program)).assessmentComparisonWith ((setup.informationModel
+          (CommitmentInterface.values
+              setup.program)).truncatedRunner (instructionCount setup.program + 1)) (fun final =>
+                  setup.protocolReadout final.state)
               source owner deviation).alternative) := by
   intro original normalized decodedBelief prefixLaw
   let admission := CommitmentInterface.values setup.program
@@ -166,16 +174,16 @@ theorem sourceService_owner_assessment_comparisons
       (prefixLaw.map (setup.protocolObserve owner ∘ some)).support := by
     rw [PMF.support_map]
     exact ⟨state, stateSupport, rfl⟩
-  have transported := PMF.map_conditional_readout prefixLaw some
+  have transported := map_fiberPosterior_readout prefixLaw some
     (setup.protocolObserve owner) (some view) imagePresent
-  have fiber : fiberConditional prefixLaw (setup.protocolObserve owner ∘ some) (some view) =
-      fiberConditional prefixLaw (ProtocolState.observe owner setup.program) view := by
-    apply PMF.fiberConditional_eq_of_support_fiber
+  have fiber : fiberPosterior prefixLaw (setup.protocolObserve owner ∘ some) (some view) =
+      fiberPosterior prefixLaw (ProtocolState.observe owner setup.program) view := by
+    apply fiberPosterior_eq_of_support_fiber
     intro value _
     simp only [Function.comp_apply, Setup.protocolObserve, Option.map_some, Option.some.injEq]
   rw [fiber] at transported
   have belief : decodedBelief =
-      (fiberConditional prefixLaw (ProtocolState.observe owner setup.program) view).map some := by
+      (fiberPosterior prefixLaw (ProtocolState.observe owner setup.program) view).map some := by
     change decodedBelief = _ at projected
     rw [prefixEq, decoded] at projected
     exact projected.trans transported.symm

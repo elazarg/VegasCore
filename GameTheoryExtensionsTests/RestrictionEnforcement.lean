@@ -1,8 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
-import GameTheoryExtensions.Analysis.Protocol.SequentialExistence
+import GameTheory.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Enforcing a restriction with a new opponent continuation
 
@@ -390,17 +392,19 @@ theorem clean (history : (arena false).History) (who : Bool) :
   rw [embedHistory_state]
   rcases source_classified history with rfl | rfl <;> cases who <;> rfl
 
+/-- Terminal play of both games, certified by their common horizon. -/
+theorem certificate (unrestricted : Bool) : (arena unrestricted).WellFoundedHistories :=
+  (bounded unrestricted).wellFoundedHistories
+
 theorem exists_source_equilibrium :
     ∃ source : (model false).BehavioralAssessment,
-      source.IsSequentialEquilibriumFor
+      source.IsSequentialEquilibrium
         ((model false).decisionInformationAntichain_of_perfectRecall (perfectRecall false))
-        (fun who site => source.continuationContext site (fun _ => 0)
-          (2 - siteDepth false who site)) := by
-  apply (model false).exists_sequential_equilibrium (reference false) (reference_mixed false)
+        (certificate false) (fun _ _ => 0) :=
+  (model false).exists_sequentialEquilibrium
     ((model false).decisionRecall_of_perfectRecall (perfectRecall false))
-    2 (fun _ _ => 0) (siteDepth false) (clock false)
-  intro who site
-  cases who <;> simp [siteDepth]
+    (fun who info => ((reference false).strategy who info).support_nonempty.choose)
+    (fun _ _ => 0) (certificate false)
 
 theorem localStep_leave (choices : ∀ who, (model true).Choice who
     ((model true).infoOf who (arena true).initHistory.trace))
@@ -474,11 +478,11 @@ theorem collection (profile : ∀ who, (model true).BehavioralPolicy who) (who :
     (action : (model true).Choice who (restriction.site who site).1)
     (forbidden : action ∉ Set.range (restriction.choice who site.1))
     (history : (model false).InformationHistory who site.1) :
-    (1 : ℝ) ≤ expect ((model true).runBehavioralFrom
+    (1 : ℝ) ≤ expect ((model true).runBehavioralTerminalFrom (certificate true)
       (Profile.update (sig := (model true).behavioralSignature) profile who
         ((profile who).commit (restriction.site who site).1 action))
-      (2 - siteDepth true who (restriction.site who site))
       (restriction.history history.1)) (fun final => charge final who) := by
+  rw [(model true).runBehavioralTerminalFrom_eq_remaining (certificate true) _ (bounded true)]
   obtain ⟨rfl, atRoot⟩ := source_site who site
   rcases site with ⟨info, site⟩
   dsimp only at atRoot
@@ -503,9 +507,10 @@ theorem collection (profile : ∀ who, (model true).BehavioralPolicy who) (who :
     · exact chosen
   change (1 : ℝ) ≤ expect ((model true).runBehavioralFrom
     (Profile.update (sig := (model true).behavioralSignature) profile false
-      ((profile false).commit .start action)) 2 (embedHistory history.1)) _
-  rw [initial, show embedHistory (arena false).initHistory = (arena true).initHistory by rfl,
-    leave_collection profile action leaves]
+      ((profile false).commit .start action)) (2 - (embedHistory history.1).trace.length)
+      (embedHistory history.1)) _
+  rw [initial, show embedHistory (arena false).initHistory = (arena true).initHistory by rfl]
+  exact (leave_collection profile action leaves).ge
 
 theorem source_initialized (profile : ∀ who, (model false).BehavioralPolicy who) :
     (model false).runBehavioral profile 2 = PMF.pure (stayHistory false) := by
@@ -532,33 +537,38 @@ theorem constructs a standard target SE, including Bob's new off-path site;
 the completed initialized outcome and both net payoffs remain exactly zero. -/
 theorem every_source_equilibrium_preserved (deposit : ℝ) (large : 1 ≤ deposit)
     (source : (model false).BehavioralAssessment)
-    (sourceEquilibrium : source.IsSequentialEquilibriumFor
+    (sourceEquilibrium : source.IsSequentialEquilibrium
       ((model false).decisionInformationAntichain_of_perfectRecall (perfectRecall false))
-      (fun who site => source.continuationContext site (fun _ => 0)
-        (2 - siteDepth true who (restriction.site who site)))) :
+      (certificate false) (fun _ _ => 0)) :
     ∃ target : (model true).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
+      target.IsSequentialEquilibrium
         ((model true).decisionInformationAntichain_of_perfectRecall (perfectRecall true))
-        (fun who site => target.continuationContext site
-          (fun history => base history who - charge history who * deposit)
-          (2 - siteDepth true who site)) ∧
+        (certificate true) (fun who history => base history who - charge history who * deposit) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
-      (model true).runBehavioral target.strategy 2 = PMF.pure (stayHistory true) ∧
-      ((model true).runBehavioral target.strategy 2).map (fun history =>
+      (model true).runBehavioralTerminalFrom (certificate true) target.strategy
+          (arena true).initHistory = PMF.pure (stayHistory true) ∧
+      ((model true).runBehavioralTerminalFrom (certificate true) target.strategy
+          (arena true).initHistory).map (fun history =>
         (history.state, fun who => base history who - charge history who * deposit)) =
           PMF.pure (.done none, fun _ : Bool => (0 : ℝ)) := by
-  obtain ⟨target, equilibrium, agrees, _, law, _, _⟩ :=
+  obtain ⟨target, equilibrium, agrees, _, law, _⟩ :=
     restriction.sequential_equilibrium_extends
       ((model false).decisionInformationAntichain_of_perfectRecall (perfectRecall false))
-      (reference true) (reference_mixed true)
-      ((model true).decisionRecall_of_perfectRecall (perfectRecall true)) 2 (bounded true)
-      (siteDepth true) (clock true) (fun _ _ => 0) base charge matching clean
+      (certificate false) (certificate true) (reference true) (reference_mixed true)
+      ((model true).decisionRecall_of_perfectRecall (perfectRecall true))
+      (fun who site => siteDepth true who (restriction.site who site))
+      (fun who site => clock true who (restriction.site who site)) (fun _ _ => 0)
+      (fun who history => base history who) (fun who history => charge history who)
+      (fun who history => matching history who) (fun who history => clean history who)
       (fun _ => 0) (fun _ => 1) (fun _ => 1) (fun _ => deposit)
       (fun _ => le_trans (by norm_num) large) (fun _ _ => le_rfl)
-      (fun history _ => by unfold base; split <;> norm_num)
+      (fun _ history => by unfold base; split <;> norm_num)
       (fun _ => by linarith) collection source sourceEquilibrium
-  have initialized : (model true).runBehavioral target.strategy 2 =
-      PMF.pure (stayHistory true) := by
+  have initialized : (model true).runBehavioralTerminalFrom (certificate true) target.strategy
+      (arena true).initHistory = PMF.pure (stayHistory true) := by
+    rw [(model false).runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded
+      (certificate false) (bounded false)] at law
+    change ((model false).runBehavioral source.strategy 2).map _ = _ at law
     rw [source_initialized, PMF.pure_map] at law
     exact law.symm
   refine ⟨target, equilibrium, agrees, initialized, ?_⟩
@@ -573,12 +583,11 @@ theorem every_source_equilibrium_preserved (deposit : ℝ) (large : 1 ≤ deposi
 produces an actual target equilibrium with the source's zero-payoff outcome. -/
 theorem deposit_one_implements :
     ∃ target : (model true).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
+      target.IsSequentialEquilibrium
         ((model true).decisionInformationAntichain_of_perfectRecall (perfectRecall true))
-        (fun who site => target.continuationContext site
-          (fun history => base history who - charge history who)
-          (2 - siteDepth true who site)) ∧
-      (model true).runBehavioral target.strategy 2 = PMF.pure (stayHistory true) := by
+        (certificate true) (fun who history => base history who - charge history who) ∧
+      (model true).runBehavioralTerminalFrom (certificate true) target.strategy
+        (arena true).initHistory = PMF.pure (stayHistory true) := by
   obtain ⟨source, sourceEquilibrium⟩ := exists_source_equilibrium
   obtain ⟨target, equilibrium, _, initialized, _⟩ :=
     every_source_equilibrium_preserved 1 le_rfl source sourceEquilibrium

@@ -226,13 +226,16 @@ private theorem context_integrableAt_of_root (alternative : M.BehavioralPolicy w
         ((assessment.strategy who).switchAt M alternative site)) (depth + fuel)) payoff)
     (baselineIntegrable : PayoffIntegrable
       (M.runBehavioral assessment.strategy (depth + fuel)) payoff) :
-    (assessment.continuationContext site payoff fuel).IntegrableAt alternative := by
+    (assessment.truncatedContinuationContext site payoff fuel).IntegrableAt alternative := by
   obtain ⟨_, _, conditional, _⟩ := M.rootGain_eq_prefixExpectation
     (Profile.update (sig := M.behavioralSignature) assessment.strategy who
       ((assessment.strategy who).switchAt M alternative site))
-    assessment.strategy payoff depth fuel
+    assessment.strategy payoff depth (fun policies => M.runBehavioral policies (depth + fuel))
+    (M.truncatedRunner fuel) (fun policies => M.runBehavioralFrom_add policies depth fuel
+      E.initHistory)
     (M.run_switchAt_prefix recall assessment.strategy who site alternative depth sameDepth)
     switchedIntegrable baselineIntegrable
+  dsimp only [truncatedRunner] at conditional
   change PayoffIntegrable ((assessment.belief who site).bind fun history =>
     M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature) assessment.strategy who
       alternative) fuel history.1) payoff
@@ -261,15 +264,19 @@ theorem switched_root_gain_eq_mass_mul_context_gain
         (depth + fuel)) payoff -
       expect (M.runBehavioral assessment.strategy (depth + fuel)) payoff =
     (M.informationMass assessment.strategy who site).toReal *
-      ((assessment.continuationContext site payoff fuel).value alternative -
-        (assessment.continuationContext site payoff fuel).value (assessment.strategy who)) := by
+      ((assessment.truncatedContinuationContext site payoff fuel).value alternative -
+        (assessment.truncatedContinuationContext site payoff fuel).value (assessment.strategy
+            who)) := by
   let _ : Fintype (M.InformationHistory who site.1) := Fintype.ofFinite _
   obtain ⟨gain, _, conditional, rootGain⟩ := M.rootGain_eq_prefixExpectation
     (Profile.update (sig := M.behavioralSignature) assessment.strategy who
       ((assessment.strategy who).switchAt M alternative site))
-    assessment.strategy payoff depth fuel
+    assessment.strategy payoff depth (fun policies => M.runBehavioral policies (depth + fuel))
+    (M.truncatedRunner fuel) (fun policies => M.runBehavioralFrom_add policies depth fuel
+      E.initHistory)
     (M.run_switchAt_prefix recall assessment.strategy who site alternative depth sameDepth)
     switchedIntegrable baselineIntegrable
+  dsimp only [truncatedRunner] at conditional rootGain
   obtain ⟨ownReach, shared⟩ :=
     M.commonPlayerReachAt_of_decisionRecall recall assessment.strategy who site
   have ownPositive := M.commonPlayerReach_pos ownReach shared positive
@@ -309,13 +316,13 @@ theorem switched_root_gain_eq_mass_mul_context_gain
     rw [zero, ENNReal.toReal_zero] at factor
     exact nonzero ((mul_eq_zero.mp factor.symm).resolve_left ownPositive.ne')
   have alternativeIntegrable : CounterfactualContinuationIntegrable M assessment.strategy who
-      site alternative payoff fuel := by
+      site alternative payoff (M.truncatedRunner fuel) := by
     intro history nonzero
     have integrable := (conditional history.1 (inPrefix history nonzero)).1
     rwa [M.run_switchAt_from_site recall assessment.strategy who site alternative history fuel]
       at integrable
   have incumbentIntegrable : CounterfactualContinuationIntegrable M assessment.strategy who
-      site (assessment.strategy who) payoff fuel := by
+      site (assessment.strategy who) payoff (M.truncatedRunner fuel) := by
     intro history nonzero
     rw [Profile.update_eq_self]
     exact (conditional history.1 (inPrefix history nonzero)).2.1
@@ -325,10 +332,11 @@ theorem switched_root_gain_eq_mass_mul_context_gain
     rw [M.bayesBelief_apply]
     exact bayes history
   have context (policy : M.BehavioralPolicy who) :
-      (assessment.continuationContext site payoff fuel).value policy =
+      (assessment.truncatedContinuationContext site payoff fuel).value policy =
         M.bayesContinuationValue assessment.strategy who site
-          (recall.decisionInformationAntichain who site) positive policy payoff fuel := by
-    rw [BehavioralAssessment.continuationContext_value, belief]
+          (recall.decisionInformationAntichain who site) positive policy payoff
+            (M.truncatedRunner fuel) := by
+    rw [BehavioralAssessment.truncatedContinuationContext_value, belief]
     rfl
   calc
     _ = expect (M.runBehavioral assessment.strategy depth) gain := rootGain
@@ -337,14 +345,16 @@ theorem switched_root_gain_eq_mass_mul_context_gain
             localGain history :=
       M.prefixExpectation_eq_ownReach_mul_counterfactualSum assessment.strategy who site
         depth sameDepth ownReach shared gain localGain noGain localSame
-    _ = ownReach * M.counterfactualRegret assessment.strategy who site payoff fuel
+    _ = ownReach * M.counterfactualRegret assessment.strategy who site payoff
+          (M.truncatedRunner fuel)
           alternative := by
       rw [M.counterfactualRegret_eq_sum_behavioralContinuationGain]
     _ = _ := by
       rw [context, context]
       exact (M.informationMass_mul_bayesGain_eq_ownReach_mul_counterfactualRegret
         assessment.strategy who site (recall.decisionInformationAntichain who site) positive
-        ownReach shared alternative payoff fuel alternativeIntegrable incumbentIntegrable).symm
+        ownReach shared alternative payoff (M.truncatedRunner fuel) alternativeIntegrable
+        incumbentIntegrable).symm
 
 include recall sameDepth positive bayes in
 /-- Ex ante optimality against all information-local policies implies actual
@@ -358,7 +368,8 @@ theorem sequentiallyRationalAt_of_root_optimal
       expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy who alternative) (depth + fuel)) payoff ≤
         expect (M.runBehavioral assessment.strategy (depth + fuel)) payoff) :
-    assessment.IsSequentiallyRationalAt site (assessment.continuationContext site payoff fuel) := by
+    assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site payoff
+        fuel) := by
   have baseline := integrable (assessment.strategy who)
   rw [Profile.update_eq_self] at baseline
   have contextIntegrable (policy : M.BehavioralPolicy who) :=

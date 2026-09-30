@@ -29,13 +29,13 @@ theorem watcher_raw_equilibrium_extends
     (source : watchedModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       watched_decisionRecall.decisionInformationAntichain
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => utility history.state who)
         (2 * nativeHorizon + 1 - watchedDepth who site))) :
     ∃ target : nativeModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         (nativeMenu.decisionInformationAntichain nativeInitialLaw nativeHorizon nativeScheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => utility history.state who) (2 * nativeHorizon + 1)) ∧
       (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
           (fun history => (observe history.state, utility history.state)) =

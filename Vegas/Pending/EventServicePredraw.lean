@@ -3,7 +3,7 @@
 import Vegas.Pending.EventServiceProtocol
 import GameTheory.Protocol.Information
 import GameTheory.Protocol.Predraw
-import GameTheoryExtensions.Protocol.FiniteMixing
+import GameTheory.Protocol.PolicyRandomization
 
 /-! # Probability presentation of bounded event service
 
@@ -1164,9 +1164,10 @@ theorem exists_pureServiceResponses_mixture (runtime : EventGraphRuntime graph)
       (fun draw => runtime.serviceProtocolTransition_support_finite inputs roster reactionRounds
         players wire focal inputsFinite playersFinite wireFinite _ _) i
   obtain ⟨mixed, mixedFinite, mixedLaw⟩ :=
-    InformationModel.exists_finite_mixed_runMixed_eq_runBehavioral
+    InformationModel.exists_mixed_runMixed_eq_runBehavioral
       (M := M) (runtime.service_actsOnceWhereItMatters inputs roster reactionRounds players wire
-        focal) behavioral (fuel + 1) sites branches
+        focal) behavioral (fuel + 1) sites
+  replace mixedFinite := fun i => mixedFinite i fun info _ => branches i info
   let response (pureProfile : (i : Unit) → M.Policy i) : PureServiceResponses runtime :=
     runtime.pureServiceResponsesOfPolicy inputs roster reactionRounds players wire focal
       (pureProfile ())

@@ -2,7 +2,7 @@
 
 import Vegas.Examples.MonitoredGuessing.Restricted
 import Vegas.Examples.MonitoredGuessing.NativeClock
-import GameTheoryExtensions.Protocol.RestrictionExecution
+import GameTheory.Protocol.RestrictionExecution
 
 /-! # The native clock certificate descends through the actual menu restrictions
 

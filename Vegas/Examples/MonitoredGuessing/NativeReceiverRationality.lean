@@ -39,7 +39,7 @@ theorem quiet_receiver_context_le (assessment : nativeModel.BehavioralAssessment
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (alternative : nativeModel.BehavioralPolicy bob) :
-    (assessment.continuationContext quietBobSite
+    (assessment.truncatedContinuationContext quietBobSite
       (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
         alternative ≤ (1 / 2 : ℝ) := by
   rw [quiet_native_context assessment consistent alicePolicy watcherPolicy]
@@ -66,10 +66,10 @@ theorem quiet_receiver_site_dominates (assessment : nativeModel.BehavioralAssess
     (atQuiet : assessment.strategy bob quietBobSite.1 =
       nativeGuessBehavior guesses quietBobSite.1)
     (alternative : nativeModel.BehavioralPolicy bob) :
-    (assessment.continuationContext quietBobSite
+    (assessment.truncatedContinuationContext quietBobSite
       (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
         alternative ≤
-    (assessment.continuationContext quietBobSite
+    (assessment.truncatedContinuationContext quietBobSite
       (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
         (assessment.strategy bob) := by
   rw [quiet_prescribed_context_value assessment consistent guesses deposit

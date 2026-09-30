@@ -59,8 +59,9 @@ bit under actual reserved inclusion, even when other players use different
 policies throughout the surrounding execution. -/
 theorem native_supported_guess_inclusion
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some bob)
     (granted : control.execution.application.serviceGrant = some bobBinding) (bit : Bool)
@@ -118,8 +119,9 @@ It concerns immediate ordinary inclusion, so changed future policies cannot
 turn an equilibrium-supported opening into strategic withholding. -/
 theorem native_supported_opening_inclusion
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (who : Player) (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))

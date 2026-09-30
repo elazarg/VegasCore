@@ -130,11 +130,12 @@ theorem continuation_value_eq_initial
       expect (M.runBehavioralFrom profile fuel history.1) payoff =
         expect (M.runBehavioral profile fuel) payoff)
     (alternative : M.BehavioralPolicy player)
-    (integrable : (assessment.continuationContext site payoff fuel).IntegrableAt alternative) :
-    (assessment.continuationContext site payoff fuel).value alternative =
+    (integrable : (assessment.truncatedContinuationContext site payoff fuel).IntegrableAt
+        alternative) :
+    (assessment.truncatedContinuationContext site payoff fuel).value alternative =
       expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy player alternative) fuel) payoff := by
-  rw [BehavioralAssessment.continuationContext_value, expect_bind_tower _ _ _
+  rw [BehavioralAssessment.truncatedContinuationContext_value, expect_bind_tower _ _ _
     (show PayoffIntegrable ((assessment.belief player site).bind fun history =>
       M.runBehavioralFrom (Profile.update (sig := M.behavioralSignature)
         assessment.strategy player alternative) fuel history.1) payoff from integrable)]
@@ -153,7 +154,8 @@ site compares initialized continuations. Rationality at off-path sites may be
 used separately to establish the guarantee against the assessment's opponents. -/
 theorem initial_value_ge_of_induced_deviation
     (assessment : M.BehavioralAssessment) (payoff : ι → E.History → ℝ)
-    (fuel : Nat) (rational : assessment.IsSequentiallyRationalWithin payoff fuel)
+    (fuel : Nat) (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (payoff who) fuel)
     (player : ι) (site : M.InformationSite player)
     (historyValue : ∀ (profile : Profile M.behavioralSignature)
       (history : M.InformationHistory player site.1),
@@ -161,15 +163,15 @@ theorem initial_value_ge_of_induced_deviation
         expect (M.runBehavioral profile fuel) (payoff player))
     (alternative : M.BehavioralPolicy player)
     (integrable : ∀ policy,
-      (assessment.continuationContext site (payoff player) fuel).IntegrableAt policy)
+      (assessment.truncatedContinuationContext site (payoff player) fuel).IntegrableAt policy)
     (bound : ℝ)
     (guarantee : bound ≤ expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy player alternative) fuel) (payoff player)) :
     bound ≤ expect (M.runBehavioral assessment.strategy fuel) (payoff player) := by
   have comparison := (Context.isLocallyOptimal_iff_of_integrable (integrable _)
     fun policy _ => integrable policy).mp (rational player site) alternative (Set.mem_univ _)
-  change (assessment.continuationContext site (payoff player) fuel).value alternative ≤
-    (assessment.continuationContext site (payoff player) fuel).value
+  change (assessment.truncatedContinuationContext site (payoff player) fuel).value alternative ≤
+    (assessment.truncatedContinuationContext site (payoff player) fuel).value
       (assessment.strategy player) at comparison
   rw [continuation_value_eq_initial assessment player site (payoff player) fuel historyValue
       alternative (integrable _),
@@ -191,7 +193,8 @@ The premises concern feasible continuation laws and information, not a chosen
 strategy translator. -/
 theorem initial_law_ne_of_induced_information
     (assessment : M.BehavioralAssessment) (payoff : ι → E.History → ℝ)
-    (fuel : Nat) (rational : assessment.IsSequentiallyRationalWithin payoff fuel)
+    (fuel : Nat) (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (payoff who) fuel)
     (player : ι) (site : M.InformationSite player)
     (historyValue : ∀ (profile : Profile M.behavioralSignature)
       (history : M.InformationHistory player site.1),
@@ -199,7 +202,7 @@ theorem initial_law_ne_of_induced_information
         expect (M.runBehavioral profile fuel) (payoff player))
     (alternative : M.BehavioralPolicy player)
     (integrable : ∀ policy,
-      (assessment.continuationContext site (payoff player) fuel).IntegrableAt policy)
+      (assessment.truncatedContinuationContext site (payoff player) fuel).IntegrableAt policy)
     (result : E.History → Result) (resultPayoff : Result → ℝ)
     (initialValue : ∀ profile : Profile M.behavioralSignature,
       expect ((M.runBehavioral profile fuel).map result) resultPayoff =

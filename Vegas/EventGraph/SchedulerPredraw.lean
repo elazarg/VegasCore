@@ -2,7 +2,7 @@
 
 import Vegas.EventGraph.SchedulerProtocol
 import GameTheory.Protocol.Predraw
-import GameTheoryExtensions.Protocol.FiniteMixing
+import GameTheory.Protocol.PolicyRandomization
 
 /-! # Setup-wide finite predrawing of public schedulers
 
@@ -54,12 +54,12 @@ theorem exists_scheduler_mixture (profile : graph.BehavioralProfile)
   let policies := fun (_ : Unit) => schedulerBehavioral profile inputs scheduler
   have finiteChoices : ∀ i info, (policies i info).support.Finite :=
     fun _ _ => Set.toFinite _
-  obtain ⟨mixed, finiteMixed, law⟩ := M.exists_finite_mixed_runMixed_eq_runBehavioral
+  obtain ⟨mixed, finiteMixed, law⟩ := M.exists_mixed_runMixed_eq_runBehavioral
     (scheduler_actsOnce profile inputs) policies horizon
     (M.behavioralSupportSitesFrom_finite_of_finite_branching policies horizon
       E.initHistory (fun history _ i => finiteChoices i _)
       (schedulerProtocol_step_support_finite profile inputs finiteInputs finiteProfile))
-    finiteChoices
+  replace finiteMixed := fun i => finiteMixed i fun info _ => finiteChoices i info
   let extract := fun pureProfile : (i : Unit) → M.Policy i =>
     schedulerOfPolicy profile inputs (pureProfile ())
   refine ⟨(independentProduct mixed).map extract, ?_, ?_⟩

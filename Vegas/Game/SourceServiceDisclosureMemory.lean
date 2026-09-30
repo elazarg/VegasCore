@@ -2,7 +2,9 @@
 
 import Vegas.Game.SourceServiceDisclosurePosterior
 import Vegas.Source.DisclosurePosterior
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual native response and original disclosure-memory coupling
 
@@ -54,7 +56,7 @@ theorem guarded_disclosure_response_memory
         (execution.respond (application setup leaks) owner (response intended),
           revealSuccessor published binding original intended)) =
       (memory.map Prod.fst).bind fun effective =>
-        ((fiberConditional memory Prod.fst effective).map Prod.snd).map fun past =>
+        ((fiberPosterior memory Prod.fst effective).map Prod.snd).map fun past =>
           (execution.respond (application setup leaks) owner (response effective),
             (revealSuccessor published binding source effective).withOwnHistory owner past) := by
   intro response memory

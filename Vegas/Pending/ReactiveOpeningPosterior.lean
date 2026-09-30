@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveOpeningWindow
-import GameTheoryExtensions.Math.Probability.ConditionalNoise
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Source-result posterior through an actual opening window
 
@@ -80,10 +83,10 @@ theorem openingOutcome_posterior (runtime : EventGraphRuntime graph)
     let channel := fun pair => runtime.openingOutcomeTranscript leaks owner event candidate
       fallback offset timing network roster focal pair.1 pair.2
     let joint := prior.bind fun pair => (channel pair).map fun transcript => (pair, transcript)
-    (fiberConditional joint (fun output => (output.1.2, output.2)) (observed, extra)).map Prod.fst =
-      fiberConditional prior Prod.snd observed := by
+    (fiberPosterior joint (fun output => (output.1.2, output.2)) (observed, extra)).map Prod.fst =
+      fiberPosterior prior Prod.snd observed := by
   dsimp only
-  apply PMF.conditional_kernel_of_fiber prior Prod.snd _ _ observed extra present
+  apply conditional_kernel_of_fiber prior Prod.snd _ _ observed extra present
   intro left leftSupported right rightSupported same
   obtain ⟨left, outcome⟩ := left
   obtain ⟨right, rightOutcome⟩ := right
@@ -149,7 +152,7 @@ theorem openingWindow_owner_posterior {Observation : Type}
       ((runtime.runInteractionPlan leaks players network
         (roster.map ServiceInstruction.player) start).map readout).map
           (fun output => (output, start))
-    (fiberConditional joint Prod.fst observed).map Prod.snd = prior := by
+    (fiberPosterior joint Prod.fst observed).map Prod.snd = prior := by
   dsimp only
   let app := runtime.reactiveApplication leaks
   let players := runtime.openingWindowMixturePlayers leaks owner event candidate raw offset choices
@@ -187,10 +190,10 @@ theorem openingWindow_owner_posterior {Observation : Type}
       _ = _ := by
         simp only [bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def]
         rw [PMF.bind_comm]
-  change ((fiberConditional (prior.bind fun start =>
+  change ((fiberPosterior (prior.bind fun start =>
     (kernel start).map fun output => (output, start)) Prod.fst observed).map
       Prod.snd) = prior
   rw [independent]
-  exact conditional_snd_bindPairLaw_const (kernel reference) prior observed
+  exact fiberPosterior_snd_bindPairLaw_const (kernel reference) prior observed
 
 end Vegas.EventGraphRuntime

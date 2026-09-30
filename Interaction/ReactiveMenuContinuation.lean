@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveMenuRestriction
 import Interaction.ReactiveMenuPolicy
-import GameTheoryExtensions.Protocol.RestrictionExecution
+import GameTheory.Protocol.RestrictionExecution
 
 /-! # Legal physical continuations against unchanged opponents
 

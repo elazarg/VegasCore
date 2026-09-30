@@ -36,16 +36,16 @@ theorem BehavioralAssessmentConvergesPointwise.exists_vanishing_local_gain_bound
     (horizon : Nat) (payoff : E.History → ℝ) (alternative : M.BehavioralPolicy who)
     (localOptimal : ∀ (site : M.InformationSite who) depth,
       InformationSite.CommonDepth M site depth → depth < horizon →
-      (assessment.continuationContext site payoff (horizon - depth)).value
+      (assessment.truncatedContinuationContext site payoff (horizon - depth)).value
           ((assessment.strategy who).withLaw site.1 (alternative site.1)) ≤
-        (assessment.continuationContext site payoff (horizon - depth)).value
+        (assessment.truncatedContinuationContext site payoff (horizon - depth)).value
           (assessment.strategy who)) :
     ∃ error : ℕ → ℝ, (∀ n, 0 ≤ error n) ∧ Tendsto error atTop (nhds 0) ∧
       ∀ n (site : M.InformationSite who) depth,
         InformationSite.CommonDepth M site depth → depth < horizon →
-        ((sequence n).continuationContext site payoff (horizon - depth)).value
+        ((sequence n).truncatedContinuationContext site payoff (horizon - depth)).value
             (((sequence n).strategy who).withLaw site.1 (alternative site.1)) -
-          ((sequence n).continuationContext site payoff (horizon - depth)).value
+          ((sequence n).truncatedContinuationContext site payoff (horizon - depth)).value
             ((sequence n).strategy who) ≤ error n := by
   classical
   let _ := Fintype.ofFinite (M.InformationSite who)
@@ -54,9 +54,9 @@ theorem BehavioralAssessmentConvergesPointwise.exists_vanishing_local_gain_bound
       InformationSite.CommonDepth M site (depth site) := (clock site).choose_spec
   let gain (current : M.BehavioralAssessment) (site : M.InformationSite who) : ℝ :=
     if depth site < horizon then
-      (current.continuationContext site payoff (horizon - depth site)).value
+      (current.truncatedContinuationContext site payoff (horizon - depth site)).value
           ((current.strategy who).withLaw site.1 (alternative site.1)) -
-        (current.continuationContext site payoff (horizon - depth site)).value
+        (current.truncatedContinuationContext site payoff (horizon - depth site)).value
           (current.strategy who)
     else 0
   have gainNonpositive (site : M.InformationSite who) : gain assessment site ≤ 0 := by

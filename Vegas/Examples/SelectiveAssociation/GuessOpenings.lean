@@ -54,8 +54,9 @@ theorem native_bob_future_opening (profile : ∀ who, nativeModel.BehavioralPoli
 open Classical in
 theorem native_bob_committed_alice_opens
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
     (granted : view.application.publicView.serviceGrant = some bobBinding)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks view (aliceBindingEvidence bit))
@@ -120,8 +121,9 @@ theorem native_bob_committed_alice_opens
 open Classical in
 theorem native_bob_committed_bob_opens
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
     (granted : view.application.publicView.serviceGrant = some bobBinding)
     (choice : nativeModel.Choice bob (some (past, view)))
@@ -187,8 +189,9 @@ continuation. Both openings follow from sequential rationality at their later
 information sets; they are not prescribed as part of Bob's deviation. -/
 theorem native_bob_corrective_utility
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
     (granted : view.application.publicView.serviceGrant = some bobBinding)
     (unfinished : bobBinding ∉ view.application.publicView.observation.completionOrder)

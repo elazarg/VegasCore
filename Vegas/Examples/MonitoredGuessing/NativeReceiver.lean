@@ -67,7 +67,7 @@ theorem quiet_prescribed_context_value (assessment : nativeModel.BehavioralAsses
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (atQuiet : assessment.strategy bob quietBobSite.1 =
       nativeGuessBehavior guesses quietBobSite.1) :
-    (assessment.continuationContext quietBobSite
+    (assessment.truncatedContinuationContext quietBobSite
       (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
         (assessment.strategy bob) = (1 / 2 : ℝ) := by
   rw [quiet_native_context assessment consistent alicePolicy watcherPolicy]

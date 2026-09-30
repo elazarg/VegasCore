@@ -4,14 +4,16 @@ import Vegas.Game.SourceServiceDisclosureMemory
 import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.RevealServiceRosterLaw
 import Vegas.Pending.ReactiveOpeningLikelihood
-import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheory.Math.Probability.ConditionalObservation
 import Vegas.Source.ObservationRecall
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.ServiceObservation
 import Vegas.Pending.ReactiveBindingTranscript
 import Vegas.Pending.ReactiveResponseRecall
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Source memory and actual service-channel factorization
 
@@ -137,7 +139,7 @@ theorem source_maintenance_factorization
           fun final => (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
         (nextNoise (observe config)).map fun extra => (config, extra) := by
-  obtain ⟨nextNoise, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     observe noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) observe
@@ -173,7 +175,7 @@ theorem source_replay_factorization
             (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
         (nextNoise (config.view focal)).map fun extra => (config, extra) := by
-  obtain ⟨nextNoise, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun config => config.view focal) noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) (fun config => config.view focal)
@@ -246,7 +248,7 @@ theorem source_activation_input_factorization
     rw [sampledNetworks]
     exact congrArg₂ (fun view evidence =>
       (⟨second.network.observe focal, view, evidence⟩ : app.PlayerView)) projected receipts
-  obtain ⟨channel, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨channel, law⟩ := exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     observe noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) observe
@@ -339,7 +341,7 @@ theorem binding_successor_memory_factorization
           (commitSuccessor name guard pair.1 result,
             commitSuccessor name guard pair.2 result)).bind fun pair =>
         (nextNoise (pair.1.view focal)).map fun extra => (pair, extra) := by
-  apply PMF.exists_updated_observation_kernel_of_readout prior
+  apply exists_updated_observation_kernel_of_readout prior
     (fun seed => (source seed, original seed))
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun pair => pair.1.view focal) noise factor (fun pair => choice pair.2)
@@ -406,7 +408,7 @@ theorem binding_phase_memory
           timing execution result).map fun traffic =>
             (traffic, commitSuccessor name guard original result)) =
       (memory.map Prod.fst).bind fun result =>
-        ((fiberConditional memory Prod.fst result).map Prod.snd).bind fun past =>
+        ((fiberPosterior memory Prod.fst result).map Prod.snd).bind fun past =>
           (bindingPhaseTranscript setup leaks network roster owner focal event payload offset ticks
             timing execution result).map fun traffic =>
               (traffic, (commitSuccessor name guard source result).withOwnHistory owner past) := by
@@ -456,7 +458,7 @@ theorem guarded_disclosure_service_memory
           (execution.respond (application setup leaks) owner (response intended))).map fun final =>
             (final, revealSuccessor published binding original intended)) =
       (memory.map Prod.fst).bind fun effective =>
-        ((fiberConditional memory Prod.fst effective).map Prod.snd).bind fun past =>
+        ((fiberPosterior memory Prod.fst effective).map Prod.snd).bind fun past =>
           ((runtime setup).runInteractionPlan leaks players network remaining
             (execution.respond (application setup leaks) owner (response effective))).map
               fun final =>

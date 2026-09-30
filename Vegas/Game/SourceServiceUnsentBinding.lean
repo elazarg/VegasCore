@@ -6,7 +6,8 @@ import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Pending.ReactiveResolutionWindowState
 import Vegas.Game.SourceLocalPolicy
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Support
@@ -267,7 +268,8 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     rw [afterDef, ReactiveApplication.Implementation.posterior_respond, PMF.support_map]
       at member
     obtain ⟨pair, conditioned, rfl⟩ := member
-    obtain ⟨matched, supported⟩ := mem_support_fiberConditional meets conditioned
+    obtain ⟨matched, supported⟩ := mem_support_fiberPosterior (mem_support_map_of_exists_mem_fiber
+        meets) conditioned
     obtain ⟨memory, memorySupport, drawn⟩ :=
       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
     obtain ⟨action, actionSupport, rfl⟩ := PMF.support_map .. ▸ drawn
@@ -469,14 +471,15 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
   subst sameValue
   refine (bind_congr_on_support _ (g := fun _ => _) ?_).trans (PMF.bind_const _ _)
   intro tag member
-  obtain ⟨matched, supported⟩ := mem_support_fiberConditional ⟨(value, slot, response), rfl, by
+  obtain ⟨matched, supported⟩ := mem_support_fiberPosterior
+    (mem_support_map_of_exists_mem_fiber ⟨(value, slot, response), rfl, by
     rw [PMF.support_bind]
     refine Set.mem_iUnion₂.mpr ⟨value, valueSupport, ?_⟩
     rw [PMF.support_bind]
     refine Set.mem_iUnion₂.mpr ⟨slot, slotSupport, ?_⟩
     simp only [ReactiveApplication.scheduledPolicy, Option.map_some, now, ↓reduceIte,
       PMF.pure_map, PMF.mem_support_pure_iff _ _]
-    rfl⟩ member
+    rfl⟩) member
   obtain ⟨tagValue, _, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   obtain ⟨tagSlot, _, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rest)
   obtain ⟨action, actionSupport, rfl⟩ := PMF.support_map .. ▸ rest
@@ -1043,16 +1046,20 @@ theorem unsent_binding_comparisons (service : SourceServiceSpec Player L)
     (unsent : (runtime service.setup).eventRecorded service.leaks past event = false)
     (law : PMF (service.model.Choice who site.1)) :
     ∃ mixture : PMF (service.sourceModel.AssessmentDeviation who),
-      (service.model.assessmentComparison service.readout service.fuel approx.assessment who
+      (service.model.assessmentComparisonWith (service.model.truncatedRunner service.fuel)
+          service.readout approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).prescribed =
-        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
-            (fun final => service.setup.protocolReadout final.state)
-            (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
-      (service.model.assessmentComparison service.readout service.fuel approx.assessment who
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparisonWith
+            (service.sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+            (fun final => service.setup.protocolReadout final.state) source who
+            deviation).prescribed) ∧
+      (service.model.assessmentComparisonWith (service.model.truncatedRunner service.fuel)
+          service.readout approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).alternative =
-        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
-            (fun final => service.setup.protocolReadout final.state)
-            (instructionCount service.setup.program + 1) source who deviation).alternative) := by
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparisonWith
+            (service.sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+            (fun final => service.setup.protocolReadout final.state) source who
+            deviation).alternative) := by
   have owned := binding_actor service.setup event who payload outputEq
   obtain ⟨codeEq, node⟩ := binding_nodeView service.setup event who payload outputEq
   obtain ⟨sourceView, sourceHistories⟩ := owner_site_source_histories service timing

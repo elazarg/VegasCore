@@ -98,7 +98,7 @@ theorem continuation_integrable {Claim : Type} [Fintype Claim]
     (assessment : (model Claim).BehavioralAssessment) {who : Player}
     (site : (model Claim).InformationSite who) (fuel : Nat)
     (policy : (model Claim).BehavioralPolicy who) :
-    (assessment.continuationContext site (payoff who) fuel).IntegrableAt policy :=
+    (assessment.truncatedContinuationContext site (payoff who) fuel).IntegrableAt policy :=
   payoff_integrable who _
 
 /-- Only a publicly recorded Alice certificate directs the prescribed guess.

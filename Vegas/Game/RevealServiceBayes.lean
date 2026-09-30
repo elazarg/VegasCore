@@ -4,6 +4,10 @@ import Vegas.Game.RevealServiceMixing
 import Vegas.Game.RevealServiceOwnerInformation
 import Interaction.ReactiveOwnPlay
 import GameTheoryExtensions.Analysis.Protocol.ReadoutBayesProjection
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual source-state posteriors in the restricted revelation service
 
@@ -138,9 +142,9 @@ theorem owner_bayes_state [setup.FiniteInitialLaw]
     rw [encoded] at law
     exact law
   have marked := model.informationReadout_law_of_fiber (setup.informationModel admission)
-    selected who site (blockOffset event.val + 2 * event.val + 3) source.strategy sourceSite
-    (event.val + 1) (fun current => prefixReadout setup leaks event.val current.state)
-    History.state (fun state => setup.protocolObserve who state = sourceSite.1) unmarked
+    selected who site sourceSite (fun current => prefixReadout setup leaks event.val current.state)
+    History.state source.strategy (blockOffset event.val + 2 * event.val + 3) (event.val + 1)
+    (fun state => setup.protocolObserve who state = sourceSite.1) unmarked
     (by
       intro current reached
       constructor

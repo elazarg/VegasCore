@@ -34,7 +34,7 @@ theorem exclusion_without_source_actions_insufficient :
     (∀ _site : (model false).InformationSite false, False) ∧
     ∃ source : (model false).BehavioralAssessment,
       source.IsSequentialEquilibriumFor (antichain false) (fun who site =>
-        source.continuationContext site (fun history => payoff 0 history.state who) 3) ∧
+        source.truncatedContinuationContext site (fun history => payoff 0 history.state who) 3) ∧
       ¬ ∃ target : (model true).BehavioralAssessment,
         isEquilibrium 0 target ∧
           (((model true).runSingleMoverBehavioralFrom (single true) target.strategy 3

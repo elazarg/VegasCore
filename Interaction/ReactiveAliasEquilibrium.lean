@@ -2,7 +2,9 @@
 
 import Interaction.ReactiveAliasBayes
 import Interaction.ReactiveAliasIncentives
-import GameTheoryExtensions.Protocol.ContinuationSimulation
+import GameTheory.Analysis.Protocol.Incentives
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Sequential equilibrium under private response aliases
 
@@ -57,12 +59,14 @@ theorem canonical_assessmentLaw
     (beliefs : (target.belief who original).map
         (normal.informationHistory raw stable initial horizon scheduler who original.1) =
       source.belief who (normal.site raw stable initial horizon scheduler who original)) :
-    ((raw.information initial horizon scheduler).assessmentLaw (2 * horizon + 1) target original
+    ((raw.information initial horizon scheduler).assessmentLawWith ((raw.information initial
+        horizon scheduler).truncatedRunner (2 * horizon + 1)) target original
         (target.strategy who)).map (fun history => normal.state history.state) =
-      (((normal.menu raw).information initial horizon scheduler).assessmentLaw (2 * horizon + 1)
+      (((normal.menu raw).information initial horizon scheduler).assessmentLawWith (((normal.menu
+          raw).information initial horizon scheduler).truncatedRunner (2 * horizon + 1))
         source (normal.site raw stable initial horizon scheduler who original)
           (source.strategy who)).map History.state := by
-  simp only [assessmentLaw, GameTheory.Profile.update_eq_self]
+  simp only [assessmentLawWith, GameTheory.Profile.update_eq_self]
   rw [strategy, ← beliefs, PMF.bind_map, PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro history _
@@ -89,13 +93,15 @@ theorem aliasDeviation_assessmentLaw
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (observed : original.1 = some (past, view))
     (alternative : (raw.information initial horizon scheduler).BehavioralPolicy who) :
-    ((raw.information initial horizon scheduler).assessmentLaw (2 * horizon + 1) target original
+    ((raw.information initial horizon scheduler).assessmentLawWith ((raw.information initial
+        horizon scheduler).truncatedRunner (2 * horizon + 1)) target original
         alternative).map (fun history => normal.state history.state) =
-      (((normal.menu raw).information initial horizon scheduler).assessmentLaw (2 * horizon + 1)
+      (((normal.menu raw).information initial horizon scheduler).assessmentLawWith (((normal.menu
+          raw).information initial horizon scheduler).truncatedRunner (2 * horizon + 1))
         source (normal.site raw stable initial horizon scheduler who original)
           (normal.aliasDeviation raw initial horizon scheduler who past alternative)).map
             History.state := by
-  simp only [assessmentLaw]
+  simp only [assessmentLawWith]
   rw [strategy, ← beliefs, PMF.bind_map, PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro history _
@@ -108,7 +114,7 @@ theorem aliasDeviation_assessmentLaw
 continuation simulation at every raw information site. The deviator's entire
 future policy is represented, including behavior conditioned on remembered
 private aliases. The proof uses projected beliefs, not equality of raw recall. -/
-def aliasContinuationSimulation
+def aliasIncentiveSimulation
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
     (target : (raw.information initial horizon scheduler).BehavioralAssessment)
     (strategy : target.strategy = (fun player => normal.canonicalPolicy raw stable closed
@@ -117,11 +123,13 @@ def aliasContinuationSimulation
       (target.belief who original).map
           (normal.informationHistory raw stable initial horizon scheduler who original.1) =
         source.belief who (normal.site raw stable initial horizon scheduler who original)) :
-    GameTheory.ContinuationSimulation
-      (((normal.menu raw).information initial horizon scheduler).assessmentComparison
-        History.state (2 * horizon + 1) source)
-      ((raw.information initial horizon scheduler).assessmentComparison
-        (fun history => normal.state history.state) (2 * horizon + 1) target) := by
+    GameTheory.IncentiveSimulation
+      (((normal.menu raw).information initial horizon scheduler).assessmentComparisonWith
+        (((normal.menu raw).information initial horizon scheduler).truncatedRunner
+          (2 * horizon + 1)) History.state source)
+      ((raw.information initial horizon scheduler).assessmentComparisonWith
+        ((raw.information initial horizon scheduler).truncatedRunner (2 * horizon + 1))
+        (fun history => normal.state history.state) target) := by
   have hasData (who : Principal)
       (original : (raw.information initial horizon scheduler).InformationSite who) :
       ∃ data, original.1 = some data := by
@@ -133,7 +141,7 @@ def aliasContinuationSimulation
         contradiction
     | some data => exact ⟨data, rfl⟩
   let data who original := Classical.choose (hasData who original)
-  refine GameTheory.ContinuationSimulation.ofMap
+  refine GameTheory.IncentiveSimulation.ofMap
     (fun who deviation =>
       (normal.site raw stable initial horizon scheduler who deviation.1,
         normal.aliasDeviation raw initial horizon scheduler who
@@ -157,14 +165,14 @@ theorem exists_canonical_sequentialEquilibrium [app.FiniteNature initial schedul
     (payoff : Principal → app.ProtocolState → ℝ)
     (equilibrium : source.IsSequentialEquilibriumFor
       ((normal.menu raw).decisionInformationAntichain initial horizon scheduler)
-      (fun who original => source.continuationContext original
+      (fun who original => source.truncatedContinuationContext original
         (fun history => payoff who history.state) (2 * horizon + 1))) :
     ∃ target : (raw.information initial horizon scheduler).BehavioralAssessment,
       target.strategy = (fun who => normal.canonicalPolicy raw stable closed
         initial horizon scheduler who (source.strategy who)) ∧
       target.IsSequentialEquilibriumFor
         (raw.decisionInformationAntichain initial horizon scheduler)
-        (fun who original => target.continuationContext original
+        (fun who original => target.truncatedContinuationContext original
           (fun history => payoff who (normal.state history.state)) (2 * horizon + 1)) ∧
       (∀ who (original : (raw.information initial horizon scheduler).InformationSite who),
         (target.belief who original).map
@@ -178,17 +186,19 @@ theorem exists_canonical_sequentialEquilibrium [app.FiniteNature initial schedul
     normal.exists_canonical_consistent raw stable closed initial horizon scheduler source
       equilibrium.2
   refine ⟨target, strategy, ?_, beliefs, ?_⟩
-  · exact (normal.aliasContinuationSimulation raw stable closed initial horizon scheduler
-      source target strategy beliefs).sequentialEquilibrium
-        ((normal.menu raw).decisionInformationAntichain initial horizon scheduler)
-        (raw.decisionInformationAntichain initial horizon scheduler) consistent
-          (fun state who => payoff who state) equilibrium fun _ _ =>
-            ⟨payoffIntegrable_of_finite_support _ _ (by
-              simp only [InformationModel.assessmentComparison, PMF.support_map]
-              exact (Set.toFinite _).image _),
-            payoffIntegrable_of_finite_support _ _ (by
-              simp only [InformationModel.assessmentComparison, PMF.support_map]
-              exact (Set.toFinite _).image _)⟩
+  · have finiteMap {History State : Type} [Finite History] (law : PMF History)
+        (observe : History → State) (utility : State → ℝ) :
+        PayoffIntegrable (law.map observe) utility :=
+      payoffIntegrable_of_finite_support _ _ (by
+        rw [PMF.support_map]
+        exact (Set.toFinite _).image _)
+    exact InformationModel.sequentialEquilibrium_of_simulation _ _
+      ((normal.menu raw).decisionInformationAntichain initial horizon scheduler)
+      (raw.decisionInformationAntichain initial horizon scheduler) _ _ _ _ source target
+      (normal.aliasIncentiveSimulation raw stable closed initial horizon scheduler
+        source target strategy beliefs) consistent (fun state who => payoff who state)
+      equilibrium (fun _ _ => ⟨finiteMap _ _ _, finiteMap _ _ _⟩)
+      (fun _ _ => ⟨finiteMap _ _ _, finiteMap _ _ _⟩)
   · rw [strategy]
     exact normal.canonical_initial_stateLaw raw stable closed initial horizon scheduler
       source.strategy (2 * horizon + 1)

@@ -19,7 +19,7 @@ no extra activation or modeled clock time.
 ## Checked realization
 
 The generic construction in
-[PrivateStrategy.lean](../GameTheoryExtensions/Protocol/PrivateStrategy.lean)
+[PrivateStrategy.lean](../GameTheory/GameTheory/Protocol/PrivateStrategy.lean)
 starts with an initial private-state distribution and a response kernel from
 state and observed input to output and new state. Conditioning on the player's
 own input/output transcript produces a behavioral policy. Its definition is

@@ -3,7 +3,8 @@
 import Vegas.Source.ProtocolChoiceFiniteness
 import Vegas.Source.DisclosureSupport
 import Vegas.Game.SourceContinuation
-import GameTheoryExtensions.Protocol.FiniteInformation
+import GameTheory.Protocol.DecisionPlan
+import GameTheory.Protocol.FiniteInformation
 import GameTheory.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform

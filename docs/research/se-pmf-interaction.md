@@ -67,7 +67,7 @@ impossibility for this compiler.
   finite-menu trembles.
 - [Consistency completion](../../GameTheoryExtensions/Analysis/Protocol/ConsistencyCompletion.lean):
   common convergent subsequences of finite belief laws.
-- [Agent completion](../../GameTheoryExtensions/Analysis/Protocol/AgentCompletion.lean):
+- [Agent completion](../../GameTheory/GameTheory/Analysis/Protocol/AgentCompletion.lean):
   finite Nash existence chooses off-path responses jointly.
 - [Restriction extension](../../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean)
   and [terminal audit](../../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean):

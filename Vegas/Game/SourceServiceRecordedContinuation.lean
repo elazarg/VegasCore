@@ -299,7 +299,8 @@ theorem recorded_comparison_eq (who : Player) (site : service.model.InformationS
     (granted : view.application.publicView.serviceGrant = some event)
     (recorded : (runtime service.setup).eventRecorded service.leaks past event = true)
     (law : PMF (service.model.Choice who site.1)) :
-    let comparison := service.model.assessmentComparison service.readout service.fuel
+    let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
+        service.fuel) service.readout
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by
   apply approx.comparison_eq_of_phase_invariant who site

@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.DisclosurePrefix
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Whole prescribed continuations at normalized source prefixes
 
@@ -94,7 +96,7 @@ private theorem disclosurePrefixRealizes_commit {Γ : SourceCtx Player L} {O : F
       let posterior : DecisionView who ((name, .commitment owner payload) :: Γ) →
           PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+          (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
               (view.back true)) Prod.fst
                 ((view.1.cells.get .here).getD .failure)).map Prod.snd
         else remember (view.back false)
@@ -135,7 +137,7 @@ private theorem disclosurePrefixRealizes_reveal {Γ : SourceCtx Player L} {O : F
       let posterior : DecisionView who ((published, .publication payload) :: Γ) →
           PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+          (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) config.registry
               config.revelations
               remember (policy.1 own) (view.back true)) Prod.fst
                 (OwnAction.disclosure view.2.getLast?)).map Prod.snd

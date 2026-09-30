@@ -2,7 +2,6 @@
 
 import GameTheory.Protocol.BehavioralAssessment
 import GameTheory.Analysis.IncentiveCone
-import GameTheoryExtensions.Core.IncentiveComparison
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
 
@@ -236,30 +235,31 @@ theorem isSequentiallyRationalAt_of_sanction
     (base : E.History → ℝ) (sanction : Set E.History) (fuel : Nat) {penalty : ℝ}
     (penalty_nonneg : 0 ≤ penalty)
     (gain probability : M.BehavioralPolicy who → ℝ)
-    (integrable : ∀ policy, (assessment.continuationContext site base fuel).IntegrableAt policy)
-    (no_sanction : (((assessment.continuationContext site base fuel).outcome
+    (integrable : ∀ policy, (assessment.truncatedContinuationContext site base fuel).IntegrableAt
+        policy)
+    (no_sanction : (((assessment.truncatedContinuationContext site base fuel).outcome
       (assessment.strategy who)).toOuterMeasure sanction).toReal = 0)
     (gain_bound : ∀ alternative,
-      (assessment.continuationContext site base fuel).value alternative -
-        (assessment.continuationContext site base fuel).value (assessment.strategy who) ≤
+      (assessment.truncatedContinuationContext site base fuel).value alternative -
+        (assessment.truncatedContinuationContext site base fuel).value (assessment.strategy who) ≤
           gain alternative)
     (detection : ∀ alternative, probability alternative ≤
-      (((assessment.continuationContext site base fuel).outcome alternative).toOuterMeasure
+      (((assessment.truncatedContinuationContext site base fuel).outcome alternative).toOuterMeasure
         sanction).toReal)
     (sufficient : ∀ alternative, gain alternative ≤ probability alternative * penalty) :
     assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site
+      (assessment.truncatedContinuationContext site
         (Enforcement.sanctionedUtility base sanction penalty) fuel) := by
   have sanctioned (policy : M.BehavioralPolicy who) :
-      (assessment.continuationContext site
+      (assessment.truncatedContinuationContext site
         (Enforcement.sanctionedUtility base sanction penalty) fuel).IntegrableAt policy :=
     Enforcement.payoffIntegrable_sanctionedUtility (integrable policy) sanction penalty
   refine (Context.isLocallyOptimal_iff_of_integrable (sanctioned _)
     fun alternative _ => sanctioned alternative).mpr fun alternative _ => ?_
   let comparison : IncentiveComparison E.History := {
-    prescribed := (assessment.continuationContext site base fuel).outcome
+    prescribed := (assessment.truncatedContinuationContext site base fuel).outcome
       (assessment.strategy who)
-    alternative := (assessment.continuationContext site base fuel).outcome alternative }
+    alternative := (assessment.truncatedContinuationContext site base fuel).outcome alternative }
   exact (IncentiveComparison.holds_iff_of_integrable comparison
     (Enforcement.sanctionedUtility base sanction penalty)
     (Enforcement.payoffIntegrable_sanctionedUtility (integrable (assessment.strategy who))

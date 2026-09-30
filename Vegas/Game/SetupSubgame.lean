@@ -32,7 +32,7 @@ theorem protocol_continuationValue_eq (setup : Setup (Player := Player) (L := L)
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (history : (setup.executionProtocol admission).History) (who : Player) :
     (setup.executionProtocol admission).historyBackwardValue
-        (setup.protocol_terminates admission)
+        (setup.protocol_terminates admission).wellFoundedHistories
         ((setup.informationModel admission).historyChooser
           (Profile.map (target := (setup.informationModel admission).strategicSignature)
             (fun who => setup.purePolicyEquiv admission who) profile))
@@ -41,7 +41,7 @@ theorem protocol_continuationValue_eq (setup : Setup (Player := Player) (L := L)
         (fun who => (profile who).1.toBehavioral setup.program) history.state)
         (utility · who) := by
   rw [(setup.informationModel admission).historyBackwardValue_eq_expect_runFrom_of_bound
-    (setup.protocol_terminates admission) (setup.protocol_bounded admission)]
+    (setup.protocol_terminates admission).wellFoundedHistories (setup.protocol_bounded admission)]
   have law := setup.protocol_runFrom_eq admission (fun who => (profile who).1)
     (fun who => (profile who).2) (instructionCount setup.program + 1) history
     (by have count := setup.protocol_history_length admission history.trace; omega)
@@ -62,7 +62,7 @@ theorem protocol_backwardLaw_integrable (setup : Setup (Player := Player) (L := 
     (history : (setup.executionProtocol admission).History) (who : Player) :
     PayoffIntegrable
       ((setup.executionProtocol admission).historyBackwardLaw
-        (setup.protocol_terminates admission)
+        (setup.protocol_terminates admission).wellFoundedHistories
         ((setup.informationModel admission).historyChooser
           (Profile.map (target := (setup.informationModel admission).strategicSignature)
             (fun who => setup.purePolicyEquiv admission who) profile)) history)
@@ -95,7 +95,7 @@ theorem protocol_isSubgamePerfect_iff (setup : Setup (Player := Player) (L := L)
     (profile : Profile (admittedPureSignature setup.program admission))
     (utility : State L setup.program.terminalCtx → Player → ℝ) :
     (setup.informationModel admission).IsSubgamePerfect
-        (setup.protocol_terminates admission)
+        (setup.protocol_terminates admission).wellFoundedHistories
         (Profile.map (fun who => setup.purePolicyEquiv admission who) profile)
         (setup.protocolUtility admission utility) ↔
       ∀ history, (setup.informationModel admission).IsSubgameRoot history →

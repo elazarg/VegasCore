@@ -60,11 +60,11 @@ theorem antichain : (model true).DecisionInformationAntichain := by
 
 theorem continuation_value (assessment : (model true).BehavioralAssessment)
     (bit : Bool) (u : arena.History → ℝ) (alternative : (model true).BehavioralPolicy true) :
-    (assessment.continuationContext (bobSite bit) u 3).value alternative =
+    (assessment.truncatedContinuationContext (bobSite bit) u 3).value alternative =
       expect ((model true).runSingleMoverBehavioralFrom single
         (Profile.update (sig := (model true).behavioralSignature)
           assessment.strategy true alternative) 3 (bobHistory bit)) u := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     eq_pure_of_subsingleton (assessment.belief true (bobSite bit))
       ⟨bobHistory bit, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) single]
@@ -72,12 +72,13 @@ theorem continuation_value (assessment : (model true).BehavioralAssessment)
 /-- Disclosure leaves a singleton history at Bob's decision, so the actual
 continuation has a common binary law and Bob can force either outcome. -/
 def disclosedDecision : (model true).BinaryDecision (fun goal who history =>
-    payoff goal history who) 3 where
+    payoff goal history who) ((model true).truncatedRunner 3) where
   player := true
   site := bobSite false
   outcome profile := (choiceLaw profile true (some false)).map (fun guess => guess == false)
   policy goal := choose true true (!goal)
   history_value profile goal history := by
+    dsimp only [InformationModel.truncatedRunner]
     rw [history_at_bob false history,
       ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) single]
     unfold payoff
@@ -88,8 +89,9 @@ def disclosedDecision : (model true).BinaryDecision (fun goal who history =>
 
 theorem rationality_forces_payoff_one (assessment : (model true).BehavioralAssessment)
     (matchBit : Bool)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => payoff matchBit history who) 3) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => payoff matchBit history
+            who) 3) :
     1 ≤ expect ((model true).runSingleMoverBehavioralFrom single assessment.strategy 3
       (bobHistory false)) (payoff matchBit · true) := by
   unfold payoff
@@ -102,8 +104,10 @@ theorem rationality_forces_payoff_one (assessment : (model true).BehavioralAsses
 one target strategy for both opposite utilities. -/
 theorem no_common_rational_strategy : ¬ ∃ first second : (model true).BehavioralAssessment,
     first.strategy = second.strategy ∧
-      first.IsSequentiallyRationalWithin (fun who history => payoff true history who) 3 ∧
-      second.IsSequentiallyRationalWithin (fun who history => payoff false history who) 3 :=
+      (first.IsSequentiallyRationalFor fun who site =>
+          first.truncatedContinuationContext site (fun history => payoff true history who) 3) ∧
+      second.IsSequentiallyRationalFor fun who site =>
+          second.truncatedContinuationContext site (fun history => payoff false history who) 3 :=
   disclosedDecision.no_common_rational_strategy
 
 /-- A whole-profile translator has more access than a playerwise compiler.
@@ -113,15 +117,17 @@ theorem no_utility_independent_sequential_translation : ¬ ∃ translate :
     ∀ matchBit,
       (SequentialBeliefs.assessment SequentialBeliefs.limitProfile).IsSequentialEquilibriumFor
         SequentialBeliefs.antichain (fun who site =>
-          (SequentialBeliefs.assessment SequentialBeliefs.limitProfile).continuationContext site
+          (SequentialBeliefs.assessment
+              SequentialBeliefs.limitProfile).truncatedContinuationContext site
             (fun history => payoff matchBit history who) 3) →
       ∃ target : (model true).BehavioralAssessment,
         target.strategy = translate SequentialBeliefs.limitProfile ∧
           target.IsSequentialEquilibriumFor antichain (fun who site =>
-            target.continuationContext site (fun history => payoff matchBit history who) 3) :=
+            target.truncatedContinuationContext site (fun history => payoff matchBit history
+                who) 3) :=
   disclosedDecision.no_utility_independent_sequential_translation
     (SequentialBeliefs.assessment SequentialBeliefs.limitProfile)
     SequentialBeliefs.antichain antichain (fun goal who history => payoff goal history who)
-    3 SequentialBeliefs.sequential_equilibrium_guessing
+    ((model false).truncatedRunner 3) SequentialBeliefs.sequential_equilibrium_guessing
 
 end GameTheoryExtensionsTests.SequentialDisclosure

@@ -23,8 +23,9 @@ theorem consistent_but_not_rational :
     ∃ assessment : (model false).BehavioralAssessment,
       assessment.strategy = prescribed false ∧
       assessment.IsSequentiallyConsistent antichain ∧
-      ¬ assessment.IsSequentiallyRationalWithin
-        (fun who history => SequentialCredibility.payoff history who) 3 := by
+      ¬ assessment.IsSequentiallyRationalFor fun who site =>
+          assessment.truncatedContinuationContext site (fun history => SequentialCredibility.payoff
+              history who) 3 := by
   obtain ⟨assessment, strategy, consistent⟩ :=
     InformationModel.BehavioralAssessment.exists_consistent_completion
       (.ofStrategy (perturbedProfile 0)) (perturbed_full 0) antichain (prescribed false)

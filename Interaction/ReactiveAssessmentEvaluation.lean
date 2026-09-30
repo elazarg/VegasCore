@@ -23,7 +23,7 @@ theorem context_value_finish
     (who : Principal) (site : (menu.information initial horizon scheduler).InformationSite who)
     (payoff : app.ProtocolState → ℝ)
     (alternative : (menu.information initial horizon scheduler).BehavioralPolicy who) :
-    (assessment.continuationContext site (fun history => payoff history.state)
+    (assessment.truncatedContinuationContext site (fun history => payoff history.state)
       (2 * horizon + 1)).value alternative =
       expect (assessment.belief who site) (fun history =>
         expect (app.finish initial horizon scheduler
@@ -31,7 +31,8 @@ theorem context_value_finish
             (Profile.update
             (sig := (menu.information initial horizon scheduler).behavioralSignature)
               assessment.strategy who alternative)) history.1.state) payoff) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite]
   apply expect_congr_on_support
   intro history _
   have bound := app.trace_bound initial horizon scheduler
@@ -52,7 +53,7 @@ theorem context_value_of_known_state
     (state : app.ProtocolState)
     (known : ∀ history : (menu.information initial horizon scheduler).InformationHistory who site.1,
       history.1.state = state) :
-    (assessment.continuationContext site (fun history => payoff history.state)
+    (assessment.truncatedContinuationContext site (fun history => payoff history.state)
       (2 * horizon + 1)).value alternative =
       expect (app.finish initial horizon scheduler
         (menu.decodeProfile initial horizon scheduler

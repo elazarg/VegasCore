@@ -29,12 +29,13 @@ theorem exists_equilibrium_no_native_payout_match :
     ∃ restricted : model.BehavioralAssessment,
       restricted.IsSequentialEquilibriumFor
         (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler)
-        (fun who site => restricted.continuationContext site
+        (fun who site => restricted.truncatedContinuationContext site
           (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) ∧
       expect (nativePayoutLaw (observation := leaks) restricted.strategy) id = 0 ∧
       ∀ target : nativeModel.BehavioralAssessment,
-        target.IsSequentiallyRationalWithin
-          (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1) →
+        (target.IsSequentiallyRationalFor fun who site =>
+            target.truncatedContinuationContext site (fun history => nativeUtility who
+                history.state) (2 * nativeHorizon + 1)) →
         nativePayoutLaw (observation := leaks) restricted.strategy ≠
           nativePayoutLaw target.strategy := by
   obtain ⟨restricted, strategy, equilibrium⟩ := exists_sequentialEquilibrium

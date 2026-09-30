@@ -170,7 +170,7 @@ theorem roster_grant_observation_kernel
       (prior.map source).bind fun config =>
         (nextNoise (config.view focal)).map fun extra => (config, extra) := by
   obtain ⟨nextNoise, nextLaw⟩ :=
-    PMF.exists_updated_observation_kernel_of_readout prior source
+    exists_updated_observation_kernel_of_readout prior source
       (fun seed => ((application setup leaks).messageView (execution seed),
         (execution seed).recall focal)) (fun config => config.view focal) noise factor
       (fun _ => PMF.pure ()) (fun config _ => config) (fun config => config.view focal)
@@ -220,7 +220,7 @@ theorem roster_prefix_grant_observation_kernel
         fun state => (nextNoise (setup.protocolObserve focal state)).map fun extra =>
           (state, extra) :=
     by
-  obtain ⟨nextNoise, nextLaw⟩ := PMF.exists_updated_observation_kernel_of_readout prior
+  obtain ⟨nextNoise, nextLaw⟩ := exists_updated_observation_kernel_of_readout prior
     (fun execution => sourcePrefix? setup count execution.application.config)
     (fun execution => ((application setup leaks).messageView execution, execution.recall focal))
     (setup.protocolObserve focal) noise factor (fun _ => PMF.pure ())

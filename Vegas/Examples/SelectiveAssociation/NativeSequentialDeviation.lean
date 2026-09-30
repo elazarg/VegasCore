@@ -18,8 +18,9 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open ReactiveAssociationEvidence
 
 theorem native_deviation_publications (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (bit : Bool) (result : Results)
     (supported : result ∈ (nativeDeviationOutcomes (nativeMenu.decodeProfile
       (PMF.pure nativeInitial) nativeHorizon nativeScheduler assessment.strategy)
@@ -55,8 +56,9 @@ theorem native_deviation_publications (assessment : nativeModel.BehavioralAssess
 raw responses, passive leaks, optional ordinary openings, and the original
 public-result utility. It needs sequential rationality, without consistency. -/
 theorem native_sequential_deviation_gain (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1)) :
     1 / 2 ≤ expect (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
         nativeHorizon nativeScheduler assessment.strategy)) nativeHorizon nativeRoot)

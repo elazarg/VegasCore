@@ -121,11 +121,11 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
     (site : model.InformationSite who) (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
     (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who)) :
-    (assessment.continuationContext site (fun history => nativeUtility who history.state)
+    (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
       (2 * nativeHorizon + 1)).value (assessment.strategy who) =
       expect (assessment.belief who site) (fun history =>
         guessReward (.success (publicGuess view)) history.1.state) := by
-  simp only [InformationModel.BehavioralAssessment.continuationContext_value,
+  simp only [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     Profile.update_eq_self, expect_bind_of_finite, strategy]
   apply expect_congr_on_support
   intro history _
@@ -156,7 +156,7 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
           {history | hasAliceBit true history.1.state}).toReal ≤
         ((assessment.belief who site).toOuterMeasure
             {history | hasAliceBit false history.1.state}).toReal) :
-    assessment.IsSequentiallyRationalAt site (assessment.continuationContext site
+    assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site
       (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   classical
   refine (Context.isLocallyOptimal_iff_of_integrable
@@ -166,7 +166,7 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
   have once : model.ActsOnceWhereItMatters := model.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
       (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler))
-  rw [assessment.continuationContext_value_eq_expect_commit once site
+  rw [assessment.truncatedContinuationContext_value_eq_expect_commit once site
     (menu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon scheduler
       who site) _ (2 * nativeHorizon) alternative
       (nativeUtility_continuation_integrable assessment site _ _),
@@ -176,7 +176,7 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     information granted alternative choice
   calc
     _ ≤ expect (assessment.belief who site) (fun history => guessReward guess history.1.state) := by
-      simp only [InformationModel.BehavioralAssessment.continuationContext_value,
+      simp only [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
         expect_bind_of_finite, strategy]
       refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
         (payoffIntegrable_of_finite _ _)

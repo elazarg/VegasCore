@@ -264,10 +264,11 @@ theorem reward_pair_le_one (goal : Bool) (action : Outcome) :
 theorem context_value {split : Bool} (assessment : (model split).BehavioralAssessment)
     (site : (model split).InformationSite ()) (goal : Bool)
     (alternative : (model split).BehavioralPolicy ()) :
-    (assessment.continuationContext site (fun h => reward goal h.state) 2).value alternative =
+    (assessment.truncatedContinuationContext site (fun h => reward goal h.state)
+        2).value alternative =
       expect (stateLaw (Profile.update assessment.strategy () alternative) site.1)
         (reward goal) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
   calc
     _ = expect (assessment.belief () site) (fun _ =>
@@ -290,7 +291,8 @@ theorem update_own (split : Bool) (profile : Profile (model split).behavioralSig
 theorem canonical_rational (split goal : Bool)
     (assessment : (model split).BehavioralAssessment)
     (strategy : assessment.strategy = canonical split goal) :
-    assessment.IsSequentiallyRationalWithin (fun _ h => reward goal h.state) 2 := by
+    assessment.IsSequentiallyRationalFor fun _ site =>
+        assessment.truncatedContinuationContext site (fun h => reward goal h.state) 2 := by
   intro who site
   cases who
   refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
@@ -313,7 +315,7 @@ theorem canonical_rational (split goal : Bool)
 
 def isEquilibrium (split goal : Bool) (assessment : (model split).BehavioralAssessment) : Prop :=
   assessment.IsSequentialEquilibriumFor (antichain split) (fun _ site =>
-    assessment.continuationContext site (fun h => reward goal h.state) 2)
+    assessment.truncatedContinuationContext site (fun h => reward goal h.state) 2)
 
 theorem exists_canonical_equilibrium (split goal : Bool) :
     ∃ assessment : (model split).BehavioralAssessment,
@@ -355,7 +357,8 @@ theorem update_unit {split : Bool}
   exact Profile.update_same _ _ _
 
 theorem rational_branch_value (goal : Bool) (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin (fun _ h => reward goal h.state) 2) :
+    (rational : assessment.IsSequentiallyRationalFor fun _ site =>
+        assessment.truncatedContinuationContext site (fun h => reward goal h.state) 2) :
     1 ≤ expect (stateLaw assessment.strategy [some false]) (reward goal) := by
   have bound := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mp (rational () branchSite)
@@ -382,8 +385,10 @@ the player must choose opposite actions at the same later decision. -/
 theorem no_common_rational_strategy :
     ¬ ∃ first second : (model true).BehavioralAssessment,
       first.strategy = second.strategy ∧
-      first.IsSequentiallyRationalWithin (fun _ h => reward false h.state) 2 ∧
-      second.IsSequentiallyRationalWithin (fun _ h => reward true h.state) 2 := by
+      (first.IsSequentiallyRationalFor fun _ site =>
+          first.truncatedContinuationContext site (fun h => reward false h.state) 2) ∧
+      second.IsSequentiallyRationalFor fun _ site =>
+          second.truncatedContinuationContext site (fun h => reward true h.state) 2 := by
   rintro ⟨first, second, same, firstRational, secondRational⟩
   have firstValue := rational_branch_value false first firstRational
   have secondValue := rational_branch_value true second secondRational

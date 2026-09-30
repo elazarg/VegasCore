@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheory.Analysis.IncentiveCone
-import GameTheoryExtensions.Core.IncentiveComparison
 
 /-! # Incentive implication can use a joint restriction on players' utilities
 

@@ -70,8 +70,9 @@ theorem site_ambient_owner (who : Player) (site : model.InformationSite who)
 
 theorem prescribed_sequentiallyRational (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (beliefs : GuessBeliefs assessment) :
-    assessment.IsSequentiallyRationalWithin (fun who history => nativeUtility who history.state)
-      (2 * nativeHorizon + 1) := by
+    assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1) := by
   intro who site
   obtain ⟨past, view, observed⟩ := site_observation who site
   cases grant : view.application.publicView.serviceGrant with
@@ -100,7 +101,7 @@ theorem exists_sequentialEquilibrium :
       assessment.strategy = profile ∧
       assessment.IsSequentialEquilibriumFor
         (menu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon scheduler)
-        (fun who site => assessment.continuationContext site
+        (fun who site => assessment.truncatedContinuationContext site
           (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   obtain ⟨assessment, strategy, consistent, beliefs⟩ := exists_consistent_guess_assessment
   exact ⟨assessment, strategy,

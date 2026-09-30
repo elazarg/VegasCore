@@ -128,10 +128,12 @@ The conclusion is forward preservation, not reflection of all target equilibria.
 -/
 theorem sequential_equilibrium_extends_of_terminal_audit
     (sourceAntichain : M.DecisionInformationAntichain)
+    (sourceCertificate : E.WellFoundedHistories) (targetCertificate : T.WellFoundedHistories)
     (reference : N.BehavioralAssessment) (referenceMixed : reference.IsFullyMixed)
-    (decisionRecall : N.DecisionRecall) (horizon : Nat) (bounded : T.BoundedHorizon horizon)
-    (depth : ∀ who, N.InformationSite who → Nat)
-    (clock : ∀ who site, InformationSite.CommonDepth N site (depth who site))
+    (decisionRecall : N.DecisionRecall)
+    (depth : ∀ who, M.InformationSite who → Nat)
+    (clock : ∀ who site, InformationSite.CommonDepth N (restriction.site who site)
+      (depth who site))
     (sourcePayoff : E.History → Player → ℝ) (base : T.History → Player → ℝ)
     (observe : T.History → Observation) (audit : Observation → PMF (Player → Bool))
     (matching : ∀ history who, base (restriction.history history) who = sourcePayoff history who)
@@ -146,58 +148,58 @@ theorem sequential_equilibrium_extends_of_terminal_audit
       (action : N.Choice who (restriction.site who site).1),
       action ∉ Set.range (restriction.choice who site.1) →
       ∀ history : M.InformationHistory who site.1,
-        detection who ≤ (((((N.runBehavioralFrom
+        detection who ≤ (((((N.runBehavioralTerminalFrom targetCertificate
           (Profile.update (sig := N.behavioralSignature) profile who
             ((profile who).commit (restriction.site who site).1 action))
-          (horizon - depth who (restriction.site who site))
           (restriction.history history.1)).map observe).bind audit).map
             (fun verdict => verdict who)) true).toReal)
     (source : M.BehavioralAssessment)
-    (sourceEquilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      source.continuationContext site (fun history => sourcePayoff history who)
-        (horizon - depth who (restriction.site who site)))) :
+    (sourceEquilibrium : source.IsSequentialEquilibrium sourceAntichain sourceCertificate
+      (fun who history => sourcePayoff history who)) :
     ∃ target : N.BehavioralAssessment,
-      target.IsSequentialEquilibriumFor decisionRecall.decisionInformationAntichain
-        (fun who site => target.continuationContext site
-          (fun history => utility base observe audit deposit history who)
-          (horizon - depth who site)) ∧
+      target.IsSequentialEquilibrium decisionRecall.decisionInformationAntichain
+        targetCertificate (fun who history => utility base observe audit deposit history who) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
       (∀ who site, target.belief who (restriction.site who site) =
         (source.belief who site).map (restriction.informationHistory who site)) ∧
-      (M.runBehavioral source.strategy horizon).map restriction.history =
-        N.runBehavioral target.strategy horizon ∧
-      (M.runBehavioral source.strategy horizon).map
+      (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
+          restriction.history =
+        N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory ∧
+      (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).map
           (fun history => (restriction.history history, sourcePayoff history)) =
-        (N.runBehavioral target.strategy horizon).bind (fun history =>
-          (settlement base observe audit deposit history).map (fun payoffs => (history, payoffs))) ∧
-      (∀ history ∈ (N.runBehavioral target.strategy horizon).support,
-        ∀ who, charge observe audit history who = 0) ∧
-      ∀ history ∈ (N.runBehavioral target.strategy horizon).support,
-        T.terminal history.state := by
+        (N.runBehavioralTerminalFrom targetCertificate target.strategy T.initHistory).bind
+          (fun history =>
+            (settlement base observe audit deposit history).map (fun payoffs => (history,
+                payoffs))) ∧
+      ∀ history ∈ (N.runBehavioralTerminalFrom targetCertificate target.strategy
+          T.initHistory).support, ∀ who, charge observe audit history who = 0 := by
   have collects : ∀ (profile : ∀ who, N.BehavioralPolicy who) who
       (site : M.InformationSite who)
       (action : N.Choice who (restriction.site who site).1),
       action ∉ Set.range (restriction.choice who site.1) →
       ∀ history : M.InformationHistory who site.1,
-        detection who ≤ expect (N.runBehavioralFrom
+        detection who ≤ expect (N.runBehavioralTerminalFrom targetCertificate
           (Profile.update (sig := N.behavioralSignature) profile who
             ((profile who).commit (restriction.site who site).1 action))
-          (horizon - depth who (restriction.site who site))
           (restriction.history history.1))
             (fun final => charge observe audit final who) := by
     intro profile who site action extra history
     rw [← collection_probability]
     exact collection profile who site action extra history
-  obtain ⟨target, equilibrium, agrees, beliefs, laws, _payoffs, terminal⟩ :=
-    restriction.sequential_equilibrium_extends sourceAntichain reference referenceMixed
-      decisionRecall horizon bounded depth clock sourcePayoff base (charge observe audit)
-      matching sound lower upper detection deposit deposit_nonnegative source_lower target_upper
-      sufficient collects source sourceEquilibrium
-  refine ⟨target, equilibrium, agrees, beliefs, laws, ?_, ?_, terminal⟩
+  obtain ⟨target, equilibrium, agrees, beliefs, laws, _payoffs⟩ :=
+    restriction.sequential_equilibrium_extends sourceAntichain sourceCertificate
+      targetCertificate reference referenceMixed decisionRecall depth clock
+      (fun who history => sourcePayoff history who) (fun who history => base history who)
+      (fun who history => charge observe audit history who)
+      (fun who history => matching history who) (fun who history => sound history who)
+      lower upper detection deposit deposit_nonnegative (fun who history => source_lower history
+          who)
+      (fun who history => target_upper history who) sufficient collects source sourceEquilibrium
+  refine ⟨target, equilibrium, agrees, beliefs, laws, ?_, ?_⟩
   · rw [← laws, PMF.bind_map]
     calc
-      _ = (M.runBehavioral source.strategy horizon).bind (fun history =>
-          PMF.pure (restriction.history history, sourcePayoff history)) :=
+      _ = (M.runBehavioralTerminalFrom sourceCertificate source.strategy E.initHistory).bind
+          (fun history => PMF.pure (restriction.history history, sourcePayoff history)) :=
         (PMF.bind_pure_comp _ _).symm
       _ = _ := by
         apply bind_congr_on_support _

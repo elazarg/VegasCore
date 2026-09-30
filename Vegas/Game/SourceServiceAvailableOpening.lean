@@ -4,7 +4,8 @@ import Vegas.Game.SourceServiceAbsentOpening
 import Vegas.Game.SourceServiceUnsentBinding
 import Vegas.Game.SourceServiceTimingPosterior
 import Vegas.Game.SourceServiceFiniteness
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Support
@@ -1395,15 +1396,17 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
     (opening : rosterOpening? service.setup service.leaks who event view = some (candidate, raw))
     (utility : Option (State L service.setup.program.terminalCtx) → ℝ) (error : ℝ)
     (sourceGains : ∀ deviation : service.sourceModel.AssessmentDeviation who,
-      let comparison := service.sourceModel.assessmentComparison
-          (fun final => service.setup.protocolReadout final.state)
-          (instructionCount service.setup.program + 1) source who deviation
+      let comparison := service.sourceModel.assessmentComparisonWith
+          (service.sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+          (fun final =>
+              service.setup.protocolReadout final.state) source who deviation
       expect comparison.alternative utility - expect comparison.prescribed utility ≤ error)
     (lower : ℝ) (positive : 0 < lower)
     (remainingMass : ∀ count < (service.rosters event).count who,
       lower ≤ 1 - (timing event who owned).timingPrefix count)
     (law : PMF (service.model.Choice who site.1)) :
-    let comparison := service.model.assessmentComparison service.readout service.fuel
+    let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
+        service.fuel) service.readout
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     expect comparison.alternative utility - expect comparison.prescribed utility ≤
       error / lower := by
@@ -1698,7 +1701,8 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
   have prescribedValue : expect comparison.prescribed utility =
       prescribedProbability * expect (approx.assessment.belief who site) (value true) +
         (1 - prescribedProbability) * expect (approx.assessment.belief who site) (value false) := by
-    simp only [comparison, InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+    simp only [comparison, InformationModel.assessmentComparisonWith,
+        InformationModel.assessmentLawWith,
       Profile.update_eq_self, PMF.map_bind]
     rw [expect_bind_of_support_finite _ (Set.toFinite _)
         fun history _ => by rw [PMF.support_map]; exact (Set.toFinite _).image _,
@@ -1707,7 +1711,8 @@ theorem available_opening_gain_le (service : SourceServiceSpec Player L)
   have alternativeValue : expect comparison.alternative utility =
       replacement * expect (approx.assessment.belief who site) (value true) +
         (1 - replacement) * expect (approx.assessment.belief who site) (value false) := by
-    simp only [comparison, InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+    simp only [comparison, InformationModel.assessmentComparisonWith,
+        InformationModel.assessmentLawWith,
       PMF.map_bind]
     rw [expect_bind_of_support_finite _ (Set.toFinite _)
         fun history _ => by rw [PMF.support_map]; exact (Set.toFinite _).image _,

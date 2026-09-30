@@ -123,11 +123,11 @@ theorem owner_context_eq_source_local [setup.FiniteInitialLaw] [leaks.FiniteSupp
     (choices : law.map (fun choice => sourceChoice setup leaks (choice.1.getD ⟨none⟩)) =
       sourceLaw.map (fun choice => OwnAction.disclosure choice.1))
     (utility : State L setup.program.terminalCtx → ℝ) :
-    (target.continuationContext site
+    (target.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
         ((target.strategy who).withLaw site.1 law) =
-      (source.continuationContext sourceSite
+      (source.truncatedContinuationContext sourceSite
         (fun final => (setup.protocolReadout final.state).elim 0 utility)
         (instructionCount setup.program + 1)).value
           ((source.strategy who).withLaw sourceSite.1 sourceLaw) := by
@@ -153,7 +153,7 @@ theorem owner_context_eq_source_local [setup.FiniteInitialLaw] [leaks.FiniteSupp
   rw [owner_context_local_value setup leaks bounds watcher who reveals observer openable
     (setup.decodeBehavioralProfile admission source.strategy) target strategy event owned site
       clock law joint chosen utility, belief,
-    setup.continuationContext_local_value_stateBelief admission source who sourceSite
+    setup.truncatedContinuationContext_local_value_stateBelief admission source who sourceSite
       (source_site_nonterminal setup admission who sourceSite) sourceLaw utility
       (instructionCount setup.program) enough]
   simp only [InformationModel.BehavioralAssessment.stateBelief, expect_map, Function.comp_def]
@@ -218,16 +218,16 @@ theorem owner_local_optimal [setup.FiniteInitialLaw] [leaks.FiniteSupport]
       source.stateBelief who sourceSite)
     (utility : State L setup.program.terminalCtx → ℝ)
     (optimal : source.IsSequentiallyRationalAt sourceSite
-      (source.continuationContext sourceSite
+      (source.truncatedContinuationContext sourceSite
         (fun final => (setup.protocolReadout final.state).elim 0 utility)
           (instructionCount setup.program + 1)))
     (law : PMF ((information setup leaks (bounds.withInitialValues (initialLaw setup))
       watcher).Choice who site.1)) :
-    (target.continuationContext site
+    (target.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
         ((target.strategy who).withLaw site.1 law) ≤
-      (target.continuationContext site
+      (target.truncatedContinuationContext site
         (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
         (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
           (target.strategy who) := by

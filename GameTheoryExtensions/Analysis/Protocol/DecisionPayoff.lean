@@ -25,11 +25,11 @@ theorem preserves_fixed_payoff_sequentialEquilibria_iff_commonMaximizer
     (utility : Fact → Action → ℝ) :
     (∀ source : (model (Action := Action) prior observe).BehavioralAssessment,
       source.IsSequentialEquilibriumFor (antichain prior observe)
-        (fun _ site => source.continuationContext site
+        (fun _ site => source.truncatedContinuationContext site
           (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
       ∃ target : (model (Action := Action) prior id).BehavioralAssessment,
         target.IsSequentialEquilibriumFor (antichain prior id)
-          (fun _ site => target.continuationContext site
+          (fun _ site => target.truncatedContinuationContext site
             (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
         observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       HasCommonMaximizer prior observe (fun state => utility (fact state)) := by

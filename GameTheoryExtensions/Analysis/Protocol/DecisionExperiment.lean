@@ -4,7 +4,8 @@ import GameTheoryExtensions.Analysis.ObservationAbstraction
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheory.Protocol.StateKernel
 import GameTheory.Protocol.SingleMover
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform
 
@@ -570,14 +571,15 @@ theorem continuation_value (original : Signal → PMF Action)
     (site : (model (Action := Action) prior observe).InformationSite ())
     (utility : State → Action → ℝ)
     (alternative : (model prior observe).BehavioralPolicy ()) :
-    ((assessment prior observe original).continuationContext site
+    ((assessment prior observe original).truncatedContinuationContext site
       (fun history => payoff utility history.state) 2).value alternative =
       localValue prior observe utility (siteSignal prior observe site)
         (response prior observe alternative (siteSignal prior observe site)) /
           (prior.toOuterMeasure (observe ⁻¹' {siteSignal prior observe site})).toReal := by
   classical
   let : Fintype State := Fintype.ofFinite _
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite,
     expect_eq_sum]
   have run (history : (model prior observe).InformationHistory () site.1) :
       expect ((model prior observe).runBehavioralFrom
@@ -623,7 +625,7 @@ theorem continuation_value (original : Signal → PMF Action)
 theorem isSequentialEquilibrium_iff (original : Signal → PMF Action)
     (utility : State → Action → ℝ) :
     (assessment prior observe original).IsSequentialEquilibriumFor (antichain prior observe)
-      (fun _ site => (assessment prior observe original).continuationContext site
+      (fun _ site => (assessment prior observe original).truncatedContinuationContext site
         (fun history => payoff utility history.state) 2) ↔
       IsBayesOptimal prior observe utility original := by
   classical
@@ -637,8 +639,8 @@ theorem isSequentialEquilibrium_iff (original : Signal → PMF Action)
           (payoffIntegrable_of_finite _ _)).mp
         (equilibrium.1 () (site (Action := Action) prior observe state supported))
         (policy prior observe (fun _ => alternative)) (Set.mem_univ _)
-      change ((assessment prior observe original).continuationContext _ _ 2).value _ ≤
-        ((assessment prior observe original).continuationContext _ _ 2).value
+      change ((assessment prior observe original).truncatedContinuationContext _ _ 2).value _ ≤
+        ((assessment prior observe original).truncatedContinuationContext _ _ 2).value
           (policy prior observe original) at comparison
       rw [continuation_value, continuation_value, response_policy, response_policy] at comparison
       have signalEq : siteSignal prior observe
@@ -663,8 +665,8 @@ theorem isSequentialEquilibrium_iff (original : Signal → PMF Action)
     cases who
     refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
         (payoffIntegrable_of_finite _ _)).mpr fun alternative _ => ?_
-    change ((assessment prior observe original).continuationContext _ _ 2).value _ ≤
-      ((assessment prior observe original).continuationContext _ _ 2).value
+    change ((assessment prior observe original).truncatedContinuationContext _ _ 2).value _ ≤
+      ((assessment prior observe original).truncatedContinuationContext _ _ 2).value
         (policy prior observe original)
     rw [continuation_value, continuation_value, response_policy]
     have positive :
@@ -680,13 +682,13 @@ theorem optimal_of_sequentialEquilibrium
     (original : (model (Action := Action) prior observe).BehavioralAssessment)
     (utility : State → Action → ℝ)
     (equilibrium : original.IsSequentialEquilibriumFor (antichain prior observe)
-      (fun _ site => original.continuationContext site
+      (fun _ site => original.truncatedContinuationContext site
         (fun history => payoff utility history.state) 2)) :
     IsBayesOptimal prior observe utility (response prior observe (original.strategy ())) := by
   have same := congrArg
     (fun assessed : (model (Action := Action) prior observe).BehavioralAssessment =>
     assessed.IsSequentialEquilibriumFor (antichain prior observe)
-      (fun _ site => assessed.continuationContext site
+      (fun _ site => assessed.truncatedContinuationContext site
         (fun history => payoff utility history.state) 2))
     (consistent_eq_assessment prior observe original equilibrium.2)
   exact (isSequentialEquilibrium_iff prior observe _ utility).mp (same.mp equilibrium)
@@ -723,7 +725,7 @@ theorem equilibrium_law_iff {Fact : Type} (fact : State → Fact)
     (utility : Fact → Action → ℝ) (law : PMF (Fact × Action)) :
     (∃ original : (model (Action := Action) prior observe).BehavioralAssessment,
       original.IsSequentialEquilibriumFor (antichain prior observe)
-        (fun _ site => original.continuationContext site
+        (fun _ site => original.truncatedContinuationContext site
           (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
         observedLaw prior observe fact original = law) ↔
       ∃ original : Signal → PMF Action,
@@ -748,12 +750,12 @@ theorem sequentialEquilibrium_laws_iff {Fact : Type} (fact : State → Fact)
     (utility : Fact → Action → ℝ) (law : PMF (Fact × Action)) :
     (∃ original : (model (Action := Action) prior observe).BehavioralAssessment,
       original.IsSequentialEquilibriumFor (antichain prior observe)
-        (fun _ site => original.continuationContext site
+        (fun _ site => original.truncatedContinuationContext site
           (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
         observedLaw prior observe fact original = law) ↔
     (∃ original : (model (Action := Action) prior id).BehavioralAssessment,
       original.IsSequentialEquilibriumFor (antichain prior id)
-        (fun _ site => original.continuationContext site
+        (fun _ site => original.truncatedContinuationContext site
           (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
         observedLaw prior id fact original = law) := by
   rw [equilibrium_law_iff, equilibrium_law_iff]
@@ -769,11 +771,11 @@ theorem preserves_all_sequentialEquilibria_iff_determines
     (∀ utility : Fact → Fact → ℝ,
       ∀ source : (model (Action := Fact) prior observe).BehavioralAssessment,
         source.IsSequentialEquilibriumFor (antichain prior observe)
-          (fun _ site => source.continuationContext site
+          (fun _ site => source.truncatedContinuationContext site
             (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
         ∃ target : (model (Action := Fact) prior id).BehavioralAssessment,
           target.IsSequentialEquilibriumFor (antichain prior id)
-            (fun _ site => target.continuationContext site
+            (fun _ site => target.truncatedContinuationContext site
               (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
           observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       Determines prior observe fact := by

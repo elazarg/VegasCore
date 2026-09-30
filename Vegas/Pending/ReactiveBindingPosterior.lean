@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveBindingLikelihood
-import GameTheoryExtensions.Math.Probability.ConditionalNoise
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Conditional laws for actual opaque binding phases
 
@@ -83,15 +86,15 @@ theorem binding_replay_posterior (runtime : EventGraphRuntime graph)
         (execution.respond app owner
           (runtime.reactiveBinding leaks owner event payload result serial))).map fun final =>
             (runtime.bindingTraffic leaks focal final, result)
-    (fiberConditional joint Prod.fst (runtime.bindingTraffic leaks focal observed)).map Prod.snd =
+    (fiberPosterior joint Prod.fst (runtime.bindingTraffic leaks focal observed)).map Prod.snd =
       prior := by
   intro app phase joint
   have product := runtime.binding_replay_joint_law leaks network roster execution recalled
     owner focal different event payload prior serial published serials
   dsimp only at product
-  change (fiberConditional joint _ _).map _ = _
+  change (fiberPosterior joint _ _).map _ = _
   rw [show joint = _ from product]
-  exact conditional_snd_bindPairLaw_const _ _ _
+  exact fiberPosterior_snd_bindPairLaw_const _ _ _
 
 /-- For arbitrarily correlated hidden seeds and initial executions, the actual
 phase preserves the seed posterior conditional on the initial traffic readout.
@@ -120,11 +123,11 @@ theorem binding_replay_conditional_seed {Seed : Type*}
     let joint := prior.bind fun seed => (kernel seed).map fun traffic => (seed, traffic)
     (∃ seed ∈ prior.support, observe seed = runtime.bindingTraffic leaks focal before ∧
       runtime.bindingTraffic leaks focal after ∈ (kernel seed).support) →
-    (fiberConditional joint (fun pair => (observe pair.1, pair.2))
+    (fiberPosterior joint (fun pair => (observe pair.1, pair.2))
       (runtime.bindingTraffic leaks focal before, runtime.bindingTraffic leaks focal after)).map
-        Prod.fst = fiberConditional prior observe (runtime.bindingTraffic leaks focal before) := by
+        Prod.fst = fiberPosterior prior observe (runtime.bindingTraffic leaks focal before) := by
   intro app observe phase kernel joint present
-  apply PMF.conditional_kernel_of_fiber prior observe kernel
+  apply conditional_kernel_of_fiber prior observe kernel
     (fun left leftSupport right rightSupport same => ?_) _ _ present
   exact runtime.binding_replay_inclusion_coupling leaks network roster
     (execution left) (execution right) (recalled left leftSupport) (recalled right rightSupport)

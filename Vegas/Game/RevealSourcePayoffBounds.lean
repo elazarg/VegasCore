@@ -58,7 +58,7 @@ theorem reveal_boolean_value_range
       (PMF.pure choice) joint chosen (fun final => utility final who)
     simp only [PMF.pure_map, expect_pure, same] at equal
     change _ = value disclose at equal
-    rw [← equal, InformationModel.BehavioralAssessment.continuationContext_value]
+    rw [← equal, InformationModel.BehavioralAssessment.truncatedContinuationContext_value]
     constructor
     · rw [← expect_constant _ (lower who)]
       exact expect_mono (fun history _ => FinitePayoffBounds.lower_le (payoff who) history)

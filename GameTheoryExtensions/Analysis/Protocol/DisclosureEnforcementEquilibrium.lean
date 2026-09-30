@@ -169,12 +169,12 @@ theorem silent_context_value [Finite Secret] [Finite Decision] (ambient : Bool)
       prior.map (silentHistory prior full ambient))
     (sender receiver : Secret → Decision → ℝ) (charge : Secret → ℝ)
     (alternative : (model prior ambient).BehavioralPolicy true) :
-    (assessment.continuationContext (receiverSilentSite prior full ambient)
+    (assessment.truncatedContinuationContext (receiverSilentSite prior full ambient)
       (fun history => payoff sender receiver charge history.state true) 3).value alternative =
         expect prior (fun secret =>
           expect (choiceLaw (Profile.update (sig := (model prior ambient).behavioralSignature)
             assessment.strategy true alternative) true (some none)) (receiver secret)) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, posterior]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value, posterior]
   rw [expect_bind_of_finite, expect_map]
   simp_rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     (model prior ambient) (single prior ambient)]
@@ -226,8 +226,9 @@ theorem source_rational [Finite Secret] [Finite Decision]
     (profile : Profile (model (Decision := Decision) prior false).behavioralSignature)
     (sender receiver : Secret → Decision → ℝ) (charge : Secret → ℝ)
     (optimal : SilentOptimal prior (choiceLaw profile true (some none)) receiver) :
-    (assessment prior full false profile).IsSequentiallyRationalWithin
-      (fun who history => payoff sender receiver charge history.state who) 3 := by
+    (assessment prior full false profile).IsSequentiallyRationalFor fun who site =>
+        (assessment prior full false profile).truncatedContinuationContext site (fun history =>
+            payoff sender receiver charge history.state who) 3 := by
   intro who site
   refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
       (payoffIntegrable_of_finite _ _)).mpr fun alternative _ => ?_
@@ -246,8 +247,11 @@ theorem target_rational [Finite Secret] [Finite Decision] (choices : PMF Decisio
     (disclosedOptimal : DisclosureOptimal response receiver)
     (deterrence : SenderDeterrence choices response sender charge) :
     (assessment prior full true
-      (silentProfile prior true choices response)).IsSequentiallyRationalWithin
-      (fun who history => payoff sender receiver charge history.state who) 3 := by
+      (silentProfile prior true choices response)).IsSequentiallyRationalFor fun who site =>
+          (assessment prior full true
+      (silentProfile prior true choices
+          response)).truncatedContinuationContext site (fun history =>
+              payoff sender receiver charge history.state who) 3 := by
   intro who site
   refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _) fun _ _ =>
       (payoffIntegrable_of_finite _ _)).mpr fun alternative _ => ?_
@@ -357,7 +361,7 @@ def IsEquilibrium (ambient : Bool) (sender receiver : Secret → Decision → �
     (charge : Secret → ℝ)
     (original : (model (Decision := Decision) prior ambient).BehavioralAssessment) : Prop :=
   original.IsSequentialEquilibriumFor (antichain prior ambient) (fun who site =>
-    original.continuationContext site
+    original.truncatedContinuationContext site
       (fun history => payoff sender receiver charge history.state who) 3)
 
 variable (full : ∀ secret, secret ∈ prior.support)

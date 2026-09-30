@@ -1,9 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.ObservationErasure
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact abstraction of terminal decision experiments
 
@@ -113,13 +115,13 @@ theorem resultLaw_of_decoder (prior : PMF State) (observe : State → Signal)
 the retained observation. The default at a zero-mass observation is immaterial. -/
 def averagePolicy (prior : PMF State) (observe : State → Signal)
     (policy : State → PMF Action) : Signal → PMF Action := fun signal =>
-  ((fiberConditional (resultLaw prior id observe policy) Prod.fst signal).map Prod.snd)
+  ((fiberPosterior (resultLaw prior id observe policy) Prod.fst signal).map Prod.snd)
 
 theorem averagePolicy_observation_law (prior : PMF State) (observe : State → Signal)
     (policy : State → PMF Action) :
     resultLaw prior observe observe (averagePolicy prior observe policy) =
       resultLaw prior id observe policy := by
-  have disintegration := eq_bind_fst_conditional_snd (resultLaw prior id observe policy)
+  have disintegration := eq_bind_fst_fiberPosterior_snd (resultLaw prior id observe policy)
   rw [resultLaw_fst, PMF.bind_map] at disintegration
   rw [resultLaw_eq_bind]
   exact disintegration.symm
@@ -145,7 +147,7 @@ theorem averagePolicy_integrable (prior : PMF State) (priorFinite : prior.suppor
   intro signal state supported
   unfold averagePolicy
   rw [payoffIntegrable_map_iff]
-  apply payoffIntegrable_fiberConditional
+  refine payoffIntegrable_fiberPosterior _ _ _ ?_ _
   rw [resultLaw_eq_bind]
   exact payoffIntegrable_bind_of_finite_support _ _ _ priorFinite fun hidden _ =>
     (payoffIntegrable_map_iff _ _ _).mpr (integrable hidden state supported)

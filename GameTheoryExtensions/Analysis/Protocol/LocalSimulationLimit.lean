@@ -1,10 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import GameTheoryExtensions.Analysis.Protocol.SequentialOneShot
+import GameTheory.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
-import GameTheoryExtensions.Protocol.ContinuationSimulation
+import GameTheory.Analysis.Protocol.Incentives
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Sequential equilibrium from local continuation comparisons
 
@@ -15,14 +16,15 @@ This includes private response aliases at implementation-only decision sites.
 All comparisons use the original source assessment sequence. Intermediate
 behavioral realizations need neither be equilibria nor converge at unreachable
 information sets. One common target subsequence supplies consistent beliefs;
-decision recall then upgrades limiting local optimality to whole-policy SE.
+decision recall then upgrades limiting local optimality to whole-policy SE by
+the one-shot deviation principle, with no common decision clock.
 -/
 
 noncomputable section
 
-namespace GameTheory.ContinuationSimulation
+namespace GameTheory.Protocol.InformationModel
 
-open Protocol Protocol.InformationModel Protocol.ExecutionProtocol Math.Probability Filter
+open ExecutionProtocol Math.Probability Filter
 
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
@@ -42,19 +44,19 @@ theorem sequentialEquilibrium_of_local_comparisons_limit
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
-    (targetClock : ∀ who (site : N.InformationSite who),
-      ∃ depth, InformationSite.CommonDepth N site depth)
     (utility : Outcome → Player → ℝ)
     (source : M.BehavioralAssessment) (sourceSequence : ℕ → M.BehavioralAssessment)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sourceSequence source)
-    (sourceRational : source.IsSequentiallyRationalWithin
-      (fun who history => utility (sourceObserve history) who) sourceFuel)
+    (sourceRational : source.IsSequentiallyRationalFor fun who site =>
+        source.truncatedContinuationContext site (fun history => utility (sourceObserve history)
+            who) sourceFuel)
     (targetSequence : ℕ → N.BehavioralAssessment)
     (comparisonError : ℕ → ℝ)
     (errorVanishes : Tendsto comparisonError atTop (nhds 0))
     (localComparisons : ∀ n who (site : N.InformationSite who)
       (law : PMF (N.Choice who site.1)),
-      let comparison := N.assessmentComparison targetObserve targetFuel (targetSequence n)
+      let comparison := N.assessmentComparisonWith (N.truncatedRunner
+          targetFuel) targetObserve (targetSequence n)
         who (site, ((targetSequence n).strategy who).withLaw site.1 law)
       expect comparison.alternative (utility · who) -
           expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
@@ -62,7 +64,8 @@ theorem sequentialEquilibrium_of_local_comparisons_limit
           expect comparison.alternative (utility · who) -
               expect comparison.prescribed (utility · who) ≤
             expect mixture (fun deviation =>
-              let sourceComparison := M.assessmentComparison sourceObserve sourceFuel
+              let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                  sourceFuel) sourceObserve
                 (sourceSequence n) who deviation
               expect sourceComparison.alternative (utility · who) -
                 expect sourceComparison.prescribed (utility · who)) + comparisonError n)
@@ -74,17 +77,19 @@ theorem sequentialEquilibrium_of_local_comparisons_limit
       (fun n => targetSequence (index n)) target)
     (consistent : target.IsSequentiallyConsistent targetRecall.decisionInformationAntichain) :
     target.IsSequentialEquilibriumFor targetRecall.decisionInformationAntichain
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => utility (targetObserve history) who) targetFuel) ∧
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve := by
   classical
+  have sourceTransitions : E.FiniteTransitions := .of_finite_history
+  have targetTransitions : T.FiniteTransitions := .of_finite_history
   have localOptimal (who : Player) (site : N.InformationSite who)
       (law : PMF (N.Choice who site.1)) :
-      (target.continuationContext site
+      (target.truncatedContinuationContext site
           (fun history => utility (targetObserve history) who) targetFuel).value
             ((target.strategy who).withLaw site.1 law) ≤
-        (target.continuationContext site
+        (target.truncatedContinuationContext site
           (fun history => utility (targetObserve history) who) targetFuel).value
             (target.strategy who) := by
     obtain ⟨error, nonnegative, vanishes, bound⟩ :=
@@ -96,38 +101,45 @@ theorem sequentialEquilibrium_of_local_comparisons_limit
       largestBound ⟨history, rfl⟩
     have largestNonnegative : 0 ≤ largest := (abs_nonneg _).trans (bounded E.initHistory)
     have sourceGainBounded (n : ℕ) (deviation : M.AssessmentDeviation who) :
-        |expect ((M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
+        |expect ((M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
+            (sourceSequence n)
           who deviation).alternative) (utility · who) -
-          expect ((M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
+          expect ((M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
+              (sourceSequence n)
             who deviation).prescribed) (utility · who)| ≤ 2 * largest := by
-      simp only [assessmentComparison, expect_map, Function.comp_def]
+      simp only [assessmentComparisonWith, expect_map, Function.comp_def]
       have first := expect_abs_le_of_bounded
-        (μ := M.assessmentLaw sourceFuel (sourceSequence n) deviation.1 deviation.2)
+        (μ := M.assessmentLawWith (M.truncatedRunner sourceFuel) (sourceSequence n) deviation.1
+            deviation.2)
         largestNonnegative bounded
       have second := expect_abs_le_of_bounded
-        (μ := M.assessmentLaw sourceFuel (sourceSequence n) deviation.1
+        (μ := M.assessmentLawWith (M.truncatedRunner sourceFuel) (sourceSequence n) deviation.1
           ((sourceSequence n).strategy who))
         largestNonnegative bounded
       exact (abs_sub _ _).trans (by linarith)
     have sourceBound (n : ℕ) (deviation : M.AssessmentDeviation who) :
-        expect ((M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
+        expect ((M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
+            (sourceSequence n)
           who deviation).alternative) (utility · who) -
-          expect ((M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
+          expect ((M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
+              (sourceSequence n)
             who deviation).prescribed) (utility · who) ≤ error n := by
-      simp only [assessmentComparison, expect_map]
+      simp only [assessmentComparisonWith, expect_map]
       exact bound n deviation.1 deviation.2
     have targetBound (n : ℕ) :
-        ((targetSequence n).continuationContext site
+        ((targetSequence n).truncatedContinuationContext site
             (fun history => utility (targetObserve history) who) targetFuel).value
               (((targetSequence n).strategy who).withLaw site.1 law) -
-          ((targetSequence n).continuationContext site
+          ((targetSequence n).truncatedContinuationContext site
             (fun history => utility (targetObserve history) who) targetFuel).value
               ((targetSequence n).strategy who) ≤ error n + comparisonError n := by
       have comparison :
-          expect ((N.assessmentComparison targetObserve targetFuel (targetSequence n) who
+          expect ((N.assessmentComparisonWith (N.truncatedRunner targetFuel) targetObserve
+              (targetSequence n) who
               (site, ((targetSequence n).strategy who).withLaw site.1 law)).alternative)
                 (utility · who) -
-            expect ((N.assessmentComparison targetObserve targetFuel (targetSequence n) who
+            expect ((N.assessmentComparisonWith (N.truncatedRunner targetFuel) targetObserve
+                (targetSequence n) who
               (site, ((targetSequence n).strategy who).withLaw site.1 law)).prescribed)
                 (utility · who) ≤ error n + comparisonError n := by
         rcases localComparisons n who site law with harmless | ⟨mixture, comparison⟩
@@ -139,9 +151,9 @@ theorem sequentialEquilibrium_of_local_comparisons_limit
               fun deviation => sourceGainBounded n deviation)
             (error n) fun deviation _ => sourceBound n deviation
           linarith
-      simp only [assessmentComparison, expect_map] at comparison
+      simp only [assessmentComparisonWith, expect_map] at comparison
       exact comparison
-    have alternate := targetConverges.context_value (.of_finite_history T)
+    have alternate := targetConverges.context_value targetTransitions
       site (fun history => utility (targetObserve history) who)
       targetFuel (fun n => ((targetSequence (index n)).strategy who).withLaw site.1 law)
       ((target.strategy who).withLaw site.1 law) (by
@@ -152,7 +164,7 @@ theorem sequentialEquilibrium_of_local_comparisons_limit
         · have different : decision.1 ≠ site.1 := fun equal => same (Subtype.ext equal)
           simpa only [BehavioralPolicy.withLaw_of_ne _ _ _ different] using
             targetConverges.strategy who decision)
-    have prescribed := targetConverges.context_value (.of_finite_history T)
+    have prescribed := targetConverges.context_value targetTransitions
       site (fun history => utility (targetObserve history) who)
         targetFuel (fun n => (targetSequence (index n)).strategy who) (target.strategy who)
           (targetConverges.strategy who)
@@ -160,30 +172,22 @@ theorem sequentialEquilibrium_of_local_comparisons_limit
       (by simpa only [zero_add, Function.comp_def] using
         (vanishes.add errorVanishes).comp increasing.tendsto_atTop)
       (Eventually.of_forall fun n => targetBound (index n)))
-  refine ⟨⟨?_, consistent⟩, ?_⟩
-  · intro who site
-    obtain ⟨depth, common⟩ := targetClock who site
-    have within : depth ≤ targetFuel := by
-      by_contra exceeds
-      obtain ⟨history, running, _action⟩ := site.2
-      exact running (targetBounded history.1.state history.1.trace (by
-        rw [common history]
-        omega))
-    have rational := consistent.rationalAt_of_localOptimal targetRecall who (targetClock who)
-      targetFuel (fun history => utility (targetObserve history) who) (by
-        intro current atDepth uniformDepth _before law
-        rw [target.continuationContext_remaining N targetFuel targetBounded who current
-          atDepth uniformDepth]
-        exact localOptimal who current law) site depth common within
-    rwa [target.continuationContext_remaining N targetFuel targetBounded who site depth common]
-      at rational
+  have certificate := targetBounded.wellFoundedHistories
+  have terminal : target.IsSequentialEquilibrium targetRecall.decisionInformationAntichain
+      certificate (fun who history => utility (targetObserve history) who) := by
+    refine (target.isSequentialEquilibrium_iff_locallyOptimal N targetRecall certificate _).mpr
+      ⟨consistent, fun who site law => ?_⟩
+    rw [target.continuationContext_eq_truncated_of_bounded certificate targetBounded]
+    exact localOptimal who site law
+  refine ⟨(target.isSequentialEquilibrium_iff_truncated_of_bounded N _ certificate targetBounded
+    _).mp terminal, ?_⟩
   · apply pmf_ext_toReal
     intro outcome
     let indicator (observed : Outcome) : ℝ := if outcome = observed then 1 else 0
-    have sourceLimit := M.runBehavioralFrom_expect_tendsto (.of_finite_history E)
+    have sourceLimit := M.runBehavioralFrom_expect_tendsto sourceTransitions
       (fun n => (sourceSequence n).strategy) source.strategy sourceConverges.strategy
       (fun history => indicator (sourceObserve history)) sourceFuel E.initHistory
-    have targetLimit := N.runBehavioralFrom_expect_tendsto (.of_finite_history T)
+    have targetLimit := N.runBehavioralFrom_expect_tendsto targetTransitions
       (fun n => (targetSequence (index n)).strategy) target.strategy
       targetConverges.strategy (fun history => indicator (targetObserve history))
       targetFuel T.initHistory
@@ -221,13 +225,12 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
-    (targetClock : ∀ who (site : N.InformationSite who),
-      ∃ depth, InformationSite.CommonDepth N site depth)
     (utility : Outcome → Player → ℝ)
     (source : M.BehavioralAssessment) (sourceSequence : ℕ → M.BehavioralAssessment)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sourceSequence source)
-    (sourceRational : source.IsSequentiallyRationalWithin
-      (fun who history => utility (sourceObserve history) who) sourceFuel)
+    (sourceRational : source.IsSequentiallyRationalFor fun who site =>
+        source.truncatedContinuationContext site (fun history => utility (sourceObserve history)
+            who) sourceFuel)
     (targetSequence : ℕ → N.BehavioralAssessment)
     (targetMixed : ∀ n, (targetSequence n).IsFullyMixed)
     (targetBayes : ∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
@@ -236,7 +239,8 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
     (errorVanishes : Tendsto comparisonError atTop (nhds 0))
     (localComparisons : ∀ n who (site : N.InformationSite who)
       (law : PMF (N.Choice who site.1)),
-      let comparison := N.assessmentComparison targetObserve targetFuel (targetSequence n)
+      let comparison := N.assessmentComparisonWith (N.truncatedRunner
+          targetFuel) targetObserve (targetSequence n)
         who (site, ((targetSequence n).strategy who).withLaw site.1 law)
       expect comparison.alternative (utility · who) -
           expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
@@ -244,7 +248,8 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
           expect comparison.alternative (utility · who) -
               expect comparison.prescribed (utility · who) ≤
             expect mixture (fun deviation =>
-              let sourceComparison := M.assessmentComparison sourceObserve sourceFuel
+              let sourceComparison := M.assessmentComparisonWith (M.truncatedRunner
+                  sourceFuel) sourceObserve
                 (sourceSequence n) who deviation
               expect sourceComparison.alternative (utility · who) -
                 expect sourceComparison.prescribed (utility · who)) + comparisonError n)
@@ -253,7 +258,7 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
         (M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor targetRecall.decisionInformationAntichain
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => utility (targetObserve history) who) targetFuel) ∧
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve ∧
@@ -265,7 +270,7 @@ theorem exists_sequentialEquilibrium_limit_of_local_comparisons
       targetRecall.decisionInformationAntichain
       targetSequence targetMixed targetBayes
   have result := sequentialEquilibrium_of_local_comparisons_limit sourceObserve targetObserve
-    sourceFuel targetFuel targetBounded targetRecall targetClock utility source sourceSequence
+    sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational targetSequence
     comparisonError errorVanishes localComparisons initialized target index increasing
     targetConverges consistent
@@ -278,42 +283,44 @@ theorem exists_sequentialEquilibrium_limit_of_local_simulations
     {Outcome : Type*} (sourceObserve : E.History → Outcome) (targetObserve : T.History → Outcome)
     (sourceFuel targetFuel : Nat)
     (targetBounded : T.BoundedHorizon targetFuel) (targetRecall : N.DecisionRecall)
-    (targetClock : ∀ who (site : N.InformationSite who),
-      ∃ depth, InformationSite.CommonDepth N site depth)
     (utility : Outcome → Player → ℝ)
     (source : M.BehavioralAssessment) (sourceSequence : ℕ → M.BehavioralAssessment)
     (sourceConverges : BehavioralAssessmentConvergesPointwise sourceSequence source)
-    (sourceRational : source.IsSequentiallyRationalWithin
-      (fun who history => utility (sourceObserve history) who) sourceFuel)
+    (sourceRational : source.IsSequentiallyRationalFor fun who site =>
+        source.truncatedContinuationContext site (fun history => utility (sourceObserve history)
+            who) sourceFuel)
     (targetSequence : ℕ → N.BehavioralAssessment)
     (targetMixed : ∀ n, (targetSequence n).IsFullyMixed)
     (targetBayes : ∀ n, BehavioralAssessment.IsBayesConsistent N (targetSequence n)
       targetRecall.decisionInformationAntichain)
     (localSimulations : ∀ n who (site : N.InformationSite who)
       (law : PMF (N.Choice who site.1)),
-      let comparison := N.assessmentComparison targetObserve targetFuel (targetSequence n)
+      let comparison := N.assessmentComparisonWith (N.truncatedRunner
+          targetFuel) targetObserve (targetSequence n)
         who (site, ((targetSequence n).strategy who).withLaw site.1 law)
       comparison.alternative = comparison.prescribed ∨
         ∃ mixture : PMF (M.AssessmentDeviation who),
           comparison.prescribed = mixture.bind (fun deviation =>
-            (M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
+            (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
+                (sourceSequence n)
               who deviation).prescribed) ∧
           comparison.alternative = mixture.bind (fun deviation =>
-            (M.assessmentComparison sourceObserve sourceFuel (sourceSequence n)
+            (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve
+                (sourceSequence n)
               who deviation).alternative))
     (initialized : ∀ n,
       (N.runBehavioral (targetSequence n).strategy targetFuel).map targetObserve =
         (M.runBehavioral (sourceSequence n).strategy sourceFuel).map sourceObserve) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor targetRecall.decisionInformationAntichain
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => utility (targetObserve history) who) targetFuel) ∧
       (N.runBehavioral target.strategy targetFuel).map targetObserve =
         (M.runBehavioral source.strategy sourceFuel).map sourceObserve ∧
       ∃ index : ℕ → ℕ, StrictMono index ∧
         BehavioralAssessmentConvergesPointwise (fun n => targetSequence (index n)) target := by
   apply exists_sequentialEquilibrium_limit_of_local_comparisons sourceObserve targetObserve
-    sourceFuel targetFuel targetBounded targetRecall targetClock utility source sourceSequence
+    sourceFuel targetFuel targetBounded targetRecall utility source sourceSequence
     sourceConverges sourceRational targetSequence targetMixed targetBayes
     (fun _ => 0) tendsto_const_nhds ?_ initialized
   intro n who site law
@@ -334,11 +341,13 @@ theorem exists_sequentialEquilibrium_limit_of_local_simulations
         obtain ⟨history, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
         exact ⟨history, rfl⟩
     have alternateIntegrable : PayoffIntegrable (mixture.bind fun deviation =>
-        (M.assessmentComparison sourceObserve sourceFuel (sourceSequence n) who
+        (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve (sourceSequence n)
+            who
           deviation).alternative) (utility · who) :=
       observed _ fun _ => ofMap _
     have prescribedIntegrable : PayoffIntegrable (mixture.bind fun deviation =>
-        (M.assessmentComparison sourceObserve sourceFuel (sourceSequence n) who
+        (M.assessmentComparisonWith (M.truncatedRunner sourceFuel) sourceObserve (sourceSequence n)
+            who
           deviation).prescribed) (utility · who) :=
       observed _ fun _ => ofMap _
     dsimp only
@@ -347,4 +356,4 @@ theorem exists_sequentialEquilibrium_limit_of_local_simulations
       ← expect_sub (payoffIntegrable_bind_conditionalExpectation _ _ _ alternateIntegrable)
         (payoffIntegrable_bind_conditionalExpectation _ _ _ prescribedIntegrable), add_zero]
 
-end GameTheory.ContinuationSimulation
+end GameTheory.Protocol.InformationModel

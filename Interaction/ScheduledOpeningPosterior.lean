@@ -2,7 +2,8 @@
 
 import Interaction.ScheduledOpeningSupport
 import GameTheoryExtensions.Math.Probability.DeferredChoice
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
 
@@ -105,8 +106,10 @@ theorem policyMixture_posterior_wait {Index : Type} (initial : PMF Index)
       obtain ⟨old, _, equality⟩ := PMF.support_map .. ▸ member
       exact equal (congrArg Prod.fst equality).symm
   rw [Implementation.posterior_snoc]
-  change (fiberConditional joint Prod.fst entry.action).map Prod.snd = _
-  rw [fiberConditional, dite_eq_left actionMeet, conditioned, PMF.map_comp]
+  change (fiberPosterior joint Prod.fst entry.action).map Prod.snd = _
+  rw [fiberPosterior_eq_filter _ _ actionMeet]
+  change PMF.map Prod.snd (joint.filter (Prod.fst ⁻¹' {entry.action}) actionMeet) = _
+  rw [conditioned, PMF.map_comp]
   exact PMF.map_id _
 
 /-- Slots still available after `count` waiting responses. Never opening is

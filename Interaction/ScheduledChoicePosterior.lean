@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ScheduledOpeningPosterior
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
 
@@ -56,8 +57,8 @@ private theorem posterior_point {Index : Type} (initial : PMF Index)
   have point := congrArg (fun law => (law (entry.action, index)).toReal) reconstructed
   rw [pmf_map_apply_of_injective _ (fun _ _ equal => (Prod.mk.inj equal).2)] at point
   rw [Implementation.posterior_snoc]
-  change (((fiberConditional joint Prod.fst entry.action).map Prod.snd) index).toReal = _
-  rw [fiberConditional, dite_eq_left meets, point, toReal_filter_apply,
+  change (((fiberPosterior joint Prod.fst entry.action).map Prod.snd) index).toReal = _
+  rw [fiberPosterior_eq_filter_preimage _ _ meets, point, toReal_filter_apply,
     ite_eq_left (show (entry.action, index) ∈ Prod.fst ⁻¹' {entry.action} from rfl),
     ← PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_apply_singleton, marginal]
   congr 1

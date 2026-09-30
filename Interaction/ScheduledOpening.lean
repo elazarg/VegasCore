@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactivePolicyMixture
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A scheduled mixture stops after its first opening
 
@@ -27,14 +29,14 @@ theorem policyMixture_posterior_pure_snoc {Index : Type} (initial : PMF Index)
     (app.policyMixture initial policies).posterior (past ++ [entry]) =
       PMF.pure index := by
   rw [Implementation.posterior_snoc, fixed]
-  change (fiberConditional ((PMF.pure index).bind (fun value =>
+  change (fiberPosterior ((PMF.pure index).bind (fun value =>
     (policies value past entry.beforeView).map fun action => (action, value)))
       Prod.fst entry.action).map Prod.snd = PMF.pure index
   rw [PMF.pure_bind]
   have paired : (policies index past entry.beforeView).map (fun action => (action, index)) =
       bindPairLaw (policies index past entry.beforeView) (fun _ => (PMF.pure index)) := by
     simp only [bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def, PMF.pure_bind]
-  rw [paired, conditional_snd_bindPairLaw_const]
+  rw [paired, fiberPosterior_snd_bindPairLaw_const]
 
 theorem policyMixture_posterior_pure_append {Index : Type} (initial : PMF Index)
     (policies : Index → app.Policy) (past suffix : List app.PlayerEntry) (index : Index)
@@ -71,8 +73,8 @@ theorem scheduledMixture_posterior_open {slots : Nat}
     exact ⟨response, first, member⟩
   change mixture.posterior (past ++ [entry]) = _
   rw [Implementation.posterior_snoc]
-  change (fiberConditional joint Prod.fst entry.action).map Prod.snd = _
-  rw [opened, fiberConditional, dite_eq_left possible]
+  change (fiberPosterior joint Prod.fst entry.action).map Prod.snd = _
+  rw [opened, fiberPosterior_eq_filter_preimage _ _ possible]
   apply pmf_eq_pure_of_support_subset_singleton
   intro selected member
   obtain ⟨response, conditional, second⟩ := PMF.support_map .. ▸ member

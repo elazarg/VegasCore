@@ -4,7 +4,9 @@ import Vegas.Game.DisclosureProfileComparison
 import Vegas.Game.SourceBayes
 import Vegas.Game.SourcePrefixKernel
 import GameTheory.Analysis.Protocol.Incentives
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Private disclosure comparisons against actual source assessments
 
@@ -105,13 +107,15 @@ private theorem comparison_prefix_laws
     let prefixLaw := (setup.initialLaw.map setup.initialConfig).bind fun config =>
       (fun distribution => distribution.bind (ProtocolState.behavioralStateStep setup.program
         profile))^[count] (PMF.pure (ProtocolState.entry setup.program config))
-    let comparison := (setup.informationModel admission).assessmentComparison
-      (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
+    let comparison := (setup.informationModel
+        admission).assessmentComparisonWith ((setup.informationModel
+            admission).truncatedRunner (instructionCount setup.program + 1)) (fun final =>
+                setup.protocolReadout final.state)
       assessment who (site, setup.toProtocolBehavioralPolicy admission who alternative admitted)
-    comparison.prescribed = ((fiberConditional prefixLaw
+    comparison.prescribed = ((fiberPosterior prefixLaw
       (ProtocolState.observe who setup.program) view).bind
         (ProtocolState.continuationLaw setup.program profile)).map some ∧
-    comparison.alternative = ((fiberConditional prefixLaw
+    comparison.alternative = ((fiberPosterior prefixLaw
       (ProtocolState.observe who setup.program) view).bind
         (ProtocolState.continuationLaw setup.program (Function.update profile who alternative))).map
           some := by
@@ -125,20 +129,17 @@ private theorem comparison_prefix_laws
     obtain ⟨state, supported, observed⟩ := PMF.support_map .. ▸ present
     rw [PMF.support_map]
     exact ⟨state, supported, congrArg some observed⟩
-  have sameFiber : fiberConditional prefixLaw (setup.protocolObserve who ∘ some) (some view) =
-      fiberConditional prefixLaw (ProtocolState.observe who setup.program) view := by
-    have fiber : (setup.protocolObserve who ∘ some) ⁻¹' {some view} =
-        (ProtocolState.observe who setup.program) ⁻¹' {view} := by
-      ext state
-      simp only [Set.mem_preimage, Set.mem_singleton_iff, Function.comp_apply, protocolObserve,
-        Option.map_some, Option.some.injEq]
-    simp only [fiberConditional, fiber]
-  have posterior := PMF.map_conditional_readout prefixLaw some (setup.protocolObserve who)
+  have sameFiber : fiberPosterior prefixLaw (setup.protocolObserve who ∘ some) (some view) =
+      fiberPosterior prefixLaw (ProtocolState.observe who setup.program) view := by
+    apply fiberPosterior_eq_of_support_fiber
+    intro state _
+    simp only [Function.comp_apply, protocolObserve, Option.map_some, Option.some.injEq]
+  have posterior := map_fiberPosterior_readout prefixLaw some (setup.protocolObserve who)
     (some view) imagePresent
   rw [sameFiber] at posterior
   have value (policy : (setup.informationModel admission).BehavioralPolicy who) :=
-    setup.continuationContext_law_conditional_prefix admission assessment mixed bayes who site
-      policy
+    setup.truncatedContinuationContext_law_conditional_prefix admission assessment mixed bayes
+      who site policy
   have decoded : setup.decodeBehavioralProfile admission
       (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
         assessment.strategy who (setup.toProtocolBehavioralPolicy admission who
@@ -181,18 +182,22 @@ theorem normalized_disclosure_assessment_comparison
       ∀ view ∈ ((prefixLaw normalized).map (ProtocolState.observe who setup.program)).support,
         SourceProgram.ProtocolView.actor who setup.program view = some who →
         ∃ mixture : PMF ((setup.informationModel admission).AssessmentDeviation who),
-          (((fiberConditional (prefixLaw normalized)
+          (((fiberPosterior (prefixLaw normalized)
               (ProtocolState.observe who setup.program) view).bind
             (ProtocolState.continuationLaw setup.program normalized)).map some) =
-            mixture.bind (fun deviation => ((setup.informationModel admission).assessmentComparison
-              (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
+            mixture.bind (fun deviation => ((setup.informationModel
+                admission).assessmentComparisonWith ((setup.informationModel
+                    admission).truncatedRunner (instructionCount setup.program + 1)) (fun final =>
+                        setup.protocolReadout final.state)
                 assessment who deviation).prescribed) ∧
-          (((fiberConditional (prefixLaw normalized)
+          (((fiberPosterior (prefixLaw normalized)
               (ProtocolState.observe who setup.program) view).bind
             (ProtocolState.continuationLaw setup.program
               (Function.update normalized who alternative))).map some) =
-            mixture.bind (fun deviation => ((setup.informationModel admission).assessmentComparison
-              (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
+            mixture.bind (fun deviation => ((setup.informationModel
+                admission).assessmentComparisonWith ((setup.informationModel
+                    admission).truncatedRunner (instructionCount setup.program + 1)) (fun final =>
+                        setup.protocolReadout final.state)
                 assessment who deviation).alternative) := by
   classical
   dsimp only

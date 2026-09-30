@@ -3,8 +3,11 @@
 import Vegas.Game.SourceServiceTimedSupport
 import Vegas.Game.SourceServiceCompiledExecution
 import Interaction.ReactiveRecallEntries
-import GameTheoryExtensions.Protocol.TremblingPlans
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Protocol.TremblingPlans
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Tremble
 
 /-! # Legal shared timing at full-source decisions
 
@@ -32,7 +35,7 @@ private theorem posterior_previous {Player Index : Type}
   obtain ⟨pair, conditional, same⟩ := PMF.support_map .. ▸ supported
   have original : pair ∈ (((app.policyMixture timing family).posterior past).bind fun value =>
       (family value past entry.beforeView).map fun response => (response, value)).support := by
-    unfold fiberConditional at conditional
+    unfold fiberPosterior at conditional
     split at conditional
     · exact ((PMF.mem_support_filter_iff _).mp conditional).2
     · exact conditional
@@ -69,8 +72,8 @@ private theorem posterior_action {Player Index : Type}
     exact Set.mem_iUnion₂.mpr ⟨value, prior,
       PMF.support_map .. ▸ ⟨entry.action, produced, rfl⟩⟩
   rw [ReactiveApplication.Implementation.posterior_snoc] at supported
-  change index ∈ ((fiberConditional joint Prod.fst entry.action).map Prod.snd).support at supported
-  rw [fiberConditional, dite_eq_left meets] at supported
+  change index ∈ ((fiberPosterior joint Prod.fst entry.action).map Prod.snd).support at supported
+  rw [fiberPosterior_eq_filter_preimage _ _ meets] at supported
   obtain ⟨pair, conditional, same⟩ := PMF.support_map .. ▸ supported
   obtain ⟨observed, original⟩ := (PMF.mem_support_filter_iff _).mp conditional
   obtain ⟨value, _, generated⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ original)

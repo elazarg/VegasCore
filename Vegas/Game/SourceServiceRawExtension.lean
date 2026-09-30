@@ -55,7 +55,7 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
       ((sourceServiceMenu setup leaks bounds rosters).decisionInformationAntichain
         (initialLaw setup) (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network))
-      (fun who site => source.continuationContext site (fun history =>
+      (fun who site => source.truncatedContinuationContext site (fun history =>
         baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state))
           history.state who) (2 * (rosterPlan setup rosters).length + 1))) :
     let menu := sourceServiceMenu setup leaks bounds rosters
@@ -73,7 +73,7 @@ theorem sourceService_audited_raw_equilibrium_extends {Parameter Observation : T
     ∃ target : (raw.information (initialLaw setup) count scheduler).BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         (raw.decisionInformationAntichain (initialLaw setup) count scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => payoff history.state who) (2 * count + 1)) ∧
       (∀ final ∈ ((raw.information (initialLaw setup) count scheduler).runBehavioral
           target.strategy (2 * count + 1)).support, ∀ who,

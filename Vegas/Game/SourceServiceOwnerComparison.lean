@@ -2,9 +2,11 @@
 
 import Vegas.Game.SourceServiceLocalComparison
 import Vegas.Game.SourceServiceAssessment
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Owner sites as mixtures of original source deviations
 
@@ -123,15 +125,17 @@ theorem owner_source_comparisons (service : SourceServiceSpec Player L)
       ((approx.assessment.belief who site).bind fun history =>
         (service.setup.continuationLaw approx.profile
           (decodedState service event history.1)).map some) =
-        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
-            (fun final => service.setup.protocolReadout final.state)
-            (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparisonWith
+            (service.sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+            (fun final => service.setup.protocolReadout final.state) source who
+            deviation).prescribed) ∧
       ((approx.assessment.belief who site).bind fun history =>
         (service.setup.continuationLaw (Function.update approx.profile who alternative)
           (decodedState service event history.1)).map some) =
-        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
-            (fun final => service.setup.protocolReadout final.state)
-            (instructionCount service.setup.program + 1) source who deviation).alternative) := by
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparisonWith
+            (service.sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+            (fun final => service.setup.protocolReadout final.state) source who
+            deviation).alternative) := by
   subst built
   obtain ⟨reference, control, current, visits, count, selected, before, position⟩ :=
     owner_site_position service who site past view observed granted
@@ -192,28 +196,32 @@ theorem owner_comparisons_of_continuations (service : SourceServiceSpec Player L
         (service.setup.continuationLaw (Function.update approx.profile who alternative)
           (decodedState service event history.1)).map some) :
     ∃ mixture : PMF (service.sourceModel.AssessmentDeviation who),
-      (service.model.assessmentComparison service.readout service.fuel approx.assessment who
+      (service.model.assessmentComparisonWith (service.model.truncatedRunner service.fuel)
+          service.readout approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).prescribed =
-        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
-            (fun final => service.setup.protocolReadout final.state)
-            (instructionCount service.setup.program + 1) source who deviation).prescribed) ∧
-      (service.model.assessmentComparison service.readout service.fuel approx.assessment who
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparisonWith
+            (service.sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+            (fun final => service.setup.protocolReadout final.state) source who
+            deviation).prescribed) ∧
+      (service.model.assessmentComparisonWith (service.model.truncatedRunner service.fuel)
+          service.readout approx.assessment who
         (site, (approx.assessment.strategy who).withLaw site.1 law)).alternative =
-        mixture.bind (fun deviation => (service.sourceModel.assessmentComparison
-            (fun final => service.setup.protocolReadout final.state)
-            (instructionCount service.setup.program + 1) source who deviation).alternative) := by
+        mixture.bind (fun deviation => (service.sourceModel.assessmentComparisonWith
+            (service.sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+            (fun final => service.setup.protocolReadout final.state) source who
+            deviation).alternative) := by
   obtain ⟨mixture, prescribedLaw, alternativeLaw⟩ := owner_source_comparisons service timing
     timingFull source full sourceBayes approx built who site past view observed owned granted
     alternative admitted
   refine ⟨mixture, ?_, ?_⟩
   · rw [← prescribedLaw]
-    simp only [InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+    simp only [InformationModel.assessmentComparisonWith, InformationModel.assessmentLawWith,
       Profile.update_eq_self, PMF.map_bind]
     apply bind_congr_on_support _
     intro history member
     exact prescribedContinuation history member
   · rw [← alternativeLaw]
-    simp only [InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+    simp only [InformationModel.assessmentComparisonWith, InformationModel.assessmentLawWith,
       PMF.map_bind]
     apply bind_congr_on_support _
     intro history member
@@ -278,9 +286,10 @@ theorem owner_site_source_histories (service : SourceServiceSpec Player L)
   rw [belief, PMF.support_map] at decodedMember
   obtain ⟨state, conditioned, stateEq⟩ := decodedMember
   obtain ⟨_, _, _⟩ := PMF.support_map .. ▸ viewSupport
-  obtain ⟨matched, supported⟩ := mem_support_fiberConditional (by
+  obtain ⟨matched, supported⟩ := mem_support_fiberPosterior
+    (mem_support_map_of_exists_mem_fiber (by
     obtain ⟨witness, witnessSupport, witnessView⟩ := PMF.support_map .. ▸ viewSupport
-    exact ⟨witness, witnessView, witnessSupport⟩) conditioned
+    exact ⟨witness, witnessView, witnessSupport⟩)) conditioned
   let encoded := fun player => service.setup.toProtocolBehavioralPolicy admission player
     (normalizeDisclosureProfile service.setup.program [] (Revelations.initial service.setup.context)
       original player) (normalizedAdmitted player)

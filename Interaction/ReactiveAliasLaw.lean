@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveAliasStrategy
-import GameTheoryExtensions.Protocol.HistoryProjection
+import GameTheory.Protocol.Randomized
+import GameTheory.Protocol.Information
 
 /-! # Exact history laws for response normalization
 

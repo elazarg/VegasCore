@@ -5,7 +5,6 @@ import Vegas.Game.EventServiceEdge
 import Vegas.Pending.EventStrategicLaw
 import GameTheory.Core.MixtureUtilitySimulation
 import GameTheory.Core.MixtureSimulationComposition
-import GameTheoryExtensions.Core.ConsideredDeviation
 import Vegas.Source.FiniteSupport
 
 /-! # Strategic correctness of asynchronous source-to-message compilation
@@ -261,12 +260,13 @@ theorem eventPendingGame_deviation_utility_bound
     fun outcome _ => outcome.elim missing value
   let simulation := setup.eventPendingSimulation finite mode runtime feasible roster
     reactionRounds wire wireFinite order orderFinite
-  exact simulation.exists_source_deviation_ge optionValue profile who replacement
+  exact (simulation.exists_source_deviation_ge optionValue profile who replacement
     replacementFinite
     (payoffIntegrable_of_finite_support _ _
       (setup.eventPendingGame_play_support_finite mode runtime roster reactionRounds wireFinite
         orderFinite _ (setup.compileEventPending_update_finiteSupport finite mode runtime roster
-          reactionRounds wire order profile who replacement replacementFinite)))
+          reactionRounds wire order profile who replacement replacementFinite)))).imp
+    fun _ found => found.2
 
 /-- Same-error Nash preservation and reflection at compiled profiles for every
 utility of the terminal source state, against finitely branching native
@@ -341,7 +341,7 @@ theorem eventPendingGame_isBestResponse_compileProfile
         (setup.eventPendingGame_play_support_finite mode runtime roster reactionRounds
           wireFinite orderFinite _ (setup.compileEventPending_update_finiteSupport finite mode
             runtime roster reactionRounds wire order profile who replacement replacementFinite)))
-      (fun _ => payoffIntegrable_of_finite_support _ _
+      (payoffIntegrable_of_finite_support _ _
         (setup.gameForm_play_support_finite finite _))
 
 /-- A dominant source policy compiles to a best response against every compiled

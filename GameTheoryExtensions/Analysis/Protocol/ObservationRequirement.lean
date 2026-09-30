@@ -23,16 +23,16 @@ namespace GameTheory.Protocol.InformationModel.ContinuationDecision
 
 open GameTheory.Math.Probability
 
-variable {Player : Type} [Fintype Player] [DecidableEq Player]
+variable {Player : Type} [DecidableEq Player]
   {E : ExecutionProtocol Player} {M : InformationModel E} [Finite E.History]
-  {utility : Player → E.History → ℝ} {fuel : Nat}
+  {utility : Player → E.History → ℝ} {run : M.ContinuationRunner}
   {State Action Index Observation Coarse : Type*}
 
 omit [Finite E.History] in
 /-- Knowledge fixes the posterior reward for every assessment, including
 off-path assessments with otherwise unrestricted compatible-history beliefs. -/
 theorem expectedReward_of_known
-    (decision : M.ContinuationDecision utility fuel State Action)
+    (decision : M.ContinuationDecision utility run State Action)
     (read : E.History → State)
     (reads : ∀ history, decision.state history = read history.1)
     (state : State)
@@ -50,12 +50,12 @@ action if the assessment is rational and its executed response depends only
 on that observation. Randomization cannot evade this intersection condition.
 No finiteness of the index or action carrier is needed. -/
 theorem observation_fiber_has_common_maximizer
-    (decisions : Index → M.ContinuationDecision utility fuel State Action)
+    (decisions : Index → M.ContinuationDecision utility run State Action)
     (observe : Index → Observation)
     (respond : Observation → PMF Action)
     (assessment : M.BehavioralAssessment)
     (factors : ∀ index, (decisions index).response assessment.strategy = respond (observe index))
-    (rational : assessment.IsSequentiallyRationalWithin utility fuel) (index : Index) :
+    (rational : assessment.IsSequentiallyRationalWith run utility) (index : Index) :
     ∃ action, ∀ other, observe other = observe index → ∀ alternative,
       (decisions other).expectedReward assessment alternative ≤
         (decisions other).expectedReward assessment action := by
@@ -67,12 +67,12 @@ theorem observation_fiber_has_common_maximizer
 /-- An information distinction is necessary whenever the two actual
 continuations have disjoint posterior maximizers for the fixed utility. -/
 theorem observation_separates_incompatible
-    (decisions : Index → M.ContinuationDecision utility fuel State Action)
+    (decisions : Index → M.ContinuationDecision utility run State Action)
     (observe : Index → Observation)
     (respond : Observation → PMF Action)
     (assessment : M.BehavioralAssessment)
     (factors : ∀ index, (decisions index).response assessment.strategy = respond (observe index))
-    (rational : assessment.IsSequentiallyRationalWithin utility fuel)
+    (rational : assessment.IsSequentiallyRationalWith run utility)
     (first second : Index)
     (incompatible : ¬ ∃ action,
       (∀ alternative, (decisions first).expectedReward assessment alternative ≤
@@ -89,7 +89,7 @@ theorem observation_separates_incompatible
 factoring through the coarsened observation can be sequentially rational.
 This quantifies over arbitrary observation alphabets and decoders. -/
 theorem not_rational_of_coarsening_collision
-    (decisions : Index → M.ContinuationDecision utility fuel State Action)
+    (decisions : Index → M.ContinuationDecision utility run State Action)
     (observe : Index → Observation) (coarsen : Observation → Coarse)
     (respond : Coarse → PMF Action)
     (assessment : M.BehavioralAssessment)
@@ -101,7 +101,7 @@ theorem not_rational_of_coarsening_collision
         (decisions first).expectedReward assessment action) ∧
       (∀ alternative, (decisions second).expectedReward assessment alternative ≤
         (decisions second).expectedReward assessment action)) :
-    ¬ assessment.IsSequentiallyRationalWithin utility fuel := by
+    ¬ assessment.IsSequentiallyRationalWith run utility := by
   intro rational
   exact observation_separates_incompatible decisions (coarsen ∘ observe) respond
     assessment factors rational first second incompatible merged

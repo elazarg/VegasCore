@@ -89,9 +89,9 @@ theorem history_at_bob (history : (model false).InformationHistory true bobSite.
   · rw [same] at info; cases info
 
 theorem bob_value (assessment : (model false).BehavioralAssessment) (value : Bool) :
-    (assessment.continuationContext bobSite (fun history => reward history.state) 3).value
+    (assessment.truncatedContinuationContext bobSite (fun history => reward history.state) 3).value
       (choose false true value) = if value then 1 else 0 := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     expect_bind_tower _ _ _ (reward_integrable _)]
   calc
     _ = expect (assessment.belief true bobSite) (fun _ => if value then 1 else 0) := by
@@ -108,20 +108,23 @@ theorem bob_value (assessment : (model false).BehavioralAssessment) (value : Boo
 theorem no_sequentially_rational_assessment
     (assessment : (model false).BehavioralAssessment)
     (strategy : assessment.strategy = prescribed false) :
-    ¬ assessment.IsSequentiallyRationalWithin (fun who history => payoff history who) 3 := by
+    ¬ assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => payoff history who) 3 := by
   intro rational
   have integrable (policy : (model false).BehavioralPolicy true) :
-      (assessment.continuationContext bobSite (fun history => reward history.state) 3).IntegrableAt
+      (assessment.truncatedContinuationContext bobSite (fun history => reward history.state)
+          3).IntegrableAt
         policy := reward_integrable _
   have inequality := (Context.isLocallyOptimal_iff_of_integrable (integrable _)
     fun policy _ => integrable policy).mp (rational true bobSite) (choose false true true)
       (Set.mem_univ _)
-  change (assessment.continuationContext bobSite (fun history => reward history.state) 3).value
+  change (assessment.truncatedContinuationContext bobSite (fun history => reward history.state)
+      3).value
       (choose false true true) ≤
-    (assessment.continuationContext bobSite (fun history => reward history.state) 3).value
+    (assessment.truncatedContinuationContext bobSite (fun history => reward history.state) 3).value
       (assessment.strategy true) at inequality
   rw [strategy] at inequality
-  change _ ≤ (assessment.continuationContext bobSite
+  change _ ≤ (assessment.truncatedContinuationContext bobSite
     (fun history => reward history.state) 3).value (choose false true false) at inequality
   rw [bob_value, bob_value] at inequality
   norm_num at inequality

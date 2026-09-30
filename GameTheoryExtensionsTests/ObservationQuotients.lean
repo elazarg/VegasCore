@@ -114,11 +114,11 @@ theorem retainsFact_iff_preserves_all_sequentialEquilibria (quotient : QuotientM
       (∀ utility : Bool → Bool → ℝ,
         ∀ source : (model (Action := Bool) prior quotient).BehavioralAssessment,
           source.IsSequentialEquilibriumFor (antichain prior quotient)
-            (fun _ site => source.continuationContext site
+            (fun _ site => source.truncatedContinuationContext site
               (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
           ∃ target : (model (Action := Bool) prior id).BehavioralAssessment,
             target.IsSequentialEquilibriumFor (antichain prior id)
-              (fun _ site => target.continuationContext site
+              (fun _ site => target.truncatedContinuationContext site
                 (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
             observedLaw prior id fact target = observedLaw prior quotient fact source) := by
   rw [preserves_all_sequentialEquilibria_iff_determines,

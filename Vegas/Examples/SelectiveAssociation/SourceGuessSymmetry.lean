@@ -2,9 +2,10 @@
 
 import Vegas.Examples.SelectiveAssociation.SourcePrefixSymmetry
 import Vegas.Examples.SelectiveAssociation.SourcePublishedEvidence
-import GameTheoryExtensions.Math.Probability.ConditionalSymmetry
+import GameTheory.Math.Probability.ConditionalComparison
 import Interaction.ReactiveAssessmentDecoding
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # Conditional hidden-bit fairness in the source response prefixes
 
@@ -104,7 +105,7 @@ theorem bindingLaw_swapHidden {Claim : Type} (players : Player → (application 
   rw [mapped]
   by_cases clean : sample.Uncertified
   · rw [BindingSample.swapHidden, ite_eq_left clean]
-    exact congrArg ENNReal.toReal (PMF.apply_involution (bindingLaw players) BindingSample.flip
+    exact congrArg ENNReal.toReal (apply_involution (bindingLaw players) BindingSample.flip
       BindingSample.flip_involutive (bindingLaw_flip players symmetric) sample)
   · rw [BindingSample.swapHidden, ite_eq_right clean]
 
@@ -153,7 +154,7 @@ theorem carol_conditional_fair {Claim : Type} (players : Player → (application
       {sample | BindingSample.hiddenCarolInformation sample = some info} positive).toOuterMeasure
           {sample | sample.Uncertified ∧ sample.value = .success true}).toReal := by
   congr 1
-  apply PMF.filter_observation_toOuterMeasure_eq _ BindingSample.swapHidden
+  apply filter_observation_toOuterMeasure_eq _ BindingSample.swapHidden
     BindingSample.swapHidden_involutive (bindingLaw_swapHidden players symmetric)
     BindingSample.hiddenCarolInformation BindingSample.hiddenCarolInformation_swapHidden
   intro sample _
@@ -240,7 +241,7 @@ theorem bob_conditional_fair {Claim : Type} (players : Player → (application C
         {sample | hiddenBobInformation sample = some info} positive).toOuterMeasure
         {sample | sample.1.Uncertified ∧ sample.1.value = .success true}).toReal := by
   congr 1
-  apply PMF.filter_observation_toOuterMeasure_eq _ swapGuess swapGuess_involutive
+  apply filter_observation_toOuterMeasure_eq _ swapGuess swapGuess_involutive
     (guessLaw_swap players symmetric) hiddenBobInformation hiddenBobInformation_swap
   intro sample _
   change sample.1.swapHidden.Uncertified ∧ sample.1.swapHidden.value = .success false ↔
@@ -301,7 +302,7 @@ theorem carol_joint_fair {Claim : Type} (players : Player → (application Claim
       ((bindingLaw players).toOuterMeasure
           {sample | sample.carolInformation = info ∧ sample.value = .success true}).toReal := by
   congr 1
-  apply PMF.toOuterMeasure_eq_of_involution _ BindingSample.swapHidden
+  apply toOuterMeasure_eq_of_involution _ BindingSample.swapHidden
     (bindingLaw_swapHidden players symmetric)
   intro sample _
   change sample.swapHidden.carolInformation = info ∧ sample.swapHidden.value = .success false ↔
@@ -328,7 +329,7 @@ theorem bob_joint_fair {Claim : Type} (players : Player → (application Claim).
       ((guessLaw players).toOuterMeasure
           {sample | bobInformation sample = info ∧ sample.1.value = .success true}).toReal := by
   congr 1
-  apply PMF.toOuterMeasure_eq_of_involution _ swapGuess (guessLaw_swap players symmetric)
+  apply toOuterMeasure_eq_of_involution _ swapGuess (guessLaw_swap players symmetric)
   intro sample _
   change bobInformation (swapGuess sample) = info ∧ sample.1.swapHidden.value = .success false ↔
     bobInformation sample = info ∧ sample.1.value = .success true

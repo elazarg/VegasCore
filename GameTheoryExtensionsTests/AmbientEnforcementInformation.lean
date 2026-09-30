@@ -141,26 +141,27 @@ def silentHistories (ambient : Bool) :
 
 theorem alice_context (assessment : (model true).BehavioralAssessment) (bit : Bool)
     (utility : State → ℝ) (alternative : (model true).BehavioralPolicy false) :
-    (assessment.continuationContext (aliceSite bit) (fun h => utility h.state) 3).value
+    (assessment.truncatedContinuationContext (aliceSite bit) (fun h => utility h.state) 3).value
         alternative =
       expect ((model true).runSingleMoverBehavioralFrom (single true)
         (Profile.update (sig := (model true).behavioralSignature)
           assessment.strategy false alternative) 3 (aliceHistory true bit))
             (fun h => utility h.state) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     eq_pure_of_subsingleton (assessment.belief false (aliceSite bit))
       ⟨aliceHistory true bit, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) (single true)]
 
 theorem disclosed_context (assessment : (model true).BehavioralAssessment) (bit : Bool)
     (utility : State → ℝ) (alternative : (model true).BehavioralPolicy true) :
-    (assessment.continuationContext (bobDisclosedSite bit) (fun h => utility h.state) 3).value
+    (assessment.truncatedContinuationContext (bobDisclosedSite bit) (fun h => utility h.state)
+        3).value
         alternative =
       expect ((model true).runSingleMoverBehavioralFrom (single true)
         (Profile.update (sig := (model true).behavioralSignature)
           assessment.strategy true alternative) 3 (bobHistory true bit true))
             (fun h => utility h.state) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     eq_pure_of_subsingleton (assessment.belief true (bobDisclosedSite bit))
       ⟨bobHistory true bit true, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom (model true) (single true)]

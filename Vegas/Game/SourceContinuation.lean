@@ -111,7 +111,7 @@ theorem runBehavioralFrom_value
 /-- The original assessment and its whole-policy deviations are retained.
 Only the belief is pushed to the actual source state for evaluating utility.
 Finitely many legal histories make every utility integrable. -/
-theorem continuationContext_value_stateBelief
+theorem truncatedContinuationContext_value_stateBelief
     [Finite (setup.executionProtocol admission).History]
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
@@ -119,13 +119,13 @@ theorem continuationContext_value_stateBelief
     (utility : State L setup.program.terminalCtx → ℝ) (fuel : Nat)
     (enough : ∀ history : (setup.informationModel admission).InformationHistory who site.1,
       setup.protocolRemaining history.1.state ≤ fuel) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => (setup.protocolReadout final.state).elim 0 utility) fuel).value alternative =
       expect (assessment.stateBelief who site) (fun state =>
         expect (setup.continuationLaw (setup.decodeBehavioralProfile admission
           (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
             assessment.strategy who alternative)) state) utility) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     expect_bind_of_finite, InformationModel.BehavioralAssessment.stateBelief, expect_map,
     Function.comp_def]
   apply expect_congr_on_support

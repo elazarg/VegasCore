@@ -2,8 +2,12 @@
 
 import Interaction.ReactiveRounds
 import Interaction.ReactiveRecall
-import GameTheoryExtensions.Protocol.PrivateStrategy
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Protocol.PrivateStrategy
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Private implementations of reactive behavioral policies
 
@@ -59,7 +63,7 @@ def policy : app.Policy := fun past view =>
 
 theorem posterior_snoc (past : List app.PlayerEntry) (entry : app.PlayerEntry) :
     implementation.posterior (past ++ [entry]) =
-      (fiberConditional ((implementation.posterior past).bind fun memory =>
+      (fiberPosterior ((implementation.posterior past).bind fun memory =>
         implementation.respond memory (past, entry.beforeView))
           Prod.fst entry.action).map Prod.snd := by
   rw [posterior, app.privateTranscript_snoc]
@@ -74,7 +78,7 @@ variable [DecidableEq Principal]
 
 theorem posterior_respond (execution : app.Execution) (who : Principal) (action : app.Action) :
     implementation.posterior ((execution.respond app who action).recall who) =
-      (fiberConditional ((implementation.posterior (execution.recall who)).bind fun memory =>
+      (fiberPosterior ((implementation.posterior (execution.recall who)).bind fun memory =>
         implementation.respond memory (execution.recall who, execution.observe app who))
           Prod.fst action).map Prod.snd := by
   rcases action with ⟨transmission⟩
@@ -98,7 +102,7 @@ theorem response_disintegrate {Result : Type} (execution : app.Execution) (who :
     implementation.respond memory (execution.recall who, execution.observe app who)
   rw [← PMF.bind_bind]
   change law.bind (fun response => next (execution.respond app who response.1) response.2) = _
-  conv_lhs => arg 1; rw [eq_bind_fst_conditional_snd law]
+  conv_lhs => arg 1; rw [eq_bind_fst_fiberPosterior_snd law]
   simp only [PMF.bind_bind, PMF.bind_map, Function.comp_def, policy_eq, posterior_respond, law]
 
 /-- One activation with implementation state carried outside the game. -/

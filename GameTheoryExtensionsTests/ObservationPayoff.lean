@@ -79,11 +79,11 @@ outcome impossibility; a utility-dependent translator cannot repair it. -/
 theorem fixed_reporting_payoff_not_preserved :
     ¬ (∀ source : (model (Action := Bool) prior (fun _ => ())).BehavioralAssessment,
       source.IsSequentialEquilibriumFor (antichain prior (fun _ => ()))
-        (fun _ site => source.continuationContext site
+        (fun _ site => source.truncatedContinuationContext site
           (fun history => payoff (reportUtility (id : Bool → Bool)) history.state) 2) →
       ∃ target : (model (Action := Bool) prior id).BehavioralAssessment,
         target.IsSequentialEquilibriumFor (antichain prior id)
-          (fun _ site => target.continuationContext site
+          (fun _ site => target.truncatedContinuationContext site
             (fun history => payoff (reportUtility (id : Bool → Bool)) history.state) 2) ∧
         observedLaw prior id id target = observedLaw prior (fun _ => ()) id source) := by
   intro preserves

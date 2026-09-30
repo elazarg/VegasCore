@@ -2,7 +2,8 @@
 
 import Vegas.Game.RevealServiceCompletion
 import Interaction.ReactiveScheduleEvaluation
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Support

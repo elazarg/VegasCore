@@ -35,7 +35,7 @@ packet deviation, rather than only the two certified disclosure fibers. -/
 theorem native_sequential_equilibrium_exists (matchBit : Bool) :
     ∃ assessment : nativeModel.BehavioralAssessment,
       assessment.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
-        assessment.continuationContext site (nativePayoff matchBit who) 113) := by
+        assessment.truncatedContinuationContext site (nativePayoff matchBit who) 113) := by
   obtain ⟨assessment, _, equilibrium⟩ :=
     InformationModel.exists_sequential_equilibrium_of_last_decision
       (nativeMenu.uniformAssessment nativeInitialLaw 56 nativeScheduler)
@@ -57,9 +57,10 @@ payoff one at either certified view, even if that view is off equilibrium. -/
 theorem native_equilibrium_certified_value (matchBit : Bool) :
     ∃ assessment : nativeModel.BehavioralAssessment,
       assessment.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
-        assessment.continuationContext site (nativePayoff matchBit who) 113) ∧
+        assessment.truncatedContinuationContext site (nativePayoff matchBit who) 113) ∧
       ∀ bit : Bool,
-        (assessment.continuationContext (nativeBobSite bit) (nativePayoff matchBit true) 113).value
+        (assessment.truncatedContinuationContext (nativeBobSite bit) (nativePayoff matchBit true)
+            113).value
           (assessment.strategy true) = 1 := by
   obtain ⟨assessment, equilibrium⟩ := native_sequential_equilibrium_exists matchBit
   refine ⟨assessment, equilibrium, ?_⟩
@@ -68,9 +69,9 @@ theorem native_equilibrium_certified_value (matchBit : Bool) :
     fun _ _ => payoffIntegrable_of_finite _ _).mp
     (equilibrium.1 true (nativeBobSite bit)) (evidencePolicy (winningAnswer matchBit))
       (Set.mem_univ _)
-  change (assessment.continuationContext (nativeBobSite bit)
+  change (assessment.truncatedContinuationContext (nativeBobSite bit)
       (nativePayoff matchBit true) 113).value (evidencePolicy (winningAnswer matchBit)) ≤
-    (assessment.continuationContext (nativeBobSite bit)
+    (assessment.truncatedContinuationContext (nativeBobSite bit)
       (nativePayoff matchBit true) 113).value (assessment.strategy true) at optimal
   rw [evidencePolicy_value] at optimal
   apply le_antisymm _ optimal

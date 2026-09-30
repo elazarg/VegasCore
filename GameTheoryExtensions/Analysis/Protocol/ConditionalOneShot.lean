@@ -1,10 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
-import GameTheoryExtensions.Analysis.Protocol.CounterfactualBeliefs
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Analysis.Protocol.BeliefTransport
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 
 /-! # Averaging local deviation bounds after an arbitrary own-policy prefix
 
@@ -37,7 +39,7 @@ theorem own_prefix_conditional_eq_belief (depth : Nat) (site : M.InformationSite
     (reached : ∃ history ∈ {history | M.infoOf who history.trace = site.1},
       history ∈ (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy who alternative) depth).support) :
-    fiberConditional (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
+    fiberPosterior (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy who alternative) depth)
         (fun history => M.infoOf who history.trace) site.1 =
       (assessment.belief who site).map Subtype.val := by
@@ -74,9 +76,9 @@ theorem one_step_gain_le_after_own_prefix
     (allowance : M.InfoState who → ℝ) (nonnegative : ∀ info, 0 ≤ allowance info)
     (localBound : ∀ site : M.InformationSite who,
       InformationSite.CommonDepth M site depth →
-      (assessment.continuationContext site payoff (fuel + 1)).value
+      (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
           ((assessment.strategy who).withLaw site.1 (alternative site.1)) -
-        (assessment.continuationContext site payoff (fuel + 1)).value
+        (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
           (assessment.strategy who) ≤ allowance site.1) :
     expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy who alternative) depth) (fun history =>
@@ -97,7 +99,7 @@ theorem one_step_gain_le_after_own_prefix
         expect (M.runBehavioralFrom assessment.strategy (fuel + 1) history) payoff
   have conditionalBound (info : M.InfoState who)
       (supported : info ∈ (prefixLaw.map observation).support) :
-      expect (fiberConditional prefixLaw observation info) gain ≤ allowance info := by
+      expect (fiberPosterior prefixLaw observation info) gain ≤ allowance info := by
     obtain ⟨witness, witnessSupported, observed⟩ := PMF.support_map .. ▸ supported
     have meet : ∃ history ∈ observation ⁻¹' {info}, history ∈ prefixLaw.support :=
       ⟨witness, observed, witnessSupported⟩
@@ -129,12 +131,12 @@ theorem one_step_gain_le_after_own_prefix
         alternative depth site sameDepth meet
       rw [posterior, expect_map]
       calc
-        _ = (assessment.continuationContext site payoff (fuel + 1)).value
+        _ = (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
               ((assessment.strategy who).withLaw site.1 (alternative site.1)) -
-            (assessment.continuationContext site payoff (fuel + 1)).value
+            (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
               (assessment.strategy who) := by
-          rw [BehavioralAssessment.continuationContext_value,
-            BehavioralAssessment.continuationContext_value, Profile.update_eq_self,
+          rw [BehavioralAssessment.truncatedContinuationContext_value,
+            BehavioralAssessment.truncatedContinuationContext_value, Profile.update_eq_self,
             expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _),
             expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _),
             ← expect_sub (payoffIntegrable_of_finite _ _) (payoffIntegrable_of_finite _ _)]
@@ -145,11 +147,11 @@ theorem one_step_gain_le_after_own_prefix
             assessment.strategy who alternative compatible.1 (InformationSite.active M site
                 compatible) fuel, compatible.2]
         _ ≤ allowance info := localBound site sameDepth
-    · have zero : expect (fiberConditional prefixLaw observation info) gain = 0 := by
-        rw [← expect_constant (fiberConditional prefixLaw observation info) (0 : ℝ)]
+    · have zero : expect (fiberPosterior prefixLaw observation info) gain = 0 := by
+        rw [← expect_constant (fiberPosterior prefixLaw observation info) (0 : ℝ)]
         apply expect_congr_on_support
         intro history historySupported
-        rw [fiberConditional, dite_eq_left meet] at historySupported
+        rw [fiberPosterior_eq_filter _ _ meet] at historySupported
         obtain ⟨observed, historySupported⟩ := (PMF.mem_support_filter_iff _).mp historySupported
         by_cases stopped : E.terminal history.state
         · simp only [gain, M.runBehavioralFrom_of_terminal _ _ stopped,
@@ -168,8 +170,8 @@ theorem one_step_gain_le_after_own_prefix
   calc
     expect prefixLaw gain =
         expect (prefixLaw.map observation) (fun info =>
-          expect (fiberConditional prefixLaw observation info) gain) := by
-      conv_lhs => rw [eq_bind_fiberConditional prefixLaw observation]
+          expect (fiberPosterior prefixLaw observation info) gain) := by
+      conv_lhs => rw [← fiberPosterior_reconstruct prefixLaw observation]
       exact expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)
     _ ≤ expect (prefixLaw.map observation) allowance :=
       expect_mono conditionalBound (payoffIntegrable_of_finite_support _ _ observedFinite)

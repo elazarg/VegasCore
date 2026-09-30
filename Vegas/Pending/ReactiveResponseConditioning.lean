@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Pending.ReactiveServiceRecall
-import GameTheoryExtensions.Math.Probability.ObservationRetraction
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Selecting a local response by conditioning the actual continuation
 
@@ -34,7 +37,7 @@ theorem runInteractionPlan_response_conditioning (runtime : EventGraphRuntime gr
     let app := runtime.reactiveApplication leaks
     let continued := fun action => runtime.runInteractionPlan leaks players network plan
       (execution.respond app who action)
-    fiberConditional (responses.bind continued)
+    fiberPosterior (responses.bind continued)
       (fun final => ((final.recall who)[(execution.recall who).length]?).map
         ReactiveApplication.PlayerEntry.action) (some response) = continued response := by
   intro app continued
@@ -52,12 +55,12 @@ theorem runInteractionPlan_response_conditioning (runtime : EventGraphRuntime gr
       (Nat.le_refl _), Nat.sub_self, List.getElem?_cons_zero, Option.map_some, chosen]
   have present : some response ∈ (responses.map some).support :=
     PMF.support_map .. ▸ ⟨response, supported, rfl⟩
-  have law := PMF.conditional_bind_of_observation responses continued some observe
+  have law := fiberPosterior_bind_of_observation responses continued some observe
     (fun action _ final member => recorded action final member) (some response) present
-  have fixed : fiberConditional responses some (some response) = PMF.pure response := by
+  have fixed : fiberPosterior responses some (some response) = PMF.pure response := by
     have meets : ∃ action ∈ some ⁻¹' {some response}, action ∈ responses.support :=
       ⟨response, rfl, supported⟩
-    rw [fiberConditional, dite_eq_left meets]
+    rw [fiberPosterior_eq_filter_preimage _ _ meets]
     apply pmf_eq_pure_of_support_subset_singleton
     intro action member
     exact Option.some.inj ((PMF.mem_support_filter_iff _).mp member).1

@@ -381,7 +381,7 @@ theorem run_roster_source_prefix_noise
                 (.reveal published owner name fresh selected unresolved next))) =
                 state.map (ProtocolState.observe focal next) := by
             cases state <;> rfl
-          have lifted := PMF.map_observation_factor tailJoint
+          have lifted := map_observation_factor tailJoint
             (Option.map (ProtocolState.observe focal next))
             tailNoise tailFactor embed (Option.map (ProtocolState.observe focal
               (.reveal published owner name fresh selected unresolved next))) recover recovered

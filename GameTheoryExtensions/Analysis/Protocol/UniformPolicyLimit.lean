@@ -41,29 +41,30 @@ private theorem uniform_gain_at_site
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     (who : Player) (site : M.InformationSite who) (payoff : E.History → ℝ) (fuel : Nat)
     (rational : assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site payoff fuel)) :
+      (assessment.truncatedContinuationContext site payoff fuel)) :
     ∃ error : ℕ → ℝ, (∀ n, 0 ≤ error n) ∧ Tendsto error atTop (nhds 0) ∧
       ∀ n (alternative : M.BehavioralPolicy who),
-        ((sequence n).continuationContext site payoff fuel).value alternative -
-          ((sequence n).continuationContext site payoff fuel).value
+        ((sequence n).truncatedContinuationContext site payoff fuel).value alternative -
+          ((sequence n).truncatedContinuationContext site payoff fuel).value
             ((sequence n).strategy who) ≤ error n := by
   classical
   let gain (n : ℕ) (alternative : M.BehavioralPolicy who) : ℝ :=
-    ((sequence n).continuationContext site payoff fuel).value alternative -
-      ((sequence n).continuationContext site payoff fuel).value ((sequence n).strategy who)
+    ((sequence n).truncatedContinuationContext site payoff fuel).value alternative -
+      ((sequence n).truncatedContinuationContext site payoff fuel).value ((sequence n).strategy who)
   obtain ⟨upper, above⟩ := (Set.finite_range payoff).bddAbove
   obtain ⟨lower, below⟩ := (Set.finite_range payoff).bddBelow
   have bounded (n : ℕ) : BddAbove (Set.range (gain n)) := by
     refine ⟨upper - lower, ?_⟩
     rintro value ⟨alternative, rfl⟩
     apply sub_le_sub
-    · change expect (((sequence n).continuationContext site payoff fuel).outcome alternative)
+    · change expect (((sequence n).truncatedContinuationContext site payoff fuel).outcome
+        alternative)
         payoff ≤ upper
       exact expect_le_const _ _ (payoffIntegrable_of_finite _ _) upper
         fun history _ => above (Set.mem_range_self history)
-    · change lower ≤ expect (((sequence n).continuationContext site payoff fuel).outcome
+    · change lower ≤ expect (((sequence n).truncatedContinuationContext site payoff fuel).outcome
         ((sequence n).strategy who)) payoff
-      rw [← expect_constant (((sequence n).continuationContext site payoff fuel).outcome
+      rw [← expect_constant (((sequence n).truncatedContinuationContext site payoff fuel).outcome
         ((sequence n).strategy who)) lower]
       exact expect_mono (fun history _ => below (Set.mem_range_self history))
         (payoffIntegrable_constant _ _) (payoffIntegrable_of_finite _ _)
@@ -100,17 +101,18 @@ private theorem uniform_gain_at_site
           (firstIncreasing.comp secondIncreasing),
         fun player decision => (converges.belief player decision).subseq
           (firstIncreasing.comp secondIncreasing)⟩
-    have alternate := selectedConverges.context_value (.of_finite_history E) site payoff fuel
+    have transitions : E.FiniteTransitions := .of_finite_history
+    have alternate := selectedConverges.context_value transitions site payoff fuel
       (fun n => alternatives (second n)) alternative policyConverges
-    have prescribed := selectedConverges.context_value (.of_finite_history E) site payoff fuel
+    have prescribed := selectedConverges.context_value transitions site payoff fuel
       (fun n => (sequence (first (second n))).strategy who) (assessment.strategy who)
       (selectedConverges.strategy who)
     have limitBound := le_of_tendsto_of_tendsto tendsto_const_nhds (alternate.sub prescribed)
       (Eventually.of_forall fun n => (greater (second n)).le)
     have optimal := (Context.isLocallyOptimal_iff_of_integrable
-      (continuationContext_integrableAt_of_finite (.of_finite_history E) assessment site payoff
+      (truncatedContinuationContext_integrableAt_of_finite transitions assessment site payoff
         fuel _)
-      fun alternative _ => continuationContext_integrableAt_of_finite (.of_finite_history E)
+      fun alternative _ => truncatedContinuationContext_integrableAt_of_finite transitions
         assessment site payoff fuel alternative).mp rational alternative (Set.mem_univ _)
     linarith
 
@@ -122,11 +124,11 @@ theorem BehavioralAssessmentConvergesPointwise.exists_uniform_policy_gain_bound
     (converges : BehavioralAssessmentConvergesPointwise sequence assessment)
     (who : Player) (payoff : E.History → ℝ) (fuel : Nat)
     (rational : ∀ site : M.InformationSite who, assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site payoff fuel)) :
+      (assessment.truncatedContinuationContext site payoff fuel)) :
     ∃ error : ℕ → ℝ, (∀ n, 0 ≤ error n) ∧ Tendsto error atTop (nhds 0) ∧
       ∀ n (site : M.InformationSite who) (alternative : M.BehavioralPolicy who),
-        ((sequence n).continuationContext site payoff fuel).value alternative -
-          ((sequence n).continuationContext site payoff fuel).value
+        ((sequence n).truncatedContinuationContext site payoff fuel).value alternative -
+          ((sequence n).truncatedContinuationContext site payoff fuel).value
             ((sequence n).strategy who) ≤ error n := by
   classical
   let _ := Fintype.ofFinite (M.InformationSite who)

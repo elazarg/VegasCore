@@ -250,15 +250,15 @@ theorem roster_harmless_comparison_law [setup.FiniteInitialLaw]
     let model := (rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)
-    let comparison := model.assessmentComparison
-      (fun final => sourceReadout setup leaks final.state)
-      (2 * (rosterPlan setup rosters).length + 1) assessment who
+    let comparison := model.assessmentComparisonWith (model.truncatedRunner (2 * (rosterPlan setup
+        rosters).length + 1)) (fun final => sourceReadout setup leaks final.state) assessment who
         (site, (assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by
   intro model comparison
   let app := application setup leaks
   let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
-  simp only [comparison, InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+  simp only [comparison, InformationModel.assessmentComparisonWith,
+      InformationModel.assessmentLawWith,
     PMF.map_bind]
   apply bind_congr_on_support _
   intro history _
@@ -319,9 +319,8 @@ theorem roster_harmless_comparison_gain [setup.FiniteInitialLaw]
     let model := (rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)
-    let comparison := model.assessmentComparison
-      (fun final => sourceReadout setup leaks final.state)
-      (2 * (rosterPlan setup rosters).length + 1) assessment who
+    let comparison := model.assessmentComparisonWith (model.truncatedRunner (2 * (rosterPlan setup
+        rosters).length + 1)) (fun final => sourceReadout setup leaks final.state) assessment who
         (site, (assessment.strategy who).withLaw site.1 law)
     expect comparison.alternative utility - expect comparison.prescribed utility = 0 := by
   intro model comparison

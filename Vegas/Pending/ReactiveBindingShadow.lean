@@ -2,7 +2,9 @@
 
 import Vegas.Pending.ReactiveBindingRepair
 import Interaction.ReactiveImplementationContinuation
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Owner-local memory for repairing hidden bindings
 
@@ -499,7 +501,7 @@ theorem implementation_posterior_prefix (who : Player)
       have original : response ∈
           ((implementation runtime leaks who reference policy).respond
             (atRecall runtime leaks reference) (past, entry.beforeView)).support := by
-        unfold fiberConditional at supported
+        unfold fiberPosterior at supported
         split at supported
         · exact ((PMF.mem_support_filter_iff _).mp supported).2
         · exact supported

@@ -72,7 +72,8 @@ def winningAnswer (matchBit bit : Bool) : Bool := if matchBit then bit else !bit
 
 theorem evidencePolicy_value (assessment : nativeModel.BehavioralAssessment)
     (matchBit bit : Bool) :
-    (assessment.continuationContext (nativeBobSite bit) (nativePayoff matchBit true) 113).value
+    (assessment.truncatedContinuationContext (nativeBobSite bit) (nativePayoff matchBit true)
+        113).value
       (evidencePolicy (winningAnswer matchBit)) = 1 := by
   rw [native_continuation_value, evidencePolicy_guess, expect_pure]
   cases matchBit <;> cases bit <;> rfl
@@ -81,9 +82,11 @@ theorem evidencePolicy_value (assessment : nativeModel.BehavioralAssessment)
 against the other guess packet. No assumption on off-path beliefs is used. -/
 theorem evidencePolicy_optimal (assessment : nativeModel.BehavioralAssessment)
     (matchBit bit : Bool) (alternative : nativeModel.BehavioralPolicy true) :
-    (assessment.continuationContext (nativeBobSite bit) (nativePayoff matchBit true) 113).value
+    (assessment.truncatedContinuationContext (nativeBobSite bit) (nativePayoff matchBit true)
+        113).value
       alternative ≤
-    (assessment.continuationContext (nativeBobSite bit) (nativePayoff matchBit true) 113).value
+    (assessment.truncatedContinuationContext (nativeBobSite bit) (nativePayoff matchBit true)
+        113).value
       (evidencePolicy (winningAnswer matchBit)) := by
   rw [evidencePolicy_value, native_continuation_value]
   refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun guess _ => ?_

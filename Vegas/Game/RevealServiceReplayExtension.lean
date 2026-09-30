@@ -43,7 +43,7 @@ theorem replay_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport
     (equilibrium : source.IsSequentialEquilibriumFor
       ((menu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher))
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => payoff (history.state.map
           (fun control => control.execution.application)) who)
         (2 * horizon setup watcher + 1))) :
@@ -52,7 +52,7 @@ theorem replay_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport
       target.IsSequentialEquilibriumFor
         ((replayMenu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)
           (horizon setup watcher) (scheduler setup leaks watcher))
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => payoff (history.state.map
             (fun control => control.execution.application)) who)
           (2 * horizon setup watcher + 1)) ∧
@@ -81,11 +81,13 @@ theorem replay_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport
     fun state => payoff (state.map (fun control => control.execution.application))
   have clock := menu_common_decision_depth setup leaks replayed watcher reveals observer
   have sourceClock := menu_common_decision_depth setup leaks retained watcher reveals observer
-  have sourceRemaining := (source.sequentialEquilibrium_remaining_iff
+  have sourceBounded := retained.bounded initial count service
+  have targetBounded := replayed.bounded initial count service
+  have sourceCertificate := sourceBounded.wellFoundedHistories
+  have targetCertificate := targetBounded.wellFoundedHistories
+  have sourceTerminal := (source.isSequentialEquilibrium_iff_truncated_of_bounded
     (information setup leaks bounds watcher)
-    (retained.decisionInformationAntichain initial count service) (2 * count + 1)
-    (retained.bounded initial count service)
-    (fun who site => decisionDepth setup leaks watcher who site.1) sourceClock
+    (retained.decisionInformationAntichain initial count service) sourceCertificate sourceBounded
     (fun who history => utility history.state who)).mpr equilibrium
   let comparator (who : Player)
       (site : (information setup leaks bounds watcher).InformationSite who)
@@ -118,20 +120,30 @@ theorem replay_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSupport
     simp only [expect_map] at sameValue
     rw [sourceClock who site history] at sameValue
     exact sameValue.le
-  obtain ⟨target, targetRemaining, agrees, _beliefs, historyLaw, _joint, _terminal⟩ :=
-    restriction.sequential_equilibrium_extends_of_comparator
+  let _ := Fintype.ofFinite (replayed.protocol initial count service).History
+  obtain ⟨target, targetTerminal, agrees, _beliefs, historyLaw, _joint⟩ :=
+    restriction.sequentialEquilibrium_extends_of_comparator
       (retained.decisionInformationAntichain initial count service)
+      sourceCertificate targetCertificate
       (replayed.uniformAssessment initial count service)
       (replayed.uniform_fullyMixed initial count service)
-      (replayed.decisionRecall initial count service) (2 * count + 1)
-      (replayed.bounded initial count service) depth clock
-      (fun history who => utility history.state who)
-      (fun history who => utility history.state who) (fun _ _ => rfl)
-      comparator comparison source sourceRemaining
-  have targetFull := (target.sequentialEquilibrium_remaining_iff model
-    (replayed.decisionRecall initial count service).decisionInformationAntichain (2 * count + 1)
-    (replayed.bounded initial count service) depth clock
-    (fun who history => utility history.state who)).mp targetRemaining
-  exact ⟨target, targetFull, agrees, historyLaw⟩
+      (replayed.decisionRecall initial count service)
+      (fun who site => depth who (restriction.site who site))
+      (fun who site => clock who (restriction.site who site))
+      (fun who history => utility history.state who)
+      (fun who history => utility history.state who) (fun _ _ => rfl)
+      comparator (fun sourceProfile targetProfile paired who site action extra history => by
+        rw [restriction.runBehavioralTerminalFrom_history_eq_remaining targetCertificate
+            targetBounded _ (clock who (restriction.site who site)),
+          restriction.runBehavioralTerminalFrom_eq_remaining sourceCertificate targetBounded _
+            (clock who (restriction.site who site))]
+        exact comparison sourceProfile targetProfile paired who site action extra history)
+      source sourceTerminal
+  rw [InformationModel.runBehavioralTerminalFrom_initHistory _
+      sourceCertificate _ sourceBounded,
+    InformationModel.runBehavioralTerminalFrom_initHistory _
+      targetCertificate _ targetBounded] at historyLaw
+  exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded model _
+    targetCertificate targetBounded _).mp targetTerminal, agrees, historyLaw⟩
 
 end Vegas

@@ -2,7 +2,9 @@
 
 import Vegas.Source.DisclosurePosterior
 import Vegas.Game.SourceStateKernel
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Original private intentions at every source protocol prefix
 
@@ -41,7 +43,7 @@ def BehavioralPolicy.disclosureMemory {who : Player} :
           (({ owner := owner, subject := name, payload := payload, source := .here,
               guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
           (fun view => if own : owner = who then
-            (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+            (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
                 (view.back true)) Prod.fst
               ((view.1.cells.get .here).getD .failure)).map Prod.snd
           else remember (view.back false)) policy.2 rest).map Sum.inr) state
@@ -52,7 +54,7 @@ def BehavioralPolicy.disclosureMemory {who : Player} :
         (fun rest => (disclosureMemory next registry.weaken
           (revelations.reveal (published := published) selected)
           (fun view => if own : owner = who then
-            (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations
+            (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) registry revelations
                 remember
                 (policy.1 own) (view.back true)) Prod.fst
               (OwnAction.disclosure view.2.getLast?)).map Prod.snd
@@ -198,7 +200,7 @@ private theorem disintegratesDisclosure_commit {Γ : SourceCtx Player L} {O : Fi
         have nextLaw := congrArg (PMF.map (Sum.inr (α := Config Player L Γ)))
           (ih (afterCommit profile) policy.2
             (fun nextView => if own : owner = owner then
-              (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+              (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
                   (nextView.back true)) Prod.fst
                 ((nextView.1.cells.get .here).getD .failure)).map Prod.snd
             else remember (nextView.back false))
@@ -217,7 +219,7 @@ private theorem disintegratesDisclosure_commit {Γ : SourceCtx Player L} {O : Fi
         have nextLaw := congrArg (PMF.map (Sum.inr (α := Config Player L Γ)))
           (ih (afterCommit profile) policy.2
             (fun nextView => if own : owner = who then
-              (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+              (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
                   (nextView.back true)) Prod.fst
                 ((nextView.1.cells.get .here).getD .failure)).map Prod.snd
             else remember (nextView.back false))
@@ -273,7 +275,7 @@ private theorem disintegratesDisclosure_reveal {Γ : SourceCtx Player L} {O : Fi
         have nextLaw := congrArg (PMF.map (Sum.inr (α := Config Player L Γ)))
           (ih (afterReveal profile) policy.2
             (fun nextView => if own : owner = owner then
-              (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+              (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) config.registry
                   config.revelations
                   remember (policy.1 own) (nextView.back true)) Prod.fst
                 (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
@@ -295,7 +297,7 @@ private theorem disintegratesDisclosure_reveal {Γ : SourceCtx Player L} {O : Fi
         have nextLaw := congrArg (PMF.map (Sum.inr (α := Config Player L Γ)))
           (ih (afterReveal profile) policy.2
             (fun nextView => if own : owner = who then
-              (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+              (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) config.registry
                   config.revelations
                   remember (policy.1 own) (nextView.back true)) Prod.fst
                 (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
@@ -439,7 +441,7 @@ theorem BehavioralPolicy.disclosureMemory_observation_congr {who : Player} :
                 (({ owner := owner, subject := name, payload := payload, source := .here,
                     guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
                 (fun view => if own : owner = who then
-                  (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+                  (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
                       (view.back true)) Prod.fst
                     ((view.1.cells.get .here).getD .failure)).map Prod.snd
                 else remember (view.back false)) left right equal
@@ -466,7 +468,7 @@ theorem BehavioralPolicy.disclosureMemory_observation_congr {who : Player} :
               have recur := policy.2.disclosureMemory_observation_congr next registry.weaken
                 (revelations.reveal (published := published) selected)
                 (fun view => if own : owner = who then
-                  (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry
+                  (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) registry
                       revelations remember
                       (policy.1 own) (view.back true)) Prod.fst
                     (OwnAction.disclosure view.2.getLast?)).map Prod.snd

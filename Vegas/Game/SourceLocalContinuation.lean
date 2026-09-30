@@ -122,7 +122,7 @@ open Classical in
 /-- The source continuation context after a local law replacement depends only
 on the original assessment's posterior source state and its baseline policy.
 Finitely many legal histories make every utility integrable. -/
-theorem continuationContext_local_value_stateBelief
+theorem truncatedContinuationContext_local_value_stateBelief
     [Finite (setup.executionProtocol admission).History]
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
@@ -131,7 +131,7 @@ theorem continuationContext_local_value_stateBelief
     (utility : State L setup.program.terminalCtx → ℝ) (fuel : Nat)
     (enough : ∀ history : (setup.informationModel admission).InformationHistory who site.1,
       setup.protocolRemaining history.1.state ≤ fuel + 1) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => (setup.protocolReadout final.state).elim 0 utility) (fuel + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
       expect (assessment.stateBelief who site) (fun state => expect law (fun choice =>
@@ -139,7 +139,7 @@ theorem continuationContext_local_value_stateBelief
           (fun player => if player = who then choice.1 else none)).bind
           (setup.continuationLaw
             (setup.decodeBehavioralProfile admission assessment.strategy))) utility)) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     expect_bind_of_finite, InformationModel.BehavioralAssessment.stateBelief, expect_map,
     Function.comp_def]
   apply expect_congr_on_support

@@ -2,7 +2,7 @@
 
 import Vegas.Game.RevealServicePolicy
 import GameTheoryExtensions.Math.Probability.ActionSplitting
-import GameTheoryExtensions.Math.Probability.Convergence
+import GameTheory.Math.Probability.Convergence
 
 /-! # Common perturbations of the actual response compiler
 

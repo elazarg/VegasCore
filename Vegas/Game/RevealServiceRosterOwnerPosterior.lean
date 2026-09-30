@@ -2,9 +2,11 @@
 
 import Vegas.Game.RevealServiceRosterOwnerNoise
 import Vegas.Game.ServiceRosterEvaluation
-import GameTheoryExtensions.Math.Probability.ObservationRetraction
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Initialized owner information inside a revelation phase
 
@@ -377,9 +379,9 @@ theorem roster_owner_state_posterior
     let info := fun final : (application setup leaks).Execution =>
       (final.recall owner, final.observe (application setup leaks) owner)
     reference ∈ executions.support →
-    (fiberConditional executions info (info reference)).map
+    (fiberPosterior executions info (info reference)).map
         (fun final => sourcePrefix? setup event.val final.application.config) =
-      fiberConditional (((setup.informationModel admission).runBehavioral source.strategy
+      fiberPosterior (((setup.informationModel admission).runBehavioral source.strategy
           (event.val + 1)).map
         ExecutionProtocol.History.state) (setup.protocolObserve owner)
           (setup.protocolObserve owner
@@ -429,14 +431,14 @@ theorem roster_owner_state_posterior
     change setup.protocolObserve owner (read actual) =
       setup.protocolObserve owner (read reference) at projected
     rwa [(Prod.mk.inj equal).1] at projected
-  have posterior := PMF.conditional_observation_kernel_recovered prior
+  have posterior := conditional_observation_kernel_recovered prior
     (setup.protocolObserve owner) channel (setup.protocolObserve owner (read reference))
     (info reference) present recovers
   have observed : info reference ∈
       (executions.map (Prod.snd ∘ fun final => (read final, info final))).support := by
     rw [PMF.support_map]
     exact ⟨reference, referenceSupport, rfl⟩
-  have mapped := PMF.map_conditional_readout executions
+  have mapped := map_fiberPosterior_readout executions
     (fun final => (read final, info final)) Prod.snd (info reference) observed
   rw [factor] at mapped
   have retained := congrArg (PMF.map Prod.fst) mapped

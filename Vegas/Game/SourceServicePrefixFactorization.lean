@@ -211,7 +211,7 @@ theorem sourceService_reveal_prefix_factorization
       recover ((embed config).map (ProtocolState.observe focal
         (.reveal published owner name fresh binding unresolved next))) = config.view focal := by
     exact ProtocolView.entryView_observe_entry focal next config
-  have lifted := PMF.map_observation_factor joint (fun config => config.view focal)
+  have lifted := map_observation_factor joint (fun config => config.view focal)
     nextNoise jointFactor embed (Option.map (ProtocolState.observe focal
       (.reveal published owner name fresh binding unresolved next))) recover recovered
   refine ⟨fun view => nextNoise (recover view), ?_⟩
@@ -367,7 +367,7 @@ theorem sourceService_binding_prefix_factorization [Finite Player]
       recover ((embed config).map (ProtocolState.observe focal
         (.commit name owner fresh guard next))) = config.view focal := by
     exact ProtocolView.entryView_observe_entry focal next config
-  have lifted := PMF.map_observation_factor joint (fun config => config.view focal)
+  have lifted := map_observation_factor joint (fun config => config.view focal)
     nextNoise jointFactor embed (Option.map (ProtocolState.observe focal
       (.commit name owner fresh guard next))) recover recovered
   refine ⟨fun view => nextNoise (recover view), ?_⟩
@@ -503,7 +503,7 @@ theorem sourceService_sample_prefix_factorization
       recover ((embed config).map (ProtocolState.observe focal
         (.sample name fresh distribution next))) = config.view focal :=
     ProtocolView.entryView_observe_entry focal next config
-  have lifted := PMF.map_observation_factor joint (fun config => config.view focal)
+  have lifted := map_observation_factor joint (fun config => config.view focal)
     nextNoise jointFactor embed (Option.map (ProtocolState.observe focal
       (.sample name fresh distribution next))) recover recovered
   refine ⟨fun view => nextNoise (recover view), ?_⟩
@@ -990,7 +990,7 @@ theorem sourceServiceTimedPolicy_prefix_joint_factorization [Fintype Player]
               (state, extra) := by
           rw [tailMarginal]
           exact tailLaw
-        have lifted := PMF.map_observation_factor tailJoint
+        have lifted := map_observation_factor tailJoint
           (Option.map (ProtocolState.observe focal tail)) tailNoise tailFactor
           (Option.map lift) (Option.map (ProtocolState.observe focal program)) recover recovers
         refine ⟨fun view => tailNoise (recover view), ?_⟩

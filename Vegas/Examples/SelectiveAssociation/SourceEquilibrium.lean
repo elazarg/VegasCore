@@ -138,8 +138,9 @@ theorem alice_early_sequentiallyRational (Claim : Type) [Fintype Claim] (default
     (observed : site.1 = some (past, view))
     (early : view.application.visit = none ∨ view.application.visit = some 0)
     (alternative : (model Claim).BehavioralPolicy alice) :
-    (assessment.continuationContext site (payoff alice) (2 * horizon + 1)).value alternative ≤
-      (assessment.continuationContext site (payoff alice) (2 * horizon + 1)).value
+    (assessment.truncatedContinuationContext site (payoff alice) (2 * horizon +
+        1)).value alternative ≤
+      (assessment.truncatedContinuationContext site (payoff alice) (2 * horizon + 1)).value
         (assessment.strategy alice) := by
   rw [prescribed_context_value_finish Claim defaultClaim assessment strategy,
     prescribed_context_baseline Claim defaultClaim assessment strategy]
@@ -152,7 +153,8 @@ theorem prescribed_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultC
     (assessment : (model Claim).BehavioralAssessment)
     (strategy : assessment.strategy = profile Claim defaultClaim)
     (fair : FairGuessBeliefs Claim assessment) :
-    assessment.IsSequentiallyRationalWithin payoff (2 * horizon + 1) := by
+    assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (payoff who) (2 * horizon + 1) := by
   intro who site
   obtain ⟨past, view, observed⟩ := site_observation Claim who site
   cases visited : view.application.visit with
@@ -195,7 +197,8 @@ theorem exists_sequentialEquilibrium (Claim : Type) [Fintype Claim] (defaultClai
       assessment.IsSequentialEquilibriumFor
         ((menu Claim).decisionInformationAntichain (PMF.pure initial)
           horizon (scheduler Claim))
-        (fun who site => assessment.continuationContext site (payoff who) (2 * horizon + 1)) ∧
+        (fun who site => assessment.truncatedContinuationContext site (payoff who) (2 * horizon +
+            1)) ∧
       (((model Claim).runBehavioral assessment.strategy (2 * horizon + 1)).map
         (fun history => protocolResults history.state)) =
         (PMF.uniformOfFintype Bool).map (fun bit =>

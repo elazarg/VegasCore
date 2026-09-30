@@ -54,10 +54,12 @@ theorem source_success_value (profile : Profile sourceModel.behavioralSignature)
 
 theorem source_guessing_value (matchBit : Bool) (site : sourceModel.InformationSite true)
     (alternative : sourceModel.BehavioralPolicy true) :
-    (sourceAssessment.continuationContext site (sourcePayoff matchBit true) 5).value alternative =
+    (sourceAssessment.truncatedContinuationContext site (sourcePayoff matchBit true)
+        5).value alternative =
       if sourceSecretResult site.1 = .failure then 1 / 2 else 0 := by
   classical
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite]
   let profile := Profile.update (sig := sourceModel.behavioralSignature)
     sourceAssessment.strategy true alternative
   let value := fun (history : sourceModel.InformationHistory true site.1) =>
@@ -95,19 +97,22 @@ theorem source_alice_zero (matchBit : Bool) (history : sourceArena.History) :
   rcases history.state with _ | config | config | config | config | config <;> rfl
 
 theorem source_rational (matchBit : Bool) :
-    sourceAssessment.IsSequentiallyRationalWithin (sourcePayoff matchBit) 5 := by
+    sourceAssessment.IsSequentiallyRationalFor fun who site =>
+        sourceAssessment.truncatedContinuationContext site ((sourcePayoff matchBit) who) 5 := by
   intro who site
   refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   cases who
   · have zero : sourcePayoff matchBit false = fun _ => 0 :=
       funext (source_alice_zero matchBit)
-    change (sourceAssessment.continuationContext site (sourcePayoff matchBit false) 5).value
+    change (sourceAssessment.truncatedContinuationContext site (sourcePayoff matchBit false)
+        5).value
       alternative ≤ _
     rw [zero]
-    simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
+    simp [InformationModel.BehavioralAssessment.truncatedContinuationContext,
+        InformationModel.BehavioralAssessment.continuationContextWith, Context.value,
       Context.ofBelief, zero, expect_constant]
-  · change (sourceAssessment.continuationContext site (sourcePayoff matchBit true) 5).value
+  · change (sourceAssessment.truncatedContinuationContext site (sourcePayoff matchBit true) 5).value
       alternative ≤ _
     rw [source_guessing_value, source_guessing_value]
 
@@ -115,7 +120,7 @@ theorem source_rational (matchBit : Bool) :
 for both matching and mismatching the private type after publication failure. -/
 theorem source_sequential_equilibrium (matchBit : Bool) :
     sourceAssessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      sourceAssessment.continuationContext site (sourcePayoff matchBit who) 5) :=
+      sourceAssessment.truncatedContinuationContext site (sourcePayoff matchBit who) 5) :=
   ⟨source_rational matchBit, source_consistent⟩
 
 end Vegas.Examples.SequentialValidation

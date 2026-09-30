@@ -349,7 +349,7 @@ binding with a valid value and then leaving a later opening unchanged can alter
 the public result. Failure of that one-action comparator is not strategic gain.
 
 Sequential rationality already compares every whole continuation policy. The
-checked `ActionRestriction.sequential_equilibrium_extends_of_continuation`
+checked `ActionRestriction.sequentialEquilibrium_extends_of_continuation`
 therefore allows an extra target action's future
 behavior to be simulated by a mixture of whole source continuation policies,
 instead of requiring one legal source action with the old continuation unchanged.

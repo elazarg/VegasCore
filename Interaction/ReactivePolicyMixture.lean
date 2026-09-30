@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveImplementation
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Behavioral realization of a finite family of response policies
 
@@ -41,7 +43,7 @@ theorem policyMixture_posterior_snoc (initial : PMF Index) (policies : Index →
     (app.policyMixture initial policies).posterior (past ++ [entry]) =
       (app.policyMixture initial policies).posterior past := by
   rw [Implementation.posterior_snoc]
-  change (fiberConditional (((app.policyMixture initial policies).posterior past).bind
+  change (fiberPosterior (((app.policyMixture initial policies).posterior past).bind
     (fun index => (policies index past entry.beforeView).map fun action => (action, index)))
       Prod.fst entry.action).map Prod.snd = _
   have joint : ((app.policyMixture initial policies).posterior past).bind
@@ -50,7 +52,7 @@ theorem policyMixture_posterior_snoc (initial : PMF Index) (policies : Index →
     simp_rw [same, ← PMF.bind_pure_comp, Function.comp_def]
     rw [PMF.bind_comm]
     rfl
-  rw [joint, conditional_snd_bindPairLaw_const]
+  rw [joint, fiberPosterior_snd_bindPairLaw_const]
 
 /-- A policy family that is identical before a phase retains its initial
 mixing law at that phase, including at zero-probability own transcripts. -/

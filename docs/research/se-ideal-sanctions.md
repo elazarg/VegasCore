@@ -324,27 +324,27 @@ obligation, not a field modeled or controlled by the current ideal catalog.
 
 The formal proof follows five obligations; none assumes a target equilibrium.
 
-1. [ActionRestriction.lean](../../GameTheoryExtensions/Protocol/ActionRestriction.lean)
+1. [ActionRestriction.lean](../../GameTheory/GameTheory/Protocol/ActionRestriction.lean)
    embeds histories, information and choices, with one local execution square.
-   [RestrictionExecution.lean](../../GameTheoryExtensions/Protocol/RestrictionExecution.lean)
+   [RestrictionExecution.lean](../../GameTheory/GameTheory/Protocol/RestrictionExecution.lean)
    derives every continuation and initialized execution law from that square.
-2. [RestrictionDomination.lean](../../GameTheoryExtensions/Protocol/RestrictionDomination.lean)
+2. [RestrictionDomination.lean](../../GameTheory/GameTheory/Analysis/Protocol/RestrictionDomination.lean)
    propagates the retained fraction of each local choice through actual execution.
    With tremble rate `epsilon`, source history mass at depth `d` survives with
    factor `(1-epsilon)^(numberOfPlayers*d)`, whatever happens after departure.
-3. [RestrictionBeliefs.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionBeliefs.lean)
+3. [RestrictionBeliefs.lean](../../GameTheory/GameTheory/Analysis/Protocol/RestrictionBeliefs.lean)
    derives retained Bayes beliefs from that mass bound.
-   [RelativeTremble.lean](../../GameTheoryExtensions/Math/Probability/RelativeTremble.lean)
+   [RelativeTremble.lean](../../GameTheory/GameTheory/Math/Probability/RelativeTremble.lean)
    chooses a rate negligible relative to all source information-set reach masses.
-   [RestrictionCompletion.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionCompletion.lean)
+   [RestrictionCompletion.lean](../../GameTheory/GameTheory/Analysis/Protocol/RestrictionCompletion.lean)
    then constructs one consistent extension with all new decisions locally optimal,
    using the common information-agent completion.
-4. [RestrictionIncentives.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionIncentives.lean)
+4. [RestrictionIncentives.lean](../../GameTheory/GameTheory/Analysis/Protocol/RestrictionIncentives.lean)
    transports source-legal deviations and bounds actual forbidden continuations
    by fixed legal comparator lotteries. It does not require detecting harmless
    added actions. The comparison is pointwise in hidden history and covers
    arbitrary paired continuation profiles, without assuming their rationality.
-   [SequentialOneShot.lean](../../GameTheoryExtensions/Analysis/Protocol/SequentialOneShot.lean)
+   [SequentialOneShot.lean](../../GameTheory/GameTheory/Analysis/Protocol/SequentialOneShot.lean)
    converts consistent local optimality into whole-policy sequential rationality.
 5. [RestrictionExtension.lean](../../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean)
    composes these facts into SE extension, exact retained behavior and beliefs,

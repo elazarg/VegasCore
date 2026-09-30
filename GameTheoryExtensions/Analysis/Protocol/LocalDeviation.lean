@@ -46,15 +46,16 @@ theorem root_gain_eq_mass_mul_context_gain
     (baselineIntegrable : PayoffIntegrable (M.runBehavioral assessment.strategy (depth + fuel))
       payoff)
     (alternativeIntegrable : CounterfactualContinuationIntegrable M assessment.strategy who site
-      alternative payoff fuel)
+      alternative payoff (M.truncatedRunner fuel))
     (incumbentIntegrable : CounterfactualContinuationIntegrable M assessment.strategy who site
-      (assessment.strategy who) payoff fuel) :
+      (assessment.strategy who) payoff (M.truncatedRunner fuel)) :
     expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy who alternative) (depth + fuel)) payoff -
       expect (M.runBehavioral assessment.strategy (depth + fuel)) payoff =
     (M.informationMass assessment.strategy who site).toReal *
-      ((assessment.continuationContext site payoff fuel).value alternative -
-        (assessment.continuationContext site payoff fuel).value (assessment.strategy who)) := by
+      ((assessment.truncatedContinuationContext site payoff fuel).value alternative -
+        (assessment.truncatedContinuationContext site payoff fuel).value (assessment.strategy
+            who)) := by
   let := Fintype.ofFinite (M.InformationHistory who site.1)
   let antichain := recall.decisionInformationAntichain who site
   have belief : assessment.belief who site =
@@ -63,18 +64,23 @@ theorem root_gain_eq_mass_mul_context_gain
     rw [M.bayesBelief_apply]
     exact bayes history
   have context (policy : M.BehavioralPolicy who) :
-      (assessment.continuationContext site payoff fuel).value policy =
+      (assessment.truncatedContinuationContext site payoff fuel).value policy =
         M.bayesContinuationValue assessment.strategy who site antichain positive
-          policy payoff fuel := by
-    unfold bayesContinuationValue BehavioralAssessment.continuationContext
+          policy payoff (M.truncatedRunner fuel) := by
+    unfold bayesContinuationValue BehavioralAssessment.truncatedContinuationContext
+      BehavioralAssessment.continuationContextWith
     rw [belief]
   obtain ⟨ownReach, shared⟩ :=
     M.commonPlayerReachAt_of_decisionRecall recall assessment.strategy who site
   rw [M.rootGain_eq_ownReach_mul_counterfactualRegret assessment.strategy who site
-    alternative depth fuel sameDepth onlyHere ownReach shared payoff updatedIntegrable
-    baselineIntegrable, context, context]
+    alternative depth sameDepth onlyHere ownReach shared payoff
+    (fun policies => M.runBehavioral policies (depth + fuel)) (M.truncatedRunner fuel)
+    (M.runnerReadsReachable_truncated fuel)
+    (fun policies => M.runBehavioralFrom_add policies depth fuel E.initHistory)
+    updatedIntegrable baselineIntegrable, context, context]
   exact (M.informationMass_mul_bayesGain_eq_ownReach_mul_counterfactualRegret
-    assessment.strategy who site antichain positive ownReach shared alternative payoff fuel
+    assessment.strategy who site antichain positive ownReach shared alternative payoff
+    (M.truncatedRunner fuel)
     alternativeIntegrable incumbentIntegrable).symm
 
 include recall sameDepth positive bayes in
@@ -91,17 +97,17 @@ theorem local_root_comparison_iff_context_comparison
     (baselineIntegrable : PayoffIntegrable (M.runBehavioral assessment.strategy (depth + fuel))
       payoff)
     (firstContinuation : CounterfactualContinuationIntegrable M assessment.strategy who site
-      first payoff fuel)
+      first payoff (M.truncatedRunner fuel))
     (secondContinuation : CounterfactualContinuationIntegrable M assessment.strategy who site
-      second payoff fuel)
+      second payoff (M.truncatedRunner fuel))
     (incumbentContinuation : CounterfactualContinuationIntegrable M assessment.strategy who site
-      (assessment.strategy who) payoff fuel) :
+      (assessment.strategy who) payoff (M.truncatedRunner fuel)) :
     expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy who first) (depth + fuel)) payoff ≤
       expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy who second) (depth + fuel)) payoff ↔
-    (assessment.continuationContext site payoff fuel).value first ≤
-      (assessment.continuationContext site payoff fuel).value second := by
+    (assessment.truncatedContinuationContext site payoff fuel).value first ≤
+      (assessment.truncatedContinuationContext site payoff fuel).value second := by
   have firstGain := M.root_gain_eq_mass_mul_context_gain assessment recall who site
     depth fuel sameDepth positive bayes payoff first firstOnly firstIntegrable
     baselineIntegrable firstContinuation incumbentContinuation
@@ -128,20 +134,20 @@ theorem local_law_root_comparison_iff_context_comparison
     (baselineIntegrable : PayoffIntegrable (M.runBehavioral assessment.strategy (depth + fuel))
       payoff)
     (firstContinuation : CounterfactualContinuationIntegrable M assessment.strategy who site
-      ((assessment.strategy who).withLaw site.1 first) payoff fuel)
+      ((assessment.strategy who).withLaw site.1 first) payoff (M.truncatedRunner fuel))
     (secondContinuation : CounterfactualContinuationIntegrable M assessment.strategy who site
-      ((assessment.strategy who).withLaw site.1 second) payoff fuel)
+      ((assessment.strategy who).withLaw site.1 second) payoff (M.truncatedRunner fuel))
     (incumbentContinuation : CounterfactualContinuationIntegrable M assessment.strategy who site
-      (assessment.strategy who) payoff fuel) :
+      (assessment.strategy who) payoff (M.truncatedRunner fuel)) :
     expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
       assessment.strategy who ((assessment.strategy who).withLaw site.1 first))
         (depth + fuel)) payoff ≤
       expect (M.runBehavioral (Profile.update (sig := M.behavioralSignature)
         assessment.strategy who ((assessment.strategy who).withLaw site.1 second))
           (depth + fuel)) payoff ↔
-    (assessment.continuationContext site payoff fuel).value
+    (assessment.truncatedContinuationContext site payoff fuel).value
         ((assessment.strategy who).withLaw site.1 first) ≤
-      (assessment.continuationContext site payoff fuel).value
+      (assessment.truncatedContinuationContext site payoff fuel).value
         ((assessment.strategy who).withLaw site.1 second) :=
   M.local_root_comparison_iff_context_comparison assessment recall who site depth fuel
     sameDepth positive bayes payoff _ _

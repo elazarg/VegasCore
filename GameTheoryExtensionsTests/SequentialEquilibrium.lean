@@ -17,23 +17,26 @@ namespace GameTheoryExtensionsTests.SequentialBeliefs
 open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 open GameTheory.Protocol.ExecutionProtocol OffPathDisclosure SequentialCredibility
 
-theorem rational_preferred_response : (assessment limitProfile).IsSequentiallyRationalWithin
-    (fun who history => SequentialCredibility.payoff history who) 3 := by
+theorem rational_preferred_response : (assessment
+    limitProfile).IsSequentiallyRationalFor fun who site =>
+    (assessment limitProfile).truncatedContinuationContext site (fun history =>
+        SequentialCredibility.payoff history who) 3 := by
   intro who site
   have integrable (policy : (model false).BehavioralPolicy who) :
-      ((assessment limitProfile).continuationContext site
+      ((assessment limitProfile).truncatedContinuationContext site
         (fun history => SequentialCredibility.payoff history who) 3).IntegrableAt policy :=
     SequentialCredibility.payoff_integrable _ who
   refine (Context.isLocallyOptimal_iff_of_integrable (integrable _)
     fun policy _ => integrable policy).mpr fun alternative _ => ?_
   cases who
-  · simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
+  · simp [InformationModel.BehavioralAssessment.truncatedContinuationContext,
+      InformationModel.BehavioralAssessment.continuationContextWith, Context.value,
       Protocol.Context.ofBelief, SequentialCredibility.payoff, expect_constant]
   · have siteEq := bob_site_eq site
     subst site
-    change ((assessment limitProfile).continuationContext bobSite
+    change ((assessment limitProfile).truncatedContinuationContext bobSite
       (fun history => reward history.state) 3).value alternative ≤
-      ((assessment limitProfile).continuationContext bobSite
+      ((assessment limitProfile).truncatedContinuationContext bobSite
         (fun history => reward history.state) 3).value (choose false true true)
     rw [bob_value]
     apply expect_le_const _ _ (payoffIntegrable_of_finite _ _)
@@ -47,16 +50,16 @@ theorem rational_preferred_response : (assessment limitProfile).IsSequentiallyRa
 
 theorem sequential_equilibrium_preferred_response :
     (assessment limitProfile).IsSequentialEquilibriumFor antichain (fun who site =>
-      (assessment limitProfile).continuationContext site
+      (assessment limitProfile).truncatedContinuationContext site
         (fun history => SequentialCredibility.payoff history who) 3) :=
   ⟨rational_preferred_response, consistent⟩
 
 theorem guessing_value (profile : Profile (model false).behavioralSignature)
     (matchBit : Bool) (alternative : (model false).BehavioralPolicy true) :
-    ((assessment profile).continuationContext bobSite
+    ((assessment profile).truncatedContinuationContext bobSite
       (fun history => OffPathDisclosure.payoff matchBit history true) 3).value alternative =
         1 / 2 := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value]
   change expect (((PMF.uniformOfFintype Bool).map bobInformationHistory).bind _) _ = _
   rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _), expect_map, expect_eq_sum,
     Fintype.sum_bool]
@@ -83,21 +86,23 @@ theorem guessing_value (profile : Profile (model false).behavioralSignature)
   linarith
 
 theorem rational_guessing (matchBit : Bool) :
-    (assessment limitProfile).IsSequentiallyRationalWithin
-      (fun who history => OffPathDisclosure.payoff matchBit history who) 3 := by
+    (assessment limitProfile).IsSequentiallyRationalFor fun who site =>
+        (assessment limitProfile).truncatedContinuationContext site (fun history =>
+            OffPathDisclosure.payoff matchBit history who) 3 := by
   intro who site
   have integrable (policy : (model false).BehavioralPolicy who) :
-      ((assessment limitProfile).continuationContext site
+      ((assessment limitProfile).truncatedContinuationContext site
         (fun history => OffPathDisclosure.payoff matchBit history who) 3).IntegrableAt policy :=
     OffPathDisclosure.payoff_integrable matchBit _ who
   refine (Context.isLocallyOptimal_iff_of_integrable (integrable _)
     fun policy _ => integrable policy).mpr fun alternative _ => ?_
   cases who
-  · simp [InformationModel.BehavioralAssessment.continuationContext, Context.value,
+  · simp [InformationModel.BehavioralAssessment.truncatedContinuationContext,
+      InformationModel.BehavioralAssessment.continuationContextWith, Context.value,
       Protocol.Context.ofBelief, OffPathDisclosure.payoff, utility, expect_constant]
   · have siteEq := bob_site_eq site
     subst site
-    change _ ≤ ((assessment limitProfile).continuationContext bobSite
+    change _ ≤ ((assessment limitProfile).truncatedContinuationContext bobSite
       (fun history => OffPathDisclosure.payoff matchBit history true) 3).value
         ((assessment limitProfile).strategy true)
     rw [guessing_value, guessing_value]
@@ -106,7 +111,7 @@ theorem rational_guessing (matchBit : Bool) :
 including its off-path beliefs and the single consistency witness. -/
 theorem sequential_equilibrium_guessing (matchBit : Bool) :
     (assessment limitProfile).IsSequentialEquilibriumFor antichain (fun who site =>
-      (assessment limitProfile).continuationContext site
+      (assessment limitProfile).truncatedContinuationContext site
         (fun history => OffPathDisclosure.payoff matchBit history who) 3) :=
   ⟨rational_guessing matchBit, consistent⟩
 

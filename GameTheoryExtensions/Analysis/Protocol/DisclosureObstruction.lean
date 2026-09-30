@@ -23,20 +23,20 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability
 
-variable {ι : Type} [Fintype ι] [DecidableEq ι]
+variable {ι : Type} [DecidableEq ι]
   {E : ExecutionProtocol ι} {M : InformationModel E} [Finite E.History]
 
 /-- An information-local, controllable binary continuation with opposite
 utilities. The history law must hold at every compatible history, including
 histories assigned zero probability by a proposed assessment. -/
 structure BinaryDecision (M : InformationModel E)
-    (utility : Bool → ι → E.History → ℝ) (fuel : Nat) where
+    (utility : Bool → ι → E.History → ℝ) (run : M.ContinuationRunner) where
   player : ι
   site : M.InformationSite player
   outcome : Profile M.behavioralSignature → PMF Bool
   policy : Bool → M.BehavioralPolicy player
   history_value : ∀ profile goal (history : M.InformationHistory player site.1),
-    expect (M.runBehavioralFrom profile fuel history.1) (utility goal player) =
+    expect (run profile history.1) (utility goal player) =
       expect (outcome profile) (fun result => if result = goal then 1 else 0)
   force : ∀ profile goal,
     outcome (Profile.update (sig := M.behavioralSignature) profile player (policy goal)) =
@@ -44,13 +44,13 @@ structure BinaryDecision (M : InformationModel E)
 
 namespace BinaryDecision
 
-variable {utility : Bool → ι → E.History → ℝ} {fuel : Nat}
-  (decision : M.BinaryDecision utility fuel)
+variable {utility : Bool → ι → E.History → ℝ} {run : M.ContinuationRunner}
+  (decision : M.BinaryDecision utility run)
 
 /-- The binary capability is the fully informed, indicator-reward instance
 of an ordinary continuation decision. -/
 def toContinuationDecision (goal : Bool) :
-    M.ContinuationDecision (utility goal) fuel Unit Bool where
+    M.ContinuationDecision (utility goal) run Unit Bool where
   player := decision.player
   site := decision.site
   state _ := ()
@@ -72,7 +72,7 @@ private theorem expectedReward_eq (assessment : M.BehavioralAssessment) (goal : 
 beliefs; the deviation still replaces a complete continuation policy. -/
 theorem continuation_value (assessment : M.BehavioralAssessment)
     (goal : Bool) (alternative : M.BehavioralPolicy decision.player) :
-    (assessment.continuationContext decision.site (utility goal decision.player) fuel).value
+    (assessment.continuationContextWith run decision.site (utility goal decision.player)).value
         alternative =
       expect (decision.outcome (Profile.update (sig := M.behavioralSignature)
         assessment.strategy decision.player alternative))
@@ -83,7 +83,7 @@ theorem continuation_value (assessment : M.BehavioralAssessment)
 
 /-- Rationality for either utility forces that utility's maximal value. -/
 theorem rational_value (assessment : M.BehavioralAssessment) (goal : Bool)
-    (rational : assessment.IsSequentiallyRationalWithin (utility goal) fuel) :
+    (rational : assessment.IsSequentiallyRationalWith run (utility goal)) :
     1 ≤ expect (decision.outcome assessment.strategy)
       (fun result => if result = goal then 1 else 0) := by
   have bound :=
@@ -96,8 +96,8 @@ include decision in
 for both utilities. No consistency premise is needed for this obstruction. -/
 theorem no_common_rational_strategy : ¬ ∃ first second : M.BehavioralAssessment,
     first.strategy = second.strategy ∧
-      first.IsSequentiallyRationalWithin (utility true) fuel ∧
-      second.IsSequentiallyRationalWithin (utility false) fuel := by
+      first.IsSequentiallyRationalWith run (utility true) ∧
+      second.IsSequentiallyRationalWith run (utility false) := by
   rintro ⟨first, second, same, firstRational, secondRational⟩
   have firstOptimal := decision.rational_value first true firstRational
   have secondOptimal := decision.rational_value second false secondRational
@@ -122,22 +122,22 @@ include decision in
 capability fails to translate a shared source equilibrium for the two utilities.
 The translator may inspect the entire profile, and target beliefs may depend
 on the utility. The two utilities need not agree away from the decisive site. -/
-theorem no_utility_independent_sequential_translation
+theorem no_utility_independent_sequential_translation [Fintype ι]
     (source : N.BehavioralAssessment)
     (sourceAntichain : N.DecisionInformationAntichain)
     (targetAntichain : M.DecisionInformationAntichain)
-    (sourceUtility : Bool → ι → S.History → ℝ) (sourceFuel : Nat)
+    (sourceUtility : Bool → ι → S.History → ℝ) (sourceRun : N.ContinuationRunner)
     (equilibrium : ∀ goal,
       source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-        source.continuationContext site (sourceUtility goal who) sourceFuel)) :
+        source.continuationContextWith sourceRun site (sourceUtility goal who))) :
     ¬ ∃ translate : Profile N.behavioralSignature → Profile M.behavioralSignature,
       ∀ goal,
         source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-          source.continuationContext site (sourceUtility goal who) sourceFuel) →
+          source.continuationContextWith sourceRun site (sourceUtility goal who)) →
         ∃ target : M.BehavioralAssessment,
           target.strategy = translate source.strategy ∧
             target.IsSequentialEquilibriumFor targetAntichain (fun who site =>
-              target.continuationContext site (utility goal who) fuel) := by
+              target.continuationContextWith run site (utility goal who)) := by
   rintro ⟨translate, preserves⟩
   obtain ⟨first, firstEq, firstEquilibrium⟩ := preserves true (equilibrium true)
   obtain ⟨second, secondEq, secondEquilibrium⟩ := preserves false (equilibrium false)

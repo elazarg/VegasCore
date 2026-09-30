@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Analysis.Protocol.ObservationRequirement
 import GameTheoryExtensionsTests.ContinuationDecision
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Fixed-payoff observation requirements at actual protocol sites
 
@@ -25,7 +26,8 @@ open GameTheoryExtensionsTests.ContinuationDecision
 abbrev bitModel := model (Action := Bool) biasedBit id
 
 def bitDecision (bit : Bool) : bitModel.ContinuationDecision
-    (fun _ history => payoff (reportUtility id) history.state) 2 Bool Bool :=
+    (fun _ history => payoff (reportUtility id) history.state)
+    (bitModel.runBehavioralTerminalFrom (certificate biasedBit)) Bool Bool :=
   decision biasedBit id (site biasedBit id bit (biasedBit_full bit)) (reportUtility id)
 
 theorem bit_known (bit : Bool) :
@@ -67,8 +69,8 @@ theorem merged_bits_not_sequentially_rational {Observation Coarse : Type*}
     (factors : ∀ bit, (bitDecision bit).response original.strategy =
       respond (coarsen (observe bit)))
     (merged : coarsen (observe false) = coarsen (observe true)) :
-    ¬ original.IsSequentiallyRationalWithin
-      (fun _ history => payoff (reportUtility id) history.state) 2 :=
+    ¬ original.IsSequentiallyRational (certificate biasedBit)
+        (fun _ history => payoff (reportUtility id) history.state) :=
   InformationModel.ContinuationDecision.not_rational_of_coarsening_collision bitDecision
     observe coarsen respond original factors false true merged (incompatible_maximizers original)
 
@@ -77,7 +79,7 @@ def reporting : bitModel.BehavioralAssessment :=
 
 theorem reporting_sequential_equilibrium :
     reporting.IsSequentialEquilibriumFor (antichain biasedBit id)
-      (fun _ site => reporting.continuationContext site
+      (fun _ site => reporting.truncatedContinuationContext site
         (fun history => payoff (reportUtility id) history.state) 2) := by
   apply (isSequentialEquilibrium_iff biasedBit id _ _).mpr
   refine ⟨fun _ => ResponseIntegrable.of_finite _ _ _, fun signal alternative _ => ?_⟩
@@ -113,6 +115,7 @@ theorem state_aware_macro_executes_equilibrium :
   refine ⟨fun bit => by simpa using reporting_response bit, ?_⟩
   rintro ⟨respond, factors⟩
   exact merged_bits_not_sequentially_rational (fun _ => ()) id respond reporting factors rfl
-    reporting_sequential_equilibrium.1
+    ((reporting.isSequentialEquilibrium_iff_truncated_of_bounded bitModel _
+      (certificate biasedBit) (bounded biasedBit) _).mpr reporting_sequential_equilibrium).1
 
 end GameTheoryExtensionsTests.ObservationRequirement

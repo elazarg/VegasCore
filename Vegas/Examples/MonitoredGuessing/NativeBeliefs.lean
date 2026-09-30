@@ -3,8 +3,11 @@
 import Vegas.Examples.MonitoredGuessing.Assessment
 import Vegas.Examples.MonitoredGuessing.NativeDepth
 import Vegas.Examples.MonitoredGuessing.NativeOutcome
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheory.Analysis.Protocol.BeliefTransport
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Native receiver beliefs on the prescribed silent path
 
@@ -45,8 +48,8 @@ theorem quiet_native_state_belief (assessment : nativeModel.BehavioralAssessment
     change nativeModel.infoOf bob history.trace = quietBobSite.1
     exact (nativeMenu.info nativeInitialLaw nativeHorizon nativeScheduler bob history.trace).trans
       ((congrArg (nativeApp.observe bob) same).symm.trans (quiet_bob_info bit))
-  have conditioned := assessment.belief_map_eq_run_of_full_reach nativeModel bob quietBobSite 8
-    nativeAntichain consistent depth seen
+  have conditioned := assessment.belief_map_eq_run_of_full_reach nativeModel nativeAntichain
+    consistent bob quietBobSite 8 depth seen
   have projected := congrArg (fun histories : PMF nativeArena.History =>
     histories.map History.state) conditioned
   simpa only [PMF.map_comp, Function.comp_def] using projected.trans prefixLaw
@@ -68,7 +71,7 @@ theorem quiet_native_context (assessment : nativeModel.BehavioralAssessment)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (deposit : ℝ) (alternative : nativeModel.BehavioralPolicy bob) :
-    (assessment.continuationContext quietBobSite
+    (assessment.truncatedContinuationContext quietBobSite
       (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
         alternative =
       expect (PMF.uniformOfFintype Bool) (fun bit =>

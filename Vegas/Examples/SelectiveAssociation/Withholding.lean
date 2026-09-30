@@ -133,7 +133,7 @@ theorem native_not_supported_withhold
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
     (rational : assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site (fun history => nativeUtility who history.state)
+      (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
         (2 * nativeHorizon + 1)))
     (choice : nativeModel.Choice who site.1)
     (withhold : choice.1 = some (nativeWithholdAction who)) :

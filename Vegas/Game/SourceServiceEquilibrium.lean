@@ -8,9 +8,11 @@ import Vegas.Game.SourceServiceTimedLaw
 import Vegas.Game.RevealServiceRosterTiming
 import Vegas.Game.ServiceRosterClock
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Sequential equilibrium of the full-language service
 
@@ -50,14 +52,14 @@ theorem exists_native_sequentialEquilibrium
     (source : service.sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => utility (service.setup.protocolReadout final.state) who)
         (instructionCount service.setup.program + 1))) :
     ∃ target : service.model.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         (service.menu.decisionInformationAntichain (initialLaw service.setup)
           service.planLength service.scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun final => utility (service.readout final) who) service.fuel) ∧
       (service.model.runBehavioral target.strategy service.fuel).map service.readout =
         (service.sourceModel.runBehavioral source.strategy
@@ -100,12 +102,13 @@ theorem exists_native_sequentialEquilibrium
       (fun history => utility (sourceObserve history) who)
       (instructionCount service.setup.program + 1) (equilibrium.1 who)
   have sourceGain (n : Nat) (who : Player) (deviation : sourceModel.AssessmentDeviation who) :
-      let comparison := sourceModel.assessmentComparison sourceObserve
-        (instructionCount service.setup.program + 1) (sourceSequence n) who deviation
+      let comparison := sourceModel.assessmentComparisonWith (sourceModel.truncatedRunner
+          (instructionCount service.setup.program +
+              1)) sourceObserve (sourceSequence n) who deviation
       expect comparison.alternative (utility · who) -
         expect comparison.prescribed (utility · who) ≤ errors who n := by
     dsimp only
-    simp only [InformationModel.assessmentComparison, InformationModel.assessmentLaw,
+    simp only [InformationModel.assessmentComparisonWith, InformationModel.assessmentLawWith,
       expect_map, Function.comp_def]
     exact bounds who n deviation.1 deviation.2
   let comparisonError (n : Nat) : ℝ := 2 * ∑ who, errors who n
@@ -118,7 +121,8 @@ theorem exists_native_sequentialEquilibrium
     simpa only [mul_zero] using total.const_mul 2
   have localComparisons (n : Nat) (who : Player) (site : service.model.InformationSite who)
       (law : PMF (service.model.Choice who site.1)) :
-      let comparison := service.model.assessmentComparison service.readout service.fuel
+      let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
+          service.fuel) service.readout
         (approx n).assessment who (site, ((approx n).assessment.strategy who).withLaw site.1 law)
       expect comparison.alternative (utility · who) -
           expect comparison.prescribed (utility · who) ≤ comparisonError n ∨
@@ -126,8 +130,9 @@ theorem exists_native_sequentialEquilibrium
           expect comparison.alternative (utility · who) -
               expect comparison.prescribed (utility · who) ≤
             expect mixture (fun deviation =>
-              let sourceComparison := sourceModel.assessmentComparison sourceObserve
-                (instructionCount service.setup.program + 1) (sourceSequence n) who deviation
+              let sourceComparison := sourceModel.assessmentComparisonWith
+                (sourceModel.truncatedRunner (instructionCount service.setup.program + 1))
+                sourceObserve (sourceSequence n) who deviation
               expect sourceComparison.alternative (utility · who) -
                 expect sourceComparison.prescribed (utility · who)) + comparisonError n := by
     intro comparison
@@ -158,10 +163,10 @@ theorem exists_native_sequentialEquilibrium
         have gain := expect_sub_eq_of_eq_bind mixture _ _ _ _ prescribedEq alternativeEq
           (utility · who)
           (payoffIntegrable_of_finite_support _ _
-            (by rw [InformationModel.assessmentComparison, PMF.support_map]
+            (by rw [InformationModel.assessmentComparisonWith, PMF.support_map]
                 exact (Set.toFinite _).image _))
           (payoffIntegrable_of_finite_support _ _
-            (by rw [InformationModel.assessmentComparison, PMF.support_map]
+            (by rw [InformationModel.assessmentComparisonWith, PMF.support_map]
                 exact (Set.toFinite _).image _))
         exact Or.inr ⟨mixture, gain.le.trans (le_add_of_nonneg_right (errorNonnegative n))⟩
     | recordedDisclosure payload owned outputEq recorded =>
@@ -197,13 +202,11 @@ theorem exists_native_sequentialEquilibrium
       service.values service.initialValues service.capacity service.rosters
       service.opportunities.binding timing timingFull service.network (sourceSequence n).strategy
   obtain ⟨target, targetEquilibrium, law, _⟩ :=
-    ContinuationSimulation.exists_sequentialEquilibrium_limit_of_local_comparisons sourceObserve
+    InformationModel.exists_sequentialEquilibrium_limit_of_local_comparisons sourceObserve
       service.readout (instructionCount service.setup.program + 1) service.fuel
       (service.menu.bounded (initialLaw service.setup) service.planLength service.scheduler)
       (service.menu.decisionRecall (initialLaw service.setup) service.planLength
         service.scheduler)
-      (roster_menu_common_depth service.setup service.leaks service.rosters service.network
-        service.menu)
       utility source sourceSequence converges equilibrium.1
       (fun n => (approx n).assessment) (fun n => (approx n).mixed)
       (fun n => TimedApproximant.ofSource_bayes service timing timingFull

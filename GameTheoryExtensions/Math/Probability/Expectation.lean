@@ -5,39 +5,13 @@ import GameTheory.Math.Probability.ExpectationAlgebra
 import GameTheory.Math.Probability.ExpectationBind
 import GameTheory.Math.Probability.ExpectationMap
 import GameTheory.Math.Probability.ExpectationMixture
+import GameTheory.Math.Probability.Support
 
 /-! # Expectations of composed laws -/
 
 noncomputable section
 
 namespace GameTheory.Math.Probability
-
-/-- Real atom masses are at most one. -/
-theorem pmf_toReal_apply_le_one {α : Type*} (μ : PMF α) (a : α) : (μ a).toReal ≤ 1 :=
-  ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using μ.coe_le_one a)
-
-/-- The atom masses of a kernel are integrable against every law. -/
-theorem payoffIntegrable_toReal_apply {α β : Type*} (μ : PMF α) (f : α → PMF β) (b : β) :
-    PayoffIntegrable μ fun a => ((f a) b).toReal :=
-  payoffIntegrable_of_bounded μ _ (C := 1) fun a => by
-    rw [abs_of_nonneg ENNReal.toReal_nonneg]
-    exact pmf_toReal_apply_le_one _ _
-
-/-- The real mass of an atom of a bind is the expected real mass of that atom
-under the branches. -/
-theorem toReal_bind_apply {α β : Type*} (μ : PMF α) (f : α → PMF β) (b : β) :
-    ((μ.bind f) b).toReal = expect μ fun a => ((f a) b).toReal := by
-  rw [PMF.bind_apply, ENNReal.tsum_toReal_eq fun a =>
-    ENNReal.mul_ne_top (μ.apply_ne_top a) ((f a).apply_ne_top b)]
-  simp only [ENNReal.toReal_mul, expect]
-
-/-- A mixture integrates the mass of each branch's event. -/
-theorem toReal_toOuterMeasure_bind {α β : Type*} (μ : PMF α) (f : α → PMF β) (event : Set β) :
-    ((μ.bind f).toOuterMeasure event).toReal =
-      expect μ fun a => ((f a).toOuterMeasure event).toReal := by
-  rw [PMF.toOuterMeasure_bind_apply, ENNReal.tsum_toReal_eq fun a =>
-    ENNReal.mul_ne_top (μ.apply_ne_top a) (outerMeasure_ne_top (f a) event)]
-  simp only [ENNReal.toReal_mul, expect]
 
 /-- Branchwise agreement of readouts transports an expectation over a mixture.
 No integrability is needed: both sides are the expectation of one readout law. -/

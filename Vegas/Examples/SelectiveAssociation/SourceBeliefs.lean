@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.SelectiveAssociation.SourceCursor
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheory.Analysis.Protocol.BeliefTransport
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Conditional beliefs at the source guessing decisions
 

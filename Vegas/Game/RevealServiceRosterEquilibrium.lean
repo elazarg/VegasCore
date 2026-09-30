@@ -42,7 +42,7 @@ theorem roster_source_sequential_equilibrium_preserved
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 (fun state => utility state who))
         (instructionCount setup.program + 1))) :
     let menu := rosterMenu setup leaks (bounds.withInitialValues (initialLaw setup)) rosters
@@ -54,7 +54,7 @@ theorem roster_source_sequential_equilibrium_preserved
       target.strategy = rosterCompiledProfile setup leaks bounds rosters network
         (setup.decodeBehavioralProfile admission source.strategy) ∧
       target.IsSequentialEquilibriumFor antichain (fun who site =>
-        target.continuationContext site
+        target.truncatedContinuationContext site
           (fun final => (sourceReadout setup leaks final.state).elim 0
             (fun state => utility state who))
           (2 * horizon + 1)) ∧
@@ -120,7 +120,8 @@ theorem roster_source_sequential_equilibrium_preserved
     fun who => output.elim 0 (fun state => utility state who)
   have localComparisons (n : Nat) (who : Player) (site : model.InformationSite who)
       (law : PMF (model.Choice who site.1)) :
-      let comparison := model.assessmentComparison targetObserve (2 * horizon + 1)
+      let comparison := model.assessmentComparisonWith (model.truncatedRunner (2 * horizon +
+          1)) targetObserve
         (sequence n) who (site, ((sequence n).strategy who).withLaw site.1 law)
       expect comparison.alternative (payoff · who) -
           expect comparison.prescribed (payoff · who) ≤ weight n * range ∨
@@ -128,8 +129,11 @@ theorem roster_source_sequential_equilibrium_preserved
           expect comparison.alternative (payoff · who) -
               expect comparison.prescribed (payoff · who) ≤
             expect mixture (fun deviation =>
-              let originalComparison := (setup.informationModel admission).assessmentComparison
-                sourceObserve (instructionCount setup.program + 1) (sourceSequence n) who deviation
+              let originalComparison :=
+                (setup.informationModel admission).assessmentComparisonWith
+                  ((setup.informationModel admission).truncatedRunner
+                    (instructionCount setup.program + 1)) sourceObserve (sourceSequence n) who
+                  deviation
               expect originalComparison.alternative (payoff · who) -
                 expect originalComparison.prescribed (payoff · who)) + weight n * range := by
     intro comparison
@@ -174,11 +178,10 @@ theorem roster_source_sequential_equilibrium_preserved
           (sourceRange (sourceSequence n) who sourceSite
             (fun disclose _ => some (.reveal who 0 disclose)) (fun _ => rfl))
         exact ⟨PMF.pure deviation, by simpa only [expect_pure] using bound⟩
-  have result := ContinuationSimulation.sequentialEquilibrium_of_local_comparisons_limit
+  have result := InformationModel.sequentialEquilibrium_of_local_comparisons_limit
     sourceObserve targetObserve (instructionCount setup.program + 1) (2 * horizon + 1)
     (menu.bounded (initialLaw setup) horizon scheduler)
-    (menu.decisionRecall (initialLaw setup) horizon scheduler)
-    (roster_menu_common_depth setup leaks rosters network menu) payoff source sourceSequence
+    (menu.decisionRecall (initialLaw setup) horizon scheduler) payoff source sourceSequence
     converges equilibrium.1 sequence
     (fun n => weight n * range) (by simpa only [zero_mul] using vanishes.mul_const range)
     localComparisons (fun n => rosterPerturbedProfile_readout_law setup leaks bounds rosters network

@@ -4,6 +4,7 @@ import Vegas.Examples.MonitoredGuessing.RestrictedInitialComparison
 import Vegas.Examples.MonitoredGuessing.RestrictedBobComparisons
 import Vegas.Examples.MonitoredGuessing.RestrictedComparisons
 import Vegas.Examples.MonitoredGuessing.WatcherRaw
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Restoring every ordinary-player response
 
@@ -58,12 +59,12 @@ theorem ordinary_equilibrium_extends (table : PayoffTable)
     (source : restrictedModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
         restricted_decisionRecall.decisionInformationAntichain
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :
     ∃ target : watchedModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor watched_decisionRecall.decisionInformationAntichain
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1 - watchedDepth who site)) ∧
       ordinaryRestriction.ExtendsProfile source.strategy target.strategy ∧
@@ -80,35 +81,55 @@ theorem ordinary_equilibrium_extends (table : PayoffTable)
       ∀ history ∈ (watchedModel.runBehavioral target.strategy
         (2 * nativeHorizon + 1)).support, watchedArena.terminal history.state := by
   classical
-  apply ordinaryRestriction.sequential_equilibrium_extends_of_comparator
-    restricted_decisionRecall.decisionInformationAntichain
-    (watchedMenu.uniformAssessment nativeInitialLaw nativeHorizon nativeScheduler)
-    (watchedMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
-    watched_decisionRecall (2 * nativeHorizon + 1)
-    (watchedMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler)
-    watchedDepth watched_common_depth
-    (fun history who => Enforcement.stateUtility table history.state who)
-    (fun history who => Enforcement.stateUtility table history.state who)
-    (fun _ _ => rfl) ordinaryComparator _ source equilibrium
-  intro sourceProfile targetProfile paired who site action extra history
-  fin_cases who
-  · change restrictedModel.InformationSite alice at site
-    rcases alice_site_cases site with ⟨bit, early⟩ | ⟨bit, guess, final⟩
-    · apply initial_continuation_comparison table sourceProfile targetProfile bit site early
-        action extra history
-      change 27 ≤ 29 - watchedDepth alice (ordinaryRestriction.site alice site)
-      rw [watched_initial_depth bit site early]
-    · apply final_continuation_comparison table sourceProfile targetProfile bit guess site
-        final action history
-      change 9 ≤ 29 - watchedDepth alice (ordinaryRestriction.site alice site)
-      rw [watched_final_depth bit guess site final]
-      decide
-  · apply bob_continuation_comparison table sourceProfile targetProfile paired site action
-      extra history
-    change 19 ≤ 29 - watchedDepth bob (ordinaryRestriction.site bob site)
-    simp only [watchedDepth, effectiveDepth, nativeDecisionDepth, ↓reduceIte]
-    decide
-  · exact (extra (watcher_choice_surjective site.1 action)).elim
+  have targetBounded := watchedMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler
+  have sourceBounded := restrictedMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler
+  have targetCertificate := targetBounded.wellFoundedHistories
+  have sourceCertificate := sourceBounded.wellFoundedHistories
+  let _ := Fintype.ofFinite watchedArena.History
+  have sourceTerminal := (source.isSequentialEquilibrium_iff_remaining restrictedModel _
+    sourceCertificate sourceBounded restrictedDepth restricted_common_depth _).mpr equilibrium
+  obtain ⟨target, targetTerminal, agrees, beliefs, historyLaw, joint⟩ :=
+    ordinaryRestriction.sequentialEquilibrium_extends_of_comparator
+      restricted_decisionRecall.decisionInformationAntichain sourceCertificate targetCertificate
+      (watchedMenu.uniformAssessment nativeInitialLaw nativeHorizon nativeScheduler)
+      (watchedMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
+      watched_decisionRecall (fun who site => watchedDepth who (ordinaryRestriction.site who site))
+      (fun who site => watched_common_depth who (ordinaryRestriction.site who site))
+      (fun who history => Enforcement.stateUtility table history.state who)
+      (fun who history => Enforcement.stateUtility table history.state who)
+      (fun _ _ => rfl) ordinaryComparator (fun sourceProfile targetProfile paired who site action
+        extra history => by
+        rw [ordinaryRestriction.runBehavioralTerminalFrom_history_eq_remaining targetCertificate
+            targetBounded _ (watched_common_depth who (ordinaryRestriction.site who site)),
+          ordinaryRestriction.runBehavioralTerminalFrom_eq_remaining sourceCertificate
+            targetBounded _ (watched_common_depth who (ordinaryRestriction.site who site))]
+        fin_cases who
+        · change restrictedModel.InformationSite alice at site
+          rcases alice_site_cases site with ⟨bit, early⟩ | ⟨bit, guess, final⟩
+          · apply initial_continuation_comparison table sourceProfile targetProfile bit site early
+              action extra history
+            change 27 ≤ 29 - watchedDepth alice (ordinaryRestriction.site alice site)
+            rw [watched_initial_depth bit site early]
+          · apply final_continuation_comparison table sourceProfile targetProfile bit guess site
+              final action history
+            change 9 ≤ 29 - watchedDepth alice (ordinaryRestriction.site alice site)
+            rw [watched_final_depth bit guess site final]
+            decide
+        · apply bob_continuation_comparison table sourceProfile targetProfile paired site action
+            extra history
+          change 19 ≤ 29 - watchedDepth bob (ordinaryRestriction.site bob site)
+          simp only [watchedDepth, effectiveDepth, nativeDecisionDepth, ↓reduceIte]
+          decide
+        · exact (extra (watcher_choice_surjective site.1 action)).elim)
+      source sourceTerminal
+  rw [InformationModel.runBehavioralTerminalFrom_initHistory _
+      sourceCertificate _ sourceBounded,
+    InformationModel.runBehavioralTerminalFrom_initHistory _
+      targetCertificate _ targetBounded] at historyLaw joint
+  exact ⟨target, (target.isSequentialEquilibrium_iff_remaining watchedModel _ targetCertificate
+    targetBounded watchedDepth watched_common_depth _).mp targetTerminal, agrees, beliefs,
+    historyLaw, joint, fun history supported =>
+      watchedModel.runBehavioralFrom_terminal_of_bound _ targetBounded _ history supported⟩
 
 /-- The composed ordinary, watcher and raw-response extensions retain the
 joint observation/net-payoff law of every restricted equilibrium. -/
@@ -119,13 +140,13 @@ theorem restricted_raw_equilibrium_extends (table : PayoffTable)
     (source : restrictedModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
         restricted_decisionRecall.decisionInformationAntichain
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :
     ∃ target : nativeModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         (nativeMenu.decisionInformationAntichain nativeInitialLaw nativeHorizon nativeScheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1)) ∧
       (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map

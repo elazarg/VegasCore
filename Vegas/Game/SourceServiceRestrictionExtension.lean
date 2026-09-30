@@ -52,7 +52,7 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       ((sourceServiceMenu setup leaks bounds rosters).decisionInformationAntichain
         (initialLaw setup) (rosterPlan setup rosters).length
           (rosterScheduler setup leaks rosters network))
-      (fun who site => source.continuationContext site (fun history =>
+      (fun who site => source.truncatedContinuationContext site (fun history =>
         baseUtility setup leaks (fun state => utility (setup.parameterOutcome parameter state))
           history.state who) (2 * (rosterPlan setup rosters).length + 1))) :
     let menu := sourceServiceMenu setup leaks bounds rosters
@@ -72,7 +72,7 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
     ∃ target : (effective.information (initialLaw setup) count scheduler).BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         (effective.decisionInformationAntichain (initialLaw setup) count scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => payoff history.state who) (2 * count + 1)) ∧
       restriction.ExtendsProfile source.strategy target.strategy ∧
       ((menu.information (initialLaw setup) count scheduler).runBehavioral source.strategy
@@ -97,12 +97,14 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       (restriction.informationHistory who site history)
     simpa only [InformationModel.ActionRestriction.informationHistory_val,
       restriction.length] using same
-  have sourceRemaining := (source.sequentialEquilibrium_remaining_iff
+  have sourceBounded := menu.bounded (initialLaw setup) count scheduler
+  have targetBounded := effective.bounded (initialLaw setup) count scheduler
+  have sourceCertificate := sourceBounded.wellFoundedHistories
+  have targetCertificate := targetBounded.wellFoundedHistories
+  have sourceTerminal := (source.isSequentialEquilibrium_iff_truncated_of_bounded
     (menu.information (initialLaw setup) count scheduler)
-    (menu.decisionInformationAntichain (initialLaw setup) count scheduler) (2 * count + 1)
-    (menu.bounded (initialLaw setup) count scheduler)
-    (fun who site => depth who (restriction.site who site)) sourceClock
-    (fun who history => base history.state who)).mpr equilibrium
+    (menu.decisionInformationAntichain (initialLaw setup) count scheduler) sourceCertificate
+    sourceBounded (fun who history => base history.state who)).mpr equilibrium
   have matching (history : (menu.protocol (initialLaw setup) count scheduler).History)
       (who : Player) : payoff (restriction.history history).state who = base history.state who := by
     have clean := sourceService_history_audit_clear setup leaks bounds values capacity rosters
@@ -111,29 +113,39 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
       ((runtime setup).serviceAuditObservation leaks) (sourceServiceAudit setup leaks sample)
         history.state who * deposit who = base history.state who
     rw [clean, zero_mul, sub_zero]
-  obtain ⟨target, remaining, agrees, _beliefs, historyLaw, _joint, _terminal⟩ :=
-    restriction.sequential_equilibrium_extends_of_continuation
+  let _ := Fintype.ofFinite (effective.protocol (initialLaw setup) count scheduler).History
+  obtain ⟨target, terminal, agrees, _beliefs, historyLaw, _joint⟩ :=
+    restriction.sequentialEquilibrium_extends_of_continuation
       (menu.decisionInformationAntichain (initialLaw setup) count scheduler)
+      sourceCertificate targetCertificate
       (effective.uniformAssessment (initialLaw setup) count scheduler)
       (effective.uniform_fullyMixed (initialLaw setup) count scheduler)
-      (effective.decisionRecall (initialLaw setup) count scheduler) (2 * count + 1)
-      (effective.bounded (initialLaw setup) count scheduler) depth clock
-      (fun history who => base history.state who)
-      (fun history who => payoff history.state who) matching
+      (effective.decisionRecall (initialLaw setup) count scheduler)
+      (fun who site => depth who (restriction.site who site))
+      (fun who site => clock who (restriction.site who site))
+      (fun who history => base history.state who)
+      (fun who history => payoff history.state who) (fun who history => matching history who)
       (fun first second paired who site action _extra belief => by
         obtain ⟨repair, dominates⟩ := sourceService_continuation_settlement_comparison setup leaks
           bounds values capacity rosters opportunities network parameter utility sample
           authentic probability positive coverage first second paired who site
           (depth who (restriction.site who site)) (sourceClock who site)
           ((second who).commit (restriction.site who site).1 action)
-        exact ⟨repair, dominates belief⟩)
-      source sourceRemaining
-  have full := (target.sequentialEquilibrium_remaining_iff
+        refine ⟨repair, ?_⟩
+        simp only [restriction.runBehavioralTerminalFrom_history_eq_remaining targetCertificate
+            targetBounded _ (clock who (restriction.site who site)),
+          restriction.runBehavioralTerminalFrom_eq_remaining sourceCertificate targetBounded _
+            (clock who (restriction.site who site))]
+        exact dominates belief)
+      source sourceTerminal
+  rw [InformationModel.runBehavioralTerminalFrom_initHistory _
+      sourceCertificate _ sourceBounded,
+    InformationModel.runBehavioralTerminalFrom_initHistory _
+      targetCertificate _ targetBounded] at historyLaw
+  have full := (target.isSequentialEquilibrium_iff_truncated_of_bounded
     (effective.information (initialLaw setup) count scheduler)
     (effective.decisionRecall (initialLaw setup) count scheduler).decisionInformationAntichain
-        (2 * count + 1)
-    (effective.bounded (initialLaw setup) count scheduler) depth clock
-    (fun who history => payoff history.state who)).mp remaining
+    targetCertificate targetBounded (fun who history => payoff history.state who)).mp terminal
   refine ⟨target, full, agrees, historyLaw, ?_⟩
   rw [← historyLaw, PMF.bind_map]
   calc

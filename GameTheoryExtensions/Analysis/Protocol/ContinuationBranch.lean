@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDeviation
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheory.Analysis.Protocol.BeliefTransport
 import GameTheoryExtensions.Math.Probability.Tremble
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A continuation switch preserves the probability of its starting branch
 

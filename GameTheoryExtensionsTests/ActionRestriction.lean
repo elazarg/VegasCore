@@ -35,7 +35,7 @@ def restricted (keep : Bool) : (model (Action := Retained keep) prior id).Behavi
 information, no off-path decision sites, and a fixed payoff. -/
 theorem restricted_equilibrium (keep : Bool) :
     (restricted keep).IsSequentialEquilibriumFor (antichain prior id)
-      (fun _ site => (restricted keep).continuationContext site
+      (fun _ site => (restricted keep).truncatedContinuationContext site
         (fun history => payoff (fun state action => reward state action.1) history.state) 2) := by
   apply (isSequentialEquilibrium_iff prior id _ _).mpr
   rw [fullInformation_optimal_iff]
@@ -57,7 +57,7 @@ theorem restored_consistent (keep : Bool) :
 
 theorem restored_equilibrium_iff (keep : Bool) :
     (restored keep).IsSequentialEquilibriumFor (antichain prior id)
-      (fun _ site => (restored keep).continuationContext site
+      (fun _ site => (restored keep).truncatedContinuationContext site
         (fun history => payoff reward history.state) 2) ↔ keep = true := by
   rw [restored, isSequentialEquilibrium_iff, fullInformation_optimal_iff]
   constructor
@@ -72,7 +72,7 @@ theorem restored_equilibrium_iff (keep : Bool) :
 consistency proof uses fully mixed approximating profiles in the full game. -/
 theorem equilibrium_with_zero_probability_action :
     (restored true).IsSequentialEquilibriumFor (antichain prior id)
-        (fun _ site => (restored true).continuationContext site
+        (fun _ site => (restored true).truncatedContinuationContext site
           (fun history => payoff reward history.state) 2) ∧
       ((response prior id ((restored true).strategy ()) ()) false).toReal = 0 ∧
       (arena (Action := Bool) prior).Legal (.decision ()) (fun _ => some false) := by
@@ -80,7 +80,9 @@ theorem equilibrium_with_zero_probability_action :
   simp [restored, assessment, response_policy, PMF.pure_apply]
 
 def decision : (model (Action := Bool) prior id).ContinuationDecision
-    (fun _ history => payoff reward history.state) 2 Unit Bool :=
+    (fun _ history => payoff reward history.state)
+    ((model (Action := Bool) prior id).runBehavioralTerminalFrom
+      (GameTheoryExtensionsTests.ContinuationDecision.certificate prior)) Unit Bool :=
   GameTheoryExtensionsTests.ContinuationDecision.decision prior id
     (site prior id () ((PMF.mem_support_pure_iff _ _).mpr rfl)) reward
 
@@ -99,8 +101,9 @@ failure holds although the proposed full-game assessment is consistent. -/
 theorem zero_probability_is_not_deletion :
     (restored false).IsSequentiallyConsistent (antichain prior id) ∧
       ((decision.response (restored false).strategy) true).toReal = 0 ∧
-      ¬ (restored false).IsSequentiallyRationalWithin
-        (fun _ history => payoff reward history.state) 2 := by
+      ¬ (restored false).IsSequentiallyRational
+          (GameTheoryExtensionsTests.ContinuationDecision.certificate prior)
+          (fun _ history => payoff reward history.state) := by
   refine ⟨restored_consistent false, ?_, ?_⟩
   · rw [restored_response]
     simp [PMF.pure_apply]
@@ -113,8 +116,9 @@ theorem zero_probability_is_not_deletion :
 retaining `true` suffices because `false` is dominated at every history. -/
 theorem dominated_omission_rational :
     (restored true).IsSequentiallyRationalAt decision.site
-      ((restored true).continuationContext decision.site
-        (fun history => payoff reward history.state) 2) := by
+      ((restored true).continuationContext
+        (GameTheoryExtensionsTests.ContinuationDecision.certificate prior) decision.site
+        (fun history => payoff reward history.state)) := by
   apply decision.rationalAt_of_omitted_dominated (restored true) {true}
   · intro action kept
     have same : action = true := Set.mem_singleton_iff.mp kept
@@ -129,7 +133,7 @@ theorem dominated_omission_rational :
 theorem no_equilibrium_with_restricted_false_outcome
     (target : (model (Action := Bool) prior id).BehavioralAssessment)
     (equilibrium : target.IsSequentialEquilibriumFor (antichain prior id)
-      (fun _ site => target.continuationContext site
+      (fun _ site => target.truncatedContinuationContext site
         (fun history => payoff reward history.state) 2)) :
     observedLaw prior id id target ≠ PMF.pure ((), false) := by
   intro same

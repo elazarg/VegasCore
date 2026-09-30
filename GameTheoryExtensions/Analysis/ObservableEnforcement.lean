@@ -3,7 +3,7 @@
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
-import GameTheoryExtensions.Core.IncentiveComparison
+import GameTheory.Analysis.IncentiveCone
 
 /-! # When observable violations admit a sound deterrent
 

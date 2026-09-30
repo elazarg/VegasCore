@@ -289,7 +289,7 @@ theorem bob_ambient_sequentially_rational (Claim : Type) [Fintype Claim] (defaul
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (siteEq : site.1 = some (past, view)) (ambient : view.application.visit = none) :
     assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site (payoff bob) (2 * horizon + 1)) := by
+      (assessment.truncatedContinuationContext site (payoff bob) (2 * horizon + 1)) := by
   refine (Context.isLocallyOptimal_iff_of_integrable
     (continuation_integrable assessment site _ _)
       fun _ _ => continuation_integrable assessment site _ _).mpr fun alternative _ => ?_

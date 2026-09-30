@@ -2,7 +2,8 @@
 
 import Vegas.Pending.ReactiveBindingShadowStep
 import Vegas.Pending.ReactiveCompiledMenu
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # A legal retained continuation from private binding repair
@@ -162,7 +163,7 @@ theorem retainedImplementation_posterior_prefix (who : Player)
       have original : response ∈
           ((retainedImplementation runtime leaks menu who reference policy).respond
             (atRecall runtime leaks reference) (past, entry.beforeView)).support := by
-        unfold fiberConditional at supported
+        unfold fiberPosterior at supported
         split at supported
         · exact ((PMF.mem_support_filter_iff _).mp supported).2
         · exact supported

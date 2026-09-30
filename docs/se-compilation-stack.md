@@ -610,7 +610,7 @@ source-to-event compiler for the disclosure law and implements it using these
 action fibers. Its support belongs to C at every local input; the source-law
 equation additionally requires the operational checkpoint invariants.
 
-[Checkpoint Bayes projection](../GameTheoryExtensions/Analysis/Protocol/HistoryBayesProjection.lean)
+[Checkpoint Bayes projection](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean)
 allows different source and native prefix depths. Its premises are actual
 prefix-law projection and reflection of the selected information fiber; it
 does not assume a belief-preserving target assessment. The compiler must still

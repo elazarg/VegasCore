@@ -181,7 +181,7 @@ theorem roster_owner_information_kernel
         fun state => (channel (setup.protocolObserve owner state)).map fun input =>
           (state, input) :=
     by
-  obtain ⟨channel, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior
+  obtain ⟨channel, law⟩ := exists_updated_observation_kernel_of_readout prior
     (fun execution => sourcePrefix? setup event.val execution.application.config)
     (fun execution => ((application setup leaks).messageView execution, execution.recall owner))
     (setup.protocolObserve owner) noise factor (fun _ => PMF.pure ())

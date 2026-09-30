@@ -195,7 +195,7 @@ theorem guarded_disclosure_successor_factorization
       ((prior.map source).bind fun config =>
         (choice config).map (revealSuccessor published binding config)).bind fun config =>
           (nextNoise (config.view focal)).map fun extra => (config, extra) := by
-  apply PMF.exists_updated_observation_kernel_of_readout prior source
+  apply exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun config => config.view focal) noise factor choice
     (revealSuccessor published binding) (fun config => config.view focal)

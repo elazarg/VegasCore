@@ -144,9 +144,9 @@ theorem uniform_silent_context_value (ambient : Bool)
     (uniform : assessment.belief true (bobSilentSite ambient) =
       (PMF.uniformOfFintype Bool).map (silentHistory ambient))
     (deposit : ℝ) (alternative : (model ambient).BehavioralPolicy true) :
-    (assessment.continuationContext (bobSilentSite ambient)
+    (assessment.truncatedContinuationContext (bobSilentSite ambient)
       (fun history => payoff deposit history.state true) 3).value alternative = 1 / 2 := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, uniform]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value, uniform]
   rw [expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _), expect_map]
   simp_rw [← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
     (model ambient) (single ambient)]
@@ -170,14 +170,15 @@ theorem uniform_silent_context_value (ambient : Bool)
 theorem source_context_value (profile : Profile (model false).behavioralSignature)
     (site : (model false).InformationSite true)
     (alternative : (model false).BehavioralPolicy true) :
-    ((sourceAssessment profile).continuationContext site
+    ((sourceAssessment profile).truncatedContinuationContext site
       (fun history => payoff 0 history.state true) 3).value alternative = 1 / 2 := by
   rw [source_bob_site_eq site]
   exact uniform_silent_context_value false (sourceAssessment profile) rfl 0 alternative
 
 theorem source_rational (profile : Profile (model false).behavioralSignature) :
-    (sourceAssessment profile).IsSequentiallyRationalWithin
-      (fun who history => payoff 0 history.state who) 3 := by
+    (sourceAssessment profile).IsSequentiallyRationalFor fun who site =>
+        (sourceAssessment profile).truncatedContinuationContext site (fun history => payoff 0
+            history.state who) 3 := by
   intro who site
   cases who
   · exact (source_no_alice_site site).elim
@@ -189,7 +190,7 @@ theorem source_rational (profile : Profile (model false).behavioralSignature) :
 assessment. The common fully mixed approximants retain the same uniform beliefs. -/
 theorem source_sequential_equilibrium (profile : Profile (model false).behavioralSignature) :
     (sourceAssessment profile).IsSequentialEquilibriumFor (antichain false)
-      (fun who site => (sourceAssessment profile).continuationContext site
+      (fun who site => (sourceAssessment profile).truncatedContinuationContext site
         (fun history => payoff 0 history.state who) 3) :=
   ⟨source_rational profile, source_consistent profile⟩
 

@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.DisclosureRetraction
-import GameTheoryExtensions.Math.Probability.ObservationRetraction
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Actual prefix posteriors after private disclosure aggregation
 
@@ -42,9 +45,9 @@ theorem normalized_disclosure_prefix_posterior {Γ : SourceCtx Player L} {O : Fi
         (Function.update profile who (policy.normalizeDisclosures program registry revelations))))
           ^[count] (PMF.pure (ProtocolState.entry program config))
     ∀ observed ∈ (original.map (ProtocolState.observe who program)).support,
-      (fiberConditional original (ProtocolState.observe who program) observed).map
+      (fiberPosterior original (ProtocolState.observe who program) observed).map
           (ProtocolState.normalizeDisclosureRecall (who := who) program (fun view => view.2)) =
-        fiberConditional normalized (ProtocolState.observe who program)
+        fiberPosterior normalized (ProtocolState.observe who program)
           (ProtocolView.normalizeDisclosureRecall program (fun view => view.2) observed) := by
   dsimp only
   intro observed present
@@ -76,7 +79,7 @@ theorem normalized_disclosure_prefix_posterior {Γ : SourceCtx Player L} {O : Fi
       (fun past chosen => (PMF.mem_support_pure_iff _ _).mp chosen) count
     rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at retained
     exact retained state reached original member
-  have result := PMF.conditional_retraction normalized kernel
+  have result := conditional_retraction normalized kernel
     (ProtocolState.normalizeDisclosureRecall (who := who) program (fun view => view.2))
     (ProtocolState.observe who program) (ProtocolState.observe who program)
     (ProtocolView.normalizeDisclosureRecall program (fun view => view.2))

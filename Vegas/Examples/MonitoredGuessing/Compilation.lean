@@ -30,7 +30,7 @@ private theorem completion_facts (deposit : ℝ) (sufficient : 2 ≤ deposit)
     (completion deposit sufficient guesses).strategy bob quietBobSite.1 =
       nativeGuessBehavior guesses quietBobSite.1 ∧
     (completion deposit sufficient guesses).IsSequentialEquilibriumFor nativeAntichain
-      (fun who site => (completion deposit sufficient guesses).continuationContext site
+      (fun who site => (completion deposit sufficient guesses).truncatedContinuationContext site
         (fun history => nativeUtility deposit who history.state) (2 * nativeHorizon + 1)) :=
   (exists_native_sequential_equilibrium guesses deposit sufficient).choose_spec
 
@@ -69,13 +69,13 @@ of initial secret, public results and actual net payoff vector. -/
 theorem compiled_source_equilibrium (deposit : ℝ) (sufficient : 2 ≤ deposit)
     (source : sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      source.continuationContext site (sourcePayoff who) 3)) :
+      source.truncatedContinuationContext site (sourcePayoff who) 3)) :
     ∃ target : nativeModel.BehavioralAssessment,
       target.strategy = Profile.map (sig := sourceModel.behavioralSignature)
         (target := nativeModel.behavioralSignature) (compileNative deposit sufficient)
           source.strategy ∧
       target.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
-        target.continuationContext site
+        target.truncatedContinuationContext site
           (fun history => nativeUtility deposit who history.state) (2 * nativeHorizon + 1)) ∧
       (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
         (fun history => ((nativeObservation history.state).1,

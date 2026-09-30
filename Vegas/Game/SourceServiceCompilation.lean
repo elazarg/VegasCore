@@ -54,7 +54,7 @@ theorem audited_raw_sequentialEquilibrium_preserved {Parameter : Type}
     (source : service.sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (instructionCount service.setup.program + 1))) :
@@ -74,7 +74,7 @@ theorem audited_raw_sequentialEquilibrium_preserved {Parameter : Type}
       target.IsSequentialEquilibriumFor
         (raw.decisionInformationAntichain (initialLaw service.setup) service.planLength
           service.scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => payoff history.state who) service.fuel) ∧
       (∀ final ∈ ((raw.information (initialLaw service.setup) service.planLength
           service.scheduler).runBehavioral target.strategy service.fuel).support, ∀ who,
@@ -117,7 +117,7 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
     (source : service.sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (instructionCount service.setup.program + 1))) :
@@ -139,7 +139,7 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
       target.IsSequentialEquilibriumFor
         (raw.decisionInformationAntichain (initialLaw service.setup) service.planLength
           service.scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => payoff history.state who) service.fuel) ∧
       (∀ final ∈ ((raw.information (initialLaw service.setup) service.planLength
           service.scheduler).runBehavioral target.strategy service.fuel).support, ∀ who,

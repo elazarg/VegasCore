@@ -107,13 +107,15 @@ theorem source_bob_value (profile : Profile sourceModel.behavioralSignature)
 
 theorem source_alice_context (assessment : sourceModel.BehavioralAssessment)
     (bit guess : Bool) (alternative : sourceModel.BehavioralPolicy alice) :
-    (assessment.continuationContext (sourceAliceSite bit guess) (sourcePayoff alice) 3).value
+    (assessment.truncatedContinuationContext (sourceAliceSite bit guess) (sourcePayoff alice)
+        3).value
       alternative =
       expect (sourceDecisionLaw
         (Profile.update (sig := sourceModel.behavioralSignature)
           assessment.strategy alice alternative) alice (sourceAliceSite bit guess).1)
         (fun disclose => if disclose then (if bit = guess then 1 else 0) else -4) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite]
   calc
     _ = expect (assessment.belief alice (sourceAliceSite bit guess)) (fun _ =>
         expect (sourceDecisionLaw
@@ -135,9 +137,10 @@ theorem opens_update_bob (profile : Profile sourceModel.behavioralSignature)
 theorem source_bob_context (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain)
     (opens : Opens assessment.strategy) (alternative : sourceModel.BehavioralPolicy bob) :
-    (assessment.continuationContext sourceBobSite (sourcePayoff bob) 3).value alternative =
+    (assessment.truncatedContinuationContext sourceBobSite (sourcePayoff bob) 3).value alternative =
       1 / 2 := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite,
     source_consistent_bob assessment consistent, expect_map]
   simp only [Function.comp_def, sourceBobHistory,
     source_bob_value _ (opens_update_bob _ opens alternative)]

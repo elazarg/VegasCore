@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ParameterOutcomes
-import GameTheoryExtensions.Core.ConsideredZeroSum
+import GameTheory.Core.ZeroSum
 
 /-! # Zero-sum values through the pending-message compiler
 

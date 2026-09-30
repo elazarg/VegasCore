@@ -56,7 +56,7 @@ theorem source_raw_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [le
             ((leaks watcher pending).toOuterMeasure {selected | message.id ∈ selected}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 (fun state => utility state who))
         (instructionCount setup.program + 1))) :
     let extended := bounds.withInitialValues (initialLaw setup)
@@ -67,7 +67,7 @@ theorem source_raw_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [le
       target.IsSequentialEquilibriumFor
         ((extended.rawMenu (runtime setup) leaks).decisionInformationAntichain
           (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher))
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun final => netUtility setup leaks watcher base deposit final.state who)
           (2 * horizon setup watcher + 1)) ∧
       (model.runBehavioral target.strategy (2 * horizon setup watcher + 1)).map

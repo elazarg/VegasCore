@@ -3,7 +3,7 @@
 import Vegas.Examples.MonitoredGuessing.RestrictedSourceValues
 import Vegas.Examples.MonitoredGuessing.RestrictedValues
 import Interaction.ReactiveConsistentAssessment
-import GameTheoryExtensions.Analysis.Protocol.SequentialOneShot
+import GameTheory.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Source sequential equilibria survive the restricted native service
@@ -41,16 +41,17 @@ theorem early_choices_subsingleton (bit : Bool) :
 
 theorem compiled_alice_optimal (table : PayoffTable)
     (source : sourceModel.BehavioralAssessment)
-    (rational : source.IsSequentiallyRationalWithin (sourceResultPayoff (tableReward table)) 3)
+    (rational : source.IsSequentiallyRationalFor fun who site =>
+        source.truncatedContinuationContext site ((sourceResultPayoff (tableReward table)) who) 3)
     (target : restrictedModel.BehavioralAssessment)
     (strategy : target.strategy = compile source.strategy)
     (site : restrictedModel.InformationSite alice) (bit guess : Bool)
     (siteEq : site.1 = aliceInput bit guess)
     (alternative : restrictedModel.BehavioralPolicy alice) :
-    (target.continuationContext site
+    (target.truncatedContinuationContext site
       (fun history => Enforcement.stateUtility table history.state alice)
         (2 * nativeHorizon + 1)).value alternative ≤
-      (target.continuationContext site
+      (target.truncatedContinuationContext site
         (fun history => Enforcement.stateUtility table history.state alice)
           (2 * nativeHorizon + 1)).value (target.strategy alice) := by
   rw [alice_context_value table target site bit guess siteEq,
@@ -63,17 +64,18 @@ theorem compiled_alice_optimal (table : PayoffTable)
 theorem compiled_bob_optimal (table : PayoffTable)
     (source : sourceModel.BehavioralAssessment)
     (sourceConsistent : source.IsSequentiallyConsistent sourceAntichain)
-    (rational : source.IsSequentiallyRationalWithin (sourceResultPayoff (tableReward table)) 3)
+    (rational : source.IsSequentiallyRationalFor fun who site =>
+        source.truncatedContinuationContext site ((sourceResultPayoff (tableReward table)) who) 3)
     (target : restrictedModel.BehavioralAssessment)
     (consistent : target.IsSequentiallyConsistent
         restricted_decisionRecall.decisionInformationAntichain)
     (strategy : target.strategy = compile source.strategy)
     (site : restrictedModel.InformationSite bob)
     (alternative : restrictedModel.BehavioralPolicy bob) :
-    (target.continuationContext site
+    (target.truncatedContinuationContext site
       (fun history => Enforcement.stateUtility table history.state bob)
         (2 * nativeHorizon + 1)).value alternative ≤
-      (target.continuationContext site
+      (target.truncatedContinuationContext site
         (fun history => Enforcement.stateUtility table history.state bob)
           (2 * nativeHorizon + 1)).value (target.strategy bob) := by
   rw [receiver_context_value table target consistent site,
@@ -89,27 +91,27 @@ theorem compiled_local_optimal (table : PayoffTable)
     (watcherZero : ∀ result, table result watcher = 0)
     (source : sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      source.continuationContext site (sourceResultPayoff (tableReward table) who) 3))
+      source.truncatedContinuationContext site (sourceResultPayoff (tableReward table) who) 3))
     (target : restrictedModel.BehavioralAssessment)
     (consistent : target.IsSequentiallyConsistent
         restricted_decisionRecall.decisionInformationAntichain)
     (strategy : target.strategy = compile source.strategy)
     (who : Player) (site : restrictedModel.InformationSite who)
     (law : PMF (restrictedModel.Choice who site.1)) :
-    (target.continuationContext site
+    (target.truncatedContinuationContext site
       (fun history => Enforcement.stateUtility table history.state who)
         (2 * nativeHorizon + 1)).value ((target.strategy who).withLaw site.1 law) ≤
-      (target.continuationContext site
+      (target.truncatedContinuationContext site
         (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1)).value (target.strategy who) := by
   classical
   fin_cases who
   · change restrictedModel.InformationSite alice at site
     change PMF (restrictedModel.Choice alice site.1) at law
-    change (target.continuationContext site
+    change (target.truncatedContinuationContext site
       (fun history => Enforcement.stateUtility table history.state alice)
         (2 * nativeHorizon + 1)).value ((target.strategy alice).withLaw site.1 law) ≤
-      (target.continuationContext site
+      (target.truncatedContinuationContext site
         (fun history => Enforcement.stateUtility table history.state alice)
           (2 * nativeHorizon + 1)).value (target.strategy alice)
     rcases alice_site_cases site with ⟨bit, early⟩ | ⟨bit, guess, final⟩
@@ -126,13 +128,13 @@ theorem compiled_local_optimal (table : PayoffTable)
       strategy site _
   · change restrictedModel.InformationSite watcher at site
     change PMF (restrictedModel.Choice watcher site.1) at law
-    change (target.continuationContext site
+    change (target.truncatedContinuationContext site
       (fun history => Enforcement.stateUtility table history.state watcher)
         (2 * nativeHorizon + 1)).value ((target.strategy watcher).withLaw site.1 law) ≤
-      (target.continuationContext site
+      (target.truncatedContinuationContext site
         (fun history => Enforcement.stateUtility table history.state watcher)
           (2 * nativeHorizon + 1)).value (target.strategy watcher)
-    simp only [InformationModel.BehavioralAssessment.continuationContext_value,
+    simp only [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
       Enforcement.stateUtility_watcher table watcherZero, expect_constant, le_refl]
 
 /-- Every source SE, with arbitrary declared result incentives, has a consistent
@@ -141,33 +143,25 @@ theorem source_equilibrium_compiles (table : PayoffTable)
     (watcherZero : ∀ result, table result watcher = 0)
     (source : sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      source.continuationContext site (sourceResultPayoff (tableReward table) who) 3)) :
+      source.truncatedContinuationContext site (sourceResultPayoff (tableReward table) who) 3)) :
     ∃ target : restrictedModel.BehavioralAssessment,
       target.strategy = compile source.strategy ∧
       target.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain
           (fun who site =>
-        target.continuationContext site
+        target.truncatedContinuationContext site
           (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1 - restrictedDepth who site)) := by
   classical
   obtain ⟨target, strategy, consistent⟩ := restrictedMenu.exists_consistent_assessment
     nativeInitialLaw nativeHorizon nativeScheduler (compile source.strategy)
-  refine ⟨target, strategy, ?_, consistent⟩
-  apply consistent.sequentiallyRational_of_localOptimal restricted_decisionRecall
-    (2 * nativeHorizon + 1) (fun who history => Enforcement.stateUtility table history.state who)
-    restrictedDepth restricted_common_depth
-  · intro who site
-    by_contra outside
-    have stopped := restrictedMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler
-      site.2.choose.1.state site.2.choose.1.trace (by
-        rw [restricted_common_depth who site site.2.choose]
-        omega)
-    exact site.2.choose_spec.1 stopped
-  · intro who site _ law
-    rw [target.continuationContext_remaining restrictedModel (2 * nativeHorizon + 1)
-      (restrictedMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler) who site
-      (restrictedDepth who site) (restricted_common_depth who site)]
-    exact compiled_local_optimal table watcherZero source equilibrium target consistent
-      strategy who site law
+  have bounded := restrictedMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler
+  have certificate := bounded.wellFoundedHistories
+  refine ⟨target, strategy, (target.isSequentialEquilibrium_iff_remaining restrictedModel _
+    certificate bounded restrictedDepth restricted_common_depth _).mp
+      ((target.isSequentialEquilibrium_iff_locallyOptimal restrictedModel restricted_decisionRecall
+        certificate _).mpr ⟨consistent, fun who site law => ?_⟩)⟩
+  rw [target.continuationContext_eq_truncated_of_bounded certificate bounded]
+  exact compiled_local_optimal table watcherZero source equilibrium target consistent
+    strategy who site law
 
 end Vegas.Examples.MonitoredGuessing.Restricted

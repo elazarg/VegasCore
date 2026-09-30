@@ -36,8 +36,9 @@ theorem native_initial_history_value (profile : Profile nativeModel.behavioralSi
   exact native_initial_finish_value _
 
 theorem native_sequential_initial_bound (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1)) :
     1 / 2 ≤ expect (nativeModel.runBehavioral assessment.strategy (2 * nativeHorizon + 1))
       (fun history => nativeUtility alice history.state) := by
   apply nativeModel.initial_value_ge_of_induced_deviation assessment

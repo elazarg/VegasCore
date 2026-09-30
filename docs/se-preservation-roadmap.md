@@ -51,7 +51,7 @@ the theorem's assumptions and the remaining service and language boundaries.
 | Required-binding enforcement | Public completion without an accepted handle certifies omission under protected inclusion and persists under arbitrary native continuations. The combined terminal service charges once for forbidden traffic or a public omission. Partial packet samples alone cannot certify omission; whole-program incremental charge comparison is checked under the protected service assumptions. |
 
 The central proof is
-[`sequential_equilibrium_extends_of_continuation`](../GameTheoryExtensions/Analysis/Protocol/RestrictionExtension.lean).
+[`sequentialEquilibrium_extends_of_continuation`](../GameTheory/GameTheory/Analysis/Protocol/RestrictionExtension.lean).
 Its premises describe execution and actual continuation values; they do not
 assume a target equilibrium, a rational completion, or belief preservation.
 Under every paired profile and finite posterior, each additional target choice
@@ -61,7 +61,7 @@ This permits repairs that change later choices, such as replacing an unusable
 binding by a valid value and later withholding. Instantiating that repair for
 native execution is checked in the full-source continuation comparison.
 
-The `sequential_equilibrium_extends_of_comparator` specialization uses a fixed
+The `sequentialEquilibrium_extends_of_comparator` specialization uses a fixed
 source-legal local lottery whose value dominates at every hidden history.
 It permits harmless undetectable actions. The simpler
 `sequential_equilibrium_extends` corollary derives comparison from payoff bounds
@@ -216,7 +216,7 @@ to whole continuation policies. After a departure, behavior is allowed to differ
 from source behavior and must be rational with the information actually received.
 
 The complete bridge is checked. A local operational square in
-[`ActionRestriction`](../GameTheoryExtensions/Protocol/ActionRestriction.lean)
+[`ActionRestriction`](../GameTheory/GameTheory/Protocol/ActionRestriction.lean)
 implies continuation-law correspondence. Rare forbidden trembles retain a
 multiplicative share of each source history's probability; choosing their rate
 relative to source information-set reach preserves even off-path beliefs.

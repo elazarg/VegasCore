@@ -126,13 +126,13 @@ theorem regular_option_restore (before : PMF α) (after : PMF (Option α))
       before = after.bind (fun selected => selected.elim displaced pure) := by
   classical
   let coupled := regularCoupling before after regular
-  let displaced := (fiberConditional coupled Prod.fst none).map Prod.snd
+  let displaced := (fiberPosterior coupled Prod.fst none).map Prod.snd
   refine ⟨displaced, ?_⟩
   calc
     before = coupled.map Prod.snd := (regularCoupling_snd before after regular).symm
     _ = (coupled.map Prod.fst).bind (fun selected =>
-        (fiberConditional coupled Prod.fst selected).map Prod.snd) := by
-      conv_lhs => rw [eq_bind_fiberConditional coupled Prod.fst]
+        (fiberPosterior coupled Prod.fst selected).map Prod.snd) := by
+      conv_lhs => rw [← fiberPosterior_reconstruct coupled Prod.fst]
       rw [map_bind]
     _ = after.bind (fun selected => selected.elim displaced pure) := by
       rw [regularCoupling_fst]
@@ -146,7 +146,7 @@ theorem regular_option_restore (before : PMF α) (after : PMF (Option α))
           obtain ⟨pair, member, observed⟩ := support_map .. ▸ mapped
           have meets : ∃ pair ∈ Prod.fst ⁻¹' {some value}, pair ∈ coupled.support :=
             ⟨pair, observed, member⟩
-          rw [fiberConditional, dite_eq_left meets]
+          rw [fiberPosterior_eq_filter _ _ meets]
           calc
             _ = (coupled.filter (Prod.fst ⁻¹' {some value}) meets).map (fun _ => value) := by
               apply map_congr_on_support _

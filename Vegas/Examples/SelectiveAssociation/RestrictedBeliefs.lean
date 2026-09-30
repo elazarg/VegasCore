@@ -4,8 +4,11 @@ import Vegas.Examples.SelectiveAssociation.RestrictedPrefixExecution
 import Vegas.Examples.SelectiveAssociation.RestrictedProbability
 import Vegas.Examples.SelectiveAssociation.RestrictedPrefixPosterior
 import Vegas.Examples.SelectiveAssociation.RestrictedGuessOutcome
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
-import GameTheoryExtensions.Math.Probability.ConditionalComparison
+import GameTheory.Analysis.Protocol.BeliefTransport
+import GameTheory.Math.Probability.ConditionalComparison
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Native Bayes beliefs from actual response-prefix probabilities
 

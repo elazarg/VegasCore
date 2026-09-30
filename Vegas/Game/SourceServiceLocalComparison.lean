@@ -439,12 +439,13 @@ theorem comparison_eq_of_phase_invariant (who : Player)
           (execution.observe (application service.setup service.leaks) who) →
         approx.phaseConfigLaw phase first = approx.phaseConfigLaw phase second)
     (law : PMF (service.model.Choice who site.1)) :
-    let comparison := service.model.assessmentComparison service.readout service.fuel
+    let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
+        service.fuel) service.readout
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by
   intro comparison
-  simp only [comparison, InformationModel.assessmentComparison,
-    InformationModel.assessmentLaw, PMF.map_bind]
+  simp only [comparison, InformationModel.assessmentComparisonWith,
+    InformationModel.assessmentLawWith, PMF.map_bind]
   apply bind_congr_on_support _
   intro history _
   have active := InformationModel.InformationSite.active service.model site history

@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveResponseEvaluation
-import GameTheoryExtensions.Protocol.ActionRestriction
+import GameTheory.Protocol.ActionRestriction
 
 /-! # Action restrictions from nested reactive response menus
 

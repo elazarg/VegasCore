@@ -2,7 +2,9 @@
 
 import Vegas.Source.DisclosureContinuation
 import Vegas.Game.DisclosureBeliefs
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Uniform legal deviations at actual source information fibers
 
@@ -154,9 +156,9 @@ theorem normalized_disclosure_prefix_deviation [Fintype Player]
           ^[count] (PMF.pure (ProtocolState.entry program config))
     ∀ observed ∈ (original.map (ProtocolState.observe who program)).support,
       ∃ lifted : BehavioralPolicy who program, lifted.Admitted program admission ∧
-        ((fiberConditional original (ProtocolState.observe who program) observed).bind
+        ((fiberPosterior original (ProtocolState.observe who program) observed).bind
           (ProtocolState.continuationLaw program (Function.update profile who lifted))) =
-        (fiberConditional normalized (ProtocolState.observe who program)
+        (fiberPosterior normalized (ProtocolState.observe who program)
           (ProtocolView.normalizeDisclosureRecall program (fun view => view.2) observed)).bind
             (ProtocolState.continuationLaw program (Function.update profile who alternative)) := by
   classical
@@ -178,7 +180,7 @@ theorem normalized_disclosure_prefix_deviation [Fintype Player]
           (Function.update profile who policy)))^[count]
             (PMF.pure (ProtocolState.entry program config))).support :=
     ⟨witness, equal, supported⟩
-  rw [fiberConditional, dite_eq_left meets] at member
+  rw [fiberPosterior_eq_filter_preimage _ _ meets] at member
   exact ((PMF.mem_support_filter_iff _).mp member).1
 
 end Vegas.SourceProgram

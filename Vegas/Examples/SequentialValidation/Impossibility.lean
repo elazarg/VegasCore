@@ -39,12 +39,14 @@ theorem native_guess_deviation (profile : Profile nativeModel.behavioralSignatur
 /-- The disclosed type fixes the guessing objective at every history Bob
 considers possible. The common law is derived from the actual bounded native
 continuation, and both outcomes are forced by legal native submissions. -/
-def nativeDisclosedDecision : nativeModel.BinaryDecision nativePayoff 113 where
+def nativeDisclosedDecision :
+    nativeModel.BinaryDecision nativePayoff (nativeModel.truncatedRunner 113) where
   player := true
   site := nativeBobSite false
   outcome profile := (nativeGuessLaw profile false).map (fun guess => guess == false)
   policy goal := nativeGuessPolicy (!goal)
   history_value profile goal history := by
+    dsimp only [InformationModel.truncatedRunner]
     rw [native_bob_value profile goal false history, expect_map]
     rfl
   force profile goal := by
@@ -53,12 +55,14 @@ def nativeDisclosedDecision : nativeModel.BinaryDecision nativePayoff 113 where
 
 theorem native_continuation_value (assessment : nativeModel.BehavioralAssessment)
     (matchBit bit : Bool) (alternative : nativeModel.BehavioralPolicy true) :
-    (assessment.continuationContext (nativeBobSite bit) (nativePayoff matchBit true) 113).value
+    (assessment.truncatedContinuationContext (nativeBobSite bit) (nativePayoff matchBit true)
+        113).value
       alternative =
         expect (nativeGuessLaw (Profile.update (sig := nativeModel.behavioralSignature)
           assessment.strategy true alternative) bit)
             (fun guess => if (guess == bit) = matchBit then (1 : ℝ) else 0) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite]
   calc
     _ = expect (assessment.belief true (nativeBobSite bit)) (fun _ =>
           expect (nativeGuessLaw (Profile.update (sig := nativeModel.behavioralSignature)
@@ -71,7 +75,8 @@ theorem native_continuation_value (assessment : nativeModel.BehavioralAssessment
 
 theorem native_rational_payoff_one (assessment : nativeModel.BehavioralAssessment)
     (matchBit : Bool)
-    (rational : assessment.IsSequentiallyRationalWithin (nativePayoff matchBit) 113) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site ((nativePayoff matchBit) who) 113) :
     1 ≤ expect (nativeGuessLaw assessment.strategy false)
       (fun guess => if (guess == false) = matchBit then (1 : ℝ) else 0) := by
   simpa only [nativeDisclosedDecision, expect_map, Function.comp_def] using
@@ -81,8 +86,10 @@ theorem native_rational_payoff_one (assessment : nativeModel.BehavioralAssessmen
 same native behavior for the two opposite guessing objectives. -/
 theorem native_no_common_rational_strategy : ¬ ∃ first second : nativeModel.BehavioralAssessment,
     first.strategy = second.strategy ∧
-      first.IsSequentiallyRationalWithin (nativePayoff true) 113 ∧
-      second.IsSequentiallyRationalWithin (nativePayoff false) 113 :=
+      (first.IsSequentiallyRationalFor fun who site =>
+          first.truncatedContinuationContext site ((nativePayoff true) who) 113) ∧
+      second.IsSequentiallyRationalFor fun who site =>
+          second.truncatedContinuationContext site ((nativePayoff false) who) 113 :=
   nativeDisclosedDecision.no_common_rational_strategy
 
 /-- Even a whole-profile translator cannot preserve both source equilibria
@@ -92,12 +99,13 @@ theorem native_no_utility_independent_sequential_translation : ¬ ∃ translate 
     Profile sourceModel.behavioralSignature → Profile nativeModel.behavioralSignature,
     ∀ matchBit,
       sourceAssessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-        sourceAssessment.continuationContext site (sourcePayoff matchBit who) 5) →
+        sourceAssessment.truncatedContinuationContext site (sourcePayoff matchBit who) 5) →
       ∃ target : nativeModel.BehavioralAssessment,
         target.strategy = translate sourceAssessment.strategy ∧
           target.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
-            target.continuationContext site (nativePayoff matchBit who) 113) :=
+            target.truncatedContinuationContext site (nativePayoff matchBit who) 113) :=
   nativeDisclosedDecision.no_utility_independent_sequential_translation
-    sourceAssessment sourceAntichain nativeAntichain sourcePayoff 5 source_sequential_equilibrium
+    sourceAssessment sourceAntichain nativeAntichain sourcePayoff (sourceModel.truncatedRunner 5)
+    source_sequential_equilibrium
 
 end Vegas.Examples.SequentialValidation

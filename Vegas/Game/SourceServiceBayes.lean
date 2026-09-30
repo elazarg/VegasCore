@@ -2,7 +2,9 @@
 
 import Vegas.Game.SourceServicePrefixPosterior
 import Interaction.ReactiveBayes
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Full-source native Bayes beliefs
 
@@ -77,7 +79,7 @@ theorem sourceService_owner_bayes_posterior
       site.1 = some (reference.recall owner, reference.observe (application setup leaks) owner) →
       (native.stateBelief owner site).map (fun state => state.bind fun control =>
         sourceServicePrefix? setup event.val control.execution.application.config) =
-        fiberConditional (((setup.informationModel admission).runBehavioral encoded
+        fiberPosterior (((setup.informationModel admission).runBehavioral encoded
             (event.val + 1)).map
           History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner
@@ -135,9 +137,9 @@ theorem sourceService_owner_bayes_posterior
       (executions.map ((application setup leaks).observe owner ∘ embed)).support := by
     rw [PMF.support_map]
     exact ⟨reference, referenceSupport, observeEmbed reference⟩
-  have transported := PMF.map_conditional_readout executions embed
+  have transported := map_fiberPosterior_readout executions embed
     ((application setup leaks).observe owner) (some (input reference)) present
-  have fiber := PMF.fiberConditional_eq_of_support_fiber executions
+  have fiber := fiberPosterior_eq_of_support_fiber executions
     ((application setup leaks).observe owner ∘ embed) input (some (input reference))
     (input reference) (by
       intro value _
@@ -215,7 +217,7 @@ theorem sourceService_owner_bayes_at_history
       control.execution ∈ executions.support ∧
       (native.stateBelief owner site).map (fun state => state.bind fun current =>
         sourceServicePrefix? setup event.val current.execution.application.config) =
-        fiberConditional (((setup.informationModel admission).runBehavioral encoded
+        fiberPosterior (((setup.informationModel admission).runBehavioral encoded
             (event.val + 1)).map
           History.state) (setup.protocolObserve owner)
             (setup.protocolObserve owner

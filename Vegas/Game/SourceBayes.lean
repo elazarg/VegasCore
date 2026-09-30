@@ -2,11 +2,15 @@
 
 import Vegas.Game.SourceInformation
 import Vegas.Game.SourceContinuation
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheory.Analysis.Protocol.BeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
-import GameTheoryExtensions.Math.Probability.ObservationRetraction
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Source assessment beliefs are actual conditional prefix laws
 
@@ -39,7 +43,7 @@ theorem stateBelief_eq_conditional_prefix
       (setup.informationModel admission) assessment (setup.decision_antichain admission))
     (who : Player) (site : (setup.informationModel admission).InformationSite who) :
     assessment.stateBelief who site =
-      fiberConditional (((setup.informationModel admission).runBehavioral assessment.strategy
+      fiberPosterior (((setup.informationModel admission).runBehavioral assessment.strategy
         (setup.decisionDepth who site.1)).map History.state)
           (setup.protocolObserve who) site.1 := by
   classical
@@ -68,46 +72,47 @@ theorem stateBelief_eq_conditional_prefix
     (setup.decision_antichain admission who site) positive meets
   rw [← belief] at conditioned
   have fiber : prefixLaw.filter {h | M.infoOf who h.trace = site.1} meets =
-      fiberConditional prefixLaw (setup.protocolObserve who ∘ History.state) site.1 := by
+      fiberPosterior prefixLaw (setup.protocolObserve who ∘ History.state) site.1 := by
     have same : {h : (setup.executionProtocol admission).History |
         M.infoOf who h.trace = site.1} =
-        (setup.protocolObserve who ∘ History.state) ⁻¹' {site.1} := by
+        {h | (setup.protocolObserve who ∘ History.state) h = site.1} := by
       ext h
       change M.infoOf who h.trace = site.1 ↔ setup.protocolObserve who h.state = site.1
       rw [show M.infoOf who h.trace = setup.protocolObserve who h.state from
         setup.protocol_info admission who h.trace]
-    rw [fiberConditional, dite_eq_left (same ▸ meets)]
+    rw [fiberPosterior_eq_filter _ _ (same ▸ meets)]
     congr 1
   calc
     assessment.stateBelief who site =
         ((assessment.belief who site).map Subtype.val).map History.state :=
       (PMF.map_comp _ _ _).symm
-    _ = (fiberConditional prefixLaw (setup.protocolObserve who ∘ History.state) site.1).map
+    _ = (fiberPosterior prefixLaw (setup.protocolObserve who ∘ History.state) site.1).map
         History.state := by rw [conditioned, fiber]
-    _ = _ := PMF.map_conditional_readout prefixLaw History.state
+    _ = _ := map_fiberPosterior_readout prefixLaw History.state
       (setup.protocolObserve who) site.1 present
 
 /-- Every whole-policy continuation in a Bayesian source assessment is exactly
 the existing source continuation kernel averaged under its conditional prefix
 law. The terminal typed store is retained, rather than only its expected utility. -/
-theorem continuationContext_law_conditional_prefix
+theorem truncatedContinuationContext_law_conditional_prefix
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed)
     (bayes : InformationModel.BehavioralAssessment.IsBayesConsistent
       (setup.informationModel admission) assessment (setup.decision_antichain admission))
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
     (alternative : (setup.informationModel admission).BehavioralPolicy who) :
-    ((assessment.continuationContext site (fun _ => 0)
+    ((assessment.truncatedContinuationContext site (fun _ => 0)
         (instructionCount setup.program + 1)).outcome alternative).map
         (fun final => setup.protocolReadout final.state) =
-      ((fiberConditional (((setup.informationModel admission).runBehavioral assessment.strategy
+      ((fiberPosterior (((setup.informationModel admission).runBehavioral assessment.strategy
           (setup.decisionDepth who site.1)).map History.state)
             (setup.protocolObserve who) site.1).bind
         (setup.continuationLaw (setup.decodeBehavioralProfile admission
           (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
             assessment.strategy who alternative)))).map some := by
   rw [← setup.stateBelief_eq_conditional_prefix admission assessment mixed bayes who site]
-  simp only [InformationModel.BehavioralAssessment.continuationContext,
+  simp only [InformationModel.BehavioralAssessment.truncatedContinuationContext,
+      InformationModel.BehavioralAssessment.continuationContextWith,
     InformationModel.BehavioralAssessment.stateBelief, Protocol.Context.ofBelief,
     PMF.map_bind, PMF.bind_map, Function.comp_def]
   apply bind_congr_on_support _
@@ -119,7 +124,7 @@ theorem continuationContext_law_conditional_prefix
 /-- The value version of the exact terminal-law identity, for arbitrary
 utilities of the complete terminal typed store. Finitely many legal histories
 make every utility integrable. -/
-theorem continuationContext_value_conditional_prefix
+theorem truncatedContinuationContext_value_conditional_prefix
     [Finite (setup.executionProtocol admission).History]
     (assessment : (setup.informationModel admission).BehavioralAssessment)
     (mixed : assessment.IsFullyMixed)
@@ -128,16 +133,16 @@ theorem continuationContext_value_conditional_prefix
     (who : Player) (site : (setup.informationModel admission).InformationSite who)
     (alternative : (setup.informationModel admission).BehavioralPolicy who)
     (utility : State L setup.program.terminalCtx → ℝ) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 utility)
         (instructionCount setup.program + 1)).value alternative =
-      expect (fiberConditional (((setup.informationModel admission).runBehavioral
+      expect (fiberPosterior (((setup.informationModel admission).runBehavioral
           assessment.strategy (setup.decisionDepth who site.1)).map History.state)
           (setup.protocolObserve who) site.1) (fun state =>
         expect (setup.continuationLaw (setup.decodeBehavioralProfile admission
           (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
             assessment.strategy who alternative)) state) utility) := by
-  rw [setup.continuationContext_value_stateBelief admission assessment who site alternative
+  rw [setup.truncatedContinuationContext_value_stateBelief admission assessment who site alternative
     utility _ (fun history => by
       have remaining := setup.protocol_history_length admission history.1.trace
       omega), setup.stateBelief_eq_conditional_prefix admission assessment mixed bayes]
@@ -156,7 +161,7 @@ theorem exists_uniform_prefix_gain_bound
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence source)
     (who : Player) (utility : State L setup.program.terminalCtx → ℝ)
     (rational : ∀ site : (setup.informationModel admission).InformationSite who,
-      source.IsSequentiallyRationalAt site (source.continuationContext site
+      source.IsSequentiallyRationalAt site (source.truncatedContinuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 utility)
         (instructionCount setup.program + 1))) :
     ∃ error : ℕ → ℝ, (∀ n, 0 ≤ error n) ∧ Filter.Tendsto error Filter.atTop (nhds 0) ∧
@@ -164,7 +169,7 @@ theorem exists_uniform_prefix_gain_bound
         (alternative : BehavioralPolicy who setup.program),
         alternative.Admitted setup.program admission →
         let profile := setup.decodeBehavioralProfile admission (sequence n).strategy
-        let posterior := fiberConditional (((setup.informationModel admission).runBehavioral
+        let posterior := fiberPosterior (((setup.informationModel admission).runBehavioral
           (sequence n).strategy (setup.decisionDepth who site.1)).map History.state)
             (setup.protocolObserve who) site.1
         expect posterior (fun state =>
@@ -200,9 +205,9 @@ theorem exists_uniform_prefix_gain_bound
     · simp only [decodeBehavioralProfile, Profile.update_of_ne _ _ same,
         Function.update_of_ne same]
   have estimate := bound n site encoded
-  rw [setup.continuationContext_value_conditional_prefix admission (sequence n) (mixed n)
+  rw [setup.truncatedContinuationContext_value_conditional_prefix admission (sequence n) (mixed n)
       (bayes n) who site encoded utility,
-    setup.continuationContext_value_conditional_prefix admission (sequence n) (mixed n)
+    setup.truncatedContinuationContext_value_conditional_prefix admission (sequence n) (mixed n)
       (bayes n) who site ((sequence n).strategy who) utility,
     Profile.update_eq_self, decoded] at estimate
   exact estimate

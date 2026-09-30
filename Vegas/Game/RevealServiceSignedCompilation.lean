@@ -50,7 +50,7 @@ theorem signed_audit_source_sequential_equilibrium_preserved
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 (fun state => utility state who))
         (instructionCount setup.program + 1))) :
     let extended := bounds.withInitialValues (initialLaw setup)
@@ -65,7 +65,7 @@ theorem signed_audit_source_sequential_equilibrium_preserved
       target.IsSequentialEquilibriumFor
         ((extended.rawMenu (runtime setup) leaks).decisionInformationAntichain
           (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher))
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun final => net final.state who) (2 * horizon setup watcher + 1)) ∧
       (model.runBehavioral target.strategy (2 * horizon setup watcher + 1)).bind
           (fun final => (settle final.state).map
@@ -91,7 +91,7 @@ theorem signed_audit_source_sequential_equilibrium_preserved
   have originalSE : retained.IsSequentialEquilibriumFor
       ((menu setup leaks extended watcher).decisionInformationAntichain (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher))
-      (fun who site => retained.continuationContext site
+      (fun who site => retained.truncatedContinuationContext site
         (fun final => appPayoff (final.state.map
           (fun control => control.execution.application)) who)
         (2 * horizon setup watcher + 1)) := by

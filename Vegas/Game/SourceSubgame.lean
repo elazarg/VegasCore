@@ -44,7 +44,7 @@ theorem protocol_continuationValue_eq (program : SourceProgram Player L Γ O)
     (utility : State L program.terminalCtx → Player → ℝ)
     (history : (executionProtocol program admission initial).History) (who : Player) :
     (executionProtocol program admission initial).historyBackwardValue
-        (protocol_terminates program admission initial)
+        (protocol_terminates program admission initial).wellFoundedHistories
         ((informationModel program admission initial).historyChooser
           (Profile.map (target := (informationModel program admission initial).strategicSignature)
             (fun who => purePolicyEquiv program admission initial who) profile))
@@ -53,7 +53,8 @@ theorem protocol_continuationValue_eq (program : SourceProgram Player L Γ O)
         (fun who => (profile who).1.toBehavioral program) history.state)
         (utility · who) := by
   rw [(informationModel program admission initial).historyBackwardValue_eq_expect_runFrom_of_bound
-    (protocol_terminates program admission initial) (protocol_bounded program admission initial)]
+    (protocol_terminates program admission initial).wellFoundedHistories
+    (protocol_bounded program admission initial)]
   have law := protocol_runFrom_eq program admission initial (fun who => (profile who).1)
     (fun who => (profile who).2) (instructionCount program) history
     (by have count := protocol_history_length program admission initial history.trace; omega)
@@ -72,7 +73,7 @@ theorem protocol_backwardLaw_integrable (program : SourceProgram Player L Γ O)
     (history : (executionProtocol program admission initial).History) (who : Player) :
     PayoffIntegrable
       ((executionProtocol program admission initial).historyBackwardLaw
-        (protocol_terminates program admission initial)
+        (protocol_terminates program admission initial).wellFoundedHistories
         ((informationModel program admission initial).historyChooser
           (Profile.map (target := (informationModel program admission initial).strategicSignature)
             (fun who => purePolicyEquiv program admission initial who) profile)) history)
@@ -105,7 +106,7 @@ theorem protocol_isSubgamePerfect_iff (program : SourceProgram Player L Γ O)
     (profile : Profile (admittedPureSignature program admission))
     (utility : State L program.terminalCtx → Player → ℝ) :
     (informationModel program admission initial).IsSubgamePerfect
-        (protocol_terminates program admission initial)
+        (protocol_terminates program admission initial).wellFoundedHistories
         (Profile.map (fun who => purePolicyEquiv program admission initial who) profile)
         (protocolUtility program admission initial utility) ↔
       ∀ history, (informationModel program admission initial).IsSubgameRoot history →

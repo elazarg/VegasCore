@@ -21,20 +21,23 @@ open GameTheory.Protocol.ExecutionProtocol
 theorem source_rational_of_opens (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain)
     (opens : Opens assessment.strategy) :
-    assessment.IsSequentiallyRationalWithin sourcePayoff 3 := by
+    assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (sourcePayoff who) 3 := by
   intro who site
   refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
   fin_cases who
-  · change (assessment.continuationContext site (sourcePayoff alice) 3).value alternative ≤
-      (assessment.continuationContext site (sourcePayoff alice) 3).value (assessment.strategy alice)
+  · change (assessment.truncatedContinuationContext site (sourcePayoff alice) 3).value alternative ≤
+      (assessment.truncatedContinuationContext site (sourcePayoff alice)
+          3).value (assessment.strategy alice)
     obtain ⟨bit, guess, rfl⟩ := source_alice_site site
     rw [source_alice_context, source_alice_context, Profile.update_eq_self,
       opens, expect_pure]
     refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun disclose _ => ?_
     cases disclose <;> split_ifs <;> norm_num at *
-  · change (assessment.continuationContext site (sourcePayoff bob) 3).value alternative ≤
-      (assessment.continuationContext site (sourcePayoff bob) 3).value (assessment.strategy bob)
+  · change (assessment.truncatedContinuationContext site (sourcePayoff bob) 3).value alternative ≤
+      (assessment.truncatedContinuationContext site (sourcePayoff bob)
+          3).value (assessment.strategy bob)
     rw [source_bob_site site, source_bob_context assessment consistent opens,
       source_bob_context assessment consistent opens]
   · exact (source_no_watcher_site site).elim
@@ -54,7 +57,8 @@ theorem opening_law_of_optimal (law : PMF Bool) (reward : ℝ) (nonnegative : 0 
   cases disclose <;> simp [absent, present]
 
 theorem source_rational_opens (assessment : sourceModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin sourcePayoff 3) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (sourcePayoff who) 3) :
     Opens assessment.strategy := by
   intro bit guess
   let replacement := (sourceProfile (PMF.pure false) (PMF.pure true)) alice
@@ -62,7 +66,8 @@ theorem source_rational_opens (assessment : sourceModel.BehavioralAssessment)
     fun _ _ => (payoffIntegrable_of_finite _ _)).mp
         (rational alice (sourceAliceSite bit guess)) replacement
       (Set.mem_univ _)
-  change (assessment.continuationContext (sourceAliceSite bit guess) (sourcePayoff alice) 3).value
+  change (assessment.truncatedContinuationContext (sourceAliceSite bit guess) (sourcePayoff alice)
+      3).value
     replacement ≤ _ at optimal
   rw [source_alice_context, source_alice_context, Profile.update_eq_self] at optimal
   have chosen : sourceDecisionLaw
@@ -77,7 +82,9 @@ theorem source_rational_opens (assessment : sourceModel.BehavioralAssessment)
 
 theorem source_rational_iff_opens (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain) :
-    assessment.IsSequentiallyRationalWithin sourcePayoff 3 ↔ Opens assessment.strategy :=
+    (assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (sourcePayoff
+            who) 3) ↔ Opens assessment.strategy :=
   ⟨source_rational_opens assessment, source_rational_of_opens assessment consistent⟩
 
 /-- Every Boolean guessing mixture has a source sequential equilibrium, in
@@ -86,7 +93,7 @@ theorem source_sequential_equilibrium (guess : PMF Bool) :
     ∃ assessment : sourceModel.BehavioralAssessment,
       assessment.strategy = sourceProfile guess (PMF.pure true) ∧
       assessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-        assessment.continuationContext site (sourcePayoff who) 3) := by
+        assessment.truncatedContinuationContext site (sourcePayoff who) 3) := by
   obtain ⟨assessment, strategy, consistent⟩ :=
     InformationModel.BehavioralAssessment.exists_consistent_completion
       (InformationModel.BehavioralAssessment.ofStrategy uniformSourceProfile)
@@ -139,7 +146,7 @@ The equality retains the entire terminal source state, including the initial
 commitments, public results, and the players' remembered actions. -/
 theorem source_equilibrium_states (assessment : sourceModel.BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      assessment.continuationContext site (sourcePayoff who) 3)) :
+      assessment.truncatedContinuationContext site (sourcePayoff who) 3)) :
     (sourceModel.runBehavioral assessment.strategy 3).map History.state =
       (PMF.uniformOfFintype Bool).bind fun bit =>
         (sourceDecisionLaw assessment.strategy bob sourceBobSite.1).map fun guess =>

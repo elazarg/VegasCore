@@ -4,7 +4,9 @@ import Interaction.ReactiveReplayPolicy
 import Interaction.ScheduledOpening
 import Vegas.Pending.ReactivePolicyMixture
 import Vegas.Pending.ReactivePolicy
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Coupling scheduled openings through a finite observation window
 
@@ -379,7 +381,7 @@ theorem openingWindow_posterior (runtime : EventGraphRuntime graph)
       ((runtime.runInteractionPlan leaks players network
         (roster.map ServiceInstruction.player) start).map transcript).map
           (fun output => (output, start))
-    (fiberConditional joint Prod.fst observed).map Prod.snd = initial := by
+    (fiberPosterior joint Prod.fst observed).map Prod.snd = initial := by
   dsimp only
   let app := runtime.reactiveApplication leaks
   let players := runtime.openingWindowPlayers leaks owner event candidate raw offset selected
@@ -406,10 +408,10 @@ theorem openingWindow_posterior (runtime : EventGraphRuntime graph)
       _ = _ := by
         simp only [bindPairLaw, ← PMF.bind_pure_comp, Function.comp_def]
         rw [PMF.bind_comm]
-  change ((fiberConditional (initial.bind fun start =>
+  change ((fiberPosterior (initial.bind fun start =>
     (kernel start).map fun output => (output, start)) Prod.fst observed).map
       Prod.snd) = initial
   rw [independent]
-  exact conditional_snd_bindPairLaw_const (kernel reference) initial observed
+  exact fiberPosterior_snd_bindPairLaw_const (kernel reference) initial observed
 
 end Vegas.EventGraphRuntime

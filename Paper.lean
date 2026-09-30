@@ -46,13 +46,13 @@ import Vegas.Examples.SelectiveAssociation.RestrictedEquilibrium
 import Vegas.Examples.SelectiveAssociation.RestrictedSeparation
 import Vegas.Examples.MonitoredGuessing.Compilation
 import Vegas.Game.ZeroSum
-import GameTheoryExtensions.Math.Probability.ConditionalComparison
+import GameTheory.Math.Probability.ConditionalComparison
 import GameTheoryExtensions.Analysis.ZeroSumRegularization
 import GameTheoryExtensions.Analysis.CorrelationPayoff
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.EnforcementLimits
-import GameTheoryExtensions.Analysis.Protocol.AgentCompletionLimit
-import GameTheoryExtensions.Analysis.Protocol.SequentialExistence
+import GameTheory.Analysis.Protocol.AgentCompletion
+import GameTheory.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.EnforcementSynthesis
 import Vegas.Examples.MonitoredGuessing.PayoffInference
@@ -64,6 +64,15 @@ import GameTheoryExtensions.Analysis.ObservableEnforcement
 import Interaction.MessageMonitoringProbability
 import Vegas.Pending.ReactiveConformance
 import GameTheory.Analysis.Protocol.Incentives
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Analysis.Protocol.BehavioralOneShot
+import GameTheoryExtensions.Analysis.Protocol.LocalDeviation
+import GameTheoryExtensions.Analysis.Protocol.OneShotLimit
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Tremble
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Paper theorem audit
 
@@ -832,11 +841,11 @@ theorem terminal_sequential_observation_classification {State Signal Fact : Type
     (∀ utility : Fact → Fact → ℝ,
       ∀ source : (model (Action := Fact) prior observe).BehavioralAssessment,
         source.IsSequentialEquilibriumFor (antichain prior observe)
-          (fun _ site => source.continuationContext site
+          (fun _ site => source.truncatedContinuationContext site
             (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
         ∃ target : (model (Action := Fact) prior id).BehavioralAssessment,
           target.IsSequentialEquilibriumFor (antichain prior id)
-            (fun _ site => target.continuationContext site
+            (fun _ site => target.truncatedContinuationContext site
               (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
           observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       DecisionExperiment.Determines prior observe fact :=
@@ -859,11 +868,11 @@ theorem terminal_fixed_payoff_sequential_classification {State Signal Fact Actio
     (utility : Fact → Action → ℝ) :
     (∀ source : (model (Action := Action) prior observe).BehavioralAssessment,
       source.IsSequentialEquilibriumFor (antichain prior observe)
-        (fun _ site => source.continuationContext site
+        (fun _ site => source.truncatedContinuationContext site
           (fun history => payoff (fun state => utility (fact state)) history.state) 2) →
       ∃ target : (model (Action := Action) prior id).BehavioralAssessment,
         target.IsSequentialEquilibriumFor (antichain prior id)
-          (fun _ site => target.continuationContext site
+          (fun _ site => target.truncatedContinuationContext site
             (fun history => payoff (fun state => utility (fact state)) history.state) 2) ∧
         observedLaw prior id fact target = observedLaw prior observe fact source) ↔
       DecisionExperiment.HasCommonMaximizer prior observe (fun state => utility (fact state)) :=
@@ -887,12 +896,13 @@ theorem declared_payoff_sequential_separation (Claim : Type) [Fintype Claim]
       source.IsSequentialEquilibriumFor
         ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
-        (fun who site => source.continuationContext site (NamedSource.payoff who)
+        (fun who site => source.truncatedContinuationContext site (NamedSource.payoff who)
           (2 * NamedSource.horizon + 1)) ∧
       expect (sourcePayoutLaw source.strategy) id = 0 ∧
       ∀ target : nativeModel.BehavioralAssessment,
-        target.IsSequentiallyRationalWithin
-          (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1) →
+        (target.IsSequentiallyRationalFor fun who site =>
+            target.truncatedContinuationContext site (fun history => nativeUtility who
+                history.state) (2 * nativeHorizon + 1)) →
         sourcePayoutLaw source.strategy ≠ nativePayoutLaw target.strategy :=
   exists_source_equilibrium_no_native_payout_match Claim defaultClaim
 
@@ -931,7 +941,7 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
     (source : service.sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       (service.setup.decision_antichain (CommitmentInterface.values service.setup.program))
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         (instructionCount service.setup.program + 1))) :
@@ -951,7 +961,7 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
       target.IsSequentialEquilibriumFor
         (raw.decisionInformationAntichain (initialLaw service.setup) service.planLength
           service.scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => payoff history.state who) service.fuel) ∧
       (∀ final ∈ ((raw.information (initialLaw service.setup) service.planLength
           service.scheduler).runBehavioral target.strategy service.fuel).support, ∀ who,
@@ -1012,7 +1022,8 @@ existing native runtime and constrain observation-respecting abstractions.
 The restricted native equilibrium is a separate, open proof obligation.
 -/
 
-/-- info: 'Interaction.ReactiveApplication.PacketEvidence.foreign_known_published' depends on axioms:
+/-- info: 'Interaction.ReactiveApplication.PacketEvidence.foreign_known_published' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Interaction.ReactiveApplication.PacketEvidence.foreign_known_published
@@ -1022,7 +1033,9 @@ The restricted native equilibrium is a separate, open proof obligation.
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.foreign_certificate_published
 
-/-- info: 'GameTheory.Protocol.InformationModel.ContinuationDecision.observation_fiber_has_common_maximizer' depends on axioms:
+/-- info:
+'GameTheory.Protocol.InformationModel.ContinuationDecision.observation_fiber_has_common_maximizer'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
@@ -1033,12 +1046,14 @@ The restricted native equilibrium is a separate, open proof obligation.
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.five_rounds
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.association_input_hidden' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.association_input_hidden' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.association_input_hidden
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.first_response_guess_bound' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.first_response_guess_bound' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.first_response_guess_bound
@@ -1048,27 +1063,33 @@ The restricted native equilibrium is a separate, open proof obligation.
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.binding_success
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.profile_opening_rational' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.profile_opening_rational' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.profile_opening_rational
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.CandidateFlip.uniform_prob_of_known_ids' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.CandidateFlip.uniform_prob_of_known_ids'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.CandidateFlip.uniform_prob_of_known_ids
 
-/-- info: 'Vegas.Examples.ReactiveReadinessRestrictions.disclosure_with_ready_commitment_calls' depends on axioms:
+/-- info: 'Vegas.Examples.ReactiveReadinessRestrictions.disclosure_with_ready_commitment_calls'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.ReactiveReadinessRestrictions.disclosure_with_ready_commitment_calls
 
-/-- info: 'Vegas.Examples.ReactiveReadinessRestrictions.empty_pool_cleanup_preserves_asymmetry' depends on axioms:
+/-- info: 'Vegas.Examples.ReactiveReadinessRestrictions.empty_pool_cleanup_preserves_asymmetry'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.ReactiveReadinessRestrictions.empty_pool_cleanup_preserves_asymmetry
 
-/-- info: 'GameTheory.Protocol.InformationModel.ContinuationDecision.rationalAt_of_omitted_dominated' depends on axioms:
+/-- info:
+'GameTheory.Protocol.InformationModel.ContinuationDecision.rationalAt_of_omitted_dominated' depends
+on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
@@ -1084,13 +1105,15 @@ axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Math.Probability.PMFConvergesPointwise.toOuterMeasure_toReal_le
 
-/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.continuationContext_value_eq_expect_commit' depends on axioms:
+/-- info:
+'GameTheory.Protocol.InformationModel.BehavioralAssessment.truncatedContinuationContext_value_eq_expect_commit' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
-#print axioms BehavioralAssessment.continuationContext_value_eq_expect_commit
+#print axioms BehavioralAssessment.truncatedContinuationContext_value_eq_expect_commit
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.profile_guesser_rational' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.profile_guesser_rational' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.profile_guesser_rational
@@ -1105,7 +1128,9 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.initialized_payoff_law
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.exists_consistent_guess_assessment_of_tremble' depends on axioms:
+/-- info:
+'Vegas.Examples.SelectiveAssociation.Restricted.exists_consistent_guess_assessment_of_tremble'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms
@@ -1116,18 +1141,22 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.alice_early_rational
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.prescribed_sequentiallyRational' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.prescribed_sequentiallyRational' depends
+on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Examples.SelectiveAssociation.Restricted.prescribed_sequentiallyRational
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.exists_sequentialEquilibrium' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.exists_sequentialEquilibrium' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.SelectiveAssociation.Restricted in
 #print axioms exists_sequentialEquilibrium
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.exists_equilibrium_no_native_payout_match' depends on axioms:
+/-- info:
+'Vegas.Examples.SelectiveAssociation.Restricted.exists_equilibrium_no_native_payout_match' depends
+on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.SelectiveAssociation.Restricted in
@@ -1138,7 +1167,8 @@ axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.IsCoarseCorrelatedEq.extendedExpectedUtility_eq_of_zeroSum
 
-/-- info: 'Vegas.SourceProgram.Setup.valueBindingParameterPendingGame_coarseCorrelated_value' depends on axioms:
+/-- info: 'Vegas.SourceProgram.Setup.valueBindingParameterPendingGame_coarseCorrelated_value'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.SourceProgram.Setup in
@@ -1159,7 +1189,8 @@ open Vegas.SourceProgram.Setup in
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.IncentiveComparison.regret_le_norm_comparison_residual
 
-/-- info: 'GameTheory.Protocol.InformationModel.sequentialEquilibrium_preservation_iff_coneWithin' depends on axioms:
+/-- info: 'GameTheory.Protocol.InformationModel.sequentialEquilibrium_preservation_iff_coneWithin'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
@@ -1200,27 +1231,33 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.EventGraphRuntime.reactive_decision_submission_permitted
 
-/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_implemented' depends on axioms:
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_implemented' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_implemented
 
-/-- info: 'GameTheory.Protocol.DisclosureEnforcement.every_source_equilibrium_enforceable' depends on axioms:
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.every_source_equilibrium_enforceable' depends
+on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.DisclosureEnforcement.every_source_equilibrium_enforceable
 
-/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_of_range' depends on axioms:
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_of_range' depends
+on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_of_range
 
-/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_constant_sum' depends on axioms:
+/-- info: 'GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_constant_sum'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms GameTheory.Protocol.DisclosureEnforcement.source_equilibrium_preserved_constant_sum
 
-/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.isSequentiallyRationalAt_of_sanction' depends on axioms:
+/-- info:
+'GameTheory.Protocol.InformationModel.BehavioralAssessment.isSequentiallyRationalAt_of_sanction'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel.BehavioralAssessment in
@@ -1250,35 +1287,39 @@ open Vegas.Examples.MonitoredGuessing in
 open GameTheory.Enforcement in
 #print axioms exists_uniform_sanction_iff
 
-/-- info: 'GameTheory.Protocol.InformationModel.exists_consistent_free_agent_completion' depends on axioms:
+/-- info: 'GameTheory.Protocol.InformationModel.exists_consistent_free_agent_completion' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
 #print axioms exists_consistent_free_agent_completion
 
-/-- info: 'GameTheory.Protocol.InformationModel.exists_sequential_equilibrium' depends on axioms:
+/-- info: 'GameTheory.Protocol.InformationModel.exists_sequentialEquilibrium' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
-#print axioms exists_sequential_equilibrium
+#print axioms exists_sequentialEquilibrium
 
-/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends' depends on axioms:
+/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends'
+depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel.ActionRestriction in
 #print axioms sequential_equilibrium_extends
 
-/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends_of_comparator' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheory.Protocol.InformationModel.ActionRestriction in
-#print axioms sequential_equilibrium_extends_of_comparator
-
-/-- info: 'GameTheory.Protocol.InformationModel.ActionRestriction.sequential_equilibrium_extends_of_continuation'
+/-- info:
+'GameTheory.Protocol.InformationModel.ActionRestriction.sequentialEquilibrium_extends_of_comparator'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel.ActionRestriction in
-#print axioms sequential_equilibrium_extends_of_continuation
+#print axioms sequentialEquilibrium_extends_of_comparator
+
+/-- info:
+'GameTheory.Protocol.InformationModel.ActionRestriction.sequentialEquilibrium_extends_of_continuation'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.ActionRestriction in
+#print axioms sequentialEquilibrium_extends_of_continuation
 
 /-- info: 'GameTheory.Enforcement.inferred_deposit_minimal' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -1298,31 +1339,36 @@ open Vegas.Examples.MonitoredGuessing in
 open Vegas.Examples.MonitoredGuessing in
 #print axioms native_initialized_table_payoffs
 
-/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.watcher_raw_equilibrium_extends' depends on axioms:
+/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.watcher_raw_equilibrium_extends' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.MonitoredGuessing.Restricted in
 #print axioms watcher_raw_equilibrium_extends
 
-/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.final_comparator_declared_payoff_le' depends on axioms:
+/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.final_comparator_declared_payoff_le' depends
+on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.MonitoredGuessing.Restricted in
 #print axioms final_comparator_declared_payoff_le
 
-/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.source_equilibrium_compiles' depends on axioms:
+/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.source_equilibrium_compiles' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.MonitoredGuessing.Restricted in
 #print axioms source_equilibrium_compiles
 
-/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.restricted_raw_equilibrium_extends' depends on axioms:
+/-- info: 'Vegas.Examples.MonitoredGuessing.Restricted.restricted_raw_equilibrium_extends' depends
+on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.MonitoredGuessing.Restricted in
 #print axioms restricted_raw_equilibrium_extends
 
-/-- info: 'Vegas.Examples.MonitoredGuessing.declared_sequential_equilibrium_preserved' depends on axioms:
+/-- info: 'Vegas.Examples.MonitoredGuessing.declared_sequential_equilibrium_preserved' depends on
+axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.MonitoredGuessing in

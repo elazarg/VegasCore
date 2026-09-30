@@ -198,7 +198,7 @@ theorem native_supported_opening_succeeds
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
     (rational : assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site (fun history => nativeUtility who history.state)
+      (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
         (2 * nativeHorizon + 1)))
     (choice : nativeModel.Choice who site.1)
     (chosen : choice ∈ (assessment.strategy who site.1).support)
@@ -245,7 +245,7 @@ theorem native_sequentially_rational_opening_succeeds
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
     (rational : assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site (fun history => nativeUtility who history.state)
+      (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
         (2 * nativeHorizon + 1)))
     (history : nativeModel.InformationHistory who site.1) (final : nativeArena.History)
     (supported : final ∈ (nativeModel.runBehavioralFrom assessment.strategy
@@ -314,7 +314,7 @@ theorem native_sequentially_rational_opening_exact
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
     (rational : assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site (fun history => nativeUtility who history.state)
+      (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
         (2 * nativeHorizon + 1)))
     (history : nativeModel.InformationHistory who site.1) (final : nativeArena.History)
     (supported : final ∈ (nativeModel.runBehavioralFrom assessment.strategy

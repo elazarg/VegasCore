@@ -110,10 +110,10 @@ theorem initial_alice_site_dominates (deposit : ℝ) (sufficient : 2 ≤ deposit
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (atQuiet : assessment.strategy bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1)
     (bit : Bool) (alternative : nativeModel.BehavioralPolicy alice) :
-    (assessment.continuationContext (initialAliceSite bit)
+    (assessment.truncatedContinuationContext (initialAliceSite bit)
       (fun history => nativeUtility deposit alice history.state)
         (2 * nativeHorizon + 1)).value alternative ≤
-    (assessment.continuationContext (initialAliceSite bit)
+    (assessment.truncatedContinuationContext (initialAliceSite bit)
       (fun history => nativeUtility deposit alice history.state)
         (2 * nativeHorizon + 1)).value (assessment.strategy alice) := by
   let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler

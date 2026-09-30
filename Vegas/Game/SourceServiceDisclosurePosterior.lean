@@ -1,9 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceDisclosure
-import GameTheoryExtensions.Math.Probability.ConditionalNoise
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Private intentions behind a failed native disclosure
 
@@ -68,7 +70,7 @@ owner's private failed intention is justified by this response. -/
 theorem failed_disclosure_response_posterior
     (failure : disclosureResult published binding source true = .failure)
     (intentions : PMF Bool) :
-    fiberConditional intentions (fun intention =>
+    fiberPosterior intentions (fun intention =>
       (runtime setup).serviceDecision leaks owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) ⟨none⟩ =
@@ -86,7 +88,7 @@ theorem failed_disclosure_response_posterior
   have present : ∃ intention ∈ (fun _ : Bool => (⟨none⟩ : (application setup leaks).Action)) ⁻¹'
       {⟨none⟩}, intention ∈ intentions.support :=
     ⟨intention, rfl, supported⟩
-  rw [fiberConditional, dite_eq_left present]
+  rw [fiberPosterior_eq_filter_preimage _ _ present]
   exact filter_of_support_subset _ _ _ fun _ _ => rfl
 
 /-- Conditioning the original successor on the actual failed native response
@@ -95,7 +97,7 @@ its private-history posterior restores the original successor exactly. -/
 theorem failed_disclosure_successor_posterior
     (failure : disclosureResult published binding source true = .failure)
     (intentions : PMF Bool) :
-    ((fiberConditional intentions (fun intention =>
+    ((fiberPosterior intentions (fun intention =>
       (runtime setup).serviceDecision leaks owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) intention)) ⟨none⟩).map

@@ -172,7 +172,7 @@ theorem nativeUtility_continuation_integrable
     (assessment : (serviceModel observation).BehavioralAssessment) {who : Player}
     (site : (serviceModel observation).InformationSite who) (fuel : Nat)
     (policy : (serviceModel observation).BehavioralPolicy who) :
-    (assessment.continuationContext site (fun history => nativeUtility who history.state)
+    (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
       fuel).IntegrableAt policy := by
   have summarized : (fun history : (serviceArena observation).History =>
       nativeUtility (observation := observation) who history.state) = fun history =>

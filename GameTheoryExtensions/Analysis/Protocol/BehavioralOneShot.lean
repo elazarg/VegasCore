@@ -37,14 +37,14 @@ theorem whole_policy_gain_le_of_local_gains
     (horizon : Nat) (payoff : E.History → ℝ) (epsilon : ℝ) (nonnegative : 0 ≤ epsilon)
     (localBound : ∀ (site : M.InformationSite who) (depth : Nat),
       InformationSite.CommonDepth M site depth → depth < horizon →
-      (assessment.continuationContext site payoff (horizon - depth)).value
+      (assessment.truncatedContinuationContext site payoff (horizon - depth)).value
           ((assessment.strategy who).withLaw site.1 (alternative site.1)) -
-        (assessment.continuationContext site payoff (horizon - depth)).value
+        (assessment.truncatedContinuationContext site payoff (horizon - depth)).value
           (assessment.strategy who) ≤ epsilon)
     (site : M.InformationSite who) (depth : Nat)
     (sameDepth : InformationSite.CommonDepth M site depth) (within : depth ≤ horizon) :
-    (assessment.continuationContext site payoff (horizon - depth)).value alternative -
-      (assessment.continuationContext site payoff (horizon - depth)).value
+    (assessment.truncatedContinuationContext site payoff (horizon - depth)).value alternative -
+      (assessment.truncatedContinuationContext site payoff (horizon - depth)).value
         (assessment.strategy who) ≤ (horizon - depth : Nat) * epsilon := by
   classical
   let switched := (assessment.strategy who).switchAt M alternative site

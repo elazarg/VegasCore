@@ -110,7 +110,7 @@ theorem owner_context_local_value
     (joint : Bool → Player → Option (OwnAction Player L))
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose who) = disclose)
     (utility : State L setup.program.terminalCtx → ℝ) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * horizon setup watcher + 1 - (blockOffset event.val + 2 * event.val + 3))).value
         ((assessment.strategy who).withLaw site.1 law) =
@@ -125,7 +125,8 @@ theorem owner_context_local_value
   let model := information setup leaks extended watcher
   let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite,
     expect_map]
   apply expect_congr_on_support
   intro history _supported

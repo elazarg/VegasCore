@@ -259,13 +259,13 @@ theorem profile_opening_rational (assessment : model.BehavioralAssessment)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
     (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who)) :
-    assessment.IsSequentiallyRationalAt site (assessment.continuationContext site
+    assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site
       (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   refine (Context.isLocallyOptimal_iff_of_integrable
     (nativeUtility_continuation_integrable assessment site _ _)
       fun _ _ => nativeUtility_continuation_integrable assessment site _ _).mpr
         fun alternative _ => ?_
-  simp only [InformationModel.BehavioralAssessment.continuationContext_value,
+  simp only [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     expect_bind_of_finite, strategy, Profile.update_eq_self]
   refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
     (payoffIntegrable_of_finite _ _)

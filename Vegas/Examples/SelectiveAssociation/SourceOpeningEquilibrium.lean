@@ -92,9 +92,9 @@ theorem opening_sequentiallyRational (Claim : Type) [Fintype Claim] (defaultClai
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (observed : site.1 = some (past, view)) (granted : view.application.visit = some event)
     (alternative : (model Claim).BehavioralPolicy (eventOwner event)) :
-    (assessment.continuationContext site (payoff (eventOwner event))
+    (assessment.truncatedContinuationContext site (payoff (eventOwner event))
       (2 * horizon + 1)).value alternative ≤
-        (assessment.continuationContext site (payoff (eventOwner event))
+        (assessment.truncatedContinuationContext site (payoff (eventOwner event))
           (2 * horizon + 1)).value (assessment.strategy (eventOwner event)) := by
   rw [prescribed_context_value_finish Claim defaultClaim assessment strategy,
     prescribed_context_baseline Claim defaultClaim assessment strategy]

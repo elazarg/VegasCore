@@ -49,7 +49,7 @@ theorem roster_audited_source_sequential_equilibrium_preserved
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 (fun state => utility state who))
         (instructionCount setup.program + 1))) :
     let extended := bounds.withInitialValues (initialLaw setup)
@@ -67,7 +67,7 @@ theorem roster_audited_source_sequential_equilibrium_preserved
       target.IsSequentialEquilibriumFor
         ((extended.rawMenu (runtime setup) leaks).decisionInformationAntichain
           (initialLaw setup) horizon scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun final => net final.state who) (2 * horizon + 1)) ∧
       (model.runBehavioral target.strategy (2 * horizon + 1)).bind
           (fun final => (settle final.state).map

@@ -97,8 +97,9 @@ theorem native_alice_deviation_opening
   exact (PMF.mem_support_pure_iff _ _).mp mapped ▸ published
 
 theorem native_deviation_bob_binding (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (bit : Bool) (execution final : nativeApp.Execution)
     (global : execution ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
@@ -129,8 +130,9 @@ theorem native_deviation_bob_binding (assessment : nativeModel.BehavioralAssessm
   exact chosen
 
 theorem native_deviation_bob_opening (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (bit : Bool) (execution final : nativeApp.Execution)
     (global : execution ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)

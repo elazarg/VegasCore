@@ -1,9 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DisclosureNormalization
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Behavioral realization of normalized disclosure intentions
 
@@ -55,10 +57,10 @@ theorem bindingMemoryLaw_disintegrate {Result : Type} (name : VarId) (payload : 
     ((remember view).bind fun past => (choose (view.1, past)).bind fun binding =>
       next binding (past ++ [.commit who name payload binding])) =
       ((bindingMemoryLaw name payload remember choose view).map Prod.fst).bind fun binding =>
-        ((fiberConditional (bindingMemoryLaw name payload remember choose view) Prod.fst
+        ((fiberPosterior (bindingMemoryLaw name payload remember choose view) Prod.fst
           binding).map Prod.snd).bind (next binding) := by
   have disintegration := congrArg (PMF.bind · (fun pair => next pair.1 pair.2))
-    (eq_bind_fst_conditional_snd (bindingMemoryLaw name payload remember choose view))
+    (eq_bind_fst_fiberPosterior_snd (bindingMemoryLaw name payload remember choose view))
   simpa only [bindingMemoryLaw, PMF.bind_bind, PMF.bind_map, Function.comp_def] using
     disintegration
 
@@ -74,10 +76,10 @@ theorem disclosureMemoryLaw_disintegrate {Result : Type} {name : VarId} {payload
         (past ++ [.reveal who name disclose])) =
       ((disclosureMemoryLaw published selected registry revelations remember choose view).map
         Prod.fst).bind fun disclose =>
-          ((fiberConditional (disclosureMemoryLaw published selected registry revelations remember
+          ((fiberPosterior (disclosureMemoryLaw published selected registry revelations remember
               choose view) Prod.fst disclose).map Prod.snd).bind (next disclose) := by
   have disintegration := congrArg (PMF.bind · (fun pair => next pair.1 pair.2))
-    (eq_bind_fst_conditional_snd (disclosureMemoryLaw published selected registry revelations
+    (eq_bind_fst_fiberPosterior_snd (disclosureMemoryLaw published selected registry revelations
       remember choose view))
   simpa only [disclosureMemoryLaw, PMF.bind_bind, PMF.bind_map, Function.comp_def] using
     disintegration
@@ -102,7 +104,7 @@ def BehavioralPolicy.normalizeDisclosureFrom {who : Player} :
           (({ owner := owner, subject := name, payload := payload, source := .here,
               guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
           (fun view => if own : owner = who then
-            (fiberConditional (joint own (view.back true)) Prod.fst
+            (fiberPosterior (joint own (view.back true)) Prod.fst
               ((view.1.cells.get .here).getD .failure)).map Prod.snd
           else remember (view.back false)) policy.2)
   | _, _, .reveal published owner _ _ selected _ next,
@@ -114,7 +116,7 @@ def BehavioralPolicy.normalizeDisclosureFrom {who : Player} :
         normalizeDisclosureFrom next registry.weaken
           (revelations.reveal (published := published) selected)
           (fun view => if own : owner = who then
-            (fiberConditional (joint own (view.back true)) Prod.fst
+            (fiberPosterior (joint own (view.back true)) Prod.fst
               (OwnAction.disclosure view.2.getLast?)).map Prod.snd
           else remember (view.back false)) policy.2)
 
@@ -189,7 +191,7 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
       (({ owner := owner, subject := name, payload := payload, source := .here,
           guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
       (fun nextView => if own : owner = owner then
-        (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+        (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
             (nextView.back true)) Prod.fst
           ((nextView.1.cells.get .here).getD .failure)).map Prod.snd
       else remember (nextView.back false))
@@ -207,7 +209,7 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
       (({ owner := owner, subject := name, payload := payload, source := .here,
           guard := guard.weaken } : Obligation _) :: registry.weaken) revelations.weaken
       (fun nextView => if own : owner = who then
-        (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+        (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
             (nextView.back true)) Prod.fst
           ((nextView.1.cells.get .here).getD .failure)).map Prod.snd
       else remember (nextView.back false))
@@ -272,7 +274,7 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
     have step := ih (afterReveal profile) policy.2
       registry.weaken (revelations.reveal (published := published) selected)
       (fun nextView => if own : owner = owner then
-        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations
+        (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) registry revelations
             remember (policy.1 own) (nextView.back true)) Prod.fst
           (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
       else remember (nextView.back false))
@@ -290,7 +292,7 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
     have step := ih (afterReveal profile) policy.2
       registry.weaken (revelations.reveal (published := published) selected)
       (fun nextView => if own : owner = who then
-        (fiberConditional (disclosureMemoryLaw published (own ▸ selected) registry revelations
+        (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) registry revelations
             remember (policy.1 own) (nextView.back true)) Prod.fst
           (OwnAction.disclosure nextView.2.getLast?)).map Prod.snd
       else remember (nextView.back false))

@@ -43,8 +43,9 @@ open Classical in
 any amount of fuel reaching termination suffices. -/
 theorem native_opening_exact_from_control
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (who : Player) (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some who)
     (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))

@@ -98,7 +98,7 @@ theorem alice_context_value (table : PayoffTable)
     (site : restrictedModel.InformationSite alice) (bit guess : Bool)
     (siteEq : site.1 = aliceInput bit guess)
     (alternative : restrictedModel.BehavioralPolicy alice) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun history => Enforcement.stateUtility table history.state alice)
         (2 * nativeHorizon + 1)).value alternative =
       expect (targetDisclosures (Profile.update assessment.strategy alice alternative) bit guess)
@@ -116,7 +116,7 @@ theorem receiver_context_value (table : PayoffTable)
       restricted_decisionRecall.decisionInformationAntichain)
     (site : restrictedModel.InformationSite bob)
     (alternative : restrictedModel.BehavioralPolicy bob) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun history => Enforcement.stateUtility table history.state bob)
         (2 * nativeHorizon + 1)).value alternative =
       expect (PMF.uniformOfFintype Bool) fun bit =>

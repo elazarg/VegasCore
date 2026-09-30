@@ -95,7 +95,7 @@ theorem roster_owner_context_value
       (past.length - rosterOffset setup rosters who event + 1)
     let opens := (law.toOuterMeasure {choice | choice.1.getD ⟨none⟩ =
       (runtime setup).windowOpening leaks event candidate raw}).toReal
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * (rosterPlan setup rosters).length + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
@@ -109,7 +109,7 @@ theorem roster_owner_context_value
   let valueAt := fun state disclose =>
     expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
       (setup.decodeBehavioralProfile admission source.strategy))) utility
-  have averaged : (assessment.continuationContext site
+  have averaged : (assessment.truncatedContinuationContext site
       (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
       (2 * (rosterPlan setup rosters).length + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
@@ -120,7 +120,8 @@ theorem roster_owner_context_value
           if choice.1.getD ⟨none⟩ = (runtime setup).windowOpening leaks event candidate raw
           then valueAt decoded true
           else residual * valueAt decoded true + (1 - residual) * valueAt decoded false)) := by
-    rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
+    rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+        expect_bind_of_finite]
     apply expect_congr_on_support
     intro history _supported
     have active := InformationModel.InformationSite.active model site history

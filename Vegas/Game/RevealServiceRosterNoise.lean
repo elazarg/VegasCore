@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceRosterCoupling
-import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Conditional independence through one actual roster phase
 
@@ -96,7 +99,7 @@ theorem roster_successor_observation_kernel
       ((prior.map source).bind fun config =>
         (choice config).map (revealSuccessor published binding config)).bind fun config =>
           (nextNoise (config.view focal)).map fun extra => (config, extra) := by
-  apply PMF.exists_updated_observation_kernel_of_readout prior source
+  apply exists_updated_observation_kernel_of_readout prior source
     (fun seed => ((application setup leaks).messageView (execution seed),
       (execution seed).recall focal)) (fun config => config.view focal) noise factor choice
         (revealSuccessor published binding) (fun config => config.view focal)

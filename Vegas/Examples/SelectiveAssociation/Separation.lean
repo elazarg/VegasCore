@@ -52,8 +52,9 @@ theorem native_rational_public_law_ne_source (Claim : Type) [Fintype Claim] (def
     (source : (NamedSource.model Claim).BehavioralAssessment)
     (sourceStrategy : source.strategy = NamedSource.profile Claim defaultClaim)
     (target : nativeModel.BehavioralAssessment)
-    (rational : target.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)) :
+    (rational : target.IsSequentiallyRationalFor fun who site =>
+        target.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1)) :
     (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
         (fun history => nativePublicResult history.state) ≠
       ((NamedSource.model Claim).runBehavioral source.strategy (2 * NamedSource.horizon + 1)).map
@@ -99,13 +100,13 @@ theorem exists_source_equilibrium_no_native_outcome_match (Claim : Type) [Fintyp
       source.IsSequentialEquilibriumFor
         ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
-        (fun who site => source.continuationContext site (NamedSource.payoff who)
+        (fun who site => source.truncatedContinuationContext site (NamedSource.payoff who)
           (2 * NamedSource.horizon + 1)) ∧
       ∀ target : nativeModel.BehavioralAssessment,
         target.IsSequentialEquilibriumFor
           (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial)
             nativeHorizon nativeScheduler)
-          (fun who site => target.continuationContext site
+          (fun who site => target.truncatedContinuationContext site
             (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) →
         (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
             (fun history => nativePublicResult history.state) ≠

@@ -27,11 +27,12 @@ alone do not discharge multiplayer runtime obligations.
 - The [incentive-cone criterion](../GameTheory/GameTheory/Analysis/Protocol/Incentives.lean)
   and [SE criterion](../GameTheoryExtensions/Analysis/Protocol/Sequential.lean)
   characterize utility-uniform preservation between supplied assessments.
-- [Continuation simulation](../GameTheoryExtensions/Protocol/ContinuationSimulation.lean)
+- An upstream [incentive simulation](../GameTheory/GameTheory/Analysis/IncentiveSimulation.lean)
   is a compositional sufficient certificate matching prescribed and deviating
-  outcome laws with the same finite mixture of source comparisons. It works
-  without finite outcomes; target consistency and initialized-law equality are
-  separate obligations. The [private alias theorem](../Interaction/ReactiveAliasEquilibrium.lean)
+  outcome laws with the same mixture of source comparisons. It works without
+  finite outcomes for every utility integrable against the laws involved; a
+  finitely supported mixture supplies that integrability. Target consistency
+  and initialized-law equality are separate obligations. The [private alias theorem](../Interaction/ReactiveAliasEquilibrium.lean)
   supplies an operational positive instance of erasing private response names.
 - [Observation abstraction](../GameTheoryExtensions/Analysis/ObservationAbstraction.lean)
   classifies a terminal single-player experiment against full state information:

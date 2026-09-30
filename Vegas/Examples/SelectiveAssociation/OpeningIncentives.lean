@@ -104,7 +104,7 @@ theorem native_not_supported_failing_opening
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
     (rational : assessment.IsSequentiallyRationalAt site
-      (assessment.continuationContext site (fun history => nativeUtility who history.state)
+      (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
         (2 * nativeHorizon + 1)))
     (choice : nativeModel.Choice who site.1)
     (fails : ∀ history : nativeModel.InformationHistory who site.1,
@@ -120,13 +120,15 @@ theorem native_not_supported_failing_opening
   let alternative := (assessment.strategy who).commit (some (past, view))
     (nativeOpeningChoice who past view)
   apply assessment.not_supported_choice_of_uniform_gap
-    (nativeModel.actsOnceWhereItMatters_of_actsOnce
-      (InformationModel.actsOnce_of_decisionInformationAntichain
-        (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon
-          nativeScheduler))) site
-    (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
-      nativeScheduler who site)
-    (fun history => nativeUtility who history.state) (2 * nativeHorizon) rational
+    (nativeModel.truncatedRunner (2 * nativeHorizon + 1)) site
+    (nativeModel.runnerFactorsAt_truncated
+      (nativeModel.actsOnceWhereItMatters_of_actsOnce
+        (InformationModel.actsOnce_of_decisionInformationAntichain
+          (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial) nativeHorizon
+            nativeScheduler)))
+      (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
+        nativeScheduler who site) (2 * nativeHorizon))
+    (fun history => nativeUtility who history.state) rational
     (fun _ => (payoffIntegrable_of_finite _ _)) choice
     alternative (-4) (-1) (by norm_num)
   · intro history

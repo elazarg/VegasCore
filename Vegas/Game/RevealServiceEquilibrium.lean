@@ -3,7 +3,7 @@
 import Vegas.Game.RevealServiceConsistency
 import Vegas.Game.RevealServiceOwnerIncentives
 import Vegas.Game.RevealServiceLaw
-import GameTheoryExtensions.Analysis.Protocol.SequentialOneShot
+import GameTheory.Analysis.Protocol.SequentialOneShot
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Sequential equilibrium compilation for revelation sequences
@@ -72,7 +72,7 @@ theorem source_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [leaks.
     (utility : State L setup.program.terminalCtx → Player → ℝ)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun final => (setup.protocolReadout final.state).elim 0 (fun state => utility state who))
         (instructionCount setup.program + 1))) :
     let extended := bounds.withInitialValues (initialLaw setup)
@@ -84,7 +84,7 @@ theorem source_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [leaks.
       target.strategy = compiledProfile setup leaks extended watcher
         (setup.decodeBehavioralProfile admission source.strategy) 0 le_rfl (by norm_num) ∧
       target.IsSequentialEquilibriumFor antichain (fun who site =>
-        target.continuationContext site
+        target.truncatedContinuationContext site
           (fun final => baseUtility setup leaks utility final.state who)
           (2 * horizon setup watcher + 1)) ∧
       (model.runBehavioral target.strategy (2 * horizon setup watcher + 1)).map
@@ -105,23 +105,19 @@ theorem source_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [leaks.
   have clock (who : Player) (site : model.InformationSite who) :
       InformationModel.InformationSite.CommonDepth model site (depth who site) :=
     menu_common_decision_depth setup leaks responses watcher reveals observer who site
-  have within (who : Player) (site : model.InformationSite who) : depth who site ≤ bound := by
-    obtain ⟨history, running, _action⟩ := site.2
-    have before : history.1.trace.length < bound := by
-      by_contra late
-      exact running (responses.bounded (initialLaw setup) (horizon setup watcher)
-        (scheduler setup leaks watcher) history.1.state history.1.trace (by omega))
-    rw [clock who site history] at before
-    exact before.le
-  have rational : target.IsSequentiallyRational fun who site =>
-      target.continuationContext site
+  have bounded := responses.bounded (initialLaw setup) (horizon setup watcher)
+    (scheduler setup leaks watcher)
+  have certificate := bounded.wellFoundedHistories
+  have rational : target.IsSequentiallyRationalFor fun who site =>
+      target.truncatedContinuationContext site
         (fun final => baseUtility setup leaks utility final.state who)
         (bound - depth who site) := by
-    apply consistent.sequentiallyRational_of_localOptimal
-      (responses.decisionRecall (initialLaw setup) (horizon setup watcher)
-        (scheduler setup leaks watcher)) bound
-      (fun who final => baseUtility setup leaks utility final.state who) depth clock within
-    intro who site _before law
+    refine ((target.isSequentialEquilibrium_iff_remaining model _ certificate bounded depth clock
+      _).mp ((target.isSequentialEquilibrium_iff_locallyOptimal model
+        (responses.decisionRecall (initialLaw setup) (horizon setup watcher)
+          (scheduler setup leaks watcher)) certificate _).mpr
+        ⟨consistent, fun who site law => ?_⟩)).1
+    rw [target.continuationContext_eq_remaining model certificate bounded site (clock who site)]
     by_cases watches : who = watcher
     · subst who
       let _ := watcher_choice_subsingleton setup leaks extended watcher site.1
@@ -151,7 +147,7 @@ theorem source_sequential_equilibrium_preserved [setup.FiniteInitialLaw] [leaks.
         sourceSite sourceView belief (fun state => utility state who)
         (equilibrium.1 who sourceSite) law
   have targetEquilibrium : target.IsSequentialEquilibriumFor antichain (fun who site =>
-      target.continuationContext site
+      target.truncatedContinuationContext site
         (fun final => baseUtility setup leaks utility final.state who) bound) :=
     (target.sequentialEquilibrium_remaining_iff model antichain bound
       (responses.bounded (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher))

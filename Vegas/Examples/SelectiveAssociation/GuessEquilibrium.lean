@@ -18,8 +18,9 @@ open GameTheory GameTheory.Protocol
 open Classical in
 theorem native_supported_certified_guess
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (site : nativeModel.InformationSite bob)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
@@ -42,10 +43,12 @@ theorem native_supported_certified_guess
     (InformationModel.actsOnce_of_decisionInformationAntichain
       (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial)
         nativeHorizon nativeScheduler))
-  apply (assessment.not_supported_choice_of_uniform_gap once ⟨some (past, view), isSite⟩
-    (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
-      nativeScheduler bob ⟨some (past, view), isSite⟩)
-    (fun outcome => nativeUtility bob outcome.state) (2 * nativeHorizon)
+  apply (assessment.not_supported_choice_of_uniform_gap
+    (nativeModel.truncatedRunner (2 * nativeHorizon + 1)) ⟨some (past, view), isSite⟩
+    (nativeModel.runnerFactorsAt_truncated once
+      (nativeMenu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon
+        nativeScheduler bob ⟨some (past, view), isSite⟩) (2 * nativeHorizon))
+    (fun outcome => nativeUtility bob outcome.state)
     (rational bob ⟨some (past, view), isSite⟩) (fun _ => (payoffIntegrable_of_finite _ _)) choice
     ((assessment.strategy bob).commit (some (past, view)) (bobCorrectiveChoice bit past view))
     0 1 (by norm_num) _ _) chosen
@@ -103,8 +106,9 @@ history at Bob's certified binding decision ends with matching successful
 Alice and Bob publications, and gives Bob utility one. -/
 theorem native_sequentially_rational_certified_guess
     (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1))
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1))
     (site : nativeModel.InformationSite bob)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)

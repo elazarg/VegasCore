@@ -3,6 +3,7 @@
 import Vegas.Examples.MonitoredGuessing.RestrictedClock
 import Interaction.ReactiveFiniteAssessment
 import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Restoring every effective watcher response
 
@@ -43,12 +44,12 @@ theorem watcher_equilibrium_extends
     (source : watchedModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor
       watched_decisionRecall.decisionInformationAntichain
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => utility history.state who)
         (2 * nativeHorizon + 1 - watchedDepth who site))) :
     ∃ target : effectiveModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor effective_decisionRecall.decisionInformationAntichain
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => utility history.state who)
           (2 * nativeHorizon + 1 - effectiveDepth who site)) ∧
       watcherRestriction.ExtendsProfile source.strategy target.strategy ∧
@@ -64,20 +65,36 @@ theorem watcher_equilibrium_extends
       ∀ history ∈ (effectiveModel.runBehavioral target.strategy
         (2 * nativeHorizon + 1)).support, effectiveArena.terminal history.state := by
   classical
-  apply watcherRestriction.sequential_equilibrium_extends_of_indifference
-    watched_decisionRecall.decisionInformationAntichain
-    (effectiveMenu.uniformAssessment nativeInitialLaw nativeHorizon nativeScheduler)
-    (effectiveMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
-    effective_decisionRecall (2 * nativeHorizon + 1)
-    (effectiveMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler)
-    effectiveDepth effective_common_depth
-    (fun history who => utility history.state who)
-    (fun history who => utility history.state who) (fun _ _ => rfl)
-    _ source equilibrium
-  intro who
-  by_cases same : who = watcher
-  · subst who
-    exact Or.inr ⟨0, fun history => indifferent history.state⟩
-  · exact Or.inl (ordinary_choice_surjective who same)
+  have targetBounded := effectiveMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler
+  have sourceBounded := watchedMenu.bounded nativeInitialLaw nativeHorizon nativeScheduler
+  have targetCertificate := targetBounded.wellFoundedHistories
+  have sourceCertificate := sourceBounded.wellFoundedHistories
+  let _ := Fintype.ofFinite effectiveArena.History
+  have sourceTerminal := (source.isSequentialEquilibrium_iff_remaining watchedModel _
+    sourceCertificate sourceBounded watchedDepth watched_common_depth _).mpr equilibrium
+  obtain ⟨target, targetTerminal, agrees, beliefs, historyLaw, joint⟩ :=
+    watcherRestriction.sequentialEquilibrium_extends_of_indifference
+      watched_decisionRecall.decisionInformationAntichain sourceCertificate targetCertificate
+      (effectiveMenu.uniformAssessment nativeInitialLaw nativeHorizon nativeScheduler)
+      (effectiveMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
+      effective_decisionRecall
+      (fun who site => effectiveDepth who (watcherRestriction.site who site))
+      (fun who site => effective_common_depth who (watcherRestriction.site who site))
+      (fun who history => utility history.state who)
+      (fun who history => utility history.state who) (fun _ _ => rfl)
+      (fun who => by
+        by_cases same : who = watcher
+        · subst who
+          exact Or.inr ⟨0, fun history => indifferent history.state⟩
+        · exact Or.inl (ordinary_choice_surjective who same))
+      source sourceTerminal
+  rw [InformationModel.runBehavioralTerminalFrom_initHistory _
+      sourceCertificate _ sourceBounded,
+    InformationModel.runBehavioralTerminalFrom_initHistory _
+      targetCertificate _ targetBounded] at historyLaw joint
+  exact ⟨target, (target.isSequentialEquilibrium_iff_remaining effectiveModel _ targetCertificate
+    targetBounded effectiveDepth effective_common_depth _).mp targetTerminal, agrees, beliefs,
+    historyLaw, joint, fun history supported =>
+      effectiveModel.runBehavioralFrom_terminal_of_bound _ targetBounded _ history supported⟩
 
 end Vegas.Examples.MonitoredGuessing.Restricted

@@ -119,13 +119,13 @@ theorem LastDecision.context_value_eq_expect {who : ι} (last : LastDecision (E 
     (assessment : M.BehavioralAssessment) [DecidableEq (M.InfoState who)]
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
     (payoff : E.History → ℝ) (fuel : Nat) (alternative : M.BehavioralPolicy who)
-    (integrable : (assessment.continuationContext site payoff (fuel + 1)).IntegrableAt
+    (integrable : (assessment.truncatedContinuationContext site payoff (fuel + 1)).IntegrableAt
       alternative) :
-    (assessment.continuationContext site payoff (fuel + 1)).value alternative =
+    (assessment.truncatedContinuationContext site payoff (fuel + 1)).value alternative =
       expect (alternative site.1) (fun choice =>
-        (assessment.continuationContext site payoff (fuel + 1)).value
+        (assessment.truncatedContinuationContext site payoff (fuel + 1)).value
           ((assessment.strategy who).commit site.1 choice)) := by
-  let context := assessment.continuationContext site payoff (fuel + 1)
+  let context := assessment.truncatedContinuationContext site payoff (fuel + 1)
   have factored : context.outcome alternative = (alternative site.1).bind fun choice =>
       context.outcome ((assessment.strategy who).commit site.1 choice) := by
     change (assessment.belief who site).bind _ = (alternative site.1).bind fun choice =>
@@ -149,7 +149,8 @@ variable (reference : M.BehavioralAssessment) (mixed : reference.IsFullyMixed)
 
 def lastChoiceValue (site : M.InformationSite who) (choice : M.Choice who site.1) : ℝ := by
   classical
-  exact ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+  exact ((InformationModel.bayesAssessment _ reference.strategy mixed
+      antichain).truncatedContinuationContext
     site payoff (fuel + 1)).value ((reference.strategy who).commit site.1 choice)
 
 def bestLastChoice (site : M.InformationSite who) : M.Choice who site.1 := by
@@ -188,13 +189,15 @@ theorem bestLastPolicy_optimal (last : LastDecision (E := E) who)
     (site : M.InformationSite who) (nonterminal : site.AllNonterminal)
     (alternative : M.BehavioralPolicy who)
     (alternativeIntegrable : ((InformationModel.bayesAssessment _ reference.strategy mixed
-      antichain).continuationContext site payoff (fuel + 1)).IntegrableAt alternative)
+      antichain).truncatedContinuationContext site payoff (fuel + 1)).IntegrableAt alternative)
     (bestIntegrable : ((InformationModel.bayesAssessment _ reference.strategy mixed
-      antichain).continuationContext site payoff (fuel + 1)).IntegrableAt
+      antichain).truncatedContinuationContext site payoff (fuel + 1)).IntegrableAt
         (bestLastPolicy reference mixed antichain who payoff fuel)) :
-    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+    ((InformationModel.bayesAssessment _ reference.strategy mixed
+        antichain).truncatedContinuationContext
       site payoff (fuel + 1)).value alternative ≤
-    ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+    ((InformationModel.bayesAssessment _ reference.strategy mixed
+        antichain).truncatedContinuationContext
       site payoff (fuel + 1)).value (bestLastPolicy reference mixed antichain who payoff fuel) := by
   classical
   rw [last.context_value_eq_expect _ site nonterminal payoff fuel alternative
@@ -309,13 +312,14 @@ theorem exists_sequential_equilibrium_of_last_decision
     (payoff : ι → E.History → ℝ) (neutral : ∀ player, player ≠ who → payoff player = fun _ => 0)
     (fuel : Nat)
     (integrable : ∀ (site : M.InformationSite who) (alternative : M.BehavioralPolicy who),
-      ((InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+      ((InformationModel.bayesAssessment _ reference.strategy mixed
+          antichain).truncatedContinuationContext
         site (payoff who) (fuel + 1)).IntegrableAt alternative) :
     ∃ assessment : M.BehavioralAssessment,
       assessment.strategy = Profile.update (sig := M.behavioralSignature) reference.strategy who
         (bestLastPolicy reference mixed antichain who (payoff who) fuel) ∧
       assessment.IsSequentialEquilibriumFor antichain (fun player site =>
-        assessment.continuationContext site (payoff player) (fuel + 1)) := by
+        assessment.truncatedContinuationContext site (payoff player) (fuel + 1)) := by
   classical
   let policy := bestLastPolicy reference mixed antichain who (payoff who) fuel
   let assessment : M.BehavioralAssessment :=
@@ -324,7 +328,7 @@ theorem exists_sequential_equilibrium_of_last_decision
   refine ⟨assessment, rfl, ?_,
     consistent_update_of_reach_invariant reference mixed antichain who reach policy⟩
   intro player site
-  change (assessment.continuationContext site (payoff player) (fuel + 1)).IsLocallyOptimal
+  change (assessment.truncatedContinuationContext site (payoff player) (fuel + 1)).IsLocallyOptimal
     Set.univ (assessment.strategy player)
   by_cases own : player = who
   · subst player
@@ -339,10 +343,12 @@ theorem exists_sequential_equilibrium_of_last_decision
         change Profile.update (sig := M.behavioralSignature)
           reference.strategy who policy player = _
         exact Profile.update_of_ne _ _ same
-    have same : assessment.continuationContext site (payoff who) (fuel + 1) =
-        (InformationModel.bayesAssessment _ reference.strategy mixed antichain).continuationContext
+    have same : assessment.truncatedContinuationContext site (payoff who) (fuel + 1) =
+        (InformationModel.bayesAssessment _ reference.strategy mixed
+            antichain).truncatedContinuationContext
           site (payoff who) (fuel + 1) := by
-      simp only [BehavioralAssessment.continuationContext, overwrite]
+      simp only [BehavioralAssessment.truncatedContinuationContext,
+          BehavioralAssessment.continuationContextWith, overwrite]
       rfl
     have chosen : assessment.strategy who = policy := by
       change Profile.update (sig := M.behavioralSignature) reference.strategy who policy who = _
@@ -355,9 +361,13 @@ theorem exists_sequential_equilibrium_of_last_decision
           (integrable site policy)
   · have zero := neutral player own
     have constant (response : M.BehavioralPolicy player) :
-        (assessment.continuationContext site (payoff player) (fuel + 1)).IntegrableAt response ∧
-          (assessment.continuationContext site (payoff player) (fuel + 1)).value response = 0 := by
-      simp only [Context.IntegrableAt, Context.value, BehavioralAssessment.continuationContext,
+        (assessment.truncatedContinuationContext site (payoff player) (fuel +
+            1)).IntegrableAt response ∧
+          (assessment.truncatedContinuationContext site (payoff player) (fuel +
+              1)).value response = 0 := by
+      simp only [Context.IntegrableAt, Context.value,
+          BehavioralAssessment.truncatedContinuationContext,
+          BehavioralAssessment.continuationContextWith,
         Context.ofBelief, zero, expect_constant]
       exact ⟨payoffIntegrable_constant _ 0, trivial⟩
     exact (Context.isLocallyOptimal_iff_of_integrable (constant _).1 fun alternative _ =>

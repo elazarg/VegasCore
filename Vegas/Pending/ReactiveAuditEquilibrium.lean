@@ -86,7 +86,7 @@ theorem audited_raw_sequential_equilibrium
     (equilibrium : source.IsSequentialEquilibriumFor
       (retained.decisionInformationAntichain initial
         count service)
-      (fun who site => source.continuationContext site (fun final => base final.state who)
+      (fun who site => source.truncatedContinuationContext site (fun final => base final.state who)
         (2 * count + 1))) :
     let audit := (runtime.reactiveApplication leaks).sampledTrafficAudit
       project attribution permitted sample
@@ -99,7 +99,7 @@ theorem audited_raw_sequential_equilibrium
       target.IsSequentialEquilibriumFor
         ((bounds.rawMenu runtime leaks).decisionInformationAntichain initial
           count service)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun final => utility final.state who) (2 * count + 1)) ∧
       (((bounds.rawMenu runtime leaks).information initial count service).runBehavioral
         target.strategy (2 * count + 1)).bind
@@ -112,21 +112,13 @@ theorem audited_raw_sequential_equilibrium
   let app := runtime.reactiveApplication leaks
   let effective := bounds.menu runtime leaks
   let restriction := included.actionRestriction initial count service
-  have sourceClock (who : Player)
-      (site : (retained.information initial count service).InformationSite who) :
-      InformationModel.InformationSite.CommonDepth
-        (retained.information initial count service) site
-        (depth who (restriction.site who site)) := by
-    intro history
-    have same := clock who (restriction.site who site)
-      (restriction.informationHistory who site history)
-    simpa only [InformationModel.ActionRestriction.informationHistory_val,
-      restriction.length] using same
-  have sourceRemaining := (source.sequentialEquilibrium_remaining_iff
+  have sourceBounded := retained.bounded initial count service
+  have sourceCertificate := sourceBounded.wellFoundedHistories
+  have targetBounded := effective.bounded initial count service
+  have targetCertificate := targetBounded.wellFoundedHistories
+  have sourceTerminal := (source.isSequentialEquilibrium_iff_truncated_of_bounded
     (retained.information initial count service)
-    (retained.decisionInformationAntichain initial count service) (2 * count + 1)
-    (retained.bounded initial count service)
-    (fun who site => depth who (restriction.site who site)) sourceClock
+    (retained.decisionInformationAntichain initial count service) sourceCertificate sourceBounded
     (fun who final => base final.state who)).mpr equilibrium
   have sound (history : (retained.protocol initial count service).History) (who : Player) :
       TerminalAudit.charge (fun final => app.stateTraffic final.state) audit
@@ -142,14 +134,24 @@ theorem audited_raw_sequential_equilibrium
       (extra : action ∉ Set.range (restriction.choice who site.1))
       (history : (retained.information initial count service).InformationHistory who site.1) :
       probability who ≤
-        (((((((bounds.menu runtime leaks).information initial count service).runBehavioralFrom
+        (((((InformationModel.runBehavioralTerminalFrom
+        ((bounds.menu runtime leaks).information initial count service) targetCertificate
         (Profile.update profile who ((profile who).commit (restriction.site who site).1 action))
-        (2 * count + 1 - depth who (restriction.site who site))
         (restriction.history history.1)).map (fun final => app.stateTraffic final.state)).bind
           audit).map (fun verdict => verdict who)) true).toReal := by
+    have length : (restriction.history history.1).trace.length =
+        depth who (restriction.site who site) := by
+      have same := clock who (restriction.site who site)
+        (restriction.informationHistory who site history)
+      simpa only [InformationModel.ActionRestriction.informationHistory_val] using same
+    rw [InformationModel.runBehavioralTerminalFrom_eq_remaining _ targetCertificate _
+      targetBounded, length]
     have within : depth who (restriction.site who site) < 2 * count + 1 := by
       obtain ⟨reference, running, _action⟩ := site.2
-      have sameDepth := sourceClock who site reference
+      have sameDepth := clock who (restriction.site who site)
+        (restriction.informationHistory who site reference)
+      simp only [InformationModel.ActionRestriction.informationHistory_val,
+        restriction.length] at sameDepth
       by_contra late
       exact running (retained.bounded initial count service reference.1.state reference.1.trace
         (by
@@ -169,22 +171,26 @@ theorem audited_raw_sequential_equilibrium
         fun final => app.stateTraffic final.state :=
       funext (effective.trafficAudit_eq_stateTraffic initial count service)
     simpa only [readout, fuel] using bound
-  obtain ⟨effectiveTarget, targetRemaining, _agrees, _beliefs, _historyLaw, joint,
-      _clean, _terminal⟩ := restriction.sequential_equilibrium_extends_of_terminal_audit
-    (retained.decisionInformationAntichain initial count service)
-    (effective.uniformAssessment initial count service)
-    (effective.uniform_fullyMixed initial count service)
-    (effective.decisionRecall initial count service) (2 * count + 1)
-    (effective.bounded initial count service) depth clock
-    (fun final who => base final.state who) (fun final who => base final.state who)
-    (fun final => app.stateTraffic final.state) audit (fun _ _ => rfl) sound
-    lower upper probability deposit nonnegative below above sufficient collection source
-      sourceRemaining
-  have targetFull := (effectiveTarget.sequentialEquilibrium_remaining_iff
+  obtain ⟨effectiveTarget, targetTerminal, _agrees, _beliefs, _historyLaw, joint, _clean⟩ :=
+    restriction.sequential_equilibrium_extends_of_terminal_audit
+      (retained.decisionInformationAntichain initial count service) sourceCertificate
+      targetCertificate (effective.uniformAssessment initial count service)
+      (effective.uniform_fullyMixed initial count service)
+      (effective.decisionRecall initial count service)
+      (fun who site => depth who (restriction.site who site))
+      (fun who site => clock who (restriction.site who site))
+      (fun final who => base final.state who) (fun final who => base final.state who)
+      (fun final => app.stateTraffic final.state) audit (fun _ _ => rfl) sound
+      lower upper probability deposit nonnegative below above sufficient collection source
+      sourceTerminal
+  rw [InformationModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded _
+      sourceCertificate sourceBounded,
+    InformationModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded _
+      targetCertificate targetBounded] at joint
+  have targetFull := (effectiveTarget.isSequentialEquilibrium_iff_truncated_of_bounded
     ((bounds.menu runtime leaks).information initial count service)
-    (effective.decisionRecall initial count service).decisionInformationAntichain (2 * count + 1)
-    (effective.bounded initial count service) depth clock
-    (fun who final => utility final.state who)).mp targetRemaining
+    (effective.decisionRecall initial count service).decisionInformationAntichain
+    targetCertificate targetBounded (fun who final => utility final.state who)).mp targetTerminal
   obtain ⟨target, _strategy, targetSE, _beliefs, stateLaw⟩ :=
     bounds.exists_canonicalRaw_sequentialEquilibrium runtime leaks initial count service
       effectiveTarget (fun who state => utility state who) targetFull
@@ -209,7 +215,7 @@ theorem audited_raw_sequential_equilibrium
     have sameState (history : (retained.protocol initial count service).History) :
         (restriction.history history).state = history.state := rfl
     simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def, sameState,
-      settle, TerminalAudit.settlement] using projected.symm
+      settle, TerminalAudit.settlement, InformationModel.runBehavioral] using projected.symm
 
 
 end Vegas.EventGraphRuntime.MessageBounds

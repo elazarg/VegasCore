@@ -3,7 +3,8 @@
 import Vegas.Game.SourceServicePrefixFactorization
 import Vegas.Game.SourceServicePosterior
 import Vegas.Pending.ReactiveOwnerWindow
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Actual full-source owner posteriors
@@ -48,7 +49,7 @@ private theorem owner_window_factorization
             (source seed, (runtime setup).bindingTraffic leaks owner final)) =
       (prior.map source).bind fun state =>
         (nextNoise (observe state)).map fun extra => (state, extra) := by
-  obtain ⟨nextNoise, law⟩ := PMF.exists_updated_observation_kernel_of_readout prior source
+  obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior source
     (fun seed => (runtime setup).bindingTraffic leaks owner (execution seed))
     observe noise factor (fun _ => PMF.pure Unit.unit) (fun state _ => state) observe
     (fun seed _ => ((runtime setup).runInteractionPlan leaks
@@ -372,11 +373,11 @@ theorem sourceService_owner_posterior [Fintype Player]
         (ReactiveApplication.Execution.initial (application setup leaks) state)).bind
       fun before => before.environmentStep (application setup leaks) (.activate owner)
     reference ∈ executions.support →
-      (fiberConditional executions (fun execution =>
+      (fiberPosterior executions (fun execution =>
           (execution.recall owner, execution.observe (application setup leaks) owner))
         (reference.recall owner, reference.observe (application setup leaks) owner)).map
           (fun execution => sourceServicePrefix? setup event.val execution.application.config) =
-        (fiberConditional
+        (fiberPosterior
             (((setup.informationModel admission).runBehavioral encoded (event.val + 1)).map
           GameTheory.Protocol.ExecutionProtocol.History.state)
             (setup.protocolObserve owner) (setup.protocolObserve owner

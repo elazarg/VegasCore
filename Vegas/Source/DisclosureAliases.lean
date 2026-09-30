@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.ObservationRecall
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Ineffective disclosure choices are private action aliases
@@ -186,11 +187,12 @@ theorem disclosure_alias_disintegration (published : VarId)
     (config : Config Player L Γ) (law : PMF Bool) :
     law.map (revealSuccessor published source config) =
       (law.map (effectiveDisclosure published source config)).bind fun response =>
-        (fiberConditional law (effectiveDisclosure published source config) response).map
+        (fiberPosterior law (effectiveDisclosure published source config) response).map
           (fun intention => (revealSuccessor published source config response).restoreDisclosure
             owner name intention) := by
   classical
-  conv_lhs => arg 2; rw [eq_bind_fiberConditional law (effectiveDisclosure published source config)]
+  conv_lhs => arg 2; rw [← fiberPosterior_reconstruct law (effectiveDisclosure published source
+      config)]
   rw [PMF.map_bind]
   apply bind_congr_on_support _
   intro response reached
@@ -199,7 +201,7 @@ theorem disclosure_alias_disintegration (published : VarId)
       intention ∈ law.support := ⟨original, responseEq, supported⟩
   apply map_congr_on_support _
   intro intention compatible
-  rw [fiberConditional, dite_eq_left meets] at compatible
+  rw [fiberPosterior_eq_filter_preimage _ _ meets] at compatible
   have projects : effectiveDisclosure published source config intention = response :=
     ((PMF.mem_support_filter_iff _).mp compatible).1
   rw [← projects, revealSuccessor_restore_effective]

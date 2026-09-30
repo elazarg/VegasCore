@@ -37,7 +37,7 @@ the assessment's state belief. The bound covers every legal history. -/
 theorem native_context_value (assessment : nativeModel.BehavioralAssessment)
     (who : Player) (site : nativeModel.InformationSite who) (payoff : nativeApp.ProtocolState → ℝ)
     (alternative : nativeModel.BehavioralPolicy who) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)).value
         alternative =
       expect ((assessment.belief who site).map (fun history => history.1.state)) (fun state =>
@@ -45,7 +45,7 @@ theorem native_context_value (assessment : nativeModel.BehavioralAssessment)
           (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy who
               alternative)) state) (payoff)) := by
-  simp only [BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
+  simp only [BehavioralAssessment.truncatedContinuationContext_value, expect_bind_of_finite,
     expect_map, Function.comp_def]
   apply expect_congr_on_support
   intro history _
@@ -153,11 +153,11 @@ private theorem bob_belief (baseline : Profile nativeModel.behavioralSignature)
 private theorem bob_value (baseline : Profile nativeModel.behavioralSignature)
     (quiet : nativeModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ) (n : ℕ)
     (site : nativeModel.InformationSite bob) (alternative : nativeModel.BehavioralPolicy bob) :
-    ((sequence baseline quiet payoff n).continuationContext site
+    ((sequence baseline quiet payoff n).truncatedContinuationContext site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)).value
         alternative =
       ((InformationModel.bayesAssessment _ (baseTremble baseline n).strategy
-        (baseTremble_mixed baseline n) nativeAntichain).continuationContext site
+        (baseTremble_mixed baseline n) nativeAntichain).truncatedContinuationContext site
           (fun history => payoff history.state) (2 * nativeHorizon + 1)).value alternative := by
   have profiles : Profile.update (sig := nativeModel.behavioralSignature)
       (sequence baseline quiet payoff n).strategy bob alternative =
@@ -167,17 +167,17 @@ private theorem bob_value (baseline : Profile nativeModel.behavioralSignature)
       (Profile.update (sig := nativeModel.behavioralSignature) (baseTremble baseline n).strategy
         bob (responseLaw baseline quiet payoff n)) bob alternative = _
     exact Profile.update_idem _ _ _ _
-  simp only [BehavioralAssessment.continuationContext_value, bob_belief, profiles]
+  simp only [BehavioralAssessment.truncatedContinuationContext_value, bob_belief, profiles]
   rfl
 
 private theorem response_optimal (baseline : Profile nativeModel.behavioralSignature)
     (quiet : nativeModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ) (n : ℕ)
     (site : nativeModel.InformationSite bob) (different : site ≠ quiet)
     (alternative : nativeModel.BehavioralPolicy bob) :
-    ((sequence baseline quiet payoff n).continuationContext site
+    ((sequence baseline quiet payoff n).truncatedContinuationContext site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)).value
         alternative ≤
-      ((sequence baseline quiet payoff n).continuationContext site
+      ((sequence baseline quiet payoff n).truncatedContinuationContext site
         (fun history => payoff history.state) (2 * nativeHorizon + 1)).value
           (response baseline quiet payoff n) := by
   classical
@@ -212,7 +212,7 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
       assessment.strategy bob quiet.1 = baseline bob quiet.1 ∧
       assessment.IsSequentiallyConsistent nativeAntichain ∧
       ∀ site : nativeModel.InformationSite bob, site ≠ quiet →
-        assessment.IsSequentiallyRationalAt site (assessment.continuationContext site
+        assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site
           (fun history => payoff history.state) (2 * nativeHorizon + 1)) := by
   classical
   have mixed (n : ℕ) : (sequence baseline quiet payoff n).IsFullyMixed :=
@@ -286,7 +286,7 @@ theorem exists_native_bob_completion (baseline : Profile nativeModel.behavioralS
       fun n => ⟨mixed (index n), bayes (index n)⟩, converges⟩
   · intro site different
     exact converges.rationalAt_of_optimal_responses
-      (ExecutionProtocol.FiniteTransitions.of_finite_history nativeArena) site
+      ExecutionProtocol.FiniteTransitions.of_finite_history site
       (fun history => payoff history.state) (2 * nativeHorizon + 1)
       (fun n => response baseline quiet payoff (index n)) responsesConverge
       (fun n alternative => response_optimal baseline quiet payoff (index n) site

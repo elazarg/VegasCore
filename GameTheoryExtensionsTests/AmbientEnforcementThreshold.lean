@@ -27,8 +27,9 @@ open GameTheory.Protocol.ExecutionProtocol
 
 theorem rational_disclosed_reward_lower (deposit : ℝ)
     (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => payoff deposit history.state who) 3) (bit : Bool) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => payoff deposit history.state
+            who) 3) (bit : Bool) :
     1 ≤ expect (resultLaw assessment.strategy bit true) (payoff deposit · true) := by
   have best := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mp (rational true (bobDisclosedSite bit))
@@ -57,8 +58,9 @@ theorem disclosed_payoff_difference (deposit : ℝ)
 
 theorem rational_alice_reward_lower (deposit : ℝ)
     (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => payoff deposit history.state who) 3) (bit : Bool) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => payoff deposit history.state
+            who) 3) (bit : Bool) :
     1 - deposit ≤
       expect ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
         (aliceHistory true bit)) (fun history => payoff deposit history.state false) := by
@@ -93,8 +95,9 @@ theorem alice_payoff_le_correctness {deposit : ℝ} (nonnegative : 0 ≤ deposit
 
 theorem rational_correctness_lower {deposit : ℝ} (nonnegative : 0 ≤ deposit)
     (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => payoff deposit history.state who) 3) (bit : Bool) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => payoff deposit history.state
+            who) 3) (bit : Bool) :
     1 - deposit ≤
       expect ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
         (aliceHistory true bit)) (fun history => payoff deposit history.state true) := by
@@ -134,8 +137,9 @@ theorem source_bit_score (guesses : PMF Bool) (bit : Bool) :
 target strategies and beliefs are chosen freely and disclosure is not retained. -/
 theorem retained_law_requires_deterrence {deposit : ℝ} (nonnegative : 0 ≤ deposit)
     (guesses : PMF Bool) (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => payoff deposit history.state who) 3)
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => payoff deposit history.state
+            who) 3)
     (matching :
       (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
         (arena true).initHistory).map History.state).map retained =

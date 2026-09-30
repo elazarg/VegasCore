@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealServiceClean
 import Vegas.Game.RevealServiceOwnerCollection
+import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Restoring every ordinary response in the monitored reveal service
 
@@ -71,14 +72,14 @@ theorem ordinary_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSuppo
     (equilibrium : source.IsSequentialEquilibriumFor
       ((menu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher))
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => netUtility setup leaks watcher base deposit history.state who)
         (2 * horizon setup watcher + 1))) :
     ∃ target : (watchedInformation setup leaks bounds watcher).BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         ((watchedMenu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)
           (horizon setup watcher) (scheduler setup leaks watcher))
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => netUtility setup leaks watcher base deposit history.state who)
           (2 * horizon setup watcher + 1)) ∧
       (ordinaryRestriction setup leaks bounds watcher).ExtendsProfile
@@ -111,11 +112,13 @@ theorem ordinary_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSuppo
   let utility := netUtility setup leaks watcher base deposit
   have clock := menu_common_decision_depth setup leaks watched watcher reveals observer
   have sourceClock := menu_common_decision_depth setup leaks retained watcher reveals observer
-  have sourceRemaining := (source.sequentialEquilibrium_remaining_iff
+  have sourceBounded := retained.bounded initial count service
+  have targetBounded := watched.bounded initial count service
+  have sourceCertificate := sourceBounded.wellFoundedHistories
+  have targetCertificate := targetBounded.wellFoundedHistories
+  have sourceTerminal := (source.isSequentialEquilibrium_iff_truncated_of_bounded
     (information setup leaks bounds watcher)
-    (retained.decisionInformationAntichain initial count service) (2 * count + 1)
-    (retained.bounded initial count service)
-    (fun who site => decisionDepth setup leaks watcher who site.1) sourceClock
+    (retained.decisionInformationAntichain initial count service) sourceCertificate sourceBounded
     (fun who history => utility history.state who)).mpr equilibrium
   let comparator (who : Player)
       (site : (information setup leaks bounds watcher).InformationSite who)
@@ -185,22 +188,32 @@ theorem ordinary_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSuppo
         (by rw [PMF.support_map]; exact (Set.toFinite _).image _))
       (by rw [PMF.toOuterMeasure_map_apply]; exact collected) (sufficient who isWatcher)
     simpa only [expect_map, Function.comp_def] using compared
-  obtain ⟨target, targetRemaining, agrees, beliefs, historyLaw, joint, _terminal⟩ :=
-    restriction.sequential_equilibrium_extends_of_comparator
+  let _ := Fintype.ofFinite (watched.protocol initial count service).History
+  obtain ⟨target, targetTerminal, agrees, beliefs, historyLaw, joint⟩ :=
+    restriction.sequentialEquilibrium_extends_of_comparator
       (retained.decisionInformationAntichain initial count service)
+      sourceCertificate targetCertificate
       (watched.uniformAssessment initial count service)
       (watched.uniform_fullyMixed initial count service)
-      (watched.decisionRecall initial count service) (2 * count + 1)
-      (watched.bounded initial count service) depth clock
-      (fun history who => utility history.state who)
-      (fun history who => utility history.state who) (fun _ _ => rfl)
-      comparator comparison source sourceRemaining
-  have targetFull := (target.sequentialEquilibrium_remaining_iff
-    (watchedInformation setup leaks bounds watcher)
-    (watched.decisionRecall initial count service).decisionInformationAntichain (2 * count + 1)
-    (watched.bounded initial count service) depth clock
-    (fun who history => utility history.state who)).mp targetRemaining
-  exact ⟨target, targetFull, agrees, beliefs, historyLaw, joint⟩
+      (watched.decisionRecall initial count service)
+      (fun who site => depth who (restriction.site who site))
+      (fun who site => clock who (restriction.site who site))
+      (fun who history => utility history.state who)
+      (fun who history => utility history.state who) (fun _ _ => rfl)
+      comparator (fun sourceProfile targetProfile paired who site action extra history => by
+        rw [restriction.runBehavioralTerminalFrom_history_eq_remaining targetCertificate
+            targetBounded _ (clock who (restriction.site who site)),
+          restriction.runBehavioralTerminalFrom_eq_remaining sourceCertificate targetBounded _
+            (clock who (restriction.site who site))]
+        exact comparison sourceProfile targetProfile paired who site action extra history)
+      source sourceTerminal
+  rw [InformationModel.runBehavioralTerminalFrom_initHistory _
+      sourceCertificate _ sourceBounded,
+    InformationModel.runBehavioralTerminalFrom_initHistory _
+      targetCertificate _ targetBounded] at historyLaw joint
+  exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded
+    (watchedInformation setup leaks bounds watcher) _ targetCertificate targetBounded _).mp
+      targetTerminal, agrees, beliefs, historyLaw, joint⟩
 
 include reveals observer openable nonnegative below above sufficient sampling in
 /-- The composed extension restores every bounded raw response of the same
@@ -217,14 +230,14 @@ theorem ordinary_raw_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteS
     (equilibrium : source.IsSequentialEquilibriumFor
       ((menu setup leaks bounds watcher).decisionInformationAntichain (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher))
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => netUtility setup leaks watcher base deposit history.state who)
         (2 * horizon setup watcher + 1))) :
     ∃ target : (rawInformation setup leaks bounds watcher).BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         ((bounds.rawMenu (runtime setup) leaks).decisionInformationAntichain (initialLaw setup)
           (horizon setup watcher) (scheduler setup leaks watcher))
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => netUtility setup leaks watcher base deposit history.state who)
           (2 * horizon setup watcher + 1)) ∧
       ((rawInformation setup leaks bounds watcher).runBehavioral target.strategy

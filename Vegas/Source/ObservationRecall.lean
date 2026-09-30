@@ -2,7 +2,10 @@
 
 import Vegas.Source.ValueBinding
 import Vegas.Source.RevealSequence
-import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Recovering earlier source observations
 
@@ -400,7 +403,7 @@ theorem entry_noise_factor
     simp only [recover, Option.map_some, Option.elim_some,
       ProtocolView.entryView_observe_entry]
   refine ⟨fun view => noise (recover view), ?_⟩
-  have result := PMF.map_observation_factor (prior.map fun seed => (source seed, extra seed))
+  have result := map_observation_factor (prior.map fun seed => (source seed, extra seed))
     (fun config => config.view focal) noise (by
       simpa only [PMF.map_comp, Function.comp_def] using factor)
       (fun config => some (ProtocolState.entry program config))

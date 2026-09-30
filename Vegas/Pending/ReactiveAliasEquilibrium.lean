@@ -177,7 +177,7 @@ theorem exists_canonicalRaw_sequentialEquilibrium
     (payoff : Player → (runtime.reactiveApplication leaks).ProtocolState → ℝ)
     (equilibrium : source.IsSequentialEquilibriumFor
       ((bounds.menu runtime leaks).decisionInformationAntichain initial horizon scheduler)
-      (fun who site => source.continuationContext site
+      (fun who site => source.truncatedContinuationContext site
         (fun history => payoff who history.state) (2 * horizon + 1))) :
     ∃ target : BehavioralAssessment
         ((bounds.rawMenu runtime leaks).information initial horizon scheduler),
@@ -185,7 +185,7 @@ theorem exists_canonicalRaw_sequentialEquilibrium
         initial horizon scheduler who (source.strategy who)) ∧
       target.IsSequentialEquilibriumFor
         ((bounds.rawMenu runtime leaks).decisionInformationAntichain initial horizon scheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => payoff who ((runtime.reactiveNormalization leaks).state history.state))
           (2 * horizon + 1)) ∧
       (∀ who (site : InformationSite

@@ -3,7 +3,8 @@
 import Vegas.Game.ServiceInformation
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Compile.EventGraphPolicyLaw
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Support

@@ -87,7 +87,7 @@ theorem native_initialized_payoffs (deposit : ℝ)
 
 theorem source_equilibrium_payoffs (assessment : sourceModel.BehavioralAssessment)
     (equilibrium : assessment.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      assessment.continuationContext site (sourcePayoff who) 3)) :
+      assessment.truncatedContinuationContext site (sourcePayoff who) 3)) :
     ((sourceModel.runBehavioral assessment.strategy 3).map History.state).map
       sourcePayoffObservation = (PMF.uniformOfFintype Bool).bind (fun bit =>
         (sourceDecisionLaw assessment.strategy bob sourceBobSite.1).map (guessingPayoffs bit)) := by
@@ -100,7 +100,7 @@ on the initialized compiled law. -/
 theorem native_source_joint_payoffs (deposit : ℝ)
     (source : sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      source.continuationContext site (sourcePayoff who) 3))
+      source.truncatedContinuationContext site (sourcePayoff who) 3))
     (target : Profile nativeModel.behavioralSignature)
     (alicePolicy : target alice = nativeAliceBehavior)
     (watcherPolicy : target watcher = nativeWatcherBehavior)

@@ -3,7 +3,9 @@
 import Vegas.Game.SourceServiceActiveBindingCheckpoint
 import Vegas.Game.SourceServiceTimedReachability
 import Vegas.Pending.ReactiveResponseConditioning
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The source continuation selected by a native binding response
 
@@ -126,7 +128,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     ((runtime setup).runInteractionPlan leaks players network (HAppend.hAppend phase later)
       (execution.respond app owner response)).map
         (fun final => sourceReadout setup leaks (some ⟨0, none, final⟩)) =
-      (fiberConditional tags (fun tag => some tag.2.2) (some response)).bind
+      (fiberPosterior tags (fun tag => some tag.2.2) (some response)).bind
         fun (tag : PublicationResult (L.Val payload) ×
           Fin ((rosters event).count owner) × app.Action) =>
         (setup.continuationLaw wholeProfile
@@ -180,12 +182,12 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     rw [PMF.support_map]
     exact ⟨tag, member, (recorded _ _ _ realized).symm.trans (recorded _ _ _ reached)⟩
   have conditioned : continued response =
-      (fiberConditional tags (fun tag => some tag.2.2) (some response)).bind kernel := by
+      (fiberPosterior tags (fun tag => some tag.2.2) (some response)).bind kernel := by
     have physical := (runtime setup).runInteractionPlan_response_conditioning leaks players
       network phase execution owner responses response chosen
-    change fiberConditional (responses.bind continued) observed (some response) = continued response
+    change fiberPosterior (responses.bind continued) observed (some response) = continued response
       at physical
-    rw [factor, PMF.conditional_bind_of_observation tags kernel
+    rw [factor, fiberPosterior_bind_of_observation tags kernel
       (fun tag => some tag.2.2) observed (fun tag _ final member => recorded _ _ _ member)
       (some response) tagPresent] at physical
     exact physical.symm
@@ -221,7 +223,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
   apply bind_congr_on_support _
   intro tag conditionalMember
   have tagMember : tag ∈ tags.support := by
-    unfold fiberConditional at conditionalMember
+    unfold fiberPosterior at conditionalMember
     split at conditionalMember
     · exact ((PMF.mem_support_filter_iff _).mp conditionalMember).2
     · exact conditionalMember

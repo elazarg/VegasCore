@@ -89,13 +89,14 @@ theorem roster_owner_comparison_of_posterior
     let model := (rosterMenu setup leaks
       (bounds.withInitialValues (initialLaw setup)) rosters).information (initialLaw setup)
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)
-    let comparison := model.assessmentComparison
-      (fun final => sourceReadout setup leaks final.state)
-        (2 * (rosterPlan setup rosters).length + 1) assessment who
+    let comparison := model.assessmentComparisonWith (model.truncatedRunner (2 * (rosterPlan setup
+        rosters).length + 1)) (fun final => sourceReadout setup leaks final.state) assessment who
         (site, (assessment.strategy who).withLaw site.1 law)
     ∃ deviation : (setup.informationModel admission).AssessmentDeviation who,
-      let original := (setup.informationModel admission).assessmentComparison
-        (fun final => setup.protocolReadout final.state) (instructionCount setup.program + 1)
+      let original := (setup.informationModel
+          admission).assessmentComparisonWith ((setup.informationModel
+              admission).truncatedRunner (instructionCount setup.program + 1)) (fun final =>
+                  setup.protocolReadout final.state)
           source who deviation
       expect comparison.alternative (fun value => value.elim 0 utility) -
           expect comparison.prescribed (fun value => value.elim 0 utility) ≤
@@ -153,7 +154,7 @@ theorem roster_owner_comparison_of_posterior
           replacement := by
     simp only [sourceLaw, mix_map, PMF.pure_map, represents, mix_apply_toReal]
     norm_num [toReal_pure_apply]
-  let sourceContext := source.continuationContext sourceSite
+  let sourceContext := source.truncatedContinuationContext sourceSite
     (fun final => (setup.protocolReadout final.state).elim 0 utility)
     (instructionCount setup.program + 1)
   have sourceAlternative := setup.reveal_local_value_binary admission reveals source who sourceSite
@@ -170,7 +171,7 @@ theorem roster_owner_comparison_of_posterior
   rw [← choiceLaw] at sourcePrescribed
   change sourceContext.value (source.strategy who) =
     q * values true + (1 - q) * values false at sourcePrescribed
-  let targetContext := assessment.continuationContext site
+  let targetContext := assessment.truncatedContinuationContext site
     (fun final => (sourceReadout setup leaks final.state).elim 0 utility)
     (2 * (rosterPlan setup rosters).length + 1)
   have targetAlternative := roster_owner_context_value setup leaks bounds rosters network reveals
@@ -203,7 +204,7 @@ theorem roster_owner_comparison_of_posterior
     (mul_le_mul_of_nonneg_left valueRange (PMF.timingPrefix_nonnegative _ _)).trans
       (mul_le_mul_of_nonneg_right timingBound rangeNonnegative)
   refine ⟨⟨sourceSite, (source.strategy who).withLaw sourceSite.1 sourceLaw⟩, ?_⟩
-  simp only [comparison, InformationModel.assessmentComparison, expect_map]
+  simp only [comparison, InformationModel.assessmentComparisonWith, expect_map]
   change targetContext.value ((assessment.strategy who).withLaw site.1 law) -
     targetContext.value (assessment.strategy who) ≤
       sourceContext.value ((source.strategy who).withLaw sourceSite.1 sourceLaw) -

@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DisclosureBehavioral
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Restoring private intentions at actual source successors
 
@@ -94,7 +96,7 @@ theorem commitSuccessor_memory_disintegration {payload : L.Ty} (name : VarId)
       (choose (original.view who)).map (commitSuccessor name guard original)) =
       ((bindingMemoryLaw name payload remember choose (config.view who)).map Prod.fst).bind
         fun binding =>
-          ((fiberConditional (bindingMemoryLaw name payload remember choose (config.view who))
+          ((fiberPosterior (bindingMemoryLaw name payload remember choose (config.view who))
             Prod.fst binding).map Prod.snd).map
               ((commitSuccessor name guard config binding).withOwnHistory who) := by
   simpa only [Config.restoreMemory, Config.view, ← PMF.bind_pure_comp, Function.comp_def,
@@ -116,7 +118,7 @@ theorem revealSuccessor_memory_disintegration {payload : L.Ty} {name : VarId}
       (choose (original.view who)).map (revealSuccessor published selected original)) =
       ((disclosureMemoryLaw published selected config.registry config.revelations remember
         choose (config.view who)).map Prod.fst).bind fun disclose =>
-          ((fiberConditional (disclosureMemoryLaw published selected config.registry
+          ((fiberPosterior (disclosureMemoryLaw published selected config.registry
             config.revelations remember choose (config.view who)) Prod.fst disclose).map
               Prod.snd).map
               ((revealSuccessor published selected config disclose).withOwnHistory who) := by

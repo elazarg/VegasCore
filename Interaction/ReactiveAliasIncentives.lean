@@ -156,12 +156,14 @@ theorem canonical_context_value
         (normal.informationHistory raw stable initial horizon scheduler who original.1) =
       source.belief who (normal.site raw stable initial horizon scheduler who original))
     (payoff : app.ProtocolState → ℝ) :
-    (target.continuationContext original (fun history => payoff (normal.state history.state))
+    (target.truncatedContinuationContext original (fun history => payoff (normal.state
+        history.state))
       (2 * horizon + 1)).value (target.strategy who) =
-      (source.continuationContext (normal.site raw stable initial horizon scheduler who original)
+      (source.truncatedContinuationContext (normal.site raw stable initial horizon scheduler who
+          original)
         (fun history => payoff history.state) (2 * horizon + 1)).value (source.strategy who) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    InformationModel.BehavioralAssessment.continuationContext_value]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+    InformationModel.BehavioralAssessment.truncatedContinuationContext_value]
   simp only [GameTheory.Profile.update_eq_self]
   rw [strategy, ← beliefs, PMF.bind_map]
   refine expect_bind_readout_congr _ _ _
@@ -190,13 +192,15 @@ theorem aliasDeviation_context_value
     (observed : original.1 = some (past, view))
     (payoff : app.ProtocolState → ℝ)
     (alternative : (raw.information initial horizon scheduler).BehavioralPolicy who) :
-    (target.continuationContext original (fun history => payoff (normal.state history.state))
+    (target.truncatedContinuationContext original (fun history => payoff (normal.state
+        history.state))
       (2 * horizon + 1)).value alternative =
-      (source.continuationContext (normal.site raw stable initial horizon scheduler who original)
+      (source.truncatedContinuationContext (normal.site raw stable initial horizon scheduler who
+          original)
         (fun history => payoff history.state) (2 * horizon + 1)).value
           (normal.aliasDeviation raw initial horizon scheduler who past alternative) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
-    InformationModel.BehavioralAssessment.continuationContext_value]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+    InformationModel.BehavioralAssessment.truncatedContinuationContext_value]
   rw [strategy, ← beliefs, PMF.bind_map]
   refine expect_bind_readout_congr _ _ _
     (fun final : (raw.protocol initial horizon scheduler).History => normal.state final.state)

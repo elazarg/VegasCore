@@ -54,12 +54,13 @@ theorem source_result_bob_value (reward : Results → Player → ℝ)
 theorem source_result_alice_context (reward : Results → Player → ℝ)
     (assessment : sourceModel.BehavioralAssessment) (bit guess : Bool)
     (alternative : sourceModel.BehavioralPolicy alice) :
-    (assessment.continuationContext (sourceAliceSite bit guess)
+    (assessment.truncatedContinuationContext (sourceAliceSite bit guess)
       (sourceResultPayoff reward alice) 3).value alternative =
       expect (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
         assessment.strategy alice alternative) bit guess)
         fun disclose => reward (decisionResult bit guess disclose) alice := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite]
   calc
     _ = expect (assessment.belief alice (sourceAliceSite bit guess)) (fun _ =>
         expect (sourceDisclosures (Profile.update (sig := sourceModel.behavioralSignature)
@@ -74,14 +75,15 @@ theorem source_result_bob_context (reward : Results → Player → ℝ)
     (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain)
     (alternative : sourceModel.BehavioralPolicy bob) :
-    (assessment.continuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
+    (assessment.truncatedContinuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
         alternative =
       expect (PMF.uniformOfFintype Bool) fun bit =>
         expect (sourceGuesses (Profile.update (sig := sourceModel.behavioralSignature)
           assessment.strategy bob alternative)) fun guess =>
           expect (sourceDisclosures assessment.strategy bit guess) fun disclose =>
             reward (decisionResult bit guess disclose) bob := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value, expect_bind_of_finite,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
+      expect_bind_of_finite,
     source_consistent_bob assessment consistent, expect_map]
   apply expect_congr_on_support
   intro bit _
@@ -96,7 +98,8 @@ theorem source_result_bob_context (reward : Results → Player → ℝ)
 
 theorem source_disclosure_optimal (reward : Results → Player → ℝ)
     (assessment : sourceModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin (sourceResultPayoff reward) 3)
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site ((sourceResultPayoff reward) who) 3)
     (bit guess disclose : Bool) :
     reward (decisionResult bit guess disclose) alice ≤
       expect (sourceDisclosures assessment.strategy bit guess) fun decision =>
@@ -106,7 +109,7 @@ theorem source_disclosure_optimal (reward : Results → Player → ℝ)
     fun _ _ => payoffIntegrable_of_finite _ _).mp
         (rational alice (sourceAliceSite bit guess)) alternative
       (Set.mem_univ _)
-  change (assessment.continuationContext (sourceAliceSite bit guess)
+  change (assessment.truncatedContinuationContext (sourceAliceSite bit guess)
     (sourceResultPayoff reward alice) 3).value alternative ≤ _ at optimal
   rw [source_result_alice_context, source_result_alice_context,
     Profile.update_eq_self] at optimal
@@ -121,7 +124,8 @@ theorem source_disclosure_optimal (reward : Results → Player → ℝ)
 theorem source_guess_optimal (reward : Results → Player → ℝ)
     (assessment : sourceModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent sourceAntichain)
-    (rational : assessment.IsSequentiallyRationalWithin (sourceResultPayoff reward) 3)
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site ((sourceResultPayoff reward) who) 3)
     (guess : Bool) :
     expect (PMF.uniformOfFintype Bool) (fun bit =>
       expect (sourceDisclosures assessment.strategy bit guess) fun disclose =>
@@ -134,7 +138,8 @@ theorem source_guess_optimal (reward : Results → Player → ℝ)
   have optimal := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mp (rational bob sourceBobSite) alternative
       (Set.mem_univ _)
-  change (assessment.continuationContext sourceBobSite (sourceResultPayoff reward bob) 3).value
+  change (assessment.truncatedContinuationContext sourceBobSite (sourceResultPayoff reward bob)
+      3).value
     alternative ≤ _ at optimal
   rw [source_result_bob_context reward assessment consistent,
     source_result_bob_context reward assessment consistent, Profile.update_eq_self] at optimal

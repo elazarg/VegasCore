@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServicePrefixInformation
-import GameTheoryExtensions.Math.Probability.ObservationRetraction
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Decoded source posteriors at actual native inputs
 
@@ -49,11 +52,11 @@ theorem sourceService_state_posterior
         fun input => (state, input)))
     (reference : (application setup leaks).Execution)
     (referenceSupport : reference ∈ executions.support) :
-    (fiberConditional executions (fun execution =>
+    (fiberPosterior executions (fun execution =>
         (execution.recall who, execution.observe (application setup leaks) who))
       (reference.recall who, reference.observe (application setup leaks) who)).map
         (fun execution => sourceServicePrefix? setup rank execution.application.config) =
-      fiberConditional prior (setup.protocolObserve who)
+      fiberPosterior prior (setup.protocolObserve who)
         (setup.protocolObserve who
           (sourceServicePrefix? setup rank reference.application.config)) := by
   let read := fun execution : (application setup leaks).Execution =>
@@ -105,14 +108,14 @@ theorem sourceService_state_posterior
       exact congrArg some views
     have stateEq : read actual = state := (Prod.mk.inj equal).1
     exact (congrArg (setup.protocolObserve who) stateEq).symm.trans projected
-  have posterior := PMF.conditional_observation_kernel_recovered prior
+  have posterior := conditional_observation_kernel_recovered prior
     (setup.protocolObserve who) channel (setup.protocolObserve who (read reference))
     (info reference) present recovers
   have observed : info reference ∈
       (executions.map (Prod.snd ∘ fun execution => (read execution, info execution))).support := by
     rw [PMF.support_map]
     exact ⟨reference, referenceSupport, rfl⟩
-  have mapped := PMF.map_conditional_readout executions
+  have mapped := map_fiberPosterior_readout executions
     (fun execution => (read execution, info execution)) Prod.snd (info reference) observed
   rw [factor] at mapped
   have retained := congrArg (PMF.map Prod.fst) mapped

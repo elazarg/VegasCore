@@ -58,8 +58,9 @@ theorem source_payout_expectation {Claim : Type} [Fintype Claim]
   exact returnedPayoff_eq_utility _ _
 
 theorem native_sequential_payout_bound (assessment : nativeModel.BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1)) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun history => nativeUtility who
+            history.state) (2 * nativeHorizon + 1)) :
     1 / 2 ≤ expect (nativePayoutLaw assessment.strategy) id := by
   rw [native_payout_expectation]
   exact native_sequential_initial_bound assessment rational
@@ -76,12 +77,13 @@ theorem exists_source_equilibrium_no_native_payout_match (Claim : Type) [Fintype
       source.IsSequentialEquilibriumFor
         ((NamedSource.menu Claim).decisionInformationAntichain (PMF.pure NamedSource.initial)
           NamedSource.horizon (NamedSource.scheduler Claim))
-        (fun who site => source.continuationContext site (NamedSource.payoff who)
+        (fun who site => source.truncatedContinuationContext site (NamedSource.payoff who)
           (2 * NamedSource.horizon + 1)) ∧
       expect (sourcePayoutLaw source.strategy) id = 0 ∧
       ∀ target : nativeModel.BehavioralAssessment,
-        target.IsSequentiallyRationalWithin
-          (fun who history => nativeUtility who history.state) (2 * nativeHorizon + 1) →
+        (target.IsSequentiallyRationalFor fun who site =>
+            target.truncatedContinuationContext site (fun history => nativeUtility who
+                history.state) (2 * nativeHorizon + 1)) →
         sourcePayoutLaw source.strategy ≠ nativePayoutLaw target.strategy := by
   obtain ⟨source, strategy, equilibrium, _law⟩ :=
     NamedSource.exists_sequentialEquilibrium Claim defaultClaim

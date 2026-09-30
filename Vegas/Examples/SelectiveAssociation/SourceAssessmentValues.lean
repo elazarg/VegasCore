@@ -77,7 +77,8 @@ theorem decoded_update_profile (Claim : Type) [Fintype Claim] (defaultClaim : Cl
 theorem context_value_finish (Claim : Type) [Fintype Claim]
     (assessment : (model Claim).BehavioralAssessment) (who : Player)
     (site : (model Claim).InformationSite who) (alternative : (model Claim).BehavioralPolicy who) :
-    (assessment.continuationContext site (payoff who) (2 * horizon + 1)).value alternative =
+    (assessment.truncatedContinuationContext site (payoff who) (2 * horizon +
+        1)).value alternative =
       expect (assessment.belief who site) (fun history =>
         expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
           ((menu Claim).decodeProfile (PMF.pure initial) horizon (scheduler Claim)
@@ -91,7 +92,8 @@ theorem prescribed_context_value_finish (Claim : Type) [Fintype Claim] (defaultC
     (assessment : (model Claim).BehavioralAssessment)
     (strategy : assessment.strategy = profile Claim defaultClaim) (who : Player)
     (site : (model Claim).InformationSite who) (alternative : (model Claim).BehavioralPolicy who) :
-    (assessment.continuationContext site (payoff who) (2 * horizon + 1)).value alternative =
+    (assessment.truncatedContinuationContext site (payoff who) (2 * horizon +
+        1)).value alternative =
       expect (assessment.belief who site) (fun history =>
         expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)
           (Function.update (policy Claim defaultClaim) who
@@ -103,7 +105,7 @@ theorem prescribed_context_baseline (Claim : Type) [Fintype Claim] (defaultClaim
     (assessment : (model Claim).BehavioralAssessment)
     (strategy : assessment.strategy = profile Claim defaultClaim) (who : Player)
     (site : (model Claim).InformationSite who) :
-    (assessment.continuationContext site (payoff who) (2 * horizon + 1)).value
+    (assessment.truncatedContinuationContext site (payoff who) (2 * horizon + 1)).value
         (assessment.strategy who) =
       expect (assessment.belief who site) (fun history =>
         expect ((application Claim).finish (PMF.pure initial) horizon (scheduler Claim)

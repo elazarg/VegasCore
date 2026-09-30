@@ -4,8 +4,11 @@ import Vegas.Examples.MonitoredGuessing.RestrictedSupport
 import Vegas.Examples.MonitoredGuessing.RestrictedClock
 import Interaction.ReactiveFiniteAssessment
 import Interaction.ReactiveAssessmentEvaluation
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
+import GameTheory.Analysis.Protocol.BeliefTransport
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The restricted receiver's posterior follows from consistency
 
@@ -81,8 +84,8 @@ theorem bob_state_belief (assessment : restrictedModel.BehavioralAssessment)
       history.trace).trans
       ((congrArg (nativeApp.observe bob) same).symm.trans
         ((bob_input bit).trans (bob_site_input site).symm))
-  have belief := assessment.belief_map_eq_run_of_full_reach restrictedModel bob site 8
-    restricted_decisionRecall.decisionInformationAntichain consistent depth seen
+  have belief := assessment.belief_map_eq_run_of_full_reach restrictedModel
+    restricted_decisionRecall.decisionInformationAntichain consistent bob site 8 depth seen
   have stateLaw := congrArg (fun histories : PMF restrictedArena.History =>
     histories.map History.state) belief
   simpa only [PMF.map_comp, Function.comp_def] using stateLaw.trans (bob_prefix_law _)
@@ -92,7 +95,7 @@ theorem bob_context_value (assessment : restrictedModel.BehavioralAssessment)
       restricted_decisionRecall.decisionInformationAntichain)
     (site : restrictedModel.InformationSite bob) (payoff : nativeApp.ProtocolState → ℝ)
     (alternative : restrictedModel.BehavioralPolicy bob) :
-    (assessment.continuationContext site (fun history => payoff history.state)
+    (assessment.truncatedContinuationContext site (fun history => payoff history.state)
       (2 * nativeHorizon + 1)).value alternative =
       expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler

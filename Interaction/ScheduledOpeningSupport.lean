@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ScheduledOpening
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Full support before a scheduled opening
@@ -37,12 +38,12 @@ theorem policyMixture_posterior_support_snoc {Index : Type} (initial : PMF Index
   have meets : ∃ pair ∈ Prod.fst ⁻¹' {entry.action}, pair ∈ joint.support :=
     ⟨(entry.action, index), rfl, produced⟩
   rw [Implementation.posterior_snoc]
-  change index ∈ ((fiberConditional joint Prod.fst entry.action).map Prod.snd).support
-  rw [fiberConditional, dite_eq_left meets, PMF.support_map]
+  change index ∈ ((fiberPosterior joint Prod.fst entry.action).map Prod.snd).support
+  rw [fiberPosterior_eq_filter _ _ meets, PMF.support_map]
   refine ⟨(entry.action, index), ?_, rfl⟩
   apply pmf_toReal_pos_iff.mp
   rw [toReal_filter_apply, ite_eq_left
-    (show (entry.action, index) ∈ Prod.fst ⁻¹' {entry.action} from rfl)]
+    (show (entry.action, index) ∈ {pair : _ × _ | pair.1 = entry.action} from rfl)]
   exact div_pos (pmf_toReal_pos_iff.mpr produced) (toOuterMeasure_toReal_pos _ meets)
 
 theorem policyMixture_posterior_support_append {Index : Type} (initial : PMF Index)

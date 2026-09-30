@@ -2,7 +2,9 @@
 
 import Vegas.Game.DisclosureContinuation
 import Vegas.Game.DisclosureRealization
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Exact conditional comparisons after private disclosure aggregation
 
@@ -50,14 +52,14 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
           {lifted : BehavioralPolicy who program // lifted.Admitted program admission}),
         (∀ selected ∈ alternatives.support,
           selected.1 ∈ (original.map observe).support ∧ project selected.1 = view) ∧
-        ((fiberConditional normalized observe view).bind (ProtocolState.continuationLaw program
+        ((fiberPosterior normalized observe view).bind (ProtocolState.continuationLaw program
           (Function.update profile who
             (policy.normalizeDisclosures program registry revelations)))) =
-          alternatives.bind (fun selected => (fiberConditional original observe selected.1).bind
+          alternatives.bind (fun selected => (fiberPosterior original observe selected.1).bind
             (ProtocolState.continuationLaw program (Function.update profile who policy))) ∧
-        ((fiberConditional normalized observe view).bind
+        ((fiberPosterior normalized observe view).bind
           (ProtocolState.continuationLaw program (Function.update profile who alternative))) =
-          alternatives.bind (fun selected => (fiberConditional original observe selected.1).bind
+          alternatives.bind (fun selected => (fiberPosterior original observe selected.1).bind
             (ProtocolState.continuationLaw program
               (Function.update profile who selected.2.1))) := by
   classical
@@ -98,7 +100,7 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
     intro state supported old member
     exact (ProtocolState.observe_normalizeDisclosureRecall program
       (fun view => view.2) old).symm.trans (congrArg observe (retracts state supported old member))
-  let restored := fiberConditional original (project ∘ observe) view
+  let restored := fiberPosterior original (project ∘ observe) view
   let views := restored.map observe
   let lift (oldView : ProtocolView who program) : BehavioralPolicy who program :=
     (exists_disclosure_continuation_lift program admission profile alternative permitted
@@ -118,27 +120,27 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
   have viewSupport (oldView : ProtocolView who program) (supported : oldView ∈ views.support) :
       oldView ∈ (original.map observe).support ∧ project oldView = view := by
     obtain ⟨state, member, same⟩ := PMF.support_map .. ▸ supported
-    change state ∈ (fiberConditional original (project ∘ observe) view).support at member
-    rw [fiberConditional, dite_eq_left meets] at member
+    change state ∈ (fiberPosterior original (project ∘ observe) view).support at member
+    rw [fiberPosterior_eq_filter_preimage _ _ meets] at member
     have details := (PMF.mem_support_filter_iff _).mp member
     refine ⟨?_, ?_⟩
     · rw [PMF.support_map]
       exact ⟨state, details.2, same⟩
     · exact (congrArg project same).symm.trans details.1
-  have conditional : restored = (fiberConditional normalized observe view).bind kernel := by
-    change (fiberConditional original (project ∘ observe) view) = _
+  have conditional : restored = (fiberPosterior normalized observe view).bind kernel := by
+    change (fiberPosterior original (project ∘ observe) view) = _
     rw [expanded]
-    exact PMF.conditional_bind_of_observation normalized kernel observe (project ∘ observe)
+    exact fiberPosterior_bind_of_observation normalized kernel observe (project ∘ observe)
       projects view present
   have originalFibers : ∀ oldView ∈ views.support,
-      fiberConditional restored observe oldView = fiberConditional original observe oldView := by
+      fiberPosterior restored observe oldView = fiberPosterior original observe oldView := by
     intro oldView supported
-    exact PMF.conditional_fiber_after_projection original observe project view oldView supported
+    exact fiberPosterior_after_projection original observe project view oldView supported
   refine ⟨alternatives, ?_, ?_, ?_⟩
   · intro selected supported
     obtain ⟨oldView, member, rfl⟩ := PMF.support_map .. ▸ supported
     exact viewSupport oldView member
-  · change ((fiberConditional normalized observe view).bind _) = _
+  · change ((fiberPosterior normalized observe view).bind _) = _
     rw [show alternatives = _ from rfl, PMF.bind_map]
     trans restored.bind (ProtocolState.continuationLaw program
       (Function.update profile who policy))
@@ -148,20 +150,20 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
       obtain ⟨witness, supportedWitness, observed⟩ := PMF.support_map .. ▸ present
       have targetMeets : ∃ state ∈ observe ⁻¹' {view}, state ∈ normalized.support :=
         ⟨witness, observed, supportedWitness⟩
-      rw [fiberConditional, dite_eq_left targetMeets] at supported
+      rw [fiberPosterior_eq_filter_preimage _ _ targetMeets] at supported
       obtain ⟨config, supportedConfig, reached⟩ := Set.mem_iUnion₂.mp
         (PMF.support_bind .. ▸ ((PMF.mem_support_filter_iff _).mp supported).2)
       have realized := disclosure_prefix_continuation_realizes program profile profile policy
         (fun view => PMF.pure view.2) config count
       rw [registryEq config supportedConfig, revelationsEq config supportedConfig] at realized
       exact (realized state reached).symm
-    · conv_lhs => arg 1; rw [eq_bind_fiberConditional restored observe]
+    · conv_lhs => arg 1; rw [← fiberPosterior_reconstruct restored observe]
       rw [PMF.bind_bind]
       exact bind_congr_on_support _ fun oldView supported =>
         congrArg (PMF.bind · _) (originalFibers oldView supported)
-  · change ((fiberConditional normalized observe view).bind _) = _
+  · change ((fiberPosterior normalized observe view).bind _) = _
     rw [show alternatives = _ from rfl, PMF.bind_map]
-    trans views.bind fun _ => (fiberConditional normalized observe view).bind
+    trans views.bind fun _ => (fiberPosterior normalized observe view).bind
       (ProtocolState.continuationLaw program (Function.update profile who alternative))
     · exact (PMF.bind_const ..).symm
     · apply bind_congr_on_support _
@@ -169,8 +171,8 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
       have properties := viewSupport oldView supported
       have posterior := normalized_disclosure_prefix_posterior program profile policy registry
         revelations initial registryEq revelationsEq count oldView properties.1
-      change (fiberConditional original observe oldView).map retract =
-        fiberConditional normalized observe (project oldView) at posterior
+      change (fiberPosterior original observe oldView).map retract =
+        fiberPosterior normalized observe (project oldView) at posterior
       rw [properties.2] at posterior
       rw [← posterior, PMF.bind_map]
       symm
@@ -181,7 +183,7 @@ theorem normalized_disclosure_prefix_comparison {Γ : SourceCtx Player L} {O : F
       obtain ⟨witness, supportedWitness, observed⟩ := PMF.support_map .. ▸ properties.1
       have oldMeets : ∃ state ∈ observe ⁻¹' {oldView}, state ∈ original.support :=
         ⟨witness, observed, supportedWitness⟩
-      rw [fiberConditional, dite_eq_left oldMeets] at member
+      rw [fiberPosterior_eq_filter_preimage _ _ oldMeets] at member
       exact ((PMF.mem_support_filter_iff _).mp member).1
 
 end Vegas.SourceProgram

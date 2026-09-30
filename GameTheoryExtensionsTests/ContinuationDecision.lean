@@ -23,11 +23,18 @@ open GameTheory.DecisionExperiment.Protocol
 
 variable {State Signal Action : Type} [Nonempty Action] [Finite State] [Finite Action]
 
+omit [Finite State] [Finite Action] in
+/-- Terminal play of the decision arena, certified by its horizon. -/
+theorem certificate (prior : PMF State) : (arena (Action := Action) prior).WellFoundedHistories :=
+  (bounded prior).wellFoundedHistories
+
+/-- The terminal decision is a continuation decision of terminal play. -/
 def decision (prior : PMF State) (observe : State → Signal)
     (site : (model (Action := Action) prior observe).InformationSite ())
     (utility : State → Action → ℝ) :
     (model prior observe).ContinuationDecision
-      (fun _ history => payoff utility history.state) 2 State Action where
+      (fun _ history => payoff utility history.state)
+      ((model prior observe).runBehavioralTerminalFrom (certificate prior)) State Action where
   player := ()
   site := site
   state history := latent prior history.1.state
@@ -36,6 +43,8 @@ def decision (prior : PMF State) (observe : State → Signal)
   reward := utility
   policy action := policy prior observe (fun _ => PMF.pure action)
   history_value profile history := by
+    rw [InformationModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded _ _
+      (bounded prior)]
     obtain ⟨state, supported, same, observed⟩ := history_at_site prior observe site history
     have signalEq := Option.some.inj (observed.trans (site_signal prior observe site))
     have law := congrArg (fun law => expect law (payoff utility))
@@ -59,7 +68,9 @@ def hiddenSite : (model (Action := Bool) biasedBit (fun _ => ())).InformationSit
   site biasedBit (fun _ => ()) false (biasedBit_full false)
 
 def guess : (model biasedBit (fun _ => ())).ContinuationDecision
-    (fun _ history => payoff (reportUtility id) history.state) 2 Bool Bool :=
+    (fun _ history => payoff (reportUtility id) history.state)
+    ((model biasedBit (fun _ => ())).runBehavioralTerminalFrom (certificate biasedBit))
+    Bool Bool :=
   decision biasedBit (fun _ => ()) hiddenSite (reportUtility id)
 
 def hiddenHistory (bit : Bool) :
@@ -111,8 +122,8 @@ theorem minority_guess_not_rational
     (assessment : (model (Action := Bool) biasedBit (fun _ => ())).BehavioralAssessment)
     (posterior : guess.posterior assessment = biasedBit)
     (minority : false ∈ (guess.response assessment.strategy).support) :
-    ¬ assessment.IsSequentiallyRationalWithin
-      (fun _ history => payoff (reportUtility id) history.state) 2 := by
+    ¬ assessment.IsSequentiallyRational (certificate biasedBit)
+        (fun _ history => payoff (reportUtility id) history.state) := by
   apply guess.not_rational_of_supported_inferior assessment false true minority
   obtain ⟨low, high⟩ := posterior_rewards assessment posterior
   rw [low, high]
@@ -123,9 +134,8 @@ actual protocol. The always-minority strategy is nevertheless not rational. -/
 theorem consistent_minority_not_rational :
     (assessment biasedBit (fun _ => ()) (fun _ => PMF.pure false)).IsSequentiallyConsistent
         (antichain biasedBit (fun _ => ())) ∧
-      ¬ (assessment biasedBit (fun _ => ())
-        (fun _ => PMF.pure false)).IsSequentiallyRationalWithin
-        (fun _ history => payoff (reportUtility id) history.state) 2 := by
+      ¬ (assessment biasedBit (fun _ => ()) (fun _ => PMF.pure false)).IsSequentiallyRational
+        (certificate biasedBit) (fun _ history => payoff (reportUtility id) history.state) := by
   refine ⟨assessment_consistent _ _ _, minority_guess_not_rational _ (canonical_posterior _) ?_⟩
   change false ∈ (response biasedBit (fun _ => ())
     (policy biasedBit (fun _ => ()) (fun _ => PMF.pure false)) _).support

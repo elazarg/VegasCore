@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.DisclosureComparison
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Other players' continuation comparisons under private alias erasure
 
@@ -43,13 +45,13 @@ theorem normalized_disclosure_foreign_comparison {Γ : SourceCtx Player L} {O : 
     let observe := ProtocolState.observe who program
     ∀ view ∈ (normalized.map observe).support,
       view ∈ (original.map observe).support ∧
-      ((fiberConditional normalized observe view).bind (ProtocolState.continuationLaw program
+      ((fiberPosterior normalized observe view).bind (ProtocolState.continuationLaw program
         (Function.update profile owner normalizedPolicy))) =
-        (fiberConditional original observe view).bind (ProtocolState.continuationLaw program
+        (fiberPosterior original observe view).bind (ProtocolState.continuationLaw program
           (Function.update profile owner policy)) ∧
-      ((fiberConditional normalized observe view).bind (ProtocolState.continuationLaw program
+      ((fiberPosterior normalized observe view).bind (ProtocolState.continuationLaw program
         (Function.update (Function.update profile owner normalizedPolicy) who alternative))) =
-        (fiberConditional original observe view).bind (ProtocolState.continuationLaw program
+        (fiberPosterior original observe view).bind (ProtocolState.continuationLaw program
           (Function.update (Function.update profile owner policy) who alternative)) := by
   classical
   dsimp only
@@ -84,16 +86,16 @@ theorem normalized_disclosure_foreign_comparison {Γ : SourceCtx Player L} {O : 
     rw [← retained state reached old member]
     exact (ProtocolState.foreign_observe_normalizeDisclosureRecall who different program
       (fun view => view.2) old).symm
-  have conditional : fiberConditional original observe view =
-      (fiberConditional normalized observe view).bind kernel := by
+  have conditional : fiberPosterior original observe view =
+      (fiberPosterior normalized observe view).bind kernel := by
     rw [expanded]
-    exact PMF.conditional_bind_of_observation normalized kernel observe observe
+    exact fiberPosterior_bind_of_observation normalized kernel observe observe
       observes view present
   have realization (continuation : BehavioralProfile program) :
-      ((fiberConditional normalized observe view).bind (ProtocolState.continuationLaw program
+      ((fiberPosterior normalized observe view).bind (ProtocolState.continuationLaw program
         (Function.update continuation owner
           (policy.normalizeDisclosures program registry revelations)))) =
-      (fiberConditional original observe view).bind (ProtocolState.continuationLaw program
+      (fiberPosterior original observe view).bind (ProtocolState.continuationLaw program
         (Function.update continuation owner policy)) := by
     rw [conditional, PMF.bind_bind]
     apply bind_congr_on_support _
@@ -101,7 +103,7 @@ theorem normalized_disclosure_foreign_comparison {Γ : SourceCtx Player L} {O : 
     obtain ⟨witness, member, equal⟩ := PMF.support_map .. ▸ present
     have meets : ∃ state ∈ observe ⁻¹' {view}, state ∈ normalized.support :=
       ⟨witness, equal, member⟩
-    rw [fiberConditional, dite_eq_left meets] at supported
+    rw [fiberPosterior_eq_filter_preimage _ _ meets] at supported
     obtain ⟨config, configSupport, reached⟩ := Set.mem_iUnion₂.mp
       (PMF.support_bind .. ▸ ((PMF.mem_support_filter_iff _).mp supported).2)
     have realizes := disclosure_prefix_continuation_realizes program profile continuation policy

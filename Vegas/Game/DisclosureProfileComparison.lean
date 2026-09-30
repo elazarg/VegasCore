@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.DisclosureForeign
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Simultaneous private-disclosure comparison for every player
 
@@ -35,16 +37,16 @@ private def PrefixComparison (program : SourceProgram Player L Γ O)
           selected.1 ∈ ((prefixLaw source).map (ProtocolState.observe who program)).support ∧
           ProtocolView.actor who program selected.1 = ProtocolView.actor who program view ∧
           ProtocolView.position who program selected.1 = ProtocolView.position who program view) ∧
-        ((fiberConditional (prefixLaw target) (ProtocolState.observe who program) view).bind
+        ((fiberPosterior (prefixLaw target) (ProtocolState.observe who program) view).bind
           (ProtocolState.continuationLaw program target)) =
           alternatives.bind (fun selected =>
-            (fiberConditional (prefixLaw source)
+            (fiberPosterior (prefixLaw source)
                 (ProtocolState.observe who program) selected.1).bind
               (ProtocolState.continuationLaw program source)) ∧
-        ((fiberConditional (prefixLaw target) (ProtocolState.observe who program) view).bind
+        ((fiberPosterior (prefixLaw target) (ProtocolState.observe who program) view).bind
           (ProtocolState.continuationLaw program (Function.update target who alternative))) =
           alternatives.bind (fun selected =>
-            (fiberConditional (prefixLaw source)
+            (fiberPosterior (prefixLaw source)
                 (ProtocolState.observe who program) selected.1).bind
               (ProtocolState.continuationLaw program (Function.update source who selected.2.1)))
 
@@ -153,16 +155,16 @@ theorem normalizeDisclosureProfile_prefix_comparison
             selected.1 ∈ ((prefixLaw profile).map (ProtocolState.observe who program)).support ∧
             ProtocolView.actor who program selected.1 = ProtocolView.actor who program view ∧
             ProtocolView.position who program selected.1 = ProtocolView.position who program view) ∧
-          ((fiberConditional (prefixLaw normalized) (ProtocolState.observe who program) view).bind
+          ((fiberPosterior (prefixLaw normalized) (ProtocolState.observe who program) view).bind
             (ProtocolState.continuationLaw program normalized)) =
             alternatives.bind (fun selected =>
-              (fiberConditional (prefixLaw profile)
+              (fiberPosterior (prefixLaw profile)
                   (ProtocolState.observe who program) selected.1).bind
                 (ProtocolState.continuationLaw program profile)) ∧
-          ((fiberConditional (prefixLaw normalized) (ProtocolState.observe who program) view).bind
+          ((fiberPosterior (prefixLaw normalized) (ProtocolState.observe who program) view).bind
             (ProtocolState.continuationLaw program (Function.update normalized who alternative))) =
             alternatives.bind (fun selected =>
-              (fiberConditional (prefixLaw profile)
+              (fiberPosterior (prefixLaw profile)
                   (ProtocolState.observe who program) selected.1).bind
                 (ProtocolState.continuationLaw program
                   (Function.update profile who selected.2.1))) := by

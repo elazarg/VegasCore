@@ -42,8 +42,9 @@ theorem resultLaw_update_alice (profile : Profile (model true).behavioralSignatu
 
 theorem target_rational (guesses : PMF Bool) (deposit : ℝ)
     (deterrence : ∀ bit, 1 - deposit ≤ expect guesses (correct bit)) :
-    (targetAssessment (silentProfile guesses)).IsSequentiallyRationalWithin
-      (fun who h => payoff deposit h.state who) 3 := by
+    (targetAssessment (silentProfile guesses)).IsSequentiallyRationalFor fun who site =>
+        (targetAssessment (silentProfile guesses)).truncatedContinuationContext site (fun h =>
+            payoff deposit h.state who) 3 := by
   intro who decision
   refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
@@ -88,7 +89,7 @@ theorem target_rational (guesses : PMF Bool) (deposit : ℝ)
 
 def isEquilibrium (deposit : ℝ) (assessment : (model true).BehavioralAssessment) : Prop :=
   assessment.IsSequentialEquilibriumFor (antichain true) (fun who decision =>
-    assessment.continuationContext decision (fun h => payoff deposit h.state who) 3)
+    assessment.truncatedContinuationContext decision (fun h => payoff deposit h.state who) 3)
 
 theorem target_sequential_equilibrium (guesses : PMF Bool) (deposit : ℝ)
     (deterrence : ∀ bit, 1 - deposit ≤ expect guesses (correct bit)) :
@@ -241,8 +242,9 @@ theorem disclosed_reward_upper (deposit : ℝ)
 each private type, regardless of Bob's beliefs or continuation strategy. -/
 theorem strict_deposit_silence (deposit : ℝ) (strict : 1 < deposit)
     (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who h => payoff deposit h.state who) 3) (bit : Bool) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun h => payoff deposit h.state
+            who) 3) (bit : Bool) :
     choiceLaw assessment.strategy false (some (some bit)) = PMF.pure false := by
   have best := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mp (rational false (aliceSite bit))
@@ -287,8 +289,8 @@ def reflectedProfile (profile : Profile (model true).behavioralSignature) :
 law a source law; this is independent of the proposed forward compiler. -/
 theorem strict_deposit_state_law (deposit : ℝ) (strict : 1 < deposit)
     (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who h => payoff deposit h.state who) 3) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun h => payoff deposit h.state who) 3) :
     ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
       (arena true).initHistory).map History.state =
     ((model false).runSingleMoverBehavioralFrom (single false)
@@ -299,8 +301,8 @@ theorem strict_deposit_state_law (deposit : ℝ) (strict : 1 < deposit)
 
 theorem strict_deposit_payoff_law (deposit : ℝ) (strict : 1 < deposit)
     (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin
-      (fun who h => payoff deposit h.state who) 3) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun h => payoff deposit h.state who) 3) :
     (((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
       (arena true).initHistory).map History.state).map (fun state who => payoff deposit state who) =
     (((model false).runSingleMoverBehavioralFrom (single false)
@@ -316,7 +318,8 @@ theorem strict_deposit_reflects_equilibrium (deposit : ℝ) (strict : 1 < deposi
     (equilibrium : isEquilibrium deposit assessment) :
     (sourceAssessment (reflectedProfile assessment.strategy)).IsSequentialEquilibriumFor
       (antichain false) (fun who decision =>
-        (sourceAssessment (reflectedProfile assessment.strategy)).continuationContext decision
+        (sourceAssessment (reflectedProfile
+            assessment.strategy)).truncatedContinuationContext decision
           (fun h => payoff 0 h.state who) 3) ∧
     ((model true).runSingleMoverBehavioralFrom (single true) assessment.strategy 3
       (arena true).initHistory).map History.state =

@@ -3,6 +3,7 @@
 import GameTheory.Math.Probability.Mixture
 import Mathlib.Probability.Distributions.Uniform
 import GameTheory.Math.Probability.Expectation
+import GameTheory.Math.Probability.Uniform
 
 /-! # Uniform laws on finite sets -/
 
@@ -18,13 +19,6 @@ variable {α : Type*}
 theorem toReal_uniformOfFintype_apply [Fintype α] [Nonempty α] (a : α) :
     ((PMF.uniformOfFintype α) a).toReal = (Fintype.card α : ℝ)⁻¹ := by
   rw [PMF.uniformOfFintype_apply, ENNReal.toReal_inv, ENNReal.toReal_natCast]
-
-/-- The uniform expectation is the average over the carrier. -/
-theorem expect_uniformOfFintype [Fintype α] [Nonempty α] (value : α → ℝ) :
-    expect (PMF.uniformOfFintype α) value = (∑ a, value a) / Fintype.card α := by
-  rw [expect_eq_sum]
-  simp_rw [toReal_uniformOfFintype_apply]
-  rw [← Finset.mul_sum, div_eq_inv_mul]
 
 /-- A mixture is supported inside the union of its components' supports. -/
 theorem support_mix_subset (t : ℝ) (h0 : 0 ≤ t) (h1 : t ≤ 1) (μ ν : PMF α) :

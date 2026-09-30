@@ -24,7 +24,7 @@ open GameTheory.Math.Probability
 private theorem watcher_context_value (assessment : nativeModel.BehavioralAssessment)
     (site : nativeModel.InformationSite watcher) (deposit : ℝ)
     (alternative : nativeModel.BehavioralPolicy watcher) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun history => nativeUtility deposit watcher history.state)
         (2 * nativeHorizon + 1)).value alternative = 0 := by
   have zero : (fun history : nativeArena.History =>
@@ -32,7 +32,7 @@ private theorem watcher_context_value (assessment : nativeModel.BehavioralAssess
     funext history
     cases history.state <;> simp only [nativeUtility, Option.elim,
       native_execution_utility_watcher]
-  rw [zero, BehavioralAssessment.continuationContext_value]
+  rw [zero, BehavioralAssessment.truncatedContinuationContext_value]
   exact expect_constant _ 0
 
 /-- A single fixed deposit works for every source mixture. Off-path receiver
@@ -44,7 +44,7 @@ theorem exists_native_sequential_equilibrium (guesses : PMF Bool)
       assessment.strategy watcher = nativeWatcherBehavior ∧
       assessment.strategy bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1 ∧
       assessment.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
-        assessment.continuationContext site
+        assessment.truncatedContinuationContext site
           (fun history => nativeUtility deposit who history.state) (2 * nativeHorizon + 1)) := by
   obtain ⟨assessment, fixed, atQuiet, consistent, offQuiet⟩ :=
     exists_native_bob_completion (nativeBaseline guesses) quietBobSite (nativeUtility deposit bob)
@@ -82,10 +82,10 @@ are fixed before selecting the source equilibrium. -/
 theorem source_equilibrium_preserved (deposit : ℝ) (sufficient : 2 ≤ deposit)
     (source : sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      source.continuationContext site (sourcePayoff who) 3)) :
+      source.truncatedContinuationContext site (sourcePayoff who) 3)) :
     ∃ target : nativeModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
-        target.continuationContext site
+        target.truncatedContinuationContext site
           (fun history => nativeUtility deposit who history.state) (2 * nativeHorizon + 1)) ∧
       (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
         (fun history => ((nativeObservation history.state).1,

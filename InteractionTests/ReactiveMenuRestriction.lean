@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveMenuRestriction
 import Interaction.ReactiveOwnPlay
-import GameTheoryExtensions.Protocol.RestrictionExecution
+import GameTheory.Protocol.RestrictionExecution
 import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Nested response menus retain communication and arbitrary policy laws

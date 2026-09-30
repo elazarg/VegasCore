@@ -3,9 +3,11 @@
 import Vegas.Game.SourceServiceSettlement
 import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveOpeningLikelihood
-import GameTheoryExtensions.Math.Probability.ConditionalNoise
+import GameTheory.Math.Probability.ConditionalObservation
 import Vegas.Source.ObservationRecall
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Public chance and the original source-memory factorization
 
@@ -145,7 +147,7 @@ theorem sample_successor_memory_factorization
         (L.evalDist law (sourcePublicEnv pair.1.state)).map fun value =>
           (sampleSuccessor name pair.1 value, sampleSuccessor name pair.2 value)).bind fun pair =>
         (nextNoise (pair.1.view focal)).map fun extra => (pair, extra) := by
-  apply PMF.exists_updated_observation_kernel_of_readout prior
+  apply exists_updated_observation_kernel_of_readout prior
     (fun seed => (source seed, original seed))
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun pair => pair.1.view focal) noise factor

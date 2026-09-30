@@ -53,7 +53,7 @@ theorem reveal_local_value [Finite (setup.executionProtocol admission).History]
     (joint : Bool → Player → Option (OwnAction Player L))
     (chosen : ∀ disclose, OwnAction.disclosure (joint disclose who) = disclose)
     (utility : State L setup.program.terminalCtx → ℝ) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => (setup.protocolReadout final.state).elim 0 utility)
       (instructionCount setup.program + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =
@@ -66,7 +66,7 @@ theorem reveal_local_value [Finite (setup.executionProtocol admission).History]
       setup.protocolRemaining history.1.state ≤ instructionCount setup.program + 1 := by
     have counted := setup.protocol_history_length admission history.1.trace
     omega
-  rw [setup.continuationContext_local_value_stateBelief admission assessment who site
+  rw [setup.truncatedContinuationContext_local_value_stateBelief admission assessment who site
     (setup.informationSite_nonterminal admission who site) law utility
     (instructionCount setup.program) enough]
   simp only [InformationModel.BehavioralAssessment.stateBelief, expect_map]
@@ -107,7 +107,7 @@ theorem reveal_local_value_binary [Finite (setup.executionProtocol admission).Hi
     let values := fun disclose => expect (assessment.stateBelief who site) (fun state =>
       expect ((setup.protocolStep state (joint disclose)).bind (setup.continuationLaw
         (setup.decodeBehavioralProfile admission assessment.strategy))) utility)
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => (setup.protocolReadout final.state).elim 0 utility)
       (instructionCount setup.program + 1)).value
         ((assessment.strategy who).withLaw site.1 law) =

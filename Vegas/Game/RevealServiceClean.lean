@@ -103,7 +103,7 @@ theorem continuation_clean
 include reveals observer openable in
 /-- Every final history a retained continuation context can reach is free of
 departure evidence, so there net and base utility agree. -/
-private theorem continuationContext_net_eq_on_support
+private theorem truncatedContinuationContext_net_eq_on_support
     (assessment : (information setup leaks bounds watcher).BehavioralAssessment)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (who : Player) (site : (information setup leaks bounds watcher).InformationSite who)
@@ -111,7 +111,7 @@ private theorem continuationContext_net_eq_on_support
     (fuel : Nat)
     (enough : ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
       2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
-    ∀ final ∈ ((assessment.continuationContext site (fun final => base final.state who)
+    ∀ final ∈ ((assessment.truncatedContinuationContext site (fun final => base final.state who)
         fuel).outcome alternative).support,
       netUtility setup leaks watcher base deposit final.state who = base final.state who := by
   intro final supported
@@ -123,7 +123,7 @@ private theorem continuationContext_net_eq_on_support
 include reveals observer openable in
 /-- Deposits leave every retained conditional comparison unchanged. The
 alternative is an arbitrary whole continuation policy, not only one response. -/
-theorem continuationContext_net_value
+theorem truncatedContinuationContext_net_value
     (assessment : (information setup leaks bounds watcher).BehavioralAssessment)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (who : Player) (site : (information setup leaks bounds watcher).InformationSite who)
@@ -131,17 +131,17 @@ theorem continuationContext_net_value
     (fuel : Nat)
     (enough : ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
       2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => netUtility setup leaks watcher base deposit final.state who) fuel).value
         alternative =
-      (assessment.continuationContext site (fun final => base final.state who) fuel).value
+      (assessment.truncatedContinuationContext site (fun final => base final.state who) fuel).value
         alternative :=
-  expect_congr_on_support (continuationContext_net_eq_on_support setup leaks bounds watcher
+  expect_congr_on_support (truncatedContinuationContext_net_eq_on_support setup leaks bounds watcher
     reveals observer openable assessment base deposit who site alternative fuel enough)
 
 include reveals observer openable in
 /-- Deposits leave integrability of every retained continuation unchanged. -/
-theorem continuationContext_net_integrable
+theorem truncatedContinuationContext_net_integrable
     (assessment : (information setup leaks bounds watcher).BehavioralAssessment)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (who : Player) (site : (information setup leaks bounds watcher).InformationSite who)
@@ -149,19 +149,20 @@ theorem continuationContext_net_integrable
     (fuel : Nat)
     (enough : ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
       2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => netUtility setup leaks watcher base deposit final.state who) fuel).IntegrableAt
         alternative ↔
-      (assessment.continuationContext site (fun final => base final.state who) fuel).IntegrableAt
+      (assessment.truncatedContinuationContext site (fun final => base final.state who)
+          fuel).IntegrableAt
         alternative := by
-  have same := continuationContext_net_eq_on_support setup leaks bounds watcher reveals observer
-    openable assessment base deposit who site alternative fuel enough
+  have same := truncatedContinuationContext_net_eq_on_support setup leaks bounds watcher reveals
+    observer openable assessment base deposit who site alternative fuel enough
   exact ⟨payoffIntegrable_congr_on_support same,
     payoffIntegrable_congr_on_support fun final supported => (same final supported).symm⟩
 
 include reveals observer openable in
 /-- Deposits leave every retained continuation's expectation unchanged. -/
-theorem continuationContext_net_hasValue
+theorem truncatedContinuationContext_net_hasValue
     (assessment : (information setup leaks bounds watcher).BehavioralAssessment)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (who : Player) (site : (information setup leaks bounds watcher).InformationSite who)
@@ -169,16 +170,17 @@ theorem continuationContext_net_hasValue
     (fuel : Nat)
     (enough : ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
       2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => netUtility setup leaks watcher base deposit final.state who) fuel).HasValueAt
         alternative ↔
-      (assessment.continuationContext site (fun final => base final.state who) fuel).HasValueAt
+      (assessment.truncatedContinuationContext site (fun final => base final.state who)
+          fuel).HasValueAt
         alternative :=
-  hasExpectation_congr_on_support (continuationContext_net_eq_on_support setup leaks bounds
+  hasExpectation_congr_on_support (truncatedContinuationContext_net_eq_on_support setup leaks bounds
     watcher reveals observer openable assessment base deposit who site alternative fuel enough)
 
 include reveals observer openable in
-theorem continuationContext_net_extendedValue
+theorem truncatedContinuationContext_net_extendedValue
     (assessment : (information setup leaks bounds watcher).BehavioralAssessment)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (who : Player) (site : (information setup leaks bounds watcher).InformationSite who)
@@ -186,12 +188,13 @@ theorem continuationContext_net_extendedValue
     (fuel : Nat)
     (enough : ∀ history : (information setup leaks bounds watcher).InformationHistory who site.1,
       2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
-    (assessment.continuationContext site
+    (assessment.truncatedContinuationContext site
       (fun final => netUtility setup leaks watcher base deposit final.state who) fuel).extendedValue
         alternative =
-      (assessment.continuationContext site (fun final => base final.state who) fuel).extendedValue
+      (assessment.truncatedContinuationContext site (fun final => base final.state who)
+          fuel).extendedValue
         alternative :=
-  extendedExpect_congr_on_support (continuationContext_net_eq_on_support setup leaks bounds
+  extendedExpect_congr_on_support (truncatedContinuationContext_net_eq_on_support setup leaks bounds
     watcher reveals observer openable assessment base deposit who site alternative fuel enough)
 
 include reveals observer openable in
@@ -202,18 +205,20 @@ theorem sequential_equilibrium_net_iff
     (antichain : (information setup leaks bounds watcher).DecisionInformationAntichain)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ) :
     assessment.IsSequentialEquilibriumFor antichain (fun who site =>
-      assessment.continuationContext site
+      assessment.truncatedContinuationContext site
         (fun final => netUtility setup leaks watcher base deposit final.state who)
         (2 * horizon setup watcher + 1)) ↔
       assessment.IsSequentialEquilibriumFor antichain (fun who site =>
-        assessment.continuationContext site (fun final => base final.state who)
+        assessment.truncatedContinuationContext site (fun final => base final.state who)
           (2 * horizon setup watcher + 1)) := by
   have same who (site : (information setup leaks bounds watcher).InformationSite who) :=
     Context.isLocallyOptimal_congr (allowed := Set.univ) (choice := assessment.strategy who)
-      (fun policy => continuationContext_net_hasValue setup leaks bounds watcher reveals observer
+      (fun policy => truncatedContinuationContext_net_hasValue setup leaks bounds watcher reveals
+          observer
         openable assessment base deposit who site policy (2 * horizon setup watcher + 1)
         (fun _ => Nat.sub_le ..))
-      (fun policy => continuationContext_net_extendedValue setup leaks bounds watcher reveals
+      (fun policy => truncatedContinuationContext_net_extendedValue setup leaks bounds watcher
+          reveals
         observer openable assessment base deposit who site policy (2 * horizon setup watcher + 1)
         (fun _ => Nat.sub_le ..))
   constructor

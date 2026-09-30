@@ -442,7 +442,7 @@ preservation concerns this semantic game, not a game whose actions also encode
 private implementation states.
 
 The existing
-[PrivateStrategy.realize](../GameTheoryExtensions/Protocol/PrivateStrategy.lean)
+[PrivateStrategy.realize](../GameTheory/GameTheory/Protocol/PrivateStrategy.lean)
 preserves external laws against adaptive environments. Its reactive counterpart
 proves playerwise execution correspondence for arbitrary stateful implementations,
 including the compiler's remembered intentions. The compiled behavioral policy

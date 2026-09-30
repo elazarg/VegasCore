@@ -171,13 +171,13 @@ def silentHistories (ambient : Bool) :
 theorem sender_context (assessment : (model (Decision := Decision) prior true).BehavioralAssessment)
     (secret : Secret) (utility : State Secret Decision → ℝ)
     (alternative : (model (Decision := Decision) prior true).BehavioralPolicy false) :
-    (assessment.continuationContext (senderSite prior full secret)
+    (assessment.truncatedContinuationContext (senderSite prior full secret)
       (fun h => utility h.state) 3).value alternative =
       expect ((model prior true).runSingleMoverBehavioralFrom (single prior true)
         (Profile.update (sig := (model prior true).behavioralSignature)
           assessment.strategy false alternative) 3 (senderHistory prior full true secret))
             (fun h => utility h.state) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     eq_pure_of_subsingleton (assessment.belief false (senderSite prior full secret))
       ⟨senderHistory prior full true secret, rfl⟩, PMF.pure_bind,
     ← InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom
@@ -187,14 +187,14 @@ theorem disclosed_context
     (assessment : (model (Decision := Decision) prior true).BehavioralAssessment)
     (secret : Secret) (utility : State Secret Decision → ℝ)
     (alternative : (model (Decision := Decision) prior true).BehavioralPolicy true) :
-    (assessment.continuationContext (receiverDisclosedSite prior full secret)
+    (assessment.truncatedContinuationContext (receiverDisclosedSite prior full secret)
         (fun h => utility h.state) 3).value alternative =
       expect ((model prior true).runSingleMoverBehavioralFrom (single prior true)
         (Profile.update (sig := (model prior true).behavioralSignature)
           assessment.strategy true alternative) 3
             (receiverHistory prior full true secret true))
             (fun h => utility h.state) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     eq_pure_of_subsingleton
       (assessment.belief true (receiverDisclosedSite prior full secret))
       ⟨receiverHistory prior full true secret true, rfl⟩, PMF.pure_bind,

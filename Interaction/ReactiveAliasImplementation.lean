@@ -2,7 +2,8 @@
 
 import Interaction.ReactiveNormalRecall
 import Interaction.ReactiveImplementationContinuation
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Simulating private response names inside a strategy
@@ -90,7 +91,7 @@ theorem aliasImplementation_posterior_prefix (who : Principal)
       obtain ⟨response, supported, rfl⟩ := PMF.support_map .. ▸ member
       have original : response ∈ ((normal.aliasImplementation who reference policy).respond
           (reference.map PlayerEntry.action) (past, entry.beforeView)).support := by
-        unfold fiberConditional at supported
+        unfold fiberPosterior at supported
         split at supported
         · exact ((PMF.mem_support_filter_iff _).mp supported).2
         · exact supported

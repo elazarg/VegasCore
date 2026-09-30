@@ -2,7 +2,8 @@
 
 import Vegas.Game.DisclosurePrefix
 import Vegas.Source.DisclosureObservation
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Information-fiber retraction along normalized source prefixes
@@ -126,7 +127,7 @@ private theorem retractsDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
       let posterior : DecisionView who ((name, .commitment owner payload) :: Γ) →
           PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          (fiberConditional (bindingMemoryLaw name payload remember (policy.1 own)
+          (fiberPosterior (bindingMemoryLaw name payload remember (policy.1 own)
               (view.back true)) Prod.fst
             ((view.1.cells.get .here).getD .failure)).map Prod.snd
         else remember (view.back false)
@@ -151,7 +152,7 @@ private theorem retractsDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
               (config.view owner)).map Prod.fst).support := by
             simpa only [commitKernel, Function.update_self,
               BehavioralPolicy.normalizeDisclosureFrom] using selected
-          have remembered' : past ∈ ((fiberConditional (bindingMemoryLaw name payload remember
+          have remembered' : past ∈ ((fiberPosterior (bindingMemoryLaw name payload remember
               (policy.1 rfl)
               (config.view owner)) Prod.fst binding).map Prod.snd).support := by
             simpa only [posterior, dite_true, Config.view, commitSuccessor,
@@ -196,7 +197,7 @@ private theorem retractsDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
       let posterior : DecisionView who ((published, .publication payload) :: Γ) →
           PMF (List (OwnAction Player L)) := fun view =>
         if own : owner = who then
-          (fiberConditional (disclosureMemoryLaw published (own ▸ selected) config.registry
+          (fiberPosterior (disclosureMemoryLaw published (own ▸ selected) config.registry
               config.revelations
               remember (policy.1 own) (view.back true)) Prod.fst
             (OwnAction.disclosure view.2.getLast?)).map Prod.snd
@@ -219,7 +220,7 @@ private theorem retractsDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
                 Prod.fst).support :=
             by simpa only [revealKernel, Function.update_self,
               BehavioralPolicy.normalizeDisclosureFrom] using chosen
-          have remembered' : past ∈ ((fiberConditional (disclosureMemoryLaw published selected
+          have remembered' : past ∈ ((fiberPosterior (disclosureMemoryLaw published selected
               config.registry
               config.revelations remember (policy.1 rfl) (config.view owner))
               Prod.fst disclose).map Prod.snd).support := by

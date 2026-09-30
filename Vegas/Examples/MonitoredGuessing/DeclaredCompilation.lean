@@ -58,10 +58,12 @@ private theorem equal_model_assessment
     (observations : HEq sourceObserve targetObserve)
     (source : M.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-      source.continuationContext site (fun history => sourceUtility history.state who) 3)) :
+      source.truncatedContinuationContext site (fun history => sourceUtility history.state
+          who) 3)) :
     ∃ target : N.BehavioralAssessment,
       target.IsSequentialEquilibriumFor targetAntichain (fun who site =>
-        target.continuationContext site (fun history => targetUtility history.state who) 3) ∧
+        target.truncatedContinuationContext site (fun history => targetUtility history.state
+            who) 3) ∧
       ((M.runBehavioral source.strategy 3).map History.state).map sourceObserve =
         ((N.runBehavioral target.strategy 3).map History.state).map targetObserve := by
   cases arena
@@ -75,11 +77,11 @@ premise uses the literal program's evaluated returns at every continuation. -/
 theorem declared_source_assessment (table : PayoffTable)
     (source : ((payoffSetup table).informationModel (payoffAdmission table)).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (payoffAntichain table) (fun who site =>
-      source.continuationContext site
+      source.truncatedContinuationContext site
         (fun history => declaredSourceUtility table history.state who) 3)) :
     ∃ target : sourceModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
-        target.continuationContext site
+        target.truncatedContinuationContext site
           (Restricted.sourceResultPayoff (Restricted.tableReward table) who) 3) ∧
       ((((payoffSetup table).informationModel (payoffAdmission table)).runBehavioral
         source.strategy 3).map History.state).map (declaredSourceObservation table) =
@@ -103,12 +105,12 @@ theorem declared_sequential_equilibrium_preserved (table : PayoffTable)
     (watcherZero : ∀ result, table result watcher = 0)
     (source : ((payoffSetup table).informationModel (payoffAdmission table)).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (payoffAntichain table) (fun who site =>
-      source.continuationContext site
+      source.truncatedContinuationContext site
         (fun history => declaredSourceUtility table history.state who) 3)) :
     ∃ target : nativeModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         (nativeMenu.decisionInformationAntichain nativeInitialLaw nativeHorizon nativeScheduler)
-        (fun who site => target.continuationContext site
+        (fun who site => target.truncatedContinuationContext site
           (fun history => Enforcement.stateUtility table history.state who)
           (2 * nativeHorizon + 1)) ∧
       ((nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map

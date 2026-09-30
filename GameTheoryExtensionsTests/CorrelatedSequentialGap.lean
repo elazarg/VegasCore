@@ -188,10 +188,10 @@ theorem context_value {sequential : Bool}
     (assessment : (model sequential).BehavioralAssessment) (who : Bool)
     (site : (model sequential).InformationSite who)
     (alternative : (model sequential).BehavioralPolicy who) :
-    (assessment.continuationContext site (reward who ·.state) 2).value alternative =
+    (assessment.truncatedContinuationContext site (reward who ·.state) 2).value alternative =
       expect (stateLaw (Profile.update assessment.strategy who alternative) site.1)
         (reward who) := by
-  rw [InformationModel.BehavioralAssessment.continuationContext_value,
+  rw [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
     expect_bind_tower _ _ _ (payoffIntegrable_of_finite _ _)]
   calc
     _ = expect (assessment.belief who site) (fun _ =>
@@ -256,7 +256,8 @@ theorem source_deviation_bound (who : Bool) (alternative : (model false).Behavio
 
 theorem source_rational (assessment : (model false).BehavioralAssessment)
     (strategy : assessment.strategy = prescribed false) :
-    assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2 := by
+    assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun h => reward who h.state) 2 := by
   intro who site
   refine (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mpr fun alternative _ => ?_
@@ -272,7 +273,7 @@ theorem source_rational (assessment : (model false).BehavioralAssessment)
 
 def isEquilibrium (sequential : Bool) (assessment : (model sequential).BehavioralAssessment) :
     Prop := assessment.IsSequentialEquilibriumFor (antichain sequential) (fun who site =>
-      assessment.continuationContext site (fun h => reward who h.state) 2)
+      assessment.truncatedContinuationContext site (fun h => reward who h.state) 2)
 
 theorem exists_source_equilibrium :
     ∃ assessment : (model false).BehavioralAssessment,
@@ -359,7 +360,8 @@ theorem branch_deviation_value (profile : Profile (model true).behavioralSignatu
     expect_pure]
 
 theorem rational_branch_value (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun h => reward who h.state) 2) :
     1 ≤ expect (stateLaw assessment.strategy [(true, false)]) (reward true) := by
   have improves := (Context.isLocallyOptimal_iff_of_integrable (payoffIntegrable_of_finite _ _)
     fun _ _ => payoffIntegrable_of_finite _ _).mp (rational true branchSite)
@@ -393,7 +395,8 @@ theorem enter_deviation_value (profile : Profile (model true).behavioralSignatur
   simp [actionLaw, Profile.update]
 
 theorem rational_root_value (assessment : (model true).BehavioralAssessment)
-    (rational : assessment.IsSequentiallyRationalWithin (fun who h => reward who h.state) 2) :
+    (rational : assessment.IsSequentiallyRationalFor fun who site =>
+        assessment.truncatedContinuationContext site (fun h => reward who h.state) 2) :
     2 ≤ expect (stateLaw assessment.strategy []) (reward false) := by
   have incumbent := rational_branch_value assessment rational
   have relation := branch_payoff_relation assessment.strategy

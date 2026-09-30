@@ -59,7 +59,8 @@ theorem sample_comparison_eq (who : Player) (site : service.model.InformationSit
     {event : (graph service.setup).EventId} (chance : (graph service.setup).actor? event = none)
     (granted : view.application.publicView.serviceGrant = some event)
     (law : PMF (service.model.Choice who site.1)) :
-    let comparison := service.model.assessmentComparison service.readout service.fuel
+    let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
+        service.fuel) service.readout
       approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
     comparison.alternative = comparison.prescribed := by
   apply approx.comparison_eq_of_phase_invariant who site

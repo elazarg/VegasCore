@@ -1,10 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveFiniteAssessment
-import GameTheoryExtensions.Analysis.Protocol.FixedDepthBayes
-import GameTheoryExtensions.Math.Probability.ObservationRetraction
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Analysis.Protocol.BeliefTransport
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
+import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Native Bayes beliefs are conditional execution laws
 
@@ -35,7 +39,7 @@ theorem stateBelief_eq_conditional_prefix
     (clock : ∀ history : (menu.information initial horizon scheduler).InformationHistory
       who site.1, history.1.trace.length = depth) :
     assessment.stateBelief who site =
-      fiberConditional (((menu.information initial horizon scheduler).runBehavioral
+      fiberPosterior (((menu.information initial horizon scheduler).runBehavioral
         assessment.strategy depth).map History.state) (app.observe who) site.1 := by
   classical
   let M := menu.information initial horizon scheduler
@@ -61,23 +65,23 @@ theorem stateBelief_eq_conditional_prefix
     (menu.decisionInformationAntichain initial horizon scheduler who site) positive meets
   rw [← belief] at conditioned
   have fiber : prefixLaw.filter {h | M.infoOf who h.trace = site.1} meets =
-      fiberConditional prefixLaw (app.observe who ∘ History.state) site.1 := by
+      fiberPosterior prefixLaw (app.observe who ∘ History.state) site.1 := by
     have same : {h : (menu.protocol initial horizon scheduler).History |
         M.infoOf who h.trace = site.1} =
-        (app.observe who ∘ History.state) ⁻¹' {site.1} := by
+        {h | (app.observe who ∘ History.state) h = site.1} := by
       ext h
       change M.infoOf who h.trace = site.1 ↔ app.observe who h.state = site.1
       rw [show M.infoOf who h.trace = app.observe who h.state from
         menu.info initial horizon scheduler who h.trace]
-    rw [fiberConditional, dite_eq_left (same ▸ meets)]
+    rw [fiberPosterior_eq_filter _ _ (same ▸ meets)]
     congr 1
   calc
     assessment.stateBelief who site =
         ((assessment.belief who site).map Subtype.val).map History.state :=
       (PMF.map_comp _ _ _).symm
-    _ = (fiberConditional prefixLaw (app.observe who ∘ History.state) site.1).map
+    _ = (fiberPosterior prefixLaw (app.observe who ∘ History.state) site.1).map
         History.state := by rw [conditioned, fiber]
-    _ = _ := PMF.map_conditional_readout prefixLaw History.state
+    _ = _ := map_fiberPosterior_readout prefixLaw History.state
       (app.observe who) site.1 present
 
 end Interaction.ReactiveApplication.ResponseMenu

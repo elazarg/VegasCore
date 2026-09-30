@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Source.DisclosurePosterior
-import GameTheoryExtensions.Math.Probability.Conditioning
+import GameTheory.Math.Probability.ConditionalObservation
+import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Effective disclosure recall is determined by source observations
 
@@ -104,12 +106,12 @@ theorem bindingRecall_own_successor {payload : L.Ty} (name : VarId)
 
 private theorem conditional_fst_support {A B : Type*} (law : PMF (A × B)) (value : A)
     (reached : value ∈ (law.map Prod.fst).support) (pair : A × B)
-    (member : pair ∈ (fiberConditional law Prod.fst value).support) :
+    (member : pair ∈ (fiberPosterior law Prod.fst value).support) :
     pair ∈ law.support ∧ pair.1 = value := by
   classical
   obtain ⟨witness, supported, same⟩ := PMF.support_map .. ▸ reached
   have meets : ∃ pair ∈ Prod.fst ⁻¹' {value}, pair ∈ law.support := ⟨witness, same, supported⟩
-  rw [fiberConditional, dite_eq_left meets] at member
+  rw [fiberPosterior_eq_filter_preimage _ _ meets] at member
   exact ⟨((PMF.mem_support_filter_iff _).mp member).2,
     ((PMF.mem_support_filter_iff _).mp member).1⟩
 
@@ -126,7 +128,7 @@ theorem bindingMemoryLaw_recall {payload : L.Ty} (name : VarId)
     (reached : binding ∈ ((bindingMemoryLaw name payload remember choose
       (config.view who)).map Prod.fst).support)
     (past : List (OwnAction Player L))
-    (remembered : past ∈ ((fiberConditional (bindingMemoryLaw name payload remember choose
+    (remembered : past ∈ ((fiberPosterior (bindingMemoryLaw name payload remember choose
       (config.view who)) Prod.fst binding).map Prod.snd).support) :
     bindingRecall name who payload recall
         (((commitSuccessor name guard config binding).withOwnHistory who past).view who) =
@@ -156,7 +158,7 @@ theorem disclosureMemoryLaw_recall {payload : L.Ty} {name : VarId}
     (reached : disclose ∈ ((disclosureMemoryLaw published selected config.registry
       config.revelations remember choose (config.view who)).map Prod.fst).support)
     (past : List (OwnAction Player L))
-    (remembered : past ∈ ((fiberConditional (disclosureMemoryLaw published selected config.registry
+    (remembered : past ∈ ((fiberPosterior (disclosureMemoryLaw published selected config.registry
       config.revelations remember choose (config.view who)) Prod.fst disclose).map
         Prod.snd).support) :
     publicationRecall published name who payload recall
