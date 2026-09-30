@@ -7,8 +7,7 @@ lemmas it cites. It describes which scheduling restrictions
 `Vegas.Paper.source_audited_raw_sequential_equilibrium` imposes, compares
 contract designs for ordering concurrent events, and lists the obligations of a
 general theorem. Finite probes support the argument that preservation survives
-adaptive orders. The choice among the designs is open; a recommendation is
-given below.
+adaptive orders. Design D1, open at readiness, is chosen (below).
 
 ## What the library no longer requires
 
@@ -102,13 +101,33 @@ party that must be live, and possibly one that must not be strategic.
 | `handle`: readiness, deadline, owner and handle checks | Contract code | Contract |
 | `State.activatedAt`, `deadline` (`Vegas/Pending/EventApplication.lean`) | Contract state and parameters | Contract |
 | `.expire`, `.executeSample` | Anyone-can-call contract functions, applied lazily | Contract (effect), service (caller) |
-| `.grant`, `State.serviceGrant`, the order policy | Not enforced by `handle`: an advisory public cursor that only prescribed clients respect (`no_grant_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`) | Service |
+| `.grant`, `State.serviceGrant`, the order policy | Not enforced by `handle`: an advisory public cursor that prescribed clients respect (`no_grant_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`) and that the audit's conformance check requires (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
 | Disclosure reports feeding the audit | The watcher | Service |
 
 The grant is public and computed from public data, so it is not a private
 channel. It is, however, a coordination service that the fixed-calendar proof
-depends on: prescribed owners transmit only when granted, while a deviator may
-submit whenever its event is ready.
+depends on: prescribed owners transmit only when granted, the audit classifies
+a fresh packet as conforming only for the granted event, and a deviator may
+still submit whenever its event is ready.
+
+### Modeling priorities
+
+Chain realism comes first; contract mechanisms are largely optimizations on top
+of it. The target chain model is as asynchronous as the guarantees allow:
+
+- every player may broadcast at every tick, reacting to everything public,
+  including the mempool;
+- the builder includes pending packets in any order and at any time, adaptively
+  and exogenously (see strategic ordering below), subject only to a delivery
+  bound: a packet broadcast at tick `t` is included by tick `t + Δ`;
+- a prescribed client broadcasts within `r` ticks of its event becoming ready.
+
+Bounded inclusion delay is the only synchrony assumption. Deadline enforcement
+rests on it, and censorship beyond Δ is assumed away, as it is for every
+timeout-based contract. The current service is more synchronous than this:
+epochs visit events in an order, activate owners from a roster, and reserve
+inclusion at the visit. Replacing that service by the Δ-bounded builder is part
+of the work for D1 (below).
 
 ## Design alternatives for concurrent events
 
@@ -144,10 +163,16 @@ example the number of concurrent bindings times the block length.
 | Who orders concurrent events | builder | contract rule | keeper | keeper and builder |
 | What the orderer can read | mempool, including pending certificates | contract state only | mempool | mempool |
 | Can a player control the order | yes, as or by paying a builder | no | if a player can be keeper | yes |
-| Timeliness from | Δ ≤ timeout | Δ ≤ timeout, per current event | Δ ≤ timeout after grant, and keeper liveness | deadline covers grant delay, and keeper liveness |
+| Timeliness from | `r + Δ < deadline` from readiness | `r + Δ < deadline` from becoming current | `r + Δ < deadline` from the first grant, and keeper liveness | deadline exceeds grant delay plus `r + Δ`, and keeper liveness |
 | Latency of k concurrent bindings | one timeout | up to k timeouts | up to k timeouts | one long timeout |
 | Out-of-order inclusion | is the adaptive order | impossible | impossible | possible (not enforced) |
-| Change from today's model | honest owners submit at readiness; service no longer grants | new contract state and gate | new contract state and gate, first-grant timer | deadline formula only |
+| Change from today's model | honest owners submit at readiness; service no longer grants; audit authorizes by readiness | new contract state and gate | new contract state and gate, first-grant timer | deadline formula only |
+
+The timeliness bounds are strict because `State.WithinDeadline` accepts a
+packet only while the time since activation is strictly less than the
+deadline: with deadline 1, a packet included one tick after readiness is
+rejected. `r` is the client's reaction time and Δ the broadcast-to-inclusion
+bound.
 
 ### Considerations
 
@@ -163,9 +188,16 @@ example the number of concurrent bindings times the block length.
 - **Strategic ordering.** In D1 and D4 a player can influence the order by
   building blocks or paying a builder. In the concurrent window the order can
   only change which of two hidden commitments is included first, and when; it
-  can reveal who has already committed, never what. The general theorem must
-  cover every order, which includes every order a player could buy; it does
-  not yet cover a player whose own payoff depends on the ordering choice.
+  can reveal who has already committed, never what. The target theorem keeps
+  ordering exogenous: it has the shape "for every order, some sequential
+  equilibrium", and the equilibria may differ between orders. It therefore
+  says nothing about a player who deviates jointly in transmission and
+  ordering, even when utilities depend only on the source outcome. Covering
+  that needs a separate theorem in which the order is part of the player's
+  deviation. What is uniform across orders is the retained behavior: every
+  extension plays the compiled source profile at retained sites
+  (`ActionRestriction.ExtendsProfile`), so only off-path completion and beliefs
+  can depend on the order.
 - **Timeliness.** Probe C1 shows the failure of today's model: prescribed
   owners wait for grants while timers run from readiness, so a third
   concurrent binding expires before its grant. D1 removes the wait. D2 and D3
@@ -178,12 +210,13 @@ example the number of concurrent bindings times the block length.
   existing theorem (see the narrower reductions). D1 and D4 additionally allow
   inclusion in any order the builder chooses; D2 and D3 exclude it.
 
-### Recommendation
+### Decision
 
 D1. It adds no service and no contract mechanism, has the least latency, and
-the barrier order already limits what an adaptive order can exploit to
-charged certificates and cheap talk. Its costs are an inclusion assumption
-Δ ≤ timeout, stated as a chain assumption, and a theorem that must cover every
+matches the asynchronous chain model directly; the barrier order already
+limits what an adaptive order can exploit to charged certificates and cheap
+talk. Its costs are the inclusion assumption `r + Δ < deadline`, stated as a
+chain assumption, a readiness-based audit, and a theorem that must cover every
 builder order. D2 is the fallback if some adaptive order proves harmful: it
 takes ordering away from anyone who can read the mempool, at the price of
 serializing concurrent owners.
@@ -254,6 +287,8 @@ The following effects cannot be neutralized through beliefs:
 
 Whatever the design, a valid order for this purpose:
 
+- is exogenous: chosen by no player, though it may adapt to the public
+  history;
 - serves only ready events, and reads only data public at that point (the
   mempool is public; under the barrier order this excludes early verified
   values other than charged ones);
@@ -269,17 +304,27 @@ An order that starves an event, or runs without bound, is outside the claim.
 The goal is the strongest statement, not the reuse of the existing proof: for
 the barrier-ordered concurrent runtime of the chosen design, every source
 sequential equilibrium has an audited native sequential equilibrium with the
-source law, under every order satisfying the contract. The fixed calendar, a
+source law, under every exogenous order satisfying the contract. The fixed calendar, a
 fixed permutation of concurrent bindings, and a public random order drawn up
 front are special cases, so they need no separate theorems.
 
 Design-dependent obligations:
 
-- **Timely opportunities.** D1: prescribed owners submit at readiness, and the
-  service model offers every ready owner an opportunity and reserved inclusion
-  within Δ, with Δ at most the deadline. The handler and timers are unchanged;
-  the service stops granting. D2 and D3: first-service timers and the
-  current-event gate in `handle`. D4: deadlines covering the grant delay.
+- **Asynchronous chain model.** D1: replace the epoch service by the model of
+  the modeling priorities above: every player may act at every tick, and an
+  exogenous builder includes adaptively within Δ. The handler and timers are
+  unchanged, and the service stops granting.
+- **Timely opportunities.** D1: prescribed owners broadcast within `r` of
+  readiness, and `r + Δ < deadline` for every event, strictly. D2 and D3:
+  first-service timers and the current-event gate in `handle`. D4: deadlines
+  exceeding the grant delay plus `r + Δ`.
+- **Readiness-based audit.** D1 only. Both branches of `freshServiceEnvelope`
+  require `serviceGrant = some event`, so without grants every fresh honest
+  packet would count as nonconforming and be charged. Replace the grant
+  condition by readiness and timeliness of the addressed event (the opening
+  branch already checks both), then re-prove that the prescribed profile incurs
+  no charge on path and that the extension bounds for forbidden actions still
+  hold.
 - **Out-of-order inclusion.** D1 and D4: the theorem covers it as part of the
   adaptive order. D2 and D3: `handle` excludes it.
 
@@ -370,9 +415,11 @@ design evidence, not proofs.
 2. **Library lemmas**: done. The proportional-reach Bayes transport and the
    depth-free restriction extension are in `GameTheoryExtensions`. The
    contract need not make service steps public.
-3. **Choose the design.** For D1: prescribed owners submit at readiness, and
-   the service offers every ready owner an opportunity and reserved inclusion
-   within the deadline. For D2 or D3: the current-event gate and
-   first-service timers in `handle`.
+3. **D1 runtime.** The asynchronous chain model with a Δ-bounded exogenous
+   builder, prescribed owners broadcasting at readiness with
+   `r + Δ < deadline`, and the readiness-based audit with its zero-charge and
+   deviation-bound proofs.
 4. **Phase from public history and order-invariant continuations.**
 5. **The general theorem**, with the fixed calendar recovered as an instance.
+6. **Joint transmission-and-ordering deviations**, a separate theorem beyond
+   the target, if players that can buy the order are to be covered.
