@@ -23,22 +23,22 @@ def result (state : app.ProtocolState) : Option (PublicationResult Int) :=
   state.bind fun control => control.execution.application.config.outputs 1
 
 def run (policy : app.Policy) : PMF arena.History :=
-  model.runSingleMoverBehavioralFrom (app.singleMover (PMF.pure initialState) 7 scheduler)
-    (fun _ => app.encodePolicy policy) 15 (secondHistory first second)
+  model.runSingleMoverBehavioralFrom (app.singleMover (PMF.pure initialState) 6 scheduler)
+    (fun _ => app.encodePolicy policy) 13 (secondHistory first second)
 
 theorem run_state (policy : app.Policy) : (run policy).map ExecutionProtocol.History.state =
-    (app.runRounds scheduler (fun _ => policy) 5 contested).map app.finished := by
+    (app.runRounds scheduler (fun _ => policy) 4 contested).map app.finished := by
   rw [run, app.run_map_state]
   change (fun law : PMF app.ProtocolState => law.bind
-    (app.controlStep (PMF.pure initialState) 7 scheduler (fun _ => policy)))^[15]
-      (PMF.pure (some ⟨5, none, contested⟩)) = _
+    (app.controlStep (PMF.pure initialState) 6 scheduler (fun _ => policy)))^[13]
+      (PMF.pure (some ⟨4, none, contested⟩)) = _
   simpa only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.pure_bind] using
-    app.iterate_eq_finish (PMF.pure initialState) 7 scheduler (fun _ => policy)
-      15 (some ⟨5, none, contested⟩) (by change 2 * 5 + 0 ≤ 15; omega)
+    app.iterate_eq_finish (PMF.pure initialState) 6 scheduler (fun _ => policy)
+      13 (some ⟨4, none, contested⟩) (by change 2 * 4 + 0 ≤ 13; omega)
 
 theorem run_value (policy : app.Policy) :
     expect (run policy) (fun final => PendingMenus.publicUtility true (result final.state)) =
-      expect (app.runRounds scheduler (fun _ => policy) 5 contested)
+      expect (app.runRounds scheduler (fun _ => policy) 4 contested)
         (fun final => PendingMenus.publicUtility true (final.application.config.outputs 1)) := by
   have equal := congrArg (fun law : PMF app.ProtocolState => expect law
     (fun state => PendingMenus.publicUtility true (result state))) (run_state policy)
@@ -47,7 +47,7 @@ theorem run_value (policy : app.Policy) :
 
 theorem run_publication (policy : app.Policy) :
     (run policy).map (fun final => result final.state) =
-      (app.runRounds scheduler (fun _ => policy) 5 contested).map
+      (app.runRounds scheduler (fun _ => policy) 4 contested).map
         (fun final => final.application.config.outputs 1) := by
   have equal := congrArg (fun law : PMF app.ProtocolState => law.map result)
     (run_state policy)
@@ -114,8 +114,8 @@ def payoff (final : arena.History) (_who : Unit) : ℝ :=
 
 theorem compiled_not_spe :
     ¬ model.IsSingleMoverBehavioralSubgamePerfect
-        (app.singleMover (PMF.pure initialState) 7 scheduler)
-      (app.bounded (PMF.pure initialState) 7 scheduler)
+        (app.singleMover (PMF.pure initialState) 6 scheduler)
+      (app.bounded (PMF.pure initialState) 6 scheduler)
       (fun _ => app.encodePolicy compiled) payoff := by
   intro perfect
   rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at perfect
@@ -159,8 +159,8 @@ theorem honest_source_spe_native_failure
         (protocolUtility PendingMenus.sourceProgram admission PendingMenus.sourceInitial
           (PendingMenus.sourceUtility true)) ∧
       ¬ model.IsSingleMoverBehavioralSubgamePerfect
-          (app.singleMover (PMF.pure initialState) 7 scheduler)
-        (app.bounded (PMF.pure initialState) 7 scheduler)
+          (app.singleMover (PMF.pure initialState) 6 scheduler)
+        (app.bounded (PMF.pure initialState) 6 scheduler)
         (fun _ => app.encodePolicy compiled) payoff :=
   ⟨source_honest, PendingMenus.source_spe admission true, compiled_not_spe⟩
 

@@ -28,7 +28,7 @@ def leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket graph) := fun _
 abbrev app := runtime.reactiveApplication leaks
 
 def initialState : EventGraphRuntime.State graph :=
-    { State.initial input with serviceGrant := some 0 }
+  State.initial input
 def initial : app.Execution := .initial app initialState
 
 def first : app.Action := runtime.reactiveBinding leaks () 0 .int (.success 1) 0
@@ -41,17 +41,16 @@ def scheduler : app.Scheduler := fun history view =>
     | 0 | 1 | 2 => .activate ()
     | 3 => .include ((), if
         (view.network.pending.find? (fun message => message.id = ((), 2))).isSome then 0 else 1)
-    | 4 => .application (.grant 1)
-    | 5 => .activate ()
+    | 4 => .activate ()
     | _ => runtime.reactiveLatest leaks 1 () view)
 
-abbrev arena := app.protocol (PMF.pure initialState) 7 scheduler
-abbrev model := app.information (PMF.pure initialState) 7 scheduler
+abbrev arena := app.protocol (PMF.pure initialState) 6 scheduler
+abbrev model := app.information (PMF.pure initialState) 6 scheduler
 
 /-- Only the initial two scheduling decisions constrain the subgame-root proof. -/
 def responsePrefix : app.TwoResponsePrefix where
   initialState := initialState
-  remaining := 5
+  remaining := 4
   scheduler := scheduler
   schedules history view early := by
     have casesLength : history.length = 0 ∨ history.length = 1 := by omega

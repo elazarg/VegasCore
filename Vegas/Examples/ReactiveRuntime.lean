@@ -319,7 +319,7 @@ theorem binding_recall_uses_completion :
 /-- Reserved service gives the owner one activation. Additional activations
 are choices of the network policy at its ordinary opportunities. -/
 example : interactionVisit (graph := graph) 2 0 =
-    [.grant 0, .player false, .wire, .wire, .includeLatest 0 false, .sample 0] := rfl
+    [.player false, .wire, .wire, .includeLatest 0 false, .sample 0] := rfl
 
 example (who : Bool) : (NetworkChoice.activate who).command runtime leaks = .activate who := rfl
 

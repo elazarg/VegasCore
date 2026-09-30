@@ -181,7 +181,7 @@ theorem interactionEpoch_split_owner (chosen : ServiceOrder graph) (networkTurns
       before ++ ServiceInstruction.player owner :: after ∧ serviceTicks before = 0 := by
   obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp (chosen.mem event)
   let visits := earlier.flatMap (interactionVisit networkTurns)
-  refine ⟨visits ++ [.grant event],
+  refine ⟨visits,
     List.replicate networkTurns .wire ++ [.includeLatest event owner, .sample event] ++
       later.flatMap (interactionVisit networkTurns) ++ [.tick] ++
       (List.finRange graph.order.eventCount).map .expire, ?_, ?_⟩
@@ -195,9 +195,7 @@ theorem interactionEpoch_split_owner (chosen : ServiceOrder graph) (networkTurns
       | nil => rfl
       | cons current rest ih =>
           rw [List.flatMap_cons, serviceTicks_append, interactionVisit_ticks, ih]
-    have zero : serviceTicks visits = 0 := allZero earlier
-    rw [serviceTicks_append, zero]
-    rfl
+    exact allZero earlier
 
 /-- The real next epoch reaches a reserved owner activation while the event
 is ready and timely, or has already completed it through another allowed call.

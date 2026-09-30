@@ -60,15 +60,8 @@ def runtime : EventGraphRuntime graph where
 
 abbrev app := runtime.application
 def input : graph.Inputs := fun input => nomatch input
-private def setup : NativeExecution runtime :=
-  NativeExecution.initial runtime (MessageApplication.State.initial app (State.initial input))
-
 def initial : NativeExecution runtime :=
-  { setup with
-    native := { setup.native with application :=
-      { setup.native.application with serviceGrant := some 0 } }
-    environmentHistory :=
-      [⟨MessageApplication.State.environmentView app setup.native, .application (.grant 0)⟩] }
+  NativeExecution.initial runtime (MessageApplication.State.initial app (State.initial input))
 
 def first : PlayerAction graph := bindingAction () 0 .int (.success 1) 0
 def second : PlayerAction graph := bindingAction () 0 .int (.success 2) 1
@@ -174,19 +167,16 @@ def ordering : runtime.ServiceOrderPolicy :=
 
 abbrev arena := runtime.nativeProtocol (PMF.pure input) [] 1 wire ordering
 
-private def setupControl : NativeControl runtime := ⟨runtime.serviceEpochs, [], setup⟩
+private def setupControl : NativeControl runtime := ⟨runtime.serviceEpochs, [], initial⟩
 
 def orderedControl : NativeControl runtime :=
-  ⟨5, epochPlan (ServiceOrder.increasing graph) [] 1, setup⟩
-
-private def grantedControl : NativeControl runtime :=
-  ⟨5, orderedControl.plan.drop 1, initial⟩
+  ⟨5, epochPlan (ServiceOrder.increasing graph) [] 1, initial⟩
 
 private def firstControl (action : PlayerAction graph) : NativeControl runtime :=
-  ⟨5, orderedControl.plan.drop 2, runtime.takeAction () initial action⟩
+  ⟨5, orderedControl.plan.drop 1, runtime.takeAction () initial action⟩
 
 def secondControl (one two : PlayerAction graph) : NativeControl runtime :=
-  ⟨5, orderedControl.plan.drop 3,
+  ⟨5, orderedControl.plan.drop 2,
     runtime.takeAction () (runtime.takeAction () initial one) two⟩
 
 private def extendPure (history : arena.History) (joint : Unit → Option (PlayerAction graph))
@@ -212,20 +202,8 @@ private def orderedHistory : arena.History :=
       rw [ordering, PMF.pure_map]
       rfl)
 
-private def grantedHistory : arena.History :=
-  extendPure orderedHistory (fun _ => none)
-    ⟨by change ¬ (5 = 0 ∧ _); simp,
-      fun _ => by change ¬ (none : Option Unit) = some _; simp⟩
-    (some grantedControl) (by
-      change (runtime.nativeInstructionStep wire (.grant 0) setup _).map _ = _
-      simp only [nativeInstructionStep, serviceStep, MessageApplication.environmentPolicyStep,
-        MessageApplication.advance, MessageApplication.EnvironmentPolicyCommand.toAction,
-        MessageApplication.step, application, environmentStep, PMF.pure_map,
-        PMF.pure_bind]
-      rfl)
-
 private def firstHistory (action : PlayerAction graph) : arena.History :=
-  extendPure grantedHistory (fun _ => some action)
+  extendPure orderedHistory (fun _ => some action)
     ⟨by change ¬ (5 = 0 ∧ _); simp,
       fun who => by cases who; exact ⟨rfl, Set.mem_univ _⟩⟩
     (some (firstControl action)) (by
@@ -280,7 +258,7 @@ particular pair of initial player actions. No hidden scheduler choice occurs
 before that pair in this instance. -/
 private def Classified (history : arena.History) : Prop :=
   history = arena.initHistory ∨ history = setupHistory ∨ history = orderedHistory ∨
-    history = grantedHistory ∨ (∃ action, history = firstHistory action) ∨
+    (∃ action, history = firstHistory action) ∨
       ∃ one two, arena.HistoryReaches (secondHistory one two) history
 
 private theorem classified_step (history : arena.History) (classified : Classified history)
@@ -288,29 +266,25 @@ private theorem classified_step (history : arena.History) (classified : Classifi
     (target : arena.State)
     (supported : target ∈ (arena.step history.state ⟨joint, legal⟩).support) :
     Classified (history.extend legal supported) := by
-  rcases classified with rfl | rfl | rfl | rfl | ⟨action, rfl⟩ | ⟨one, two, reached⟩
+  rcases classified with rfl | rfl | rfl | ⟨action, rfl⟩ | ⟨one, two, reached⟩
   · have same := inactive_joint _ joint legal (fun _ h => by cases h)
     subst joint
     exact Or.inr (Or.inl (extendPure_unique _ _ _ _ _ legal target supported))
   · have same := inactive_joint _ joint legal (fun _ h => by cases h)
     subst joint
     exact Or.inr (Or.inr (Or.inl (extendPure_unique _ _ _ _ _ legal target supported)))
-  · have same := inactive_joint _ joint legal (fun _ h => by cases h)
-    subst joint
-    exact Or.inr (Or.inr (Or.inr (Or.inl
-      (extendPure_unique _ _ _ _ _ legal target supported))))
   · obtain ⟨action, rfl⟩ := active_joint _ joint legal rfl
-    exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
-      ⟨action, extendPure_unique _ _ _ _ _ legal target supported⟩))))
+    exact Or.inr (Or.inr (Or.inr (Or.inl
+      ⟨action, extendPure_unique _ _ _ _ _ legal target supported⟩)))
   · obtain ⟨next, rfl⟩ := active_joint _ joint legal rfl
     have same : (firstHistory action).extend legal supported = secondHistory action next :=
       extendPure_unique _ _ _ _ _ legal target supported
-    refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨action, next, ?_⟩))))
+    refine Or.inr (Or.inr (Or.inr (Or.inr ⟨action, next, ?_⟩)))
     rw [same]
     exact ExecutionProtocol.HistoryReaches.refl arena _
   · obtain ⟨fuel, path⟩ := reached
-    exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨one, two, fuel + 1,
-      path.trans (.step joint legal supported (.refl 0 _))⟩))))
+    exact Or.inr (Or.inr (Or.inr (Or.inr ⟨one, two, fuel + 1,
+      path.trans (.step joint legal supported (.refl 0 _))⟩)))
 
 private theorem classified : ∀ {state} (trace : arena.Trace state), Classified ⟨state, trace⟩
   | _, .start => Or.inl rfl
@@ -335,12 +309,8 @@ private theorem recalled_initial_actions_reached (one two : PlayerAction graph)
     (recalled : [one, two] <+: actionRecall control) :
     arena.HistoryReaches (secondHistory one two) history := by
   have casesHistory : Classified history := classified history.trace
-  rcases casesHistory with rfl | rfl | rfl | rfl | ⟨action, rfl⟩ | ⟨a, b, reached⟩
+  rcases casesHistory with rfl | rfl | rfl | ⟨action, rfl⟩ | ⟨a, b, reached⟩
   · cases stateEq
-  · cases Option.some.inj stateEq
-    have bound := recalled.length_le
-    change 2 ≤ 0 at bound
-    omega
   · cases Option.some.inj stateEq
     have bound := recalled.length_le
     change 2 ≤ 0 at bound
@@ -398,7 +368,7 @@ theorem contested_isSubgameRoot :
     (actionsEq ▸ initial_actions_recalled first second inside insideControl reached insideEq)
 
 /-- The competing-packet state is reached from actual setup and the prescribed
-service schedule, including its public grant and environment recall. -/
+service schedule, including its environment recall. -/
 theorem contested_reachable :
     ∃ history : arena.History, history.state = some (secondControl first second) ∧
       (secondControl first second).execution = contested ∧
@@ -409,7 +379,7 @@ theorem contested_reachable :
 by the fixed wire policy, before the reserved latest-message inclusion. -/
 theorem remaining_schedule : (secondControl first second).plan =
     [.player (), .wire, .includeLatest 0 (), .sample 0,
-      .grant 1, .player (), .player (), .player (), .wire, .includeLatest 1 (), .sample 1,
+      .player (), .player (), .player (), .wire, .includeLatest 1 (), .sample 1,
       .tick, .expire 0, .expire 1] := rfl
 
 /-- The selection law is the actual wire instruction, with all native actions

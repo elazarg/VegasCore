@@ -37,20 +37,13 @@ def included (repair fresh : Bool) : app.Execution :=
     environmentRecall := before.environmentRecall ++
       [⟨before.observeEnvironment app, .include (selectedId fresh)⟩] }
 
-def granted (repair fresh : Bool) : app.Execution :=
-  let before := included repair fresh
-  { before with
-    application := { before.application with serviceGrant := some 1 }
-    environmentRecall := before.environmentRecall ++
-      [⟨before.observeEnvironment app, .application (.grant 1)⟩] }
-
 def finalOpening (fresh : Bool) : app.Action :=
   ⟨some (.submit
     (disclosureSubmission
       (.opening 1 ((), .prepared (if fresh then 1 else 0)) ⟨.int, if fresh then 0 else 1⟩)))⟩
 
 def disclosed (repair fresh : Bool) : app.Execution :=
-  (activated (granted repair fresh)).respond app () (finalOpening fresh)
+  (activated (included repair fresh)).respond app () (finalOpening fresh)
 
 def finished (repair fresh : Bool) (serial : Nat) : app.Execution :=
   let before := disclosed repair fresh
@@ -122,8 +115,8 @@ theorem included_state (repair fresh : Bool) (possible : fresh = true → repair
 
 theorem disclosed_state (repair fresh : Bool) (possible : fresh = true → repair = true) :
     (disclosed repair fresh).application =
-      { boundState repair fresh with serviceGrant := some 1 } := by
-  change { (included repair fresh).application with serviceGrant := some 1 } = _
+      boundState repair fresh := by
+  change (included repair fresh).application = _
   rw [included_state repair fresh possible]
 
 theorem disclosure_ready (repair fresh : Bool) (possible : fresh = true → repair = true) :
@@ -138,10 +131,10 @@ theorem disclosure_timely (repair fresh : Bool) (possible : fresh = true → rep
 
 theorem final_opening_emitted (repair fresh : Bool) (possible : fresh = true → repair = true) :
     (disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).emit
-      (granted repair fresh).application () ((granted repair fresh).network.known ()) =
+      (included repair fresh).application () ((included repair fresh).network.known ()) =
         ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
           some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩ := by
-  have meaning : (granted repair fresh).application.candidates.lookup (candidate fresh) =
+  have meaning : (included repair fresh).application.candidates.lookup (candidate fresh) =
       .openable ⟨.int, selectedValue fresh⟩ := by
     change (disclosed repair fresh).application.candidates.lookup _ = _
     rw [disclosed_state repair fresh possible]
@@ -158,19 +151,19 @@ theorem final_opening_pending (repair fresh : Bool) (possible : fresh = true →
   have pending : (disclosed repair fresh).network.lookup ((), 3) =
       some ⟨((), 3),
         (disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).emit
-          (granted repair fresh).application () ((granted repair fresh).network.known ())⟩ := by
+          (included repair fresh).application () ((included repair fresh).network.known ())⟩ := by
     cases repair <;> cases fresh <;> rfl
   rw [pending, emitted]
 
 theorem disclosed_pending (repair fresh : Bool) (possible : fresh = true → repair = true) :
-    (disclosed repair fresh).network.pending = (granted repair fresh).network.pending ++
+    (disclosed repair fresh).network.pending = (included repair fresh).network.pending ++
       [⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
         some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩] := by
   have emitted := final_opening_emitted repair fresh possible
   have pending : (disclosed repair fresh).network.pending =
-      (granted repair fresh).network.pending ++ [⟨((), 3),
+      (included repair fresh).network.pending ++ [⟨((), 3),
         (disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).emit
-          (granted repair fresh).application () ((granted repair fresh).network.known ())⟩] := by
+          (included repair fresh).application () ((included repair fresh).network.known ())⟩] := by
     cases repair <;> cases fresh <;> rfl
   rw [pending, emitted]
 

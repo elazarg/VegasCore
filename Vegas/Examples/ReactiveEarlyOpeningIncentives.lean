@@ -43,25 +43,13 @@ theorem binding_round (policy : app.Policy) (repair : Bool) :
     PMF.pure_map, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
   all_goals rfl
 
-theorem grant_round (policy : app.Policy) (repair fresh : Bool) :
-    app.round scheduler (fun _ => policy) (included repair fresh) =
-      PMF.pure (granted repair fresh) := by
-  have choice : scheduler (included repair fresh).environmentRecall
-      ((included repair fresh).observeEnvironment app) =
-        PMF.pure (.application (.grant 1)) := by cases repair <;> cases fresh <;> rfl
-  rw [ReactiveApplication.round, choice, PMF.pure_bind]
-  simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    app, reactiveApplication, environmentStep, PMF.pure_map, PMF.pure_bind,
-    ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-  rfl
-
 theorem disclosure_round (policy : app.Policy) (repair fresh : Bool)
-    (responds : policy ((activated (granted repair fresh)).recall ())
-      ((activated (granted repair fresh)).observe app ()) = PMF.pure (finalOpening fresh)) :
-    app.round scheduler (fun _ => policy) (granted repair fresh) =
+    (responds : policy ((activated (included repair fresh)).recall ())
+      ((activated (included repair fresh)).observe app ()) = PMF.pure (finalOpening fresh)) :
+    app.round scheduler (fun _ => policy) (included repair fresh) =
       PMF.pure (disclosed repair fresh) := by
-  have choice : scheduler (granted repair fresh).environmentRecall
-      ((granted repair fresh).observeEnvironment app) = PMF.pure (.activate ()) := by
+  have choice : scheduler (included repair fresh).environmentRecall
+      ((included repair fresh).observeEnvironment app) = PMF.pure (.activate ()) := by
     cases repair <;> cases fresh <;> rfl
   rw [ReactiveApplication.round, choice, PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, activation, PMF.pure_bind,
@@ -118,21 +106,21 @@ theorem early_publication_round :
   rfl
 
 theorem compiled_rounds :
-    app.runRounds scheduler (fun _ => compiled) 5 contested =
+    app.runRounds scheduler (fun _ => compiled) 4 contested =
       half (half (PMF.pure (finished true false 1)) (PMF.pure (finished true false 3)))
         (half (PMF.pure (finished true true 1)) (PMF.pure (finished true true 3))) := by
   simp only [ReactiveApplication.runRounds, compiled_first_round, PMF.pure_bind,
-    binding_round, ↓reduceIte, half, mix_bind, grant_round,
+    binding_round, ↓reduceIte, half, mix_bind,
     disclosure_round compiled true false (compiled_later true false (by simp)),
     disclosure_round compiled true true (compiled_later true true (by simp)),
     repaired_publication_round, PMF.bind_pure]
 
 theorem early_rounds :
-    app.runRounds scheduler (fun _ => earlyPolicy) 5 contested =
+    app.runRounds scheduler (fun _ => earlyPolicy) 4 contested =
       third (PMF.pure (finished false false 1))
         (half (PMF.pure (finished false false 2)) (PMF.pure (finished false false 3))) := by
   simp only [ReactiveApplication.runRounds, early_first_round, PMF.pure_bind,
-    binding_round, Bool.false_eq_true, ↓reduceIte, grant_round,
+    binding_round, Bool.false_eq_true, ↓reduceIte,
     disclosure_round earlyPolicy false false earlyPolicy_later, early_publication_round,
     PMF.bind_pure]
 

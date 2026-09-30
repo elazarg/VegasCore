@@ -150,12 +150,11 @@ theorem epochPlan_split_sample (order : ServiceOrder graph)
   obtain ⟨eventsBefore, eventsAfter, orderEq⟩ :=
     split_at_member event (order.mem event)
   let eventPrefix : List (ServiceInstruction graph) :=
-    [.grant event] ++
-      (match graph.actor? event with
-      | none => []
-      | some owner => List.replicate 3 (.player owner) ++
-          (List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
-          [.includeLatest event owner])
+    match graph.actor? event with
+    | none => []
+    | some owner => List.replicate 3 (.player owner) ++
+        (List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
+        [.includeLatest event owner]
   have eventEq : eventServicePlan roster reactionRounds event =
       eventPrefix ++ [.sample event] := by
     rfl

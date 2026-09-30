@@ -41,8 +41,8 @@ private def response : PlayerResponse graph 3 :=
 and all private records survive the coalescing. -/
 theorem response_before_wire :
     runtime.responseTransition (PMF.pure input) [] 1 wire ordering
-      (some ⟨5, orderedControl.plan.drop 1, initial⟩) (fun _ => some response.1) =
-      PMF.pure (some ⟨5, orderedControl.plan.drop 4,
+      (some ⟨5, orderedControl.plan, initial⟩) (fun _ => some response.1) =
+      PMF.pure (some ⟨5, orderedControl.plan.drop 3,
         runtime.takeActions () initial response.1⟩) := rfl
 
 theorem response_keeps_competing_packets :

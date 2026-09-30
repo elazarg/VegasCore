@@ -6,10 +6,10 @@ import Mathlib.Tactic.IntervalCases
 
 /-! # Public outcomes attainable by native continuation policies
 
-The two policies use only the public service grant. Sending an opening at the
-contested binding grant selects the first pending commitment; waiting selects
-the second. At the disclosure grant each policy submits the corresponding
-opening. The reserved inclusion publishes that value.
+The two policies use only public acceptance. Sending an opening while the
+binding is still contested selects the first pending commitment; waiting
+selects the second. Once the binding is accepted, each policy submits the
+corresponding opening. The reserved inclusion publishes that value.
 -/
 
 noncomputable section
@@ -27,9 +27,10 @@ def openingPacket (preferOne : Bool) : Payload graph :=
 def openingAction (preferOne : Bool) : PlayerAction graph :=
   ⟨[], some (.submit ⟨openingPacket preferOne, none⟩)⟩
 
-/-- No service cursor or hidden state is consulted. -/
+/-- Only public acceptance of the binding is consulted: it marks the
+disclosure event's readiness. No hidden state is read. -/
 def recoveryPolicy (preferOne : Bool) : NativePolicy graph := fun _ view =>
-  PMF.pure (if preferOne || view.publicView.serviceGrant == some 1 then
+  PMF.pure (if preferOne || (view.publicView.accepted (.inr 0)).isSome then
     openingAction preferOne else PlayerAction.wait)
 
 def selectionAction (preferOne : Bool) : PlayerAction graph :=
@@ -56,27 +57,21 @@ private def includedExecution (execution : NativeExecution runtime) (serial : Na
   environmentRecord execution (.include ((), serial))
     (app.includePending execution.native ((), serial))
 
-private def grantedExecution (execution : NativeExecution runtime) (event : graph.EventId) :=
-  environmentRecord execution (.application (.grant event))
-    { execution.native with application := { execution.native.application with
-      serviceGrant := some event } }
-
 private def sampledExecution (execution : NativeExecution runtime) (event : graph.EventId) :=
   environmentRecord execution (.application (.executeSample event)) execution.native
 
-/-- The ten expected snapshots up to successful reserved disclosure. -/
+/-- The nine expected snapshots up to successful reserved disclosure. -/
 private def snapshot (preferOne : Bool) : Nat → NativeExecution runtime
   | 0 => contested
   | 1 => afterAction (selectionAction preferOne)
   | 2 => includedExecution (snapshot preferOne 1) (preferredSlot preferOne)
   | 3 => includedExecution (snapshot preferOne 2) (if preferOne then 1 else 0)
   | 4 => sampledExecution (snapshot preferOne 3) 0
-  | 5 => grantedExecution (snapshot preferOne 4) 1
+  | 5 => runtime.takeAction () (snapshot preferOne 4) (openingAction preferOne)
   | 6 => runtime.takeAction () (snapshot preferOne 5) (openingAction preferOne)
   | 7 => runtime.takeAction () (snapshot preferOne 6) (openingAction preferOne)
-  | 8 => runtime.takeAction () (snapshot preferOne 7) (openingAction preferOne)
-  | 9 => includedExecution (snapshot preferOne 8) 0
-  | _ + 10 => includedExecution (snapshot preferOne 9) (if preferOne then 5 else 4)
+  | 8 => includedExecution (snapshot preferOne 7) 0
+  | _ + 9 => includedExecution (snapshot preferOne 8) (if preferOne then 5 else 4)
 termination_by stage => stage
 decreasing_by all_goals omega
 
@@ -112,14 +107,6 @@ private theorem reserved_includes (execution : NativeExecution runtime) (event :
     PMF.pure_bind, PMF.pure_map]
   rfl
 
-private theorem grant_step (execution : NativeExecution runtime) (event : graph.EventId) :
-    runtime.nativeInstructionStep wire (.grant event) execution (fun _ => none) =
-      PMF.pure (grantedExecution execution event) := by
-  simp only [nativeInstructionStep, serviceStep, MessageApplication.environmentPolicyStep,
-    MessageApplication.advance, MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, application, environmentStep, PMF.pure_map, PMF.pure_bind]
-  rfl
-
 private theorem first_wire (preferOne : Bool) :
     wire (snapshot preferOne 1).environmentHistory
       (MessageApplication.State.environmentView app (snapshot preferOne 1).native) =
@@ -137,22 +124,22 @@ private theorem first_reserved (preferOne : Bool) :
   cases preferOne <;> rfl
 
 private theorem second_wire (preferOne : Bool) :
-    wire (snapshot preferOne 8).environmentHistory
-      (MessageApplication.State.environmentView app (snapshot preferOne 8).native) =
+    wire (snapshot preferOne 7).environmentHistory
+      (MessageApplication.State.environmentView app (snapshot preferOne 7).native) =
         PMF.pure (.include ((), 0)) := by
   unfold wire
   simp only [MessageApplication.State.environmentView, snapshot, includedExecution,
-    grantedExecution, sampledExecution, environmentRecord, takeAction, transmit,
+    sampledExecution, environmentRecord, takeAction, transmit,
     openingAction, MessageApplication.includePending_pool]
   cases preferOne <;> rfl
 
 private theorem second_reserved (preferOne : Bool) :
     runtime.latestEventSubmissionCommand 1 ()
-      (MessageApplication.State.environmentView app (snapshot preferOne 9).native) =
+      (MessageApplication.State.environmentView app (snapshot preferOne 8).native) =
         .include ((), if preferOne then 5 else 4) := by
   unfold latestEventSubmissionCommand
   simp only [MessageApplication.State.environmentView, snapshot, includedExecution,
-    grantedExecution, sampledExecution, environmentRecord, takeAction, transmit,
+    sampledExecution, environmentRecord, takeAction, transmit,
     openingAction, MessageApplication.includePending_pool]
   cases preferOne <;> rfl
 
@@ -228,25 +215,40 @@ private theorem leftover_application (preferOne : Bool) :
   exact same.trans (bound_application preferOne)
 
 private def disclosureApplication (preferOne : Bool) : EventGraphRuntime.State graph :=
-  { boundApplication preferOne with serviceGrant := some 1 }
+  boundApplication preferOne
+
+/-- Sampling and the owner's opening submissions leave the bound application
+unchanged. -/
+private theorem disclosure_stage_application (preferOne : Bool) (stage : Nat)
+    (lower : 4 ≤ stage) (upper : stage ≤ 7) :
+    (snapshot preferOne stage).native.application = boundApplication preferOne := by
+  have four : (snapshot preferOne 4).native.application = boundApplication preferOne := by
+    rw [snapshot]
+    exact leftover_application preferOne
+  have five : (snapshot preferOne 5).native.application = boundApplication preferOne := by
+    rw [snapshot]
+    exact four
+  have six : (snapshot preferOne 6).native.application = boundApplication preferOne := by
+    rw [snapshot]
+    exact five
+  interval_cases stage
+  · exact four
+  · exact five
+  · exact six
+  · rw [snapshot]
+    exact six
 
 private theorem disclosure_application (preferOne : Bool) :
-    (snapshot preferOne 9).native.application = disclosureApplication preferOne := by
-  have missing : (snapshot preferOne 8).native.pool.lookup ((), 0) = none := by
-    simp only [snapshot, includedExecution, environmentRecord, grantedExecution,
+    (snapshot preferOne 8).native.application = disclosureApplication preferOne := by
+  have missing : (snapshot preferOne 7).native.pool.lookup ((), 0) = none := by
+    simp only [snapshot, includedExecution, environmentRecord,
       sampledExecution, takeAction, transmit, openingAction, MessageApplication.includePending_pool]
     cases preferOne <;> rfl
   have unchanged := app.includePending_missing _ _ missing
   rw [snapshot]
-  change (app.includePending (snapshot preferOne 8).native ((), 0)).application = _
+  change (app.includePending (snapshot preferOne 7).native ((), 0)).application = _
   rw [unchanged]
-  have opened (execution : NativeExecution runtime) :
-      (runtime.takeAction () execution (openingAction preferOne)).native.application =
-        execution.native.application := rfl
-  rw [snapshot, opened, snapshot, opened, snapshot, opened, snapshot, snapshot]
-  change { (snapshot preferOne 3).native.application with serviceGrant := some 1 } = _
-  rw [leftover_application]
-  rfl
+  exact disclosure_stage_application preferOne 7 (by omega) (by omega)
 
 private theorem publication_ready (preferOne : Bool) :
     (disclosureApplication preferOne).config.cut.Ready 1 := by
@@ -254,7 +256,7 @@ private theorem publication_ready (preferOne : Bool) :
   cases preferOne <;> decide
 
 private theorem publication_handler (preferOne : Bool) (serial : Nat) :
-    handle runtime (snapshot preferOne 9).native.application
+    handle runtime (snapshot preferOne 8).native.application
       ⟨((), serial), openingPacket preferOne⟩ =
         some ((disclosureApplication preferOne).complete 1 (publication_ready preferOne)
           true (.success (preferredValue preferOne))) := by
@@ -282,11 +284,11 @@ private theorem publication_handler (preferOne : Bool) (serial : Nat) :
 /-- Both benchmarks are attained by successful publication, with no clock
 advance or computational cost between the player invocations. -/
 private theorem publication_snapshot (preferOne : Bool) :
-    (snapshot preferOne 10).native.application.config.outputs 1 =
+    (snapshot preferOne 9).native.application.config.outputs 1 =
       some (.success (preferredValue preferOne)) := by
-  have pending : (snapshot preferOne 9).native.pool.lookup ((), if preferOne then 5 else 4) =
+  have pending : (snapshot preferOne 8).native.pool.lookup ((), if preferOne then 5 else 4) =
       some ⟨((), if preferOne then 5 else 4), openingPacket preferOne⟩ := by
-    simp only [snapshot, includedExecution, environmentRecord, grantedExecution,
+    simp only [snapshot, includedExecution, environmentRecord,
       sampledExecution, takeAction, transmit, openingAction, MessageApplication.includePending_pool]
     cases preferOne <;> rfl
   have law := app.includePending_accept _ _ _ _ pending (publication_handler preferOne _)
@@ -306,16 +308,18 @@ private theorem sample_step (execution : NativeExecution runtime)
   rfl
 
 private theorem recovery_at_disclosure (preferOne : Bool) (stage : Nat)
-    (lower : 5 ≤ stage) (upper : stage ≤ 7) :
+    (lower : 4 ≤ stage) (upper : stage ≤ 6) :
     recoveryPolicy preferOne ((snapshot preferOne stage).principalHistory ())
       (runtime.nativeView (snapshot preferOne stage).native ()) =
         PMF.pure (openingAction preferOne) := by
-  have grant : (runtime.nativeView (snapshot preferOne stage).native ()).publicView.serviceGrant =
-      some 1 := by
-    interval_cases stage <;> simp only [snapshot] <;> rfl
-  simp only [recoveryPolicy, grant, beq_self_eq_true, Bool.or_true, ↓reduceIte]
+  have accepted : (runtime.nativeView (snapshot preferOne stage).native ()).publicView.accepted
+      (.inr 0) = some ((), .prepared (preferredSlot preferOne)) := by
+    change (snapshot preferOne stage).native.application.accepted (.inr 0) = _
+    rw [disclosure_stage_application preferOne stage lower (by omega)]
+    simp [boundApplication]
+  simp only [recoveryPolicy, accepted, Option.isSome_some, Bool.or_true, ↓reduceIte]
 
-private theorem recovery_step (preferOne : Bool) (stage : Nat) (early : stage < 10) :
+private theorem recovery_step (preferOne : Bool) (stage : Nat) (early : stage < 9) :
     recoveryKernel preferOne (control preferOne stage) =
       PMF.pure (control preferOne (stage + 1)) := by
   interval_cases stage
@@ -340,9 +344,9 @@ private theorem recovery_step (preferOne : Bool) (stage : Nat) (early : stage < 
       PMF.pure_map]
     simp only [control, Nat.reduceAdd, snapshot]
     rfl
-  · change (runtime.nativeInstructionStep wire (.grant 1) (snapshot preferOne 4)
-      (fun _ => none)).map _ = _
-    rw [grant_step, PMF.pure_map]
+  · change (runtime.invokeNative () (recoveryPolicy preferOne) (snapshot preferOne 4)).map _ = _
+    rw [invokeNative, recovery_at_disclosure preferOne 4 (by omega) (by omega),
+      PMF.pure_bind, actionStep, PMF.pure_map]
     simp only [control, Nat.reduceAdd, snapshot]
     rfl
   · change (runtime.invokeNative () (recoveryPolicy preferOne) (snapshot preferOne 5)).map _ = _
@@ -355,23 +359,18 @@ private theorem recovery_step (preferOne : Bool) (stage : Nat) (early : stage < 
       PMF.pure_bind, actionStep, PMF.pure_map]
     simp only [control, Nat.reduceAdd, snapshot]
     rfl
-  · change (runtime.invokeNative () (recoveryPolicy preferOne) (snapshot preferOne 7)).map _ = _
-    rw [invokeNative, recovery_at_disclosure preferOne 7 (by omega) (by omega),
-      PMF.pure_bind, actionStep, PMF.pure_map]
-    simp only [control, Nat.reduceAdd, snapshot]
-    rfl
-  · change (runtime.nativeInstructionStep wire .wire (snapshot preferOne 8)
+  · change (runtime.nativeInstructionStep wire .wire (snapshot preferOne 7)
       (fun _ => none)).map _ = _
     rw [wire_includes _ _ (second_wire preferOne), PMF.pure_map]
     simp only [control, Nat.reduceAdd, snapshot]
     rfl
-  · change (runtime.nativeInstructionStep wire (.includeLatest 1 ()) (snapshot preferOne 9)
+  · change (runtime.nativeInstructionStep wire (.includeLatest 1 ()) (snapshot preferOne 8)
       (fun _ => none)).map _ = _
     rw [reserved_includes _ _ _ (second_reserved preferOne), PMF.pure_map]
     simp only [control, Nat.reduceAdd, snapshot]
     rfl
 
-private theorem recovery_iterate (preferOne : Bool) (stage : Nat) (early : stage ≤ 10) :
+private theorem recovery_iterate (preferOne : Bool) (stage : Nat) (early : stage ≤ 9) :
     (fun law => law.bind (recoveryKernel preferOne))^[stage]
         (PMF.pure (some (secondControl first second))) =
       PMF.pure (control preferOne stage) := by
@@ -392,31 +391,31 @@ def nativeResult : arena.State → Option (PublicationResult Int)
   | none => none
   | some state => state.execution.native.application.config.outputs 1
 
-private theorem recovery_ten (preferOne : Bool) :
-    (nativeRun (recoveryPolicy preferOne) 10 (secondHistory first second)).map
-      ExecutionProtocol.History.state = PMF.pure (control preferOne 10) := by
+private theorem recovery_nine (preferOne : Bool) :
+    (nativeRun (recoveryPolicy preferOne) 9 (secondHistory first second)).map
+      ExecutionProtocol.History.state = PMF.pure (control preferOne 9) := by
   rw [native_run_map_state]
-  exact recovery_iterate preferOne 10 (by omega)
+  exact recovery_iterate preferOne 9 (by omega)
 
 /-- The successful publication persists through every remaining service step.
 This is the canonical randomized history runner, including its private recall. -/
 theorem recovery_result (preferOne : Bool) (extra : Nat) (final : arena.History)
     (reached : final ∈
-      (nativeRun (recoveryPolicy preferOne) (10 + extra) (secondHistory first second)).support) :
+      (nativeRun (recoveryPolicy preferOne) (9 + extra) (secondHistory first second)).support) :
     nativeResult final.state = some (.success (preferredValue preferOne)) := by
   rw [nativeRun, InformationModel.runSingleMoverBehavioralFrom,
     ExecutionProtocol.runRandomizedFor_add, PMF.support_bind] at reached
   obtain ⟨middle, prefixRun, suffix⟩ := Set.mem_iUnion₂.mp reached
-  have atTen : middle.state ∈
-      ((nativeRun (recoveryPolicy preferOne) 10 (secondHistory first second)).map
+  have atNine : middle.state ∈
+      ((nativeRun (recoveryPolicy preferOne) 9 (secondHistory first second)).map
         ExecutionProtocol.History.state).support := by
     rw [PMF.support_map]
     exact ⟨middle, prefixRun, rfl⟩
-  rw [recovery_ten, PMF.mem_support_pure_iff _ _] at atTen
+  rw [recovery_nine, PMF.mem_support_pure_iff _ _] at atNine
   have path := ExecutionProtocol.runRandomizedFor_reachesWithin _ _ _ _ suffix
   obtain ⟨after, afterEq, actions, native⟩ := runtime.native_reaches_native
     (PMF.pure input) [] 1 wire ordering path
-    ⟨5, (secondControl first second).plan.drop 10, snapshot preferOne 10⟩ atTen
+    ⟨5, (secondControl first second).plan.drop 9, snapshot preferOne 9⟩ atNine
   have stored := runtime.applicationRun_store_of_some _ _ actions native (.inr 1)
     (.success (preferredValue preferOne)) (publication_snapshot preferOne)
   rw [afterEq]
@@ -424,10 +423,10 @@ theorem recovery_result (preferOne : Bool) (extra : Nat) (final : arena.History)
 
 /-- Each public utility has a native deviation attaining its residual maximum. -/
 theorem recovery_value (preferOne : Bool) (extra : Nat) :
-    expect (nativeRun (recoveryPolicy preferOne) (10 + extra) (secondHistory first second))
+    expect (nativeRun (recoveryPolicy preferOne) (9 + extra) (secondHistory first second))
       (fun final => publicUtility preferOne (nativeResult final.state)) = 2 := by
   calc
-    _ = expect (nativeRun (recoveryPolicy preferOne) (10 + extra)
+    _ = expect (nativeRun (recoveryPolicy preferOne) (9 + extra)
         (secondHistory first second)) (fun _ => 2) := by
       apply expect_congr_on_support
       intro final reached
@@ -537,26 +536,26 @@ theorem no_common_native_spe :
       (fun final => publicUtility preferOne (nativeResult final.state))
       fun final => publicUtility_abs_le preferOne (nativeResult final.state)
   change GameTheory.extendedExpectedUtility (nativePayoff true) ()
-      (nativeRun (recoveryPolicy true) (10 + 99) (secondHistory first second)) ≤
+      (nativeRun (recoveryPolicy true) (9 + 88) (secondHistory first second)) ≤
     GameTheory.extendedExpectedUtility (nativePayoff true) ()
-      (nativeRun policy (2 + 107) (secondHistory first second)) at oneBound
+      (nativeRun policy (2 + 95) (secondHistory first second)) at oneBound
   change GameTheory.extendedExpectedUtility (nativePayoff false) ()
-      (nativeRun (recoveryPolicy false) (10 + 99) (secondHistory first second)) ≤
+      (nativeRun (recoveryPolicy false) (9 + 88) (secondHistory first second)) ≤
     GameTheory.extendedExpectedUtility (nativePayoff false) ()
-      (nativeRun policy (2 + 107) (secondHistory first second)) at twoBound
+      (nativeRun policy (2 + 95) (secondHistory first second)) at twoBound
   replace oneBound := (GameTheory.extendedExpectedUtility_le_iff (runIntegrable true _ _)
     (runIntegrable true _ _)).mp oneBound
   replace twoBound := (GameTheory.extendedExpectedUtility_le_iff (runIntegrable false _ _)
     (runIntegrable false _ _)).mp twoBound
-  change expect (nativeRun (recoveryPolicy true) (10 + 99) _)
+  change expect (nativeRun (recoveryPolicy true) (9 + 88) _)
       (fun final => publicUtility true (nativeResult final.state)) ≤
-    expect (nativeRun policy (2 + 107) _)
+    expect (nativeRun policy (2 + 95) _)
       (fun final => publicUtility true (nativeResult final.state)) at oneBound
-  change expect (nativeRun (recoveryPolicy false) (10 + 99) _)
+  change expect (nativeRun (recoveryPolicy false) (9 + 88) _)
       (fun final => publicUtility false (nativeResult final.state)) ≤
-    expect (nativeRun policy (2 + 107) _)
+    expect (nativeRun policy (2 + 95) _)
       (fun final => publicUtility false (nativeResult final.state)) at twoBound
   rw [recovery_value] at oneBound twoBound
-  linarith [native_value_sum_le policy 107]
+  linarith [native_value_sum_le policy 95]
 
 end Vegas.Examples.PendingMenus

@@ -16,18 +16,18 @@ def result (state : app.ProtocolState) : Option (PublicationResult Int) :=
   state.bind fun control => control.execution.application.config.outputs 1
 
 def run (policy : app.Policy) : PMF arena.History :=
-  model.runSingleMoverBehavioralFrom (app.singleMover (PMF.pure initialState) 7 scheduler)
-    (fun _ => app.encodePolicy policy) 15 (secondHistory first second)
+  model.runSingleMoverBehavioralFrom (app.singleMover (PMF.pure initialState) 6 scheduler)
+    (fun _ => app.encodePolicy policy) 13 (secondHistory first second)
 
 theorem run_state (policy : app.Policy) : (run policy).map ExecutionProtocol.History.state =
-    (app.runRounds scheduler (fun _ => policy) 5 contested).map app.finished := by
+    (app.runRounds scheduler (fun _ => policy) 4 contested).map app.finished := by
   rw [run, app.run_map_state]
   change (fun law : PMF app.ProtocolState => law.bind
-    (app.controlStep (PMF.pure initialState) 7 scheduler (fun _ => policy)))^[15]
-      (PMF.pure (some ⟨5, none, contested⟩)) = _
+    (app.controlStep (PMF.pure initialState) 6 scheduler (fun _ => policy)))^[13]
+      (PMF.pure (some ⟨4, none, contested⟩)) = _
   simpa only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.pure_bind] using
-    app.iterate_eq_finish (PMF.pure initialState) 7 scheduler (fun _ => policy)
-      15 (some ⟨5, none, contested⟩) (by change 2 * 5 + 0 ≤ 15; omega)
+    app.iterate_eq_finish (PMF.pure initialState) 6 scheduler (fun _ => policy)
+      13 (some ⟨4, none, contested⟩) (by change 2 * 4 + 0 ≤ 13; omega)
 
 theorem first_round (policy : app.Policy) :
     app.round scheduler (fun _ => policy) contested =
@@ -69,7 +69,7 @@ theorem first_two_rounds (policy : app.Policy) :
 
 private theorem contested_invariant : contested.application.Invariant input := by
   have invariant := (runtime.reactiveStateInvariant leaks input).history
-    (PMF.pure initialState) 7 scheduler (fun state supported => by
+    (PMF.pure initialState) 6 scheduler (fun state supported => by
       cases (PMF.mem_support_pure_iff _ _).mp supported
       exact (State.initial_invariant input).copy rfl rfl rfl)
     (secondHistory first second).trace
@@ -132,13 +132,13 @@ theorem native_value_sum_le (policy : app.Policy) :
       (result state))) (run_state policy)
   simp only [expect_map, Function.comp_def] at expected
   rw [expected]
-  rw [show 5 = 2 + 3 from rfl, app.runRounds_add, first_two_rounds, PMF.bind_map]
+  rw [show 4 = 2 + 2 from rfl, app.runRounds_add, first_two_rounds, PMF.bind_map]
   rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _ fun _ => sumBound _ _)]
   refine expect_le_const _ _ (payoffIntegrable_expect_of_bounded _ _ _ (by norm_num)
     fun _ => sumBound _ _) _ fun action _ => ?_
   refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _ fun _ => sumBound _ _) _
     fun final reached => ?_
-  exact residual_utility_sum_le policy action 3 final reached
+  exact residual_utility_sum_le policy action 2 final reached
 
 def preferredValue (preferOne : Bool) : Int := if preferOne then 1 else 2
 def preferredSlot (preferOne : Bool) : Nat := if preferOne then 0 else 1
@@ -147,9 +147,10 @@ def opening (preferOne : Bool) : app.Action := ⟨some (.submit
   ⟨⟨.opening 1 ((), .prepared (preferredSlot preferOne))
     ⟨.int, preferredValue preferOne⟩, none⟩, .none⟩)⟩
 
-/-- Only the public grant is inspected. Private scheduler control is absent. -/
+/-- Only public acceptance of the binding is inspected: it marks the
+disclosure event's readiness. Private scheduler control is absent. -/
 def recovery (preferOne : Bool) : app.Policy := fun _ view => PMF.pure
-  (if view.application.publicView.serviceGrant == some 1 then opening preferOne
+  (if (view.application.publicView.accepted (.inr 0)).isSome then opening preferOne
     else if preferOne then runtime.reactiveBinding leaks () 0 .int (.success 0) 2
     else ⟨none⟩)
 
@@ -203,15 +204,8 @@ private theorem included_state (preferOne : Bool) :
   rw [binding_handler]
   rfl
 
-def granted (preferOne : Bool) : app.Execution :=
-  let before := included (selection preferOne)
-  { before with
-    application := { before.application with serviceGrant := some 1 }
-    environmentRecall := before.environmentRecall ++
-      [⟨before.observeEnvironment app, .application (.grant 1)⟩] }
-
 def disclosed (preferOne : Bool) : app.Execution :=
-  (activated (granted preferOne)).respond app () (opening preferOne)
+  (activated (included (selection preferOne))).respond app () (opening preferOne)
 
 def finalExecution (preferOne : Bool) : app.Execution :=
   let before := disclosed preferOne
@@ -227,24 +221,11 @@ private theorem recovery_first_two (preferOne : Bool) :
     by cases preferOne <;> rfl
   rw [first_two_rounds, choice, PMF.pure_map]
 
-private theorem grant_round (preferOne : Bool) :
-    app.round scheduler (fun _ => recovery preferOne) (included (selection preferOne)) =
-      PMF.pure (granted preferOne) := by
-  have choice : scheduler (included (selection preferOne)).environmentRecall
-      ((included (selection preferOne)).observeEnvironment app) =
-      PMF.pure (.application (.grant 1)) := by cases preferOne <;> rfl
-  rw [ReactiveApplication.round, choice, PMF.pure_bind]
-  simp only [ReactiveApplication.dispatch,
-    ReactiveApplication.Execution.environmentStep, app, reactiveApplication, environmentStep,
-    PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
-    ReactiveApplication.resume]
-  rfl
-
 private theorem disclosure_round (preferOne : Bool) :
-    app.round scheduler (fun _ => recovery preferOne) (granted preferOne) =
+    app.round scheduler (fun _ => recovery preferOne) (included (selection preferOne)) =
       PMF.pure (disclosed preferOne) := by
-  have choice : scheduler (granted preferOne).environmentRecall
-      ((granted preferOne).observeEnvironment app) = PMF.pure (.activate ()) :=
+  have choice : scheduler (included (selection preferOne)).environmentRecall
+      ((included (selection preferOne)).observeEnvironment app) = PMF.pure (.activate ()) :=
     by cases preferOne <;> rfl
   rw [ReactiveApplication.round, choice, PMF.pure_bind]
   simp only [ReactiveApplication.dispatch,
@@ -252,11 +233,18 @@ private theorem disclosure_round (preferOne : Bool) :
     PMF.pure_map, PMF.pure_bind, MessageNetwork.learn_empty,
     ReactiveApplication.Command.actor?,
     ReactiveApplication.resume, ReactiveApplication.invoke]
-  have responds : recovery preferOne ((activated (granted preferOne)).recall ())
-      ((activated (granted preferOne)).observe app ()) = PMF.pure (opening preferOne) :=
-    by cases preferOne <;> rfl
-  change (recovery preferOne ((activated (granted preferOne)).recall ())
-    ((activated (granted preferOne)).observe app ())).map _ = _
+  have responds : recovery preferOne ((activated (included (selection preferOne))).recall ())
+      ((activated (included (selection preferOne))).observe app ()) =
+        PMF.pure (opening preferOne) := by
+    have accepted : ((activated (included (selection preferOne))).observe app
+        ()).application.publicView.accepted (.inr 0) =
+          some ((), .prepared (preferredSlot preferOne)) := by
+      change (included (selection preferOne)).application.accepted (.inr 0) = _
+      rw [included_state]
+      simp [boundState]
+    simp only [recovery, accepted, Option.isSome_some, ↓reduceIte]
+  change (recovery preferOne ((activated (included (selection preferOne))).recall ())
+    ((activated (included (selection preferOne))).observe app ())).map _ = _
   rw [responds]
   rw [PMF.pure_map]
   rfl
@@ -274,15 +262,15 @@ private theorem publication_round (preferOne : Bool) :
   rfl
 
 theorem recovery_rounds (preferOne : Bool) :
-    app.runRounds scheduler (fun _ => recovery preferOne) 5 contested =
+    app.runRounds scheduler (fun _ => recovery preferOne) 4 contested =
       PMF.pure (finalExecution preferOne) := by
-  rw [show 5 = 2 + 3 from rfl, app.runRounds_add, recovery_first_two, PMF.pure_bind]
-  simp only [ReactiveApplication.runRounds, grant_round, disclosure_round, publication_round,
+  rw [show 4 = 2 + 2 from rfl, app.runRounds_add, recovery_first_two, PMF.pure_bind]
+  simp only [ReactiveApplication.runRounds, disclosure_round, publication_round,
     PMF.pure_bind]
 
 private theorem disclosed_state (preferOne : Bool) :
-    (disclosed preferOne).application = { boundState preferOne with serviceGrant := some 1 } := by
-  change { (included (selection preferOne)).application with serviceGrant := some 1 } = _
+    (disclosed preferOne).application = boundState preferOne := by
+  change (included (selection preferOne)).application = _
   rw [included_state]
 
 theorem recovery_publication (preferOne : Bool) :
@@ -348,11 +336,11 @@ the source has a common SPE. This quantifies over all native policies. -/
 theorem no_common_spe :
     ¬ ∃ profile : Profile model.behavioralSignature,
       model.IsSingleMoverBehavioralSubgamePerfect
-          (app.singleMover (PMF.pure initialState) 7 scheduler)
-        (app.bounded (PMF.pure initialState) 7 scheduler) profile (payoff true) ∧
+          (app.singleMover (PMF.pure initialState) 6 scheduler)
+        (app.bounded (PMF.pure initialState) 6 scheduler) profile (payoff true) ∧
       model.IsSingleMoverBehavioralSubgamePerfect
-          (app.singleMover (PMF.pure initialState) 7 scheduler)
-        (app.bounded (PMF.pure initialState) 7 scheduler) profile (payoff false) := by
+          (app.singleMover (PMF.pure initialState) 6 scheduler)
+        (app.bounded (PMF.pure initialState) 6 scheduler) profile (payoff false) := by
   rintro ⟨profile, one, two⟩
   let policy := app.decodePolicy (profile ())
   have profileEq : profile = fun _ => app.encodePolicy policy := by

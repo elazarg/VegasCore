@@ -4,7 +4,6 @@ import Vegas.Pending.EventPrescribedBoundary
 import Vegas.Pending.EventServiceReachability
 import Vegas.Pending.EventServiceLaw
 import Vegas.EventGraph.StateCongruence
-import Vegas.Pending.EventServiceGrant
 import Vegas.Pending.EventServicePosition
 import Vegas.Pending.EventSubmissionCompletion
 
@@ -19,29 +18,6 @@ open GameTheory.Math.Probability Interaction Vegas.EventGraph
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
-
-/-- The concrete execution record after a public service grant. -/
-def afterGrant (runtime : EventGraphRuntime graph)
-    (execution : runtime.application.PolicyExecution) (event : graph.EventId) :
-    runtime.application.PolicyExecution :=
-  { execution with
-    native := { execution.native with
-      application := { execution.native.application with serviceGrant := some event } }
-    environmentHistory := execution.environmentHistory ++
-      [⟨MessageApplication.State.environmentView runtime.application execution.native,
-        .application (.grant event)⟩]
-    nativeTrace := execution.nativeTrace ++ [.environment (.grant event)] }
-
-theorem serviceStep_grant_eq (runtime : EventGraphRuntime graph)
-    (players : Player → runtime.application.PlayerPolicy) (wire : runtime.application.WirePolicy)
-    (execution : runtime.application.PolicyExecution) (event : graph.EventId) :
-    runtime.serviceStep players wire (.grant event) execution =
-      PMF.pure (runtime.afterGrant execution event) := by
-  simp only [serviceStep, MessageApplication.environmentPolicyStep,
-    MessageApplication.EnvironmentPolicyCommand.toAction, MessageApplication.advance,
-    MessageApplication.step]
-  simp only [application, environmentStep, PMF.pure_map, PMF.pure_bind]
-  rfl
 
 theorem append_cons_eq_append_cases {α : Type} (marker : α) :
     ∀ (before after executed remaining : List α),
@@ -100,52 +76,20 @@ theorem runServicePlan_owned_ready_event_complete
     (member : after ∈ (runtime.runServicePlan players wire
       (eventServicePlan roster reactionRounds event) before).support) :
     event ∈ after.native.application.config.cut.completed := by
-  let granted := runtime.afterGrant before event
-  have grantMem : granted ∈
-      (runtime.serviceStep players wire (.grant event) before).support := by
-    rw [runtime.serviceStep_grant_eq, PMF.mem_support_pure_iff _ _]
   have planEq : eventServicePlan roster reactionRounds event =
-      .grant event :: (List.replicate 3 (.player owner) ++
+      List.replicate 3 (.player owner) ++
         (List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
-        [.includeLatest event owner, .sample event]) := by
+        [.includeLatest event owner, .sample event] := by
     simp [eventServicePlan, actor]
-  rw [planEq, runServicePlan, runtime.serviceStep_grant_eq,
-    PMF.pure_bind] at member
-  have grantedInvariant := runtime.serviceStep_facts inputs players wire (.grant event)
-    before granted boundary.invariant grantMem |>.invariant
-  have grantedPolicy := runtime.serviceStep_policyCoherentAll owner policy players wire
-    (.grant event) before granted prescribed boundary.policyCoherent grantMem
-  have grantedBinding := runtime.serviceStep_bindingPolicyCoherentAll owner policy players wire
-    (.grant event) before granted prescribed boundary.canonical boundary.bindingCoherent grantMem
-  have grantedAuthorship := runtime.serviceStep_authorship players wire (.grant event)
-    before granted boundary.authorship grantMem
-  have grantedCanonical := runtime.serviceStep_canonicalCommitments owner policy players prescribed
-    wire (.grant event) before granted boundary.canonical grantMem
-  have grantedResources := runtime.serviceStep_canonicalResources owner players wire (.grant event)
-    before granted boundary.canonical boundary.resources grantMem
-  have grantedSubmissions := runtime.serviceStep_prescribedBindingSubmissions owner policy players
-    prescribed wire (.grant event) before granted boundary.bindingSubmissions grantMem
-  have grantedOrigins := runtime.serviceStep_resolutionOrigins inputs ordered owner policy players
-    prescribed wire (.grant event) before granted boundary.invariant boundary.policyCoherent
-    boundary.resolutionOrigins grantMem
-  have grantedBindingInvariant := runtime.serviceStep_bindingInvariant players wire (.grant event)
-    before granted boundary.bindingInvariant grantMem
-  have grantedReady : granted.native.application.config.cut.Ready event := by
-    simpa [granted, afterGrant] using ready
-  have grantedActor : graph.actor? event = some owner := actor
-  have grantedTurn : granted.native.application.publicView.ownTurn? owner = some event :=
+  rw [planEq] at member
+  have turn : before.native.application.publicView.ownTurn? owner = some event :=
     PublicView.ownTurn?_of_ownTurn _ owner event
-      (granted.native.application.ownTurn_of_ready ordered owner event
-        ((State.publicView_eventReady _ event).mpr grantedReady) actor)
+      (before.native.application.ownTurn_of_ready ordered owner event
+        ((State.publicView_eventReady _ event).mpr ready) actor)
   obtain ⟨entered, activated⟩ :=
-    grantedInvariant.activatedAt_eq_some_of_ready_actor event grantedReady (by simp [actor])
-  have grantedAge : granted.native.application.OwnerActivationAgeOne owner := by
-    apply boundary.age.of_zero_progress
-      (runtime.serviceStep_facts inputs players wire (.grant event) before granted
-        boundary.invariant grantMem)
-    exact runtime.serviceStep_activationOrigin players wire (.grant event) before granted grantMem
-  have timely := grantedAge.withinDeadline runtime feasible event actor entered activated
-    grantedReady.1
+    boundary.invariant.activatedAt_eq_some_of_ready_actor event ready (by simp [actor])
+  have timely := boundary.age.withinDeadline runtime feasible event actor entered activated
+    ready.1
   let reactions : List (ServiceInstruction graph) :=
     (List.replicate reactionRounds
       (.wire :: roster.map fun who => ServiceInstruction.player who)).flatten
@@ -160,14 +104,12 @@ theorem runServicePlan_owned_ready_event_complete
     · rfl
     · obtain ⟨who, _, rfl⟩ := List.mem_map.mp playerMem
       rfl
-  by_cases initially : submittedAt (granted.principalHistory owner) event = true
+  by_cases initially : submittedAt (before.principalHistory owner) event = true
   · -- The owner served its turn before this visit; its packet is still pending.
-    obtain ⟨_, pending⟩ := boundary.pending event actor ready.1 (by
-      simpa [granted, afterGrant] using initially)
+    obtain ⟨_, pending⟩ := boundary.pending event actor ready.1 initially
     have holds := OwnerEventProtection.of_ready runtime inputs ordered feasible owner policy
-      players prescribed wire [.grant event] before granted boundary rfl
-      (by simpa only [runServicePlan, PMF.bind_pure] using grantMem) event actor grantedReady
-      pending
+      players prescribed wire [] before before boundary rfl (by simp [runServicePlan]) event
+      actor ready pending
     let work := List.replicate 3 (ServiceInstruction.player owner) ++ reactions
     have workFree : ∀ instruction ∈ work, instruction.ticks = 0 := by
       intro instruction instructionMem
@@ -186,11 +128,11 @@ theorem runServicePlan_owned_ready_event_complete
     have done := holds.includeLatest_complete ordered policy players prescribed wire work
       included actor workFree includeMem
     have includedInvariant := (runtime.runServicePlan_facts inputs players wire
-      (work ++ [.includeLatest event owner]) granted included grantedInvariant
+      (work ++ [.includeLatest event owner]) before included boundary.invariant
       includeMem).invariant
     exact (runtime.runServicePlan_facts inputs players wire [.sample event] included after
       includedInvariant sampleMem).completed done
-  have notSubmitted : submittedAt (granted.principalHistory owner) event = false :=
+  have notSubmitted : submittedAt (before.principalHistory owner) event = false :=
     Bool.eq_false_of_not_eq_true initially
   cases viewNode : nodeView graph event with
   | sample payload law outputEq codeEq =>
@@ -209,11 +151,11 @@ theorem runServicePlan_owned_ready_event_complete
         exact Option.some.inj (transformed.symm.trans actor)
       subst nodeOwner
       exact runtime.runServicePlan_bind_partial_reactions_sample_complete inputs owner policy
-        players prescribed wire reactions granted after event payload outputEq codeEq viewNode
-          grantedTurn
-        grantedReady timely (grantedBinding event payload outputEq actor grantedReady.1)
-        notSubmitted grantedInvariant grantedAuthorship grantedCanonical grantedResources
-        grantedSubmissions clockFree (by simpa [reactions] using member)
+        players prescribed wire reactions before after event payload outputEq codeEq viewNode
+          turn
+        ready timely (boundary.bindingCoherent event payload outputEq actor ready.1)
+        notSubmitted boundary.invariant boundary.authorship boundary.canonical boundary.resources
+        boundary.bindingSubmissions clockFree (by simpa [reactions] using member)
   | resolve nodeOwner payload binding checks outputEq codeEq =>
       have ownerEq : nodeOwner = owner := by
         unfold EventGraph.actor? at actor
@@ -223,10 +165,11 @@ theorem runServicePlan_owned_ready_event_complete
         exact Option.some.inj (transformed.symm.trans actor)
       subst nodeOwner
       exact runtime.runServicePlan_resolve_partial_reactions_sample_complete inputs ordered owner
-        policy players prescribed wire reactions granted after event payload binding checks outputEq
-        codeEq viewNode grantedTurn grantedReady timely (grantedPolicy event actor) notSubmitted
-        ⟨grantedInvariant, grantedPolicy, grantedOrigins⟩ grantedAuthorship
-        grantedBindingInvariant clockFree (by simpa [reactions] using member)
+        policy players prescribed wire reactions before after event payload binding checks outputEq
+        codeEq viewNode turn ready timely (boundary.policyCoherent event actor) notSubmitted
+        ⟨boundary.invariant, boundary.policyCoherent, boundary.resolutionOrigins⟩
+          boundary.authorship
+        boundary.bindingInvariant clockFree (by simpa [reactions] using member)
 
 /-- Clock-free concrete service preserves the full prescribed-owner boundary
 once the endpoint submission boundary has been established. -/

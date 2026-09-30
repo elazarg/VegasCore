@@ -195,7 +195,7 @@ theorem action_after_delivery (bit : Bool) :
 
 /-- Existing network-submission, wire, and reaction opportunities are retained. -/
 example : eventServicePlan (graph := graph) [true, false] 2 0 =
-    [.grant 0, .player false, .player false, .player false,
+    [.player false, .player false, .player false,
       .wire, .player true, .player false, .wire, .player true, .player false,
       .includeLatest 0 false, .sample 0] := rfl
 

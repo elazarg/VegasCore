@@ -48,7 +48,7 @@ theorem premature_opening_unauthorized :
 
 /-- Making the dependency ready does not renew the first envelope's authority. -/
 theorem withholding_unauthorized_after_binding (repair fresh : Bool) :
-    ¬ (granted repair fresh).AuthorizedAtSubmission app
+    ¬ (included repair fresh).AuthorizedAtSubmission app
       (runtime.submissionDependencyCondition leaks)
       withholdingEnvelope := by
   apply runtime.premature_not_authorized leaks _ withholdingEnvelope withholdingOrigin _ 1 0
@@ -56,8 +56,8 @@ theorem withholding_unauthorized_after_binding (repair fresh : Bool) :
   cases repair <;> cases fresh <;> rfl
 
 theorem premature_opening_unauthorized_after_binding :
-    ¬ (granted false false).AuthorizedAtSubmission app (runtime.submissionDependencyCondition leaks)
-      prematureOpeningEnvelope :=
+    ¬ (included false false).AuthorizedAtSubmission app
+      (runtime.submissionDependencyCondition leaks) prematureOpeningEnvelope :=
   runtime.premature_not_authorized leaks _ prematureOpeningEnvelope prematureOpeningOrigin
     rfl 1 0 rfl (by decide) (by decide)
 
@@ -66,18 +66,19 @@ theorem later_opening_authorized :
     (disclosed false false).AuthorizedAtSubmission app (runtime.submissionDependencyCondition leaks)
       ⟨((), 3), ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩,
         some ⟨((), .prepared 0), ⟨.int, 1⟩⟩⟩⟩ := by
-  have ready : (activated (granted false false)).application.publicView.EventReady 1 := by
+  have ready : (activated (included false false)).application.publicView.EventReady 1 := by
     rw [State.publicView_eventReady]
     exact disclosure_ready false false (by simp)
   have authorized := runtime.ready_submission_authorized leaks
-    (activated (granted false false)) ()
+    (activated (included false false)) ()
     (disclosureSubmission (.opening 1 (candidate false) ⟨.int, selectedValue false⟩))
     1 rfl ready rfl
   change (disclosed false false).AuthorizedAtSubmission app
     (runtime.submissionDependencyCondition leaks)
     ⟨((), 3),
       (disclosureSubmission (.opening 1 (candidate false) ⟨.int, selectedValue false⟩)).emit
-        (granted false false).application () ((granted false false).network.known ())⟩ at authorized
+        (included false false).application ()
+          ((included false false).network.known ())⟩ at authorized
   rw [final_opening_emitted false false (by simp)] at authorized
   exact authorized
 

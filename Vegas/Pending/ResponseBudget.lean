@@ -73,8 +73,8 @@ private theorem eventServicePlan_three (rounds : Nat) (event : graph.EventId) :
     ThreeCallPlan (eventServicePlan (graph := graph) [] rounds event) := by
   cases actor : graph.actor? event with
   | none =>
-      simp only [eventServicePlan, actor, List.append_nil, List.singleton_append]
-      exact .environment rfl (.environment rfl .nil)
+      simp only [eventServicePlan, actor, List.nil_append]
+      exact .environment rfl .nil
   | some who =>
       let tail : List (ServiceInstruction graph) :=
         (List.replicate rounds [.wire]).flatten ++ [.includeLatest event who, .sample event]
@@ -90,17 +90,17 @@ private theorem eventServicePlan_three (rounds : Nat) (event : graph.EventId) :
         · rfl
       have nonempty : tail ≠ [] := by simp [tail]
       have normalized : eventServicePlan (graph := graph) [] rounds event =
-          .grant event :: .player who :: .player who :: .player who :: tail := by
+          .player who :: .player who :: .player who :: tail := by
         simp [eventServicePlan, actor, tail, List.replicate_succ, List.append_assoc]
       rw [normalized]
       cases tailEq : tail with
       | nil => exact (nonempty tailEq).elim
       | cons instruction rest =>
           rw [tailEq] at allEnvironment
-          exact .environment rfl (.response who
+          exact .response who
             (allEnvironment instruction (List.mem_cons_self ..))
             (ThreeCallPlan.of_environment rest fun step member =>
-              allEnvironment step (List.mem_cons_of_mem _ member)))
+              allEnvironment step (List.mem_cons_of_mem _ member))
 
 omit [DecidableEq Player] in
 private theorem epochPlan_three (chosen : ServiceOrder graph) (rounds : Nat) :

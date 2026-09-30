@@ -75,9 +75,9 @@ example :
 order before the single clock tick and expiry pass. -/
 example : EventGraphRuntime.epochPlan
     (EventGraphRuntime.ServiceOrder.increasing pairGraph) [] 0 =
-    [.grant 0, .player false, .player false, .player false,
+    [.player false, .player false, .player false,
      .includeLatest 0 false, .sample 0,
-     .grant 1, .player true, .player true, .player true,
+     .player true, .player true, .player true,
      .includeLatest 1 true, .sample 1,
      .tick, .expire 0, .expire 1] := rfl
 
@@ -85,9 +85,9 @@ example : EventGraphRuntime.epochPlan
 order without changing the expiry pass. -/
 example : EventGraphRuntime.epochPlan
     (EventGraphRuntime.ServiceOrder.decreasing pairGraph) [] 0 =
-    [.grant 1, .player true, .player true, .player true,
+    [.player true, .player true, .player true,
      .includeLatest 1 true, .sample 1,
-     .grant 0, .player false, .player false, .player false,
+     .player false, .player false, .player false,
      .includeLatest 0 false, .sample 0,
      .tick, .expire 0, .expire 1] := rfl
 
@@ -100,25 +100,24 @@ example : runtime.ServiceFeasible := by
 private def fixedPolicy (choice : PublicationResult Bool) : pairGraph.BehavioralPolicy false :=
   fun _ _ _ => PMF.pure choice
 
-private def granted : EventGraphRuntime.State pairGraph :=
-  { EventGraphRuntime.State.initial (graph := pairGraph) (fun input => nomatch input) with
-    serviceGrant := some 0 }
+private def initialState : EventGraphRuntime.State pairGraph :=
+  EventGraphRuntime.State.initial (graph := pairGraph) (fun input => nomatch input)
 
 private def observed (state : EventGraphRuntime.State pairGraph) : runtime.application.View :=
   Interaction.MessageApplication.State.observe runtime.application
     (Interaction.MessageApplication.State.initial runtime.application state) false
 
-private def grantedExecution : runtime.application.PolicyExecution :=
+private def initialExecution : runtime.application.PolicyExecution :=
   MessageApplication.PolicyExecution.initial runtime.application
-    (MessageApplication.State.initial runtime.application granted)
+    (MessageApplication.State.initial runtime.application initialState)
 
 /-- Player `false` owns the only ready event, so it is that player's turn. -/
-private theorem granted_turn :
-    (observed granted).application.publicView.ownTurn? false = some 0 := by
+private theorem initial_turn :
+    (observed initialState).application.publicView.ownTurn? false = some 0 := by
   apply EventGraphRuntime.PublicView.ownTurn?_of_ownTurn
   refine ⟨?_, rfl, ?_⟩
-  · change granted.publicView.EventReady 0
-    exact (granted.publicView_eventReady 0).mpr (by
+  · change initialState.publicView.EventReady 0
+    exact (initialState.publicView_eventReady 0).mpr (by
       change (EventOrder.Cut.empty pairOrder).Ready 0
       decide)
   · intro other _ actor
@@ -133,14 +132,14 @@ example (choice : PublicationResult Bool)
     (prescribed : players false = runtime.compilePlayerPolicy false (fixedPolicy choice)) :
     (runtime.runServicePlan players wire
       [.player false, .player false, .player false, .includeLatest 0 false]
-      grantedExecution).map (fun next => next.native.application.config) =
-      granted.config.step 0 (by
+      initialExecution).map (fun next => next.native.application.config) =
+      initialState.config.step 0 (by
         change (EventOrder.Cut.empty pairOrder).Ready 0
         decide) choice := by
-  have ready : granted.config.cut.Ready 0 := by
+  have ready : initialState.config.cut.Ready 0 := by
     change (EventOrder.Cut.empty pairOrder).Ready 0
     decide
-  have unused : granted.HandleUnused (false, .prepared 0) := by
+  have unused : initialState.HandleUnused (false, .prepared 0) := by
     intro field
     cases field with
     | inl input => nomatch input
@@ -149,29 +148,29 @@ example (choice : PublicationResult Bool)
         simp
   simpa only [fixedPolicy, Vegas.EventGraph.normalizePolicy, PMF.pure_bind,
     List.replicate_succ, List.replicate_zero, List.cons_append, List.nil_append,
-    grantedExecution, MessageApplication.PolicyExecution.initial,
+    initialExecution, MessageApplication.PolicyExecution.initial,
     MessageApplication.State.initial] using
     runtime.runServicePlan_compiled_bind_includeLatest false (fixedPolicy choice)
-      players wire grantedExecution 0 .bool rfl rfl rfl prescribed granted_turn ready rfl
+      players wire initialExecution 0 .bool rfl rfl rfl prescribed initial_turn ready rfl
       rfl rfl rfl (by change 0 < 2; decide) rfl rfl unused rfl
 
 /-- The whole prescribed pending block is opaque to the other player, even
 when one selected action fails and the other succeeds. -/
 example (left right : PublicationResult Bool) :
-    (runtime.bindingBlockContinuation false 0 .bool rfl grantedExecution left).map
+    (runtime.bindingBlockContinuation false 0 .bool rfl initialExecution left).map
         (fun next => (next.principalHistory true,
           MessageApplication.State.observe runtime.application next.native true)) =
-      (runtime.bindingBlockContinuation false 0 .bool rfl grantedExecution right).map
+      (runtime.bindingBlockContinuation false 0 .bool rfl initialExecution right).map
         (fun next => (next.principalHistory true,
           MessageApplication.State.observe runtime.application next.native true)) := by
   rw [runtime.bindingBlockContinuation_observer_law false true (by decide),
     runtime.bindingBlockContinuation_observer_law false true (by decide)]
 
 private def remembered (choice : PublicationResult Bool) : EventGraphRuntime.State pairGraph :=
-  EventGraphRuntime.privateStep granted false (.remember 0 choice)
+  EventGraphRuntime.privateStep initialState false (.remember 0 choice)
 
 private def firstEntry (choice : PublicationResult Bool) : runtime.application.PlayerEntry :=
-  ⟨observed granted, .privateCommand (.remember 0 choice)⟩
+  ⟨observed initialState, .privateCommand (.remember 0 choice)⟩
 
 private def preparation (choice : PublicationResult Bool) :
     EventGraphRuntime.PrivateCommand pairGraph :=
@@ -190,13 +189,13 @@ private def stagedHistory (choice : PublicationResult Bool) :
 /-- Both payload success and binding failure first use an entirely private
 sampling operation. Neither emits a packet in the first owner opportunity. -/
 example (choice : PublicationResult Bool) :
-    runtime.compilePlayerPolicy false (fixedPolicy choice) [] (observed granted) =
+    runtime.compilePlayerPolicy false (fixedPolicy choice) [] (observed initialState) =
       PMF.pure (.privateCommand (.remember 0 choice)) := by
   have actor : pairGraph.actor? 0 = some false := rfl
   simp only [EventGraphRuntime.compilePlayerPolicy]
-  rw [granted_turn]
+  rw [initial_turn]
   simp [PMF.pure_map, EventGraphRuntime.submittedAt,
-    EventGraphRuntime.stagingCount, observed, granted,
+    EventGraphRuntime.stagingCount, observed, initialState,
     Interaction.MessageApplication.State.observe,
     Interaction.MessageApplication.State.initial,
     EventGraphRuntime.application, EventGraphRuntime.State.playerView,
@@ -215,9 +214,9 @@ example (left right : PublicationResult Bool) :
 private theorem staged_turn (choice : PublicationResult Bool) :
     (observed (staged choice)).application.publicView.ownTurn? false = some 0 := by
   change (staged choice).publicView.ownTurn? false = some 0
-  rw [show (staged choice).publicView = granted.publicView by
+  rw [show (staged choice).publicView = initialState.publicView by
     simp only [staged, remembered, EventGraphRuntime.privateStep_publicView]]
-  exact granted_turn
+  exact initial_turn
 
 /-- The common packet's private candidate meaning is exactly the chosen
 binding action, including genuine failure rather than an in-domain default. -/
@@ -238,7 +237,7 @@ example (choice : PublicationResult Bool) :
     simp [EventGraphRuntime.submittedAt,
       EventGraphRuntime.stagingCount, EventGraphRuntime.stagesEvent,
       EventGraphRuntime.eventSlot, stagedHistory, firstEntry, preparation,
-      staged, remembered, observed, granted,
+      staged, remembered, observed, initialState,
       Interaction.MessageApplication.State.observe,
       Interaction.MessageApplication.State.initial,
       EventGraphRuntime.application, EventGraphRuntime.privateStep,

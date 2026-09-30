@@ -194,7 +194,6 @@ The concrete scheduler in
 chosen event order. A strategic visit is:
 
 ```text
-grant event
 activate its owner once
 allow a configured number of network choices
 include the latest pending owner-authored packet for this event, if any

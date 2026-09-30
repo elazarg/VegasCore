@@ -113,16 +113,16 @@ theorem compiled_first :
   rw [recovery_slot]
   rfl
 
-theorem granted_inconsistent (repair fresh : Bool) :
+theorem disclosure_inconsistent (repair fresh : Bool) :
     ¬ (runtime.prescribedReactivePolicy leaks () zeroPolicy).Consistent
-      ((activated (granted repair fresh)).recall ()) := by
+      ((activated (included repair fresh)).recall ()) := by
   apply inconsistent_of_first
   apply List.prefix_iff_eq_take.mpr
   cases repair <;> cases fresh <;> rfl
 
 theorem later_ready (repair fresh : Bool) (possible : fresh = true → repair = true) :
-    ((activated (granted repair fresh)).observe app ()).application.publicView.EventReady 1 := by
-  have publicState : ((activated (granted repair fresh)).observe app ()).application.publicView =
+    ((activated (included repair fresh)).observe app ()).application.publicView.EventReady 1 := by
+  have publicState : ((activated (included repair fresh)).observe app ()).application.publicView =
       (disclosed repair fresh).application.publicView := rfl
   rw [publicState]
   exact ((disclosed repair fresh).application.publicView_eventReady 1).mpr
@@ -131,7 +131,7 @@ theorem later_ready (repair fresh : Bool) (possible : fresh = true → repair = 
 /-- Once the binding is complete the disclosure is the owner's turn; the binding
 precedes it, so it can no longer be ready. -/
 theorem later_turn (repair fresh : Bool) (possible : fresh = true → repair = true) :
-    ((activated (granted repair fresh)).observe app ()).application.publicView.ownTurn? () =
+    ((activated (included repair fresh)).observe app ()).application.publicView.ownTurn? () =
       some 1 := by
   have ready := later_ready repair fresh possible
   refine PublicView.ownTurn?_of_ownTurn _ () 1 ⟨ready, rfl, fun other otherReady _ => ?_⟩
@@ -140,10 +140,10 @@ theorem later_turn (repair fresh : Bool) (possible : fresh = true → repair = t
   · rfl
 
 theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair = true) :
-    compiled ((activated (granted repair fresh)).recall ())
-      ((activated (granted repair fresh)).observe app ()) = PMF.pure (finalOpening fresh) := by
+    compiled ((activated (included repair fresh)).recall ())
+      ((activated (included repair fresh)).observe app ()) = PMF.pure (finalOpening fresh) := by
   rw [compiled, compileReactivePolicy, ReactiveApplication.Policy.recover_eq_recovery _ _ _ _
-    (granted_inconsistent repair fresh)]
+    (disclosure_inconsistent repair fresh)]
   have turn := later_turn repair fresh possible
   have ready := later_ready repair fresh possible
   have actor : graph.actor? 1 = some () := rfl
@@ -152,13 +152,12 @@ theorem compiled_later (repair fresh : Bool) (possible : fresh = true → repair
     dite_eq_left actor, EventGraph.normalizePolicy, zeroPolicy_resolve,
     reactiveRecoveryLaw_pure (graph := graph), PMF.pure_map, PMF.bind_const]
   congr 1
-  have state : (granted repair fresh).application =
-      { boundState repair fresh with serviceGrant := some 1 } :=
-    disclosed_state repair fresh possible
+  have state : (included repair fresh).application = boundState repair fresh :=
+    included_state repair fresh possible
   change runtime.reactiveDecision leaks () 1 true
-    ⟨(), (granted repair fresh).application.publicView,
-      graph.playerObserve () (granted repair fresh).application.config,
-      fun slot => (granted repair fresh).application.candidates.lookup ((), slot)⟩ = _
+    ⟨(), (included repair fresh).application.publicView,
+      graph.playerObserve () (included repair fresh).application.config,
+      fun slot => (included repair fresh).application.candidates.lookup ((), slot)⟩ = _
   rw [state]
   have normal : (disclosureSubmission
       (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).normalizeReactive ()
@@ -189,10 +188,10 @@ theorem earlyPolicy_first :
   simp only [earlyPolicy, turn, ↓reduceIte]
 
 theorem earlyPolicy_later :
-    earlyPolicy ((activated (granted false false)).recall ())
-      ((activated (granted false false)).observe app ()) = PMF.pure (finalOpening false) := by
+    earlyPolicy ((activated (included false false)).recall ())
+      ((activated (included false false)).observe app ()) = PMF.pure (finalOpening false) := by
   have different :
-      ((activated (granted false false)).observe app ()).application.publicView.ownTurn? () ≠
+      ((activated (included false false)).observe app ()).application.publicView.ownTurn? () ≠
         some 0 := by
     rw [later_turn false false (by simp)]
     decide

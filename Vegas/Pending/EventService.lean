@@ -6,10 +6,11 @@ import Interaction.MessageApplicationWirePolicy
 /-! # Bounded public service for dependency-driven pending messages
 
 Each epoch visits every event in a permutation chosen from the full public
-environment observation. A public grant identifies the event receiving reserved
-service; it does not constrain player commands or wire inclusion. All grants
-precede the epoch's one clock advance and expiry sweep. Player policies and the
-wire policy use the shared message runner and retain their actual histories.
+environment observation. A visit reserves owner invocations and one inclusion
+for its event; it does not constrain player commands or wire inclusion, and it
+announces nothing. All visits precede the epoch's one clock advance and expiry
+sweep. Player policies and the wire policy use the shared message runner and
+retain their actual histories.
 -/
 
 noncomputable section
@@ -158,13 +159,12 @@ theorem runServicePlan_append (runtime : EventGraphRuntime graph)
 staging, and submission. Every subsequent wire slot permits roster reactions. -/
 def eventServicePlan (roster : List Player) (reactionRounds : Nat)
     (event : graph.EventId) : List (ServiceInstruction graph) :=
-  [.grant event] ++
-    (match graph.actor? event with
+  (match graph.actor? event with
     | none => []
     | some owner => List.replicate 3 (.player owner) ++
-        (List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
-        [.includeLatest event owner]) ++
-    [.sample event]
+      (List.replicate reactionRounds (.wire :: roster.map .player)).flatten ++
+      [.includeLatest event owner]) ++
+  [.sample event]
 
 /-- One clock-free service sweep, then one clock increment and all local
 expiry checks. The expiry checks do not increment the clock. -/

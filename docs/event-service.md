@@ -12,21 +12,19 @@ graph event IDs from its current public observation and command history. The
 observation includes the entire pending pool. The policy cannot inspect hidden
 commitment meanings. For each event in that permutation, the service:
 
-1. Publishes a grant identifying the event.
-2. If the event has an owner, offers three owner invocations, then the configured
+1. If the event has an owner, offers three owner invocations, then the configured
    wire slots and player reactions, then one reserved inclusion opportunity.
-3. Executes a sample command for that event. This invokes the retained chance
+2. Executes a sample command for that event. This invokes the retained chance
    kernel only if the event is a ready sample; otherwise it has no effect.
 
 After the complete sweep, the service advances the block clock once and checks
 expiry at every event. Expiry checks do not themselves advance time.
 
-A grant is a public service announcement, not an authorization check on
-packets, and no prescribed policy reads it. Arbitrary players can submit,
-replay, and prepare competing candidates at their invocations. The wire policy
-can deliver or include any pending packet at its slots, including a packet for
-an event other than the grant. It cannot insert extra clock advances or sample
-triggers.
+A visit announces nothing and authorizes nothing. Arbitrary players can
+submit, replay, and prepare competing candidates at their invocations. The wire
+policy can deliver or include any pending packet at its slots, including a
+packet for an event other than the visited one. It cannot insert extra clock
+advances or sample triggers.
 
 The reserved selector uses only the authenticated sender and public event
 address. It selects the latest matching pending packet; a later unrelated

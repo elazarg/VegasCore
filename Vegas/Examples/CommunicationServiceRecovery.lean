@@ -29,17 +29,12 @@ private def record (before after : app.Execution) (command : app.Command) : app.
   { after with environmentRecall := before.environmentRecall ++
       [⟨before.observeEnvironment app, command⟩] }
 
-private def grant (event : graph.EventId) (before : app.Execution) : app.Execution :=
-  record before { before with
-    application := { before.application with serviceGrant := some event } }
-    (.application (.grant event))
-
 def root : app.Execution := .initial app (State.initial input)
-def sideSubmitted : app.Execution := (activated (grant 1 root)).respond app () first
+def sideSubmitted : app.Execution := (activated root).respond app () first
 private def wireWait : app.Execution := record sideSubmitted sideSubmitted .wait
 private def reservedWait : app.Execution := record wireWait wireWait .wait
 def atBinding : app.Execution :=
-  grant 0 (record reservedWait reservedWait (.application (.executeSample 1)))
+  record reservedWait reservedWait (.application (.executeSample 1))
 def recoverySubmitted : app.Execution := (activated atBinding).respond app () bindingAction
 def installed : app.Execution := record recoverySubmitted
   (recoverySubmitted.includePending app ((), 0)) (.include ((), 0))
@@ -60,21 +55,12 @@ checks therefore do not remove this competing binding. -/
 theorem earlier_authorized :
     recoverySubmitted.AuthorizedAtSubmission app (runtime.submissionDependencyCondition leaks)
       ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩ := by
-  refine ⟨⟨(activated (grant 1 root)).observe app (), first,
+  refine ⟨⟨(activated root).observe app (), first,
     some ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩⟩, rfl, rfl, ?_⟩
   intro event addressed predecessor member
   have same : (0 : graph.EventId) = event := Option.some.inj addressed
   subst event
   exact False.elim (Finset.notMem_empty predecessor member)
-
-private theorem step_grant (event : graph.EventId) (execution : app.Execution) :
-    runtime.interactionStep leaks players network (.grant event) execution =
-      PMF.pure (grant event execution) := by
-  simp only [interactionStep, interactionInstruction, PMF.pure_bind,
-    ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
-    app, reactiveApplication, environmentStep, PMF.pure_map, PMF.pure_bind,
-    ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-  rfl
 
 private theorem idle_step (instruction : ServiceInstruction graph) (command : app.Command)
     (execution : app.Execution)
@@ -98,9 +84,9 @@ private theorem wait_step (instruction : ServiceInstruction graph) (execution : 
   rfl
 
 theorem side_prefix :
-    runtime.runInteractionPlan leaks players network (interactionVisit 1 1 ++ [.grant 0]) root =
+    runtime.runInteractionPlan leaks players network (interactionVisit 1 1) root =
       PMF.pure atBinding := by
-  have firstStep : runtime.interactionStep leaks players network (.player ()) (grant 1 root) =
+  have firstStep : runtime.interactionStep leaks players network (.player ()) root =
       PMF.pure sideSubmitted := by
     simp only [interactionStep, interactionInstruction, PMF.pure_bind,
       ReactiveApplication.dispatch, activation, PMF.pure_bind,
@@ -124,8 +110,8 @@ theorem side_prefix :
   dsimp only [afterWait] at secondWait
   dsimp only [beforeSample, afterWait] at sample
   change runtime.runInteractionPlan leaks players network
-    [.grant 1, .player (), .wire, .includeLatest 1 (), .sample 1, .grant 0] root = _
-  simp only [runInteractionPlan, step_grant, firstStep, firstWait, secondWait,
+    [.player (), .wire, .includeLatest 1 (), .sample 1] root = _
+  simp only [runInteractionPlan, firstStep, firstWait, secondWait,
     sample, PMF.pure_bind]
   rfl
 
@@ -138,15 +124,15 @@ theorem compiled_response :
     change ReactiveApplication.Policy.Consistent _ ([] ++ [_]) at consistent
     have supported := (ReactiveApplication.Policy.consistent_snoc_iff _ [] _).mp consistent
     have selected := supported.2
-    have turn : ((activated (grant 1 root)).observe app ()).application.publicView.ownTurn? () =
+    have turn : ((activated root).observe app ()).application.publicView.ownTurn? () =
         some 0 := by
       decide
     have readyZero :
-        ((activated (grant 1 root)).observe app ()).application.publicView.EventReady 0 := by
+        ((activated root).observe app ()).application.publicView.EventReady 0 := by
       decide
     have actor : graph.actor? 0 = some () := rfl
     change first ∈ (runtime.prescribedReactivePolicy leaks () zeroPolicy []
-      ((activated (grant 1 root)).observe app ())).support at selected
+      ((activated root).observe app ())).support at selected
     rw [prescribedReactivePolicy_apply] at selected
     simp only [prescribedReactiveResponse, turn, reactiveAlreadySubmitted, List.any_nil,
       Bool.false_eq_true, ite_false, dite_true, ite_eq_left readyZero, dite_eq_left actor,
@@ -154,7 +140,7 @@ theorem compiled_response :
       PMF.mem_support_pure_iff _ _] at selected
     have sent := congrArg ReactiveApplication.Action.transmission selected
     have slot :
-        reactiveFreshSlot ((activated (grant 1 root)).observe app ()).application = some 0 := by
+        reactiveFreshSlot ((activated root).observe app ()).application = some 0 := by
       unfold reactiveFreshSlot
       split
       · congr 1
@@ -163,7 +149,7 @@ theorem compiled_response :
         exact False.elim (impossible ⟨0, rfl⟩)
     change some (ReactiveApplication.Transmission.submit (app := app)
         ⟨⟨.commitment 0 ((), .prepared 0), some ⟨.int, 1⟩⟩, .none⟩) =
-      (reactiveFreshSlot ((activated (grant 1 root)).observe app ()).application).map _ at sent
+      (reactiveFreshSlot ((activated root).observe app ()).application).map _ at sent
     rw [slot] at sent
     have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
     have opening := congrArg
@@ -253,12 +239,12 @@ theorem final_value : final.application.config.outputs 0 = some (.success 1) :=
     installed ((), 1) installed_value
 
 def servicePrefix : List (ServiceInstruction graph) :=
-  interactionVisit 1 1 ++ [.grant 0, .player (), .wire, .includeLatest 0 ()]
+  interactionVisit 1 1 ++ [.player (), .wire, .includeLatest 0 ()]
 
 theorem prefix_law : runtime.runInteractionPlan leaks players network servicePrefix root =
     PMF.pure final := by
   change runtime.runInteractionPlan leaks players network
-    ((interactionVisit 1 1 ++ [.grant 0]) ++ [.player (), .wire, .includeLatest 0 ()]) root = _
+    (interactionVisit 1 1 ++ [.player (), .wire, .includeLatest 0 ()]) root = _
   rw [runInteractionPlan_append, side_prefix, PMF.pure_bind, recovery_block]
 
 theorem epoch_split : interactionEpoch (ServiceOrder.decreasing graph) 1 =

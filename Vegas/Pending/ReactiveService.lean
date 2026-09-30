@@ -50,10 +50,10 @@ class NetworkPolicy.FiniteSupport {runtime : EventGraphRuntime graph}
 
 def interactionVisit (networkTurns : Nat) (event : graph.EventId) :
     List (ServiceInstruction graph) :=
-  [.grant event] ++ (match graph.actor? event with
+  (match graph.actor? event with
     | none => []
     | some owner => [.player owner] ++ List.replicate networkTurns .wire ++
-        [.includeLatest event owner]) ++ [.sample event]
+      [.includeLatest event owner]) ++ [.sample event]
 
 def interactionEpoch (chosen : ServiceOrder graph) (networkTurns : Nat) :
     List (ServiceInstruction graph) :=
