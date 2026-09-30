@@ -114,13 +114,19 @@ The following effects cannot be neutralized through beliefs:
     others. The existing deposit therefore deters it; beliefs need not
     neutralize anything (probe C3).
   - *Permitted openings.* An opening is permitted during its own resolve event
-    and carries a certificate. In concurrent mode it can sit in the pool while
-    another player's binding is ready but ungranted. An order policy that reads
-    its value leaks verified information on path, uncharged. In the probe no
-    assessment with the source law is then sequentially rational (probe C4).
-    The contract must keep the order from reading opening contents, or from
-    reading any content of events concurrent with an ungranted one; with such
-    an order the babbling construction applies again.
+    and carries a certificate. If it could sit in the pool while another
+    player's binding is ready but ungranted, an order policy reading its value
+    would leak verified information on path, uncharged, and no assessment with
+    the source law would be sequentially rational (probe C4). Concurrent mode
+    rules this out: its dependency order is the compiled `barrierOrder`
+    (`Vegas/EventGraph/Barriers.lean`), in which a public event, such as a
+    resolution, depends on every earlier event and every later event depends
+    on it. When an opening can be sent, every earlier binding has completed,
+    and no later binding is ready until the resolution completes and the source
+    publishes the value anyway. Only different players' bindings between
+    consecutive public events are concurrent, and a pending commitment carries
+    only a handle. The case matters only for a dependency policy that lets a
+    public event overlap a binding.
 - **Changes to opportunities.** In concurrent mode an order changes the
   relative order of different-owner bindings that are hidden from one another,
   and, through the deadline timers, whether each owner still has a timely
@@ -131,7 +137,8 @@ The following effects cannot be neutralized through beliefs:
 A valid schedule for this purpose:
 
 - reads only public data, as `EventGraphRuntime.ServiceOrderPolicy` already
-  requires, and not the values carried by pending openings;
+  requires (under the barrier order this already excludes early verified
+  values other than charged ones);
 - grants only ready events;
 - keeps the protected block at every grant: an activation of the event's owner,
   include-latest, the deadline, and expiry;
@@ -250,12 +257,12 @@ controls confirm the checker rejects non-equilibria. Results:
 | C1 | Three concurrent bindings, deadline `event.val + 1`, blocks of `event.val + 1` ticks | Timers from readiness expire the third binding; timers from the grant do not. |
 | C2 | Order reacts to an unverified pool signal | An equilibrium with the source law exists (babbling). |
 | C3 | Order reads a certificate on a forbidden commitment | An equilibrium with the source law exists exactly when the expected charge is at least the gain from revealing (here 1/2). |
-| C4 | Order reads a permitted opening while the other binding is ungranted | No assessment with the source law is sequentially rational; an order blind to opening contents restores one. |
+| C4 | Order reads a permitted opening while the other binding is ungranted (excluded by the barrier order) | No assessment with the source law is sequentially rational; an order blind to opening contents restores one. |
 | C5 | An unobserved wait before the other player's grant | The translated profile is an equilibrium although its information set spans two depths: the depth requirement is a proof requirement, not an obstruction. |
 
-The probes support preservation under a contract that forbids reading opening
-values and starts deadline timers at the grant (or sizes deadlines to cover
-the grant offset). They are design evidence, not proofs.
+Under the barrier order, C4 cannot arise, so the probes support preservation
+under the contract above once deadline timers start at the grant (or deadlines
+cover the grant offset). They are design evidence, not proofs.
 
 ## Suggested order of work
 

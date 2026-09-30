@@ -285,7 +285,9 @@ def report() -> dict[str, object]:
 
     # C4: a permitted, uncharged opening read by the order while Bob's binding
     # is still ungranted. The signal payoff 1 exceeds 1/2, so no assessment
-    # with the source law is sequentially rational (see verified_gain).
+    # with the source law is sequentially rational (see verified_gain). The
+    # compiled barrier order excludes this state: a resolution is a public
+    # barrier, so no binding is ready while its opening is pending.
     permitted = signalling("sig", Fraction(0), reveals=True)
     assert not is_sequential_equilibrium(permitted, translated_profile(matching), trembles())
     assert verified_gain(Fraction(0)) > HALF
