@@ -13,31 +13,29 @@ open Vegas Vegas.EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 theorem native_first_receipts (bit : Bool) : (nativeFirst bit).receipts = [((false, 0), true)] := by
-  rw [nativeFirst, native_window_receipts _ _ _ _ _ rfl (native_binding_grant bit _)]
+  rw [nativeFirst, native_window_receipts _ _ _ _ rfl (native_binding_law bit)]
   rfl
 
 theorem native_second_receipts (bit : Bool) :
     (nativeSecond bit).receipts = [((false, 0), true), ((false, 1), true)] := by
-  have accepted : nativeSubmit
-      { (nativeFirst bit).application with serviceGrant := some dummyEvent }
+  have accepted : nativeSubmit (nativeFirst bit).application
       false ((nativeFirst bit).network.nextSerial false) dummyOpening =
-        some { nativeDummyState bit with serviceGrant := some dummyEvent } := by
+        some (nativeDummyState bit) := by
     rw [native_first_application, native_first_serial]
-    exact native_dummy_grant bit _
-  rw [nativeSecond, native_window_receipts _ _ _ _ _ (native_first_pending bit) accepted,
+    exact native_dummy_law bit
+  rw [nativeSecond, native_window_receipts _ _ _ _ (native_first_pending bit) accepted,
     native_first_receipts, native_first_serial]
   rfl
 
 theorem native_bob_receipts (bit : Bool) : (nativeBobExecution bit).receipts =
     [((false, 0), true), ((false, 1), true), ((false, 2), true)] := by
-  have accepted : nativeSubmit
-      { (nativeSecond bit).application with serviceGrant := some secretEvent }
+  have accepted : nativeSubmit (nativeSecond bit).application
       false ((nativeSecond bit).network.nextSerial false) (secretOpening bit) =
-        some { nativeSecretState bit with serviceGrant := some secretEvent } := by
+        some (nativeSecretState bit) := by
     rw [native_second_application, native_second_serial]
-    exact native_secret_grant bit _
-  simp only [nativeBobExecution, nativeActivate, nativeGrant, nativeRecord]
-  rw [nativeThird, native_window_receipts _ _ _ _ _ (native_second_pending bit) accepted,
+    exact native_secret_law bit
+  simp only [nativeBobExecution, nativeActivate, nativeRecord]
+  rw [nativeThird, native_window_receipts _ _ _ _ (native_second_pending bit) accepted,
     native_second_receipts, native_second_serial]
   rfl
 
@@ -60,7 +58,7 @@ theorem native_bob_observed (bit : Bool) : nativeRuntime.openingObserved nativeL
 
 theorem native_info (who : Bool) (history : nativeArena.History) :
     nativeModel.infoOf who history.trace = nativeApp.observe who history.state :=
-  nativeMenu.info nativeInitialLaw 56 nativeScheduler who history.trace
+  nativeMenu.info nativeInitialLaw 52 nativeScheduler who history.trace
 
 theorem native_bob_info (bit : Bool) : (nativeBobSite bit).1 =
     some ([], (nativeBobExecution bit).observe nativeApp true) := by
@@ -72,7 +70,7 @@ theorem native_bob_info (bit : Bool) : (nativeBobSite bit).1 =
 theorem native_bob_fibre (bit : Bool)
     (history : nativeModel.InformationHistory true (nativeBobSite bit).1) :
     ∃ execution, history.1.state = some ⟨45, some true, execution⟩ ∧
-      execution.environmentRecall.length = 11 ∧ execution.recall true = [] ∧
+      execution.environmentRecall.length = 7 ∧ execution.recall true = [] ∧
       execution.observe nativeApp true = (nativeBobExecution bit).observe nativeApp true := by
   have observed := history.2.trans (native_bob_info bit)
   rw [native_info] at observed
@@ -98,7 +96,7 @@ theorem native_bob_type (bit : Bool)
     (history : nativeModel.InformationHistory true (nativeBobSite bit).1) :
     nativeStoredType nativeLeaks history.1.state = some bit := by
   have same := native_bob_info bit
-  exact native_information_type nativeLeaks nativeMenu 56 nativeScheduler true bit []
+  exact native_information_type nativeLeaks nativeMenu 52 nativeScheduler true bit []
     ((nativeBobExecution bit).observe nativeApp true) (native_bob_observed bit)
     ⟨history.1, history.2.trans same⟩
 
@@ -106,8 +104,8 @@ theorem native_no_bob_pending (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (empty : control.execution.recall true = [])
     (message : Message Bool (WitnessedPacket nativeGraph))
     (pending : message ∈ control.execution.network.pending) : message.sender ≠ true := by
-  have valid := nativeApp.history_provenance nativeInitialLaw 56 nativeScheduler
-    (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace)
+  have valid := nativeApp.history_provenance nativeInitialLaw 52 nativeScheduler
+    (nativeMenu.toRawTrace nativeInitialLaw 52 nativeScheduler trace)
   obtain ⟨entry, member, _⟩ := valid.pending message pending
   intro same
   rw [same, empty] at member
@@ -117,8 +115,8 @@ theorem native_remembered (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) :
     control.execution.application.remembered = fun _ => none := by
   apply (nativeRuntime.reactiveRememberedInvariant nativeLeaks (· = fun _ => none)).history
-    nativeInitialLaw 56 nativeScheduler _
-    (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace)
+    nativeInitialLaw 52 nativeScheduler _
+    (nativeMenu.toRawTrace nativeInitialLaw 52 nativeScheduler trace)
   intro state supported
   obtain ⟨bit, _, rfl⟩ := PMF.support_map .. ▸ supported
   rfl

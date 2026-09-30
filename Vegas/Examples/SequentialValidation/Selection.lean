@@ -51,10 +51,10 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
         PMF.pure (nativeFinalCommand control.execution action) := by
   classical
   let execution := control.execution
-  have rawTrace := nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace
+  have rawTrace := nativeMenu.toRawTrace nativeInitialLaw 52 nativeScheduler trace
   have position := (native_bob_remaining control trace active).1
-  have serials := nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw 56 rawTrace
-  have retained := nativeApp.pendingOrPublished_history nativeScheduler nativeInitialLaw 56 rawTrace
+  have serials := nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw 52 rawTrace
+  have retained := nativeApp.pendingOrPublished_history nativeScheduler nativeInitialLaw 52 rawTrace
   have noOld : MessageNetwork.eligibleIds
       (execution.network.unpublished (nativeApp.authorizedEligibility dependencyCondition
         execution.environmentRecall (eventProposal guessEvent true))) execution.network.pending =
@@ -90,7 +90,7 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
       obtain ⟨message, member, same⟩ := List.any_eq_true.mp seen
       exact unpublished (List.mem_map.mpr ⟨message, member, of_decide_eq_true same⟩)
     have permitted := nativeApp.submissionPermitted_fresh_history ReactivePlayerView.publicView
-      (fun _ _ => rfl) dependencyCondition nativeInitialLaw 56 nativeScheduler control rawTrace
+      (fun _ _ => rfl) dependencyCondition nativeInitialLaw 52 nativeScheduler control rawTrace
       true active packet
     simp only [ReactiveApplication.submitsEligible, MessageNetwork.submit,
       MessageNetwork.unpublished, ReactiveApplication.authorizedEligibility]

@@ -94,20 +94,6 @@ theorem native_guess_law (bit guess : Bool) (serial : Nat) :
       simp [EventGraph.EventCode.resolveOutput?, native_secret_guess_stored,
         EventGraph.GuardCheck.allAccepted?]
 
-theorem native_guess_grant (bit guess : Bool) (serial : Nat) (grant : Option nativeGraph.EventId) :
-    nativeSubmit { nativeSecretPublished bit with serviceGrant := grant } true serial
-      (nativeGuessSubmission guess).call =
-        some { nativeGuessState bit guess with serviceGrant := grant } := by
-  have accepted := native_guess_law bit guess serial
-  unfold nativeSubmit at accepted ⊢
-  rw [handle_submitStep] at accepted ⊢
-  cases guess <;>
-    change handle nativeRuntime { nativeSecretPublished bit with serviceGrant := grant }
-      ⟨(true, serial), _⟩ = _
-  all_goals change handle nativeRuntime (nativeSecretPublished bit) ⟨(true, serial), _⟩ = _
-    at accepted
-  all_goals rw [handle_serviceGrant_update, accepted]; rfl
-
 theorem native_guess_available (guess : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) :
     (⟨some (.submit (nativeGuessSubmission guess))⟩ : nativeApp.Action) ∈

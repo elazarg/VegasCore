@@ -40,7 +40,7 @@ theorem disclosedBit_actual (bit : Bool) :
           ((nativeBobExecution false).observe nativeApp true)
           (false, .initial secretInput) ⟨.bool, true⟩ := by
         intro observed
-        have stored := native_information_type nativeLeaks nativeMenu 56 nativeScheduler
+        have stored := native_information_type nativeLeaks nativeMenu 52 nativeScheduler
           true true [] ((nativeBobExecution false).observe nativeApp true) observed
           ⟨nativeBobHistory false, native_bob_info false⟩
         have known := native_bob_type false

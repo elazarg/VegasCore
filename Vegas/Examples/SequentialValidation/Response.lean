@@ -118,25 +118,25 @@ theorem native_bob_response_tail (bit : Bool) (control : nativeApp.Control)
     (nativeApp.runRounds nativeScheduler players 45
       (control.execution.respond nativeApp true action)).map
         ReactiveApplication.Execution.application =
-          nativeTail 12 44 (nativeChosenState control.execution action) := by
+          nativeTail 8 44 (nativeChosenState control.execution action) := by
   rw [show 45 = 44 + 1 from rfl, ReactiveApplication.runRounds, PMF.map_bind]
   have position := (native_bob_remaining control trace active).1
   calc
     _ = (nativeApp.round nativeScheduler players
           (control.execution.respond nativeApp true action)).bind
-            (fun next => nativeTail 12 44 next.application) := by
+            (fun next => nativeTail 8 44 next.application) := by
       apply bind_congr_on_support _
       intro next reached
-      apply native_run_tail players 44 12 next _ (by omega) (by omega)
+      apply native_run_tail players 44 8 next _ (by omega) (by omega)
       rw [native_round_length players _ next reached, nativeApp.respond_environmentRecall, position]
     _ = _ := by
       refine (PMF.bind_map _ (fun next : nativeApp.Execution => next.application)
-        fun state => nativeTail 12 44 state).symm.trans ?_
+        fun state => nativeTail 8 44 state).symm.trans ?_
       rw [native_bob_round bit control trace active empty views, PMF.pure_bind]
 
 theorem native_chosen_guess (bit guess : Bool) :
     nativeChosenState (nativeBobExecution bit) ⟨some (.submit (nativeGuessSubmission guess))⟩ =
-      { nativeGuessState bit guess with serviceGrant := some guessEvent } := by
+      nativeGuessState bit guess := by
   have addressed :
       (nativeGuessSubmission guess).call.packet.event? nativeGraph = some guessEvent :=
       by
@@ -145,7 +145,7 @@ theorem native_chosen_guess (bit guess : Bool) :
   change (nativeSubmit (nativeBobExecution bit).application true
     ((nativeBobExecution bit).network.nextSerial true)
     (nativeGuessSubmission guess).call).getD _ = _
-  rw [native_bob_application, native_guess_grant]
+  rw [native_bob_application, native_guess_law]
   rfl
 
 theorem native_chosen_store (execution : nativeApp.Execution) (action : nativeApp.Action)
@@ -171,16 +171,15 @@ theorem native_chosen_store (execution : nativeApp.Execution) (action : nativeAp
           · exact submitted
 
 theorem native_tail_guess (bit guess : Bool) :
-    (nativeTail 12 44
+    (nativeTail 8 44
       (nativeChosenState (nativeBobExecution bit)
         ⟨some (.submit (nativeGuessSubmission guess))⟩)).map nativeGuess = PMF.pure guess := by
   rw [native_chosen_guess]
   calc
-    _ = (nativeTail 12 44 { nativeGuessState bit guess with
-          serviceGrant := some guessEvent }).map (fun _ => guess) := by
+    _ = (nativeTail 8 44 (nativeGuessState bit guess)).map (fun _ => guess) := by
       apply map_congr_on_support _
       intro next reached
-      have stored := native_tail_store 12 44 _ next (.inr guessEvent)
+      have stored := native_tail_store 8 44 _ next (.inr guessEvent)
         (if guess then .success true else .failure) rfl reached
       unfold nativeGuess
       rw [stored]

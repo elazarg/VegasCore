@@ -13,10 +13,10 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 def nativePlayers (profile : Profile nativeModel.behavioralSignature) : Bool → nativeApp.Policy :=
-  nativeMenu.decodeProfile nativeInitialLaw 56 nativeScheduler profile
+  nativeMenu.decodeProfile nativeInitialLaw 52 nativeScheduler profile
 
 def nativeAnswerLaw (bit : Bool) (action : nativeApp.Action) : PMF Bool :=
-  (nativeTail 12 44 (nativeChosenState (nativeBobExecution bit) action)).map nativeGuess
+  (nativeTail 8 44 (nativeChosenState (nativeBobExecution bit) action)).map nativeGuess
 
 def nativeGuessLaw (profile : Profile nativeModel.behavioralSignature) (bit : Bool) :
     PMF Bool :=
@@ -34,12 +34,12 @@ theorem native_bob_guesses (profile : Profile nativeModel.behavioralSignature) (
   obtain ⟨execution, state, _position, empty, view⟩ := native_bob_fibre bit history
   have trace : nativeArena.Trace (some ⟨45, some true, execution⟩) := state ▸ history.1.trace
   have views := native_bob_playerView bit _ trace view
-  have run := nativeMenu.run_eq_finish nativeInitialLaw 56 nativeScheduler profile 113 history.1
+  have run := nativeMenu.run_eq_finish nativeInitialLaw 52 nativeScheduler profile 113 history.1
     (by rw [state]; change 91 ≤ 113; omega)
   calc
     _ = ((nativeModel.runBehavioralFrom profile 113 history.1).map History.state).map
           nativeProtocolGuess := by rw [PMF.map_comp]; rfl
-    _ = (nativeApp.finish nativeInitialLaw 56 nativeScheduler (nativePlayers profile)
+    _ = (nativeApp.finish nativeInitialLaw 52 nativeScheduler (nativePlayers profile)
           history.1.state).map nativeProtocolGuess :=
         congrArg (fun law : PMF nativeApp.ProtocolState => law.map nativeProtocolGuess) run
     _ = _ := by
@@ -59,7 +59,7 @@ theorem native_bob_guesses (profile : Profile nativeModel.behavioralSignature) (
       have guessed := congrArg (fun law : PMF
           (EventGraphRuntime.State nativeGraph) => law.map nativeGuess) tail
       rw [PMF.map_comp] at guessed
-      exact guessed.trans (native_tail_guesses 12 44 _ _ (native_chosen_views _ _ action views))
+      exact guessed.trans (native_tail_guesses 8 44 _ _ (native_chosen_views _ _ action views))
 
 def nativeStateUtility (matchBit : Bool) (state : EventGraphRuntime.State nativeGraph)
     (who : Bool) : ℝ :=
@@ -100,16 +100,16 @@ theorem native_tail_utility (matchBit bit : Bool) (execution : nativeApp.Executi
     (action : nativeApp.Action)
     (typeKnown : execution.application.config.store (.inl typeInput) = some bit)
     (failed : execution.application.config.store (.inr secretEvent) = some .failure) :
-    expect (nativeTail 12 44 (nativeChosenState execution action))
+    expect (nativeTail 8 44 (nativeChosenState execution action))
       (nativeStateUtility matchBit · true) =
-        expect ((nativeTail 12 44 (nativeChosenState execution action)).map nativeGuess)
+        expect ((nativeTail 8 44 (nativeChosenState execution action)).map nativeGuess)
           (fun guess => if (guess == bit) = matchBit then (1 : ℝ) else 0) := by
   rw [expect_map]
   apply expect_congr_on_support
   intro next reached
-  have typeFixed := native_tail_store 12 44 _ next (.inl typeInput) bit
+  have typeFixed := native_tail_store 8 44 _ next (.inl typeInput) bit
     (native_chosen_store execution action _ _ typeKnown) reached
-  have failureFixed := native_tail_store 12 44 _ next (.inr secretEvent) .failure
+  have failureFixed := native_tail_store 8 44 _ next (.inr secretEvent) .failure
     (native_chosen_store execution action _ _ failed) reached
   simp only [nativeStateUtility, typeFixed, failureFixed, Option.getD_some,
     PublicationResult.isFailure, Bool.and_self, ↓reduceIte, Function.comp_apply]
@@ -125,12 +125,12 @@ theorem native_bob_value (profile : Profile nativeModel.behavioralSignature)
   have known := native_bob_type bit history
   rw [state] at known
   have failed := native_bob_secret_failure bit execution.application views
-  have run := nativeMenu.run_eq_finish nativeInitialLaw 56 nativeScheduler profile 113 history.1
+  have run := nativeMenu.run_eq_finish nativeInitialLaw 52 nativeScheduler profile 113 history.1
     (by rw [state]; change 91 ≤ 113; omega)
   calc
     _ = expect ((nativeModel.runBehavioralFrom profile 113 history.1).map History.state)
           (nativeUtility matchBit · true) := (expect_map _ _ _).symm
-    _ = expect (nativeApp.finish nativeInitialLaw 56 nativeScheduler (nativePlayers profile)
+    _ = expect (nativeApp.finish nativeInitialLaw 52 nativeScheduler (nativePlayers profile)
           history.1.state) (nativeUtility matchBit · true) :=
         congrArg (fun law : PMF nativeApp.ProtocolState =>
           expect law (nativeUtility matchBit · true)) run
@@ -157,6 +157,6 @@ theorem native_bob_value (profile : Profile nativeModel.behavioralSignature)
       exact utility.trans ((native_tail_utility matchBit bit execution action known failed).trans
         (congrArg (fun law : PMF Bool => expect law
           (fun guess => if (guess == bit) = matchBit then (1 : ℝ) else 0))
-            (native_tail_guesses 12 44 _ _ (native_chosen_views _ _ action views))))
+            (native_tail_guesses 8 44 _ _ (native_chosen_views _ _ action views))))
 
 end Vegas.Examples.SequentialValidation

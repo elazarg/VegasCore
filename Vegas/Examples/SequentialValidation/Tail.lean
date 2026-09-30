@@ -14,13 +14,13 @@ open Vegas Vegas.EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Math.Probability
 
 def nativeTailCommand (index : Nat) : EnvironmentCommand nativeGraph :=
-  if index = 22 then .expire bindingEvent
-  else if index = 33 then .expire dummyEvent
-  else if index = 44 then .expire secretEvent
-  else if index = 55 then .expire guessEvent
+  if index = 18 then .expire bindingEvent
+  else if index = 29 then .expire dummyEvent
+  else if index = 40 then .expire secretEvent
+  else if index = 51 then .expire guessEvent
   else .advanceClock
 
-theorem native_calendar_tail (index : Nat) (lower : 12 ≤ index) (upper : index < 56) :
+theorem native_calendar_tail (index : Nat) (lower : 8 ≤ index) (upper : index < 52) :
     nativeCalendar index = .application (nativeTailCommand index) := by
   unfold nativeCalendar
   split <;> simp_all [nativeTailCommand]
@@ -41,7 +41,7 @@ def nativeTail : Nat → Nat → EventGraphRuntime.State nativeGraph → PMF
 
 theorem native_run_tail (players : Bool → nativeApp.Policy) (count index : Nat)
     (execution : nativeApp.Execution) (position : execution.environmentRecall.length = index)
-    (lower : 12 ≤ index) (upper : index + count ≤ 56) :
+    (lower : 8 ≤ index) (upper : index + count ≤ 52) :
     (nativeApp.runRounds nativeScheduler players count execution).map
       ReactiveApplication.Execution.application = nativeTail index count execution.application := by
   induction count generalizing index execution with

@@ -13,11 +13,11 @@ open Vegas Vegas.EventGraphRuntime Interaction
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 def nativeSetupTrace (bit : Bool) :
-    nativeArena.Trace (some ⟨56, none, nativeInitialExecution bit⟩) :=
+    nativeArena.Trace (some ⟨52, none, nativeInitialExecution bit⟩) :=
   .extend .start (fun _ => none)
     ⟨by change ¬ False; simp, fun who => by change ¬ (none : Option Bool) = some who; simp⟩
     (by
-      change (some ⟨56, none, nativeInitialExecution bit⟩ : nativeApp.ProtocolState) ∈
+      change (some ⟨52, none, nativeInitialExecution bit⟩ : nativeApp.ProtocolState) ∈
         (nativeInitialLaw.map _).support
       rw [PMF.support_map]
       refine ⟨nativeStart bit, ?_, rfl⟩
@@ -35,7 +35,7 @@ def nativeEnvironmentTrace (remaining : Nat) (execution next : nativeApp.Executi
     ⟨by change ¬ (remaining + 1 = 0 ∧ _); omega,
       fun who => by change ¬ (none : Option Bool) = some who; simp⟩
     (by
-      change _ ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
+      change _ ∈ (nativeApp.transition nativeInitialLaw 52 nativeScheduler
         (some ⟨remaining + 1, none, execution⟩) (fun _ => none)).support
       simp only [ReactiveApplication.transition, scheduled, PMF.pure_bind, law,
         PMF.pure_map]
@@ -127,36 +127,27 @@ theorem native_schedule (execution : nativeApp.Execution)
 
 def nativeWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
     (event : nativeGraph.EventId) (who : Bool) (submission : Submission nativeGraph)
-    (trace : nativeArena.Trace (some ⟨remaining + 3, none, execution⟩))
-    (grant : nativeCalendar execution.environmentRecall.length = .application (.grant event))
-    (activate : nativeCalendar (execution.environmentRecall.length + 1) = .activate who)
-    (select : nativeCalendar (execution.environmentRecall.length + 2) =
+    (trace : nativeArena.Trace (some ⟨remaining + 2, none, execution⟩))
+    (activate : nativeCalendar execution.environmentRecall.length = .activate who)
+    (select : nativeCalendar (execution.environmentRecall.length + 1) =
       .select (eventProposal event who))
     (empty : execution.network.pending = [])
     (address : submission.packet.event? nativeGraph = some event)
     (ready : execution.application.config.cut.Ready event)
     (available : (⟨some (.submit ⟨submission, .none⟩)⟩ : nativeApp.Action) ∈ nativeMenu.actions who
-      ((nativeActivate (nativeGrant execution event) who).recall who)
-      ((nativeActivate (nativeGrant execution event) who).observe nativeApp who)) :
-    nativeArena.Trace (some ⟨remaining, none, nativeWindow execution event who submission⟩) := by
-  let granted := nativeGrant execution event
-  let activated := nativeActivate granted who
+      ((nativeActivate execution who).recall who)
+      ((nativeActivate execution who).observe nativeApp who)) :
+    nativeArena.Trace (some ⟨remaining, none, nativeWindow execution who submission⟩) := by
+  let activated := nativeActivate execution who
   let responded := activated.respond nativeApp who ⟨some (.submit ⟨submission, .none⟩)⟩
-  have grantTrace : nativeArena.Trace (some ⟨remaining + 2, none, granted⟩) :=
-    nativeEnvironmentTrace _ _ _ trace (.application (.grant event))
-      (native_schedule execution _ grant) (native_grant_law execution event)
-  have activePosition : nativeCalendar granted.environmentRecall.length = .activate who := by
-    simpa only [granted, nativeGrant, nativeRecord, List.length_append,
-      List.length_singleton] using activate
   have activeTrace : nativeArena.Trace (some ⟨remaining + 1, some who, activated⟩) :=
-    nativeEnvironmentTrace _ _ _ grantTrace (.activate who)
-      (native_schedule granted _ activePosition) (native_activate_law granted who)
+    nativeEnvironmentTrace _ _ _ trace (.activate who)
+      (native_schedule execution _ activate) (native_activate_law execution who)
   have responseTrace := nativeResponseTrace _ _ who activeTrace _ available
   have selectedPosition : nativeCalendar responded.environmentRecall.length =
       .select (eventProposal event who) := by
-    simpa only [responded, nativeApp.respond_environmentRecall, activated, granted,
-      nativeActivate, nativeGrant, nativeRecord, List.length_append, List.length_singleton,
-      Nat.add_assoc] using select
+    simpa only [responded, nativeApp.respond_environmentRecall, activated,
+      nativeActivate, nativeRecord, List.length_append, List.length_singleton] using select
   have pending : responded.network.pending =
       [⟨(who, execution.network.nextSerial who), ⟨submission.packet, none⟩⟩] := by
     change execution.network.pending ++ [_] = _
@@ -168,25 +159,25 @@ def nativeWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
       by
     rw [show responded.environmentRecall = activated.environmentRecall from rfl]
     apply (nativeApp.submissionPermitted_fresh_history ReactivePlayerView.publicView
-      (fun _ _ => rfl) dependencyCondition nativeInitialLaw 56 nativeScheduler _
-      (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler activeTrace) who rfl _).mpr
+      (fun _ _ => rfl) dependencyCondition nativeInitialLaw 52 nativeScheduler _
+      (nativeMenu.toRawTrace nativeInitialLaw 52 nativeScheduler activeTrace) who rfl _).mpr
     intro target same predecessor member
     have identified : event = target := Option.some.inj (address.symm.trans same)
     subst target
     exact ((State.publicView_eventReady execution.application event).mpr ready).2 predecessor member
   have fresh : (responded.observeEnvironment nativeApp).Unpublished nativeApp
       (who, execution.network.nextSerial who) :=
-    (nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw 56
-      (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace)).next_unpublished who
+    (nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw 52
+      (nativeMenu.toRawTrace nativeInitialLaw 52 nativeScheduler trace)).next_unpublished who
   have selected := native_select_singleton responded event who _ pending
     (by simp only [eventProposal, Message.sender, address, and_self, decide_true]) permitted fresh
   exact nativeEnvironmentTrace _ _ _ responseTrace
     (.include (who, execution.network.nextSerial who))
     ((native_schedule responded _ selectedPosition).trans selected) (native_include_law _ _)
 
-def nativeFirstTrace (bit : Bool) : nativeArena.Trace (some ⟨53, none, nativeFirst bit⟩) := by
+def nativeFirstTrace (bit : Bool) : nativeArena.Trace (some ⟨50, none, nativeFirst bit⟩) := by
   classical
-  apply nativeWindowTrace 53 _ _ _ _ (nativeSetupTrace bit) rfl rfl rfl rfl rfl
+  apply nativeWindowTrace 50 _ _ _ _ (nativeSetupTrace bit) rfl rfl rfl rfl
     (native_registered_ready bit)
   rw [MessageBounds.menu_mem]
   refine ⟨⟨⟨by change 0 < 56; decide, ?_⟩, trivial⟩, ?_⟩
@@ -197,42 +188,36 @@ def nativeFirstTrace (bit : Bool) : nativeArena.Trace (some ⟨53, none, nativeF
   rw [Submission.normalizeReactive_effective]
   exact ⟨rfl, rfl⟩
 
-theorem native_first_position (bit : Bool) : (nativeFirst bit).environmentRecall.length = 3 :=
-  native_window_length _ _ _ _
+theorem native_first_position (bit : Bool) : (nativeFirst bit).environmentRecall.length = 2 :=
+  native_window_length _ _ _
 
-def nativeSecondTrace (bit : Bool) : nativeArena.Trace (some ⟨50, none, nativeSecond bit⟩) := by
-  apply nativeWindowTrace 50 _ _ _ _ (nativeFirstTrace bit)
+def nativeSecondTrace (bit : Bool) : nativeArena.Trace (some ⟨48, none, nativeSecond bit⟩) := by
+  apply nativeWindowTrace 48 _ _ _ _ (nativeFirstTrace bit)
     (by rw [native_first_position]; rfl) (by rw [native_first_position]; rfl)
-    (by rw [native_first_position]; rfl) (native_first_pending bit) rfl
+    (native_first_pending bit) rfl
   · rw [native_first_application]
     exact native_bound_ready bit
   · exact native_opening_available _ _ _ _ _ false (by change 0 < 56; decide)
 
-theorem native_second_position (bit : Bool) : (nativeSecond bit).environmentRecall.length = 6 := by
+theorem native_second_position (bit : Bool) : (nativeSecond bit).environmentRecall.length = 4 := by
   rw [nativeSecond, native_window_length, native_first_position]
 
-def nativeThirdTrace (bit : Bool) : nativeArena.Trace (some ⟨47, none, nativeThird bit⟩) := by
-  apply nativeWindowTrace 47 _ _ _ _ (nativeSecondTrace bit)
+def nativeThirdTrace (bit : Bool) : nativeArena.Trace (some ⟨46, none, nativeThird bit⟩) := by
+  apply nativeWindowTrace 46 _ _ _ _ (nativeSecondTrace bit)
     (by rw [native_second_position]; rfl) (by rw [native_second_position]; rfl)
-    (by rw [native_second_position]; rfl) (native_second_pending bit) rfl
+    (native_second_pending bit) rfl
   · rw [native_second_application]
     exact native_dummy_ready bit
   · exact native_opening_available _ _ _ _ _ bit trivial
 
-theorem native_third_position (bit : Bool) : (nativeThird bit).environmentRecall.length = 9 := by
+theorem native_third_position (bit : Bool) : (nativeThird bit).environmentRecall.length = 6 := by
   rw [nativeThird, native_window_length, native_second_position]
 
 def nativeBobTrace (bit : Bool) :
     nativeArena.Trace (some ⟨45, some true, nativeBobExecution bit⟩) := by
-  have granted : nativeArena.Trace (some ⟨46, none, nativeGrant (nativeThird bit) guessEvent⟩) :=
-    nativeEnvironmentTrace _ _ _ (nativeThirdTrace bit) (.application (.grant guessEvent))
-      (native_schedule (nativeThird bit) (.application (.grant guessEvent))
-        (by rw [native_third_position]; rfl)) (native_grant_law _ _)
-  exact nativeEnvironmentTrace 45 _ _ granted (.activate true)
-    (native_schedule (nativeGrant (nativeThird bit) guessEvent) (.activate true) (by
-      change nativeCalendar ((nativeThird bit).environmentRecall ++ [_]).length = _
-      rw [List.length_append, List.length_singleton, native_third_position]
-      rfl)) (native_activate_law _ _)
+  exact nativeEnvironmentTrace 45 _ _ (nativeThirdTrace bit) (.activate true)
+    (native_schedule (nativeThird bit) (.activate true)
+      (by rw [native_third_position]; rfl)) (native_activate_law _ _)
 
 def nativeBobHistory (bit : Bool) : nativeArena.History := ⟨_, nativeBobTrace bit⟩
 
@@ -240,8 +225,8 @@ def nativeBobSite (bit : Bool) : nativeModel.InformationSite true :=
   nativeModel.informationSite true (nativeBobHistory bit)
     ⟨some (.submit ⟨⟨.withhold guessEvent, none⟩, .none⟩)⟩
     (by change ¬ (45 = 0 ∧ _); omega) (by
-      change some _ ∈ (nativeMenu.information nativeInitialLaw 56 nativeScheduler).menu true
-        ((nativeMenu.signals nativeInitialLaw 56 nativeScheduler).infoOf true
+      change some _ ∈ (nativeMenu.information nativeInitialLaw 52 nativeScheduler).menu true
+        ((nativeMenu.signals nativeInitialLaw 52 nativeScheduler).infoOf true
           (nativeBobHistory bit).trace)
       rw [ReactiveApplication.ResponseMenu.info]
       change ∃ action ∈ nativeMenu.actions true _ _, _ = some action

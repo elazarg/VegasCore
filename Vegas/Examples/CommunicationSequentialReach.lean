@@ -43,8 +43,8 @@ private theorem idle_step_probability
 
 private def beforeBob : nativeApp.ProtocolState → Prop
   | none => True
-  | some control => control.execution.environmentRecall.length ≤ 10 ∨
-      (control.execution.environmentRecall.length = 11 ∧ control.actor = some true)
+  | some control => control.execution.environmentRecall.length ≤ 6 ∨
+      (control.execution.environmentRecall.length = 7 ∧ control.actor = some true)
 
 theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignature) :
     ∀ {state} (trace : nativeArena.Trace state), beforeBob state →
@@ -59,7 +59,7 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
             intro active
             have same : control.actor = some true := active
             have position := (native_bob_remaining control prior same).1
-            change _ ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
+            change _ ∈ (nativeApp.transition nativeInitialLaw 52 nativeScheduler
               (some control) joint).support at reached
             simp only [ReactiveApplication.transition, same,
               PMF.mem_support_pure_iff _ _] at reached
@@ -71,12 +71,12 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
         | none => trivial
         | some control =>
             rcases control with ⟨remaining, actor, execution⟩
-            change _ ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
+            change _ ∈ (nativeApp.transition nativeInitialLaw 52 nativeScheduler
               (some ⟨remaining, actor, execution⟩) joint).support at reached
             cases actor with
             | some who =>
                 cases (PMF.mem_support_pure_iff _ _).mp reached
-                have previous : execution.environmentRecall.length ≤ 10 := by
+                have previous : execution.environmentRecall.length ≤ 6 := by
                   simpa only [beforeBob, nativeApp.respond_environmentRecall,
                     reduceCtorEq, and_false, or_false] using early
                 exact Or.inl previous
@@ -88,10 +88,10 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
                       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                     obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
                     have length := environment_recall execution next command supported
-                    change execution.environmentRecall.length ≤ 10 ∨ _
+                    change execution.environmentRecall.length ≤ 6 ∨ _
                     left
-                    change next.environmentRecall.length ≤ 10 ∨
-                      (next.environmentRecall.length = 11 ∧ command.actor? nativeApp = some true)
+                    change next.environmentRecall.length ≤ 6 ∨
+                      (next.environmentRecall.length = 7 ∧ command.actor? nativeApp = some true)
                         at early
                     rw [length, List.length_append, List.length_singleton] at early
                     omega
@@ -101,7 +101,7 @@ theorem player_reach_before_bob (profile : Profile nativeModel.behavioralSignatu
 theorem native_alice_activation_position (history : List nativeApp.EnvironmentEntry)
     (view : nativeApp.EnvironmentView) (command : nativeApp.Command)
     (supported : command ∈ (nativeScheduler history view).support)
-    (active : command.actor? nativeApp = some false) : history.length ≤ 7 := by
+    (active : command.actor? nativeApp = some false) : history.length ≤ 4 := by
   have instruction := nativeApp.uniformInstruction_actor dependencyCondition history view
     (nativeCalendar history.length) command false supported active
   unfold nativeCalendar at instruction
@@ -110,7 +110,7 @@ theorem native_alice_activation_position (history : List nativeApp.EnvironmentEn
 
 private theorem alice_position_history : ∀ {state} (_trace : nativeArena.Trace state),
     ∀ control, state = some control → control.actor = some false →
-      control.execution.environmentRecall.length ≤ 8
+      control.execution.environmentRecall.length ≤ 5
   | _, .start, control, same, _ => by cases same
   | _, .extend (source := before) prior joint _ reached, control, same, active => by
       subst_vars
@@ -121,7 +121,7 @@ private theorem alice_position_history : ∀ {state} (_trace : nativeArena.Trace
           cases active
       | some previous =>
           rcases previous with ⟨remaining, actor, execution⟩
-          change _ ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
+          change _ ∈ (nativeApp.transition nativeInitialLaw 52 nativeScheduler
             (some ⟨remaining, actor, execution⟩) joint).support at reached
           cases actor with
           | some who =>
@@ -140,7 +140,7 @@ private theorem alice_position_history : ∀ {state} (_trace : nativeArena.Trace
                   have length := environment_recall execution next command supported
                   have position := native_alice_activation_position execution.environmentRecall
                     (execution.observeEnvironment nativeApp) command selected active
-                  change next.environmentRecall.length ≤ 8
+                  change next.environmentRecall.length ≤ 5
                   rw [length, List.length_append, List.length_singleton]
                   omega
 
@@ -179,13 +179,13 @@ theorem decision_reach_invariant (profile : Profile nativeModel.behavioralSignat
 
 private def afterBob : nativeApp.ProtocolState → Prop
   | none => False
-  | some control => 11 ≤ control.execution.environmentRecall.length ∧
-      (control.execution.environmentRecall.length = 11 → control.actor = none)
+  | some control => 7 ≤ control.execution.environmentRecall.length ∧
+      (control.execution.environmentRecall.length = 7 → control.actor = none)
 
 private theorem afterBob_transition (before after : nativeApp.ProtocolState)
     (joint : Bool → Option nativeApp.Action) (valid : afterBob before)
     (reached : after ∈
-      (nativeApp.transition nativeInitialLaw 56 nativeScheduler before joint).support) :
+      (nativeApp.transition nativeInitialLaw 52 nativeScheduler before joint).support) :
     afterBob after := by
   cases before with
   | none => exact valid.elim
@@ -204,9 +204,9 @@ private theorem afterBob_transition (before after : nativeApp.ProtocolState)
                 Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
               obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
               have length := environment_recall execution next command supported
-              change 11 ≤ next.environmentRecall.length ∧ _
+              change 7 ≤ next.environmentRecall.length ∧ _
               have lower := valid.1
-              change 11 ≤ execution.environmentRecall.length at lower
+              change 7 ≤ execution.environmentRecall.length at lower
               rw [length, List.length_append, List.length_singleton]
               exact ⟨by omega, by intro impossible; omega⟩
 
@@ -229,7 +229,7 @@ theorem bob_last_decision : InformationModel.LastDecision (E := nativeArena) tru
         exact active
       have position := (native_bob_remaining control trace actor).1
       have moved := realized
-      change target ∈ (nativeApp.transition nativeInitialLaw 56 nativeScheduler
+      change target ∈ (nativeApp.transition nativeInitialLaw 52 nativeScheduler
         history.state joint).support at moved
       rw [state] at moved
       simp only [ReactiveApplication.transition, actor, PMF.mem_support_pure_iff _ _] at moved

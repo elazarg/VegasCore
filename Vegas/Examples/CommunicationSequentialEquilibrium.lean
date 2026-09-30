@@ -38,10 +38,10 @@ theorem native_sequential_equilibrium_exists (matchBit : Bool) :
         assessment.truncatedContinuationContext site (nativePayoff matchBit who) 113) := by
   obtain ⟨assessment, _, equilibrium⟩ :=
     InformationModel.exists_sequential_equilibrium_of_last_decision
-      (nativeMenu.uniformAssessment nativeInitialLaw 56 nativeScheduler)
-      (nativeMenu.uniform_fullyMixed nativeInitialLaw 56 nativeScheduler)
+      (nativeMenu.uniformAssessment nativeInitialLaw 52 nativeScheduler)
+      (nativeMenu.uniform_fullyMixed nativeInitialLaw 52 nativeScheduler)
       nativeAntichain true bob_last_decision
-      (nativeMenu.informationSite_allNonterminal nativeInitialLaw 56 nativeScheduler true)
+      (nativeMenu.informationSite_allNonterminal nativeInitialLaw 52 nativeScheduler true)
       (decision_reach_invariant _)
       (nativePayoff matchBit)
       (by

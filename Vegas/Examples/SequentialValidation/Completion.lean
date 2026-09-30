@@ -44,13 +44,13 @@ theorem native_tail_progress (inputs : nativeGraph.Inputs) (index count : Nat)
 theorem native_window_completes (inputs : nativeGraph.Inputs) (event : nativeGraph.EventId)
     (state next : EventGraphRuntime.State nativeGraph) (valid : state.Invariant inputs)
     (ready : state.config.cut.Ready event)
-    (reached : next ∈ (nativeTail (12 + 11 * event.val) 11 state).support) :
+    (reached : next ∈ (nativeTail (8 + 11 * event.val) 11 state).support) :
     event ∈ next.config.cut.completed := by
   rw [show 11 = 10 + 1 from rfl, native_tail_add] at reached
   obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have progress := native_tail_progress inputs _ _ state middle valid supported
-  have ticks : nativeTailTicks (12 + 11 * event.val) 10 = 10 := by fin_cases event <;> decide
-  have command : nativeTailCommand (12 + 11 * event.val + 10) = .expire event := by
+  have ticks : nativeTailTicks (8 + 11 * event.val) 10 = 10 := by fin_cases event <;> decide
+  have command : nativeTailCommand (8 + 11 * event.val + 10) = .expire event := by
     fin_cases event <;> rfl
   have last : next ∈ (environmentStep nativeRuntime middle (.expire event)).support := by
     simpa only [nativeTail, command, PMF.bind_pure] using moved
@@ -74,13 +74,13 @@ theorem native_predecessor_index (event predecessor : nativeGraph.EventId)
 
 theorem native_tail_completes (inputs : nativeGraph.Inputs)
     (state next : EventGraphRuntime.State nativeGraph)
-    (valid : state.Invariant inputs) (reached : next ∈ (nativeTail 12 44 state).support) :
+    (valid : state.Invariant inputs) (reached : next ∈ (nativeTail 8 44 state).support) :
     next.config.cut.Terminal := by
   have finish : ∀ count index
       (before after : EventGraphRuntime.State nativeGraph), index + count = 4 →
       before.Invariant inputs →
       (∀ event : nativeGraph.EventId, event.val < index → event ∈ before.config.cut.completed) →
-      after ∈ (nativeTail (12 + 11 * index) (count * 11) before).support →
+      after ∈ (nativeTail (8 + 11 * index) (count * 11) before).support →
         after.config.cut.Terminal := by
     intro count
     induction count with
@@ -130,21 +130,21 @@ theorem native_rounds_length (players : Bool → nativeApp.Policy) (count : Nat)
 /-- The timeout suffix completes the actual graph under arbitrary raw player policies. -/
 theorem native_runtime_completes (players : Bool → nativeApp.Policy) (bit : Bool)
     (next : nativeApp.Execution)
-    (reached : next ∈ (nativeApp.runRounds nativeScheduler players 56
+    (reached : next ∈ (nativeApp.runRounds nativeScheduler players 52
       (nativeInitialExecution bit)).support) : next.application.config.cut.Terminal := by
-  rw [show 56 = 12 + 44 from rfl, nativeApp.runRounds_add] at reached
+  rw [show 52 = 8 + 44 from rfl, nativeApp.runRounds_add] at reached
   obtain ⟨middle, supported, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have position : middle.environmentRecall.length = 12 :=
-    native_rounds_length players 12 _ middle supported
+  have position : middle.environmentRecall.length = 8 :=
+    native_rounds_length players 8 _ middle supported
   have valid := ((nativeRuntime.reactiveStateInvariant nativeLeaks
     (sourceSetup.eventInputs (initialState bit))).policyInvariant nativeApp players).runRounds
-      nativeScheduler 12 (nativeInitialExecution bit) middle (State.initial_invariant _) supported
+      nativeScheduler 8 (nativeInitialExecution bit) middle (State.initial_invariant _) supported
   have projected : next.application ∈
       ((nativeApp.runRounds nativeScheduler players 44 middle).map
         ReactiveApplication.Execution.application).support := by
     rw [PMF.support_map]
     exact ⟨next, moved, rfl⟩
-  rw [native_run_tail players 44 12 middle position (by omega) (by omega)] at projected
+  rw [native_run_tail players 44 8 middle position (by omega) (by omega)] at projected
   exact native_tail_completes _ middle.application next.application valid projected
 
 end Vegas.Examples.SequentialValidation

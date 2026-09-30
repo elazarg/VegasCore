@@ -6,8 +6,8 @@ import Interaction.ReactiveCalendar
 
 /-! # A finite native service for the disclosure witness
 
-Each of the four events has a grant, one owner response and an authorized
-uniform inclusion opportunity. All four windows precede clock advancement.
+Each of the four events has one owner response and an authorized uniform
+inclusion opportunity. All four windows precede clock advancement.
 A final sequence of ten ticks and expiry for each event supplies timeouts.
 The wire bounds retain every packet form, wrong-typed data and known replays.
 -/
@@ -31,32 +31,28 @@ def nativeBounds : MessageBounds nativeGraph := by
 abbrev nativeMenu := nativeBounds.menu nativeRuntime nativeLeaks
 
 def nativeCalendar : Nat → nativeApp.UniformInstruction
-  | 0 => .application (.grant bindingEvent)
-  | 1 => .activate false
-  | 2 => .select (eventProposal bindingEvent false)
-  | 3 => .application (.grant dummyEvent)
+  | 0 => .activate false
+  | 1 => .select (eventProposal bindingEvent false)
+  | 2 => .activate false
+  | 3 => .select (eventProposal dummyEvent false)
   | 4 => .activate false
-  | 5 => .select (eventProposal dummyEvent false)
-  | 6 => .application (.grant secretEvent)
-  | 7 => .activate false
-  | 8 => .select (eventProposal secretEvent false)
-  | 9 => .application (.grant guessEvent)
-  | 10 => .activate true
-  | 11 => .select (eventProposal guessEvent true)
-  | 22 => .application (.expire bindingEvent)
-  | 33 => .application (.expire dummyEvent)
-  | 44 => .application (.expire secretEvent)
-  | 55 => .application (.expire guessEvent)
-  | index => if index < 56 then .application .advanceClock else .wait
+  | 5 => .select (eventProposal secretEvent false)
+  | 6 => .activate true
+  | 7 => .select (eventProposal guessEvent true)
+  | 18 => .application (.expire bindingEvent)
+  | 29 => .application (.expire dummyEvent)
+  | 40 => .application (.expire secretEvent)
+  | 51 => .application (.expire guessEvent)
+  | index => if index < 52 then .application .advanceClock else .wait
 
 def nativeScheduler : nativeApp.Scheduler :=
   nativeRuntime.dependencyUniformScheduler nativeLeaks nativeCalendar
 
-abbrev nativeArena := nativeMenu.protocol nativeInitialLaw 56 nativeScheduler
-abbrev nativeModel := nativeMenu.information nativeInitialLaw 56 nativeScheduler
+abbrev nativeArena := nativeMenu.protocol nativeInitialLaw 52 nativeScheduler
+abbrev nativeModel := nativeMenu.information nativeInitialLaw 52 nativeScheduler
 
 theorem native_service_authorized :
-    nativeRuntime.DependencyAuthorized nativeLeaks nativeInitialLaw 56 nativeScheduler :=
+    nativeRuntime.DependencyAuthorized nativeLeaks nativeInitialLaw 52 nativeScheduler :=
   nativeRuntime.dependencyUniformScheduler_authorized nativeLeaks _ _ nativeCalendar
 
 theorem native_service_once : nativeApp.AtMostOnce nativeScheduler :=
@@ -65,7 +61,7 @@ theorem native_service_once : nativeApp.AtMostOnce nativeScheduler :=
 theorem native_unique_bob_activation (history : List nativeApp.EnvironmentEntry)
     (view : nativeApp.EnvironmentView) (command : nativeApp.Command)
     (supported : command ∈ (nativeScheduler history view).support)
-    (active : command.actor? nativeApp = some true) : history.length = 10 := by
+    (active : command.actor? nativeApp = some true) : history.length = 6 := by
   have instruction := nativeApp.uniformInstruction_actor dependencyCondition history view
     (nativeCalendar history.length) command true supported active
   unfold nativeCalendar at instruction
@@ -74,14 +70,14 @@ theorem native_unique_bob_activation (history : List nativeApp.EnvironmentEntry)
 
 theorem native_bob_remaining (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some true) :
-    control.execution.environmentRecall.length = 11 ∧ control.remaining = 45 := by
-  have accounted := nativeApp.remaining_at_activation nativeInitialLaw 56 nativeScheduler true 10
+    control.execution.environmentRecall.length = 7 ∧ control.remaining = 45 := by
+  have accounted := nativeApp.remaining_at_activation nativeInitialLaw 52 nativeScheduler true 6
     native_unique_bob_activation control
-      (nativeMenu.toRawTrace nativeInitialLaw 56 nativeScheduler trace) active
+      (nativeMenu.toRawTrace nativeInitialLaw 52 nativeScheduler trace) active
   exact ⟨accounted.1, by omega⟩
 
 theorem nativeAntichain : nativeModel.DecisionInformationAntichain :=
-  nativeMenu.decisionInformationAntichain nativeInitialLaw 56 nativeScheduler
+  nativeMenu.decisionInformationAntichain nativeInitialLaw 52 nativeScheduler
 
 instance : nativeLeaks.FiniteSupport := ⟨fun _ _ => by simp [nativeLeaks]⟩
 
