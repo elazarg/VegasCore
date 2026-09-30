@@ -10,8 +10,8 @@ import Interaction.ReactiveTrafficAudit
 The existing runtime, graph, initialized commitments and raw opening response
 are unchanged. The observation service lets a foreign player read pending
 traffic at two visits. The owner emits exactly the same canonical opening at
-either the first or second owner visit. There is no inclusion, tick, expiry or
-grant change between them. Both executions end with the same current public
+either the first or second owner visit. There is no inclusion, tick or expiry
+between them. Both executions end with the same current public
 and receiver views, but the receiver remembers which first view it saw.
 
 This is an operational timing-channel witness, not an equilibrium theorem.
@@ -30,8 +30,7 @@ private def pendingObservation : MessageNetwork.ObservationRule Player
 private abbrev app := nativeRuntime.reactiveApplication pendingObservation
 
 private def initial : app.Execution :=
-  ReactiveApplication.Execution.initial app
-    { nativeInitial false with serviceGrant := some bobPublication }
+  ReactiveApplication.Execution.initial app (nativeInitial false)
 
 private def silent : app.Action := ⟨none⟩
 
@@ -67,18 +66,16 @@ private def secondOwner (early : Bool) : app.Execution :=
 
 private def final (early : Bool) : app.Execution := activated (secondOwner early) alice
 
-/-- The extra visit never changes the currently granted event or its readiness;
+/-- The extra visit never changes the event's readiness;
 the same initialized value is openable at both possible emission points. -/
 theorem both_openings_ready :
     (activated initial bob).application.config.cut.Ready bobPublication ∧
       (activated (firstObserver false) bob).application.config.cut.Ready bobPublication ∧
-      (activated initial bob).application.serviceGrant = some bobPublication ∧
-      (activated (firstObserver false) bob).application.serviceGrant = some bobPublication ∧
       (activated initial bob).application.candidates.lookup bobHandle =
         .openable ⟨.bool, true⟩ ∧
       (activated (firstObserver false) bob).application.candidates.lookup bobHandle =
         .openable ⟨.bool, true⟩ := by
-  exact ⟨initial_bob_ready false, initial_bob_ready false, rfl, rfl,
+  exact ⟨initial_bob_ready false, initial_bob_ready false,
     initial_bob_candidate false, initial_bob_candidate false⟩
 
 theorem both_openings_compiled :

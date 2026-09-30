@@ -27,7 +27,7 @@ abbrev app := runtime.reactiveApplication leaks
 abbrev candidate : Handle graph := ((), .prepared 0)
 
 def initial : app.Execution :=
-  .initial app { State.initial PendingMenus.input with serviceGrant := some 0 }
+  .initial app (State.initial PendingMenus.input)
 
 def submitted (choice : PublicationResult Int) : app.Execution :=
   initial.respond app () (runtime.reactiveBinding leaks () 0 .int choice 0)
@@ -113,19 +113,15 @@ theorem bound_observation (first second : PublicationResult Int) :
 def withholding : app.Action :=
   ⟨some (.submit ⟨⟨.withhold 1, none⟩, .none⟩)⟩
 
-def revealGranted (choice : PublicationResult Int) : app.Execution :=
-  { bound choice with application :=
-      { (bound choice).application with serviceGrant := some 1 } }
-
 def revealState (choice : PublicationResult Int) : EventGraphRuntime.State graph :=
-  { boundState choice with serviceGrant := some 1 }
+  boundState choice
 
 def withheld (choice : PublicationResult Int) : app.Execution :=
-  (revealGranted choice).respond app () withholding
+  (bound choice).respond app () withholding
 
 private theorem withheld_state (choice : PublicationResult Int) :
     (withheld choice).application = revealState choice := by
-  change { (bound choice).application with serviceGrant := some 1 } = _
+  change (bound choice).application = _
   rw [bound_state]
   rfl
 
@@ -184,25 +180,11 @@ theorem withheld_observation (first second : PublicationResult Int) :
   change (bound first).application.publicView = (bound second).application.publicView at publicEq
   rw [bound_state, bound_state] at publicEq
   have revealedEq : (revealState first).publicView = (revealState second).publicView := by
-    change { (boundState first).publicView with serviceGrant := some 1 } =
-      { (boundState second).publicView with serviceGrant := some 1 }
-    rw [publicEq]
+    exact publicEq
   rw [revealedEq]
   congr 1
   change (bound first).receipts = (bound second).receipts
   rw [bound_receipts, bound_receipts]
-
-theorem revealGranted_observation (first second : PublicationResult Int) :
-    (revealGranted first).observeEnvironment app =
-      (revealGranted second).observeEnvironment app := by
-  have before := bound_observation first second
-  change { (bound first).observeEnvironment app with application :=
-      { (bound first).application.publicView with serviceGrant := some 1 } } =
-    { (bound second).observeEnvironment app with application :=
-      { (bound second).application.publicView with serviceGrant := some 1 } }
-  have view := congrArg ReactiveApplication.EnvironmentView.application before
-  change (bound first).application.publicView = (bound second).application.publicView at view
-  rw [before, view]
 
 theorem finished_observation (first second : PublicationResult Int) :
     (finished first).observeEnvironment app = (finished second).observeEnvironment app := by
@@ -240,14 +222,13 @@ theorem finished_publication (choice : PublicationResult Int) :
 pending pool, ledger, authenticated input authors, receipts and public phase. -/
 def auditTrace (choice : PublicationResult Int) : List app.EnvironmentView :=
   [initial.observeEnvironment app, (submitted choice).observeEnvironment app,
-    (bound choice).observeEnvironment app, (revealGranted choice).observeEnvironment app,
-    (withheld choice).observeEnvironment app,
+    (bound choice).observeEnvironment app, (withheld choice).observeEnvironment app,
     (finished choice).observeEnvironment app]
 
 theorem auditTrace_eq (first second : PublicationResult Int) :
     auditTrace first = auditTrace second := by
   simp only [auditTrace, submitted_observation first second, bound_observation first second,
-    revealGranted_observation first second, withheld_observation first second,
+    withheld_observation first second,
     finished_observation first second]
 
 /-- Even randomized auditing of complete public snapshots cannot charge the
@@ -281,7 +262,7 @@ theorem lawful_source_admitted (value : Int)
   subst choice
   trivial
 
-/-- At the granted binding site this is the compiler's actual response. -/
+/-- At the binding site this is the compiler's actual response. -/
 theorem compiled_binding (choice : PublicationResult Int) :
     runtime.reactiveDecision leaks () 0 choice (initial.observe app ()).application =
       runtime.reactiveBinding leaks () 0 .int choice 0 := by
@@ -294,11 +275,11 @@ theorem compiled_binding (choice : PublicationResult Int) :
   · rename_i impossible
     exact False.elim (impossible ⟨0, rfl⟩)
 
-/-- At the granted reveal site the legal source choice to withhold emits exactly
+/-- At the reveal site the legal source choice to withhold emits exactly
 the packet used in the indistinguishable executions. -/
 theorem compiled_withholding (choice : PublicationResult Int) :
     runtime.reactiveDecision leaks () 1 false
-      ((revealGranted choice).observe app ()).application = withholding := by
+      ((bound choice).observe app ()).application = withholding := by
   have node : nodeView graph 1 = .resolve () .int PendingMenus.binding [] rfl rfl := rfl
   simp only [reactiveDecision, node, reactiveResolutionPacket,
     cast_eq, Bool.false_eq_true, ↓reduceIte, disclosureSubmission_normalize_withhold]

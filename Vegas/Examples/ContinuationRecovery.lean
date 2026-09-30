@@ -53,8 +53,7 @@ private def runtime : EventGraphRuntime graph where
   deadline _ := 2
 
 private def initial : EventGraphRuntime.State graph :=
-  { State.initial (graph := graph) (fun _ => .success true) with
-    serviceGrant := some 0 }
+  State.initial (graph := graph) (fun _ => .success true)
 
 private def initialExecution : runtime.application.PolicyExecution :=
   MessageApplication.PolicyExecution.initial runtime.application
