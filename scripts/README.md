@@ -8,6 +8,13 @@ Run these tools from the repository root.
   [Action boundaries and subgame perfection](../docs/action-coalescing.md)
   states the results and the remaining native-service proof obligations.
 
+- `python scripts/experiments/adaptive_schedules.py` checks sequential
+  equilibrium with Kreps-Wilson consistent beliefs in small concurrent games
+  whose public order reacts to the pending pool: deadline timers, cheap talk,
+  charged and permitted certificates, and information sets spanning depths.
+  [Generalizing the sequential-equilibrium schedule](../docs/se-schedule-generalization.md)
+  states the results.
+
 - `python scripts/check-module-boundaries.py` checks local import resolution,
   default-build reachability, complete directory aggregators, cycles in the
   module and sibling-directory dependency graphs, and the semantic layer

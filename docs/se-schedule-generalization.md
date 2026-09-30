@@ -103,16 +103,24 @@ order, and trembles that ignore hidden values do not neutralize that.
 
 The following effects cannot be neutralized through beliefs:
 
-- **Hard evidence reaching a player before the source allows it**, such as an
-  early opening. The audit and deposit deter sending such messages, but the
-  order policy's reaction to a certificate in the pool is part of every
-  continuation after that deviation, and the players' information there is
-  verified. This is the off-path disclosure effect of
-  [the SPE criterion](spe-incentive-criterion.md#information-after-earlier-deviations).
-  The proof must either restrict order policies to the unauthenticated part of
-  the pool or show that the continuation after every certificate-bearing
-  forbidden transmission still admits rational play with the source law; it
-  is an explicit obligation, not a consequence of deterrence.
+- **Hard evidence reaching a player before the source allows it.** Two cases
+  differ.
+  - *Forbidden certificates.* A fresh commitment is permitted only without
+    evidence (`freshServiceEnvelope` in
+    `Vegas/Pending/ReactiveServiceConformance.lean`), so a commitment that
+    carries its own opening is charged. The extension bound for a forbidden
+    action, payoff range minus the expected charge, holds under every
+    continuation, including one in which the order reveals the certificate to
+    others. The existing deposit therefore deters it; beliefs need not
+    neutralize anything (probe C3).
+  - *Permitted openings.* An opening is permitted during its own resolve event
+    and carries a certificate. In concurrent mode it can sit in the pool while
+    another player's binding is ready but ungranted. An order policy that reads
+    its value leaks verified information on path, uncharged. In the probe no
+    assessment with the source law is then sequentially rational (probe C4).
+    The contract must keep the order from reading opening contents, or from
+    reading any content of events concurrent with an ungranted one; with such
+    an order the babbling construction applies again.
 - **Changes to opportunities.** In concurrent mode an order changes the
   relative order of different-owner bindings that are hidden from one another,
   and, through the deadline timers, whether each owner still has a timely
@@ -123,7 +131,7 @@ The following effects cannot be neutralized through beliefs:
 A valid schedule for this purpose:
 
 - reads only public data, as `EventGraphRuntime.ServiceOrderPolicy` already
-  requires;
+  requires, and not the values carried by pending openings;
 - grants only ready events;
 - keeps the protected block at every grant: an activation of the event's owner,
   include-latest, the deadline, and expiry;
@@ -229,13 +237,29 @@ Step C therefore generalizes the existing proof:
 Adaptive rosters, whose activations respond to traffic, belong to Step C as
 well.
 
+## Finite probes
+
+`python scripts/experiments/adaptive_schedules.py` checks sequential
+equilibrium in a concurrent coordination game whose source equilibrium mixes
+uniformly. Beliefs are exact limits of an explicit tremble sequence, and every
+whole replacement policy is compared at every information set; negative
+controls confirm the checker rejects non-equilibria. Results:
+
+| Probe | Target | Result |
+| --- | --- | --- |
+| C1 | Three concurrent bindings, deadline `event.val + 1`, blocks of `event.val + 1` ticks | Timers from readiness expire the third binding; timers from the grant do not. |
+| C2 | Order reacts to an unverified pool signal | An equilibrium with the source law exists (babbling). |
+| C3 | Order reads a certificate on a forbidden commitment | An equilibrium with the source law exists exactly when the expected charge is at least the gain from revealing (here 1/2). |
+| C4 | Order reads a permitted opening while the other binding is ungranted | No assessment with the source law is sequentially rational; an order blind to opening contents restores one. |
+| C5 | An unobserved wait before the other player's grant | The translated profile is an equilibrium although its information set spans two depths: the depth requirement is a proof requirement, not an obstruction. |
+
+The probes support preservation under a contract that forbids reading opening
+values and starts deadline timers at the grant (or sizes deadlines to cover
+the grant offset). They are design evidence, not proofs.
+
 ## Suggested order of work
 
-1. **A finite experiment first**, in the style of
-   `scripts/experiments/coalescing.py`: enumerate small concurrent games with
-   pool-reading order policies and check that a sequential equilibrium with the
-   source law exists. It is cheap and would expose a genuine obstruction before
-   any proof work.
+1. **Finite probes**: done, above.
 2. **Step A.** It admits concurrent mode under a fixed calendar and reuses the
    entire existing proof.
 3. **Step B.**
