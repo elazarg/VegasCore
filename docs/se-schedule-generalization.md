@@ -26,18 +26,33 @@ results remove the equilibrium-theoretic reasons for a common decision clock:
   map whose reach weights sum exactly over its fibers
   (`bayesBelief_projection_of_reach`), both in
   [BeliefTransport.lean](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean);
-- extension across an action restriction
-  ([RestrictionExtension.lean](../GameTheory/GameTheory/Analysis/Protocol/RestrictionExtension.lean))
-  needs common decision depths only at the retained sites.
+- Bayes beliefs also transport when the fiber sums are only a fixed positive
+  finite multiple of the target weights
+  (`bayesBelief_projection_of_proportional_reach` in
+  [ProportionalBeliefTransport.lean](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean));
+- extension across an action restriction needs no common decision depth
+  (`ActionRestriction.sequentialEquilibrium_extends_of_continuation_unclocked`
+  in
+  [PassageRestrictionExtension.lean](../GameTheoryExtensions/Analysis/Protocol/PassageRestrictionExtension.lean)).
+  The library version in
+  [RestrictionExtension.lean](../GameTheory/GameTheory/Analysis/Protocol/RestrictionExtension.lean)
+  takes one at every retained site, only to read the site's Bayes belief off
+  the prefix law of that length. The depth-free version reads it off terminal
+  play: the belief in a site history is the probability that play passes
+  through it, divided by the probability that play passes through the site.
+  The history embedding preserves and reflects reachability, so passage
+  through a retained site and through its image agree, and domination of
+  terminal laws at the global horizon replaces domination at the common
+  depth.
 
-In the full-language proof a common depth is still used in two places: the
-fixed-depth Bayes projections of `Vegas/Game/SourceServiceBayes.lean` and
-`Vegas/Game/RevealServiceRosterBayes.lean`, which the reach-weight transport
-can replace, and the restriction extensions of
+The full-language proof still uses a common depth in two places. The first
+is the fixed-depth Bayes projections of `Vegas/Game/SourceServiceBayes.lean`
+and `Vegas/Game/RevealServiceRosterBayes.lean`, which the reach-weight
+transport can replace. The second is the restriction extensions of
 `Vegas/Game/SourceServiceRestrictionExtension.lean` and
-`Vegas/Game/RevealServiceRosterAudit.lean`, which need it at retained sites.
-Under the fixed calendar the rank supplies that depth; under an adaptive order
-nothing yet does (see the retained-site obligation below). The roster plan's
+`Vegas/Game/RevealServiceRosterAudit.lean`, which the depth-free extension can
+replace. Under the fixed calendar the rank supplies that depth. Once both uses
+are retargeted, no depth is needed under an adaptive order. The roster plan's
 remaining role is operational: it identifies the granted event and phase at
 each history.
 
@@ -195,22 +210,21 @@ The obligations are:
   `bayesBelief_projection_of_reach` needs exact fiber sums, including equal
   information-set masses. Along a tremble sequence the sums are only
   proportional: in probe C2 a source history of Bob has weight 1/2 while the
-  corresponding signal history has weight ε/4. Bayes beliefs are ratios, so the
-  natural library lemma transports them whenever the fiber sums are a fixed
-  positive finite multiple of the target weights; it strictly generalizes the
-  exact version and needs no common depth.
-- **Retained-site depth.** The extension across the audited restriction still
-  requires every retained site to have a common decision depth
-  (`ActionRestriction.sequentialEquilibrium_extends_of_continuation` in
-  [RestrictionExtension.lean](../GameTheory/GameTheory/Analysis/Protocol/RestrictionExtension.lean)).
-  An adaptive order breaks this without changing any player's information: a
-  scheduler that inserts zero or one wait before the same grant satisfies the
-  contract above, yet the two histories reach the same information at
-  different depths, because a wait updates only the environment's recall
-  (probe C5 shows this is no obstruction to equilibrium). Either prove a
-  clock-free restriction extension, the more general route, or add a contract
-  under which players' information determines decision depth, for example by
-  making every scheduler step publicly observed.
+  corresponding signal history has weight ε/4. Bayes beliefs are ratios, so
+  they transport whenever the fiber sums are a fixed positive finite multiple
+  of the target weights (`bayesBelief_projection_of_proportional_reach`, see
+  above). This lemma strictly generalizes the exact version and needs no
+  common depth.
+- **Retained-site depth.** Resolved in the library, pending retargeting. An
+  adaptive order breaks common decision depths without changing any player's
+  information. For example, a scheduler that inserts zero or one wait before
+  the same grant satisfies the contract above, yet the two histories reach the
+  same information at different depths, because a wait updates only the
+  environment's recall (probe C5 shows this is no obstruction to
+  equilibrium). The depth-free extension
+  (`ActionRestriction.sequentialEquilibrium_extends_of_continuation_unclocked`)
+  needs no such depth. The contract therefore does not have to make scheduler
+  steps public. What remains is to retarget the Vegas extensions onto it.
 
 Adaptive rosters, whose activations respond to traffic, fall under the same
 theorem once their activations are part of the order policy.
@@ -272,9 +286,9 @@ cover the grant offset). They are design evidence, not proofs.
 ## Suggested order of work
 
 1. **Finite probes**: done, above.
-2. **Library lemmas.** The proportional-reach Bayes transport, which is short,
-   and a clock-free restriction extension, which is research; the second
-   decides whether the contract must make scheduler steps public.
+2. **Library lemmas**: done. The proportional-reach Bayes transport and the
+   depth-free restriction extension are in `GameTheoryExtensions`. The
+   contract need not make scheduler steps public.
 3. **Timers at the grant** in the runtime.
 4. **Phase from the grant history and order-invariant continuations.**
 5. **The general theorem**, with the fixed calendar recovered as an instance.
