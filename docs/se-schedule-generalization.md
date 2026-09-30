@@ -5,9 +5,10 @@
 This is a design note; nothing in it is checked in Lean. It describes which
 scheduling restrictions `Vegas.Paper.source_audited_raw_sequential_equilibrium`
 imposes, argues that preservation should survive their removal under a
-contract on the scheduler, and proposes a proof in three steps. The first two
-reduce to the existing theorem; the third, adaptive orders, needs a direct
-generalization of the proof.
+contract on the scheduler, and lists the obligations of a direct general
+theorem for every contract-satisfying order policy. Finite probes support the
+contract; two narrower reductions to the existing theorem are recorded as
+intermediate results.
 
 ## What the library no longer requires
 
@@ -22,8 +23,9 @@ results remove the equilibrium-theoretic reasons for a common decision clock:
   assumes finitely many histories and decision recall but no clock;
 - a site's mass is the probability that terminal play passes through it
   (`informationMass_eq_passage`), and Bayes beliefs transport along any history
-  map whose reach weights sum over its fibers (`bayesBelief_projection_of_reach`),
-  both in [BeliefTransport.lean](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean);
+  map whose reach weights sum exactly over its fibers
+  (`bayesBelief_projection_of_reach`), both in
+  [BeliefTransport.lean](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean);
 - extension across an action restriction
   ([RestrictionExtension.lean](../GameTheory/GameTheory/Analysis/Protocol/RestrictionExtension.lean))
   needs common decision depths only at the retained sites.
@@ -35,8 +37,9 @@ can replace, and the restriction extensions of
 `Vegas/Game/SourceServiceRestrictionExtension.lean` and
 `Vegas/Game/RevealServiceRosterAudit.lean`, which need it at retained sites.
 Under the fixed calendar the rank supplies that depth; under an adaptive order
-nothing yet does (Step C). The roster plan's remaining role is operational: it identifies the
-granted event and phase at each history.
+nothing yet does (see the retained-site obligation below). The roster plan's
+remaining role is operational: it identifies the granted event and phase at
+each history.
 
 ## What the theorem fixes
 
@@ -130,7 +133,7 @@ The following effects cannot be neutralized through beliefs:
 - **Changes to opportunities.** In concurrent mode an order changes the
   relative order of different-owner bindings that are hidden from one another,
   and, through the deadline timers, whether each owner still has a timely
-  opportunity (Step A).
+  opportunity (see the timeliness obligation below).
 
 ### The scheduler contract
 
@@ -150,74 +153,52 @@ A valid schedule for this purpose:
 
 A scheduler that starves an event, or runs without bound, is outside the claim.
 
-## A proof in three steps
+## Target: the general theorem
 
-### Step A: any fixed linear extension
+The goal is the strongest statement, not the reuse of the existing proof. The
+target is the barrier-ordered concurrent runtime under every order policy that
+satisfies the contract above: every source sequential equilibrium has an
+audited native sequential equilibrium with the source law. The fixed calendar,
+a fixed permutation of concurrent bindings, and a public random order drawn up
+front are special cases of an order policy, so they need no separate theorems.
+The obligations are:
 
-A linear extension of the barrier order only permutes different-owner bindings
-between consecutive public events. Swapping two adjacent source commitments by
-different owners leaves the information structure unchanged: neither player
-observes the other's commitment, and each player's own history is the same.
-
-Required results:
-
-1. **Source interchange.** The source law and the source sequential
-   equilibria are preserved by such a swap. This is the interchange
-   transformation of extensive-form games. Sequential equilibrium is invariant
-   under interchange, unlike coalescing (see Experiment 1 in
-   [action boundaries](action-coalescing.md)).
-2. **Runtime identification.** The concurrent graph executed along an order π
-   is the sequentialized graph of the permuted program, up to renaming events.
-
-The runtime identification needs π to be enforced. In the concurrent graph a
-packet for an event that is ready but not yet granted can be included out of
-calendar order, because grants are not inclusion authorization
-([active tower](active-tower.md)). Either sequentialize along π, or have the
-handler accept only packets for the granted event.
-
-Enforcing the order is not enough. A deadline timer starts when its event
-becomes ready (`State.refreshActivated` in `Vegas/Pending/EventApplication.lean`),
-not when it is granted. In the sequentialized graph an event becomes ready only
-after its predecessor completes, so its timer starts at its own block. In the
-concurrent graph several bindings are ready at once and their timers run
-together. With the current deadlines, `event.val + 1`, and blocks of
-`event.val + 1` ticks, three bindings ready at clock zero are granted at clocks
-0, 1 and 3; the third, with deadline 3, has already expired, so its honest
-owner cannot bind and the source law is lost although no event is starved.
-Step A therefore needs timely owner opportunities as an explicit requirement,
-either by starting timers at the grant or by deadlines that cover the grant
-offset; with inclusion gating alone the existing theorem does not apply
-unchanged.
-
-The existing theorem then applies to the permuted program without change. The
-graph-level commutation results in `Vegas/EventGraph/Commutation.lean` and
-`Vegas/EventGraph/PolicyCommutation.lean` supply the graph half of the
-interchange argument.
-
-### Step B: a public random order drawn up front
-
-If the order is drawn once, at the start, and announced, the draw is a public
-chance move at the root. Every information set refines its outcome, so an
-assessment is a sequential equilibrium exactly when it is one on each branch.
-Step A applies branch by branch. This needs one generic lemma about public
-chance at the root.
-
-### Step C: adaptive orders
-
-Adaptive orders do not reduce to Steps A and B. An adaptive policy is a mixture
-of contingent plans only if the drawn plan stays hidden from the players.
-Hidden chance merges information sets across plans, so sequential equilibrium
-no longer decomposes over them. An up-front token cannot replace incremental
-scheduling for the same reason.
-
-Step C therefore generalizes the existing proof:
-
+- **Timely opportunities.** A deadline timer starts when its event becomes
+  ready (`State.refreshActivated` in `Vegas/Pending/EventApplication.lean`), not
+  when it is granted. In the sequentialized graph an event becomes ready only
+  after its predecessor completes, so its timer starts at its own block. In the
+  concurrent graph several bindings are ready at once and their timers run
+  together: with deadlines `event.val + 1` and blocks of `event.val + 1` ticks,
+  three bindings ready at clock zero are granted at clocks 0, 1 and 3, and the
+  third, with deadline 3, has already expired (probe C1). Either start timers
+  at the grant, a runtime change that makes every contract-satisfying order
+  timely, or state timeliness as a hypothesis on the order policy. The first
+  gives the stronger theorem.
+- **Enforced grants.** In the concurrent graph a packet for an event that is
+  ready but not yet granted can be included out of calendar order, because
+  grants are not inclusion authorization ([active tower](active-tower.md)).
+  The handler must accept only packets for the granted event, or the theorem
+  must cover the resulting inclusions.
 - **Phase from the grant history.** Replace the rank-indexed calendar,
   `DecisionPhase.position` together with `rosterPlanPrefix` and
   `rosterPlanSuffix`, by a phase read from the public grant history. About 94
   files under `Vegas` refer to the roster plan. The one-shot principle and the
   Bayes transport no longer need the rank as a clock (see above); the
   replacement concerns the operational invariants.
+- **Order-invariant continuations.** Prove that the compiled continuation law
+  of the typed source readout is the same under every valid order policy, from
+  any reachable public history. The pending-message laws prove this from the
+  start of play; the general theorem needs it from arbitrary reachable states.
+- **Proportional belief transport.** At information sets created by order
+  choices, build beliefs from trembles that do not depend on hidden values, so
+  that observers keep their source beliefs. The library's
+  `bayesBelief_projection_of_reach` needs exact fiber sums, including equal
+  information-set masses. Along a tremble sequence the sums are only
+  proportional: in probe C2 a source history of Bob has weight 1/2 while the
+  corresponding signal history has weight ε/4. Bayes beliefs are ratios, so the
+  natural library lemma transports them whenever the fiber sums are a fixed
+  positive finite multiple of the target weights; it strictly generalizes the
+  exact version and needs no common depth.
 - **Retained-site depth.** The extension across the audited restriction still
   requires every retained site to have a common decision depth
   (`ActionRestriction.sequentialEquilibrium_extends_of_continuation` in
@@ -225,24 +206,43 @@ Step C therefore generalizes the existing proof:
   An adaptive order breaks this without changing any player's information: a
   scheduler that inserts zero or one wait before the same grant satisfies the
   contract above, yet the two histories reach the same information at
-  different depths, because a wait updates only the environment's recall. The
-  grant history and the clock-free Bayes transport do not supply the depth.
-  Step C therefore needs either a clock-free restriction extension, a separate
-  library result to be added as a prerequisite, or a contract under which
-  players' information determines decision depth, for example by making every
-  scheduler step publicly observed.
-- **Order-invariant continuations.** Prove that the compiled continuation law
-  of the typed source readout is the same under every valid order policy, from
-  any reachable public history. The pending-message laws prove this from the
-  start of play; Step C needs it from arbitrary reachable states.
-- **Beliefs.** At information sets created by order choices, build beliefs
-  from trembles that do not depend on hidden values, so that observers keep
-  their source beliefs. Transport them with the reach-weight Bayes projection,
-  which does not require an information set's histories to share a depth, as
-  they need not under an adaptive order.
+  different depths, because a wait updates only the environment's recall
+  (probe C5 shows this is no obstruction to equilibrium). Either prove a
+  clock-free restriction extension, the more general route, or add a contract
+  under which players' information determines decision depth, for example by
+  making every scheduler step publicly observed.
 
-Adaptive rosters, whose activations respond to traffic, belong to Step C as
-well.
+Adaptive rosters, whose activations respond to traffic, fall under the same
+theorem once their activations are part of the order policy.
+
+## Narrower reductions
+
+Two reductions to the existing theorem remain available as intermediate
+results, with narrower scope than the target.
+
+- **A fixed permutation, by sequentializing along it.** Let π be a linear
+  extension of the barrier order. It only permutes different-owner bindings
+  between consecutive public events, which leaves each player's information
+  unchanged; source sequential equilibrium is invariant under this interchange,
+  unlike coalescing (see Experiment 1 in [action boundaries](action-coalescing.md)).
+  If π is compiled into the dependency order, the runtime is the sequentialized
+  graph of the permuted program, and the existing theorem applies to it
+  directly. A gated concurrent runtime with adjusted timers is a different
+  protocol: its activation metadata, menus and audit observations differ, so
+  reusing the theorem there needs an equivalence of the complete native
+  protocols and information models. Equality of terminal store laws, as in
+  `Vegas/EventGraph/Commutation.lean` and
+  `Vegas/EventGraph/PolicyCommutation.lean`, does not transport sequential
+  equilibrium.
+- **A public random order drawn up front.** The draw is a public chance move at
+  the root; every information set refines its outcome, so an assessment is a
+  sequential equilibrium exactly when it is one on each branch, and the
+  previous reduction applies branch by branch. This needs one generic lemma
+  about public chance at the root.
+
+Adaptive orders do not reduce to these: an adaptive policy is a mixture of
+contingent plans only if the drawn plan stays hidden, and hidden chance merges
+information sets across plans.
 
 ## Finite probes
 
@@ -267,11 +267,9 @@ cover the grant offset). They are design evidence, not proofs.
 ## Suggested order of work
 
 1. **Finite probes**: done, above.
-2. **Step A.** It admits concurrent mode under a fixed calendar and reuses the
-   entire existing proof.
-3. **Step B.**
-4. **Clock-free beliefs.** Move the two fixed-depth Bayes projections of the
-   current proof to the reach-weight transport. This is independent of the
-   schedule and removes the remaining clock outside the restriction
-   extensions.
-5. **Step C**, the substantial part.
+2. **Library lemmas.** The proportional-reach Bayes transport, which is short,
+   and a clock-free restriction extension, which is research; the second
+   decides whether the contract must make scheduler steps public.
+3. **Timers at the grant** in the runtime.
+4. **Phase from the grant history and order-invariant continuations.**
+5. **The general theorem**, with the fixed calendar recovered as an instance.
