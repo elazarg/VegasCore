@@ -107,32 +107,6 @@ private theorem liftedPrefix_continuation
         exact sourceStep_continuation whole wholeProfile (lift state)
       · exact ih
 
-omit [Fintype Player] in
-private theorem decode_terminal
-    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
-    {Γ : SourceCtx Player L} {names : Finset VarId}
-    (program : SourceProgram Player L Γ names) (refs : ContextRefs layout Γ)
-    (registry : Registry Γ) (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-    (store : EventGraph.Store layout) (history : History Player L)
-    (state : ProtocolState program)
-    (decoded : decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
-      store history = some state) : ProtocolState.terminal program state := by
-  induction program with
-  | ret _ => trivial
-  | sample name fresh distribution next ih =>
-      simp only [eventCount, decodeSourcePrefix?] at decoded
-      obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-      exact ih _ _ _ _ nextState read
-  | commit name owner fresh guard next ih =>
-      simp only [eventCount, decodeSourcePrefix?] at decoded
-      obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-      exact ih _ _ _ _ nextState read
-  | reveal published owner name fresh binding unresolved next ih =>
-      simp only [eventCount, decodeSourcePrefix?] at decoded
-      obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-      exact ih _ _ _ _ nextState read
-
 /-- At any supported typed boundary, all remaining actual timed service blocks
 have the residual source protocol state law. -/
 theorem sourceServiceTimedPolicy_suffix_state_law
@@ -347,7 +321,7 @@ theorem sourceServiceTimedPolicy_continuation_law
       rw [marginal, PMF.support_map]
       exact ⟨current, chosen, rfl⟩
     obtain ⟨final, _, same⟩ := PMF.support_map .. ▸ member
-    exact decode_terminal setup.program _ _ _ _ _ _ _ same
+    exact decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ _ same
   have readout := congrArg (PMF.map setup.protocolReadout) marginal
   simp only [PMF.map_comp, Function.comp_def, sourceServicePrefix?_terminal_readout]
     at readout

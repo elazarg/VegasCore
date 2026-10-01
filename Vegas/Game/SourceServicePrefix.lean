@@ -123,6 +123,33 @@ theorem decodeSourcePrefix?_reveal
         (revelations.reveal selected) (fun tail => outputs tail.succ) count store history).map
           Sum.inr := rfl
 
+/-- Decoding the full instruction count of a program yields a terminal
+source protocol state. -/
+theorem decodeSourcePrefix?_terminal
+    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (refs : ContextRefs layout Γ)
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+    (store : EventGraph.Store layout) (history : History Player L)
+    (state : ProtocolState program)
+    (decoded : decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
+      store history = some state) : ProtocolState.terminal program state := by
+  induction program with
+  | ret _ => trivial
+  | sample name fresh distribution next ih =>
+      simp only [eventCount, decodeSourcePrefix?] at decoded
+      obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      exact ih _ _ _ _ nextState read
+  | commit name owner fresh guard next ih =>
+      simp only [eventCount, decodeSourcePrefix?] at decoded
+      obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      exact ih _ _ _ _ nextState read
+  | reveal published owner name fresh binding unresolved next ih =>
+      simp only [eventCount, decodeSourcePrefix?] at decoded
+      obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      exact ih _ _ _ _ nextState read
+
 /-- The deterministic readout into the original initialized source protocol. -/
 def sourceServicePrefix? (setup : Setup (Player := Player) (L := L))
     (rank : Nat) (config : (graph setup).Config) : setup.ProtocolState :=
