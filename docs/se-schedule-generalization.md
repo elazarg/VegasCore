@@ -7,7 +7,9 @@ lemmas it cites. It describes which scheduling restrictions
 `Vegas.Paper.source_audited_raw_sequential_equilibrium` imposes, compares
 contract designs for ordering concurrent events, and lists the obligations of a
 general theorem. Finite probes support the argument that preservation survives
-adaptive orders. Design D1, open at readiness, is chosen (below).
+adaptive orders. Design D1, open at readiness, is chosen (below). The
+[completion plan](#completion-plan) records where the work stands and the
+remaining milestones.
 
 ## What the library no longer requires
 
@@ -340,7 +342,8 @@ Design-dependent obligations:
 - **Asynchronous chain model.** D1: replace the epoch service by the model of
   the modeling priorities above: every player may act at every tick, and an
   exogenous builder includes adaptively within Δ. The handler and timers are
-  unchanged, and the service stops granting.
+  unchanged, and the service no longer grants (done). The completion plan
+  states the model as a contract on schedulers.
 - **Timely opportunities.** D1: prescribed owners broadcast within `r` of
   readiness, and `r + Δ < deadline` for every event, strictly. D2 and D3:
   first-service timers and the current-event gate in `handle`. D4: deadlines
@@ -436,27 +439,230 @@ do not wait, is not probed. Under the barrier order C4 cannot arise, so the
 probes support preservation in every design once timeliness holds. They are
 design evidence, not proofs.
 
-## Suggested order of work
+## Completion plan
 
-1. **Finite probes**: done, above.
-2. **Library lemmas**: done. The proportional-reach Bayes transport and the
-   depth-free restriction extension are in `GameTheoryExtensions`. The
-   contract need not make service steps public.
-3. **D1 runtime.** The asynchronous chain model with a Δ-bounded exogenous
-   builder, prescribed owners broadcasting at readiness with
-   `r + Δ < deadline`, and the readiness-based audit with its zero-charge and
-   deviation-bound proofs. Partly done: prescribed clients, response menus and
-   the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`),
-   and `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved
-   against them under the fixed calendar. The exogenous builder is not yet
-   modeled.
-4. **Phase from public history and order-invariant continuations.** Started:
-   the roster calendar issues no grant, and a phase start is identified by its
-   plan position (`sourceService_phase_boundary`). The watcher calendar issues
-   no grant either; its decision depths are read from the public clock
-   (`Vegas.decisionDepth` in `Vegas/Game/RevealServiceClock.lean`). The
-   event-service stack serves owners at their turn, and the grant field and
-   command are deleted.
-5. **The general theorem**, with the fixed calendar recovered as an instance.
-6. **Joint transmission-and-ordering deviations**, a separate theorem beyond
-   the target, if players that can buy the order are to be covered.
+This section is the plan for finishing the work. Like the rest of the note it
+is a design, not a checked result.
+
+### Where the work stands
+
+| Step | State |
+| --- | --- |
+| Finite probes | Done (above). Design evidence, not proofs. |
+| Library lemmas | Done: proportional Bayes transport and the depth-free restriction extension in `GameTheoryExtensions`. |
+| Readiness instead of announcements | Done. Prescribed clients, response menus and the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`); the service grant is deleted from the runtime. `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved against this, still under the fixed calendar. |
+| Asynchronous chain model | Not started. |
+| Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the watcher calendar reads decision depths from the public clock. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
+| General theorem | Not started. |
+
+The pending-message stack (`Vegas/Pending/EventService*.lean`,
+`EventPrescribed*.lean`) separately proves exact honest and deviation laws and
+ε-Nash preservation under an adaptive `ServiceOrderPolicy`, but not sequential
+equilibrium. Its epochs still stage resolutions over three owner calls.
+
+### End state
+
+One theorem replaces the fixed-calendar capstone. Roughly:
+
+> For every `SourceServiceSpec` whose scheduler satisfies the asynchronous
+> contract below with reaction bound `r` and inclusion bound `Δ`, and whose
+> owned events satisfy `r + Δ < deadline`, every source sequential equilibrium
+> has an audited native sequential equilibrium with the source joint law of
+> the typed terminal state and payoff, and no player is charged on any history
+> the native equilibrium reaches.
+
+Since the scheduler is part of the spec, it is fixed before the source
+equilibrium is chosen: this is the "for every order, some equilibrium" shape
+of the decision above. The deposit and the horizon are computed from the spec,
+so they may depend on the scheduler. The fixed calendar becomes one instance:
+a lemma shows that `rosterScheduler` satisfies the contract with `r = Δ = 0`.
+
+### The asynchronous model is a scheduler contract
+
+The runtime needs no new semantics. `ReactiveApplication.protocol` already
+lets an environment scheduler choose each command from the public environment
+history and view: whom to activate, which packet to include, when to advance
+the clock, when to expire or sample. The rows of the modeling priorities above
+become properties of that scheduler. A *slot* is the stretch of environment
+history between two consecutive clock advances.
+
+A scheduler satisfies the asynchronous contract when, at every reachable
+history, including off-path ones:
+
+1. **Opportunity within `r`.** When an owned event becomes ready, its owner is
+   activated within `r` slots. Further activations of anyone are allowed.
+2. **Protected inclusion within `Δ`.** The owner's latest unpublished packet
+   addressed to a ready event, emitted in slot `t`, is included by the end of
+   slot `t + Δ` unless the event has completed. Including any other packet, in
+   any order, is allowed. This is today's reserved
+   `ServiceInstruction.includeLatest`, stated as a deadline instead of a calendar
+   position.
+3. **Lazy settlement.** In every slot, every ready sample event is executed,
+   and every ready event whose deadline has elapsed is expired. Anyone may
+   call these.
+4. **Bounded length.** A slot holds at most a fixed number of commands, and
+   after a fixed number of slots the scheduler only waits. The bounds must
+   leave every event time to complete: at least the sum over events of
+   `deadline + 1` slots.
+5. **Finite branching.** The scheduler, like the network policy today, has
+   finite support (`FiniteNature`).
+
+Requirement 1 asks only for the first opportunity. Repeated activations are
+realistic and allowed, but the theorem needs only that a prescribed owner can
+act in time. Together 1 and 2 give a prescribed packet's inclusion within
+`r + Δ` slots of readiness, so `r + Δ < deadline` makes it timely: this is the
+timeliness row of the D1 column, now a lemma rather than a property of a plan.
+The contract is exogenous: it constrains the scheduler and nothing else, and
+the scheduler reads only public data, including the mempool, as the D1 column
+says.
+
+Every player may still act at every slot: a scheduler that activates everyone
+in every slot satisfies the contract. The theorem quantifies over all such
+schedulers, including the fully asynchronous builder of the modeling
+priorities.
+
+### What the fixed calendar supplies today, and its replacement
+
+The proof uses the calendar through the plan position of a decision
+(`DecisionPhase.position`, `rosterPlanPrefix`, `rosterPlanSuffix`). Position
+does four jobs. Each gets a schedule-independent replacement.
+
+1. **Which event a decision belongs to.** On the sequentialized graph exactly
+   one event is ready, so the decision's event is the sole ready event of the
+   public view (`soleReady_of_ready`). Within the event, the player's own
+   response count since the event became ready replaces the roster slot,
+   as `NativeTurn` does in the selective-association example. `DecisionPhase`
+   keeps its event and readiness fields, and drops `slot` and `position`.
+2. **The continuation law from a decision.** Today the continuation is the
+   rest of the plan, evaluated block by block (`SourceServicePhaseLaw`). The
+   replacement is a *completion-stopped phase law*: from any reachable state
+   whose sole ready event is `e`, run until `e` completes. The typed source
+   readout at that point has the source step law for `e`, under every contract
+   scheduler. This is a sample for an actorless event, the owner's value for a
+   binding, and the publication for a resolve. The readout does not change
+   afterwards, because completed fields are preserved (`EventStore`). Chaining
+   the phase law over the remaining events gives the source continuation law
+   by induction on the number of unfinished events, not on plan length. Fuel
+   comes from the rank, which every scheduler decreases, so the existing
+   `2 * horizon + 1` bounds carry over.
+3. **Deviations.** Under prescribed play the phase law is the same for every
+   scheduler. A deviating owner can emit several packets for its event, and
+   then the builder's choice among them makes the resulting value a lottery
+   that depends on the scheduler. The required fact is that this lottery is a
+   mixture of source actions of the same player: the builder reads only the
+   public pool, where commitment payloads are handles and certificates are
+   charged. This is the analogue of the pending-message stack's
+   "source-policy mixture" deviation law, at phase granularity.
+4. **Decision depth for beliefs and extension.** Replaced by the depth-free
+   extension (`ActionRestriction.sequentialEquilibrium_extends_of_continuation_unclocked`)
+   and proportional belief transport
+   (`bayesBelief_projection_of_proportional_reach`). Information sets created
+   by the scheduler's choices, such as an extra wait, a non-owner activation or
+   inclusion timing, get beliefs from trembles that ignore hidden values (the
+   babbling argument above). The fixed-depth Bayes projections and restriction
+   extensions listed under "What the library no longer requires" are
+   retargeted here.
+
+The audit needs no new idea: `freshServiceEnvelope` already authorizes by
+readiness and ownership. What must be re-proved is zero charge on path, which
+follows from timeliness, and the extension bound for forbidden actions under
+every contract scheduler. The bound already holds under every continuation.
+The deposit formula `rosterAuditDeposit` is re-derived from the contract's
+length bound instead of the roster plan.
+
+### Stage A and stage B
+
+**Stage A: sequentialized graph, every contract scheduler.** This removes the
+fixed calendar. With one ready event at a time, the scheduler can change only
+timing: when owners are activated, when packets are included, and which of a
+deviator's packets wins. It cannot change which event is decided next.
+Everything above is stage A.
+
+**Stage B: barrier order, concurrent bindings.** Different owners' bindings
+between two public events are then ready together, and the builder orders
+their completion. The additional obligations are:
+
+- **Commutation.** Completing two concurrent bindings in either order gives
+  the same source readout. They are different events with hidden values, and
+  each value depends only on its owner's packet.
+- **Timing information.** A player may see that another concurrent binding
+  has completed, through its accepted handle, before acting. The source stage
+  does not reveal this. The compiled profile ignores it, and native sites that
+  see it are extended by the depth-free extension with beliefs from
+  value-independent trembles. The order reveals *who* committed, never
+  *what*.
+- **Certificates in the pool.** Only commitments are concurrent under the
+  barrier order, and a commitment carrying evidence is forbidden and charged
+  (probe C3). The extension bound covers this. Permitted openings never sit
+  in the pool beside an unserved binding (probe C4 cannot arise).
+
+Stage B reuses stage A's phase law with a set of ready bindings in place of a
+single ready event. The phase completes when every binding between the two
+public events has completed.
+
+### Other tracks
+
+- **Pending-message stack and staging.** After the general theorem lands,
+  decide per theorem whether to retarget its honest law, deviation law and
+  ε-Nash results onto the contract or to retire them as subsumed. Before that,
+  collapse the three-call resolution staging to one activation per event, as
+  the reactive policy already does, and recheck the per-event block and epoch
+  layout against the contract: an epoch service should become one contract
+  scheduler, not a separate model.
+- **Source-side service cursor.** The selective-association source fixture
+  (`SourceService.lean`) keeps a `visit` cursor that makes its actions
+  stage-local. Removing it changes that source contract, so it is a separate
+  design decision.
+- **Joint transmission-and-ordering deviations.** A separate theorem in which
+  the order is part of a player's deviation. Not part of this plan.
+
+### Milestones
+
+Each milestone ends with the full build, the checkers and the paper pins green,
+and is committed separately.
+
+1. **Contract.** Define the asynchronous scheduler contract, the timeliness
+   lemma (prescribed inclusion within `r + Δ`, hence on time when
+   `r + Δ < deadline`), and the instance `rosterScheduler` with `r = Δ = 0`.
+   Small, and it fixes the vocabulary.
+2. **Phase without position, still on the calendar.** Replace
+   `DecisionPhase.slot` and `DecisionPhase.position` by the sole ready event
+   and the owner's own response count, keeping `rosterScheduler`. The theorem
+   is unchanged. This is the large mechanical refactor (about 94 files refer
+   to the roster plan). Do it as an inventory-then-batch port.
+3. **Completion-stopped phase law.** Prove it for an arbitrary contract
+   scheduler. Re-derive `SourceServicePhaseLaw` and the continuation
+   comparisons from it, still instantiated at the calendar.
+4. **Depth-free extension and proportional beliefs.** Retarget the
+   fixed-depth Bayes projections and restriction extensions; build beliefs at
+   scheduler-created sites.
+5. **Deviation lottery.** Prove that a deviator's multi-packet outcome is a
+   mixture of the deviator's source actions, under every contract scheduler.
+6. **General theorem, stage A.** Generalize the scheduler parameter of
+   `SourceServiceSpec` to any contract scheduler, re-derive the deposit and
+   horizon, and pin the new capstone in `Paper.lean`. The fixed-calendar
+   theorem becomes a corollary through milestone 1's instance.
+7. **Stage B.** Barrier-order graph: commutation, timing information,
+   concurrent phase law.
+8. **Pending-message stack.** Collapse staging, express the epoch service as
+   a contract scheduler, and retarget or retire.
+
+Milestones 2 to 5 are each meaningful on the fixed calendar, so the capstone
+stays green throughout; only milestone 6 changes its statement.
+
+### Risks and open questions
+
+- **Off-path contract obligations.** The contract must hold at histories
+  where a deviator floods the pool. Requirement 2 protects only the owner's
+  latest packet, and requirement 4 bounds each slot, so flooding cannot starve
+  protected inclusion. But a concrete builder must be checked against this.
+- **The deviation lottery** (milestone 5) is the least understood obligation.
+  If the builder's choice among a deviator's packets can depend on something
+  that is not a function of public data and the deviator's own choices, the
+  mixture argument fails. Today's selector (`reactiveLatest`) picks the
+  latest packet, so the fixed calendar avoids the question.
+- **Stage B beliefs.** Probe C5 suggests that depth differences are no
+  obstruction, but the concurrent-window information sets are new. If they
+  break the extension, D2's contract-ordered service is the fallback.
+- **Deposit size.** A scheduler-uniform deposit may be large. The statement
+  allows it to depend on the scheduler, which is enough for existence.
