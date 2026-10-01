@@ -721,7 +721,25 @@ and is committed separately.
      lemma and the approximate step law are built in new modules for every
      contract scheduler, and the calendar-specific chain is retired at
      milestone 6 rather than ported. The same argument applies to milestone
-     3, which is reconsidered once the general step law exists. Timeliness must prove acceptance and the
+     3, which is reconsidered once the general step law exists.
+
+     Also done: event-wise total variation (`PMF.WithinTV`), the mixture
+     disintegration of scheduler runs, the turn-counted policy
+     (`sourceServiceTurnPolicy`), and the timeliness lemma
+     (`prescribed_packet_settles`: an owner's sole fresh conforming packet is
+     accepted in time and the event completes only through it).
+
+     The step law is milestone-sized. Deferral is the only error, but showing
+     that the first turn completes the event with the drawn value needs
+     scheduler-generic versions of what the calendar proves along its plan:
+     admissibility of the turn policy; decoding every reached configuration
+     to a source checkpoint; realizing the first-turn draw as a mixture over
+     values; and the decision resources (fresh candidate slots, serials) that
+     make an accepted binding carry exactly the drawn value. These hold on
+     the support of the turn policy, trembles included, not under arbitrary
+     deviations. The step law and its chaining are proved first under a named
+     hypothesis that the first turn completes the event, then the hypothesis
+     is discharged. Timeliness must prove acceptance and the
      absence of early expiry, not only a receipt. The step law's invariant
      keeps the pool for the current event to one owner identifier and its
      copies, and makes deferral the only error.
