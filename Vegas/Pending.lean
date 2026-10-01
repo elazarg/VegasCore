@@ -103,6 +103,7 @@ import Vegas.Pending.ReactiveFiniteConsistency
 import Vegas.Pending.ReactiveRegularity
 import Vegas.Pending.ReactivePacketIntegrity
 import Vegas.Pending.ReactiveService
+import Vegas.Pending.ReactiveAsyncContract
 import Vegas.Pending.ReactiveServiceCompletion
 import Vegas.Pending.ReactiveServiceOpportunity
 import Vegas.Pending.ReactiveServiceSelection
