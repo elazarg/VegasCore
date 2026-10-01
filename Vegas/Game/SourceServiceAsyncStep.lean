@@ -42,16 +42,17 @@ def sourceContinuation (profile : BehavioralProfile setup.program) (rank : Nat)
 
 /-- The profile in which an event's owner, if any, decides at its first turn
 and every other response replays. -/
-def firstTurnProfile (turns : Nat) (profile : BehavioralProfile setup.program)
+def firstTurnProfile (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (profile : BehavioralProfile setup.program)
     (event : (graph setup).EventId) : Player → (application setup leaks).Policy :=
   match (graph setup).actor? event with
   | none => fun _ => (application setup leaks).replayPolicy
   | some owner => Function.update (fun _ => (application setup leaks).replayPolicy) owner
-      (sourceServiceTurnFamily setup leaks profile owner event turns 0)
+      (sourceServiceTurnFamily setup leaks bound profile owner event turns 0)
 
 /-- **The first-turn premises of the step law.** For the turn-counted policy
-under `scheduler` up to `horizon`, from every completion boundary within the
-horizon:
+with inclusion bound `bound` under `scheduler` up to `horizon`, from every
+completion boundary within the horizon:
 
 * `completes`: the current event completes before the run stops;
 * `exact`: if its owner decides at the first turn, completing the event and
@@ -63,28 +64,29 @@ They hold for every scheduler satisfying the asynchronous contract with
 `delay + bound < deadline` and every source profile with effective disclosures
 (`Vegas.sourceServiceTurnPolicy_firstTurnCompletes`). -/
 structure FirstTurnCompletes (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
-    (turns : Nat) (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program) :
+    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (profile : BehavioralProfile setup.program) :
     Prop where
   completes : ∀ (event : (graph setup).EventId) (execution : (application setup leaks).Execution),
-    CompletionBoundary setup leaks scheduler (sourceServiceTurnPolicy setup leaks turns timing
+    CompletionBoundary setup leaks scheduler (sourceServiceTurnPolicy setup leaks bound turns timing
       profile) event.val execution →
     execution.environmentRecall.length ≤ horizon →
     ∀ stopped ∈ ((application setup leaks).runUntilHorizon scheduler
-      (sourceServiceTurnPolicy setup leaks turns timing profile)
+      (sourceServiceTurnPolicy setup leaks bound turns timing profile)
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).support,
       event ∈ stopped.application.config.cut.completed
   exact : ∀ (event : (graph setup).EventId) (execution : (application setup leaks).Execution),
-    CompletionBoundary setup leaks scheduler (sourceServiceTurnPolicy setup leaks turns timing
+    CompletionBoundary setup leaks scheduler (sourceServiceTurnPolicy setup leaks bound turns timing
       profile) event.val execution →
     execution.environmentRecall.length ≤ horizon →
     ((application setup leaks).runUntilHorizon scheduler
-      (firstTurnProfile setup leaks turns profile event)
+      (firstTurnProfile setup leaks bound turns profile event)
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
         (fun stopped => sourceContinuation setup profile (event.val + 1)
           stopped.application.config) =
       sourceContinuation setup profile event.val execution.application.config
   terminal : ∀ execution : (application setup leaks).Execution,
-    CompletionBoundary setup leaks scheduler (sourceServiceTurnPolicy setup leaks turns timing
+    CompletionBoundary setup leaks scheduler (sourceServiceTurnPolicy setup leaks bound turns timing
       profile) (graph setup).order.eventCount execution →
     sourceContinuation setup profile (graph setup).order.eventCount
         execution.application.config =
@@ -131,19 +133,21 @@ theorem activation_application (execution middle : (application setup leaks).Exe
 
 /-- Before the current event completes, the turn-counted policy is the owner's
 timing mixture for that event, with every other response replaying. -/
-def phaseProfile (turns : Nat) (timing : TurnTiming setup turns)
+def phaseProfile (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) :
     Player → (application setup leaks).Policy :=
   match owned : (graph setup).actor? event with
   | none => fun _ => (application setup leaks).replayPolicy
   | some owner => Function.update (fun _ => (application setup leaks).replayPolicy) owner
       ((application setup leaks).policyMixture (timing event owner owned)
-        (sourceServiceTurnFamily setup leaks profile owner event turns)).policy
+        (sourceServiceTurnFamily setup leaks bound profile owner event turns)).policy
 
-theorem phaseProfile_actorless (turns : Nat) (timing : TurnTiming setup turns)
+theorem phaseProfile_actorless (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId)
     (actorless : (graph setup).actor? event = none) :
-    phaseProfile setup leaks turns timing profile event =
+    phaseProfile setup leaks bound turns timing profile event =
       fun _ => (application setup leaks).replayPolicy := by
   unfold phaseProfile
   split
@@ -152,13 +156,14 @@ theorem phaseProfile_actorless (turns : Nat) (timing : TurnTiming setup turns)
     rw [actorless] at owned
     cases owned
 
-theorem phaseProfile_owned (turns : Nat) (timing : TurnTiming setup turns)
+theorem phaseProfile_owned (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner) :
-    phaseProfile setup leaks turns timing profile event =
+    phaseProfile setup leaks bound turns timing profile event =
       Function.update (fun _ => (application setup leaks).replayPolicy) owner
         ((application setup leaks).policyMixture (timing event owner owned)
-          (sourceServiceTurnFamily setup leaks profile owner event turns)).policy := by
+          (sourceServiceTurnFamily setup leaks bound profile owner event turns)).policy := by
   unfold phaseProfile
   split
   · rename_i actorless
@@ -171,27 +176,29 @@ theorem phaseProfile_owned (turns : Nat) (timing : TurnTiming setup turns)
 
 /-- At a state where `event` is the ready event, the turn-counted policy and
 the phase profile agree for every player. -/
-theorem sourceServiceTurnPolicy_eq_phaseProfile (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_eq_phaseProfile (bound : (graph setup).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (event : (graph setup).EventId)
     (state : EventGraphRuntime.State (graph setup)) (ready : state.config.cut.Ready event)
     (who : Player) (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
     (current : view.application.publicView = state.publicView) :
-    sourceServiceTurnPolicy setup leaks turns timing profile who past view =
-      phaseProfile setup leaks turns timing profile event who past view := by
+    sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
+      phaseProfile setup leaks bound turns timing profile event who past view := by
   have sole := soleReady_of_ready setup state ready
   rw [← current] at sole
   cases owned : (graph setup).actor? event with
   | none =>
-      rw [phaseProfile_actorless setup leaks turns timing profile event owned]
+      rw [phaseProfile_actorless setup leaks bound turns timing profile event owned]
       have foreign : (graph setup).actor? event ≠ some who := by rw [owned]; simp
       simp only [sourceServiceTurnPolicy, sole.ownTurn?_foreign foreign]
   | some owner =>
-      rw [phaseProfile_owned setup leaks turns timing profile event owner owned]
+      rw [phaseProfile_owned setup leaks bound turns timing profile event owner owned]
       by_cases same : who = owner
       · subst who
         rw [Function.update_self]
-        exact sourceServiceTurnPolicy_turn setup leaks turns timing profile owner past view event
+        exact sourceServiceTurnPolicy_turn setup leaks bound turns timing profile owner past view
+          event
           owned (PublicView.ownTurn?_of_ownTurn _ owner event (sole.ownTurn owned))
       · rw [Function.update_of_ne same]
         have foreign : (graph setup).actor? event ≠ some who := by
@@ -204,15 +211,16 @@ variable {setup leaks}
 /-- Before stopping at the completion of `event`, the turn-counted policy runs
 as the phase profile. -/
 theorem runUntil_turnPolicy_eq_phase (scheduler : (application setup leaks).Scheduler)
-    (turns : Nat) (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
+    (bound : (graph setup).EventId → Nat) (turns : Nat) (timing : TurnTiming setup turns)
+    (profile : BehavioralProfile setup.program)
     (event : (graph setup).EventId) (count : Nat) (execution : (application setup leaks).Execution)
     (ordered : execution.application.config.cut.IsPrefix event.val)
     (seen : ReadySeen setup leaks event.val execution) :
     (application setup leaks).runUntil scheduler
-        (sourceServiceTurnPolicy setup leaks turns timing profile)
+        (sourceServiceTurnPolicy setup leaks bound turns timing profile)
         (fun final => event ∈ final.application.config.cut.completed) count execution =
       (application setup leaks).runUntil scheduler
-        (phaseProfile setup leaks turns timing profile event)
+        (phaseProfile setup leaks bound turns timing profile event)
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
   let app := application setup leaks
   let invariant := fun current : app.Execution =>
@@ -232,7 +240,7 @@ theorem runUntil_turnPolicy_eq_phase (scheduler : (application setup leaks).Sche
     cases command with
     | activate actor =>
         have sameApp := activation_application setup leaks current middle actor moved
-        exact sourceServiceTurnPolicy_eq_phaseProfile setup leaks turns timing profile event
+        exact sourceServiceTurnPolicy_eq_phaseProfile setup leaks bound turns timing profile event
           middle.application (by rw [sameApp]; exact ready) who _ _ rfl
     | «include» _ => cases active
     | application _ => cases active
@@ -276,16 +284,16 @@ theorem deferral_nonneg {turns : Nat} (timing : TurnTiming setup turns)
 `event.val`, completing the event and continuing in the source is within the
 event's deferral weight of the source continuation. -/
 theorem sourceServiceTurnPolicy_step_within {scheduler : (application setup leaks).Scheduler}
-    {horizon turns : Nat} {timing : TurnTiming setup turns}
+    {horizon turns : Nat} {bound : (graph setup).EventId → Nat} {timing : TurnTiming setup turns}
     {profile : BehavioralProfile setup.program}
-    (first : FirstTurnCompletes setup leaks scheduler horizon turns timing profile)
+    (first : FirstTurnCompletes setup leaks scheduler horizon bound turns timing profile)
     (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
-      (sourceServiceTurnPolicy setup leaks turns timing profile) event.val execution)
+      (sourceServiceTurnPolicy setup leaks bound turns timing profile) event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
     PMF.WithinTV (timing.deferral event)
       (((application setup leaks).runUntilHorizon scheduler
-          (sourceServiceTurnPolicy setup leaks turns timing profile)
+          (sourceServiceTurnPolicy setup leaks bound turns timing profile)
           (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
         (fun stopped => sourceContinuation setup profile (event.val + 1)
           stopped.application.config))
@@ -297,20 +305,20 @@ theorem sourceServiceTurnPolicy_step_within {scheduler : (application setup leak
   subst rankEq
   have exact := first.exact event execution boundary bounded
   unfold ReactiveApplication.runUntilHorizon at exact ⊢
-  rw [runUntil_turnPolicy_eq_phase scheduler turns timing profile event _ execution
+  rw [runUntil_turnPolicy_eq_phase scheduler bound turns timing profile event _ execution
     boundary.ordered seen]
   unfold firstTurnProfile at exact
   cases owned : (graph setup).actor? event with
   | none =>
-    rw [phaseProfile_actorless setup leaks turns timing profile event owned]
+    rw [phaseProfile_actorless setup leaks bound turns timing profile event owned]
     simp only [owned] at exact
     rw [exact]
     exact (PMF.WithinTV.refl _).mono (deferral_nonneg timing event)
   | some owner =>
-    rw [phaseProfile_owned setup leaks turns timing profile event owner owned]
+    rw [phaseProfile_owned setup leaks bound turns timing profile event owner owned]
     simp only [owned] at exact
     let mixture := app.policyMixture (timing event owner owned)
-      (sourceServiceTurnFamily setup leaks profile owner event turns)
+      (sourceServiceTurnFamily setup leaks bound profile owner event turns)
     have prior : mixture.posterior (execution.recall owner) = timing event owner owned := by
       apply app.policyMixture_posterior_of_agree _ _ app.replayPolicy
       intro earlier entry member slot
@@ -322,11 +330,11 @@ theorem sourceServiceTurnPolicy_step_within {scheduler : (application setup leak
       exact boundary.untouched event rfl owner entry entryMember
         (PublicView.ownTurn?_spec _ owner event turn).1
     rw [← app.runUntil_policyMixture scheduler (timing event owner owned)
-      (sourceServiceTurnFamily setup leaks profile owner event turns) owner _ _ _ execution,
+      (sourceServiceTurnFamily setup leaks bound profile owner event turns) owner _ _ _ execution,
       prior, PMF.bind_bind]
     have close := PMF.WithinTV.of_bind_point (timing event owner owned) 0
       (fun slot => (app.runUntil scheduler (Function.update (fun _ => app.replayPolicy) owner
-        (sourceServiceTurnFamily setup leaks profile owner event turns slot))
+        (sourceServiceTurnFamily setup leaks bound profile owner event turns slot))
         (fun final => event ∈ final.application.config.cut.completed)
         (horizon - execution.environmentRecall.length) execution).bind
           (fun stopped => sourceContinuation setup profile (event.val + 1)
@@ -415,14 +423,15 @@ horizon, the run is within the sum of the remaining events' deferral weights
 of the source continuation. -/
 theorem sourceServiceTurnPolicy_boundaryContinuationWithin
     {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
+    {bound : (graph setup).EventId → Nat}
     {timing : TurnTiming setup turns} {profile : BehavioralProfile setup.program}
-    (first : FirstTurnCompletes setup leaks scheduler horizon turns timing profile) :
+    (first : FirstTurnCompletes setup leaks scheduler horizon bound turns timing profile) :
     BoundaryContinuationWithin setup leaks scheduler horizon
-      (sourceServiceTurnPolicy setup leaks turns timing profile) profile
+      (sourceServiceTurnPolicy setup leaks bound turns timing profile) profile
       (fun rank => ∑ event ∈ Finset.univ.filter
         (fun event : (graph setup).EventId => rank ≤ event.val), timing.deferral event) := by
   let app := application setup leaks
-  let players := sourceServiceTurnPolicy setup leaks turns timing profile
+  let players := sourceServiceTurnPolicy setup leaks bound turns timing profile
   let readout := fun final : app.Execution => sourceReadout setup leaks (app.finished final)
   suffices remaining : ∀ gap rank (execution : app.Execution),
       (graph setup).order.eventCount - rank = gap →

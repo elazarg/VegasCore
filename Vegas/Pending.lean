@@ -215,6 +215,7 @@ import Vegas.Pending.ReactiveBindingRepair
 import Vegas.Pending.ReactiveBindingShadow
 import Vegas.Pending.ReactiveBindingShadowStep
 import Vegas.Pending.ReactiveCompiledMenu
+import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveBindingContinuation
 import Vegas.Pending.ReactiveBindingOmission
 import Vegas.Pending.ReactiveBindingRecordedOmission

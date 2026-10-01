@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceFiniteness
+import Vegas.Game.SourceServiceCanonicalPolicy
 import Interaction.ReactiveMixtureRounds
 import GameTheoryExtensions.Math.Probability.TotalVariation
 
@@ -11,6 +12,11 @@ the event as the player's own turn. A turn timing chooses, for each owned
 event, the turn index at which the owner makes its source decision; every
 other response replays. The index is read from actual own recall, so the
 policy needs no roster or scheduler cursor.
+
+The source decision is the canonical one
+(`Vegas.sourceServiceCanonicalOpportunity`): a binding is submitted at the slot
+the audit expects, and no fresh call is made once a packet included within the
+inclusion bound `bound event` would miss the event's deadline.
 
 Deciding at the first turn is the limiting policy. Fully mixed approximants
 defer the decision with a small total weight, uniformly over later turns. A
@@ -48,24 +54,25 @@ abbrev TurnTiming (turns : Nat) : Type :=
   ∀ event who, (graph setup).actor? event = some who → PMF (Fin (turns + 1))
 
 /-- Make the source decision at the selected turn and replay otherwise. -/
-def sourceServiceTurnFamily (profile : BehavioralProfile setup.program) (who : Player)
+def sourceServiceTurnFamily (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
     (event : (graph setup).EventId) (turns : Nat) (slot : Fin (turns + 1)) :
     (application setup leaks).Policy :=
   (application setup leaks).turnScheduledPolicy (sourceServiceTurn setup leaks who event)
-    (some slot) (sourceServiceOpportunity setup leaks profile who event)
+    (some slot) (sourceServiceCanonicalOpportunity setup leaks bound profile who event)
     (application setup leaks).replayPolicy
 
 /-- The turn-counted prescribed policy: at its own turn an owner follows the
 behavioral realization of the event's timing lottery; otherwise it replays. -/
-def sourceServiceTurnPolicy (turns : Nat) (timing : TurnTiming setup turns)
-    (profile : BehavioralProfile setup.program) (who : Player) :
+def sourceServiceTurnPolicy (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program) (who : Player) :
     (application setup leaks).Policy := fun past view =>
   match view.application.publicView.ownTurn? who with
   | none => (application setup leaks).replayPolicy past view
   | some event =>
       if owned : (graph setup).actor? event = some who then
         ((application setup leaks).policyMixture (timing event who owned)
-          (sourceServiceTurnFamily setup leaks profile who event turns)).policy past view
+          (sourceServiceTurnFamily setup leaks bound profile who event turns)).policy past view
       else (application setup leaks).replayPolicy past view
 
 /-- Decide at the first turn: the limiting timing. -/
@@ -97,48 +104,53 @@ theorem sourceServiceTurn_of_not_turn (who : Player) (event : (graph setup).Even
   simp only [sourceServiceTurn, other, ↓reduceIte]
 
 /-- At its own turn a player follows the event's timing mixture. -/
-theorem sourceServiceTurnPolicy_turn (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_turn (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some who)
     (serving : view.application.publicView.ownTurn? who = some event) :
-    sourceServiceTurnPolicy setup leaks turns timing profile who past view =
+    sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
       ((application setup leaks).policyMixture (timing event who owned)
-        (sourceServiceTurnFamily setup leaks profile who event turns)).policy past view := by
+        (sourceServiceTurnFamily setup leaks bound profile who event turns)).policy past view := by
   simp only [sourceServiceTurnPolicy, serving, owned, ↓reduceDIte]
 
 /-- A player owning no ready event replays. -/
-theorem sourceServiceTurnPolicy_idle (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_idle (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView)
     (idle : view.application.publicView.Idle who) :
-    sourceServiceTurnPolicy setup leaks turns timing profile who past view =
+    sourceServiceTurnPolicy setup leaks bound turns timing profile who past view =
       (application setup leaks).replayPolicy past view := by
   simp only [sourceServiceTurnPolicy, PublicView.ownTurn?_eq_none _ who idle]
 
-theorem sourceServiceTurnFamily_finiteSupport (finite : setup.program.FiniteBindingTypes)
+theorem sourceServiceTurnFamily_finiteSupport (bound : (graph setup).EventId → Nat)
+    (finite : setup.program.FiniteBindingTypes)
     (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId)
     (turns : Nat) (slot : Fin (turns + 1)) :
     ReactiveApplication.Policy.FiniteSupport _
-      (sourceServiceTurnFamily setup leaks profile who event turns slot) :=
+      (sourceServiceTurnFamily setup leaks bound profile who event turns slot) :=
   (application setup leaks).turnScheduledPolicy_finiteSupport _ _
-    (sourceServiceOpportunity_finiteSupport setup leaks finite profile who event)
+    (sourceServiceCanonicalOpportunity_finiteSupport setup leaks bound finite profile who event)
     (application setup leaks).replayPolicy_finiteSupport
 
-theorem sourceServiceTurnPolicy_finiteSupport (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_finiteSupport (bound : (graph setup).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns)
     (finite : setup.program.FiniteBindingTypes) (profile : BehavioralProfile setup.program)
     (who : Player) :
     ReactiveApplication.Policy.FiniteSupport _
-      (sourceServiceTurnPolicy setup leaks turns timing profile who) := by
+      (sourceServiceTurnPolicy setup leaks bound turns timing profile who) := by
   intro past view
   unfold sourceServiceTurnPolicy
   split
   · exact (application setup leaks).replayPolicy_finiteSupport past view
   · split
     · exact (application setup leaks).policyMixture_finiteSupport _
-        (sourceServiceTurnFamily_finiteSupport setup leaks finite profile who _ turns) past view
+        (sourceServiceTurnFamily_finiteSupport setup leaks bound finite profile who _ turns)
+        past view
     · exact (application setup leaks).replayPolicy_finiteSupport past view
 
 theorem firstTurnTiming_deferral (turns : Nat) (event : (graph setup).EventId) :

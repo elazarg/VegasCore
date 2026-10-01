@@ -103,19 +103,20 @@ private theorem reactiveResolutionPacket_event {owner : Player} (who : Player)
   repeat' split
   all_goals rfl
 
-/-- The prepared native decision submits only for its own event. -/
-private theorem submittedEvent_reactiveDecision (who : Player)
+/-- The canonical native decision submits only for its own event. -/
+private theorem submittedEvent_canonicalReactiveDecision (who : Player)
     (event : (graph setup).EventId) (action : (graph setup).Action event)
     (view : ReactivePlayerView (graph setup)) (other : (graph setup).EventId)
     (submitted : (runtime setup).submittedEvent? leaks
-      ((runtime setup).reactiveDecision leaks who event action view) = some other) :
+      ((runtime setup).canonicalReactiveDecision leaks who event action view) = some other) :
     other = event := by
-  unfold EventGraphRuntime.submittedEvent? EventGraphRuntime.reactiveDecision at submitted
+  unfold EventGraphRuntime.submittedEvent? EventGraphRuntime.canonicalReactiveDecision
+    at submitted
   revert submitted
   cases nodeView (graph setup) event with
   | sample => simp
   | bind owner payload outputEq codeEq =>
-      cases reactiveFreshSlot view with
+      cases canonicalFreshSlot who view with
       | none => simp
       | some serial =>
           simp only [Option.map_some, Payload.event?, Option.some.injEq]
@@ -127,22 +128,25 @@ private theorem submittedEvent_reactiveDecision (who : Player)
       rw [reactiveResolutionPacket_event] at submitted
       exact (Option.some.inj submitted).symm
 
-/-- A compiled decision submits only for its own event. -/
-theorem submittedEvent_serviceDecision (who : Player)
+/-- A canonical compiled decision submits only for its own event. -/
+theorem submittedEvent_canonicalServiceDecision (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
     (action : (graph setup).Action event) (other : (graph setup).EventId)
     (submitted : (runtime setup).submittedEvent? leaks
-      ((runtime setup).serviceDecision leaks who past view event action) = some other) :
+      ((runtime setup).canonicalServiceDecision leaks who past view event action) =
+        some other) :
     other = event := by
-  apply submittedEvent_reactiveDecision setup leaks who event action view.application other
-  unfold EventGraphRuntime.serviceDecision at submitted
+  apply submittedEvent_canonicalReactiveDecision setup leaks who event action view.application
+    other
+  unfold EventGraphRuntime.canonicalServiceDecision at submitted
   dsimp only at submitted
   split at submitted
   · simp [EventGraphRuntime.submittedEvent?] at submitted
   · rename_i transmission _
     revert submitted
-    rcases (runtime setup).reactiveDecision leaks who event action view.application with
+    rcases (runtime setup).canonicalReactiveDecision leaks who event action view.application
+      with
       ⟨_ | (material | id)⟩
     · simp [EventGraphRuntime.submittedEvent?, ReactiveApplication.SubmissionNormalization.action]
     · intro submitted
@@ -154,11 +158,11 @@ theorem submittedEvent_serviceDecision (who : Player)
       simp only [ReactiveApplication.SubmissionNormalization.action] at submitted
       split at submitted <;> simp [EventGraphRuntime.submittedEvent?] at submitted
 
-theorem sourceServicePolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
+theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
     (who : Player) :
-    SubmitsAtTurn setup leaks (sourceServicePolicy setup leaks profile who) who := by
+    SubmitsAtTurn setup leaks (sourceServiceCanonicalPolicy setup leaks profile who) who := by
   intro past view response chosen event submitted
-  unfold sourceServicePolicy at chosen
+  unfold sourceServiceCanonicalPolicy at chosen
   split at chosen
   · rename_i identity
     split at chosen
@@ -169,7 +173,8 @@ theorem sourceServicePolicy_submitsAtTurn (profile : BehavioralProfile setup.pro
       split at chosen
       · rw [PMF.support_map] at chosen
         obtain ⟨action, _, rfl⟩ := chosen
-        rw [submittedEvent_serviceDecision setup leaks who past view turn action event submitted]
+        rw [submittedEvent_canonicalServiceDecision setup leaks who past view turn action event
+          submitted]
         exact selected
       · rw [PMF.mem_support_pure_iff] at chosen
         subst chosen
@@ -178,22 +183,26 @@ theorem sourceServicePolicy_submitsAtTurn (profile : BehavioralProfile setup.pro
     subst chosen
     simp [EventGraphRuntime.submittedEvent?] at submitted
 
-theorem sourceServiceOpportunity_submitsAtTurn (profile : BehavioralProfile setup.program)
-    (who : Player) (event : (graph setup).EventId) :
-    SubmitsAtTurn setup leaks (sourceServiceOpportunity setup leaks profile who event) who := by
+theorem sourceServiceCanonicalOpportunity_submitsAtTurn (bound : (graph setup).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player) (event : (graph setup).EventId) :
+    SubmitsAtTurn setup leaks
+      (sourceServiceCanonicalOpportunity setup leaks bound profile who event) who := by
   intro past view response chosen other submitted
-  unfold sourceServiceOpportunity at chosen
+  unfold sourceServiceCanonicalOpportunity at chosen
   split at chosen
   · exact replayPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
-  · rw [PMF.support_bind] at chosen
-    obtain ⟨decided, decidedChosen, member⟩ := Set.mem_iUnion₂.mp chosen
-    split at member
-    · exact replayPolicy_submitsAtTurn setup leaks who past view response member other
+  · split at chosen
+    · rw [PMF.support_bind] at chosen
+      obtain ⟨decided, decidedChosen, member⟩ := Set.mem_iUnion₂.mp chosen
+      split at member
+      · exact replayPolicy_submitsAtTurn setup leaks who past view response member other
+          submitted
+      · rw [PMF.mem_support_pure_iff] at member
+        subst member
+        exact sourceServiceCanonicalPolicy_submitsAtTurn setup leaks profile who past view
+          response decidedChosen other submitted
+    · exact replayPolicy_submitsAtTurn setup leaks who past view response chosen other
         submitted
-    · rw [PMF.mem_support_pure_iff] at member
-      subst member
-      exact sourceServicePolicy_submitsAtTurn setup leaks profile who past view response
-        decidedChosen other submitted
 
 theorem turnScheduledPolicy_submitsAtTurn
     (turn : List (application setup leaks).PlayerEntry →
@@ -222,9 +231,10 @@ theorem policyMixture_submitsAtTurn {Index : Type} (initial : PMF Index)
   obtain ⟨index, _, member⟩ := Set.mem_iUnion₂.mp chosen
   exact each index past view response member event submitted
 
-theorem sourceServiceTurnPolicy_submitsAtTurn (turns : Nat) (timing : TurnTiming setup turns)
+theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (graph setup).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns)
     (profile : BehavioralProfile setup.program) (who : Player) :
-    SubmitsAtTurn setup leaks (sourceServiceTurnPolicy setup leaks turns timing profile who)
+    SubmitsAtTurn setup leaks (sourceServiceTurnPolicy setup leaks bound turns timing profile who)
       who := by
   intro past view response chosen event submitted
   unfold sourceServiceTurnPolicy at chosen
@@ -234,16 +244,18 @@ theorem sourceServiceTurnPolicy_submitsAtTurn (turns : Nat) (timing : TurnTiming
     · rename_i turnEvent _ owned
       exact policyMixture_submitsAtTurn setup leaks _ _ who (fun slot =>
         turnScheduledPolicy_submitsAtTurn setup leaks _ _ _ _ who
-          (sourceServiceOpportunity_submitsAtTurn setup leaks profile who turnEvent)
+          (sourceServiceCanonicalOpportunity_submitsAtTurn setup leaks bound profile who
+            turnEvent)
           (replayPolicy_submitsAtTurn setup leaks who)) past view response chosen event submitted
     · exact replayPolicy_submitsAtTurn setup leaks who past view response chosen event
         submitted
 
 /-- Deciding a fixed action at the first turn submits only for that event,
 and only at an input where it is the owner's turn. -/
-theorem decidedTurnPolicy_submitsAtTurn (owner : Player) (event : (graph setup).EventId)
+theorem decidedTurnPolicy_submitsAtTurn (bound : (graph setup).EventId → Nat) (owner : Player)
+    (event : (graph setup).EventId)
     (action : (graph setup).Action event) :
-    SubmitsAtTurn setup leaks (decidedTurnPolicy setup leaks owner event action) owner := by
+    SubmitsAtTurn setup leaks (decidedTurnPolicy setup leaks bound owner event action) owner := by
   intro past view response chosen other submitted
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy at chosen
   dsimp only at chosen
@@ -259,13 +271,16 @@ theorem decidedTurnPolicy_submitsAtTurn (owner : Player) (event : (graph setup).
     · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other
         submitted
     · split at chosen
+      · split at chosen
+        · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other
+            submitted
+        · rw [PMF.mem_support_pure_iff] at chosen
+          subst chosen
+          rw [submittedEvent_canonicalServiceDecision setup leaks owner past view event action
+            other submitted]
+          exact turn
       · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other
           submitted
-      · rw [PMF.mem_support_pure_iff] at chosen
-        subst chosen
-        rw [submittedEvent_serviceDecision setup leaks owner past view event action other
-          submitted]
-        exact turn
   · exact replayPolicy_submitsAtTurn setup leaks owner past view response chosen other submitted
 
 /-- A round of players that submit only at their own turns keeps every

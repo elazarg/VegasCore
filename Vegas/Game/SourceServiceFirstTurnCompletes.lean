@@ -290,8 +290,9 @@ theorem sample_runUntil (scheduler : (application setup leaks).Scheduler)
 /-- **The first-turn premises hold under the asynchronous contract.** For every
 scheduler satisfying the contract with `delay + bound < deadline`, every turn
 timing, and every source profile whose disclosures are effective, the
-turn-counted policy completes each event before the run stops, deciding at the
-first turn is exact, and the terminal continuation is the readout. -/
+turn-counted policy with the contract's inclusion bound completes each event
+before the run stops, deciding at the first turn is exact, and the terminal
+continuation is the readout. -/
 theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
     {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
     {delay bound : (graph setup).EventId → Nat}
@@ -301,7 +302,7 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
     (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
     (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
       (Revelations.initial setup.context)) :
-    FirstTurnCompletes setup leaks scheduler horizon turns timing profile := by
+    FirstTurnCompletes setup leaks scheduler horizon bound turns timing profile := by
   let app := application setup leaks
   refine ⟨fun event execution boundary bounded stopped reached =>
     completionRun_completes contract.completes event execution boundary bounded stopped reached,
@@ -314,10 +315,11 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
     SourceResidual.head_law leaks residual event rfl ready
   rw [continuation]
   obtain ⟨startTrace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
-    (sourceServiceTurnPolicy setup leaks turns timing profile) _ bounded start boundary.supported
+    (sourceServiceTurnPolicy setup leaks bound turns timing profile) _ bounded start
+    boundary.supported
   cases owned : (graph setup).actor? event with
   | none =>
-      have profileEq : firstTurnProfile setup leaks turns profile event =
+      have profileEq : firstTurnProfile setup leaks bound turns profile event =
           fun _ => app.replayPolicy := by
         unfold firstTurnProfile
         simp only [owned]
@@ -345,7 +347,7 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
         _ = _ := bind_congr_on_support law fun action _ => by rw [samples action]
   | some owner =>
       unfold ReactiveApplication.runUntilHorizon
-      rw [firstTurn_runUntil_mixture event start boundary owner owned turns profile law
+      rw [firstTurn_runUntil_mixture event start boundary owner owned bound turns profile law
         (policy owner owned) _, PMF.bind_bind]
       apply bind_congr_on_support law
       intro action chosen
@@ -356,7 +358,7 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
       rw [pure, PMF.pure_bind]
       calc _ = (app.runUntil scheduler
             (Function.update (fun _ => app.replayPolicy) owner
-              (decidedTurnPolicy setup leaks owner event action))
+              (decidedTurnPolicy setup leaks bound owner event action))
             (fun final => event ∈ final.application.config.cut.completed)
             (horizon - start.environmentRecall.length) start).bind
               (fun _ => sourceContinuation setup profile (event.val + 1) completedConfig) := by

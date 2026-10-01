@@ -30,23 +30,28 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The owner's response with its source action fixed: the compiled decision
-when it transmits, and a replay when it is silent or the event is already
-recorded in the owner's own recall. -/
-def decidedOpportunity (owner : Player) (event : (graph setup).EventId)
-    (action : (graph setup).Action event) : (application setup leaks).Policy := fun past view =>
+/-- The owner's response with its source action fixed: the canonical compiled
+decision when it transmits and a fresh call still fits the deadline within the
+inclusion bound, and a replay when it is silent, too late, or the event is
+already recorded in the owner's own recall. -/
+def decidedOpportunity (bound : (graph setup).EventId → Nat) (owner : Player)
+    (event : (graph setup).EventId) (action : (graph setup).Action event) :
+    (application setup leaks).Policy := fun past view =>
   if (runtime setup).eventRecorded leaks past event then
     (application setup leaks).replayPolicy past view
-  else if ((runtime setup).serviceDecision leaks owner past view event action).transmission =
-      none then (application setup leaks).replayPolicy past view
-  else PMF.pure ((runtime setup).serviceDecision leaks owner past view event action)
+  else if view.application.publicView.InclusionFitsDeadline (runtime setup) bound event then
+    if ((runtime setup).canonicalServiceDecision leaks owner past view event
+        action).transmission = none then (application setup leaks).replayPolicy past view
+    else PMF.pure ((runtime setup).canonicalServiceDecision leaks owner past view event action)
+  else (application setup leaks).replayPolicy past view
 
 /-- Decide `action` at the first turn at `event`, and replay at every other
 input. -/
-def decidedTurnPolicy (owner : Player) (event : (graph setup).EventId)
-    (action : (graph setup).Action event) : (application setup leaks).Policy :=
+def decidedTurnPolicy (bound : (graph setup).EventId → Nat) (owner : Player)
+    (event : (graph setup).EventId) (action : (graph setup).Action event) :
+    (application setup leaks).Policy :=
   (application setup leaks).turnScheduledPolicy (sourceServiceTurn setup leaks owner event)
-    (some (0 : Fin 1)) (decidedOpportunity setup leaks owner event action)
+    (some (0 : Fin 1)) (decidedOpportunity setup leaks bound owner event action)
     (application setup leaks).replayPolicy
 
 variable {setup}
@@ -92,30 +97,32 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
     {players : Player → (application setup leaks).Policy} (event : (graph setup).EventId)
     (execution : (application setup leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
-    (owner : Player) (owned : (graph setup).actor? event = some owner) (turns : Nat)
+    (owner : Player) (owned : (graph setup).actor? event = some owner)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) (law : PMF ((graph setup).Action event))
     (policy : ∀ current : (application setup leaks).Execution,
       current.application.config = execution.application.config →
-      sourceServicePolicy setup leaks profile owner (current.recall owner)
+      sourceServiceCanonicalPolicy setup leaks profile owner (current.recall owner)
           (current.observe (application setup leaks) owner) =
-        law.map fun action => (runtime setup).serviceDecision leaks owner
+        law.map fun action => (runtime setup).canonicalServiceDecision leaks owner
           (current.recall owner) (current.observe (application setup leaks) owner) event action)
     (count : Nat) :
-    (application setup leaks).runUntil scheduler (firstTurnProfile setup leaks turns profile event)
+    (application setup leaks).runUntil scheduler
+        (firstTurnProfile setup leaks bound turns profile event)
         (fun final => event ∈ final.application.config.cut.completed) count execution =
       law.bind fun action => (application setup leaks).runUntil scheduler
         (Function.update (fun _ => (application setup leaks).replayPolicy) owner
-          (decidedTurnPolicy setup leaks owner event action))
+          (decidedTurnPolicy setup leaks bound owner event action))
         (fun final => event ∈ final.application.config.cut.completed) count execution := by
   let app := application setup leaks
   let stop := fun final : app.Execution => event ∈ final.application.config.cut.completed
-  let mixture := app.policyMixture law (decidedTurnPolicy setup leaks owner event)
-  let family := sourceServiceTurnFamily setup leaks profile owner event turns 0
+  let mixture := app.policyMixture law (decidedTurnPolicy setup leaks bound owner event)
+  let family := sourceServiceTurnFamily setup leaks bound profile owner event turns 0
   obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup leaks scheduler players _ execution
     boundary.supported
   have rankEq := isPrefix_unique ranked boundary.ordered
   subst rankEq
-  have firstEq : firstTurnProfile setup leaks turns profile event =
+  have firstEq : firstTurnProfile setup leaks bound turns profile event =
       Function.update (fun _ => app.replayPolicy) owner family := by
     unfold firstTurnProfile
     simp only [owned]
@@ -132,7 +139,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
     | none =>
         rw [show family (current.recall owner) (current.observe app owner) = _ from
           app.turnScheduledPolicy_of_none _ _ _ _ _ _ turn]
-        have members : ∀ action, decidedTurnPolicy setup leaks owner event action
+        have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
             (current.recall owner) (current.observe app owner) =
               app.replayPolicy (current.recall owner) (current.observe app owner) :=
           fun action => app.turnScheduledPolicy_of_none _ _ _ _ _ _ turn
@@ -148,22 +155,25 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
               (turn_none_of_first owner event _ _ turn before entry member)
           rw [prior]
           have selected : family (current.recall owner) (current.observe app owner) =
-              sourceServiceOpportunity setup leaks profile owner event (current.recall owner)
-                (current.observe app owner) :=
+              sourceServiceCanonicalOpportunity setup leaks bound profile owner event
+                (current.recall owner) (current.observe app owner) :=
             app.turnScheduledPolicy_selected _ (0 : Fin (turns + 1)) _ _ _ _ turn
-          have members : ∀ action, decidedTurnPolicy setup leaks owner event action
+          have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
               (current.recall owner) (current.observe app owner) =
-                decidedOpportunity setup leaks owner event action (current.recall owner)
+                decidedOpportunity setup leaks bound owner event action (current.recall owner)
                   (current.observe app owner) :=
             fun action => app.turnScheduledPolicy_selected _ (0 : Fin 1) _ _ _ _ turn
           rw [selected]
           simp only [members]
-          unfold sourceServiceOpportunity decidedOpportunity
+          unfold sourceServiceCanonicalOpportunity decidedOpportunity
           by_cases recorded : (runtime setup).eventRecorded leaks (current.recall owner) event
           · simp only [recorded, ↓reduceIte, PMF.bind_const]
-          · simp only [recorded, Bool.false_eq_true, ↓reduceIte]
-            rw [policy current same, PMF.bind_map]
-            rfl
+          · by_cases fits : PublicView.InclusionFitsDeadline (runtime setup) bound
+                (current.observe app owner).application.publicView event
+            · simp only [recorded, fits, Bool.false_eq_true, ↓reduceIte]
+              rw [policy current same, PMF.bind_map]
+              rfl
+            · simp only [recorded, fits, Bool.false_eq_true, ↓reduceIte, PMF.bind_const]
         · have other : ∀ slot : Fin 1, some index ≠ some slot.val := by
             intro slot equal
             exact zero ((Option.some.inj equal).trans (Fin.val_eq_zero slot))
@@ -175,7 +185,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
           rw [show family (current.recall owner) (current.observe app owner) = _ from
             app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun slot chosen => by
               rw [turn]; exact otherFamily slot chosen)]
-          have members : ∀ action, decidedTurnPolicy setup leaks owner event action
+          have members : ∀ action, decidedTurnPolicy setup leaks bound owner event action
               (current.recall owner) (current.observe app owner) =
                 app.replayPolicy (current.recall owner) (current.observe app owner) :=
             fun action => app.turnScheduledPolicy_unselected _ _ _ _ _ _ (fun slot chosen => by
@@ -219,7 +229,7 @@ theorem firstTurn_runUntil_mixture {scheduler : (application setup leaks).Schedu
   change app.runUntil scheduler (Function.update (fun _ => app.replayPolicy) owner family) stop
     count execution = _
   rw [congruent, ← app.runUntil_policyMixture scheduler law
-    (decidedTurnPolicy setup leaks owner event) owner _ stop count execution]
+    (decidedTurnPolicy setup leaks bound owner event) owner _ stop count execution]
   have prior : mixture.posterior (execution.recall owner) = law := by
     apply app.policyMixture_posterior_of_agree _ _ app.replayPolicy
     intro before entry member action
@@ -252,9 +262,9 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           fun next => sourceContinuation setup profile (rank + 1) next) ∧
       (∀ owner, (graph setup).actor? event = some owner →
         ∀ current : (application setup leaks).Execution, current.application.config = config →
-          sourceServicePolicy setup leaks profile owner (current.recall owner)
+          sourceServiceCanonicalPolicy setup leaks profile owner (current.recall owner)
               (current.observe (application setup leaks) owner) =
-            law.map fun action => (runtime setup).serviceDecision leaks owner
+            law.map fun action => (runtime setup).canonicalServiceDecision leaks owner
               (current.recall owner) (current.observe (application setup leaks) owner) event
               action) ∧
       ((∀ who, (profile who).EffectiveDisclosures setup.program []
@@ -392,7 +402,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
       · intro who owned current sameConfig
         have whoEq : who = owner := Option.some.inj (owned.symm.trans actor)
         subst whoEq
-        have law := sourceServicePolicy_commit setup leaks fresh guard next profile
+        have law := sourceServiceCanonicalPolicy_commit setup leaks fresh guard next profile
           residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
@@ -468,8 +478,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
       · intro who owned current sameConfig
         have whoEq : who = owner := Option.some.inj (owned.symm.trans actor)
         subst whoEq
-        have law := sourceServicePolicy_reveal setup leaks fresh selected unresolved next profile
-          residualProfile refs source embedding refsBefore rank aligned current
+        have law := sourceServiceCanonicalPolicy_reveal setup leaks fresh selected unresolved next
+          profile residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
         rw [law, PMF.map_comp]
