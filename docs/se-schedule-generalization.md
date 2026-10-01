@@ -508,18 +508,20 @@ history, including off-path ones:
    owner is activated within `r event` slots. Further activations of anyone
    are allowed.
 2. **Protected inclusion within `Δ event`.** When the owner has emitted
-   exactly one packet addressed to its event, and did so while the event was
-   ready in slot `t`, that packet is included by the end of slot `t + Δ event`
+   exactly one packet addressed to its event, authored it, and did so while
+   the event was ready in slot `t`, that packet is included by the end of slot
+   `t + Δ event`
    unless the event has completed. Including any other packet, in any order, is
    allowed. This is today's reserved `ServiceInstruction.includeLatest`, stated
    as a deadline instead of a calendar position. Only the sole packet is
    protected: replays keep the original author and identifier, so a third
    party can re-queue an owner's older packet behind a newer one, and the
    calendar's latest-by-author selector then includes the stale copy. A
-   prescribed owner emits one packet per event, and every copy of it carries
-   its identifier, so timeliness of prescribed play needs nothing more. Several
-   packets from one owner for one event are a deviation, whose law the
-   scheduler may shape (milestone 5).
+   prescribed owner submits one packet of its own per event, and every copy of
+   it carries its identifier, so timeliness of prescribed play needs nothing
+   more. Several packets from one owner for one event, or another player's
+   packet relayed as the owner's move, are deviations, whose law the scheduler
+   may shape (milestone 5).
 3. **Lazy settlement.** In every slot, every ready sample event is executed,
    and every ready event whose deadline has elapsed is expired. Anyone may
    call these.
