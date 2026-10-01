@@ -510,9 +510,8 @@ history, including off-path ones:
 2. **Protected inclusion within `Δ event`.** When the owner has emitted
    exactly one packet addressed to its event, authored it, and did so while
    the event was ready in slot `t`, that packet is included by the end of slot
-   `t + Δ event`
-   unless the event has completed. Including any other packet, in any order, is
-   allowed. This is today's reserved `ServiceInstruction.includeLatest`, stated
+   `t + Δ event` unless the event has completed. Including any other packet, in
+   any order, is allowed. This is today's reserved `ServiceInstruction.includeLatest`, stated
    as a deadline instead of a calendar position. Only the sole packet is
    protected: replays keep the original author and identifier, so a third
    party can re-queue an owner's older packet behind a newer one, and the
