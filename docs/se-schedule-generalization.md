@@ -507,12 +507,19 @@ history, including off-path ones:
 1. **Opportunity within `r event`.** When an owned event becomes ready, its
    owner is activated within `r event` slots. Further activations of anyone
    are allowed.
-2. **Protected inclusion within `Δ event`.** The owner's latest unpublished
-   packet addressed to a ready event, emitted in slot `t`, is included by the
-   end of slot `t + Δ event` unless the event has completed. Including any
-   other packet, in any order, is allowed. This is today's reserved
-   `ServiceInstruction.includeLatest`, stated as a deadline instead of a calendar
-   position.
+2. **Protected inclusion within `Δ event`.** When the owner has emitted
+   exactly one packet addressed to its event, and did so while the event was
+   ready in slot `t`, that packet is included by the end of slot `t + Δ event`
+   unless the event has completed. Including any other packet, in any order, is
+   allowed. This is today's reserved `ServiceInstruction.includeLatest`, stated
+   as a deadline instead of a calendar position. Only the sole packet is
+   protected: replays keep the original author and identifier, so a third
+   party can re-queue an owner's older packet behind a newer one, and the
+   calendar's latest-by-author selector then includes the stale copy. A
+   prescribed owner emits one packet per event, and every copy of it carries
+   its identifier, so timeliness of prescribed play needs nothing more. Several
+   packets from one owner for one event are a deviation, whose law the
+   scheduler may shape (milestone 5).
 3. **Lazy settlement.** In every slot, every ready sample event is executed,
    and every ready event whose deadline has elapsed is expired. Anyone may
    call these.
@@ -658,14 +665,20 @@ and is committed separately.
    and the instance `rosterScheduler` with `r event = event.val` and
    `Δ event = 0`.
    Small, and it fixes the vocabulary.
-2. **Phase without position, still on the calendar.** Replace
-   `DecisionPhase.slot` and `DecisionPhase.position` by the sole ready event
-   and the owner's own response count, keeping `rosterScheduler`. The theorem
-   is unchanged. This is the large mechanical refactor (about 94 files refer
-   to the roster plan). Do it as an inventory-then-batch port.
-3. **Completion-stopped phase law.** Prove it for an arbitrary contract
-   scheduler. Re-derive `SourceServicePhaseLaw` and the continuation
-   comparisons from it, still instantiated at the calendar.
+2. **Completion-stopped phase law.** The proof already factors through one
+   continuation bridge, `TimedApproximant.response_continuation_law`: the
+   readout after a response is the configuration law at the next event
+   boundary, bound with the source continuation from there. Only its
+   `DecisionPhase.tail`, the rest of the calendar block, ties it to the
+   calendar. Define the boundary law for an arbitrary contract scheduler (run
+   until the current event completes), prove the bridge for it, and show it
+   equals the calendar's block law at `rosterScheduler`. The theorem is
+   unchanged.
+3. **Phase without position.** With the bridge independent of the block,
+   replace `DecisionPhase.slot` and `DecisionPhase.position` by the sole ready
+   event and the owner's own response count, still at the calendar. This is
+   the large mechanical refactor (about 94 files refer to the roster plan). Do
+   it as an inventory-then-batch port.
 4. **Depth-free extension and proportional beliefs.** Retarget the
    fixed-depth Bayes projections and restriction extensions; build beliefs at
    scheduler-created sites.
@@ -686,8 +699,8 @@ stays green throughout; only milestone 6 changes its statement.
 ### Risks and open questions
 
 - **Off-path contract obligations.** The contract must hold at histories
-  where a deviator floods the pool. Requirement 2 protects only the owner's
-  latest packet, and requirement 4 bounds each slot, so flooding cannot starve
+  where a deviator floods the pool. Requirement 2 protects only an owner's
+  sole packet, and requirement 4 bounds each slot, so flooding cannot starve
   protected inclusion. But a concrete builder must be checked against this.
 - **The deviation lottery** (milestone 5) is the least understood obligation.
   If the builder's choice among a deviator's packets can depend on something
