@@ -669,15 +669,28 @@ public events has completed.
   with small probability, matching the chain guarantee cited above.
 - **Joint transmission-and-ordering deviations.** A separate theorem in which
   the order is part of a player's deviation. Not part of this plan.
-- **Prescribed rebroadcasting is a proof device to retire.** Off-turn play is
-  `Interaction.ReactiveApplication.replayPolicy`, uniform over silence and
-  every known identifier, including relays of other players' leaked packets.
-  It records and reports nothing, so it is not a watcher role; its only
-  purpose is full support. The limit profile should stay silent off-turn,
-  with rebroadcasts only as ε-trembles in the approximants, so that beliefs
-  after a rebroadcast come from the trembles. This touches the menus, the
-  couplings and the posterior proofs, so it is scheduled after the general
-  theorem.
+- **Copies leave the model.** Replays (rebroadcasting a known envelope
+  under its original author and identifier) were meant to model replay
+  attacks, but they cannot: a copy stays the original author's message, and
+  a fresh submission of another player's handle is rejected because
+  `handle` requires the handle's owner to be the sender. That ownership check
+  is the model's counterpart of binding the committer into a commitment, and
+  an implementation that omits it cannot refine the model. With a builder
+  that sees the whole pool at once, copies have no legitimate role. Their only
+  uses were prescribed rebroadcasting (a full-support proof device),
+  duplicate inclusions, packets kept alive past their deadline, and builder
+  sensitivity to copies. Removing them makes off-turn sites single-action and
+  needs no deduplication clause. The distinct-identifier audit count stays: it
+  is what a contract keeps as a nonce if a chain does duplicate.
+- **Send-time audit evidence (open).** The per-packet check
+  (`EventGraphRuntime.permittedServiceEnvelope`) judges a packet against the
+  public view at the moment it was sent: readiness, the deadline, and the
+  serial against the sender's ledger. An auditor cannot prove send time; it
+  sees a packet when it receives it, and a missed binding is attributable
+  only after the deadline. An implementable variant would have each packet
+  sign the block it was made against and check conformance relative to that
+  block; what claiming an older block permits is not yet analysed. Late
+  sends are not charged: they are deferral, and end in inclusion or a miss.
 
 ### Milestones
 
@@ -857,19 +870,17 @@ Open obligations this creates:
   owner has publicly missed. If such histories are reached only through
   removed actions, the extension argument supplies the continuation as it
   does for charged evidence today.
-- **The audit gate (proposed).** The policy stops fresh calls once protected
-  inclusion can no longer land before the deadline, but the audit permits
-  them until the deadline. Calls in that gap are uncharged and their outcome
-  is a builder lottery others observe. Proposed: the audit permits a fresh
-  call only while `clock - entered + bound < deadline`, which is today's rule
-  at bound 0.
-- **Builder sensitivity to rebroadcasts (proposed).** The builder reads the
-  pool, so a rebroadcast can change whether a waiting owner gets another
-  turn, and off-turn choices then affect payoffs. Proposed: a contract clause
-  that the builder's decisions do not change when copies of an identifier
-  already pending or on the ledger are added (builders deduplicate by
-  transaction hash). Whether the calendar satisfies it literally is
-  unchecked.
+- **Late sends.** The policy stops fresh calls once protected inclusion can
+  no longer land before the deadline, but an auditor cannot see send time,
+  so later sends are not charged. They are retained deferral: they land or
+  end in a charged miss.
+- **Play after a miss (proposed route).** The proof would pass through an
+  extended source with a penalized "public miss" move at each binding. The
+  restriction extension supplies play after a miss there, because the penalty
+  pays its comparison, and compiled deferral is the mixture of that miss and
+  deciding later. This requires the chance that a deferring owner gets no
+  further turn to be independent of hidden values given the owner's
+  information. To be validated by a finite probe before implementation.
 
 ### Risks and open questions
 
