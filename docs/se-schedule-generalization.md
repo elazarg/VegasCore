@@ -712,26 +712,43 @@ public events has completed.
   sensitivity to copies. Removing them makes off-turn sites single-action and
   needs no deduplication clause. The distinct-identifier audit count stays: it
   is what a contract keeps as a nonce if a chain does duplicate.
-- **Readiness tokens replace send-time evidence (decided).** The per-packet
-  check (`EventGraphRuntime.permittedServiceEnvelope`) judges a packet
-  against the public view at the moment it was sent, but an auditor cannot
-  prove send time. Instead, when an event becomes ready the contract fixes a
-  readiness token that nobody can know earlier (on EVM, derived from the
-  block hash of the completing transaction, or a running hash of the
-  contract's own completions), and every packet for the event must carry it.
-  A packet then cannot exist before its prerequisites have landed, so "too
-  early" is a property of the packet alone, decidable at any time; late
-  sends are not charged (they are deferral, and end in inclusion or a miss).
-  The watcher reports with its own transaction carrying the signed
-  offending packet, and the contract decides it at settlement. The builder
-  enforces nothing: its report-inclusion duty is deleted, and the only new
-  chain assumption is a challenge window (a report sent before the last
-  deadline is included within `W` slots, and settlement waits `W`), the
-  standard fraud-proof assumption. Two signed packets of one author for one
-  event, both with the valid token, are equivocation evidence on their own,
-  which may replace the serial count. Order: tokens in the contract and the
-  packet format; watcher reports and the challenge window; then removal of
-  copies; then, optionally, equivocation evidence.
+- **Packets are judged against the settled record (decided).** The
+  per-packet check (`EventGraphRuntime.permittedServiceEnvelope`) judges a
+  packet against the public view at the moment it was sent, but an auditor
+  cannot prove send time. Two changes replace that.
+  - *Readiness tokens.* Once an event's direct prerequisites have completed,
+    packets for it carry a token naming the event. The sender never writes
+    it: it is attached at emission from the contract state the sender sees,
+    so a packet made before readiness has none, exactly. The token carries
+    no creation time and is valid only for its own event, so pretending a
+    packet is older is not expressible. On EVM it is a hash of the
+    completing block.
+  - *Settled-record verdicts.* "Too late" cannot be a token property, and it
+    matters: an opening sent after its owner withheld is verifiable
+    disclosure, not cheap talk, and would let a withholding owner reveal
+    for free. So a packet's verdict is a function of its content and the
+    contract's final record: for example, an opening for an event settled
+    without that disclosure is a violation, whenever it was sent. A
+    prescribed owner whose opening misses inclusion is charged, as for a
+    missed binding. The remaining send-time reads (accepted handle, guards,
+    canonical slot) are reconstructed from the record; the serial gives way
+    to equivocation evidence (two signed packets of one author for one
+    event).
+
+  The audit theorem is the strongest we can prove; the watcher is the
+  weakest, most realistic design that still supplies the evidence the audit
+  needs, and may be split into several watchers if that is easier to prove,
+  since only the semantics matters. It reports with its own transaction
+  carrying the signed offending packets, and the contract decides at
+  settlement. The builder enforces nothing: its report-inclusion duty is
+  deleted, and the only new chain assumption is a challenge window (a report
+  sent before the last deadline is included within `W` slots, and settlement
+  waits `W`), the standard fraud-proof assumption. Order: tokens and
+  settled-record verdicts with the watcher's reports; then removal of copies.
+- **Off-chain and covert-channel talk is a stated limitation**, verifiable or
+  not. A withholding owner can always prove its value off-chain by showing
+  the commitment's opening; no on-chain mechanism can catch that, so it is
+  hard evidence outside the model, unlike cheap talk.
 
 ### Milestones
 
