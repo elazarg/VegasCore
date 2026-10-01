@@ -264,7 +264,7 @@ theorem handle_activatedAt_of_not_completed {inputs : graph.Inputs}
 
 omit [DecidableEq Player] in
 /-- Environment commands advance the clock by exactly their declared tick
-count.  Grant, sample, and expiry commands contribute zero ticks. -/
+count.  Sample and expiry commands contribute zero ticks. -/
 theorem environmentStep_clock (runtime : EventGraphRuntime graph)
     (state next : State graph) (command : EnvironmentCommand graph)
     (member : next ∈ (environmentStep runtime state command).support) :

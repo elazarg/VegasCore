@@ -51,11 +51,11 @@ theorem guessReward_of_binding (control : app.Control) (value guess : Publicatio
 theorem alice_binding_at_guess (who : Player) (guesser : who ≠ alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control) :
+    (turn : NativeTurn (nativeBindingEvent who) control) :
     ∃ value, aliceBindingRef.get? control.execution.application.config.store = some value := by
   have complete := earlier_completed (nativeBindingEvent who) aliceBinding
     (by fin_cases who <;> first | exact False.elim (guesser rfl) | decide)
-    control trace (by rwa [native_binding_owner]) granted
+    control trace (by rwa [native_binding_owner]) turn
   have field := (control.execution.application.config.output_available aliceBinding).mpr complete
   exact Option.isSome_iff_exists.mp (aliceBindingRef.get?_isSome _ field)
 
@@ -98,19 +98,19 @@ theorem guesser_continuation_bound (who : Player) (guesser : who ≠ alice)
     (players : Profile model.behavioralSignature) (opens : Opens players alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control)
+    (turn : NativeTurn (nativeBindingEvent who) control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom players (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :
     ∃ result, final.state = some result ∧ nativeUtility who final.state ≤
       guessReward (((nativeBindingRef who).get? result.execution.application.config.store).getD
         .failure) (some control) := by
-  obtain ⟨value, stored⟩ := alice_binding_at_guess who guesser control trace active granted
+  obtain ⟨value, stored⟩ := alice_binding_at_guess who guesser control trace active turn
   obtain ⟨result, stateEq, _⟩ := (binding_invariant alice value).behavioral_continuation menu
     (PMF.pure nativeInitial) nativeHorizon scheduler players _ control trace final stored
       supported
   have published := publication_from_earlier_binding players (nativeBindingEvent who) alice
-    (by fin_cases who <;> decide) control trace (by rwa [native_binding_owner]) granted value
+    (by fin_cases who <;> decide) control trace (by rwa [native_binding_owner]) turn value
     stored opens final supported
   refine ⟨result, stateEq, ?_⟩
   rcases final with ⟨state, finalTrace⟩
@@ -123,23 +123,23 @@ theorem guesser_continuation_bound (who : Player) (guesser : who ≠ alice)
 theorem profile_guesser_payoff (who : Player) (guesser : who ≠ alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control)
+    (turn : NativeTurn (nativeBindingEvent who) control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :
     nativeUtility who final.state = guessReward
       (.success (publicGuess (control.execution.observe app who))) (some control) := by
-  obtain ⟨value, stored⟩ := alice_binding_at_guess who guesser control trace active granted
+  obtain ⟨value, stored⟩ := alice_binding_at_guess who guesser control trace active turn
   have alicePublished := publication_from_earlier_binding profile (nativeBindingEvent who) alice
-    (by fin_cases who <;> decide) control trace (by rwa [native_binding_owner]) granted value
+    (by fin_cases who <;> decide) control trace (by rwa [native_binding_owner]) turn value
     stored (profile_Opens alice) final supported
-  obtain ⟨result, stateEq, bound⟩ := profile_binding_success who control trace active granted
+  obtain ⟨result, stateEq, bound⟩ := profile_binding_success who control trace active turn
     (2 * nativeHorizon + 1) (full_enough control trace) final supported
   have bitEq : prescribedBit who (control.execution.observe app who) =
       publicGuess (control.execution.observe app who) := by simp [prescribedBit, guesser]
   rw [bitEq] at bound
   have published := final_binding_published profile (nativeBindingEvent who) who
-    (by fin_cases who <;> decide) control trace (by rwa [native_binding_owner]) granted
+    (by fin_cases who <;> decide) control trace (by rwa [native_binding_owner]) turn
     (profile_Opens who) final supported result stateEq _ bound
   rw [stateEq]
   change utility (nativeResults result.execution.application.config) who = _

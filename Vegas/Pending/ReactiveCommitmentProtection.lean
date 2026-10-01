@@ -176,7 +176,7 @@ theorem prescribedReactivePolicy_commitment_fresh (runtime : EventGraphRuntime g
   unfold prescribedReactiveResponse at issued
   split at issued
   · cases (PMF.mem_support_pure_iff _ _).mp issued; cases sent
-  · rename_i event grant
+  · rename_i event turn
     split at issued
     · cases (PMF.mem_support_pure_iff _ _).mp issued; cases sent
     · split at issued

@@ -58,12 +58,12 @@ theorem bob_corrective_response_available (bit : Bool)
 theorem bob_correction_fresh (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control))
     (active : control.actor = some bob)
-    (granted : NativeTurn bobBinding control) (bit : Bool) :
+    (turn : NativeTurn bobBinding control) (bit : Bool) :
     ∃ serial, serial < 2 ∧
       control.execution.application.candidates.lookup (bob, .prepared serial) = .fresh ∧
       bobCorrectiveResponse bit (control.execution.observe nativeApp bob) =
         bobCorrection serial bit := by
-  have recall := native_bob_binding_recall control trace active granted
+  have recall := native_bob_binding_recall control trace active turn
   have rawTrace := nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler trace
   have recorded := nativeRuntime.candidateRecall_history nativeLeaks (PMF.pure nativeInputs)
@@ -154,7 +154,7 @@ including after an arbitrary first response. No extra candidate is assumed. -/
 theorem bob_corrective_response_realizes (players : Player → nativeApp.Policy)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some bob)
-    (granted : NativeTurn bobBinding control)
+    (turn : NativeTurn bobBinding control)
     (unfinished : bobBinding ∉ control.execution.application.config.cut.completed) (bit : Bool) :
     ∃ next, bobBindingRef.get? next.config.store = some (.success bit) ∧
       (nativeRuntime.interactionStep nativeLeaks players nativeNetwork
@@ -162,11 +162,11 @@ theorem bob_corrective_response_realizes (players : Player → nativeApp.Policy)
         (control.execution.respond nativeApp bob
           (bobCorrectiveResponse bit (control.execution.observe nativeApp bob)))).map
             (fun result => result.application) = PMF.pure next := by
-  have position := (native_decision_cursor bobBinding control trace bob active granted).2
+  have position := (native_decision_cursor bobBinding control trace bob active turn).2
   obtain ⟨_, service⟩ := native_decision_service bobBinding control trace active position
   obtain ⟨ready, timely⟩ := service.resolve_left unfinished
   obtain ⟨valid, _, serials⟩ := native_history_invariants control trace
-  obtain ⟨serial, _, fresh, response⟩ := bob_correction_fresh control trace active granted bit
+  obtain ⟨serial, _, fresh, response⟩ := bob_correction_fresh control trace active turn bit
   rw [response]
   exact bob_correction_realizes players control.execution serial bit valid serials fresh
     ready timely

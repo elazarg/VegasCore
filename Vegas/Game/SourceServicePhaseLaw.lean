@@ -4,7 +4,7 @@ import Vegas.Game.SourceServiceExecution
 
 /-! # Source transition laws of complete native service blocks
 
-The actual grant, activation roster, protected service and expiry are evaluated
+The actual activation roster, protected service and expiry are evaluated
 at operational source boundaries. Their deterministic source-state readout has
 the original source transition law. Native traffic and recalls remain in the
 physical runner and are integrated out only by this stated readout.

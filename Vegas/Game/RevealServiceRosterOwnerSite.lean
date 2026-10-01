@@ -70,7 +70,7 @@ theorem roster_owner_site
   intro menu scheduler horizon model assessment native who site past view packet siteInput fresh
   let app := application setup leaks
   let extended := bounds.withInitialValues (initialLaw setup)
-  obtain ⟨event, candidate, raw, granted, owned, opening, packetEq, notRecorded⟩ :=
+  obtain ⟨event, candidate, raw, turn, owned, opening, packetEq, notRecorded⟩ :=
     rosterFresh?_shape setup leaks rosters who past view packet fresh
   obtain ⟨history, _, _⟩ := site.2
   have active := InformationModel.InformationSite.active model site history
@@ -95,7 +95,7 @@ theorem roster_owner_site
       have viewEq : control.execution.observe app who = view := congrArg Prod.snd input
       have serving : control.execution.application.publicView.ownTurn? who = some event := by
         have publicTurn := congrArg (fun seen => seen.application.publicView.ownTurn? who) viewEq
-        exact publicTurn.trans granted
+        exact publicTurn.trans turn
       obtain ⟨sourceSite, sourceView, sourceDepth⟩ :=
         roster_owner_source_site setup leaks extended rosters network reveals openable admission
           who control traced active event owned serving
@@ -104,14 +104,14 @@ theorem roster_owner_site
         sourceSite sourceView
       rw [viewEq] at choiceLaw
       obtain ⟨actual, slot, boundary, prior, sample, initial, state, selected, _initialSupport,
-          _related, _sourceSupport, phaseGrant, offset, _serials, _published, reached,
+          _related, _sourceSupport, startReady, offset, _serials, _published, reached,
           activated, unchanged, position⟩ :=
         roster_decision_phase setup leaks extended rosters network reveals openable
           who control traced active
       have sameEvent : actual = event := by
         have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
         rw [unchanged] at eventReady
-        exact ((soleReady_of_ready setup boundary.application phaseGrant).2 event
+        exact ((soleReady_of_ready setup boundary.application startReady).2 event
           eventReady).symm
       subst actual
       have pastCount : past.length - rosterOffset setup rosters who event =
@@ -145,7 +145,7 @@ theorem roster_owner_site
         ((rosters event).take slot) before.length selectedPlan prefixLaw site history control
         current
         (by rw [beforeLength]; exact position) sourceSite sourceView sourceDepth
-      refine ⟨event, owned, candidate, raw, sourceSite, granted, opening, packetEq, ?_, ?_,
+      refine ⟨event, owned, candidate, raw, sourceSite, turn, opening, packetEq, ?_, ?_,
         choiceLaw, posterior⟩
       · rintro ⟨entry, member, same⟩
         exact notRecorded entry member (same.trans packetEq.symm)

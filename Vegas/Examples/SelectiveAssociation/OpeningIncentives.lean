@@ -44,7 +44,7 @@ theorem native_information_control
 theorem native_opening_fiber_lower
     (profile : ∀ who, nativeModel.BehavioralPolicy who)
     (who : Player) (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
+    (turn : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -57,8 +57,8 @@ theorem native_opening_fiber_lower
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
   subst state
-  have grant : NativeTurn (nativePublicationEvent who) control :=
-    .of_turnEvent? active (by rw [recall]; exact granted)
+  have ownerTurn : NativeTurn (nativePublicationEvent who) control :=
+    .of_turnEvent? active (by rw [recall]; exact turn)
   have incomplete : nativePublicationEvent who ∉
       control.execution.application.config.cut.completed := by
     rw [← observed] at unfinished
@@ -73,7 +73,7 @@ theorem native_opening_fiber_lower
       (nativeGraph.playerStore who control.execution.application.config.store) = _ at stored
     rw [(nativeBindingRef who).get?_playerStore who _ rfl] at stored
     exact stored
-  exact native_opening_behavioral_lower profile control trace who bit active grant incomplete
+  exact native_opening_behavioral_lower profile control trace who bit active ownerTurn incomplete
     binding (by subst past; subst view; exact opens)
 
 theorem native_failed_utility (config : nativeGraph.Config) (who : Player)
@@ -99,7 +99,7 @@ theorem native_not_supported_failing_opening
     (site : nativeModel.InformationSite who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
+    (turn : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -140,7 +140,7 @@ theorem native_not_supported_failing_opening
   · intro history
     have good := native_opening_fiber_lower
       (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy who alternative)
-      who past view bit granted unfinished stored
+      who past view bit turn unfinished stored
     exact good (by
       rw [Profile.update]
       rw [Function.update_self]

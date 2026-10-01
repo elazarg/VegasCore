@@ -44,22 +44,23 @@ theorem roster_owner_choice_at_history
     sourceChoiceLaw setup leaks (setup.decodeBehavioralProfile admission profile) who
       (control.execution.observe (application setup leaks) who) =
         (profile who sourceSite.1).map (fun choice => OwnAction.disclosure choice.1) := by
-  obtain ⟨actual, _, granted, _, _, initial, state, _, initialSupport, related,
-      sourceSupport, grantedAt, _, _, _, _, _, unchanged, _position⟩ :=
+  obtain ⟨actual, _, phaseStart, _, _, initial, state, _, initialSupport, related,
+      sourceSupport, startReady, _, _, _, _, _, unchanged, _position⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have same : actual = event := by
     have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
     rw [unchanged] at eventReady
-    exact ((soleReady_of_ready setup granted.application grantedAt).2 event eventReady).symm
+    exact ((soleReady_of_ready setup phaseStart.application startReady).2 event eventReady).symm
   subst actual
   obtain ⟨site, observed, choiceLaw, _candidate⟩ :=
     roster_owner_choice_data setup leaks bounds reveals admission profile who event owned
-      initial initialSupport state granted related sourceSupport
+      initial initialSupport state phaseStart related sourceSupport
   have decoded := PublicPrefixCheckpoint.decode setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
-    (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state granted related
-  change sourcePrefix? setup event.val granted.application.config = some state at decoded
+    (Revelations.initial setup.context) (outputRef setup.program)
+      0 event.val state phaseStart related
+  change sourcePrefix? setup event.val phaseStart.application.config = some state at decoded
   have sourceSame : site = sourceSite := by
     apply Subtype.ext
     rw [observed, sourceView, unchanged, decoded]

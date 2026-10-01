@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- A completed phase whose envelopes are all published supplies the next
-phase's conformance invariant for every public grant and clock value. -/
+phase's conformance invariant for every clock value. -/
 theorem service_published_conformance
     (execution : (runtime.reactiveApplication leaks).Execution)
     (published : execution.network.Satisfies fun message =>

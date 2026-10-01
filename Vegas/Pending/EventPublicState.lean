@@ -52,7 +52,7 @@ def OwnTurn (view : PublicView graph) (who : Player) (event : graph.EventId) : P
 
 open Classical in
 /-- The least ready event at which `who` acts, if any. Prescribed clients
-serve this event; no service grant is consulted. -/
+serve this event. -/
 def ownTurn? (view : PublicView graph) (who : Player) : Option graph.EventId :=
   (List.finRange graph.order.eventCount).find? fun event =>
     decide (view.EventReady event ∧ graph.actor? event = some who)

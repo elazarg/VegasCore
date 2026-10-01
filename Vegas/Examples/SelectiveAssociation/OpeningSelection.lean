@@ -50,7 +50,7 @@ The conclusion even allows foreign envelopes recalled from earlier replays. -/
 theorem native_old_publication_unique (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : NativeTurn (nativePublicationEvent who) control)
+    (turn : NativeTurn (nativePublicationEvent who) control)
     (bit : Bool)
     (stored : (nativeBindingRef who).get? control.execution.application.config.store =
       some (.success bit)) :
@@ -78,7 +78,7 @@ theorem native_old_publication_unique (control : nativeApp.Control)
     native_accepted_recall control trace event candidate accepted
   rw [owner] at output
   have count := native_decision_recall_count (nativePublicationEvent who) control trace who
-    active granted who
+    active turn who
   have bounded : (control.execution.recall who).length ≤ 2 := by
     rw [count]
     fin_cases who <;> decide
@@ -131,7 +131,7 @@ theorem native_opening_reserved_local (left right : nativeApp.Control)
     (who : Player) (leftActive : left.actor = some who) (rightActive : right.actor = some who)
     (sameInput : (left.execution.recall who, left.execution.observe nativeApp who) =
       (right.execution.recall who, right.execution.observe nativeApp who))
-    (granted : NativeTurn (nativePublicationEvent who) left)
+    (turn : NativeTurn (nativePublicationEvent who) left)
     (bit : Bool)
     (stored : (nativeBindingRef who).get? left.execution.application.config.store =
       some (.success bit))
@@ -148,10 +148,10 @@ theorem native_opening_reserved_local (left right : nativeApp.Control)
   have views := congrArg Prod.snd sameInput
   have applicationViews := congrArg ReactiveApplication.PlayerView.application views
   have ledgers := congrArg (fun view : nativeApp.PlayerView => view.messages.ledger) views
-  have rightGrant : NativeTurn (nativePublicationEvent who) right :=
+  have rightTurn : NativeTurn (nativePublicationEvent who) right :=
     .of_turnEvent? rightActive (by
       rw [← show left.execution.recall who = right.execution.recall who from recalls]
-      exact granted.turnEvent?_of_active leftActive)
+      exact turn.turnEvent?_of_active leftActive)
   have rightStored : (nativeBindingRef who).get? right.execution.application.config.store =
       some (.success bit) := by
     have bindingViews := congrArg (fun view : nativeApp.PlayerView =>
@@ -172,10 +172,10 @@ theorem native_opening_reserved_local (left right : nativeApp.Control)
     (nativePublicationEvent who) left.execution right.execution response ownerViews recalls ledgers
     leftOrigins rightOrigins leftRecall rightRecall leftRetained rightRetained
     (fun first firstMem second secondMem _ _ firstAt secondAt =>
-      native_old_publication_unique left leftTrace who leftActive granted bit stored
+      native_old_publication_unique left leftTrace who leftActive turn bit stored
         first firstMem second secondMem firstAt secondAt)
     (fun first firstMem second secondMem _ _ firstAt secondAt =>
-      native_old_publication_unique right rightTrace who rightActive rightGrant bit rightStored
+      native_old_publication_unique right rightTrace who rightActive rightTurn bit rightStored
         first firstMem second secondMem firstAt secondAt)
     leftSerials rightSerials (leftAudit response) (rightAudit response)
   dsimp only at law

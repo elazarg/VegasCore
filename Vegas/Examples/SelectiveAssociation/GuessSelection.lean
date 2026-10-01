@@ -20,11 +20,11 @@ variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket n
 
 theorem native_old_binding_unique (who : Player) (control : (serviceApp observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control) :
+    (turn : NativeTurn (nativeBindingEvent who) control) :
     nativeRuntime.UniqueEventOutput observation who (nativeBindingEvent who)
       (control.execution.recall who) := by
   have count := native_decision_recall_count (observation := observation) (nativeBindingEvent who)
-    control trace who active granted who
+    control trace who active turn who
   have bounded : (control.execution.recall who).length ≤ 1 := by
     rw [count]
     fin_cases who <;> decide
@@ -52,7 +52,7 @@ theorem native_binding_reserved_local (who : Player) (left right : (serviceApp o
     (leftActive : left.actor = some who) (rightActive : right.actor = some who)
     (sameInput : (left.execution.recall who, left.execution.observe (serviceApp observation) who) =
       (right.execution.recall who, right.execution.observe (serviceApp observation) who))
-    (granted : NativeTurn (nativeBindingEvent who) left)
+    (turn : NativeTurn (nativeBindingEvent who) left)
     (response : (serviceApp observation).Action) (players : Player → (serviceApp
       observation).Policy)
     (afterLeft afterRight : (serviceApp observation).Execution)
@@ -71,10 +71,10 @@ theorem native_binding_reserved_local (who : Player) (left right : (serviceApp o
   have applicationViews := congrArg ReactiveApplication.PlayerView.application views
   have ledgers := congrArg (fun view : (serviceApp observation).PlayerView =>
     view.messages.ledger) views
-  have rightGrant : NativeTurn (nativeBindingEvent who) right :=
+  have rightTurn : NativeTurn (nativeBindingEvent who) right :=
     .of_turnEvent? rightActive (by
       rw [← show left.execution.recall who = right.execution.recall who from recalls]
-      exact granted.turnEvent?_of_active leftActive)
+      exact turn.turnEvent?_of_active leftActive)
   obtain ⟨leftOrigins, leftRecall, leftRetained, leftSerials, leftMemory, leftAudit⟩ :=
     native_transport_history left leftTrace who leftActive
   obtain ⟨rightOrigins, rightRecall, rightRetained, rightSerials, rightMemory, rightAudit⟩ :=
@@ -85,8 +85,8 @@ theorem native_binding_reserved_local (who : Player) (left right : (serviceApp o
     (nativeBindingEvent who)
     left.execution right.execution response ownerViews recalls ledgers
     leftOrigins rightOrigins leftRecall rightRecall leftRetained rightRetained
-    (native_old_binding_unique who left leftTrace leftActive granted)
-    (native_old_binding_unique who right rightTrace rightActive rightGrant)
+    (native_old_binding_unique who left leftTrace leftActive turn)
+    (native_old_binding_unique who right rightTrace rightActive rightTurn)
     leftSerials rightSerials (leftAudit response) (rightAudit response)
   dsimp only at law
   rw [nativeRuntime.interaction_includeLatest_environment] at leftMem rightMem

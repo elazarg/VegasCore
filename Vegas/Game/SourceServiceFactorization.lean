@@ -116,7 +116,7 @@ theorem source_initial_memory_factorization
   rw [show read initial = read present.choose from
     source_initial_traffic_eq setup leaks focal initial present.choose present.choose_spec.2.symm]
 
-/-- A real grant, clock step or expiry preserves the traffic factorization.
+/-- A real clock step or expiry preserves the traffic factorization.
 The carried source configuration is proof data; the native application still
 performs the specified command, including its public effects and service recall. -/
 theorem source_maintenance_factorization

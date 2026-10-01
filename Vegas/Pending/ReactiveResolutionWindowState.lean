@@ -4,7 +4,7 @@ import Vegas.Pending.ReactiveResolutionWindowSupport
 
 /-! # Network state inside a retained disclosure window
 
-Within a granted resolve phase every retained response keeps the application.
+Within a served resolve phase every retained response keeps the application.
 Before the owner's opening all traffic stays published. The owner's opening is
 its only possible submission; afterwards that envelope is pending and
 unpublished, and every in-flight envelope is either published or a copy of it.
@@ -88,7 +88,7 @@ theorem ResolutionWindowState.learn {owner : Player} {event : graph.EventId}
   exact ⟨message, sender, addressed, pending, unpublished, packets.learn who sample⟩
 
 /-- Every retained response of every player keeps the window state of a
-granted resolve phase. -/
+served resolve phase. -/
 theorem ResolutionWindowState.respond (bounds : MessageBounds graph)
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))

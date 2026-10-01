@@ -89,7 +89,7 @@ theorem handle_result_playerView_congr (runtime : EventGraphRuntime graph)
   · cases same
   · exact Option.some.inj same
 
-/-- Clocks, grants and failure expiry preserve equality of the owner's view. -/
+/-- Clocks and failure expiry preserve equality of the owner's view. -/
 theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
     (left right : State graph) (who : Player) (command : EnvironmentCommand graph)
     (maintenance : ∀ event, command ≠ .executeSample event)

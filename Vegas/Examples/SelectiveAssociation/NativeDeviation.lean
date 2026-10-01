@@ -109,9 +109,9 @@ theorem native_alice_association (bit : Bool) (response : nativeApp.Action) :
   simp only [nativeAlicePolicy, counted, turn, ↓reduceIte]
 
 theorem native_alice_opening (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
-    (granted : nativeTurnEvent? alice past.length = some alicePublication) :
+    (turn : nativeTurnEvent? alice past.length = some alicePublication) :
     nativeAlicePolicy past view = PMF.pure (nativeOpeningResponse alice view) := by
-  simp only [nativeAlicePolicy, granted]
+  simp only [nativeAlicePolicy, turn]
   rw [ite_eq_right (by decide : alicePublication ≠ aliceBinding), ite_true]
 
 theorem native_alice_first_round (players : Player → nativeApp.Policy) :

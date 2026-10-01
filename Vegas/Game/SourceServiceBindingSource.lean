@@ -154,11 +154,11 @@ theorem exists_bindingSource (profile : BehavioralProfile service.setup.program)
     (isBinding : (graph service.setup).outputLayout phase.event = .binding owner payload) :
     Nonempty (BindingSource service.setup profile phase.event execution.application.config) := by
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
-      refsBefore, aligned, _, _, _, _, _, _, grant, _, _, _, _, publicEq, checkpoint, _⟩ :=
+      refsBefore, aligned, _, _, _, _, _, _, turn, _, _, _, _, publicEq, checkpoint, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := phase.sole.2 event grant.1
+  have same : event = phase.event := phase.sole.2 event turn.1
   subst same
   cases remaining with
   | ret result =>
@@ -204,12 +204,12 @@ theorem exists_revealSource (profile : BehavioralProfile service.setup.program)
     (isPublication : (graph service.setup).outputLayout phase.event = .publication payload) :
     Nonempty (RevealSource service.setup profile phase.event execution.application.config) := by
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
-      refsBefore, aligned, _, ⟨supported, inherits, _⟩, _, _, _, _, grant, _, _, _, _, publicEq,
+      refsBefore, aligned, _, ⟨supported, inherits, _⟩, _, _, _, _, turn, _, _, _, _, publicEq,
       checkpoint, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := phase.sole.2 event grant.1
+  have same : event = phase.event := phase.sole.2 event turn.1
   subst same
   cases remaining with
   | ret result =>

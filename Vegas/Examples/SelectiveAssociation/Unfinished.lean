@@ -108,15 +108,15 @@ theorem native_response_untouched (event : nativeGraph.EventId) :
   unfold nativeUntouched
   fin_cases event <;> decide
 
-/-- At every legal decision history, the granted current event is unfinished.
+/-- At every legal decision history, the event at its owner's turn is unfinished.
 This includes histories outside an assessment's positive-probability play. -/
 theorem native_decision_unfinished (event : nativeGraph.EventId) (control : (serviceApp
   observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : NativeTurn event control) :
+    (turn : NativeTurn event control) :
     event ∉ control.execution.application.config.cut.completed := by
-  have cursor := (native_decision_cursor event control trace who active granted).2
+  have cursor := (native_decision_cursor event control trace who active turn).2
   have raw := (serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon
     (serviceScheduler observation) trace
   apply native_no_early_history raw event

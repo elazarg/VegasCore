@@ -23,13 +23,13 @@ theorem native_binding_site_facts
     (view : (serviceApp observation).PlayerView) (control : (serviceApp observation).Control)
     (active : control.actor = some who) (recalled : control.execution.recall who = past)
     (observed : control.execution.observe (serviceApp observation) who = view)
-    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
+    (turn : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (unfinished : (nativeBindingEvent who) ∉
       view.application.publicView.observation.completionOrder) :
     NativeTurn (nativeBindingEvent who) control ∧
       (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed := by
   rw [← observed] at unfinished
-  refine ⟨.of_turnEvent? active (by rw [recalled]; exact granted), ?_⟩
+  refine ⟨.of_turnEvent? active (by rw [recalled]; exact turn), ?_⟩
   change (nativeBindingEvent who) ∉
     control.execution.application.config.history.map EventGraph.Completion.event at unfinished
   exact fun completed => unfinished
@@ -43,7 +43,7 @@ theorem native_committed_binding_local
     (who : Player)
     (profile : ∀ who, (serviceModel observation).BehavioralPolicy who)
     (past : List (serviceApp observation).PlayerEntry) (view : (serviceApp observation).PlayerView)
-    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
+    (turn : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (choice : (serviceModel observation).Choice who (some (past, view)))
     (first second : (serviceModel observation).InformationHistory who (some (past, view)))
     (firstFinal secondFinal : (serviceArena observation).History)
@@ -68,22 +68,22 @@ theorem native_committed_binding_local
   subst rightState
   let changed := Profile.update (sig := (serviceModel observation).behavioralSignature) profile who
     ((profile who).commit (some (past, view)) choice)
-  have leftGrant : NativeTurn (nativeBindingEvent who) left :=
-    .of_turnEvent? leftActive (by rw [leftRecall]; exact granted)
-  have rightGrant : NativeTurn (nativeBindingEvent who) right :=
-    .of_turnEvent? rightActive (by rw [rightRecall]; exact granted)
+  have leftTurn : NativeTurn (nativeBindingEvent who) left :=
+    .of_turnEvent? leftActive (by rw [leftRecall]; exact turn)
+  have rightTurn : NativeTurn (nativeBindingEvent who) right :=
+    .of_turnEvent? rightActive (by rw [rightRecall]; exact turn)
   have leftUnfinished := native_decision_unfinished (nativeBindingEvent who) left leftTrace who
-    leftActive leftGrant
+    leftActive leftTurn
   have rightUnfinished := native_decision_unfinished (nativeBindingEvent who) right rightTrace who
-    rightActive rightGrant
+    rightActive rightTurn
   obtain ⟨afterLeft, afterLeftMem, leftBound⟩ :=
     native_binding_settlement_behavioral who changed left
-    leftTrace response leftActive leftGrant leftUnfinished
+    leftTrace response leftActive leftTurn leftUnfinished
     (native_committed_response profile who _ choice response selected _ _
       (congrArg some (Prod.ext leftRecall leftView))) firstFinal firstMem
   obtain ⟨afterRight, afterRightMem, rightBound⟩ :=
     native_binding_settlement_behavioral who changed right
-    rightTrace response rightActive rightGrant rightUnfinished
+    rightTrace response rightActive rightTurn rightUnfinished
     (native_committed_response profile who _ choice response selected _ _
       (congrArg some (Prod.ext rightRecall rightView))) secondFinal secondMem
   have leftInput : (left.execution.recall who,
@@ -93,7 +93,7 @@ theorem native_committed_binding_local
       right.execution.observe (serviceApp observation) who) =
       (past, view) := Prod.ext rightRecall rightView
   have same := native_binding_reserved_local who left right leftTrace rightTrace leftActive
-    rightActive (leftInput.trans rightInput.symm) leftGrant response _ afterLeft afterRight
+    rightActive (leftInput.trans rightInput.symm) leftTurn response _ afterLeft afterRight
     afterLeftMem afterRightMem
   rw [leftBound, rightBound, same]
 
@@ -159,7 +159,7 @@ holds against the original arbitrary future strategy of every player. -/
 theorem native_bob_corrective_binding
     (profile : ∀ who, nativeModel.BehavioralPolicy who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : nativeTurnEvent? bob past.length = some bobBinding)
+    (turn : nativeTurnEvent? bob past.length = some bobBinding)
     (unfinished : bobBinding ∉ view.application.publicView.observation.completionOrder)
     (history : nativeModel.InformationHistory bob (some (past, view)))
     (final : nativeArena.History)
@@ -173,18 +173,18 @@ theorem native_bob_corrective_binding
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
   subst state
-  obtain ⟨grant, incomplete⟩ :=
-    native_binding_site_facts bob past view control active recall observed granted unfinished
+  obtain ⟨ownerTurn, incomplete⟩ :=
+    native_binding_site_facts bob past view control active recall observed turn unfinished
   let changed := Profile.update (sig := nativeModel.behavioralSignature) profile bob
     ((profile bob).commit (some (past, view)) (bobCorrectiveChoice bit past view))
   obtain ⟨middle, middleMem, result⟩ :=
     native_binding_settlement_behavioral bob changed control trace
-    (bobCorrectiveResponse bit view) active grant incomplete
+    (bobCorrectiveResponse bit view) active ownerTurn incomplete
     (native_committed_response profile bob _ (bobCorrectiveChoice bit past view) _ rfl _ _
       (congrArg some (Prod.ext recall observed))) final supported
   rw [← observed] at middleMem
   obtain ⟨next, stored, realized⟩ := bob_corrective_response_realizes _ control trace active
-    grant incomplete bit
+    ownerTurn incomplete bit
   have mapped : middle.application ∈ (PMF.pure next).support := by
     rw [← realized, PMF.support_map]
     exact ⟨middle, middleMem, rfl⟩

@@ -460,7 +460,7 @@ theorem environmentPolicyStep_remembered
       exact environmentStep_remembered runtime execution.native.application state
         applicationCommand stateMem
 
-/-- Application commands (clock, sampling, expiry, grants) change only the
+/-- Application commands (clock, sampling, expiry) change only the
 application state, never the message pool. -/
 theorem environmentPolicyStep_application_pool
     (runtime : EventGraphRuntime graph)

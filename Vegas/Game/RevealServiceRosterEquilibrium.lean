@@ -162,7 +162,7 @@ theorem roster_source_sequential_equilibrium_preserved
         exact mul_nonneg (positive n).le rangeNonnegative
     | some packet =>
         right
-        obtain ⟨event, owned, candidate, raw, sourceSite, grant, opening, packetEq, unopened,
+        obtain ⟨event, owned, candidate, raw, sourceSite, turn, opening, packetEq, unopened,
             inside, choiceLaw, posterior⟩ :=
           roster_owner_site setup leaks bounds rosters network reveals openable admission
             (sourceSequence n) (approximates n).1 (approximates n).2 (timing n) (timingFull n)
@@ -170,7 +170,7 @@ theorem roster_source_sequential_equilibrium_preserved
         rw [packetEq] at fresh
         obtain ⟨deviation, bound⟩ := roster_owner_comparison_of_posterior setup leaks bounds rosters
           network reveals openable admission (sourceSequence n) (approximates n).1
-          (timing n) (timingFull n) (sequence n) rfl who site past view observed event owned grant
+          (timing n) (timingFull n) (sequence n) rfl who site past view observed event owned turn
           candidate raw opening fresh unopened inside sourceSite choiceLaw posterior law
           (fun state => utility state who) range (weight n) rangeNonnegative
           (rosterTiming_prefix_le setup rosters coverage (weight n) (positive n).le (small n)

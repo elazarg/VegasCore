@@ -401,7 +401,7 @@ theorem run_repeated_stopped_coupling
             have recordedLeft : runtime.eventRecorded leaks (original.recall owner) event =
                 true := (runtime.eventRecorded_congr leaks _ _ frame.submissions event).trans
                   recorded
-            obtain ⟨valid, fresh, sent, grant, _⟩ := runtime.activation_resources leaks players
+            obtain ⟨valid, fresh, sent, samePublic, _⟩ := runtime.activation_resources leaks players
               original next.1 actor owner event leftRecall serials recordedLeft reached
             have recordedRight : runtime.eventRecorded leaks (next.2.1.recall owner) event =
                 true := (runtime.eventRecorded_congr leaks _ _ good.1.submissions event).symm.trans
@@ -414,7 +414,7 @@ theorem run_repeated_stopped_coupling
                 next.2 rightRecall privateReached) fresh
               (runtime.activation_repeated_of_clean leaks bounds players original next.1 actor owner
                 leftRecall serials repeated available reached bad)
-              (by rw [grant]; exact serving) recordedRight (offset + 1) nextPosition
+              (by rw [samePublic]; exact serving) recordedRight (offset + 1) nextPosition
               (fun execution lower upper => commands execution (by omega) (by omega))
             refine ⟨coupling, leftLaw, rightLaw, ?_⟩
             intro final supported

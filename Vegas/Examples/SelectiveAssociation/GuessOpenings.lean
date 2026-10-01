@@ -27,7 +27,7 @@ private theorem native_acts_once : nativeModel.ActsOnceWhereItMatters :=
 theorem native_bob_future_opening (profile : ∀ who, nativeModel.BehavioralPolicy who)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some bob)
-    (granted : NativeTurn bobBinding control)
+    (turn : NativeTurn bobBinding control)
     (later : nativeArena.History)
     (supported : later ∈ (nativeModel.runBehavioralFrom profile 40
       ⟨some control, trace⟩).support) :
@@ -35,21 +35,21 @@ theorem native_bob_future_opening (profile : ∀ who, nativeModel.BehavioralPoli
       NativeTurn bobPublication result := by
   rw [show 40 = 8 + (12 + 20) by decide, nativeModel.runBehavioralFrom_add] at supported
   obtain ⟨first, firstMem, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  obtain ⟨firstControl, firstEq, firstActive, firstGrant⟩ := native_next_decision profile bobBinding
-    alicePublication rfl control trace active granted first firstMem
+  obtain ⟨firstControl, firstEq, firstActive, firstTurn⟩ := native_next_decision profile bobBinding
+    alicePublication rfl control trace active turn first firstMem
   rcases first with ⟨firstState, firstTrace⟩
   change firstState = some firstControl at firstEq
   subst firstState
   rw [nativeModel.runBehavioralFrom_add] at rest
   obtain ⟨second, secondMem, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rest)
-  obtain ⟨secondControl, secondEq, secondActive, secondGrant⟩ :=
+  obtain ⟨secondControl, secondEq, secondActive, secondTurn⟩ :=
     native_next_decision profile alicePublication carolPublication rfl firstControl firstTrace
-      firstActive firstGrant second secondMem
+      firstActive firstTurn second secondMem
   rcases second with ⟨secondState, secondTrace⟩
   change secondState = some secondControl at secondEq
   subst secondState
   exact native_next_decision profile carolPublication bobPublication rfl secondControl secondTrace
-    secondActive secondGrant later rest
+    secondActive secondTurn later rest
 
 open Classical in
 theorem native_bob_committed_alice_opens
@@ -58,7 +58,7 @@ theorem native_bob_committed_alice_opens
         assessment.truncatedContinuationContext site (fun history => nativeUtility who
             history.state) (2 * nativeHorizon + 1))
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : nativeTurnEvent? bob past.length = some bobBinding)
+    (turn : nativeTurnEvent? bob past.length = some bobBinding)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks view (aliceBindingEvidence bit))
     (choice : nativeModel.Choice bob (some (past, view)))
     (history : nativeModel.InformationHistory bob (some (past, view)))
@@ -74,8 +74,8 @@ theorem native_bob_committed_alice_opens
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
   subst state
-  have grant : NativeTurn bobBinding control :=
-    .of_turnEvent? active (by rw [recall]; exact granted)
+  have ownerTurn : NativeTurn bobBinding control :=
+    .of_turnEvent? active (by rw [recall]; exact turn)
   have running : ¬nativeArena.terminal (some control) := by
     intro stopped
     have no : control.actor = none := stopped.2
@@ -90,8 +90,8 @@ theorem native_bob_committed_alice_opens
       (nativeModel.runBehavioralFrom assessment.strategy 159) at split
   rw [split] at supported
   obtain ⟨opening, openingMem, tailMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  obtain ⟨openingControl, openingEq, openingActive, openingGrant⟩ :=
-    native_next_decision changed bobBinding alicePublication rfl control trace active grant
+  obtain ⟨openingControl, openingEq, openingActive, openingTurn⟩ :=
+    native_next_decision changed bobBinding alicePublication rfl control trace active ownerTurn
       opening openingMem
   obtain ⟨preservedControl, preservedEq, preserved⟩ :=
     (native_binding_invariant alice (.success bit)).behavioral_continuation nativeMenu
@@ -104,11 +104,11 @@ theorem native_bob_committed_alice_opens
   change openingState = some openingControl at openingEq
   subst openingState
   apply native_opening_exact_from_control assessment rational alice openingControl openingTrace
-    openingActive openingGrant
+    openingActive openingTurn
     (native_decision_unfinished alicePublication openingControl openingTrace alice
-      openingActive openingGrant) bit preserved 159 _ final tailMem
+      openingActive openingTurn) bit preserved 159 _ final tailMem
   have position := (native_decision_cursor alicePublication openingControl openingTrace alice
-    openingActive openingGrant).2
+    openingActive openingTurn).2
   have accounted := (native_decision_predecessor alicePublication openingControl openingTrace
     openingActive position).1
   change openingControl.remaining + 18 + 1 = 83 at accounted
@@ -124,7 +124,7 @@ theorem native_bob_committed_bob_opens
         assessment.truncatedContinuationContext site (fun history => nativeUtility who
             history.state) (2 * nativeHorizon + 1))
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : nativeTurnEvent? bob past.length = some bobBinding)
+    (turn : nativeTurnEvent? bob past.length = some bobBinding)
     (choice : nativeModel.Choice bob (some (past, view)))
     (history : nativeModel.InformationHistory bob (some (past, view)))
     (final : nativeArena.History)
@@ -139,8 +139,8 @@ theorem native_bob_committed_bob_opens
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
   subst state
-  have grant : NativeTurn bobBinding control :=
-    .of_turnEvent? active (by rw [recall]; exact granted)
+  have ownerTurn : NativeTurn bobBinding control :=
+    .of_turnEvent? active (by rw [recall]; exact turn)
   have running : ¬nativeArena.terminal (some control) := by
     intro stopped
     have no : control.actor = none := stopped.2
@@ -155,8 +155,8 @@ theorem native_bob_committed_bob_opens
       (nativeModel.runBehavioralFrom assessment.strategy 127) at split
   rw [split] at supported
   obtain ⟨opening, openingMem, tailMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  obtain ⟨openingControl, openingEq, openingActive, openingGrant⟩ :=
-    native_bob_future_opening changed control trace active grant opening openingMem
+  obtain ⟨openingControl, openingEq, openingActive, openingTurn⟩ :=
+    native_bob_future_opening changed control trace active ownerTurn opening openingMem
   rcases opening with ⟨openingState, openingTrace⟩
   change openingState = some openingControl at openingEq
   subst openingState
@@ -164,15 +164,15 @@ theorem native_bob_committed_bob_opens
   | none => simp only [nativeBindingAt, finalEq, Option.bind_none] at bound; cases bound
   | some result =>
       have stored := native_binding_at_opening_from_final assessment.strategy bob openingControl
-        openingTrace openingActive openingGrant 127 final tailMem result finalEq bit
+        openingTrace openingActive openingTurn 127 final tailMem result finalEq bit
         (by simpa only [nativeBindingAt, finalEq, Option.bind_some] using bound)
       rw [← finalEq]
       apply native_opening_exact_from_control assessment rational bob openingControl openingTrace
-        openingActive openingGrant
+        openingActive openingTurn
         (native_decision_unfinished bobPublication openingControl openingTrace bob
-          openingActive openingGrant) bit stored 127 _ final tailMem
+          openingActive openingTurn) bit stored 127 _ final tailMem
       have position := (native_decision_cursor bobPublication openingControl openingTrace bob
-        openingActive openingGrant).2
+        openingActive openingTurn).2
       have accounted := (native_decision_predecessor bobPublication openingControl openingTrace
         openingActive position).1
       change openingControl.remaining + 48 + 1 = 83 at accounted
@@ -191,7 +191,7 @@ theorem native_bob_corrective_utility
         assessment.truncatedContinuationContext site (fun history => nativeUtility who
             history.state) (2 * nativeHorizon + 1))
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : nativeTurnEvent? bob past.length = some bobBinding)
+    (turn : nativeTurnEvent? bob past.length = some bobBinding)
     (unfinished : bobBinding ∉ view.application.publicView.observation.completionOrder)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks view (aliceBindingEvidence bit))
     (history : nativeModel.InformationHistory bob (some (past, view)))
@@ -201,11 +201,11 @@ theorem native_bob_corrective_utility
         ((assessment.strategy bob).commit (some (past, view))
           (bobCorrectiveChoice bit past view))) (2 * nativeHorizon + 1) history.1).support) :
     nativeUtility bob final.state = 1 := by
-  have binding := native_bob_corrective_binding assessment.strategy past view bit granted
+  have binding := native_bob_corrective_binding assessment.strategy past view bit turn
     unfinished history final supported
-  have aliceOpens := native_bob_committed_alice_opens assessment rational past view bit granted
+  have aliceOpens := native_bob_committed_alice_opens assessment rational past view bit turn
     observed (bobCorrectiveChoice bit past view) history final supported
-  have bobOpens := native_bob_committed_bob_opens assessment rational past view bit granted
+  have bobOpens := native_bob_committed_bob_opens assessment rational past view bit turn
     (bobCorrectiveChoice bit past view) history final supported binding
   cases finalEq : final.state with
   | none =>

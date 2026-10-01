@@ -166,7 +166,7 @@ theorem roster_owner_opening_probability
   change control.execution.observe app who = view at viewEq
   have trace := current ▸ history.1.trace
   obtain ⟨actual, slot, boundary, prior, sample, initial, state, selected, initialSupport,
-      related, sourceSupport, grant, offset, serials, published, reached, activated,
+      related, sourceSupport, startReady, offset, serials, published, reached, activated,
       unchanged, _position⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable
       who control trace acting
@@ -175,7 +175,7 @@ theorem roster_owner_opening_probability
     rw [← viewEq] at eventReady
     change control.execution.application.publicView.EventReady event at eventReady
     rw [unchanged] at eventReady
-    exact ((soleReady_of_ready setup boundary.application grant).2 event eventReady).symm
+    exact ((soleReady_of_ready setup boundary.application startReady).2 event eventReady).symm
   subst actual
   obtain ⟨sourceSite, _, choiceLaw, candidate, raw, opening, handleOwner, valid, _⟩ :=
     roster_owner_choice_data setup leaks bounds reveals admission source.strategy who event owned
@@ -185,10 +185,10 @@ theorem roster_owner_opening_probability
       boundary unchanged
     rw [viewEq] at sameOpening
     exact sameOpening.trans opening
-  obtain ⟨sentEvent, sentCandidate, sentRaw, sentGrant, _, sentOpening, packetEq, unseen⟩ :=
+  obtain ⟨sentEvent, sentCandidate, sentRaw, sentTurn, _, sentOpening, packetEq, unseen⟩ :=
     rosterFresh?_shape setup leaks rosters who past view packet fresh
-  rw [serving] at sentGrant
-  cases Option.some.inj sentGrant
+  rw [serving] at sentTurn
+  cases Option.some.inj sentTurn
   rw [localOpening] at sentOpening
   cases Option.some.inj sentOpening
   subst packet
@@ -196,11 +196,11 @@ theorem roster_owner_opening_probability
       FullSupport (sourceChoiceLaw setup leaks profile who (boundary.observe app who)) :=
     choiceLaw ▸ setup.reveal_choice_fullSupport reveals admission source mixed who sourceSite
   have physical := rosterPolicy_at_phase setup leaks rosters timing profile boundary
-    control.execution event who (soleReady_of_ready setup boundary.application grant) owned
+    control.execution event who (soleReady_of_ready setup boundary.application startReady) owned
     candidate raw opening unchanged who
   simp only [EventGraphRuntime.openingWindowMixturePlayers, Function.update_self] at physical
   have hazard := unopened_mixture_probability setup leaks extended rosters boundary event who
-    (soleReady_of_ready setup boundary.application grant) owned candidate raw opening
+    (soleReady_of_ready setup boundary.application startReady) owned candidate raw opening
     handleOwner valid (offset who) serials published
     menu.uniformResponses
     (fun player before input action supported =>

@@ -168,7 +168,7 @@ theorem roster_owner_information_law
 
 omit [Fintype Player] in
 /-- A supported actual owner input retains the semantic application of its
-granted source checkpoint, even though its traffic and allocator have changed. -/
+phase-start source checkpoint, even though its traffic and allocator have changed. -/
 theorem roster_owner_supported_application [Finite Player]
     (setup : Setup (Player := Player) (L := L)) [setup.FiniteInitialLaw]
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -255,10 +255,10 @@ theorem roster_owner_information_projects [Finite Player]
     setup.protocolObserve owner (sourcePrefix? setup event.val left.application.config) =
       setup.protocolObserve owner (sourcePrefix? setup event.val right.application.config) := by
   intro players executions leftSupport rightSupport same
-  obtain ⟨_, leftState, leftGranted, leftCheckpoint, leftDecoded, leftApplication⟩ :=
+  obtain ⟨_, leftState, leftStart, leftCheckpoint, leftDecoded, leftApplication⟩ :=
     roster_owner_supported_application setup leaks bounds rosters network reveals openable
       admission source mixed timing timingFull event owner visits left leftSupport
-  obtain ⟨_, rightState, rightGranted, rightCheckpoint, rightDecoded, rightApplication⟩ :=
+  obtain ⟨_, rightState, rightStart, rightCheckpoint, rightDecoded, rightApplication⟩ :=
     roster_owner_supported_application setup leaks bounds rosters network reveals openable
       admission source mixed timing timingFull event owner visits right rightSupport
   have applicationEq := congrArg ReactiveApplication.PlayerView.application same
@@ -268,7 +268,7 @@ theorem roster_owner_information_projects [Finite Player]
   have views := PublicPrefixCheckpoint.source_view_eq_of_application_eq owner setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputRef setup.program) 0 event.val leftState rightState
-    leftGranted rightGranted leftCheckpoint rightCheckpoint applicationEq
+    leftStart rightStart leftCheckpoint rightCheckpoint applicationEq
   rw [leftDecoded, rightDecoded]
   exact congrArg some views
 

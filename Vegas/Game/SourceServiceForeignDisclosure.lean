@@ -230,12 +230,13 @@ theorem disclosure_decision_resources {who : Player} {remaining : Nat}
     phase.event phase.ready owner owned
   have origins := sourceService_resolutionEvidence service.setup service.leaks service.bounds
     service.rosters _ _ ⟨remaining, some who, execution⟩ trace
-  obtain ⟨event, slot, _, _, _, _, _, _, _, _, _, _, _, _, _, _, granted, prior, sample, boundary,
-      grant, reached, _, sampled, _, publicEq, _, _⟩ :=
+  obtain ⟨event, slot, _, _, _, _, _, _, _, _, _, _, _, _, _, _, phaseStart, prior, sample,
+    boundary,
+      turn, reached, _, sampled, _, publicEq, _, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := phase.sole.2 event grant.1
+  have same : event = phase.event := phase.sole.2 event turn.1
   subst same
   obtain ⟨actor, binding, checks, codeEq, node⟩ :=
     publication_nodeView service.setup phase.event payload isPublication
@@ -253,12 +254,12 @@ theorem disclosure_decision_resources {who : Player} {remaining : Nat}
       player past view ((service.menu.uniformResponses_support player past view response).mp
         member)
   have initialState := EventGraphRuntime.ResolutionWindowState.initial (runtime service.setup)
-    service.leaks actor phase.event granted boundary.serials boundary.published
+    service.leaks actor phase.event phaseStart boundary.serials boundary.published
     (boundary.unsent actor phase.event le_rfl)
   have priorState := EventGraphRuntime.ResolutionWindowState.run (runtime service.setup)
     service.leaks service.bounds service.menu.uniformResponses lawful service.network actor
     phase.event payload binding checks isPublication codeEq node
-    ((service.rosters phase.event).take slot) granted prior initialState
+    ((service.rosters phase.event).take slot) phaseStart prior initialState
     (by rw [← publicEq]; exact phase.sole) reached
   have state := priorState.learn (runtime service.setup) service.leaks who sample
   rw [← sampled] at state
@@ -266,14 +267,14 @@ theorem disclosure_decision_resources {who : Player} {remaining : Nat}
     ((boundary.invariant.activated_iff phase.event).mpr
       ⟨boundary.ready phase.event rfl, by simp only [owned, Option.isSome_some]⟩)
   have earlier := boundary.invariant.activated_le phase.event entered activated
-  have clock : execution.application.clock = granted.application.clock :=
+  have clock : execution.application.clock = phaseStart.application.clock :=
     congrArg PublicView.clock publicEq
-  have activation : execution.application.activatedAt = granted.application.activatedAt :=
+  have activation : execution.application.activatedAt = phaseStart.application.activatedAt :=
     congrArg PublicView.activatedAt publicEq
   refine ⟨entered, ⟨rfl, state.2⟩, by rw [activation]; exact activated, ?_, ready, timely, valid,
     recalled, origins⟩
   rw [clock]
-  change phase.event.val + 1 ≤ granted.application.clock + (phase.event.val + 1) - entered
+  change phase.event.val + 1 ≤ phaseStart.application.clock + (phase.event.val + 1) - entered
   omega
 
 end SourceServiceSpec

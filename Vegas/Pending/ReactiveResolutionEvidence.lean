@@ -265,7 +265,7 @@ theorem MessageBounds.compiled_resolutionEvidence (bounds : MessageBounds graph)
     split at chosen
     · simp only [Finset.mem_singleton] at chosen
       cases chosen
-    · rename_i event granted
+    · rename_i event turn
       split at chosen
       · rename_i allowed
         split at chosen

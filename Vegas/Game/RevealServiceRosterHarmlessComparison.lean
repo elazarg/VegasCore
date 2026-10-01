@@ -109,7 +109,7 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
       (rosterScheduler setup leaks rosters network)).Trace
         (some ⟨remaining, some who, execution⟩) := current ▸ history.trace
   obtain ⟨event, slot, boundary, prior, sample, initial, state, selected, initialSupport,
-      related, sourceSupport, grant, offset, serials, published, reached, activated,
+      related, sourceSupport, startReady, offset, serials, published, reached, activated,
       unchanged, position⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable who _ traced rfl
   change execution = _ at activated
@@ -135,7 +135,7 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
           some event := by
         change execution.application.publicView.ownTurn? who = _
         rw [unchanged]
-        exact ownTurn?_of_ready setup boundary.application grant ownedEvent
+        exact ownTurn?_of_ready setup boundary.application startReady ownedEvent
       have openingNow : rosterOpening? setup leaks who event (execution.observe app who) =
           some (candidate, raw) :=
         (rosterOpening?_application_eq setup leaks who event execution boundary unchanged).trans
@@ -191,7 +191,7 @@ theorem roster_harmless_history_laws [setup.FiniteInitialLaw]
     rw [activated] at allowed ⊢
     exact roster_harmless_response_source_law setup leaks extended rosters timing network reveals
       profile initial event state boundary related owner ownedEvent
-      (soleReady_of_ready setup boundary.application grant) candidate raw opening
+      (soleReady_of_ready setup boundary.application startReady) candidate raw opening
       owned valid offset serials published menu.uniformResponses
       (fun player past view action supported =>
         (menu.uniformResponses_support player past view action).mp supported)

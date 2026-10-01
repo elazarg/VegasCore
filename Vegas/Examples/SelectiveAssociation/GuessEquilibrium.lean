@@ -24,7 +24,7 @@ theorem native_supported_certified_guess
     (site : nativeModel.InformationSite bob)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : nativeTurnEvent? bob past.length = some bobBinding)
+    (turn : nativeTurnEvent? bob past.length = some bobBinding)
     (unfinished : bobBinding ∉ view.application.publicView.observation.completionOrder)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks view (aliceBindingEvidence bit))
     (choice : nativeModel.Choice bob site.1)
@@ -55,7 +55,7 @@ theorem native_supported_certified_guess
   · intro other
     refine expect_le_const _ _
         (payoffIntegrable_of_finite _ _) _ fun otherFinal otherSupported => ?_
-    have same := native_committed_binding_local bob assessment.strategy past view granted
+    have same := native_committed_binding_local bob assessment.strategy past view turn
       choice history other final otherFinal supported otherSupported
     have initial := native_observed_alice_binding past view bit observed other
     obtain ⟨control, stateEq, _, _, _⟩ := native_information_control bob past view other
@@ -78,7 +78,7 @@ theorem native_supported_certified_guess
               (bobCorrectiveChoice bit past view))) (2 * nativeHorizon + 1) other.1)
             (fun _ => 1) := (expect_constant _ _).symm
       _ ≤ _ := expect_mono (fun outcome member =>
-        le_of_eq (native_bob_corrective_utility assessment rational past view bit granted unfinished
+        le_of_eq (native_bob_corrective_utility assessment rational past view bit turn unfinished
           observed other outcome member).symm) (payoffIntegrable_of_finite _ _)
               (payoffIntegrable_of_finite _ _)
 
@@ -86,7 +86,7 @@ theorem native_supported_certified_guess
 history. This is derived from the actual service, not required of the view. -/
 theorem native_bob_view_unfinished (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView)
-    (granted : nativeTurnEvent? bob past.length = some bobBinding)
+    (turn : nativeTurnEvent? bob past.length = some bobBinding)
     (history : nativeModel.InformationHistory bob (some (past, view))) :
     bobBinding ∉ view.application.publicView.observation.completionOrder := by
   obtain ⟨control, stateEq, active, recalled, observed⟩ :=
@@ -96,7 +96,7 @@ theorem native_bob_view_unfinished (past : List nativeApp.PlayerEntry)
   subst state
   rw [← observed]
   have unfinished := native_decision_unfinished bobBinding control trace bob active
-    (.of_turnEvent? active (by rw [recalled]; exact granted))
+    (.of_turnEvent? active (by rw [recalled]; exact turn))
   change bobBinding ∉
     control.execution.application.config.history.map EventGraph.Completion.event
   intro completed
@@ -114,7 +114,7 @@ theorem native_sequentially_rational_certified_guess
     (site : nativeModel.InformationSite bob)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : nativeTurnEvent? bob past.length = some bobBinding)
+    (turn : nativeTurnEvent? bob past.length = some bobBinding)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks view (aliceBindingEvidence bit))
     (history : nativeModel.InformationHistory bob site.1) (final : nativeArena.History)
     (supported : final ∈ (nativeModel.runBehavioralFrom assessment.strategy
@@ -125,7 +125,7 @@ theorem native_sequentially_rational_certified_guess
   rcases site with ⟨info, isSite⟩
   change info = some (past, view) at siteEq
   subst info
-  have unfinished := native_bob_view_unfinished past view granted history
+  have unfinished := native_bob_view_unfinished past view turn history
   have once := nativeModel.actsOnceWhereItMatters_of_actsOnce
     (InformationModel.actsOnce_of_decisionInformationAntichain
       (nativeMenu.decisionInformationAntichain (PMF.pure nativeInitial)
@@ -141,10 +141,10 @@ theorem native_sequentially_rational_certified_guess
   rw [law] at supported
   obtain ⟨choice, chosen, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have correct := native_supported_certified_guess assessment rational ⟨some (past, view), isSite⟩
-    past view rfl bit granted unfinished observed choice chosen history final finalMem
-  have aliceOpens := native_bob_committed_alice_opens assessment rational past view bit granted
+    past view rfl bit turn unfinished observed choice chosen history final finalMem
+  have aliceOpens := native_bob_committed_alice_opens assessment rational past view bit turn
     observed choice history final finalMem
-  have bobOpens := native_bob_committed_bob_opens assessment rational past view bit granted choice
+  have bobOpens := native_bob_committed_bob_opens assessment rational past view bit turn choice
     history final finalMem correct
   refine ⟨aliceOpens, bobOpens, ?_⟩
   cases finalEq : final.state with

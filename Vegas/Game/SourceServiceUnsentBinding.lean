@@ -48,12 +48,12 @@ theorem recall_count {who : Player} {remaining : Nat}
     (execution.recall who).length =
       rosterOffset service.setup service.rosters who phase.event +
         ((service.rosters phase.event).take phase.slot).count who := by
-  obtain ⟨event, slot, _, selected, _, _, _, _, _, _, _, _, _, _, _, _, granted, prior, sample,
-      boundary, grant, reached, _, sampled, _, publicEq, _, position, _⟩ :=
+  obtain ⟨event, slot, _, selected, _, _, _, _, _, _, _, _, _, _, _, _, turn, prior, sample,
+      boundary, ownerTurn, reached, _, sampled, _, publicEq, _, position, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network
       (failureProfile service.setup.program) who ⟨remaining, some who, execution⟩ trace rfl
-  have same : event = phase.event := phase.sole.2 event grant.1
+  have same : event = phase.event := phase.sole.2 event ownerTurn.1
   subst same
   have sameSlot : slot = phase.slot := by
     have lengths := position.symm.trans phase.position
@@ -66,7 +66,7 @@ theorem recall_count {who : Player} {remaining : Nat}
     service.menu.uniformResponses
     (((service.rosters phase.event).take phase.slot).map ServiceInstruction.player)
     (by simp only [List.mem_map]; rintro ⟨_, _, impossible⟩; cases impossible)
-    granted prior reached who
+    turn prior reached who
   simp only [List.filterMap_map, instructionActor, Function.comp_def, List.filterMap_some]
     at counted
   have recalled : execution.recall who = prior.recall who := by
@@ -549,13 +549,13 @@ theorem exists_bindingSource_step (profile : BehavioralProfile service.setup.pro
   obtain ⟨phaseEvent, phaseSlot, phaseSelected, phasePosition, phaseReady⟩ := phase
   dsimp only at isBinding ⊢
   obtain ⟨event, _, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
-      refsBefore, aligned, _, ⟨_, _, lift, commutes, transport⟩, _, _, _, _, grant, _, _, _, _,
+      refsBefore, aligned, _, ⟨_, _, lift, commutes, transport⟩, _, _, _, _, startReady, _, _, _, _,
       publicEq, checkpoint, _⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
   have same : event = phaseEvent :=
-    (soleReady_of_ready service.setup execution.application phaseReady).2 event grant.1
+    (soleReady_of_ready service.setup execution.application phaseReady).2 event startReady.1
   subst same
   cases remaining with
   | ret result =>

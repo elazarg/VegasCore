@@ -129,17 +129,17 @@ theorem publicGuess_include_uncertified (execution : app.Execution)
 
 theorem corrective_inclusion_keeps_guess (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some carol)
-    (granted : NativeTurn carolBinding control) (bit : Bool)
+    (turn : NativeTurn carolBinding control) (bit : Bool)
     (observer : Player) :
     publicGuess ((Prefix.includeLatest
       (control.execution.respond app carol
         (correctiveBinding carol carolBinding bit (control.execution.observe app carol)))
           carolBinding carol).observe app observer) =
       publicGuess (control.execution.observe app observer) := by
-  obtain ⟨slot, selected, _⟩ := binding_fresh control trace carol active granted
+  obtain ⟨slot, selected, _⟩ := binding_fresh control trace carol active turn
   have serials := (history_invariants control trace).2.2
   have complete := earlier_completed carolBinding aliceBinding (by decide) control trace active
-    granted
+    turn
   have present := (control.execution.application.config.output_available aliceBinding).mpr complete
   simp only [correctiveBinding, selected]
   let submitted := control.execution.respond app carol (bindingResponse carol carolBinding slot bit)

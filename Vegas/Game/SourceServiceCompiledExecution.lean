@@ -61,7 +61,7 @@ theorem sourceServiceOpportunity_at_history
   let scheduler := rosterScheduler setup leaks rosters network
   obtain ⟨selectedEvent, slot, initial, _selected, _initialSupport, Γ, names, remaining,
       remainingProfile, source, refs, embedding, refsBefore, aligned, inherited, _,
-      granted, prior, sample, boundary, _sole, _phase, _activated, _sampled, _config,
+      turn, prior, sample, boundary, _sole, _phase, _activated, _sampled, _config,
       _publicEq, checkpoint, _position⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active

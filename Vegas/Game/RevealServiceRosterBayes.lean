@@ -47,22 +47,22 @@ theorem roster_owner_source_site
       site.1 = setup.protocolObserve who
         (sourcePrefix? setup event.val control.execution.application.config) ∧
       setup.decisionDepth who site.1 = event.val + 1 := by
-  obtain ⟨actual, _, granted, _, _, initial, state, _, initialSupport, related,
-      sourceSupport, grantedAt, _, _, _, _, _, unchanged, _⟩ :=
+  obtain ⟨actual, _, phaseStart, _, _, initial, state, _, initialSupport, related,
+      sourceSupport, startReady, _, _, _, _, _, unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have same : actual = event := by
     have eventReady := (PublicView.ownTurn?_spec _ who event serving).1
     rw [unchanged] at eventReady
-    exact ((soleReady_of_ready setup granted.application grantedAt).2 event eventReady).symm
+    exact ((soleReady_of_ready setup phaseStart.application startReady).2 event eventReady).symm
   subst actual
   obtain ⟨site, observed⟩ := roster_source_site setup leaks reveals admission who event owned
-    initial initialSupport state granted related sourceSupport
+    initial initialSupport state phaseStart related sourceSupport
   have decoded := PublicPrefixCheckpoint.decode setup.program
     (Vegas.ContextRefs.initial setup.context (Vegas.outputLayout setup.program))
     (Revelations.initial setup.context) (Vegas.outputRef setup.program) 0 event.val
-    state granted related
-  change sourcePrefix? setup event.val granted.application.config = some state at decoded
+    state phaseStart related
+  change sourcePrefix? setup event.val phaseStart.application.config = some state at decoded
   refine ⟨site, ?_, ?_⟩
   · rw [unchanged, decoded]
     exact observed
@@ -80,7 +80,7 @@ theorem roster_owner_source_site
     have acting := PublicPrefixCheckpoint.actor who setup.program
       (Vegas.ContextRefs.initial setup.context (Vegas.outputLayout setup.program))
       (Revelations.initial setup.context) (Vegas.outputRef setup.program) 0 event.val
-      state granted related event.isLt
+      state phaseStart related event.isLt
     rw [eventOwner?_eq_actor] at acting
     change ProtocolView.actor who setup.program (ProtocolState.observe who setup.program state) =
       (graph setup).actor? event at acting

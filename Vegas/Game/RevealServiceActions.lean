@@ -31,7 +31,7 @@ theorem opening_is_submission (who : Player)
     (selected : opening? setup leaks who past view = some response) :
     ∃ submission, response = ⟨some (.submit submission)⟩ := by
   unfold opening? at selected
-  obtain ⟨event, _granted, selected⟩ := Option.bind_eq_some_iff.mp selected
+  obtain ⟨event, _turn, selected⟩ := Option.bind_eq_some_iff.mp selected
   split at selected
   · cases selected
   · cases node : nodeView (graph setup) event with

@@ -45,12 +45,12 @@ theorem native_reserved_result (players : Player → nativeApp.Policy)
   have beforeGlobal := native_run_support_append players priorRounds delay execution before
     global beforeMem
   rw [position] at beforeGlobal
-  obtain ⟨observed, response, observedMem, chosen, granted, ⟨trace⟩, included⟩ :=
+  obtain ⟨observed, response, observedMem, chosen, turn, ⟨trace⟩, included⟩ :=
     native_response_execution players covered event before after beforeGlobal included
   have observedValid := beforeInvariant.environment before observed
     (.activate (nativeOwner event))
     (beforeInvariant.runRounds nativeScheduler delay execution before valid beforeMem) observedMem
-  have afterValid := step _ trace rfl ⟨rfl, granted⟩ observedValid response chosen after
+  have afterValid := step _ trace rfl ⟨rfl, turn⟩ observedValid response chosen after
     included
   exact afterInvariant.runRounds nativeScheduler tail after final afterValid finished
 
@@ -76,19 +76,19 @@ theorem native_alice_deviation_opening
     (ReactiveApplication.Invariant.policyInvariant nativeApp
       (native_publication_invariant alice (.success bit)) players)
     ?_ execution final global stored supported
-  intro control trace active granted bound response chosen next reached
+  intro control trace active turn bound response chosen next reached
   have law : players alice (control.execution.recall alice)
       (control.execution.observe nativeApp alice) =
         PMF.pure (nativeOpeningResponse alice (control.execution.observe nativeApp alice)) :=
-    native_alice_opening _ _ (granted.turnEvent?_of_active active)
+    native_alice_opening _ _ (turn.turnEvent?_of_active active)
   change response ∈ (players alice (control.execution.recall alice)
     (control.execution.observe nativeApp alice)).support at chosen
   rw [law] at chosen
   cases (PMF.mem_support_pure_iff _ _).mp chosen
   obtain ⟨bindingValid, bounded, serials⟩ := native_history_invariants control trace
-  have cursor := (native_decision_cursor alicePublication control trace alice active granted).2
+  have cursor := (native_decision_cursor alicePublication control trace alice active turn).2
   obtain ⟨_, available⟩ := native_decision_service alicePublication control trace active cursor
-  have unfinished := native_decision_unfinished alicePublication control trace alice active granted
+  have unfinished := native_decision_unfinished alicePublication control trace alice active turn
   obtain ⟨ready, timely⟩ := available.resolve_left unfinished
   obtain ⟨state, published, exactLaw⟩ := native_opening_response_realizes players
     control.execution alice bit bindingValid bounded serials ready timely bound
@@ -125,8 +125,8 @@ theorem native_deviation_bob_binding (assessment : nativeModel.BehavioralAssessm
     (ReactiveApplication.Invariant.policyInvariant nativeApp
       (native_binding_invariant bob (.success bit)) players)
     ?_ execution final global observed supported
-  intro control trace active granted seen response chosen next reached
-  apply native_supported_guess_inclusion assessment rational control trace active granted bit
+  intro control trace active turn seen response chosen next reached
+  apply native_supported_guess_inclusion assessment rational control trace active turn bit
     seen.2 response _ players next reached
   exact chosen
 
@@ -154,8 +154,8 @@ theorem native_deviation_bob_opening (assessment : nativeModel.BehavioralAssessm
     (ReactiveApplication.Invariant.policyInvariant nativeApp
       (native_publication_invariant bob (.success bit)) players)
     ?_ execution final global stored supported
-  intro control trace active granted bound response chosen next reached
-  apply native_supported_opening_inclusion assessment rational bob control trace active granted bit
+  intro control trace active turn bound response chosen next reached
+  apply native_supported_opening_inclusion assessment rational bob control trace active turn bit
     bound response _ players next reached
   exact chosen
 

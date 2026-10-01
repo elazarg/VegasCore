@@ -37,7 +37,7 @@ theorem handle_store_of_some (runtime : EventGraphRuntime graph)
   exact state.config.step_store_of_some next.config event ready action member field value stored
 
 omit [DecidableEq Player] in
-/-- Chance, clocks, grants, and expiry preserve every field already present. -/
+/-- Chance, clocks, and expiry preserve every field already present. -/
 theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
     (state next : State graph) (command : EnvironmentCommand graph)
     (member : next ∈ (environmentStep runtime state command).support)

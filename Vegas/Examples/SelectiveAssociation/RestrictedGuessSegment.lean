@@ -28,12 +28,12 @@ def afterCarol (execution : app.Execution) (action : app.Action) : app.Execution
 
 theorem afterCarol_guess (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some carol)
-    (granted : NativeTurn carolBinding control) (bit : Bool) :
+    (turn : NativeTurn carolBinding control) (bit : Bool) :
     publicGuess ((afterCarol control.execution
       (correctiveBinding carol carolBinding bit (control.execution.observe app carol))).observe
         app bob) = publicGuess (control.execution.observe app carol) := by
   simp only [afterCarol, publicGuess_activate, publicGuess_environment]
-  rw [corrective_inclusion_keeps_guess control trace active granted bit bob]
+  rw [corrective_inclusion_keeps_guess control trace active turn bit bob]
   exact publicGuess_congr _ _ _ _ rfl rfl
 
 theorem afterCarol_kernel (players : Player → app.Policy) (execution : app.Execution)
@@ -56,7 +56,7 @@ theorem afterCarol_kernel (players : Player → app.Policy) (execution : app.Exe
 theorem afterCarol_history (players : Profile model.behavioralSignature)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some carol)
-    (granted : NativeTurn carolBinding control)
+    (turn : NativeTurn carolBinding control)
     (action : app.Action)
     (chooses : menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players
       carol (control.execution.recall carol) (control.execution.observe app carol) =
@@ -65,9 +65,9 @@ theorem afterCarol_history (players : Profile model.behavioralSignature)
     (supported : later ∈ (model.runBehavioralFrom players 6 ⟨some control, trace⟩).support) :
     later.state = some ⟨71, some bob, afterCarol control.execution action⟩ := by
   have cursor := (native_decision_cursor (observation := leaks) carolBinding control trace carol
-    active granted).2
+    active turn).2
   change control.execution.environmentRecall.length = 7 at cursor
-  have rank := decision_rank carolBinding control trace active granted
+  have rank := decision_rank carolBinding control trace active turn
   change 2 * control.remaining + (if control.actor.isSome then 1 else 0) = 153 at rank
   rw [active] at rank
   simp only [Option.isSome_some, ↓reduceIte] at rank

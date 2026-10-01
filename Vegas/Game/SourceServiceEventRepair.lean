@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveServiceAudit
 
 /-! # Whole source-event blocks in actual continuation repair
 
-The actual retained history supplies the source boundary before the grant.
+The actual retained history supplies the source boundary at the phase start.
 Each source constructor then has its exact physical block coupling against the
 same repaired policy and unchanged opponents. No payoff comparison is assumed.
 -/

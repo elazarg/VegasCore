@@ -7,7 +7,7 @@ import GameTheoryExtensions.Math.Probability.Support
 /-! # Common passive samples and maintenance during a private binding repair
 
 The same passive sample preserves the entire vector of opponents' inputs.
-Clock, grant and expiry steps are deterministic, so their observation laws can
+Clock and expiry steps are deterministic, so their observation laws can
 also be coupled jointly. No pending message is removed or hidden by these lemmas.
 -/
 

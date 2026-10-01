@@ -133,16 +133,16 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
   let menu := rosterMenu setup leaks bounds rosters
   let profile : BehavioralProfile setup.program :=
     fun owner => RevealOnly.uniformPolicy owner setup.program reveals
-  obtain ⟨phase, slot, granted, prior, sample, initial, state, selected, initialSupport,
-      related, _, grant, offset, serials, published, reached, activated,
+  obtain ⟨phase, slot, phaseStart, prior, sample, initial, state, selected, initialSupport,
+      related, _, startReady, offset, serials, published, reached, activated,
       unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
   have samePhase : phase = event := by
-    have now : granted.application.publicView.EventReady event := by
+    have now : phaseStart.application.publicView.EventReady event := by
       rw [← unchanged]
       exact (control.execution.application.publicView_eventReady event).mpr readyNow
-    exact ((soleReady_of_ready setup granted.application grant).2 event now).symm
+    exact ((soleReady_of_ready setup phaseStart.application startReady).2 event now).symm
   subst phase
   have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
     setup.program reveals profile
@@ -150,9 +150,9 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
     (Revelations.initial setup.context) (Vegas.outputEmbedding setup.program)
     (Vegas.initialRefsBefore setup.program) 0
     (Vegas.CompiledPolicySuffix.whole setup.program profile)
-    event.val event.isLt state granted related event (by omega) ownedEvent grant
+    event.val event.isLt state phaseStart related event (by omega) ownedEvent startReady
   obtain ⟨expected, expectedRaw, priorOpening, owned, valid, _, _⟩ := data.2.2
-  have same := rosterOpening?_application_eq setup leaks who event control.execution granted
+  have same := rosterOpening?_application_eq setup leaks who event control.execution phaseStart
     unchanged
   rw [openingNow, priorOpening] at same
   cases Option.some.inj same
@@ -162,14 +162,15 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
     intro player past view response supported
     exact (menu.uniformResponses_support player past view response).mp supported
   obtain ⟨chosen, frame, earlier, recorded, _⟩ := roster_window_posterior setup leaks bounds rosters
-    granted event who (soleReady_of_ready setup granted.application grant) ownedEvent candidate
+    phaseStart event who (soleReady_of_ready setup phaseStart.application startReady)
+      ownedEvent candidate
     raw priorOpening owned valid (offset who) serials
     published menu.uniformResponses covered network ((rosters event).take slot)
     (roster_count_before selected).le prior reached
   obtain ⟨context, source, refs, checkpoint⟩ := related.checkpoint setup.program
     (Vegas.ContextRefs.initial setup.context (Vegas.outputLayout setup.program))
     (Revelations.initial setup.context) (Vegas.outputRef setup.program) 0 event.val state
-    granted
+    phaseStart
   have baseline := checkpoint.serial_eq_ledger_count setup leaks who
   have counter := congrFun frame.counters who
   have zero_iff : prior.network.nextSerial who =
@@ -191,12 +192,12 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
   rw [zero_iff]
   refine ⟨?_, ?_⟩
   · intro fresh
-    obtain ⟨otherEvent, _, _, otherGrant, _, _, _, absent⟩ :=
+    obtain ⟨otherEvent, _, _, otherTurn, _, _, _, absent⟩ :=
       rosterFresh?_shape setup leaks rosters who _ _ _ fresh
-    change prior.application.publicView.ownTurn? who = some otherEvent at otherGrant
-    rw [frame.application, ownTurn?_of_ready setup granted.application grant ownedEvent]
-      at otherGrant
-    cases Option.some.inj otherGrant
+    change prior.application.publicView.ownTurn? who = some otherEvent at otherTurn
+    rw [frame.application, ownTurn?_of_ready setup phaseStart.application startReady ownedEvent]
+      at otherTurn
+    cases Option.some.inj otherTurn
     cases chosen with
     | none => rfl
     | some index =>
@@ -213,12 +214,12 @@ theorem roster_fresh_iff_serial [setup.FiniteInitialLaw] (bounds : MessageBounds
         (application setup leaks) who).application.publicView.ownTurn? who = some event := by
       change prior.application.publicView.ownTurn? who = some event
       rw [frame.application]
-      exact ownTurn?_of_ready setup granted.application grant ownedEvent
+      exact ownTurn?_of_ready setup phaseStart.application startReady ownedEvent
     have currentOpening : rosterOpening? setup leaks who event
         ((prior.sampledActivation (application setup leaks) who sample).observe
           (application setup leaks) who) = some (candidate, raw) := by
       rw [rosterOpening?_application_eq setup leaks who event
-        (prior.sampledActivation (application setup leaks) who sample) granted frame.application]
+        (prior.sampledActivation (application setup leaks) who sample) phaseStart frame.application]
       exact priorOpening
     unfold rosterFresh?
     apply Option.bind_eq_some_iff.mpr

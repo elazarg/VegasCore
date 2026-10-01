@@ -483,15 +483,15 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
     phase
   dsimp only at isPublication ⊢
   obtain ⟨event, slot, _, _, _, Γ, names, remaining, remainingProfile, source, refs, embedding,
-      refsBefore, aligned, _, ⟨supported, inherits, lift, commutes, transport⟩, granted, prior,
+      refsBefore, aligned, _, ⟨supported, inherits, lift, commutes, transport⟩, phaseStart, prior,
       sample,
-      boundary, grant, reachedPrior, _, sampled, _, publicEq, checkpoint, position,
-      grantedOrigins⟩ :=
+      boundary, startReadyFact, reachedPrior, _, sampled, _, publicEq, checkpoint, position,
+      startOrigins⟩ :=
     sourceService_decision_boundary service.setup service.leaks service.bounds service.values
       service.capacity service.rosters service.opportunities.binding service.network profile
       who ⟨remaining, some who, execution⟩ trace rfl
   have same : event = phaseEvent :=
-    (soleReady_of_ready service.setup execution.application phaseReady).2 event grant.1
+    (soleReady_of_ready service.setup execution.application phaseReady).2 event startReadyFact.1
   subst same
   have sameSlot : slot = phaseSlot := by
     have lengths := position.symm.trans phasePosition
@@ -551,31 +551,31 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
             ((graph service.setup).nodes _)] at acts
           exact Option.some.inj (acts.symm.trans site.owned)
         subst actorEq
-        have grantedSole : granted.application.publicView.SoleReady
+        have startSole : phaseStart.application.publicView.SoleReady
             (embedding.event ⟨0, by simp [eventCount]⟩) := by
           rw [← publicEq]
           exact soleReady_of_ready service.setup execution.application phaseReady
-        have grantedReady : granted.application.config.cut.Ready
+        have startReady : phaseStart.application.config.cut.Ready
             (embedding.event ⟨0, by simp [eventCount]⟩) :=
-          (granted.application.publicView_eventReady _).mp grantedSole.1
-        have windowApp : prior.application = granted.application :=
+          (phaseStart.application.publicView_eventReady _).mp startSole.1
+        have windowApp : prior.application = phaseStart.application :=
           service.bounds.compiled_resolution_run_application (runtime service.setup)
             service.leaks service.menu.uniformResponses
             (fun player past view response supported => sourceServiceMenu_in_compiled
               service.setup service.leaks service.bounds service.rosters player past view
                 ((service.menu.uniformResponses_support player past view response).mp
                   supported)) service.network _ _ actor sitePayload resolveBinding checks
-            outputEq resolveCode node granted prior grantedSole reachedPrior
+            outputEq resolveCode node phaseStart prior startSole reachedPrior
         have executionEq : execution = prior.sampledActivation
             (application service.setup service.leaks) who sample := sampled
-        have sameApp : execution.application = granted.application := by
+        have sameApp : execution.application = phaseStart.application := by
           rw [executionEq]
           exact windowApp
         have sameRecall : execution.recall actor = prior.recall actor := by
           rw [executionEq]
           rfl
         have replayWindow := replay_window_of_unsent service.setup service.leaks service.bounds
-          service.rosters service.network node _ granted prior grantedSole reachedPrior
+          service.rosters service.network node _ phaseStart prior startSole reachedPrior
           (sameRecall ▸ unsent)
         have within : ((service.rosters (embedding.event ⟨0, by simp [eventCount]⟩)).take
             slot).count actor ≤
@@ -583,11 +583,11 @@ theorem exists_revealSource_step (profile : BehavioralProfile service.setup.prog
           (List.take_sublist _ _).count_le _
         have posterior := sourceServiceTimedMixture_replay_window_posterior_initial service.setup
           service.leaks service.rosters fresh binding unresolved next profile remainingProfile
-          refs source embedding refsBefore _ aligned granted boundary.toSourceCheckpoint.agrees
-          boundary.toSourceCheckpoint.history boundary.binding boundary.recall grantedOrigins
+          refs source embedding refsBefore _ aligned phaseStart boundary.toSourceCheckpoint.agrees
+          boundary.toSourceCheckpoint.history boundary.binding boundary.recall startOrigins
           (inherits effective actor) service.network _ prior timing candidate raw
-          ((rosterOpening?_application_eq service.setup service.leaks actor _ granted execution
-            sameApp.symm).trans opening) grantedReady (boundary.unsent actor _ le_rfl)
+          ((rosterOpening?_application_eq service.setup service.leaks actor _ phaseStart execution
+            sameApp.symm).trans opening) startReady (boundary.unsent actor _ le_rfl)
           (boundary.counts actor) within small replayWindow
         intro chosen
         rw [sameRecall]

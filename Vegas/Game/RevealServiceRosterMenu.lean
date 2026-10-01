@@ -52,7 +52,7 @@ theorem rosterFresh?_shape (setup : Setup (Player := Player) (L := L))
       ∀ entry ∈ past.drop (rosterOffset setup rosters who event), entry.action ≠ action := by
   classical
   unfold rosterFresh? at found
-  obtain ⟨event, granted, found⟩ := Option.bind_eq_some_iff.mp found
+  obtain ⟨event, turn, found⟩ := Option.bind_eq_some_iff.mp found
   split at found
   · cases found
   · rename_i owned
@@ -65,7 +65,7 @@ theorem rosterFresh?_shape (setup : Setup (Player := Player) (L := L))
       cases found
     · rw [ite_eq_right fresh] at found
       have same := Option.some.inj found
-      refine ⟨event, candidate, raw, granted, not_not.mp owned, opening, same.symm, ?_⟩
+      refine ⟨event, candidate, raw, turn, not_not.mp owned, opening, same.symm, ?_⟩
       intro entry member equal
       apply fresh
       apply List.any_eq_true.mpr
@@ -178,7 +178,7 @@ theorem rosterLimitPolicy_cases (setup : Setup (Player := Player) (L := L))
   unfold rosterLimitPolicy at supported
   split at supported
   · exact Or.inl supported
-  · rename_i event granted
+  · rename_i event turn
     split at supported
     · rename_i owned
       split at supported
@@ -196,7 +196,7 @@ theorem rosterLimitPolicy_cases (setup : Setup (Player := Player) (L := L))
               cases (PMF.mem_support_pure_iff _ _).mp supported
               apply Or.inr
               unfold rosterFresh?
-              rw [granted]
+              rw [turn]
               dsimp only [bind, Option.bind]
               rw [ite_eq_right (not_not_intro owned), opening]
               dsimp only [bind, Option.bind]

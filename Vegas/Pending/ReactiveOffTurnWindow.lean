@@ -366,7 +366,7 @@ theorem run_off_turn_stopped_coupling
                   memory)).support := by
               rw [← second, PMF.support_map]
               exact ⟨next, member, rfl⟩
-            obtain ⟨valid, fresh, grant⟩ := runtime.activation_resources leaks players
+            obtain ⟨valid, fresh, samePublic⟩ := runtime.activation_resources leaks players
               original next.1 actor leftRecall serials reached
             have nextPosition : next.1.environmentRecall.length = offset + 1 := by
               rw [app.dispatch_environmentRecall players (.activate actor) original next.1 reached,
@@ -374,7 +374,7 @@ theorem run_off_turn_stopped_coupling
             obtain ⟨coupling, leftLaw, rightLaw, connected⟩ := ih good.1 good.2.1 valid
               (runtime.private_activation_recall leaks strategy players owner actor repaired memory
                 next.2 rightRecall privateReached) fresh
-              (by rw [grant]; exact idle)
+              (by rw [samePublic]; exact idle)
               (offset + 1) nextPosition
               (fun execution lower upper => commands execution (by omega) (by omega))
             refine ⟨coupling, leftLaw, rightLaw, ?_⟩

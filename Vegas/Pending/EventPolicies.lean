@@ -186,7 +186,7 @@ theorem resolutionSubmission_rejected (runtime : EventGraphRuntime graph)
       .submit (.withhold event) := by
   simp [resolutionSubmission, resolutionPayload, discloses, rejected]
 
-/-- Resolution staging always emits one public packet addressed to the granted
+/-- Resolution staging always emits one public packet addressed to the served
 event, whether it opens successfully or withholds. -/
 theorem resolutionSubmission_address (runtime : EventGraphRuntime graph)
     {owner : Player} (who : Player) (event : graph.EventId) (payload : L.Ty)
@@ -222,7 +222,7 @@ theorem resolutionSubmission_address (runtime : EventGraphRuntime graph)
 /-- Compile one normalized graph policy to the event-addressed pending
 runtime. The player serves its own turn, `PublicView.ownTurn?`: the least
 ready event it owns, which is its only ready event under the barrier order.
-No service grant is consulted. The ownership test only supplies the proof the
+The ownership test only supplies the proof the
 graph policy needs; `ownTurn?` already guarantees it. The definition is total
 on malformed histories and views: it waits when private state needed for
 staging is absent, and uses withholding rather than fabricating opening

@@ -232,7 +232,7 @@ theorem rosterLimitPolicy_at_phase
         (sourceChoiceLaw setup leaks profile owner (initial.observe app owner)).bind
           (fun disclose => if disclose then PMF.pure packet else app.replayPolicy past view)
       else app.replayPolicy past view := by
-  have grant :
+  have turn :
       (current.observe (application setup leaks) owner).application.publicView.ownTurn? owner =
         some event := by
     change current.application.publicView.ownTurn? owner = some event
@@ -240,7 +240,7 @@ theorem rosterLimitPolicy_at_phase
     exact PublicView.ownTurn?_of_ownTurn _ owner event (sole.ownTurn owned)
   dsimp only
   unfold rosterLimitPolicy
-  rw [grant]
+  rw [turn]
   dsimp only
   rw [ite_eq_left owned]
   rw [rosterOpening?_application_eq setup leaks owner event current initial unchanged, opening]

@@ -92,7 +92,7 @@ theorem roster_owner_history_local_value
   have recallEq : execution.recall who = past := congrArg Prod.fst input
   have viewEq : execution.observe app who = view := congrArg Prod.snd input
   obtain ⟨actual, slot, boundary, prior, sample, initial, state, selected, initialSupport,
-      related, sourceSupport, grant, offset, serials, published, reached, activated,
+      related, sourceSupport, startReady, offset, serials, published, reached, activated,
       unchanged, position⟩ :=
     roster_decision_phase setup leaks extended rosters network reveals openable who
       ⟨remaining, some who, execution⟩ (current ▸ history.trace) rfl
@@ -105,7 +105,7 @@ theorem roster_owner_history_local_value
     rw [← viewEq] at eventReady
     change execution.application.publicView.EventReady event at eventReady
     rw [unchanged] at eventReady
-    exact ((soleReady_of_ready setup boundary.application grant).2 event eventReady).symm
+    exact ((soleReady_of_ready setup boundary.application startReady).2 event eventReady).symm
   subst actual
   have opening : rosterOpening? setup leaks who event (boundary.observe app who) =
       some (candidate, raw) := by
@@ -220,7 +220,7 @@ theorem roster_owner_history_local_value
     exact member
   have localValue := roster_owner_response_source_value setup leaks extended rosters timing
     network reveals decoded initial event state boundary related who ownedEvent
-    (soleReady_of_ready setup boundary.application grant) candidate raw opening owner valid
+    (soleReady_of_ready setup boundary.application startReady) candidate raw opening owner valid
     (offset who) serials published menu.uniformResponses
     (fun player past view response supported =>
       (menu.uniformResponses_support player past view response).mp supported)

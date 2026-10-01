@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- Grants, public sampling, inclusion and clock/expiry commands retain the
+/-- Public sampling, inclusion and clock/expiry commands retain the
 entire recorded transmission sequence. A wire opportunity is excluded because
 it may activate a player. -/
 theorem executionTraffic_passive_step

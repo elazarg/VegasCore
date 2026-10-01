@@ -4,7 +4,7 @@ import Vegas.Game.ServiceRoster
 
 /-! # Separating the source choice from actual roster traffic
 
-One complete granted phase of the global native policy is exactly the source
+One complete phase of the global native policy is exactly the source
 Boolean choice followed by an actual-runtime conditional timing/replay law.
 The conditional branch does not mention the source policy. This is a law of
 the existing interpreter, including private recall and all network state.

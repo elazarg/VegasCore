@@ -161,13 +161,13 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
       obtain published | ⟨nonce, conforming⟩ :=
         (permittedRosterEnvelope_iff setup leaks record rfl).mp verdict
       · exact (serials.next_unpublished who published).elim
-      · obtain ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-          related, _, grant, _, _, _, _, _, unchanged, _⟩ :=
+      · obtain ⟨event, slot, turn, prior, sample, initial, state, selected, initialSupport,
+          related, _, ownerTurn, _, _, _, _, _, unchanged, _⟩ :=
           roster_decision_phase setup leaks bounds rosters network reveals openable
             who control trace active
         have currentReady : control.execution.application.config.cut.Ready event := by
           rw [unchanged]
-          exact grant
+          exact ownerTurn
         have currentSole := soleReady_of_ready setup control.execution.application currentReady
         have ownedEvent := openingTraffic_sole_actor setup leaks record event currentSole
           conforming
@@ -180,11 +180,11 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
           (Revelations.initial setup.context) (Vegas.outputEmbedding setup.program)
           (Vegas.initialRefsBefore setup.program) 0
           (Vegas.CompiledPolicySuffix.whole setup.program profile)
-          event.val event.isLt state granted related event (by omega) ownedEvent grant
+          event.val event.isLt state turn related event (by omega) ownedEvent ownerTurn
         obtain ⟨candidate, raw, opening, owned, valid, _, _⟩ := data.2.2
         have currentOpening : rosterOpening? setup leaks who event
             (control.execution.observe app who) = some (candidate, raw) := by
-          rw [rosterOpening?_application_eq setup leaks who event control.execution granted
+          rw [rosterOpening?_application_eq setup leaks who event control.execution turn
             unchanged]
           exact opening
         have currentValid : control.execution.application.candidates.lookup candidate =
@@ -198,7 +198,7 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
           (Vegas.ContextRefs.initial setup.context
             (Vegas.outputLayout setup.program))
           (Revelations.initial setup.context) (Vegas.outputRef setup.program)
-          0 event.val state granted
+          0 event.val state turn
         have binding : control.execution.application.BindingInvariant :=
           unchanged.symm ▸ checkpoint.binding
         have sound := ((runtime setup).packetEvidence leaks).history_sound (initialLaw setup)

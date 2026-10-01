@@ -9,7 +9,7 @@ import Vegas.Pending.ReactiveSubmissionSerial
 The checker reads the public view, its prior ledger and a signed envelope. It
 admits, for a ready event within its deadline, the first canonical opaque
 binding regardless of hidden opening material, and one certified opening whose
-public guards succeed. Authorization is readiness: no service grant is
+public guards succeed. Authorization is readiness: no service cursor is
 consulted, so conformance does not depend on how an order serves ready events.
 Already published envelopes and copies of the current pending envelope remain
 permitted. Serial evidence detects another fresh envelope without requiring

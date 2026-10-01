@@ -57,7 +57,7 @@ theorem handle_completes_ready_public (runtime : EventGraphRuntime graph)
   exact Finset.mem_insert_self _ _
 
 /-- Environment execution cannot change the graph while its unique ready
-public event remains unfinished. Clocks and grants may still change. -/
+public event remains unfinished. Clocks may still change. -/
 theorem environmentStep_config_of_ready_public_unfinished
     (runtime : EventGraphRuntime graph) (ordered : graph.BarrierOrdered)
     (state next : State graph) (event : graph.EventId)

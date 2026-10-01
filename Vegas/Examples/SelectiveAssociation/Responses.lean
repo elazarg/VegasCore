@@ -21,10 +21,10 @@ theorem native_decision_recall_count (event : nativeGraph.EventId) (control : (s
   observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : NativeTurn event control) (observer : Player) :
+    (turn : NativeTurn event control) (observer : Player) :
     (control.execution.recall observer).length =
       nativeResponseCount observer (nativeBeforeResponse event) := by
-  obtain ⟨owner, position⟩ := native_decision_cursor event control trace who active granted
+  obtain ⟨owner, position⟩ := native_decision_cursor event control trace who active turn
   obtain ⟨_, prior, priorMem, observed⟩ :=
     native_decision_predecessor event control trace (owner ▸ active) position
   rw [(serviceApp observation).environmentStep_recall prior control.execution _ observed]
@@ -34,20 +34,20 @@ theorem native_decision_recall_count (event : nativeGraph.EventId) (control : (s
 
 theorem native_bob_binding_recall (control : (serviceApp observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (active : control.actor = some bob)
-    (granted : NativeTurn bobBinding control) :
+    (turn : NativeTurn bobBinding control) :
     (control.execution.recall bob).length = 1 :=
-  native_decision_recall_count bobBinding control trace bob active granted bob
+  native_decision_recall_count bobBinding control trace bob active turn bob
 
 theorem native_bob_opening_recall (control : (serviceApp observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (active : control.actor = some bob)
-    (granted : NativeTurn bobPublication control) :
+    (turn : NativeTurn bobPublication control) :
     (control.execution.recall bob).length = 2 :=
-  native_decision_recall_count bobPublication control trace bob active granted bob
+  native_decision_recall_count bobPublication control trace bob active turn bob
 
 theorem native_alice_opening_recall (control : (serviceApp observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (active : control.actor = some alice)
-    (granted : NativeTurn alicePublication control) :
+    (turn : NativeTurn alicePublication control) :
     (control.execution.recall alice).length = 2 :=
-  native_decision_recall_count alicePublication control trace alice active granted alice
+  native_decision_recall_count alicePublication control trace alice active turn alice
 
 end Vegas.Examples.SelectiveAssociation

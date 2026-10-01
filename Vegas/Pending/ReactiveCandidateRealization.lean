@@ -70,7 +70,7 @@ theorem candidatesRepresented_initial (inputs : graph.Inputs) :
 
 /-- Extensions of the semantic store preserve catalogue realization when
 the accepted handles and candidate tables stay fixed. This covers resolved
-publications, samples, clocks and grants at the corresponding service steps. -/
+publications, samples and clocks at the corresponding service steps. -/
 theorem CandidatesRepresented.transport {before after : State graph}
     (represented : before.CandidatesRepresented)
     (accepted : after.accepted = before.accepted)
@@ -117,7 +117,7 @@ theorem CandidatesRepresented.complete {state : State graph}
   exact represented.transport rfl rfl
     (state.config.complete_store_of_some event ready action value)
 
-/-- Samples, deadlines, clock ticks, and service grants retain the actual
+/-- Samples, deadlines and clock ticks retain the actual
 binding-to-candidate representation. Deferred checks need no extra premise. -/
 theorem CandidatesRepresented.environmentStep {state : State graph}
     (represented : state.CandidatesRepresented) (runtime : EventGraphRuntime graph)

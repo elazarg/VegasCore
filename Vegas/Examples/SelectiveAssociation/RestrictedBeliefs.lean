@@ -35,16 +35,16 @@ theorem history_observe (who : Player) (history : arena.History) :
 
 theorem information_depth (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
     (event : nativeGraph.EventId)
-    (granted : nativeTurnEvent? who past.length = some event)
+    (turn : nativeTurnEvent? who past.length = some event)
     (history : model.InformationHistory who (some (past, view))) :
     history.1.trace.length = Prefix.decisionDepth event := by
   obtain ⟨control, stateEq, active, recalled, observed⟩ := information_control who past view history
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  have grant : NativeTurn event control :=
-    .of_turnEvent? active (by rw [recalled]; exact granted)
-  exact Prefix.decision_depth event control trace who active grant
+  have ownerTurn : NativeTurn event control :=
+    .of_turnEvent? active (by rw [recalled]; exact turn)
+  exact Prefix.decision_depth event control trace who active ownerTurn
 
 theorem carol_history_joint (players : Profile model.behavioralSignature)
     (input : List app.PlayerEntry × app.PlayerView) (bit : Bool) :
@@ -181,17 +181,17 @@ theorem tremble_guessBeliefs_of_prefix_comparison (weight : ℝ) (positive : 0 <
           (Prefix.bobInput responses).observe app bob) = (past, view) ∧
         aliceBindingRef.get? (Prefix.bobInput responses).application.config.store =
           some (.success false)}).toReal) : GuessBeliefs (tremble weight positive atMostOne) := by
-  intro who site past view observed guesser granted hidden
+  intro who site past view observed guesser turn hidden
   fin_cases who
   · exact False.elim (guesser rfl)
   · apply tremble_bit_belief_le weight positive atMostOne bob site 17
-      (fun history => (information_depth bob past view bobBinding granted
+      (fun history => (information_depth bob past view bobBinding turn
         ⟨history.1, history.2.trans observed⟩).trans Prefix.bob_depth)
     rw [observed, bob_history_joint, bob_history_joint]
     simp only [tremble, Prefix.decode_perturbed]
     exact bobComparison past view hidden
   · apply tremble_bit_belief_le weight positive atMostOne carol site 11
-      (fun history => (information_depth carol past view carolBinding granted
+      (fun history => (information_depth carol past view carolBinding turn
         ⟨history.1, history.2.trans observed⟩).trans Prefix.carol_depth)
     rw [observed, carol_history_joint, carol_history_joint]
     simp only [tremble, Prefix.decode_perturbed]
@@ -201,10 +201,10 @@ theorem guessBeliefs_limit (sequence : Nat → model.BehavioralAssessment)
     (assessment : model.BehavioralAssessment)
     (converges : InformationModel.BehavioralAssessmentConvergesPointwise sequence assessment)
     (comparison : ∀ n, GuessBeliefs (sequence n)) : GuessBeliefs assessment := by
-  intro who site past view observed guesser granted hidden
+  intro who site past view observed guesser turn hidden
   exact (converges.belief who site).toOuterMeasure_toReal_le
     {history | hasAliceBit true history.1.state} {history | hasAliceBit false history.1.state}
-      (fun n => comparison n who site past view observed guesser granted hidden)
+      (fun n => comparison n who site past view observed guesser turn hidden)
 
 /-- One common subsequence supplies all limiting beliefs. The hypothesis
 is the concrete posterior comparison for every positive perturbation. -/

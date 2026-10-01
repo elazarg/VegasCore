@@ -62,7 +62,7 @@ theorem native_response_finish (players : Player → (serviceApp observation).Po
     (who : Player) (response : (serviceApp observation).Action) (publication : PublicationResult
       Bool)
     (active : control.actor = some who)
-    (granted : NativeTurn (nativePublicationEvent who) control)
+    (turn : NativeTurn (nativePublicationEvent who) control)
     (chooses : players who (control.execution.recall who)
       (control.execution.observe (serviceApp observation) who) = PMF.pure response)
     (included : ∀ middle ∈ (nativeRuntime.interactionStep observation players (serviceNetwork
@@ -81,7 +81,7 @@ theorem native_response_finish (players : Player → (serviceApp observation).Po
     rwa [native_publication_owner]
   have exactResult := native_reserved_finish players control trace (nativePublicationEvent who)
     response (fun state => (nativePublicationRef who).get? state.config.store = some publication)
-    (native_publication_invariant who publication) ownerActive granted
+    (native_publication_invariant who publication) ownerActive turn
       (by simpa only [native_publication_owner] using chooses)
       (by simpa only [native_publication_owner] using included) result supported
   exact exactResult
@@ -92,7 +92,7 @@ theorem native_opening_finish (players : Player → (serviceApp observation).Pol
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (who : Player) (bit : Bool) (active : control.actor = some who)
-    (granted : NativeTurn (nativePublicationEvent who) control)
+    (turn : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (stored : (nativeBindingRef who).get? control.execution.application.config.store =
       some (.success bit))
@@ -108,7 +108,7 @@ theorem native_opening_finish (players : Player → (serviceApp observation).Pol
       (nativePublicationRef who).get? final.execution.application.config.store =
         some (.success bit) := by
   have position := (native_decision_cursor (nativePublicationEvent who) control trace who active
-    granted).2
+    turn).2
   have ownerActive : control.actor = some (nativeOwner (nativePublicationEvent who)) := by
     rwa [native_publication_owner]
   obtain ⟨_, service⟩ := native_decision_service (nativePublicationEvent who) control trace
@@ -117,7 +117,7 @@ theorem native_opening_finish (players : Player → (serviceApp observation).Pol
   obtain ⟨valid, bounded, serials⟩ := native_history_invariants control trace
   obtain ⟨opened, published, inclusion⟩ := native_opening_response_realizes players
     control.execution who bit valid bounded serials ready timely stored
-  apply native_response_finish players control trace who _ (.success bit) active granted opens
+  apply native_response_finish players control trace who _ (.success bit) active turn opens
     _ result supported
   intro middle middleMem
   have same : middle.application = opened := by
@@ -186,7 +186,7 @@ theorem native_opening_behavioral_lower
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (who : Player) (bit : Bool) (active : control.actor = some who)
-    (granted : NativeTurn (nativePublicationEvent who) control)
+    (turn : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (stored : (nativeBindingRef who).get? control.execution.application.config.store =
       some (.success bit))
@@ -221,7 +221,7 @@ theorem native_opening_behavioral_lower
     _ ≤ expect finished (nativeUtility who) := expect_mono (by
       intro result supported
       obtain ⟨final, rfl, published⟩ := native_opening_finish players control trace who bit active
-        granted unfinished stored (native_profile_opens profile who _ _ opens) result supported
+        turn unfinished stored (native_profile_opens profile who _ _ opens) result supported
       exact native_opening_utility_lower final.execution.application.config who bit published)
       (payoffIntegrable_constant _ _) (nativeUtility_integrable _ who)
 

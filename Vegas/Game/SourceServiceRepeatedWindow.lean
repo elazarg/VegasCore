@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveRepeatedSubmissionWindow
 
 /-! # Stopped repair in the actual post-submission service roster
 
-The public grant and existing own recall make the required-binding branch
+The player's turn and existing own recall make the required-binding branch
 inactive after the first submission. The fixed roster scheduler supplies the
 activation-only window; arbitrary raw opponents remain in the exact law.
 -/

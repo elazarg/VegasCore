@@ -134,8 +134,8 @@ def reactiveOriginal (runtime : EventGraphRuntime graph)
 
 /-- One ready owned event takes one activation, with no staging instructions.
 On consistent own histories this policy sends at most one packet per event.
-The client serves its own turn (`PublicView.ownTurn?`); it reads no service
-grant, so it acts as soon as its event is ready. -/
+The client serves its own turn (`PublicView.ownTurn?`), so it acts as soon as
+its event is ready. -/
 def prescribedReactiveResponse (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)

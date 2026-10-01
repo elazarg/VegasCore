@@ -5,7 +5,7 @@ import Vegas.Pending.ReactiveCompiledMenu
 
 /-! # Deferred binding opportunities in the source service
 
-The retained menu uses the existing public grant and the player's own response
+The retained menu uses the player's turn and its own response
 count to identify the last owner visit of a fixed finite roster. Before that
 visit, a binding may wait or replay. At the last visit an unsent binding must
 submit a typed value. Once submitted, no second fresh call of the event is

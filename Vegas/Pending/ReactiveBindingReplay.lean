@@ -7,7 +7,7 @@ import Vegas.Pending.ReactiveUnusableBinding
 /-! # A binding may await inclusion through repeated owner visits
 
 After the first binding, the actual retained menu permits only silence and
-known-envelope replay at this grant. All passive samples and replay copies are
+known-envelope replay at this turn. All passive samples and replay copies are
 retained. The protected selector therefore includes the same canonical packet
 with the same typed result as immediate inclusion, even for unusable private
 material. This is an execution law, not a claim that unusability is detectable.

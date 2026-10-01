@@ -122,7 +122,7 @@ cannot change it. -/
 theorem native_response_settlement_finish (players : Player → nativeApp.Policy)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (who : Player) (response : nativeApp.Action) (active : control.actor = some who)
-    (granted : NativeTurn (nativePublicationEvent who) control)
+    (turn : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (chooses : players who (control.execution.recall who)
       (control.execution.observe nativeApp who) = PMF.pure response)
@@ -137,7 +137,7 @@ theorem native_response_settlement_finish (players : Player → nativeApp.Policy
           some (((nativePublicationRef who).get?
             middle.application.config.store).getD .failure) := by
   have position := (native_decision_cursor (nativePublicationEvent who) control trace who active
-    granted).2
+    turn).2
   have ownerActive : control.actor = some (nativeOwner (nativePublicationEvent who)) := by
     rwa [native_publication_owner]
   obtain ⟨valid, service⟩ := native_decision_service (nativePublicationEvent who) control trace

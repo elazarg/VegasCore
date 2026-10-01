@@ -22,19 +22,19 @@ def prescribedBit (who : Player) (view : app.PlayerView) : Bool :=
   if who = alice then false else publicGuess view
 
 theorem response_binds (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
-    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who)) :
+    (turn : nativeTurnEvent? who past.length = some (nativeBindingEvent who)) :
     response who past view = correctiveBinding who (nativeBindingEvent who)
       (prescribedBit who view) view := by
   have owner : who = nativeOwner (nativeBindingEvent who) := (native_binding_owner who).symm
   have binding : (nativeBindingEvent who).val < 3 := by fin_cases who <;> decide
-  simp only [response, granted, ite_eq_left owner, ite_eq_left binding, prescribedBit]
+  simp only [response, turn, ite_eq_left owner, ite_eq_left binding, prescribedBit]
 
 /-- One corrective response fixes the binding against every subsequent raw
 policy. The hypothesis fixes just the current response law. -/
 theorem binding_success (players : Profile model.behavioralSignature)
     (who : Player) (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control)
+    (turn : NativeTurn (nativeBindingEvent who) control)
     (bit : Bool)
     (chooses : menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players
       who (control.execution.recall who) (control.execution.observe app who) =
@@ -46,15 +46,15 @@ theorem binding_success (players : Profile model.behavioralSignature)
     ∃ result, final.state = some result ∧ (nativeBindingRef who).get?
       result.execution.application.config.store = some (.success bit) := by
   let decoded := menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players
-  obtain ⟨next, stored, law⟩ := correctiveBinding_realizes decoded control trace who active granted
+  obtain ⟨next, stored, law⟩ := correctiveBinding_realizes decoded control trace who active turn
     (native_decision_unfinished (observation := leaks) (nativeBindingEvent who) control trace who
       active
-      granted) bit
+      turn) bit
   refine native_reserved_finish (observation := leaks) decoded control trace (nativeBindingEvent
     who)
     (correctiveBinding who (nativeBindingEvent who) bit (control.execution.observe app who))
     (fun state => (nativeBindingRef who).get? state.config.store = some (.success bit))
-    (binding_invariant who (.success bit)) (by rwa [native_binding_owner]) granted
+    (binding_invariant who (.success bit)) (by rwa [native_binding_owner]) turn
     (by simpa only [native_binding_owner] using chooses) ?_ final.state ?_
   · intro middle reached
     rw [native_binding_owner] at reached
@@ -76,15 +76,15 @@ theorem binding_success (players : Profile model.behavioralSignature)
 
 theorem profile_binding_success (who : Player) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control)
+    (turn : NativeTurn (nativeBindingEvent who) control)
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile fuel ⟨some control, trace⟩).support) :
     ∃ result, final.state = some result ∧ (nativeBindingRef who).get?
       result.execution.application.config.store =
         some (.success (prescribedBit who (control.execution.observe app who))) := by
-  apply binding_success profile who control trace active granted _ _ fuel enough final supported
+  apply binding_success profile who control trace active turn _ _ fuel enough final supported
   rw [decode_profile]
-  exact congrArg PMF.pure (response_binds who _ _ (granted.turnEvent?_of_active active))
+  exact congrArg PMF.pure (response_binds who _ _ (turn.turnEvent?_of_active active))
 
 end Vegas.Examples.SelectiveAssociation.Restricted

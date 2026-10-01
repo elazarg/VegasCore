@@ -108,7 +108,7 @@ theorem native_binding_response_settlement_finish (who : Player) (players : Play
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (response : (serviceApp observation).Action) (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control)
+    (turn : NativeTurn (nativeBindingEvent who) control)
     (unfinished : (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed)
     (chooses : players who (control.execution.recall who)
       (control.execution.observe (serviceApp observation) who) = PMF.pure response)
@@ -123,7 +123,7 @@ theorem native_binding_response_settlement_finish (who : Player) (players : Play
         final.execution.application.config.store =
         some (((nativeBindingRef who).get? middle.application.config.store).getD .failure) := by
   have position := (native_decision_cursor (nativeBindingEvent who) control trace who active
-    granted).2
+    turn).2
   obtain ⟨valid, service⟩ := native_decision_service (nativeBindingEvent who) control trace
       (by rwa [native_binding_owner]) position
   have ready := (service.resolve_left unfinished).1
@@ -194,7 +194,7 @@ theorem native_binding_settlement_behavioral (who : Player)
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (response : (serviceApp observation).Action) (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control)
+    (turn : NativeTurn (nativeBindingEvent who) control)
     (unfinished : (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed)
     (chooses : (serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation)
@@ -223,7 +223,7 @@ theorem native_binding_settlement_behavioral (who : Player)
       omega)
   obtain ⟨middle, middleMem, result, stateEq, bound⟩ :=
     native_binding_response_settlement_finish who
-    _ control trace response active granted unfinished chooses final.state (by
+    _ control trace response active turn unfinished chooses final.state (by
       rw [← law, PMF.support_map]
       exact ⟨final, supported, rfl⟩)
   exact ⟨middle, middleMem, by

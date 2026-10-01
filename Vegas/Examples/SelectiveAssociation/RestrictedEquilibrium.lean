@@ -64,23 +64,23 @@ theorem prescribed_sequentiallyRational (assessment : model.BehavioralAssessment
             history.state) (2 * nativeHorizon + 1) := by
   intro who site
   obtain ⟨past, view, observed⟩ := site_observation who site
-  cases grant : nativeTurnEvent? who past.length with
+  cases turn : nativeTurnEvent? who past.length with
   | none =>
-      rcases site_ambient_owner who site past view observed grant with rfl | rfl
-      · exact alice_early_rational assessment strategy site past view observed (Or.inl grant)
-      · exact bob_prelude_rational assessment strategy site past view observed grant
+      rcases site_ambient_owner who site past view observed turn with rfl | rfl
+      · exact alice_early_rational assessment strategy site past view observed (Or.inl turn)
+      · exact bob_prelude_rational assessment strategy site past view observed turn
   | some event =>
-      have owner := site_turn_owner who past event grant
+      have owner := site_turn_owner who past event turn
       subst who
       fin_cases event
-      · exact alice_early_rational assessment strategy site past view observed (Or.inr grant)
+      · exact alice_early_rational assessment strategy site past view observed (Or.inr turn)
       · exact profile_guesser_rational assessment strategy carol (by decide) site past view
-          observed grant (beliefs carol site past view observed (by decide) grant)
+          observed turn (beliefs carol site past view observed (by decide) turn)
       · exact profile_guesser_rational assessment strategy bob (by decide) site past view
-          observed grant (beliefs bob site past view observed (by decide) grant)
-      · exact profile_opening_rational assessment strategy alice site past view observed grant
-      · exact profile_opening_rational assessment strategy carol site past view observed grant
-      · exact profile_opening_rational assessment strategy bob site past view observed grant
+          observed turn (beliefs bob site past view observed (by decide) turn)
+      · exact profile_opening_rational assessment strategy alice site past view observed turn
+      · exact profile_opening_rational assessment strategy carol site past view observed turn
+      · exact profile_opening_rational assessment strategy bob site past view observed turn
 
 /-- A sequential equilibrium of the original bounded native game when its
 passive observation rule always returns the empty set. The complete raw menus,

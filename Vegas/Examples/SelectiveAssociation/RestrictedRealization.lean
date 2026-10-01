@@ -34,12 +34,12 @@ theorem history_invariants (control : app.Control) (trace : arena.Trace (some co
 including histories created by arbitrary earlier raw responses. -/
 theorem binding_fresh (control : app.Control) (trace : arena.Trace (some control))
     (who : Player) (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control) :
+    (turn : NativeTurn (nativeBindingEvent who) control) :
     ∃ slot : Fin 2,
       freshSlot (control.execution.observe app who) = some slot ∧
       control.execution.application.candidates.lookup (who, .prepared slot.val) = .fresh := by
   have count := native_decision_recall_count (observation := leaks) (nativeBindingEvent who)
-    control trace who active granted who
+    control trace who active turn who
   have bounded : (control.execution.recall who).length ≤ 1 := by
     rw [count]
     fin_cases who <;> decide
@@ -141,7 +141,7 @@ decision. The statement uses actual native histories and the unchanged selector.
 theorem correctiveBinding_realizes (players : Player → app.Policy)
     (control : app.Control) (trace : arena.Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : NativeTurn (nativeBindingEvent who) control)
+    (turn : NativeTurn (nativeBindingEvent who) control)
     (unfinished : nativeBindingEvent who ∉ control.execution.application.config.cut.completed)
     (bit : Bool) :
     ∃ next, (nativeBindingRef who).get? next.config.store = some (.success bit) ∧
@@ -152,12 +152,12 @@ theorem correctiveBinding_realizes (players : Player → app.Policy)
             who)))).map
           (fun result => result.application) = PMF.pure next := by
   have position := (native_decision_cursor (observation := leaks) (nativeBindingEvent who)
-    control trace who active granted).2
+    control trace who active turn).2
   obtain ⟨_, service⟩ := native_decision_service (observation := leaks) (nativeBindingEvent who)
     control trace (by simpa only [native_binding_owner] using active) position
   obtain ⟨ready, timely⟩ := service.resolve_left unfinished
   obtain ⟨valid, _, serials⟩ := history_invariants control trace
-  obtain ⟨slot, selected, fresh⟩ := binding_fresh control trace who active granted
+  obtain ⟨slot, selected, fresh⟩ := binding_fresh control trace who active turn
   simp only [correctiveBinding, selected]
   exact binding_realizes players control.execution who slot bit valid serials fresh ready timely
 

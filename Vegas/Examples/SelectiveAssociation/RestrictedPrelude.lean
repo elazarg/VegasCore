@@ -104,13 +104,13 @@ theorem prescribed_prelude_results (who : Player) (control : app.Control)
   have short : preludeSteps who ≤ 2 * nativeHorizon + 1 := by fin_cases who <;> decide
   rw [← Nat.add_sub_of_le short, model.runBehavioralFrom_add] at supported
   obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  obtain ⟨atBinding, bindingEq, ownerActive, ownerGrant⟩ := prelude_reaches_binding profile who
+  obtain ⟨atBinding, bindingEq, ownerActive, ownerTurn⟩ := prelude_reaches_binding profile who
     control trace active ambient later laterMem
   rcases later with ⟨state, laterTrace⟩
   change state = some atBinding at bindingEq
   subst state
-  apply profile_alice_binding_results atBinding laterTrace ownerActive ownerGrant _ _ final finalMem
-  rw [decision_rank aliceBinding atBinding laterTrace ownerActive ownerGrant]
+  apply profile_alice_binding_results atBinding laterTrace ownerActive ownerTurn _ _ final finalMem
+  rw [decision_rank aliceBinding atBinding laterTrace ownerActive ownerTurn]
   fin_cases who <;> decide
 
 theorem bob_prelude_rational (assessment : model.BehavioralAssessment)

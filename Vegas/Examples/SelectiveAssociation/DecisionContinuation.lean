@@ -126,13 +126,13 @@ theorem native_next_decision (profile : ∀ who, (serviceModel observation).Beha
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (active : control.actor = some (nativeOwner event))
-    (granted : NativeTurn event control)
+    (turn : NativeTurn event control)
     (later : (serviceArena observation).History)
     (supported : later ∈ ((serviceModel observation).runBehavioralFrom profile
       (nativeRuntime.deadline event + 4) ⟨some control, trace⟩).support) :
     ∃ result, later.state = some result ∧ result.actor = some (nativeOwner next) ∧
       NativeTurn next result := by
-  have position := (native_decision_cursor event control trace _ active granted).2
+  have position := (native_decision_cursor event control trace _ active turn).2
   have accounted := (native_decision_predecessor event control trace active position).1
   have remaining : control.remaining =
       nativeHorizon - ((nativeBeforeResponse event).length + 1) := by omega

@@ -5,7 +5,7 @@ import Vegas.Pending.ReactiveObservedState
 
 /-! # Explicit withholding is sequentially suboptimal
 
-Withholding remains an ordinary legal raw response. At a granted publication
+Withholding remains an ordinary legal raw response. At its publication turn
 whose own binding succeeded, its fresh envelope is included and records failure;
 the legal ordinary opening instead guarantees at least three more payoff units.
 -/
@@ -86,7 +86,7 @@ theorem native_withhold_realizes (players : Player → nativeApp.Policy)
 theorem native_withhold_finish (players : Player → nativeApp.Policy)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (who : Player) (active : control.actor = some who)
-    (granted : NativeTurn (nativePublicationEvent who) control)
+    (turn : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (withholds : players who (control.execution.recall who)
       (control.execution.observe nativeApp who) = PMF.pure (nativeWithholdAction who))
@@ -96,7 +96,7 @@ theorem native_withhold_finish (players : Player → nativeApp.Policy)
     ∃ final, result = some final ∧
       (nativePublicationRef who).get? final.execution.application.config.store = some .failure := by
   have cursor := (native_decision_cursor (nativePublicationEvent who) control trace who active
-    granted).2
+    turn).2
   have ownerActive : control.actor = some (nativeOwner (nativePublicationEvent who)) := by
     rwa [native_publication_owner]
   obtain ⟨_, service⟩ := native_decision_service (nativePublicationEvent who) control trace
@@ -111,7 +111,7 @@ theorem native_withhold_finish (players : Player → nativeApp.Policy)
       (nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace)
   obtain ⟨next, failed, law⟩ := native_withhold_realizes players control.execution who
     (native_history_invariants control trace).2.2 ready timely remembered
-  apply native_response_finish players control trace who _ .failure active granted withholds
+  apply native_response_finish players control trace who _ .failure active turn withholds
     _ result supported
   intro middle middleMem
   have same : middle.application = next := by
@@ -128,7 +128,7 @@ theorem native_not_supported_withhold
     (site : nativeModel.InformationSite who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
+    (turn : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -139,7 +139,7 @@ theorem native_not_supported_withhold
     (withhold : choice.1 = some (nativeWithholdAction who)) :
     choice ∉ (assessment.strategy who site.1).support := by
   classical
-  apply native_not_supported_failing_opening assessment who site past view siteEq bit granted
+  apply native_not_supported_failing_opening assessment who site past view siteEq bit turn
     unfinished stored rational choice
   intro history final finalMem
   obtain ⟨control, stateEq, active, recall, observed⟩ :=
@@ -151,8 +151,8 @@ theorem native_not_supported_withhold
     ((assessment.strategy who).commit site.1 choice)
   let players := nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler profile
-  have grant : NativeTurn (nativePublicationEvent who) control :=
-    .of_turnEvent? active (by rw [recall]; exact granted)
+  have ownerTurn : NativeTurn (nativePublicationEvent who) control :=
+    .of_turnEvent? active (by rw [recall]; exact turn)
   have incomplete : nativePublicationEvent who ∉
       control.execution.application.config.cut.completed := by
     rw [← observed] at unfinished
@@ -179,7 +179,8 @@ theorem native_not_supported_withhold
       have bound := nativeApp.trace_bound (PMF.pure nativeInitial) nativeHorizon nativeScheduler
         (nativeMenu.toRawTrace (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace)
       omega)
-  apply native_withhold_finish players control trace who active grant incomplete chooses final.state
+  apply native_withhold_finish players control trace who active ownerTurn incomplete chooses
+    final.state
   rw [← law, PMF.support_map]
   exact ⟨final, finalMem, rfl⟩
 

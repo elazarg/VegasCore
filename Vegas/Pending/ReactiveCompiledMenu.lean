@@ -311,7 +311,7 @@ theorem binding_normalized_available (who : Player)
   | success chosen => exact value chosen rfl
 
 /-- Every source value is present, independently of the equilibrium. The
-grant/readiness and fresh-slot capacity are operational checkpoint conditions. -/
+readiness and fresh-slot capacity are operational checkpoint conditions. -/
 theorem binding_value_required (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)

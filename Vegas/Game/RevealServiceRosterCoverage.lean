@@ -117,7 +117,7 @@ theorem roster_owner_coverage
       have contrary := recorded.mpr present
       rw [empty] at contrary
       cases contrary
-    have grant : view.application.publicView.ownTurn? owner = some event := by
+    have turn : view.application.publicView.ownTurn? owner = some event := by
       change current.application.publicView.ownTurn? owner = some event
       rw [frame.application]
       exact PublicView.ownTurn?_of_ownTurn _ owner event (sole.ownTurn ownedEvent)
@@ -128,7 +128,7 @@ theorem roster_owner_coverage
         some packet := by
       unfold rosterFresh?
       apply Option.bind_eq_some_iff.mpr
-      refine ⟨event, grant, ?_⟩
+      refine ⟨event, turn, ?_⟩
       rw [ite_eq_right (not_not_intro ownedEvent)]
       apply Option.bind_eq_some_iff.mpr
       refine ⟨(candidate, raw), data, ?_⟩

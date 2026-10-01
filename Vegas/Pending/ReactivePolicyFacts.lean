@@ -50,7 +50,7 @@ theorem reactiveDecision_transmission (runtime : EventGraphRuntime graph)
       reactiveResolutionPacket_event who event payload binding checks outputEq action view⟩
 
 /-- No replay and no second submission for an event, regardless of how often
-the scheduler activates the player or which public grant it offers. -/
+the scheduler activates the player. -/
 theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player)
@@ -70,7 +70,7 @@ theorem prescribedReactivePolicy_transmission (runtime : EventGraphRuntime graph
   unfold prescribedReactiveResponse at issued
   split at issued
   · cases (PMF.mem_support_pure_iff _ _).mp issued; exact Or.inl rfl
-  · rename_i event grant
+  · rename_i event turn
     split at issued
     · cases (PMF.mem_support_pure_iff _ _).mp issued; exact Or.inl rfl
     · rename_i unsent

@@ -77,7 +77,7 @@ theorem committed_guesser_bound (assessment : model.BehavioralAssessment)
     (who : Player) (guesser : who ≠ alice) (site : model.InformationSite who)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
+    (turn : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (alternative : model.BehavioralPolicy who) (choice : model.Choice who site.1) :
     ∃ guess : PublicationResult Bool,
       ∀ history : model.InformationHistory who site.1, ∀ final : arena.History,
@@ -100,12 +100,13 @@ theorem committed_guesser_bound (assessment : model.BehavioralAssessment)
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  have grant : NativeTurn (nativeBindingEvent who) control :=
-    .of_turnEvent? active (by rw [recalled]; exact granted)
+  have ownerTurn : NativeTurn (nativeBindingEvent who) control :=
+    .of_turnEvent? active (by rw [recalled]; exact turn)
   obtain ⟨result, resultEq, bound⟩ := guesser_continuation_bound who guesser changed
-    (update_opens_other who alice (Ne.symm guesser) _) control trace active grant final supported
+    (update_opens_other who alice (Ne.symm guesser) _)
+      control trace active ownerTurn final supported
   have same := native_committed_binding_local (observation := leaks) who
-    (Profile.update (sig := model.behavioralSignature) profile who alternative) past view granted
+    (Profile.update (sig := model.behavioralSignature) profile who alternative) past view turn
       choice ⟨⟨some control, trace⟩, historyInfo⟩ reference final referenceFinal
         (by simpa only [Profile.update_same, Profile.update_idem] using supported)
         (by simpa only [Profile.update_same, Profile.update_idem] using referenceMem)
@@ -119,7 +120,7 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (who : Player) (guesser : who ≠ alice)
     (site : model.InformationSite who) (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who)) :
+    (turn : nativeTurnEvent? who past.length = some (nativeBindingEvent who)) :
     (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
       (2 * nativeHorizon + 1)).value (assessment.strategy who) =
       expect (assessment.belief who site) (fun history =>
@@ -137,10 +138,10 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
     guessReward (.success (publicGuess view)) (some control)) ?_).trans
       (expect_constant _ _)
   intro final supported
-  have grant : NativeTurn (nativeBindingEvent who) control :=
-    .of_turnEvent? active (by rw [recalled]; exact granted)
-  simpa only [observed] using profile_guesser_payoff who guesser control trace active grant final
-    supported
+  have ownerTurn : NativeTurn (nativeBindingEvent who) control :=
+    .of_turnEvent? active (by rw [recalled]; exact turn)
+  simpa only [observed] using profile_guesser_payoff who guesser control trace active ownerTurn
+    final supported
 
 /-- Whole-policy sequential rationality at either native guessing site.
 The only belief obligation is the stated comparison at uncertified views. -/
@@ -148,7 +149,7 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (who : Player) (guesser : who ≠ alice)
     (site : model.InformationSite who) (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
+    (turn : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (posterior : publicGuess view = false →
       ((assessment.belief who site).toOuterMeasure
           {history | hasAliceBit true history.1.state}).toReal ≤
@@ -172,10 +173,10 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
       (menu.informationSite_allNonterminal (PMF.pure nativeInitial) nativeHorizon scheduler
         who site) (2 * nativeHorizon)) _ alternative
       (nativeUtility_continuation_integrable assessment site _ _),
-    profile_guesser_context assessment strategy who guesser site past view information granted]
+    profile_guesser_context assessment strategy who guesser site past view information turn]
   refine expect_le_const _ _ (payoffIntegrable_of_finite _ _) _ fun choice _ => ?_
   obtain ⟨guess, bound⟩ := committed_guesser_bound assessment who guesser site past view
-    information granted alternative choice
+    information turn alternative choice
   calc
     _ ≤ expect (assessment.belief who site) (fun history => guessReward guess history.1.state) := by
       simp only [InformationModel.BehavioralAssessment.continuationContextWith_value,

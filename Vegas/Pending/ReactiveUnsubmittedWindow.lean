@@ -6,7 +6,7 @@ import Vegas.Pending.ReactivePlayerWindow
 
 /-! # Retained windows before their first submission
 
-A retained response at a granted event is either transport or a submission
+A retained response at a served event is either transport or a submission
 by that event's owner. Thus an actual prefix with no recorded owner submission
 is also supported by the ordinary replay policy, with its complete private
 recall and passive samples preserved.

@@ -33,16 +33,16 @@ def decisionDepth (event : nativeGraph.EventId) : Nat :=
 
 theorem decision_depth (event : nativeGraph.EventId) (control : app.Control)
     (trace : arena.Trace (some control)) (who : Player) (active : control.actor = some who)
-    (granted : NativeTurn event control) :
+    (turn : NativeTurn event control) :
     trace.length = decisionDepth event := by
   rw [← menu.toRawTrace_length (PMF.pure nativeInitial) nativeHorizon scheduler trace,
     app.trace_length_of_control]
-  rw [(native_decision_cursor (observation := leaks) event control trace who active granted).2]
+  rw [(native_decision_cursor (observation := leaks) event control trace who active turn).2]
   apply congrArg (fun count => 1 + ((nativeBeforeResponse event).length + 1) + count)
   apply Finset.sum_congr rfl
   intro observer _
   exact native_decision_recall_count (observation := leaks) event control trace who active
-    granted observer
+    turn observer
 
 theorem carol_depth : decisionDepth carolBinding = 11 := by decide
 theorem bob_depth : decisionDepth bobBinding = 17 := by decide
@@ -255,14 +255,14 @@ theorem carol_prescribed_alice_false (players : Profile model.behavioralSignatur
   obtain ⟨trace⟩ := alice_legal players _ (carol_support_prelude _ responses supported)
   let control : app.Control :=
     ⟨80, some alice, aliceInput responses.alicePrelude responses.bobPrelude⟩
-  have grant : NativeTurn (nativeBindingEvent alice) control := ⟨rfl, rfl⟩
+  have turn : NativeTurn (nativeBindingEvent alice) control := ⟨rfl, rfl⟩
   have unfinished := native_decision_unfinished (observation := leaks) (nativeBindingEvent alice)
-    control trace alice rfl grant
+    control trace alice rfl turn
   obtain ⟨next, stored, law⟩ :=
-    correctiveBinding_realizes policy control trace alice rfl grant unfinished false
+    correctiveBinding_realizes policy control trace alice rfl turn unfinished false
   have selected : responses.aliceBinding = correctiveBinding alice aliceBinding false
       (control.execution.observe app alice) :=
-    prescribed.trans (response_binds alice _ _ (grant.turnEvent?_of_active rfl))
+    prescribed.trans (response_binds alice _ _ (turn.turnEvent?_of_active rfl))
   rw [include_step, PMF.pure_map] at law
   have same := (PMF.mem_support_pure_iff _ _).mp (law ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   apply carolInput_preserves (binding_invariant alice (.success false)) responses

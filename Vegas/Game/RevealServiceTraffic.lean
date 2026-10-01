@@ -10,7 +10,7 @@ import Interaction.ReactiveAuditCollection
 
 The checker reads the authenticated transmission phase, broadcaster and prior
 ledger. A fresh ordinary transmission must be a certified opening of a ready,
-timely resolution; no service grant is consulted. Previously published packets may be replayed.
+timely resolution; no service turn is consulted. Previously published packets may be replayed.
 The reporting player transmits nothing on compliant executions; every one of
 its transmissions is therefore outside this source implementation.
 

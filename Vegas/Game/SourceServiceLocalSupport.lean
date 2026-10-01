@@ -54,7 +54,7 @@ theorem sourceService_decision_supported
   let execution := control.execution
   obtain ⟨event, slot, initial, _, _, Γ, names, remaining, remainingProfile, source,
       refs, embedding, refsBefore, aligned, _, ⟨inherited, _⟩,
-      granted, prior, sample, _, sole, _, _, _, _, _, checkpoint, _⟩ :=
+      turn, prior, sample, _, sole, _, _, _, _, _, checkpoint, _⟩ :=
     sourceService_decision_boundary setup leaks bounds values capacity rosters opportunities
       network profile who control trace active
   have ready : execution.application.config.cut.Ready event :=

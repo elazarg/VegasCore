@@ -10,7 +10,7 @@ import GameTheoryExtensions.Math.Probability.Support
 /-! # Actual full-source owner posteriors
 
 The initialized timed compiler's joint prefix law is propagated through the
-real grant, an arbitrary unsettled roster and passive owner activation. The
+real turn, an arbitrary unsettled roster and passive owner activation. The
 complete native input then conditions the same normalized source-state prior.
 The normalized prior retains the existing private-intention reconstruction;
 it is not identified with an original source assessment.

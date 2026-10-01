@@ -99,8 +99,8 @@ theorem roster_known_permitted [setup.FiniteInitialLaw]
   let menu := rosterMenu setup leaks bounds rosters
   let profile : BehavioralProfile setup.program :=
     fun owner => RevealOnly.uniformPolicy owner setup.program reveals
-  obtain ⟨event, slot, granted, prior, sample, initial, state, selected, initialSupport,
-      related, _, grant, offset, serials, published, reached, activated,
+  obtain ⟨event, slot, phaseStart, prior, sample, initial, state, selected, initialSupport,
+      related, _, startReady, offset, serials, published, reached, activated,
       unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
@@ -109,7 +109,7 @@ theorem roster_known_permitted [setup.FiniteInitialLaw]
     setup.program reveals profile (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program profile)
-    event.val event.isLt state granted related event (by omega) ownedEvent grant
+    event.val event.isLt state phaseStart related event (by omega) ownedEvent startReady
   obtain ⟨candidate, raw, opening, owned, valid, _, _⟩ := data.2.2
   have covered : ∀ player past view response,
       response ∈ (menu.uniformResponses player past view).support →
@@ -122,15 +122,16 @@ theorem roster_known_permitted [setup.FiniteInitialLaw]
       rw [← List.count_append, List.take_append_drop]
     omega
   obtain ⟨chosen, frame, _, _, _⟩ := roster_window_posterior setup leaks bounds rosters
-    granted event owner (soleReady_of_ready setup granted.application grant) ownedEvent candidate
+    phaseStart event owner (soleReady_of_ready setup phaseStart.application startReady)
+      ownedEvent candidate
     raw opening owned valid (offset owner) serials
     published menu.uniformResponses covered network ((rosters event).take slot) within prior reached
   have packets : control.execution.network.Satisfies fun packet =>
-      packet.id ∈ granted.network.ledger.map Message.id ∨
-        packet = (runtime setup).windowEnvelope leaks owner event candidate raw granted := by
+      packet.id ∈ phaseStart.network.ledger.map Message.id ∨
+        packet = (runtime setup).windowEnvelope leaks owner event candidate raw phaseStart := by
     rw [activated]
     exact frame.packets.learn who sample
-  have ledger : control.execution.network.ledger = granted.network.ledger := by
+  have ledger : control.execution.network.ledger = phaseStart.network.ledger := by
     rw [activated]
     exact frame.ledger
   rcases packets.known who message known with published | canonical
@@ -141,16 +142,16 @@ theorem roster_known_permitted [setup.FiniteInitialLaw]
   · subst message
     obtain ⟨context, source, refs, checkpoint⟩ := related.checkpoint setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program))
-      (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state granted
-    have ready : granted.application.config.cut.Ready event := by
+      (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state phaseStart
+    have ready : phaseStart.application.config.cut.Ready event := by
       simpa only [Nat.zero_add, Fin.eta] using checkpoint.ordered.ready (by omega)
     have timely := checkpoint.timely event (by omega) (by rw [ownedEvent]; rfl)
-    have admitted := roster_opening_permitted setup leaks granted owner event ownedEvent
-      ready timely candidate raw opening (granted.network.nextSerial owner)
+    have admitted := roster_opening_permitted setup leaks phaseStart owner event ownedEvent
+      ready timely candidate raw opening (phaseStart.network.nextSerial owner)
       (checkpoint.serial_eq_ledger_count setup leaks owner)
     change permittedRosterEnvelope setup leaks
       ⟨control.execution.application.publicView, control.execution.network.ledger,
-        (runtime setup).windowEnvelope leaks owner event candidate raw granted⟩ = true
+        (runtime setup).windowEnvelope leaks owner event candidate raw phaseStart⟩ = true
     rw [unchanged, ledger]
     exact admitted
 
@@ -173,31 +174,31 @@ theorem roster_fresh_traffic [setup.FiniteInitialLaw]
         control.execution.respond (application setup leaks) who response⟩),
       permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = true := by
   let app := application setup leaks
-  obtain ⟨event, _, granted, _, _, initial, state, _, initialSupport,
-      related, _, grant, _, _, _, _, _, unchanged, _⟩ :=
+  obtain ⟨event, _, phaseStart, _, _, initial, state, _, initialSupport,
+      related, _, startReady, _, _, _, _, _, unchanged, _⟩ :=
     roster_decision_phase setup leaks bounds rosters network reveals openable
       who control trace active
-  obtain ⟨sentEvent, candidate, raw, sentGrant, ownedEvent, opening, rfl, _⟩ :=
+  obtain ⟨sentEvent, candidate, raw, sentTurn, ownedEvent, opening, rfl, _⟩ :=
     rosterFresh?_shape setup leaks rosters who _ _ response fresh
-  change control.execution.application.publicView.ownTurn? who = some sentEvent at sentGrant
-  have sentReady := (PublicView.ownTurn?_spec _ who sentEvent sentGrant).1
+  change control.execution.application.publicView.ownTurn? who = some sentEvent at sentTurn
+  have sentReady := (PublicView.ownTurn?_spec _ who sentEvent sentTurn).1
   rw [unchanged] at sentReady
-  cases (soleReady_of_ready setup granted.application grant).2 sentEvent sentReady
+  cases (soleReady_of_ready setup phaseStart.application startReady).2 sentEvent sentReady
   let profile : BehavioralProfile setup.program :=
     fun owner => RevealOnly.uniformPolicy owner setup.program reveals
   have data := owner_choices_at_prefix setup leaks bounds profile who initial initialSupport
     setup.program reveals profile (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) (outputEmbedding setup.program)
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program profile)
-    event.val event.isLt state granted related event (by omega) ownedEvent grant
+    event.val event.isLt state phaseStart related event (by omega) ownedEvent startReady
   obtain ⟨expected, expectedRaw, priorOpening, owned, valid, _, _⟩ := data.2.2
-  have same := rosterOpening?_application_eq setup leaks who event control.execution granted
+  have same := rosterOpening?_application_eq setup leaks who event control.execution phaseStart
     unchanged
   rw [opening, priorOpening] at same
   cases Option.some.inj same
   obtain ⟨context, source, refs, checkpoint⟩ := related.checkpoint setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
-    (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state granted
+    (Revelations.initial setup.context) (outputRef setup.program) 0 event.val state phaseStart
   have ready : control.execution.application.config.cut.Ready event := by
     rw [unchanged]
     simpa only [Nat.zero_add, Fin.eta] using checkpoint.ordered.ready (by omega)

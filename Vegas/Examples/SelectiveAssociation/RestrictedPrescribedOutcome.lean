@@ -19,13 +19,13 @@ open GameTheory.Math.Probability
 
 theorem profile_alice_binding_results_full (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some alice)
-    (granted : NativeTurn aliceBinding control)
+    (turn : NativeTurn aliceBinding control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :
     ∃ result, final.state = some result ∧ nativeResults result.execution.application.config =
       ⟨.success false, .success false, .success false⟩ := by
-  obtain ⟨result, stateEq, aliceFalse⟩ := profile_binding_success alice control trace active granted
+  obtain ⟨result, stateEq, aliceFalse⟩ := profile_binding_success alice control trace active turn
     _ (full_enough control trace) final supported
   change aliceBindingRef.get? result.execution.application.config.store = some (.success false)
     at aliceFalse
@@ -41,8 +41,8 @@ theorem profile_alice_binding_results_full (control : app.Control)
       have split := supported
       rw [← Nat.add_sub_of_le short, model.runBehavioralFrom_add] at split
       obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ split)
-      obtain ⟨atBinding, bindingEq, ownerActive, ownerGrant⟩ := future_decision profile aliceBinding
-        (nativeBindingEvent who) ordered control trace active granted later laterMem
+      obtain ⟨atBinding, bindingEq, ownerActive, ownerTurn⟩ := future_decision profile aliceBinding
+        (nativeBindingEvent who) ordered control trace active turn later laterMem
       rw [native_binding_owner] at ownerActive
       rcases later with ⟨laterState, laterTrace⟩
       change laterState = some atBinding at bindingEq
@@ -50,23 +50,23 @@ theorem profile_alice_binding_results_full (control : app.Control)
       have before : (nativeBindingEvent alice).val < (nativeBindingEvent who).val := by
         fin_cases who <;> first | exact (same rfl).elim | decide
       have fixed := binding_from_final profile (nativeBindingEvent who) alice before atBinding
-        laterTrace (by rwa [native_binding_owner]) ownerGrant _ final finalMem result stateEq
+        laterTrace (by rwa [native_binding_owner]) ownerTurn _ final finalMem result stateEq
           (.success false) aliceFalse
       have guess := publicGuess_false_of_alice_false who atBinding laterTrace ownerActive fixed
       have enough : app.rank nativeHorizon (some atBinding) ≤
           2 * nativeHorizon + 1 - decisionSteps aliceBinding (nativeBindingEvent who) := by
         rw [decision_rank (nativeBindingEvent who) atBinding laterTrace
-          (by rwa [native_binding_owner]) ownerGrant]
+          (by rwa [native_binding_owner]) ownerTurn]
         fin_cases who <;> decide
       obtain ⟨corrected, correctedEq, correctedBinding⟩ := profile_binding_success who atBinding
-        laterTrace ownerActive ownerGrant _ enough final finalMem
+        laterTrace ownerActive ownerTurn _ enough final finalMem
       have identical : corrected = result := Option.some.inj (correctedEq.symm.trans stateEq)
       subst corrected
       simpa only [prescribedBit, ite_eq_right same, guess] using correctedBinding
   have allPublished : ∀ who : Player, publication who final.state = .success false := by
     intro who
     exact final_binding_published profile aliceBinding who (by fin_cases who <;> decide)
-      control trace active granted (profile_Opens who) final supported result stateEq false
+      control trace active turn (profile_Opens who) final supported result stateEq false
         (allBound who)
   refine ⟨result, stateEq, ?_⟩
   have aliceResult := allPublished alice
@@ -84,7 +84,7 @@ theorem profile_alice_binding_results_full (control : app.Control)
 
 theorem profile_alice_binding_results (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some alice)
-    (granted : NativeTurn aliceBinding control)
+    (turn : NativeTurn aliceBinding control)
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile fuel ⟨some control, trace⟩).support) :
@@ -93,17 +93,17 @@ theorem profile_alice_binding_results (control : app.Control)
   obtain ⟨other, otherMem, same⟩ := full_continuation_state profile control trace fuel enough final
     supported
   obtain ⟨result, stateEq, outcomes⟩ := profile_alice_binding_results_full control trace active
-    granted other otherMem
+    turn other otherMem
   exact ⟨result, same.symm.trans stateEq, outcomes⟩
 
 theorem profile_alice_binding_payoff (who : Player) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some alice)
-    (granted : NativeTurn aliceBinding control)
+    (turn : NativeTurn aliceBinding control)
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile fuel ⟨some control, trace⟩).support) :
     nativeUtility who final.state = if who = alice then 0 else 1 := by
-  obtain ⟨result, stateEq, outcomes⟩ := profile_alice_binding_results control trace active granted
+  obtain ⟨result, stateEq, outcomes⟩ := profile_alice_binding_results control trace active turn
     fuel enough final supported
   simp only [nativeUtility, stateEq, Option.elim_some, outcomes]
   fin_cases who <;> norm_num [utility, correctness, openingPenalty, alice, bob, carol]
@@ -131,9 +131,9 @@ theorem initialized_results (final : arena.History)
       change control.remaining = 80 at remaining
       change control.actor = some alice at active
       change control.execution.environmentRecall.length = 3 at cursor
-      have granted := native_turn_of_decision_cursor (observation := leaks) aliceBinding control
+      have turn := native_turn_of_decision_cursor (observation := leaks) aliceBinding control
         laterTrace active cursor
-      apply profile_alice_binding_results control laterTrace active granted 161 _ final finalMem
+      apply profile_alice_binding_results control laterTrace active turn 161 _ final finalMem
       change 2 * control.remaining + (if control.actor.isSome then 1 else 0) ≤ 161
       rw [remaining, active]
       decide

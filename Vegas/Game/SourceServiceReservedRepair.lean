@@ -7,7 +7,7 @@ import Vegas.Pending.ReactiveBindingReservedInclusion
 
 /-! # Reserved resolution repair at actual retained histories
 
-The legal trace supplies packet conformance, the current grant, and the
+The legal trace supplies packet conformance, the owner's turn, and the
 repaired binding invariant. Protected inclusion and expiry then preserve the
 joint frame under arbitrary deferred guards, including legal withholding.
 The fixed implementation retains its memory and an actual retained endpoint.

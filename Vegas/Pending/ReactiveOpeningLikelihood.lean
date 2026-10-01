@@ -341,7 +341,7 @@ theorem openingWindow_inclusion_focal_coupling (runtime : EventGraphRuntime grap
         after.environmentRecall ++ [⟨after.observeEnvironment app,
           .include (owner, left.network.nextSerial owner)⟩], read.2.2.2)) views
 
-/-- Real clock, grant and expiry commands preserve the focal traffic law.
+/-- Real clock and expiry commands preserve the focal traffic law.
 Public chance is handled with its source sample, rather than by this lemma. -/
 theorem bindingTraffic_maintenance (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
