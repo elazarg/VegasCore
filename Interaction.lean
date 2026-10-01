@@ -104,6 +104,7 @@ import Interaction.ReactiveProvenance
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveRounds
 import Interaction.ReactiveStopping
+import Interaction.ReactiveRawRoundTrace
 import Interaction.ReactiveMixtureRounds
 import Interaction.ReactiveHorizonContinuation
 import Interaction.ReactiveRoundReachability

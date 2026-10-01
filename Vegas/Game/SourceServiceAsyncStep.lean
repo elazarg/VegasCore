@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceTurnPolicy
 import Vegas.Game.SourceServiceCompletion
+import Interaction.ReactiveRawRoundTrace
 
 /-! # The approximate step law of the turn-counted policy
 
@@ -498,5 +499,34 @@ theorem sourceServiceTurnPolicy_boundaryContinuationWithin
           · simp [above, show rank ≤ other.val by omega, same]
           · simp [above, show ¬ rank ≤ other.val by omega, same]
       exact (later.trans step).mono total.le
+
+/-- Under complete play, every stopped point of a completion run from a
+completion boundary within the horizon has completed the event, for any
+players. -/
+theorem completionRun_completes {scheduler : (application setup leaks).Scheduler}
+    {horizon : Nat} {players : Player → (application setup leaks).Policy}
+    (complete : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
+    (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
+    (bounded : execution.environmentRecall.length ≤ horizon)
+    (stopped : (application setup leaks).Execution)
+    (reached : stopped ∈ ((application setup leaks).runUntilHorizon scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) horizon execution).support) :
+    event ∈ stopped.application.config.cut.completed := by
+  let app := application setup leaks
+  rcases app.runUntilHorizon_stopped scheduler players _ horizon
+      (horizon - execution.environmentRecall.length) execution stopped (by omega) reached with
+    done | spent
+  · exact done
+  · have supported := app.roundsFrom_runUntil scheduler players (initialLaw setup) _ _ execution
+      stopped boundary.supported reached
+    obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players _
+      (by omega) stopped supported
+    have terminal := complete _ trace (by
+      change horizon - stopped.environmentRecall.length = 0 ∧ _
+      exact ⟨by omega, rfl⟩)
+    change stopped.application.config.cut.completed = Finset.univ at terminal
+    rw [terminal]
+    exact Finset.mem_univ _
 
 end Vegas
