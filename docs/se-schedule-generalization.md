@@ -589,8 +589,9 @@ does four jobs. Each gets a schedule-independent replacement.
    - The bridge needs only the marginal law of the readout. The joint
      factorization with the focal player's traffic noise is for beliefs
      (milestone 4).
-3. **Deviations.** Under prescribed play the phase law is the same for every
-   scheduler. A deviating owner can emit several packets for its event, and
+3. **Deviations.** Under the limit policy the phase law is the same for every
+   scheduler; the fully mixed approximants match it only up to their deferral
+   weight. A deviating owner can emit several packets for its event, and
    then the builder's choice among them makes the resulting value a lottery
    that depends on the scheduler. The required fact is that this lottery is a
    mixture of source actions of the same player: the builder reads only the
@@ -688,17 +689,39 @@ and is committed separately.
      continuation; and the calendar instance of that hypothesis, from which
      today's bridge is re-derived. The pinned theorem is unchanged.
    - **2b, the prescribed policy.** Under the contract only the first
-     activation is guaranteed, so a timing lottery over later visits cannot
-     keep the phase law exact: an undrawn later visit silently turns the
-     source decision into expiry. Replace the timed policy by deciding once,
-     at the first activation where the event is the player's turn, and make
-     the retained menu decide once to match (a fresh call only at the first
-     turn; an unsent binding submitted then). The raw extension must then
-     cover the removed deviations, such as a late opening after withholding.
-     Do this on the calendar first; the pinned statement names neither the
-     menu nor the timing. Then prove the timeliness lemma and the general step
-     law for the new policy under every contract scheduler. The step law is
-     the largest new proof, comparable in size to the calendar instance.
+     activation is guaranteed. The limit policy therefore decides once, at
+     the first activation where the event is the player's turn. The retained
+     menu cannot follow it. The extension lemma
+     (`ActionRestriction.sequentialEquilibrium_extends_of_continuation`)
+     quantifies over every target profile that extends the source, so a
+     removed action must be dominated however opponents play off the retained
+     sites. Deferral is neither charged by the audit nor hidden: staying silent
+     at the first turn and acting at a later one is visible through leaks,
+     inclusion timing and the scheduler's view of the pool. So deferral stays
+     retained, and the fully mixed approximants must give it positive weight.
+     Under a scheduler that activates the owner only once, deferral ends in
+     expiry, so the approximants' laws differ from the source law by the
+     deferral weight. Exact approximants survive only on the calendar, where
+     every visit is realized. The design is therefore:
+     - the limit policy decides at the first turn, and approximants defer
+       with weight `ε n` tending to 0, indexed by the owner's own turn count;
+     - the retained menu keeps every timing: today's menu without the
+       requirement to bind at the last visit, whose repair is then deleted;
+     - the equilibrium limit lemma takes a vanishing total-variation error
+       instead of an exact initialized law, with the exact version derived;
+     - the boundary-continuation hypothesis carries an error, bounded by the
+       sum of deferral weights over the remaining events.
+
+     In order, each step keeping `Paper` green: the library limit lemma with
+     vanishing error; a turn-counted variant of `scheduledPolicy`; the
+     turn-counted prescribed policy, shown equal to today's timed policy on
+     every legal calendar history; the approximate plumbing, with error 0 on
+     the calendar; the calendar menu switch with `ε n → 0` replacing today's
+     fixed weight ½; then the timeliness lemma and the approximate step law
+     under every contract scheduler. Timeliness must prove acceptance and the
+     absence of early expiry, not only a receipt. The step law's invariant
+     keeps the pool for the current event to one owner identifier and its
+     copies, and makes deferral the only error.
 3. **Phase without position.** With the bridge independent of the block,
    replace `DecisionPhase.slot` and `DecisionPhase.position` by the sole ready
    event, still at the calendar. This is the large mechanical refactor (about
@@ -728,10 +751,15 @@ stays green throughout; only milestone 6 changes its statement.
   sole identifier, so a concrete builder needs only to reach that one packet
   in time, but it must be checked against flooding. The calendar instance
   already holds on every legal history.
+- **Removed actions must be framed or charged.** Every action outside the
+  retained menu must be dominated under every extension of the source, which
+  the repair argument achieves only by keeping play on retained histories or
+  by authentic charged evidence. This rules out a decide-once menu (milestone
+  2b) and is the check to apply to any future narrowing of the menu.
 - **Redefining the prescribed policy** (milestone 2b) reaches many files: the
-  timed policy, the timing law and the roster offset each appear in tens of
-  files, and site lemmas built on "silent now, submit at a later visit"
-  disappear with the decide-once menu.
+  timed policy and the timing law appear in tens of files. Site lemmas built
+  on "silent now, submit at a later visit" persist in turn-counted form and
+  become approximate off the calendar, with error the deferral weight.
 - **The deviation lottery** (milestone 5) is the least understood obligation.
   If the builder's choice among a deviator's packets can depend on something
   that is not a function of public data and the deviator's own choices, the
