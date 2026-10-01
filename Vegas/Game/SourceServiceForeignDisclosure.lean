@@ -310,8 +310,8 @@ theorem recorded_disclosure_phase_invariant {who : Player} {remaining : Nat}
       (allowed : response ∈ service.menu.actions who (execution.recall who)
         (execution.observe (application service.setup service.leaks) who)) :
       response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
-    have supported := roster_fullyMixed_response_support service.setup service.leaks service.rosters
-      service.network service.menu approx.players approx.covered approx.assessment
+    have supported := service.menu.fullyMixed_response_support (initialLaw service.setup)
+      service.planLength service.scheduler approx.players approx.covered approx.assessment
       approx.strategy approx.mixed who remaining execution trace response allowed
     exact sourceServiceTimedPolicy_recorded_transport service.setup service.leaks service.rosters
       approx.timing approx.profile phase.event owner owned execution phase.sole recorded

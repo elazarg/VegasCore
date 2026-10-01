@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceHarmlessContinuation
-import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceContinuationBridge
 
 /-! # Zero gain at public sampling opportunities
 
@@ -39,8 +39,8 @@ theorem sample_response_transport {who : Player} {remaining : Nat}
     (allowed : response ∈ service.menu.actions who (execution.recall who)
       (execution.observe (application service.setup service.leaks) who)) :
     response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
-  have present := roster_fullyMixed_response_support service.setup service.leaks
-    service.rosters service.network service.menu approx.players approx.covered approx.assessment
+  have present := service.menu.fullyMixed_response_support (initialLaw service.setup)
+    service.planLength service.scheduler approx.players approx.covered approx.assessment
     approx.strategy approx.mixed who remaining execution trace response allowed
   simp only [players, sourceServiceTimedPolicy_idle _ _ _ _ _ who _
     (execution.observe (application service.setup service.leaks) who)

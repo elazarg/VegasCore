@@ -170,7 +170,8 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     simpa only [ReactiveApplication.invoke, PMF.bind_map, PMF.bind_bind,
       Function.update_self, tags, kernel, scheduled, branch, responses, continued, posterior,
       phase, players, Function.comp_def] using law
-  have chosen := roster_fullyMixed_response_support setup leaks rosters network menu players
+  have chosen := menu.fullyMixed_response_support (initialLaw setup)
+    (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) players
     covered assessment strategy mixed owner remainingFuel execution trace response allowed
   have tagPresent : some response ∈ (tags.map (fun tag => some tag.2.2)).support := by
     obtain ⟨final, reached⟩ := (continued response).support_nonempty

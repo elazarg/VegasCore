@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceContinuationBridge
 
 /-! # The residual source constructor at an actual decision
 

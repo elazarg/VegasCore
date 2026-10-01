@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceContinuationBridge
 import Vegas.Game.SourceServiceChoiceSupport
 import Vegas.Pending.ReactiveServiceFiniteness
 import Vegas.Compile.EventGraphDeviation

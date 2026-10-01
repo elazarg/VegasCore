@@ -9,7 +9,8 @@ import Interaction.ReactiveHorizonContinuation
 /-! # Local continuation comparisons in the full-source service
 
 A native information site of a fully mixed timed approximant reaches the
-original source game through four generic steps, proved once here:
+original source game through four generic steps. The first two are proved
+here; the last two follow the completion-stopped phase law:
 
 * every actual decision has a `DecisionPhase`: its event, roster slot and the
   instructions left in that event's phase;
@@ -384,53 +385,6 @@ def boundaryContinuation (count : Nat) (config : (graph service.setup).Config) :
   (service.setup.continuationLaw approx.profile
     (sourceServicePrefix? service.setup count config)).map some
 
-/-- The single continuation bridge: after any legal response at an actual
-decision, the complete typed source terminal law is the source continuation
-from the next event boundary, averaged over the actual configuration law at
-that boundary. The suffix reachability is derived from native full mixing, so
-responses used as deviations are included. -/
-theorem response_continuation_law {who : Player} {remaining : Nat}
-    {execution : (application service.setup service.leaks).Execution}
-    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
-      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (response : (application service.setup service.leaks).Action)
-    (allowed : response ∈ service.menu.actions who (execution.recall who)
-      (execution.observe (application service.setup service.leaks) who)) :
-    approx.responseReadout phase response =
-      (approx.phaseConfigLaw phase response).bind
-        (approx.boundaryContinuation (phase.event.val + 1)) := by
-  rw [approx.responseReadout_eq_plan phase]
-  unfold phaseConfigLaw phaseLaw
-  rw [runInteractionPlan_append, PMF.map_bind, PMF.bind_map]
-  apply bind_congr_on_support _
-  intro final reached
-  have supported := roster_fullyMixed_response_prefix_support service.setup service.leaks
-    service.rosters service.network service.menu approx.players approx.covered approx.assessment
-    approx.strategy approx.mixed who remaining execution trace (phase.event.val + 1) phase.before
-    phase.tail phase.prefix_split phase.position_before response allowed final reached
-  exact sourceServiceTimedPolicy_continuation_law service.setup service.leaks service.bounds
-    service.values service.capacity service.rosters service.opportunities.binding approx.timing
-    service.network approx.profile approx.covered approx.effective who (phase.event.val + 1)
-    phase.event.isLt final supported
-
-/-- Two legal responses with the same next-boundary configuration law have the
-same complete typed source terminal law. -/
-theorem responseReadout_congr {who : Player} {remaining : Nat}
-    {execution : (application service.setup service.leaks).Execution}
-    (trace : (service.menu.protocol (initialLaw service.setup) service.planLength
-      service.scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-    (first second : (application service.setup service.leaks).Action)
-    (firstAllowed : first ∈ service.menu.actions who (execution.recall who)
-      (execution.observe (application service.setup service.leaks) who))
-    (secondAllowed : second ∈ service.menu.actions who (execution.recall who)
-      (execution.observe (application service.setup service.leaks) who))
-    (same : approx.phaseConfigLaw phase first = approx.phaseConfigLaw phase second) :
-    approx.responseReadout phase first = approx.responseReadout phase second := by
-  rw [approx.response_continuation_law trace phase first firstAllowed,
-    approx.response_continuation_law trace phase second secondAllowed, same]
-
 open Classical in
 /-- A local lottery at an actual history runs as the same lottery over current
 responses, each followed by its complete continuation. -/
@@ -455,68 +409,6 @@ theorem local_law_readout {who : Player} {remaining : Nat}
   simp only [PMF.map_comp, Function.comp_def, PMF.map_bind] at mapped
   rw [approx.strategy]
   exact mapped
-
-open Classical in
-/-- At a site where every legal response leaves the same configuration law at
-the next event boundary, every local lottery has the prescribed complete
-continuation law, for every belief over the site. -/
-theorem comparison_eq_of_phase_invariant (who : Player)
-    (site : service.model.InformationSite who)
-    (invariant : ∀ (history : (service.menu.protocol (initialLaw service.setup)
-        service.planLength service.scheduler).History) remaining execution,
-      history.state = some ⟨remaining, some who, execution⟩ →
-      service.model.infoOf who history.trace = site.1 →
-      ∀ (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
-        (first second : (application service.setup service.leaks).Action),
-        first ∈ service.menu.actions who (execution.recall who)
-          (execution.observe (application service.setup service.leaks) who) →
-        second ∈ service.menu.actions who (execution.recall who)
-          (execution.observe (application service.setup service.leaks) who) →
-        approx.phaseConfigLaw phase first = approx.phaseConfigLaw phase second)
-    (law : PMF (service.model.Choice who site.1)) :
-    let comparison := service.model.assessmentComparisonWith (service.model.truncatedRunner
-        service.fuel) service.readout
-      approx.assessment who (site, (approx.assessment.strategy who).withLaw site.1 law)
-    comparison.alternative = comparison.prescribed := by
-  intro comparison
-  simp only [comparison, InformationModel.assessmentComparisonWith,
-    InformationModel.assessmentLawWith, PMF.map_bind]
-  apply bind_congr_on_support _
-  intro history _
-  have active := InformationModel.InformationSite.active service.model site history
-  obtain ⟨control, current⟩ : ∃ control, history.1.state = some control := by
-    cases state : history.1.state with
-    | none => rw [state] at active; cases active
-    | some control => exact ⟨control, rfl⟩
-  have actor : control.actor = some who := by rw [current] at active; exact active
-  obtain ⟨remaining, actorValue, execution⟩ := control
-  change actorValue = some who at actor
-  subst actorValue
-  have trace : (service.menu.protocol (initialLaw service.setup) service.planLength
-      service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    current ▸ history.1.trace
-  obtain ⟨phase⟩ := service.exists_decisionPhase who remaining execution trace
-  let reference := (approx.assessment.strategy who site.1).support_nonempty.choose
-  have referenceAllowed := service.choice_allowed history.1 current history.2 reference
-  have constant (choiceLaw : PMF (service.model.Choice who site.1)) :
-      (service.model.runBehavioralFrom (Profile.update (sig := service.model.behavioralSignature)
-        approx.assessment.strategy who ((approx.assessment.strategy who).withLaw site.1 choiceLaw))
-          service.fuel history.1).map service.readout =
-        approx.responseReadout phase (reference.1.getD ⟨none⟩) := by
-    rw [approx.local_law_readout history.1 current phase history.2 choiceLaw, PMF.bind_map]
-    calc
-      _ = choiceLaw.bind (fun _ =>
-          approx.responseReadout phase (reference.1.getD ⟨none⟩)) := by
-        apply bind_congr_on_support _
-        intro choice _
-        have allowed := service.choice_allowed history.1 current history.2 choice
-        exact approx.responseReadout_congr trace phase _ _ allowed referenceAllowed
-          (invariant history.1 remaining execution current history.2 phase _ _ allowed
-            referenceAllowed)
-      _ = _ := PMF.bind_const _ _
-  have prescribed := constant (approx.assessment.strategy who site.1)
-  rw [InformationModel.BehavioralPolicy.withLaw_eq_self] at prescribed
-  exact (constant law).trans prescribed.symm
 
 end TimedApproximant
 

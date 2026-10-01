@@ -1345,8 +1345,8 @@ theorem available_opening_decision {who : Player} {remaining : Nat}
         simp only [later, whenTrue, whenFalse, timing] at hazard ⊢
         linear_combination hazard
   · intro response allowed
-    have supportedResponse := roster_fullyMixed_response_support service.setup service.leaks
-      service.rosters service.network service.menu approx.players approx.covered
+    have supportedResponse := service.menu.fullyMixed_response_support (initialLaw service.setup)
+      service.planLength service.scheduler approx.players approx.covered
       approx.assessment approx.strategy approx.mixed owner remaining execution trace response
       allowed
     rw [policyEq, PMF.support_bind] at supportedResponse

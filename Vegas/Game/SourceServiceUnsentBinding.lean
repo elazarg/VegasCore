@@ -219,8 +219,8 @@ theorem unsent_binding_transport_config_law {who : Player} {remaining : Nat}
     simp only [players, sourceServiceTimedPolicy_turn _ _ _ _ _ owner _ _ phase.event owned
       serving]
     rfl
-  have present := roster_fullyMixed_response_support service.setup service.leaks
-    service.rosters service.network service.menu approx.players approx.covered approx.assessment
+  have present := service.menu.fullyMixed_response_support (initialLaw service.setup)
+    service.planLength service.scheduler approx.players approx.covered approx.assessment
     approx.strategy approx.mixed owner remaining execution trace response allowed
   rw [policyEq, ReactiveApplication.Implementation.policy_eq, PMF.support_map] at present
   obtain ⟨witness, witnessSupport, witnessAction⟩ := present
@@ -439,8 +439,8 @@ theorem BindingSource.submission_readout (service : SourceServiceSpec Player L)
       refsBefore, aligned, agree, history, rfl⟩
   have opening := BindingSource.opportunity_law service.leaks execution site ready unsent serial
     freshSlot candidate
-  have present := roster_fullyMixed_response_support service.setup service.leaks
-    service.rosters service.network service.menu
+  have present := service.menu.fullyMixed_response_support (initialLaw service.setup)
+    service.planLength service.scheduler
     (sourceServiceTimedPolicy service.setup service.leaks service.rosters timing wholeProfile)
     covered assessment strategy mixed siteOwner remainingFuel execution trace response allowed
   have serving : (execution.observe (application service.setup service.leaks)
@@ -940,8 +940,8 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
         exact supported)))
         ((application service.setup service.leaks).replayPolicy_cases _ _ response supported)
   · intro response allowed
-    have present := roster_fullyMixed_response_support service.setup service.leaks
-      service.rosters service.network service.menu approx.players approx.covered
+    have present := service.menu.fullyMixed_response_support (initialLaw service.setup)
+      service.planLength service.scheduler approx.players approx.covered
       approx.assessment approx.strategy approx.mixed siteOwner remaining execution trace
       response allowed
     rcases classify response present with ⟨value, valueSupport, rfl⟩ | transport

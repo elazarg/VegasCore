@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceLocalComparison
+import Vegas.Game.SourceServiceContinuationBridge
 import Vegas.Game.SourceServiceAssessment
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning

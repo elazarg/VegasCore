@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceTimedContinuation
 import Vegas.Game.ServiceRosterEvaluation
+import Interaction.ReactiveHorizonContinuation
 
 /-! # Fully mixed timed execution reaches every retained boundary
 
@@ -135,46 +136,6 @@ variable (setup : Setup (Player := Player) (L := L))
 
 include covered strategy mixed in
 omit [Fintype Player] in
-/-- All legal responses at an actual decision have positive physical mass in
-the fully mixed implementation, independently of source reachability. -/
-theorem roster_fullyMixed_response_support
-    (who : Player) (remaining : Nat) (execution : (application setup leaks).Execution)
-    (trace : (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network)).Trace
-        (some ⟨remaining, some who, execution⟩))
-    (response : (application setup leaks).Action)
-    (allowed : response ∈ menu.actions who (execution.recall who)
-      (execution.observe (application setup leaks) who)) :
-    response ∈ (players who (execution.recall who)
-      (execution.observe (application setup leaks) who)).support := by
-  let model := menu.information (initialLaw setup) (rosterPlan setup rosters).length
-    (rosterScheduler setup leaks rosters network)
-  have observed : model.infoOf who trace =
-      some (execution.recall who, execution.observe (application setup leaks) who) := by
-    change (menu.signals (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network)).infoOf who trace = _
-    rw [menu.info]
-    simp only [ReactiveApplication.observe, ↓reduceIte]
-  have permitted : some response ∈ model.menu who (model.infoOf who trace) := by
-    rw [observed]
-    exact ⟨response, allowed, rfl⟩
-  let choice : model.Choice who (model.infoOf who trace) := ⟨some response, permitted⟩
-  have running : ¬ (menu.protocol (initialLaw setup) (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network)).terminal
-        (some ⟨remaining, some who, execution⟩) := by
-    intro impossible
-    have absent : (some who : Option Player) = none := impossible.2
-    cases absent
-  have chosen := mixed.support_at_history ⟨_, trace⟩ running who choice
-  have mapped : some response ∈ ((assessment.strategy who (model.infoOf who trace)).map
-      Subtype.val).support := PMF.support_map .. ▸ ⟨choice, chosen, rfl⟩
-  rw [strategy, observed, menu.restrictPolicy_map_val _ _ _ who _ _ _
-    (covered who _ trace rfl), PMF.support_map] at mapped
-  obtain ⟨actual, present, same⟩ := mapped
-  exact Option.some.inj same ▸ present
-
-include covered strategy mixed in
-omit [Fintype Player] in
 /-- A legal response followed by any supported portion of the physical
 baseline remains in the initialized baseline prefix law. Thus a local
 alternative can use the same exact source continuation theorem. -/
@@ -232,7 +193,8 @@ theorem roster_fullyMixed_response_prefix_support [Finite Player]
   obtain ⟨prior, priorSupport, activatedSupport⟩ := Set.mem_iUnion₂.mp activatedSupport
   obtain ⟨initial, initialSupport, beforeSupport⟩ := Set.mem_iUnion₂.mp
     (PMF.support_bind .. ▸ priorSupport)
-  have chosen := roster_fullyMixed_response_support setup leaks rosters network menu players
+  have chosen := menu.fullyMixed_response_support (initialLaw setup)
+    (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) players
     covered assessment strategy mixed who remaining execution trace response allowed
   rw [split, PMF.support_bind]
   refine Set.mem_iUnion₂.mpr ⟨initial, initialSupport, ?_⟩

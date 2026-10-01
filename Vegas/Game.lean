@@ -38,6 +38,7 @@ import Vegas.Game.SourceServiceTimedContinuation
 import Vegas.Game.SourceServiceTimedReachability
 import Vegas.Game.SourceServiceLocalComparison
 import Vegas.Game.SourceServiceCompletion
+import Vegas.Game.SourceServiceContinuationBridge
 import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
