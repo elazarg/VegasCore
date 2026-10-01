@@ -123,8 +123,9 @@ theorem responseReadout_support_finite {who : Player}
     (response : (application service.setup service.leaks).Action) :
     (approx.responseReadout phase response).support.Finite := by
   rw [responseReadout, PMF.support_map]
-  exact ((runtime service.setup).runInteractionPlan_support_finite service.leaks
-    approx.players_finiteSupport service.network _ _).image _
+  exact (ReactiveApplication.runToHorizon_support_finite
+    (ReactiveApplication.FiniteNature.scheduler_finite (initial := initialLaw service.setup))
+    approx.players_finiteSupport _ _).image _
 
 theorem boundaryContinuation_support_finite (count : Nat)
     (config : (graph service.setup).Config) :

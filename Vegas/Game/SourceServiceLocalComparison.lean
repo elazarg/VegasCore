@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceTimedReachability
 import Vegas.Game.SourceServiceTimedMixing
 import Vegas.Game.SourceServiceDecisionSupport
 import Vegas.Game.ServiceRosterLocalEvaluation
+import Interaction.ReactiveHorizonContinuation
 
 /-! # Local continuation comparisons in the full-source service
 
@@ -334,17 +335,48 @@ def phaseConfigLaw {who : Player}
     PMF (graph service.setup).Config :=
   (approx.phaseLaw phase response).map (fun final => final.application.config)
 
-/-- The complete typed source terminal law after one current response. -/
+/-- The complete typed source terminal law after one current response: the
+prescribed players and the service's scheduler run to the horizon. -/
 def responseReadout {who : Player}
     {execution : (application service.setup service.leaks).Execution}
-    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    (_phase : DecisionPhase service.setup service.leaks service.rosters who execution)
     (response : (application service.setup service.leaks).Action) :
     PMF (Option (State L service.setup.program.terminalCtx)) :=
-  ((runtime service.setup).runInteractionPlan service.leaks approx.players service.network
-    (phase.tail ++ phase.later)
+  ((application service.setup service.leaks).runToHorizon service.scheduler approx.players
+    service.planLength
     (execution.respond (application service.setup service.leaks) who response)).map
       (fun final => sourceReadout service.setup service.leaks
         ((application service.setup service.leaks).finished final))
+
+/-- On the calendar, the readout after a response runs the rest of the current
+event's block and then the later blocks. -/
+theorem responseReadout_eq_plan {who : Player}
+    {execution : (application service.setup service.leaks).Execution}
+    (phase : DecisionPhase service.setup service.leaks service.rosters who execution)
+    (response : (application service.setup service.leaks).Action) :
+    approx.responseReadout phase response =
+      ((runtime service.setup).runInteractionPlan service.leaks approx.players service.network
+        (phase.tail ++ phase.later)
+        (execution.respond (application service.setup service.leaks) who response)).map
+          (fun final => sourceReadout service.setup service.leaks
+            ((application service.setup service.leaks).finished final)) := by
+  let app := application service.setup service.leaks
+  have position : (execution.respond app who response).environmentRecall.length =
+      (phase.before ++ [ServiceInstruction.player who]).length := by
+    rw [ReactiveApplication.respond_environmentRecall, List.length_append,
+      List.length_singleton]
+    exact phase.position_before
+  have count :
+      service.planLength - (execution.respond app who response).environmentRecall.length =
+        (phase.tail ++ phase.later).length := by
+    have total := congrArg List.length phase.plan_split
+    simp only [List.length_append, List.length_singleton] at total position ⊢
+    change (rosterPlan service.setup service.rosters).length - _ = _
+    omega
+  unfold responseReadout ReactiveApplication.runToHorizon
+  rw [count, roster_segment_rounds service.setup service.leaks service.rosters service.network
+    approx.players (phase.before ++ [.player who]) (phase.tail ++ phase.later) []
+    (by rw [List.append_nil]; exact phase.plan_split) _ position]
 
 /-- The source continuation from the event boundary after a phase. -/
 def boundaryContinuation (count : Nat) (config : (graph service.setup).Config) :
@@ -368,7 +400,8 @@ theorem response_continuation_law {who : Player} {remaining : Nat}
     approx.responseReadout phase response =
       (approx.phaseConfigLaw phase response).bind
         (approx.boundaryContinuation (phase.event.val + 1)) := by
-  unfold responseReadout phaseConfigLaw phaseLaw
+  rw [approx.responseReadout_eq_plan phase]
+  unfold phaseConfigLaw phaseLaw
   rw [runInteractionPlan_append, PMF.map_bind, PMF.bind_map]
   apply bind_congr_on_support _
   intro final reached
@@ -415,11 +448,9 @@ theorem local_law_readout {who : Player} {remaining : Nat}
         service.fuel history).map
         service.readout =
       (law.map (fun choice => choice.1.getD ⟨none⟩)).bind (approx.responseReadout phase) := by
-  have physical := roster_local_law_complete_state service.setup service.leaks service.rosters
-    service.network service.menu approx.players approx.covered history who remaining execution
-    current (phase.before ++ [.player who]) (phase.tail ++ phase.later) phase.plan_split
-    (by simpa only [List.length_append, List.length_singleton] using phase.position_before)
-    observed law
+  have physical := service.menu.run_local_law_complete (initialLaw service.setup)
+    service.planLength service.scheduler approx.players approx.covered history who remaining
+    execution current observed law
   have mapped := congrArg (PMF.map (sourceReadout service.setup service.leaks)) physical
   simp only [PMF.map_comp, Function.comp_def, PMF.map_bind] at mapped
   rw [approx.strategy]

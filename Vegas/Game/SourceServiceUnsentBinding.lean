@@ -832,8 +832,7 @@ theorem unsent_binding_decision {who : Player} {remaining : Nat}
         siteOwner phase.event sitePayload value
           (execution.application.publicView.bindingCount siteOwner)) =
         approx.bindingContinuation ready outputEq value := by
-    unfold responseReadout
-    rw [DecisionPhase.tail, ending]
+    rw [approx.responseReadout_eq_plan phase, DecisionPhase.tail, ending]
     exact BindingSource.submission_readout service approx.timing approx.timingFull
       approx.profile approx.admitted approx.effective approx.covered approx.assessment
       approx.strategy approx.mixed execution site siteOwner rfl remaining trace _ freshSlot

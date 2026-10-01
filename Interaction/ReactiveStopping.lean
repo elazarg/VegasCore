@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRoundTrace
+import Interaction.ReactiveRoundsFiniteness
 
 /-! # Scheduler rounds stopped at a predicate
 
@@ -219,6 +220,50 @@ theorem runUntilHorizon_stopped
   · exact Or.inl done
   · right
     omega
+
+section Finite
+
+variable {app scheduler players} [app.FiniteEnvironment]
+  (schedulerFinite : ∀ recall view, (scheduler recall view).support.Finite)
+  (finite : ∀ who, Policy.FiniteSupport app (players who))
+include schedulerFinite finite
+
+theorem round_support_finite (execution : app.Execution) :
+    (app.round scheduler players execution).support.Finite :=
+  bind_support_finite (schedulerFinite _ _)
+    fun command _ => app.dispatch_support_finite finite command execution
+
+theorem runRounds_support_finite (count : Nat) (execution : app.Execution) :
+    (app.runRounds scheduler players count execution).support.Finite := by
+  induction count generalizing execution with
+  | zero => simp [runRounds]
+  | succ count ih =>
+      exact bind_support_finite (round_support_finite schedulerFinite finite execution)
+        fun next _ => ih next
+
+theorem runUntil_support_finite (stop : app.Execution → Prop) [DecidablePred stop]
+    (count : Nat) (execution : app.Execution) :
+    (app.runUntil scheduler players stop count execution).support.Finite := by
+  induction count generalizing execution with
+  | zero => simp [runUntil]
+  | succ count ih =>
+      by_cases halt : stop execution
+      · rw [app.runUntil_of_stop scheduler players stop _ execution halt]
+        simp
+      · simp only [runUntil, halt, ↓reduceIte]
+        exact bind_support_finite (round_support_finite schedulerFinite finite execution)
+          fun next _ => ih next
+
+theorem runToHorizon_support_finite (horizon : Nat) (execution : app.Execution) :
+    (app.runToHorizon scheduler players horizon execution).support.Finite :=
+  runRounds_support_finite schedulerFinite finite _ execution
+
+theorem runUntilHorizon_support_finite (stop : app.Execution → Prop) [DecidablePred stop]
+    (horizon : Nat) (execution : app.Execution) :
+    (app.runUntilHorizon scheduler players stop horizon execution).support.Finite :=
+  runUntil_support_finite schedulerFinite finite stop _ execution
+
+end Finite
 
 namespace ResponseMenu
 
