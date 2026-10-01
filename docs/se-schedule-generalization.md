@@ -129,7 +129,9 @@ of it. The target chain model is as asynchronous as the guarantees allow:
 - a prescribed client broadcasts within `r` ticks of its event becoming ready.
 
 Bounded inclusion delay is the only synchrony assumption, and deadline
-enforcement rests on it. It is Δ-censorship-resilience in the sense of
+enforcement rests on it. The model assumes it exactly: every protected packet
+is included within Δ, on every history. This is stronger than what a chain
+offers. The closest chain property is Δ-censorship-resilience in the sense of
 Wahrstätter et al.
 ([Blockchain Censorship](https://doi.org/10.1145/3589334.3645431), WWW 2024,
 Definition 6): a transaction given to the honest validators is committed within
@@ -152,6 +154,16 @@ remain:
   the Presence of Rational Miners", IEEE EuroS&PW 2019, analyze such bribes).
   Each deadline should span enough slots that this costs more than the game's
   stakes.
+
+Even then the chain guarantee is probabilistic, and any positive probability of
+a missed deadline breaks the exact claims: the native law would differ from the
+source law, and a reached history could carry a charge. The exact theorem is
+therefore stated for the bounded-delivery model. Transferring it to the
+probabilistic guarantee is a separate, approximate result (see the completion
+plan's other tracks). If each protected inclusion misses its bound with
+probability at most ε, the native law should lie within total variation ε times
+the number of protected inclusions of the source law, with the expected charge
+bounded similarly.
 
 The current service is more synchronous than this:
 epochs visit events in an order, activate owners from a roster, and reserve
@@ -348,13 +360,10 @@ Design-dependent obligations:
   readiness, and `r + Δ < deadline` for every event, strictly. D2 and D3:
   first-service timers and the current-event gate in `handle`. D4: deadlines
   exceeding the grant delay plus `r + Δ`.
-- **Readiness-based audit.** D1 only. Both branches of `freshServiceEnvelope`
-  require `serviceGrant = some event`, so without grants every fresh honest
-  packet would count as nonconforming and be charged. Replace the grant
-  condition by readiness and timeliness of the addressed event (the opening
-  branch already checks both), then re-prove that the prescribed profile incurs
-  no charge on path and that the extension bounds for forbidden actions still
-  hold.
+- **Readiness-based audit.** D1 only. Done: `freshServiceEnvelope` authorizes
+  a fresh packet by readiness and ownership of the addressed event, with no
+  service cursor. Still to re-prove for a general scheduler: no charge on path
+  for the prescribed profile, and the extension bounds for forbidden actions.
 - **Out-of-order inclusion.** D1 and D4: the theorem covers it as part of the
   adaptive order. D2 and D3: `handle` excludes it.
 
@@ -465,8 +474,9 @@ equilibrium. Its epochs still stage resolutions over three owner calls.
 One theorem replaces the fixed-calendar capstone. Roughly:
 
 > For every `SourceServiceSpec` whose scheduler satisfies the asynchronous
-> contract below with reaction bound `r` and inclusion bound `Δ`, and whose
-> owned events satisfy `r + Δ < deadline`, every source sequential equilibrium
+> contract below with reaction bounds `r` and inclusion bounds `Δ`, and whose
+> owned events satisfy `r event + Δ event < deadline event`, every source
+> sequential equilibrium
 > has an audited native sequential equilibrium with the source joint law of
 > the typed terminal state and payoff, and no player is charged on any history
 > the native equilibrium reaches.
@@ -475,7 +485,12 @@ Since the scheduler is part of the spec, it is fixed before the source
 equilibrium is chosen: this is the "for every order, some equilibrium" shape
 of the decision above. The deposit and the horizon are computed from the spec,
 so they may depend on the scheduler. The fixed calendar becomes one instance:
-a lemma shows that `rosterScheduler` satisfies the contract with `r = Δ = 0`.
+a lemma shows that `rosterScheduler` satisfies the contract with
+`r event = event.val` and `Δ event = 0`. The delays must be per event. When an
+event completes at its inclusion, the rest of its block, `event.val + 1`
+ticks, runs before the next event's owner is activated. So event `e` waits
+`e.val` slots after becoming ready. That fits its deadline `e.val + 1`, but no
+single bound fits every event: event 0 has deadline 1.
 
 ### The asynchronous model is a scheduler contract
 
@@ -489,12 +504,13 @@ history between two consecutive clock advances.
 A scheduler satisfies the asynchronous contract when, at every reachable
 history, including off-path ones:
 
-1. **Opportunity within `r`.** When an owned event becomes ready, its owner is
-   activated within `r` slots. Further activations of anyone are allowed.
-2. **Protected inclusion within `Δ`.** The owner's latest unpublished packet
-   addressed to a ready event, emitted in slot `t`, is included by the end of
-   slot `t + Δ` unless the event has completed. Including any other packet, in
-   any order, is allowed. This is today's reserved
+1. **Opportunity within `r event`.** When an owned event becomes ready, its
+   owner is activated within `r event` slots. Further activations of anyone
+   are allowed.
+2. **Protected inclusion within `Δ event`.** The owner's latest unpublished
+   packet addressed to a ready event, emitted in slot `t`, is included by the
+   end of slot `t + Δ event` unless the event has completed. Including any
+   other packet, in any order, is allowed. This is today's reserved
    `ServiceInstruction.includeLatest`, stated as a deadline instead of a calendar
    position.
 3. **Lazy settlement.** In every slot, every ready sample event is executed,
@@ -510,8 +526,10 @@ history, including off-path ones:
 Requirement 1 asks only for the first opportunity. Repeated activations are
 realistic and allowed, but the theorem needs only that a prescribed owner can
 act in time. Together 1 and 2 give a prescribed packet's inclusion within
-`r + Δ` slots of readiness, so `r + Δ < deadline` makes it timely: this is the
-timeliness row of the D1 column, now a lemma rather than a property of a plan.
+`r event + Δ event` slots of readiness, so `r event + Δ event < deadline event`
+makes it timely. This is the timeliness row of the D1 column, now a lemma
+rather than a property of a plan. The chain model of the modeling priorities
+is the special case of constant bounds.
 The contract is exogenous: it constrains the scheduler and nothing else, and
 the scheduler reads only public data, including the mempool, as the D1 column
 says.
@@ -535,11 +553,20 @@ does four jobs. Each gets a schedule-independent replacement.
    keeps its event and readiness fields, and drops `slot` and `position`.
 2. **The continuation law from a decision.** Today the continuation is the
    rest of the plan, evaluated block by block (`SourceServicePhaseLaw`). The
-   replacement is a *completion-stopped phase law*: from any reachable state
-   whose sole ready event is `e`, run until `e` completes. The typed source
-   readout at that point has the source step law for `e`, under every contract
-   scheduler. This is a sample for an actorless event, the owner's value for a
-   binding, and the publication for a resolve. The readout does not change
+   replacement is a *completion-stopped phase law*: run until the sole ready
+   event `e` completes. Where the run starts matters. From an *undecided
+   boundary*, a reachable state where `e` is the sole ready event and its
+   owner has emitted no packet addressed to `e`, the typed source readout at
+   completion has the source step law for `e` under every contract scheduler.
+   That law is a sample for an actorless event, the owner's value for a
+   binding, and the publication for a resolve. A decision state inside the
+   phase is different: the owner's earlier packet may already be pending. For
+   example, a commitment to `0` makes the completion law a point mass at `0`
+   even though the source decision mixes. There the phase law is conditional:
+   given the pending prescribed packet, completion takes its value, provided
+   its inclusion is timely. The continuation comparison at a decision uses the
+   conditional law for the current phase and the boundary law for later
+   phases. The readout does not change
    afterwards, because completed fields are preserved (`EventStore`). Chaining
    the phase law over the remaining events gives the source continuation law
    by induction on the number of unfinished events, not on plan length. Fuel
@@ -613,6 +640,10 @@ public events has completed.
   (`SourceService.lean`) keeps a `visit` cursor that makes its actions
   stage-local. Removing it changes that source contract, so it is a separate
   design decision.
+- **Probabilistic delivery.** The exact theorem assumes bounded delivery on
+  every history. A separate result should bound the distance to the source law
+  and the expected charge when each protected inclusion can miss its bound
+  with small probability, matching the chain guarantee cited above.
 - **Joint transmission-and-ordering deviations.** A separate theorem in which
   the order is part of a player's deviation. Not part of this plan.
 
@@ -621,9 +652,11 @@ public events has completed.
 Each milestone ends with the full build, the checkers and the paper pins green,
 and is committed separately.
 
-1. **Contract.** Define the asynchronous scheduler contract, the timeliness
-   lemma (prescribed inclusion within `r + Δ`, hence on time when
-   `r + Δ < deadline`), and the instance `rosterScheduler` with `r = Δ = 0`.
+1. **Contract.** Define the asynchronous scheduler contract with per-event
+   bounds, the timeliness lemma (prescribed inclusion within
+   `r event + Δ event`, hence on time when `r event + Δ event < deadline event`),
+   and the instance `rosterScheduler` with `r event = event.val` and
+   `Δ event = 0`.
    Small, and it fixes the vocabulary.
 2. **Phase without position, still on the calendar.** Replace
    `DecisionPhase.slot` and `DecisionPhase.position` by the sole ready event
