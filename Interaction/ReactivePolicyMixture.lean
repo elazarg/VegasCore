@@ -54,6 +54,22 @@ theorem policyMixture_posterior_snoc (initial : PMF Index) (policies : Index →
     rfl
   rw [joint, fiberPosterior_snd_bindPairLaw_const]
 
+/-- A policy family that agrees with one policy at every recorded response
+retains its initial mixing law, including at zero-probability own transcripts. -/
+theorem policyMixture_posterior_of_agree (initial : PMF Index)
+    (policies : Index → app.Policy) (baseline : app.Policy) (past : List app.PlayerEntry)
+    (agree : ∀ (before : List app.PlayerEntry) (entry : app.PlayerEntry),
+      before ++ [entry] <+: past → ∀ index,
+        policies index before entry.beforeView = baseline before entry.beforeView) :
+    (app.policyMixture initial policies).posterior past = initial := by
+  induction past using List.reverseRecOn with
+  | nil => rfl
+  | append_singleton past entry ih =>
+      rw [app.policyMixture_posterior_snoc initial policies past entry
+        (baseline past entry.beforeView) (agree past entry (List.prefix_refl _))]
+      exact ih fun before earlier member =>
+        agree before earlier (member.trans (List.prefix_append _ _))
+
 /-- A policy family that is identical before a phase retains its initial
 mixing law at that phase, including at zero-probability own transcripts. -/
 theorem policyMixture_posterior_dormant (initial : PMF Index)
@@ -61,16 +77,52 @@ theorem policyMixture_posterior_dormant (initial : PMF Index)
     (same : ∀ index past view, past.length < offset →
       policies index past view = baseline past view)
     (past : List app.PlayerEntry) (before : past.length ≤ offset) :
-    (app.policyMixture initial policies).posterior past = initial := by
-  induction past using List.reverseRecOn with
-  | nil => rfl
-  | append_singleton past entry ih =>
-      have earlier : past.length < offset := by
-        simp only [List.length_append, List.length_singleton] at before
-        omega
-      rw [app.policyMixture_posterior_snoc initial policies past entry
-        (baseline past entry.beforeView) (fun index => same index _ _ earlier)]
-      exact ih (by omega)
+    (app.policyMixture initial policies).posterior past = initial :=
+  app.policyMixture_posterior_of_agree initial policies baseline past
+    fun earlier entry member index => same index _ _ (by
+      have length := member.length_le
+      simp only [List.length_append, List.length_singleton] at length
+      omega)
+
+/-- Select a single opportunity by its index. `turn past view` is the index of
+the current input among the opportunities, read from the actual recall and
+view, or `none` when the input is not an opportunity. The selected opportunity
+uses `opening`; every other response, including later opportunities, uses
+`waiting`. -/
+def turnScheduledPolicy (turn : List app.PlayerEntry → app.PlayerView → Option Nat)
+    {slots : Nat} (selected : Option (Fin slots)) (opening waiting : app.Policy) :
+    app.Policy := fun past view =>
+  match selected with
+  | none => waiting past view
+  | some slot => if turn past view = some slot.val then opening past view else waiting past view
+
+/-- An input that is not an opportunity waits under every selection. -/
+theorem turnScheduledPolicy_of_none (turn : List app.PlayerEntry → app.PlayerView → Option Nat)
+    {slots : Nat} (selected : Option (Fin slots)) (opening waiting : app.Policy)
+    (past : List app.PlayerEntry) (view : app.PlayerView) (idle : turn past view = none) :
+    app.turnScheduledPolicy turn selected opening waiting past view = waiting past view := by
+  cases selected with
+  | none => rfl
+  | some slot => simp only [turnScheduledPolicy, idle, reduceCtorEq, ↓reduceIte]
+
+/-- The selected opportunity opens. -/
+theorem turnScheduledPolicy_selected (turn : List app.PlayerEntry → app.PlayerView → Option Nat)
+    {slots : Nat} (slot : Fin slots) (opening waiting : app.Policy)
+    (past : List app.PlayerEntry) (view : app.PlayerView)
+    (current : turn past view = some slot.val) :
+    app.turnScheduledPolicy turn (some slot) opening waiting past view = opening past view := by
+  simp only [turnScheduledPolicy, current, ↓reduceIte]
+
+/-- Every other opportunity waits. -/
+theorem turnScheduledPolicy_unselected
+    (turn : List app.PlayerEntry → app.PlayerView → Option Nat)
+    {slots : Nat} (selected : Option (Fin slots)) (opening waiting : app.Policy)
+    (past : List app.PlayerEntry) (view : app.PlayerView)
+    (other : ∀ slot, selected = some slot → turn past view ≠ some slot.val) :
+    app.turnScheduledPolicy turn selected opening waiting past view = waiting past view := by
+  cases selected with
+  | none => rfl
+  | some slot => simp only [turnScheduledPolicy, other slot rfl, ↓reduceIte]
 
 /-- Select a single owner opportunity using its actual response count. Every
 other response uses the supplied policy, including after the selected visit. -/
@@ -79,16 +131,36 @@ def scheduledPolicy (offset : Nat) {slots : Nat} (selected : Option (Fin slots))
   if selected.map (fun slot => offset + slot.val) = some past.length then
     opening past view else waiting past view
 
+/-- The opportunity index of a response count past `offset`. -/
+def countFrom (offset : Nat) (past : List app.PlayerEntry) (_view : app.PlayerView) :
+    Option Nat :=
+  if offset ≤ past.length then some (past.length - offset) else none
+
+/-- Counting responses from an offset is one way of indexing opportunities. -/
+theorem scheduledPolicy_eq_turnScheduledPolicy (offset : Nat) {slots : Nat}
+    (selected : Option (Fin slots)) (opening waiting : app.Policy) :
+    app.scheduledPolicy offset selected opening waiting =
+      app.turnScheduledPolicy (app.countFrom offset) selected opening waiting := by
+  funext past view
+  cases selected with
+  | none => simp [scheduledPolicy, turnScheduledPolicy]
+  | some slot =>
+      simp only [scheduledPolicy, turnScheduledPolicy, countFrom, Option.map_some,
+        Option.some.injEq]
+      by_cases within : offset ≤ past.length
+      · simp only [within, ↓reduceIte, Option.some.injEq]
+        by_cases equal : offset + slot.val = past.length
+        · simp only [equal, show past.length - offset = slot.val by omega, ↓reduceIte]
+        · simp only [equal, show ¬ past.length - offset = slot.val by omega, ↓reduceIte]
+      · simp only [within, ↓reduceIte, reduceCtorEq,
+          show ¬ offset + slot.val = past.length by omega]
+
 theorem scheduledPolicy_before (offset : Nat) {slots : Nat}
     (selected : Option (Fin slots)) (opening waiting : app.Policy)
     (past : List app.PlayerEntry) (view : app.PlayerView) (before : past.length < offset) :
     app.scheduledPolicy offset selected opening waiting past view = waiting past view := by
-  unfold scheduledPolicy
-  apply ite_eq_right
-  cases selected with
-  | none => simp
-  | some slot =>
-      simp only [Option.map_some, Option.some.injEq]
-      omega
+  rw [scheduledPolicy_eq_turnScheduledPolicy]
+  exact app.turnScheduledPolicy_of_none _ selected opening waiting past view
+    (by simp only [countFrom, Nat.not_le.mpr before, ↓reduceIte])
 
 end Interaction.ReactiveApplication

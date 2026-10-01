@@ -51,16 +51,31 @@ theorem replayPolicy_finiteSupport : Policy.FiniteSupport app app.replayPolicy :
   exact (Finset.finite_toSet _).image _
 
 omit [DecidableEq Principal] in
+theorem turnScheduledPolicy_finiteSupport
+    (turn : List app.PlayerEntry → app.PlayerView → Option Nat) {slots : Nat}
+    (selected : Option (Fin slots)) {opening waiting : app.Policy}
+    (openingFinite : Policy.FiniteSupport app opening)
+    (waitingFinite : Policy.FiniteSupport app waiting) :
+    Policy.FiniteSupport app (app.turnScheduledPolicy turn selected opening waiting) := by
+  intro past view
+  cases selected with
+  | none => exact waitingFinite past view
+  | some slot =>
+      by_cases current : turn past view = some slot.val
+      · rw [app.turnScheduledPolicy_selected turn slot opening waiting past view current]
+        exact openingFinite past view
+      · rw [app.turnScheduledPolicy_unselected turn (some slot) opening waiting past view
+          (fun other same => by cases same; exact current)]
+        exact waitingFinite past view
+
+omit [DecidableEq Principal] in
 theorem scheduledPolicy_finiteSupport (offset : Nat) {slots : Nat}
     (selected : Option (Fin slots)) {opening waiting : app.Policy}
     (openingFinite : Policy.FiniteSupport app opening)
     (waitingFinite : Policy.FiniteSupport app waiting) :
     Policy.FiniteSupport app (app.scheduledPolicy offset selected opening waiting) := by
-  intro past view
-  unfold scheduledPolicy
-  split
-  · exact openingFinite past view
-  · exact waitingFinite past view
+  rw [scheduledPolicy_eq_turnScheduledPolicy]
+  exact app.turnScheduledPolicy_finiteSupport _ selected openingFinite waitingFinite
 
 omit [DecidableEq Principal] in
 theorem policyMixture_finiteSupport {Index : Type} [Finite Index] (initial : PMF Index)
