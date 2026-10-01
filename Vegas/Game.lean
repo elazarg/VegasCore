@@ -209,6 +209,7 @@ import Vegas.Game.RevealServiceRosterSupport
 import Vegas.Game.RevealServiceRosterCompletion
 import Vegas.Game.RevealServiceRosterCheckpoint
 import Vegas.Game.ServiceRoster
+import Vegas.Game.ServiceRosterAsync
 import Vegas.Game.ServiceRosterCounts
 import Vegas.Game.RevealServiceRosterPrefixSupport
 import Vegas.Game.ServiceRosterClock
