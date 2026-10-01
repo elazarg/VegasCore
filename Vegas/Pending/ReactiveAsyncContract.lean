@@ -62,16 +62,18 @@ def EmitsFor (entry : (runtime.reactiveApplication leaks).PlayerEntry)
   ∃ message, entry.emitted = some message ∧ message.payload.call.event? graph = some event
 
 /-- **Protected inclusion within `bound`.** When an owner has emitted exactly
-one packet addressed to its event, and did so while the event was ready at
-clock `sent`, that packet has a receipt once the clock passes
+one packet addressed to its event, authored it, and did so while the event was
+ready at clock `sent`, that packet has a receipt once the clock passes
 `sent + bound event`, unless the event has completed. Including any other
 packet, in any order, is allowed.
 
 Only an owner's sole packet is protected. Replays keep the original author and
 identifier, so anyone can re-queue an owner's packet, but every copy of a sole
-packet carries its identifier. An owner that emits several packets for one
-event deviates from every prescribed client, and which one the scheduler
-includes is part of that deviation's law, not a guarantee of the contract. -/
+packet carries its identifier. A prescribed owner submits one packet of its
+own per event. An owner that emits several packets for one event, or relays
+another player's packet as its move, deviates from every prescribed client,
+and what the scheduler then includes is part of that deviation's law, not a
+guarantee of the contract. -/
 def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
     (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (bound : graph.EventId → Nat) : Prop :=
@@ -81,7 +83,8 @@ def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
     ∀ event owner, graph.actor? event = some owner →
     ∀ (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry) entry message,
       control.execution.recall owner = earlier ++ entry :: later →
-      entry.emitted = some message → message.payload.call.event? graph = some event →
+      entry.emitted = some message → message.sender = owner →
+      message.payload.call.event? graph = some event →
       entry.beforeView.application.publicView.EventReady event →
       (∀ other ∈ earlier ++ later, ¬ EmitsFor runtime leaks other event) →
       event ∉ control.execution.application.config.cut.completed →
