@@ -133,4 +133,28 @@ theorem distinctAuthoredCount_le_countP (ledger : List (Message Principal Payloa
         simp only [decide_eq_true_eq]
         split <;> omega
 
+/-- When `who`'s identifiers on the ledger are exactly its serials below
+`count`, the distinct count is `count`, however many copies are included. -/
+theorem distinctAuthoredCount_eq_of_serials (ledger : List (Message Principal Payload))
+    (who : Principal) (count : Nat)
+    (below : ∀ message ∈ ledger, message.sender = who → message.id.2 < count)
+    (present : ∀ serial < count, (who, serial) ∈ ledger.map Message.id) :
+    distinctAuthoredCount ledger who = count := by
+  unfold distinctAuthoredCount
+  have same : ((ledger.map Message.id).toFinset.filter fun id => id.1 = who) =
+      (Finset.range count).image (fun serial => (who, serial)) := by
+    ext ⟨author, serial⟩
+    simp only [Finset.mem_filter, List.mem_toFinset, Finset.mem_image, Finset.mem_range,
+      Prod.mk.injEq]
+    constructor
+    · rintro ⟨member, rfl⟩
+      obtain ⟨message, inside, identified⟩ := List.mem_map.mp member
+      have bound := below message inside (congrArg Prod.fst identified)
+      rw [identified] at bound
+      exact ⟨serial, bound, rfl, rfl⟩
+    · rintro ⟨index, lower, rfl, rfl⟩
+      exact ⟨present index lower, rfl⟩
+  rw [same, Finset.card_image_of_injective _ (fun first second equal => congrArg Prod.snd equal),
+    Finset.card_range]
+
 end Interaction.Message

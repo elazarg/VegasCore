@@ -3,15 +3,16 @@
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveFreshCallAcceptance
+import Vegas.Pending.ReactiveCanonicalDecision
 import Interaction.ReactiveMessageIdentity
 
 /-! # An acceptable fresh call settles in time under the asynchronous contract
 
-An owner emits a fresh call for its ready event within `delay` slots of the
-event becoming ready, acceptable on the view it saw (the handler's part of the
-audit's public conformance rule), and emits no other identifier for the
-event. Under the asynchronous contract with `delay + bound < deadline`, that
-call is accepted, and the event completes only through it: it is never
+An owner emits a fresh call for its ready event early enough that an inclusion
+within `bound` slots still lands before the deadline, acceptable on the view it
+saw (the handler's part of the audit's public conformance rule), and emits no
+other identifier of its own for the event. Under the asynchronous contract
+that call is accepted, and the event completes only through it: it is never
 rejected and the event never expires first (`Vegas.prescribed_packet_settles`).
 
 The proof is one invariant over every legal history, for every scheduler and
@@ -108,18 +109,19 @@ def AcceptableFreshCall (entry : (application setup leaks).PlayerEntry)
   (runtime setup).freshServiceAcceptable entry.beforeView.application.publicView message
 
 /-- One recorded fresh call of `owner` for `event`: a fresh submission, sent
-while the event was ready and at most `delay event` slots after it became
-ready, and acceptable on the view its author saw. -/
+while the event was ready and early enough that an inclusion within
+`bound event` slots lands before the deadline, and acceptable on the view its
+author saw. -/
 structure FreshCall (owner : Player) (event : (graph setup).EventId)
-    (delay : (graph setup).EventId → Nat) (entry : (application setup leaks).PlayerEntry)
+    (bound : (graph setup).EventId → Nat) (entry : (application setup leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop where
   fresh : ∃ material, entry.action.transmission = some (.submit material)
   emitted : entry.emitted = some message
   authored : message.sender = owner
   addressed : message.payload.call.event? (graph setup) = some event
   ready : entry.beforeView.application.publicView.EventReady event
-  early : ∃ entered, entry.beforeView.application.publicView.activatedAt event = some entered ∧
-    entry.beforeView.application.publicView.clock ≤ entered + delay event
+  fits : entry.beforeView.application.publicView.InclusionFitsDeadline (runtime setup) bound
+    event
   conforming : AcceptableFreshCall setup leaks entry message
 
 /-- An event completes only together with an accepting receipt for `id`, and
@@ -133,10 +135,10 @@ def Settled (event : (graph setup).EventId) (id : MessageId Player)
 /-- Every recorded fresh call of `owner` for `event`, with no other identifier
 emitted by `owner` for the event, is settled. -/
 def SettlesFreshCalls (owner : Player) (event : (graph setup).EventId)
-    (delay : (graph setup).EventId → Nat) (execution : (application setup leaks).Execution) :
+    (bound : (graph setup).EventId → Nat) (execution : (application setup leaks).Execution) :
     Prop :=
   ∀ earlier entry later message, execution.recall owner = earlier ++ entry :: later →
-    FreshCall setup leaks owner event delay entry message →
+    FreshCall setup leaks owner event bound entry message →
     (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (runtime setup) leaks other event message.id) →
     Settled setup leaks event message.id execution
 
@@ -290,11 +292,11 @@ private theorem settled_congr {event : (graph setup).EventId} {id : MessageId Pl
 
 /-- A response preserves the settlement invariant. -/
 theorem settlesFreshCalls_respond (owner : Player) (event : (graph setup).EventId)
-    (delay : (graph setup).EventId → Nat) (execution : (application setup leaks).Execution)
+    (bound : (graph setup).EventId → Nat) (execution : (application setup leaks).Execution)
     (facts : LegalFacts setup leaks execution) (who : Player)
     (action : (application setup leaks).Action)
-    (valid : SettlesFreshCalls setup leaks owner event delay execution) :
-    SettlesFreshCalls setup leaks owner event delay
+    (valid : SettlesFreshCalls setup leaks owner event bound execution) :
+    SettlesFreshCalls setup leaks owner event bound
       (execution.respond (application setup leaks) who action) := by
   let app := application setup leaks
   have configEq := ((runtime setup).reactive_respond_application leaks execution who action).1
@@ -339,16 +341,15 @@ theorem settlesFreshCalls_environment {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (remaining : Nat) (execution : (application setup leaks).Execution)
     (prior : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
-    (valid : SettlesFreshCalls setup leaks owner event delay execution)
+    (valid : SettlesFreshCalls setup leaks owner event bound execution)
     (command : (application setup leaks).Command) (next : (application setup leaks).Execution)
     (reached : next ∈ (execution.environmentStep (application setup leaks) command).support) :
-    SettlesFreshCalls setup leaks owner event delay next := by
+    SettlesFreshCalls setup leaks owner event bound next := by
   let app := application setup leaks
   have facts := legalFacts setup leaks horizon scheduler _ prior
   have recallEq := app.environmentStep_recall execution next command reached
@@ -359,8 +360,7 @@ theorem settlesFreshCalls_environment {horizon : Nat}
   rw [recallEq] at split
   have before := valid earlier entry later message split call sole
   have member : entry ∈ execution.recall owner := by rw [split]; simp
-  obtain ⟨entered, activated, early⟩ := call.early
-  have bounded := timely event (by rw [owned]; rfl)
+  obtain ⟨entered, activated, early⟩ := call.fits.exists
   -- Before the bound has passed the event is still timely; after it, a receipt exists.
   have notLate (unfinished : event ∉ execution.application.config.cut.completed) :
       execution.application.clock ≤
@@ -515,7 +515,8 @@ theorem settlesFreshCalls_environment {horizon : Nat}
                         · rcases List.mem_cons.mp inside with rfl | inside
                           · exact (different rfl).elim
                           · exact List.mem_append_right _ inside
-                      exact sole issuer elsewhere ⟨envelope, issued, namedEq,
+                      exact sole issuer elsewhere ⟨envelope, issued,
+                        senderEq.trans call.authored.symm, namedEq,
                         fun equal => sameId (envelopeId.symm.trans equal)⟩
                     · exact finished old
               exact ⟨fun completedNow => (notCompleted completedNow).elim,
@@ -581,15 +582,14 @@ theorem settlesFreshCalls_history {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner) :
     ∀ {state} (_trace : ((application setup leaks).protocol (initialLaw setup) horizon
       scheduler).Trace state),
-      ReactiveApplication.serviceInvariant (SettlesFreshCalls setup leaks owner event delay) state
+      ReactiveApplication.serviceInvariant (SettlesFreshCalls setup leaks owner event bound) state
   | _, .start => trivial
   | _, .extend (source := before) prior joint _ reached => by
-      have valid := settlesFreshCalls_history contract timely owner event owned prior
+      have valid := settlesFreshCalls_history contract owner event owned prior
       cases before with
       | none =>
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
@@ -600,7 +600,7 @@ theorem settlesFreshCalls_history {horizon : Nat}
           cases actor with
           | some who =>
               cases (PMF.mem_support_pure_iff _ _).mp reached
-              exact settlesFreshCalls_respond setup leaks owner event delay execution
+              exact settlesFreshCalls_respond setup leaks owner event bound execution
                 (legalFacts setup leaks horizon scheduler _ prior) who _ valid
           | none =>
               cases remaining with
@@ -609,20 +609,19 @@ theorem settlesFreshCalls_history {horizon : Nat}
                   obtain ⟨command, _, moved⟩ :=
                     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  exact settlesFreshCalls_environment setup leaks contract timely owner event
+                  exact settlesFreshCalls_environment setup leaks contract owner event
                     owned remaining execution prior valid command next supported
 
 /-- **Timeliness of an acceptable fresh call.** Under the asynchronous contract
-with `delay + bound < deadline`, an owner's fresh call for its ready event,
-sent within `delay` slots of readiness and acceptable on the view it saw, with
-no other identifier emitted by the owner for the event, is accepted once the
+an owner's fresh call for its ready event, sent while an inclusion within
+`bound` slots lands before the deadline and acceptable on the view it saw,
+with no other identifier of its own emitted by the owner for the event, is accepted once the
 bound has passed; and the event completes only through it, so it is neither
 rejected nor preceded by expiry. -/
 theorem prescribed_packet_settles {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
-    (timely : AsyncTimely (runtime setup) delay bound)
     {control : (application setup leaks).Control}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
@@ -632,7 +631,7 @@ theorem prescribed_packet_settles {horizon : Nat}
     (entry : (application setup leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
     (split : control.execution.recall owner = earlier ++ entry :: later)
-    (call : FreshCall setup leaks owner event delay entry message)
+    (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,
       ¬ EmitsOtherFor (runtime setup) leaks other event message.id) :
     (entry.beforeView.application.publicView.clock + bound event <
@@ -640,7 +639,7 @@ theorem prescribed_packet_settles {horizon : Nat}
       (message.id, true) ∈ control.execution.receipts) ∧
       (event ∈ control.execution.application.config.cut.completed →
         (message.id, true) ∈ control.execution.receipts) := by
-  have settled := settlesFreshCalls_history setup leaks contract timely owner event owned trace
+  have settled := settlesFreshCalls_history setup leaks contract owner event owned trace
     earlier entry later message split call sole
   refine ⟨fun late => ?_, settled.1⟩
   by_cases finished : event ∈ control.execution.application.config.cut.completed

@@ -334,13 +334,24 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
         ⟨(owner, middle.network.nextSerial owner), app.packet
           (app.submit middle.application owner material) owner
           (middle.network.known owner) material⟩
-      FreshCall setup leaks owner event delay entry message ∧
+      FreshCall setup leaks owner event bound entry message ∧
         RealizesAt leaks middle.application.config
           (middle.respond app owner response).application event action entry message := by
   intro app response
   have facts := legalFacts setup leaks horizon scheduler _ trace
   have deadline : middle.application.clock - entered < (runtime setup).deadline event := by
     have bounded := timely event (by rw [owned]; rfl)
+    omega
+  have fitsView : (middle.observe app owner).application.publicView.InclusionFitsDeadline
+      (runtime setup) bound event := by
+    have bounded := timely event (by rw [owned]; rfl)
+    unfold PublicView.InclusionFitsDeadline
+    change (match middle.application.activatedAt event with
+      | none => False
+      | some entered => middle.application.clock - entered + bound event <
+          (runtime setup).deadline event)
+    rw [activated]
+    change middle.application.clock - entered + bound event < (runtime setup).deadline event
     omega
   have readyView : (middle.observe app owner).application.publicView.EventReady event :=
     (middle.application.publicView_eventReady event).mpr ready
@@ -378,7 +389,7 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
       change response = _ at decided
       refine ⟨_, decided, ?_, ?_⟩
       · refine ⟨⟨_, congrArg ReactiveApplication.Action.transmission decided⟩, rfl, rfl,
-          rfl, readyView, ⟨entered, activated, early⟩, ?_⟩
+          rfl, readyView, fitsView, ?_⟩
         change (middle.observe app actor).application.publicView.BindingIncludable (runtime setup)
           ⟨(actor, middle.network.nextSerial actor), .commitment event (actor, .prepared serial)⟩
         simp only [PublicView.BindingIncludable, node]
@@ -438,7 +449,7 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
         exact emitted.trans packet
       refine ⟨material, decision, ?_, ?_⟩
       · refine ⟨⟨material, congrArg ReactiveApplication.Action.transmission decision⟩, rfl, rfl,
-          by rw [packetEq]; rfl, readyView, ⟨entered, activated, early⟩, ?_⟩
+          by rw [packetEq]; rfl, readyView, fitsView, ?_⟩
         change (runtime setup).freshServiceAcceptable middle.application.publicView
           ⟨(actor, middle.network.nextSerial actor), app.packet
             (app.submit middle.application actor material) actor
@@ -676,7 +687,7 @@ structure DecidedPhase (delay bound : (graph setup).EventId → Nat)
   submitted : ∀ before entry after, execution.recall owner = before ++ entry :: after →
     (runtime setup).submittedEvent? leaks entry.action = some event →
     ∃ message, entry.emitted = some message ∧
-      FreshCall setup leaks owner event delay entry message ∧
+      FreshCall setup leaks owner event bound entry message ∧
       RealizesAt leaks start.application.config execution.application event action entry message
   firstTurn : ∀ before entry after, execution.recall owner = before ++ entry :: after →
     (start.recall owner).length ≤ before.length →
@@ -1182,7 +1193,7 @@ theorem DecidedPhase.complete_round {horizon : Nat}
               have firstMember : first ∈ execution.recall owner := by rw [split]; simp
               have sole : ∀ other' ∈ before ++ after,
                   ¬ EmitsOtherFor (runtime setup) leaks other' other packet.id := by
-                intro other' otherMember ⟨replayed, emittedOther, addressed, different⟩
+                intro other' otherMember ⟨replayed, emittedOther, _, addressed, different⟩
                 have otherRecall : other' ∈ execution.recall owner := by
                   rw [split]
                   rcases List.mem_append.mp otherMember with left | right
@@ -1217,14 +1228,14 @@ theorem DecidedPhase.complete_round {horizon : Nat}
                   rw [sameEntry, emittedFirst] at issuerEmitted
                   exact different (by rw [Option.some.inj issuerEmitted])
                 · cases inputEq
-              have settled := settlesFreshCalls_history setup leaks contract timely owner other
+              have settled := settlesFreshCalls_history setup leaks contract owner other
                 owned trace before first after packet split call sole
-              obtain ⟨enteredThen, activatedThen, early⟩ := call.early
+              obtain ⟨enteredThen, activatedThen, early⟩ := call.fits.exists
               have activatedSame := (entry_view_current setup leaks execution facts.stable owner
                 first firstMember other call.ready unfinished).2.2
               rw [activatedSame, activated, Option.some.injEq] at activatedThen
               subst activatedThen
-              have receipt := (prescribed_packet_settles setup leaks contract timely trace other
+              have receipt := (prescribed_packet_settles setup leaks contract trace other
                 owner owned before after first packet split call sole).1
                 (by change _ < execution.application.clock; omega)
               exact unfinished (settled.2.2 receipt)

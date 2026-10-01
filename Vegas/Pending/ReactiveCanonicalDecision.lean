@@ -184,6 +184,19 @@ instance (runtime : EventGraphRuntime graph) (bound : graph.EventId → Nat)
   split <;> infer_instance
 
 omit [DecidableEq Player] in
+theorem PublicView.InclusionFitsDeadline.exists {runtime : EventGraphRuntime graph}
+    {bound : graph.EventId → Nat} {view : PublicView graph} {event : graph.EventId}
+    (fits : view.InclusionFitsDeadline runtime bound event) :
+    ∃ entered, view.activatedAt event = some entered ∧
+      view.clock - entered + bound event < runtime.deadline event := by
+  unfold PublicView.InclusionFitsDeadline at fits
+  cases activated : view.activatedAt event with
+  | none => rw [activated] at fits; exact fits.elim
+  | some entered =>
+      rw [activated] at fits
+      exact ⟨entered, rfl, fits⟩
+
+omit [DecidableEq Player] in
 theorem PublicView.InclusionFitsDeadline.withinDeadline {runtime : EventGraphRuntime graph}
     {bound : graph.EventId → Nat} {view : PublicView graph} {event : graph.EventId}
     (fits : view.InclusionFitsDeadline runtime bound event) :

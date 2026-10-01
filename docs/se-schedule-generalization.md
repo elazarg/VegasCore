@@ -464,6 +464,7 @@ is a design, not a checked result.
 | Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the watcher calendar reads decision depths from the public clock. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
 | Completion-stopped phase law (milestone 2a) | Done. `Interaction/ReactiveStopping.lean` runs any scheduler until a stopping predicate and splits a full run there. `SourceServiceCompletion.lean` defines the completion law and completion boundaries and proves the bridge `response_completion_law` for any scheduler that completes play, under a boundary-continuation hypothesis. `SourceServiceContinuationBridge.lean` proves that hypothesis for the fixed calendar and re-derives `response_continuation_law` from it. |
 | Turn-counted policy and approximate continuation (milestone 2b) | Done for every contract scheduler. `sourceServiceTurnPolicy_boundaryContinuationWithin` bounds the distance from the source continuation by the sum of the remaining events' deferral weights, and `sourceServiceTurnPolicy_firstTurnCompletes` discharges its hypothesis from `AsyncContract` and `AsyncTimely` alone (`Vegas/Game/SourceServiceFirstTurnCompletes.lean`). The calendar keeps its timed policy. |
+| Audit serial clause | Done. The audit's per-packet rule counts distinct identifiers per author (`Interaction.Message.distinctAuthoredCount`), so re-included copies do not shift serials, and the contract rejects a re-inclusion (`EventGraphRuntime.handle_eq_none_after_accepted_run`). Under `AsyncContract` alone, every fresh call of a player following the turn-counted policy, trembles included and whatever others do, carries the audit's serial and passes the full rule (`Vegas.sourceServiceTurnPolicy_serial`, `Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope` in `Vegas/Game/SourceServiceCanonicalSerial.lean`). |
 | General theorem | Not started. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
@@ -512,20 +513,23 @@ raw protocol, including off-path ones:
    it became ready. Further activations of anyone are allowed.
 2. **Protected inclusion within `Δ event`** (`ProtectedInclusion`). When the
    owner has authored a packet addressed to its event while the event was
-   ready in slot `t`, and every packet the owner ever emits for that event
-   carries the same identifier, that packet has a receipt by the end of slot
-   `t + Δ event` unless the event has completed. Including any other packet,
-   in any order, is allowed. This is today's reserved
+   ready in slot `t`, and every packet of its own that the owner ever emits
+   for that event carries the same identifier, that packet has a receipt by
+   the end of slot `t + Δ event` unless the event has completed. Including any
+   other packet, in any order, is allowed. This is today's reserved
    `ServiceInstruction.includeLatest`, stated as a deadline instead of a
-   calendar position. Only the sole identifier is protected: replays keep the
-   original author and identifier, so a third party can re-queue an owner's
-   older packet behind a newer one, and the calendar's latest-by-author
-   selector then includes the stale copy; an owner can also relay another
-   player's packet, which that selector never picks. A prescribed owner
-   submits one packet of its own per event and may replay it, and every copy
-   carries its identifier. Packets with several identifiers from one owner for
-   one event, or a relayed packet as the owner's move, are deviations, whose
-   law the scheduler may shape (milestone 5).
+   calendar position. Only the sole identifier is protected, and only the
+   owner's own other identifiers void the protection (`EmitsOtherFor` counts
+   only packets authored by the owner). Replays keep the original author and
+   identifier, so a third party can re-queue an owner's older packet behind a
+   newer one, and the calendar's latest-by-author selector then includes the
+   stale copy. Relaying another player's packet, even one addressed to the
+   owner's event, does not void protection: the builder tells authors apart
+   by signature, and the calendar's selector never picks a foreign packet. A
+   prescribed owner submits one packet of its own per event and may replay
+   it, and every copy carries its identifier. Packets with several identifiers
+   from one owner for one event are deviations, whose law the scheduler may
+   shape (milestone 5).
 3. **Complete play** (`CompletesPlay`). Every legal terminal state has
    completed every event. This replaces lazy settlement and a per-slot bound
    in the formal contract: the horizon is fixed, and the scheduler must sample,
@@ -665,6 +669,15 @@ public events has completed.
   with small probability, matching the chain guarantee cited above.
 - **Joint transmission-and-ordering deviations.** A separate theorem in which
   the order is part of a player's deviation. Not part of this plan.
+- **Prescribed rebroadcasting is a proof device to retire.** Off-turn play is
+  `Interaction.ReactiveApplication.replayPolicy`, uniform over silence and
+  every known identifier, including relays of other players' leaked packets.
+  It records and reports nothing, so it is not a watcher role; its only
+  purpose is full support. The limit profile should stay silent off-turn,
+  with rebroadcasts only as ε-trembles in the approximants, so that beliefs
+  after a rebroadcast come from the trembles. This touches the menus, the
+  couplings and the posterior proofs, so it is scheduled after the general
+  theorem.
 
 ### Milestones
 

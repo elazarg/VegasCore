@@ -18,8 +18,8 @@ ready only when its predecessor completes inside the predecessor's block, at
 the latest at that block's inclusion, so the owner is activated at most
 `e.val` slots after `e` became ready. Every owner response that sees `e` ready
 happens in `e`'s roster, before its inclusion, so an authored packet is
-included within the same slot whenever every packet the owner emits for `e`
-carries its identifier. Expiry completes every owned event that is
+included within the same slot whenever every packet of its own the owner
+emits for `e` carries its identifier. Expiry completes every owned event that is
 still ready at the end of its block.
 
 The proof is one invariant over every legal history of the raw protocol, for
@@ -193,8 +193,8 @@ section Selection
 variable {graph : EventGraph Player L} (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- When every packet an owner emits for an event carries the identifier of
-its authored packet, that packet, when unpublished, is pending and its
+/-- When every packet of its own an owner emits for an event carries the
+identifier of its authored packet, that packet, when unpublished, is pending and its
 identifier is exactly what `reactiveLatest` selects: every pending envelope by
 that author addressed to the event was emitted by the owner, so it carries that
 identifier, whatever replays occurred. -/
@@ -246,7 +246,8 @@ theorem reactiveLatest_sole
           simp only [List.mem_append, List.mem_cons] at member ⊢
           tauto
         by_contra different
-        exact sole other outside ⟨selected, otherEmitted, selectedAddressed, different⟩
+        exact sole other outside ⟨selected, otherEmitted, selectedAuthored.trans authored.symm,
+          selectedAddressed, different⟩
     rw [sameId]
 
 /-- Including the identifier of a pending envelope records a receipt for it. -/
@@ -743,8 +744,8 @@ theorem RosterPhase.activate_step
 
 /-- Protected inclusion at the end of the roster. Whatever packet is included,
 only the ready event can complete; an owner's authored packet for it gets a
-receipt when every packet the owner emits for the event carries its
-identifier. -/
+receipt when every packet of its own the owner emits for the event carries
+its identifier. -/
 theorem RosterPhase.include_step
     (phase : RosterPhase setup leaks rosters event offset control)
     (atInclusion : offset = (rosters event).length) (owner : Player)
@@ -1344,8 +1345,8 @@ theorem rosterReach_history (setup : Setup (Player := Player) (L := L))
 
 /-- **The fixed roster calendar is an asynchronous service.** An owner is
 activated within `event.val` slots of its event becoming ready, a packet it
-authored for the event is included in the slot it was sent when every packet it
-emits for the event carries that identifier, and the plan completes every
+authored for the event is included in the slot it was sent when every packet of
+its own it emits for the event carries that identifier, and the plan completes every
 event. The roster must give each event's actor an activation. -/
 theorem rosterScheduler_asyncContract (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))

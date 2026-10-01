@@ -56,27 +56,30 @@ def Opportunity (initial : PMF (runtime.reactiveApplication leaks).State) (horiz
       entered + delay event < control.execution.application.clock →
       OwnerActivatedSince runtime leaks control.execution.environmentRecall event owner entered
 
-/-- `entry` emitted a packet addressed to `event` whose identifier is not
-`id`. -/
+/-- `entry` emitted a packet authored by the author of `id`, addressed to
+`event`, whose identifier is not `id`: another identifier of the same author
+for the same event. Relayed packets of other authors do not count. -/
 def EmitsOtherFor (entry : (runtime.reactiveApplication leaks).PlayerEntry)
     (event : graph.EventId) (id : MessageId Player) : Prop :=
-  ∃ message, entry.emitted = some message ∧ message.payload.call.event? graph = some event ∧
-    message.id ≠ id
+  ∃ message, entry.emitted = some message ∧ message.sender = id.1 ∧
+    message.payload.call.event? graph = some event ∧ message.id ≠ id
 
 /-- **Protected inclusion within `bound`.** When an owner has authored a
 packet addressed to its event while the event was ready at clock `sent`, and
-every packet the owner ever emits for that event carries the same identifier,
+every packet of its own that the owner ever emits for that event carries the
+same identifier,
 that packet has a receipt once the clock passes `sent + bound event`, unless the
 event has completed. Including any other packet, in any order, is allowed.
 
 Only an owner's sole identifier is protected. Replays keep the original author
 and identifier, so anyone, the owner included, can re-queue copies of an
 owner's packet, and every copy carries its identifier. A prescribed owner
-submits one packet of its own per event and may replay it. An owner that emits
-packets with different identifiers for one event, or relays another player's
-packet as its move, deviates from every prescribed client, and what the
-scheduler then includes is part of that deviation's law, not a guarantee of
-the contract. -/
+submits one packet of its own per event and may replay it. Relaying another
+player's packet, even one addressed to the owner's event, does not void the
+protection: the builder distinguishes authors by signature. An owner that
+emits several identifiers of its own for one event deviates from every
+prescribed client, and what the scheduler then includes is part of that
+deviation's law, not a guarantee of the contract. -/
 def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
     (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (bound : graph.EventId → Nat) : Prop :=
