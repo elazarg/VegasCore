@@ -116,6 +116,8 @@ import Vegas.Pending.ReactiveBindingAdmission
 import Vegas.Pending.ReactiveBindingService
 import Vegas.Pending.ReactivePacketService
 import Vegas.Pending.ReactiveStateInvariant
+import Vegas.Pending.ReactiveEntryStability
+import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.NativeResponseSampling
 import Vegas.Pending.ResponseBudget
 import Vegas.Pending.ResponsePolicyCorrespondence

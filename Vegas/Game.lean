@@ -41,6 +41,7 @@ import Vegas.Game.SourceServiceCompletion
 import Vegas.Game.SourceServiceContinuationBridge
 import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceTurnPolicy
+import Vegas.Game.SourceServiceAsyncTimeliness
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
