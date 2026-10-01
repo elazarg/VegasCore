@@ -3,10 +3,12 @@
 import Vegas.Pending.ReactiveServiceOpening
 import Vegas.Pending.EventBindingInvariant
 
-/-! # A conforming fresh call is accepted at any later inclusion in its window
+/-! # An acceptable fresh call is accepted at any later inclusion in its window
 
 The audit's public conformance rule `freshServiceEnvelope` checks a packet
-against the public view its author saw. While no event has completed, the
+against the public view its author saw. Its acceptance part
+(`freshServiceAcceptable`) drops the canonical-serial requirement on
+commitments, which the handler does not check. While no event has completed, the
 public observation and accepted handles are unchanged, so the handler's public
 conditions still hold at a later inclusion, provided it is before the event's
 deadline. The handler's private conditions for an opening, the candidate's
@@ -24,13 +26,34 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
 
-/-- A packet that conformed to the public view its author saw is accepted at a
+/-- The part of the audit's conformance rule that the handler's acceptance
+needs. A commitment must only be includable: its candidate need not be the
+author's canonical serial. Other packets must conform. -/
+def freshServiceAcceptable (view : PublicView graph)
+    (message : Message Player (WitnessedPacket graph)) : Prop :=
+  match message.payload.call with
+  | .commitment .. => view.BindingIncludable runtime ⟨message.id, message.payload.call⟩
+  | _ => runtime.freshServiceEnvelope view message
+
+/-- A conforming packet is acceptable. -/
+theorem freshServiceEnvelope.acceptable {view : PublicView graph}
+    {message : Message Player (WitnessedPacket graph)}
+    (conforming : runtime.freshServiceEnvelope view message) :
+    runtime.freshServiceAcceptable view message := by
+  rcases message with ⟨id, ⟨packet, evidence⟩⟩
+  cases packet with
+  | commitment event candidate => exact conforming.1
+  | opening event candidate raw => exact conforming
+  | withhold event => exact conforming
+  | malformed raw => exact conforming
+
+/-- A packet acceptable on the public view its author saw is accepted at a
 state with the same public observation and accepted handles, before the
 event's deadline, when its certified evidence holds and binding provenance is
 intact. -/
-theorem freshServiceEnvelope_accepted (state : State graph) (view : PublicView graph)
+theorem freshServiceAcceptable_accepted (state : State graph) (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
-    (conforming : runtime.freshServiceEnvelope view message)
+    (conforming : runtime.freshServiceAcceptable view message)
     (observationEq : view.observation = state.publicView.observation)
     (acceptedEq : view.accepted = state.accepted)
     (event : graph.EventId) (named : message.payload.call.event? graph = some event)
@@ -49,8 +72,8 @@ theorem freshServiceEnvelope_accepted (state : State graph) (view : PublicView g
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
-      obtain ⟨includable, _, _⟩ := conforming
-      change view.EventReady event ∧ _ ∧ _ at includable
+      change view.EventReady event ∧ _ ∧ _ at conforming
+      have includable := conforming
       obtain ⟨ready, _, owned⟩ := includable
       cases node : nodeView graph event with
       | bind owner payload outputEq codeEq =>
@@ -97,10 +120,10 @@ theorem freshServiceEnvelope_accepted (state : State graph) (view : PublicView g
             checks outputEq codeEq node (readyOf ready) timely sender owned associated value
             verified stored (.success value) resolved⟩
       | bind _ _ _ _ =>
-          simp only [freshServiceEnvelope, node] at conforming
+          simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
           exact conforming.2.2.2.2.elim
       | sample _ _ _ _ =>
-          simp only [freshServiceEnvelope, node] at conforming
+          simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
           exact conforming.2.2.2.2.elim
   | withhold actual => exact conforming.elim
   | malformed raw => exact conforming.elim

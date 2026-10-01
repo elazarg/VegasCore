@@ -116,7 +116,7 @@ variable {setup profile}
 
 /-- A native state carrying a given configuration, used to apply the checkpoint
 successor lemmas, which read only the configuration. -/
-private def carrier (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
+def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
   { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
 
 /-- Completing the ready event with any action keeps a residual, one rank
@@ -195,7 +195,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
         transport := fun more store history => ?_,
-        checkpoint := checkpoint.sample (native := carrier before) name (embedding.event index)
+        checkpoint := checkpoint.sample (native := configState before) name (embedding.event index)
           atRank ready outputEq (fun ref => refsBefore ref index) decoded value }⟩
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_sample_tail,
           PMF.map_comp]
@@ -262,7 +262,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
         transport := fun more store history => ?_,
-        checkpoint := checkpoint.commit (native := carrier before) name guard
+        checkpoint := checkpoint.commit (native := configState before) name guard
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
           choice decoded }⟩
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_commit_tail,
@@ -338,7 +338,7 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
         transport := fun more store history => ?_,
-        checkpoint := checkpoint.reveal (native := carrier before) published selected
+        checkpoint := checkpoint.reveal (native := configState before) published selected
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
           disclose decoded }⟩
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_reveal_tail,

@@ -5,14 +5,14 @@ import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Interaction.ReactiveMessageIdentity
 
-/-! # A conforming fresh call settles in time under the asynchronous contract
+/-! # An acceptable fresh call settles in time under the asynchronous contract
 
 An owner emits a fresh call for its ready event within `delay` slots of the
-event becoming ready, conforming to the audit's public rule on the view it saw,
-and emits no other identifier for the event. Under the asynchronous contract
-with `delay + bound < deadline`, that call is accepted, and the event completes
-only through it: it is never rejected and the event never expires first
-(`Vegas.prescribed_packet_settles`).
+event becoming ready, acceptable on the view it saw (the handler's part of the
+audit's public conformance rule), and emits no other identifier for the
+event. Under the asynchronous contract with `delay + bound < deadline`, that
+call is accepted, and the event completes only through it: it is never
+rejected and the event never expires first (`Vegas.prescribed_packet_settles`).
 
 The proof is one invariant over every legal history, for every scheduler and
 arbitrary responses of everyone else. While the event is unfinished no event
@@ -100,15 +100,16 @@ end Handle
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- A fresh call the handler accepts when included in time: the audit's public
-conformance rule, evaluated on the view its author saw when emitting it. -/
+/-- A fresh call the handler accepts when included in time: the acceptance part
+of the audit's public conformance rule, evaluated on the view its author saw
+when emitting it. -/
 def AcceptableFreshCall (entry : (application setup leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
-  (runtime setup).freshServiceEnvelope entry.beforeView.application.publicView message
+  (runtime setup).freshServiceAcceptable entry.beforeView.application.publicView message
 
 /-- One recorded fresh call of `owner` for `event`: a fresh submission, sent
 while the event was ready and at most `delay event` slots after it became
-ready, and conforming to the public rule on the view its author saw. -/
+ready, and acceptable on the view its author saw. -/
 structure FreshCall (owner : Player) (event : (graph setup).EventId)
     (delay : (graph setup).EventId → Nat) (entry : (application setup leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop where
@@ -456,7 +457,7 @@ theorem settlesFreshCalls_environment {horizon : Nat}
                   exact unique.pending envelope pending (envelopeId.trans sameId)
                 · simp [broadcaster] at inputEq
               subst envelopeEq
-              obtain ⟨accepted, handled⟩ := freshServiceEnvelope_accepted (runtime setup)
+              obtain ⟨accepted, handled⟩ := freshServiceAcceptable_accepted (runtime setup)
                 execution.application entry.beforeView.application.publicView envelope
                 call.conforming viewObservation viewAccepted
                 event call.addressed (withinDeadline finished)
@@ -611,12 +612,12 @@ theorem settlesFreshCalls_history {horizon : Nat}
                   exact settlesFreshCalls_environment setup leaks contract timely owner event
                     owned remaining execution prior valid command next supported
 
-/-- **Timeliness of a conforming fresh call.** Under the asynchronous contract
+/-- **Timeliness of an acceptable fresh call.** Under the asynchronous contract
 with `delay + bound < deadline`, an owner's fresh call for its ready event,
-sent within `delay` slots of readiness and conforming to the audit's public
-rule on the view it saw, with no other identifier emitted by the owner for the
-event, is accepted once the bound has passed; and the event completes only
-through it, so it is neither rejected nor preceded by expiry. -/
+sent within `delay` slots of readiness and acceptable on the view it saw, with
+no other identifier emitted by the owner for the event, is accepted once the
+bound has passed; and the event completes only through it, so it is neither
+rejected nor preceded by expiry. -/
 theorem prescribed_packet_settles {horizon : Nat}
     {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
