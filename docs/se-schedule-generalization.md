@@ -712,13 +712,16 @@ and is committed separately.
      - the boundary-continuation hypothesis carries an error, bounded by the
        sum of deferral weights over the remaining events.
 
-     In order, each step keeping `Paper` green: the library limit lemma with
-     vanishing error; a turn-counted variant of `scheduledPolicy`; the
-     turn-counted prescribed policy, shown equal to today's timed policy on
-     every legal calendar history; the approximate plumbing, with error 0 on
-     the calendar; the calendar menu switch with `ε n → 0` replacing today's
-     fixed weight ½; then the timeliness lemma and the approximate step law
-     under every contract scheduler. Timeliness must prove acceptance and the
+     Done: the library limit lemma with vanishing error, and a turn-counted
+     variant of `scheduledPolicy`. The calendar keeps today's offset-keyed
+     timed policy: moving it onto the turn-counted policy first would need a
+     new per-block recall invariant and patches to about 60 calendar proof
+     sites, all of which the general theorem supersedes, since the calendar
+     becomes one of its instances. So the turn-counted policy, the timeliness
+     lemma and the approximate step law are built in new modules for every
+     contract scheduler, and the calendar-specific chain is retired at
+     milestone 6 rather than ported. The same argument applies to milestone
+     3, which is reconsidered once the general step law exists. Timeliness must prove acceptance and the
      absence of early expiry, not only a receipt. The step law's invariant
      keeps the pool for the current event to one owner identifier and its
      copies, and makes deferral the only error.
