@@ -56,17 +56,22 @@ def Opportunity (initial : PMF (runtime.reactiveApplication leaks).State) (horiz
       entered + delay event < control.execution.application.clock →
       OwnerActivatedSince runtime leaks control.execution.environmentRecall event owner entered
 
-/-- `entry` is a response of `owner` that emitted `message`, addressed to
-`event`, while `event` was ready. -/
-def EmittedForReady (entry : (runtime.reactiveApplication leaks).PlayerEntry)
-    (event : graph.EventId) (message : Message Player (WitnessedPacket graph)) : Prop :=
-  entry.emitted = some message ∧ message.payload.call.event? graph = some event ∧
-    entry.beforeView.application.publicView.EventReady event
+/-- `entry` emitted a packet addressed to `event`. -/
+def EmitsFor (entry : (runtime.reactiveApplication leaks).PlayerEntry)
+    (event : graph.EventId) : Prop :=
+  ∃ message, entry.emitted = some message ∧ message.payload.call.event? graph = some event
 
-/-- **Protected inclusion within `bound`.** An owner's latest packet for a
-ready event, emitted at clock `sent`, has a receipt once the clock passes
+/-- **Protected inclusion within `bound`.** When an owner has emitted exactly
+one packet addressed to its event, and did so while the event was ready at
+clock `sent`, that packet has a receipt once the clock passes
 `sent + bound event`, unless the event has completed. Including any other
-packet, in any order, is allowed. -/
+packet, in any order, is allowed.
+
+Only an owner's sole packet is protected. Replays keep the original author and
+identifier, so anyone can re-queue an owner's packet, but every copy of a sole
+packet carries its identifier. An owner that emits several packets for one
+event deviates from every prescribed client, and which one the scheduler
+includes is part of that deviation's law, not a guarantee of the contract. -/
 def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
     (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (bound : graph.EventId → Nat) : Prop :=
@@ -76,8 +81,9 @@ def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
     ∀ event owner, graph.actor? event = some owner →
     ∀ (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry) entry message,
       control.execution.recall owner = earlier ++ entry :: later →
-      EmittedForReady runtime leaks entry event message →
-      (∀ next ∈ later, ∀ other, ¬ EmittedForReady runtime leaks next event other) →
+      entry.emitted = some message → message.payload.call.event? graph = some event →
+      entry.beforeView.application.publicView.EventReady event →
+      (∀ other ∈ earlier ++ later, ¬ EmitsFor runtime leaks other event) →
       event ∉ control.execution.application.config.cut.completed →
       entry.beforeView.application.publicView.clock + bound event <
         control.execution.application.clock →
