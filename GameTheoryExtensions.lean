@@ -4,6 +4,7 @@ import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.DeferredChoice
 import GameTheoryExtensions.Math.Probability.FirstDeparture
+import GameTheoryExtensions.Math.Probability.TotalVariation
 import GameTheoryExtensions.Math.Probability.Regularity
 import GameTheoryExtensions.Math.Probability.RegularCoupling
 import GameTheoryExtensions.Math.Probability.WeightedSet
