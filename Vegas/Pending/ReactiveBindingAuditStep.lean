@@ -45,7 +45,7 @@ theorem binding_audit_response_cases (bounds : MessageBounds graph)
     response ∈ (app.replayPolicy (execution.recall owner) (execution.observe app owner)).support ∨
       (∃ opening, bounds.AllowsOpening opening ∧
         execution.network.nextSerial owner =
-          execution.network.ledger.countP (fun message => message.sender = owner) ∧ response =
+          Message.distinctAuthoredCount execution.network.ledger owner ∧ response =
         ⟨some (.submit ⟨⟨.commitment event
           (owner, .prepared (execution.application.publicView.bindingCount owner)), opening⟩,
             .none⟩)⟩) ∨
@@ -143,7 +143,7 @@ theorem binding_stopped_response_coupling
     (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (first : original.network.nextSerial owner =
-      original.network.ledger.countP (fun message => message.sender = owner) →
+      Message.distinctAuthoredCount original.network.ledger owner →
         runtime.eventRecorded leaks (repaired.recall owner) event = false)
     (serials : original.network.SerialsBeforeNext)
     (coverage : bounds.compiledActions runtime leaks owner (repaired.recall owner)
@@ -289,7 +289,7 @@ theorem binding_stopped_activation_coupling
     (turn : original.application.publicView.OwnTurn owner event)
     (ready : original.application.config.cut.Ready event)
     (first : original.network.nextSerial owner =
-      original.network.ledger.countP (fun message => message.sender = owner) →
+      Message.distinctAuthoredCount original.network.ledger owner →
         runtime.eventRecorded leaks (repaired.recall owner) event = false)
     (serials : original.network.SerialsBeforeNext)
     (coverage : ∀ selected ∈ (leaks owner original.network.pending).support,

@@ -44,7 +44,7 @@ theorem sourceService_decision_resources
       control.execution.SerialRecall (application setup leaks) ∧
       control.execution.network.SerialsBeforeNext ∧
       (control.execution.network.nextSerial owner =
-        control.execution.network.ledger.countP (fun message => message.sender = owner) →
+        Message.distinctAuthoredCount control.execution.network.ledger owner →
         (runtime setup).eventRecorded leaks (control.execution.recall owner) event = false) := by
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters

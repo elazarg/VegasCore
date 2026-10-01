@@ -124,7 +124,7 @@ theorem service_binding_traffic
       (owner, .prepared (execution.application.publicView.bindingCount owner)))
     (vacant : execution.application.accepted (.inr event) = none)
     (counted : execution.network.nextSerial owner =
-      execution.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount execution.network.ledger owner)
     (opening : Option (Raw L)) :
     let app := runtime.reactiveApplication leaks
     let response : app.Action := ⟨some (.submit
@@ -164,7 +164,7 @@ theorem service_opening_traffic
     (resolved : EventCode.resolveOutput? binding checks true execution.application.config.store =
       some (.success value))
     (counted : execution.network.nextSerial owner =
-      execution.network.ledger.countP (fun message => message.sender = owner)) :
+      Message.distinctAuthoredCount execution.network.ledger owner) :
     let app := runtime.reactiveApplication leaks
     let submission := WitnessedSubmission.normalizeReactive owner
       (app.observePlayer execution.application owner) (execution.network.known owner)
@@ -221,7 +221,7 @@ theorem serviceDecision_resolution_traffic
     (timely : execution.application.WithinDeadline runtime event)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
-        execution.network.ledger.countP (fun message => message.sender = owner))
+        Message.distinctAuthoredCount execution.network.ledger owner)
     (choice : Bool)
     (first : runtime.firstSubmission leaks (execution.recall owner)
       (runtime.serviceDecision leaks owner (execution.recall owner)
@@ -292,7 +292,7 @@ theorem MessageBounds.compiled_binding_traffic (bounds : MessageBounds graph)
         some (execution.application.publicView.bindingCount owner))
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
-        execution.network.ledger.countP (fun message => message.sender = owner))
+        Message.distinctAuthoredCount execution.network.ledger owner)
     (known : ∀ message ∈ execution.network.known owner,
       runtime.permittedServiceEnvelope execution.application.publicView
         execution.network.ledger message = true)
@@ -357,7 +357,7 @@ theorem MessageBounds.compiled_resolution_traffic (bounds : MessageBounds graph)
     (timely : execution.application.WithinDeadline runtime event)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
-        execution.network.ledger.countP (fun message => message.sender = owner))
+        Message.distinctAuthoredCount execution.network.ledger owner)
     (known : ∀ message ∈ execution.network.known owner,
       runtime.permittedServiceEnvelope execution.application.publicView
         execution.network.ledger message = true)

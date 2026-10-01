@@ -65,7 +65,7 @@ theorem ServiceBoundary.binding_inclusion
     final.application.CandidatesRepresented ∧ final.application.AcceptedRecorded ∧
       (∀ who, final.application.PreparedPrefix who) ∧
       (∀ who, final.network.nextSerial who =
-        final.network.ledger.countP (fun message => message.sender = who)) ∧
+        Message.distinctAuthoredCount final.network.ledger who) ∧
       final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) ∧
       ∃ value ∈ bounds.typedValues payload,
         SourceCheckpoint setup (commitSuccessor name guard source (.success value))
@@ -119,9 +119,9 @@ theorem ServiceBoundary.binding_inclusion
       beforeTimely beforeVacant (by rw [beforeSerial]; exact beforeUnused) beforeSerials
         players network immediate canonicalIncluded
   have nextAccounted : ∀ who, immediate.network.nextSerial who =
-      immediate.network.ledger.countP (fun message => message.sender = who) := by
+      Message.distinctAuthoredCount immediate.network.ledger who := by
     have settled : ∀ who, before.network.nextSerial who =
-        before.network.ledger.countP (fun message => message.sender = who) := by
+        Message.distinctAuthoredCount before.network.ledger who := by
       rw [beforeCounters, beforeLedger]
       exact boundary.accounted
     have moved := included
@@ -188,7 +188,7 @@ theorem ServiceBoundary.binding_prefix_resources
         reactiveFreshSlot (current.observe (application setup leaks) owner).application =
           some (current.application.publicView.bindingCount owner) ∧
         (∀ who, current.network.nextSerial who =
-          current.network.ledger.countP (fun message => message.sender = who)) ∧
+          Message.distinctAuthoredCount current.network.ledger who) ∧
         current.network.Satisfies
           (fun message => message.id ∈ current.network.ledger.map Message.id)) := by
   obtain ⟨config, publicEq⟩ := (runtime setup).player_window_application leaks players network

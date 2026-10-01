@@ -2,6 +2,7 @@
 
 import Interaction.MessageNetworkInvariant
 import Interaction.PendingSelection
+import Interaction.MessageLedgerCount
 
 /-! # Fresh envelope allocation in the reactive network -/
 
@@ -99,16 +100,21 @@ irrelevant: inclusion also consumes an envelope whose call is rejected. -/
 theorem SerialsBeforeNext.submit_include_serials_match_ledger
     (valid : network.SerialsBeforeNext)
     (settled : ∀ observer, network.nextSerial observer =
-      network.ledger.countP (fun message => message.sender = observer))
+      Message.distinctAuthoredCount network.ledger observer)
     (who : Principal) (payload : Payload) (observer : Principal) :
     ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.nextSerial
         observer =
-      ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.ledger.countP
-        (fun message => message.sender = observer) := by
+      Message.distinctAuthoredCount
+        ((network.submit who payload).2.includePending (who, network.nextSerial who)).2.ledger
+        observer := by
   rw [MessageNetwork.includePending, valid.lookup_submit who payload]
+  have fresh := valid.next_unpublished who
+  change _ = Message.distinctAuthoredCount
+    (network.ledger ++ [⟨(who, network.nextSerial who), payload⟩]) observer
+  rw [Message.distinctAuthoredCount_append_of_not_mem _ _ _ fresh, ← settled observer]
   by_cases same : observer = who
   · subst observer
-    simpa [MessageNetwork.submit, Message.sender] using congrArg Nat.succ (settled who)
-  · simpa [MessageNetwork.submit, Message.sender, same, Ne.symm same] using settled observer
+    simp [MessageNetwork.submit, Message.sender]
+  · simp [MessageNetwork.submit, Message.sender, same, Ne.symm same]
 
 end Interaction.MessageNetwork

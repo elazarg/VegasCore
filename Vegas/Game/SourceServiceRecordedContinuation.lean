@@ -243,7 +243,7 @@ theorem recorded_phase_invariant {who : Player} {remaining : Nat}
   have owned := binding_actor service.setup phase.event owner payload outputEq
   obtain ⟨codeEq, node⟩ := binding_nodeView service.setup phase.event owner payload outputEq
   let id : MessageId Player :=
-    (owner, execution.network.ledger.countP (fun message => message.sender = owner))
+    (owner, Message.distinctAuthoredCount execution.network.ledger owner)
   let message : Message Player (WitnessedPacket (graph service.setup)) :=
     ⟨id, ⟨.commitment phase.event (owner, .prepared
       (execution.application.publicView.bindingCount owner)), none⟩⟩

@@ -52,7 +52,7 @@ structure ServiceBoundary (setup : Setup (Player := Player) (L := L))
     message.id ∈ execution.network.ledger.map Message.id
   serials : execution.network.SerialsBeforeNext
   accounted : ∀ who, execution.network.nextSerial who =
-    execution.network.ledger.countP (fun message => message.sender = who)
+    Message.distinctAuthoredCount execution.network.ledger who
   counts : ∀ who, (execution.recall who).length =
     (((List.finRange (graph setup).order.eventCount).take rank).flatMap rosters).count who
   unsent : ∀ who event, rank ≤ event.val →

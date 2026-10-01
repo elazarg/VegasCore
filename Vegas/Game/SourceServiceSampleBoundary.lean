@@ -202,7 +202,7 @@ theorem ServiceBoundary.sample_block
     exact published
   · rw [afterNetwork, sampledNetwork]
     change ∀ who, visited.network.nextSerial who =
-      visited.network.ledger.countP (fun message => message.sender = who)
+      Message.distinctAuthoredCount visited.network.ledger who
     rw [sameCounters, sameLedger]
     exact boundary.accounted
   · intro observer other future

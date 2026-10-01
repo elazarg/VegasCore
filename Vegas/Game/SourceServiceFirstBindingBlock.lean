@@ -42,7 +42,7 @@ theorem first_binding_block_coupling
     (rightRecall : repaired.InputRecall (application setup leaks))
     (serials : original.network.SerialsBeforeNext)
     (counted : original.network.nextSerial owner =
-      original.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount original.network.ledger owner)
     (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline (runtime setup) event)
@@ -119,12 +119,12 @@ theorem first_binding_block_coupling
   have pending : message ∈ left.network.pending :=
     List.mem_append_right _ (List.mem_singleton_self _)
   have repeated : left.network.nextSerial owner ≠
-      left.network.ledger.countP (fun candidate => candidate.sender = owner) := by
+      Message.distinctAuthoredCount left.network.ledger owner := by
     change (Function.update original.network.nextSerial owner
       (original.network.nextSerial owner + 1)) owner ≠ _
     rw [Function.update_self]
     change original.network.nextSerial owner + 1 ≠
-      original.network.ledger.countP (fun candidate => candidate.sender = owner)
+      Message.distinctAuthoredCount original.network.ledger owner
     omega
   have recorded : (runtime setup).eventRecorded leaks (right.recall owner) event = true := by
     rw [← (runtime setup).eventRecorded_congr leaks _ _ paired.submissions event]

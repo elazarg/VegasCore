@@ -51,7 +51,7 @@ private theorem recorded_response_tail
     (leftRecall : left.InputRecall (application setup leaks))
     (serials : execution.network.SerialsBeforeNext)
     (repeated : execution.network.nextSerial owner ≠
-      execution.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount execution.network.ledger owner)
     (recorded : (runtime setup).eventRecorded leaks (execution.recall owner) event = true)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -234,7 +234,7 @@ private theorem recorded_binding_resources
         (some ⟨remaining, some owner, execution⟩))
     :
     let serial := execution.application.publicView.bindingCount owner
-    let nonce := execution.network.ledger.countP (fun message => message.sender = owner)
+    let nonce := Message.distinctAuthoredCount execution.network.ledger owner
     let message : Message Player (WitnessedPacket (graph setup)) :=
       ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩
     ∃ value : L.Val payload,
@@ -373,7 +373,7 @@ theorem recorded_binding_history_response_block_coupling
   let menu := sourceServiceMenu setup leaks bounds rosters
   let scheduler := rosterScheduler setup leaks rosters network
   let serial := execution.application.publicView.bindingCount owner
-  let nonce := execution.network.ledger.countP (fun message => message.sender = owner)
+  let nonce := Message.distinctAuthoredCount execution.network.ledger owner
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩
   have owned : (graph setup).actor? event = some owner := by

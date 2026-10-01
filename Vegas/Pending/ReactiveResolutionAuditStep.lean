@@ -42,7 +42,7 @@ theorem resolution_audit_response_cases (bounds : MessageBounds graph)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (turn : execution.application.publicView.OwnTurn owner event)
     (first : execution.network.nextSerial owner =
-      execution.network.ledger.countP (fun message => message.sender = owner) →
+      Message.distinctAuthoredCount execution.network.ledger owner →
         runtime.eventRecorded leaks (execution.recall owner) event = false)
     (response : (runtime.reactiveApplication leaks).Action)
     (available : response ∈ (bounds.menu runtime leaks).actions owner (execution.recall owner)
@@ -136,7 +136,7 @@ theorem resolution_stopped_response_coupling
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
     (first : original.network.nextSerial owner =
-      original.network.ledger.countP (fun message => message.sender = owner) →
+      Message.distinctAuthoredCount original.network.ledger owner →
         runtime.eventRecorded leaks (original.recall owner) event = false)
     (serials : original.network.SerialsBeforeNext)
     (coverage : bounds.compiledActions runtime leaks owner (repaired.recall owner)
@@ -283,7 +283,7 @@ theorem resolution_stopped_activation_coupling
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
     (first : original.network.nextSerial owner =
-      original.network.ledger.countP (fun message => message.sender = owner) →
+      Message.distinctAuthoredCount original.network.ledger owner →
         runtime.eventRecorded leaks (original.recall owner) event = false)
     (serials : original.network.SerialsBeforeNext)
     (coverage : ∀ selected ∈ (leaks owner original.network.pending).support,

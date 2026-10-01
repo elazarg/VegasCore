@@ -45,7 +45,7 @@ theorem repeated_binding_block_coupling
     (rightRecall : repaired.InputRecall (application setup leaks))
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
-      original.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount original.network.ledger owner)
     (recorded : (runtime setup).eventRecorded leaks (repaired.recall owner) event = true)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline (runtime setup) event)

@@ -127,13 +127,13 @@ theorem resolution_history_activation_coupling
     rw [clocks, activations]
     exact rightTimely
   have originalFirst : original.network.nextSerial owner =
-      original.network.ledger.countP (fun message => message.sender = owner) →
+      Message.distinctAuthoredCount original.network.ledger owner →
       (runtime setup).eventRecorded leaks (original.recall owner) event = false := by
     intro counted
     rw [(runtime setup).eventRecorded_congr leaks _ _ frame.submissions event]
     apply first
     change repaired.network.nextSerial owner =
-      repaired.network.ledger.countP (fun message => message.sender = owner)
+      Message.distinctAuthoredCount repaired.network.ledger owner
     rwa [frame.network] at counted
   obtain ⟨coupling, leftLaw, rightLaw, related⟩ := frame.resolution_stopped_activation_coupling
     bounds menu players reference started leftRecall rightRecalled sound leftBinding rightBound

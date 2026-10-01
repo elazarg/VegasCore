@@ -13,7 +13,9 @@ public guards succeed. Authorization is readiness: no service cursor is
 consulted, so conformance does not depend on how an order serves ready events.
 Already published envelopes and copies of the current pending envelope remain
 permitted. Serial evidence detects another fresh envelope without requiring
-the auditor to have sampled the earlier one. Omitted binding obligations are
+the auditor to have sampled the earlier one; it counts distinct identifiers,
+so a chain that includes a copy of a published envelope again does not shift
+any author's expected serial. Omitted binding obligations are
 handled separately by actual deadline evidence.
 -/
 
@@ -51,12 +53,16 @@ def freshServiceEnvelope (view : PublicView graph)
 
 open Classical in
 /-- A replay carries its original author's serial. The checker does not
-attribute a fresh violation to that author merely because someone rebroadcasts. -/
+attribute a fresh violation to that author merely because someone rebroadcasts.
+A fresh envelope's serial must equal the number of distinct identifiers of its
+author already on the ledger (`Interaction.Message.distinctAuthoredCount`), the
+number of the author's calls the contract has processed; repeated inclusions of
+one envelope do not advance it. -/
 def permittedServiceEnvelope (view : PublicView graph)
     (ledger : List (Message Player (WitnessedPacket graph)))
     (message : Message Player (WitnessedPacket graph)) : Bool :=
   decide (message.id ∈ ledger.map Message.id ∨
-    (message.id.2 = ledger.countP (fun prior => prior.sender = message.sender) ∧
+    (message.id.2 = Message.distinctAuthoredCount ledger message.sender ∧
       runtime.freshServiceEnvelope view message))
 
 theorem permittedServiceEnvelope_iff (view : PublicView graph)
@@ -64,7 +70,7 @@ theorem permittedServiceEnvelope_iff (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph)) :
     runtime.permittedServiceEnvelope view ledger message = true ↔
       message.id ∈ ledger.map Message.id ∨
-        (message.id.2 = ledger.countP (fun prior => prior.sender = message.sender) ∧
+        (message.id.2 = Message.distinctAuthoredCount ledger message.sender ∧
           runtime.freshServiceEnvelope view message) := by
   classical
   simp only [permittedServiceEnvelope, decide_eq_true_eq]
@@ -81,7 +87,7 @@ theorem permittedServiceEnvelope_unpublished_iff (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
     (unpublished : message.id ∉ ledger.map Message.id) :
     runtime.permittedServiceEnvelope view ledger message = true ↔
-      message.id.2 = ledger.countP (fun prior => prior.sender = message.sender) ∧
+      message.id.2 = Message.distinctAuthoredCount ledger message.sender ∧
         runtime.freshServiceEnvelope view message := by
   rw [runtime.permittedServiceEnvelope_iff]
   simp only [unpublished, false_or]
@@ -90,7 +96,7 @@ theorem permittedServiceEnvelope_wrong_serial (view : PublicView graph)
     (ledger : List (Message Player (WitnessedPacket graph)))
     (message : Message Player (WitnessedPacket graph))
     (unpublished : message.id ∉ ledger.map Message.id)
-    (wrong : message.id.2 ≠ ledger.countP (fun prior => prior.sender = message.sender)) :
+    (wrong : message.id.2 ≠ Message.distinctAuthoredCount ledger message.sender) :
     runtime.permittedServiceEnvelope view ledger message = false := by
   classical
   simp only [permittedServiceEnvelope, unpublished, wrong, false_and, or_self, decide_false]
@@ -231,7 +237,7 @@ theorem permittedServiceEnvelope_binding
     (ledger : List (Message Player (WitnessedPacket graph))) (serial : Nat)
     (includable : state.publicView.BindingIncludable runtime
       ⟨(who, serial), .commitment event (who, .prepared (state.publicView.bindingCount who))⟩)
-    (counted : serial = ledger.countP (fun prior => prior.sender = who)) :
+    (counted : serial = Message.distinctAuthoredCount ledger who) :
     runtime.permittedServiceEnvelope state.publicView ledger
       ⟨(who, serial),
         ⟨.commitment event (who, .prepared (state.publicView.bindingCount who)), none⟩⟩ = true :=

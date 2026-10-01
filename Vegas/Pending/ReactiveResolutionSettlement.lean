@@ -47,7 +47,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
       message.id ∈ initial.network.ledger.map Message.id)
     (serials : initial.network.SerialsBeforeNext)
     (accounted : ∀ who, initial.network.nextSerial who =
-      initial.network.ledger.countP (fun message => message.sender = who))
+      Message.distinctAuthoredCount initial.network.ledger who)
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial).support) :
     (final.application = initial.application ∨ ∃ value,
@@ -57,7 +57,7 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
         (cast (congrArg EventField.Action outputEq.symm) true)
         (cast (congrArg EventField.Value outputEq.symm) (.success value))) ∧
     (∀ who, final.network.nextSerial who =
-      final.network.ledger.countP (fun message => message.sender = who)) := by
+      Message.distinctAuthoredCount final.network.ledger who) := by
   let app := runtime.reactiveApplication leaks
   induction visits generalizing initial with
   | nil =>
@@ -89,13 +89,13 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
               (cast (congrArg EventField.Action outputEq.symm) true)
               (cast (congrArg EventField.Value outputEq.symm) (.success value))) ∧
           (∀ observer, final.network.nextSerial observer =
-            final.network.ledger.countP (fun message => message.sender = observer)) := by
+            Message.distinctAuthoredCount final.network.ledger observer) := by
         have preserved := runtime.replay_response_preserves leaks _ activated
           activePublished who response transport
         have nextAccounted : ∀ observer,
             (activated.respond app who response).network.nextSerial observer =
-              (activated.respond app who response).network.ledger.countP
-                (fun message => message.sender = observer) := by
+              Message.distinctAuthoredCount (activated.respond app who response).network.ledger
+                observer := by
           rw [preserved.2.1, preserved.2.2.2.1]
           exact accounted
         obtain ⟨result, counters⟩ := ih (activated.respond app who response)
@@ -177,8 +177,9 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
         intro observer
         rw [counters, ledger]
         change (activated.network.submit owner packet).2.nextSerial observer =
-          (@List.append (Message Player (WitnessedPacket graph)) initial.network.ledger
-            [message]).countP (fun entry => entry.sender = observer)
+          Message.distinctAuthoredCount
+            (@List.append (Message Player (WitnessedPacket graph)) initial.network.ledger
+              [message]) observer
         have counted := activeSerials.submit_include_serials_match_ledger
           accounted owner packet observer
         rw [MessageNetwork.includePending, activeSerials.lookup_submit owner packet] at counted

@@ -73,14 +73,14 @@ private theorem activation_repeated_of_clean
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (serials : execution.network.SerialsBeforeNext)
     (repeated : execution.network.nextSerial owner ≠
-      execution.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount execution.network.ledger owner)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu runtime leaks).actions owner past view)
     (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
       execution).support)
     (clean : ¬ departed runtime leaks owner next) :
     next.network.nextSerial owner ≠
-      next.network.ledger.countP (fun message => message.sender = owner) := by
+      Message.distinctAuthoredCount next.network.ledger owner := by
   let app := runtime.reactiveApplication leaks
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ resumed
@@ -91,7 +91,7 @@ private theorem activation_repeated_of_clean
         (ReactiveApplication.Execution.activation_samples app execution actor)).mp moved)
     exact ⟨rfl, rfl⟩
   have middleRepeated : middle.network.nextSerial owner ≠
-      middle.network.ledger.countP (fun message => message.sender = owner) := by
+      Message.distinctAuthoredCount middle.network.ledger owner := by
     rw [same.1, same.2]
     exact repeated
   by_cases own : actor = owner
@@ -106,7 +106,7 @@ private theorem activation_repeated_of_clean
     · rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩
       · exact middleRepeated
       · change (middle.network.replay owner id).2.nextSerial owner ≠
-          (middle.network.replay owner id).2.ledger.countP (fun message => message.sender = owner)
+          Message.distinctAuthoredCount (middle.network.replay owner id).2.ledger owner
         unfold MessageNetwork.replay
         split <;> exact middleRepeated
     · obtain ⟨record, step, authored, rejected⟩ := bad
@@ -134,8 +134,7 @@ private theorem activation_repeated_of_clean
         cases transmission with
         | replay id =>
             change (middle.network.replay actor id).2.nextSerial owner ≠
-              (middle.network.replay actor id).2.ledger.countP
-                (fun message => message.sender = owner)
+              Message.distinctAuthoredCount (middle.network.replay actor id).2.ledger owner
             unfold MessageNetwork.replay
             split <;> exact middleRepeated
         | submit material =>
@@ -223,7 +222,7 @@ private theorem repeated_activation_coupling
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
-      original.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount original.network.ledger owner)
     (event : graph.EventId) (serving : original.application.publicView.ownTurn? owner = some event)
     (recorded : runtime.eventRecorded leaks (repaired.recall owner) event = true)
     (coverage : ∀ past view, view.application.publicView.ownTurn? owner = some event →
@@ -310,7 +309,7 @@ theorem run_repeated_stopped_coupling
     (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
-      original.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount original.network.ledger owner)
     (event : graph.EventId) (serving : original.application.publicView.ownTurn? owner = some event)
     (recorded : runtime.eventRecorded leaks (repaired.recall owner) event = true)
     (coverage : ∀ past view, view.application.publicView.ownTurn? owner = some event →

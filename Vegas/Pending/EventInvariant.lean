@@ -466,5 +466,99 @@ theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
       obtain ⟨result, supported, rfl⟩ := member
       exact environmentStep_completed_subset runtime state.application result command supported
 
+/-! ## A call takes effect at most once
+
+The contract keeps no record of rejected identifiers: a rejected call changes
+no state, as a reverted transaction does. A chain may include a copy of an
+already accepted call again, and the contract rejects it, because acceptance
+completes the addressed event and every handler branch requires that event to
+be ready. -/
+
+/-- Acceptance completes the addressed event, which was unfinished before. -/
+theorem handle_completes (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) :
+    ∃ event, Payload.event? graph message.payload = some event ∧
+      event ∉ state.config.cut.completed ∧ event ∈ next.config.cut.completed := by
+  obtain ⟨event, addressed, ready, action, member⟩ :=
+    handle_config_mem_step runtime state next message accepted
+  refine ⟨event, addressed, ready.1, ?_⟩
+  rw [state.config.step_cut event ready action next.config member]
+  simp
+
+/-- **No call takes effect at a completed event.** -/
+theorem handle_eq_none_of_completed (runtime : EventGraphRuntime graph)
+    (state : State graph) (message : Message Player (Payload graph)) (event : graph.EventId)
+    (addressed : Payload.event? graph message.payload = some event)
+    (completed : event ∈ state.config.cut.completed) :
+    handle runtime state message = none := by
+  cases result : handle runtime state message with
+  | none => rfl
+  | some next =>
+      obtain ⟨named, namedAddressed, unfinished, _⟩ :=
+        handle_completes runtime state next message result
+      rw [addressed, Option.some.injEq] at namedAddressed
+      subst named
+      exact (unfinished completed).elim
+
+/-- **No commitment takes effect at an already bound event.** -/
+theorem handle_commitment_eq_none_of_bound (runtime : EventGraphRuntime graph)
+    (state : State graph) (id : MessageId Player) (event : graph.EventId)
+    (candidate : Handle graph) (bound : state.accepted (.inr event) ≠ none) :
+    handle runtime state ⟨id, .commitment event candidate⟩ = none := by
+  by_cases ready : state.config.cut.Ready event
+  · by_cases timely : state.WithinDeadline runtime event
+    · cases view : nodeView graph event with
+      | resolve | sample => simp [handle, ready, timely, view]
+      | bind owner payload outputEq codeEq => simp [handle, ready, timely, view, bound]
+    · simp [handle, ready, timely]
+  · simp [handle, ready]
+
+/-- **An accepted call cannot be accepted again** at any state that keeps the
+events completed by its acceptance, in particular immediately afterwards. -/
+theorem handle_eq_none_of_accepted (runtime : EventGraphRuntime graph)
+    (state next later : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next)
+    (kept : next.config.cut.completed ⊆ later.config.cut.completed) :
+    handle runtime later message = none := by
+  obtain ⟨event, addressed, _, completed⟩ := handle_completes runtime state next message accepted
+  exact handle_eq_none_of_completed runtime later message event addressed (kept completed)
+
+theorem handle_eq_none_after_accepted (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) :
+    handle runtime next message = none :=
+  handle_eq_none_of_accepted runtime state next next message accepted Finset.Subset.rfl
+
+/-- No finite native message path undoes a completed event. -/
+theorem applicationRun_completed_subset (runtime : EventGraphRuntime graph)
+    (state next : runtime.application.State) (actions : List runtime.application.Action)
+    (member : next ∈ (runtime.application.run actions state).support) :
+    state.application.config.cut.completed ⊆ next.application.config.cut.completed := by
+  exact runtime.application.run_application_invariant
+    (fun current => state.application.config.cut.completed ⊆ current.config.cut.completed)
+    (fun current who command subset =>
+      subset.trans (privateStep_completed_subset current who command))
+    (fun current who payload subset => by
+      change _ ⊆ (submitStep current who payload).config.cut.completed
+      rw [submitStep_config]
+      exact subset)
+    (fun current message result subset accepted =>
+      subset.trans (handle_completed_subset runtime current result message accepted))
+    (fun current command result subset supported =>
+      subset.trans (environmentStep_completed_subset runtime current result command supported))
+    state next actions Finset.Subset.rfl member
+
+/-- A call accepted once is rejected at every state reached afterwards by any
+finite native message path, including further inclusions of its copies. -/
+theorem handle_eq_none_after_accepted_run (runtime : EventGraphRuntime graph)
+    (state : State graph) (message : Message Player (Payload graph))
+    (start final : runtime.application.State) (actions : List runtime.application.Action)
+    (accepted : handle runtime state message = some start.application)
+    (member : final ∈ (runtime.application.run actions start).support) :
+    handle runtime final.application message = none :=
+  handle_eq_none_of_accepted runtime state start.application final.application message accepted
+    (applicationRun_completed_subset runtime start final actions member)
+
 end EventGraphRuntime
 end Vegas

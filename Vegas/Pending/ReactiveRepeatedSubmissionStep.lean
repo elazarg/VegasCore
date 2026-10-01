@@ -31,7 +31,7 @@ theorem repeated_submission_response_cases (bounds : MessageBounds graph)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (serials : execution.network.SerialsBeforeNext)
     (repeated : execution.network.nextSerial owner ≠
-      execution.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount execution.network.ledger owner)
     (response : (runtime.reactiveApplication leaks).Action)
     (available : response ∈ (bounds.menu runtime leaks).actions owner (execution.recall owner)
       (execution.observe (runtime.reactiveApplication leaks) owner)) :
@@ -95,7 +95,7 @@ theorem repeated_submission_stopped_response_coupling
     (remaining : Nat)
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
-      original.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount original.network.ledger owner)
     (coverage : bounds.compiledActions runtime leaks owner (repaired.recall owner)
       (repaired.observe (runtime.reactiveApplication leaks) owner) ⊆
         menu.actions owner (repaired.recall owner)
@@ -196,7 +196,7 @@ theorem repeated_submission_stopped_activation_coupling
     (remaining : Nat)
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
-      original.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount original.network.ledger owner)
     (coverage : ∀ selected ∈ (leaks owner original.network.pending).support,
       let activated := repaired.sampledActivation (runtime.reactiveApplication leaks)
         owner selected

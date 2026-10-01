@@ -36,14 +36,14 @@ theorem MessageBounds.compiled_resolution_accounted (bounds : MessageBounds grap
     (sole : execution.application.publicView.SoleReady event)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
-        execution.network.ledger.countP (fun message => message.sender = owner))
+        Message.distinctAuthoredCount execution.network.ledger owner)
     (response : (runtime.reactiveApplication leaks).Action)
     (member : response ∈ bounds.compiledActions runtime leaks who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who)) :
     let next := execution.respond (runtime.reactiveApplication leaks) who response
     runtime.eventRecorded leaks (next.recall owner) event = false →
       next.network.nextSerial owner =
-        next.network.ledger.countP (fun message => message.sender = owner) := by
+        Message.distinctAuthoredCount next.network.ledger owner := by
   apply runtime.event_accounted_response leaks execution who owner event response counted
   rcases bounds.compiled_resolution_cases runtime leaks who _ _ event owner payload binding checks
     outputEq codeEq node sole response member with rfl | replay |
@@ -82,7 +82,7 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
     (timely : initial.application.WithinDeadline runtime event)
     (counted : runtime.eventRecorded leaks (initial.recall owner) event = false →
       initial.network.nextSerial owner =
-        initial.network.ledger.countP (fun message => message.sender = owner))
+        Message.distinctAuthoredCount initial.network.ledger owner)
     (packets : initial.network.Satisfies fun message => runtime.permittedServiceEnvelope
       initial.application.publicView initial.network.ledger message = true)
     (traffic : ∀ record ∈ (runtime.reactiveApplication leaks).executionTraffic initial,
@@ -97,7 +97,7 @@ theorem MessageBounds.compiled_resolution_window_conformance (bounds : MessageBo
         record.input.envelope = true) ∧
     (runtime.eventRecorded leaks (final.recall owner) event = false →
       final.network.nextSerial owner =
-        final.network.ledger.countP (fun message => message.sender = owner)) := by
+        Message.distinctAuthoredCount final.network.ledger owner) := by
   let app := runtime.reactiveApplication leaks
   have owned : graph.actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq

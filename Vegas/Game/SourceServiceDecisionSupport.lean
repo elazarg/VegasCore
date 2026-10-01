@@ -193,7 +193,7 @@ theorem sourceService_binding_decision_resources
         control.execution.application.HandleUnused (owner, .prepared serial) ∧
         control.execution.application.accepted (.inr event) = none ∧
         (∀ player, control.execution.network.nextSerial player =
-          control.execution.network.ledger.countP (fun message => message.sender = player)) ∧
+          Message.distinctAuthoredCount control.execution.network.ledger player) ∧
         control.execution.network.Satisfies
           (fun message => message.id ∈ control.execution.network.ledger.map Message.id)) := by
   let app := application setup leaks

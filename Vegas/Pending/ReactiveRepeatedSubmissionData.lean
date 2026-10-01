@@ -74,7 +74,7 @@ private theorem activation_clean_data
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (serials : execution.network.SerialsBeforeNext)
     (repeated : execution.network.nextSerial owner ≠
-      execution.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount execution.network.ledger owner)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu runtime leaks).actions owner past view)
     (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
@@ -138,7 +138,7 @@ theorem repeated_window_clean_data
     (recalled : initial.InputRecall (runtime.reactiveApplication leaks))
     (serials : initial.network.SerialsBeforeNext)
     (repeated : initial.network.nextSerial owner ≠
-      initial.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount initial.network.ledger owner)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu runtime leaks).actions owner past view)
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
@@ -171,7 +171,7 @@ theorem repeated_window_clean_data
         runtime.activation_clean_data leaks bounds players initial next owner actor safe foreign
           packets recalled serials repeated available moved nextClean
       have nextRepeated : next.network.nextSerial owner ≠
-          next.network.ledger.countP (fun message => message.sender = owner) := by
+          Message.distinctAuthoredCount next.network.ledger owner := by
         rwa [counter, ledger]
       obtain ⟨lastView, lastLedger, lastReceipts, lastValid, lastPending, lastCounter⟩ :=
         ih next valid nextRecall nextSerials nextRepeated tail
@@ -196,7 +196,7 @@ theorem repeated_window_clean_selection
     (recalled : initial.InputRecall (runtime.reactiveApplication leaks))
     (serials : initial.network.SerialsBeforeNext)
     (repeated : initial.network.nextSerial owner ≠
-      initial.network.ledger.countP (fun packet => packet.sender = owner))
+      Message.distinctAuthoredCount initial.network.ledger owner)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu runtime leaks).actions owner past view)
     (visits : List Player) (final : (runtime.reactiveApplication leaks).Execution)

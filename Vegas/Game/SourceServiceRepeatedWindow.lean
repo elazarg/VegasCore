@@ -87,7 +87,7 @@ theorem repeated_roster_stopped_coupling
     (rightRecall : repaired.InputRecall (application setup leaks))
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
-      original.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount original.network.ledger owner)
     (serving : original.application.publicView.ownTurn? owner = some event)
     (recorded : (runtime setup).eventRecorded leaks (repaired.recall owner) event = true)
     (available : ∀ past view response, response ∈ (players owner past view).support →

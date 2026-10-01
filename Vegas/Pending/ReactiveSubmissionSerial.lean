@@ -7,7 +7,8 @@ import Interaction.ReactiveSubmissionSerial
 
 A clean phase starts with all earlier fresh envelopes settled. Until its
 reserved inclusion, an author's new submissions name only the current event.
-The next serial therefore equals the public ledger count precisely before
+The next serial therefore equals the author's number of distinct ledger
+identifiers (`Interaction.Message.distinctAuthoredCount`) precisely before
 that event's first submission. The evidence requires no earlier pending packet
 in the auditor's sample and never treats a missing sample as an omitted move.
 -/
@@ -71,7 +72,7 @@ theorem first_event_iff_public_serial
     (beforeRecall : before.SerialRecall (runtime.reactiveApplication leaks))
     (afterRecall : after.SerialRecall (runtime.reactiveApplication leaks))
     (settled : before.network.nextSerial who =
-      before.network.ledger.countP (fun message => message.sender = who))
+      Message.distinctAuthoredCount before.network.ledger who)
     (ledger : after.network.ledger = before.network.ledger)
     (unsent : runtime.eventRecorded leaks (before.recall who) event = false)
     (suffix : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -81,7 +82,7 @@ theorem first_event_iff_public_serial
         runtime.submittedEvent? leaks entry.action = some event) :
     runtime.eventRecorded leaks (after.recall who) event = false ↔
       after.network.nextSerial who =
-        after.network.ledger.countP (fun message => message.sender = who) := by
+        Message.distinctAuthoredCount after.network.ledger who := by
   rw [recalled, runtime.eventRecorded_append, unsent, Bool.false_or,
     runtime.eventRecorded_false_iff_no_submission leaks suffix event onlyCurrent]
   exact ((runtime.reactiveApplication leaks).serial_eq_ledger_iff_no_submission
@@ -96,13 +97,13 @@ theorem eventRecorded_false_of_public_serial
     (beforeRecall : before.SerialRecall (runtime.reactiveApplication leaks))
     (afterRecall : after.SerialRecall (runtime.reactiveApplication leaks))
     (settled : before.network.nextSerial who =
-      before.network.ledger.countP (fun message => message.sender = who))
+      Message.distinctAuthoredCount before.network.ledger who)
     (ledger : after.network.ledger = before.network.ledger)
     (unsent : runtime.eventRecorded leaks (before.recall who) event = false)
     (suffix : List (runtime.reactiveApplication leaks).PlayerEntry)
     (recalled : after.recall who = before.recall who ++ suffix)
     (clean : after.network.nextSerial who =
-      after.network.ledger.countP (fun message => message.sender = who)) :
+      Message.distinctAuthoredCount after.network.ledger who) :
     runtime.eventRecorded leaks (after.recall who) event = false := by
   have zero := ((runtime.reactiveApplication leaks).serial_eq_ledger_iff_no_submission
     before after who beforeRecall afterRecall settled ledger suffix recalled).mp clean
@@ -121,13 +122,13 @@ theorem event_accounted_response
     (event : graph.EventId) (response : (runtime.reactiveApplication leaks).Action)
     (counted : runtime.eventRecorded leaks (execution.recall owner) event = false →
       execution.network.nextSerial owner =
-        execution.network.ledger.countP (fun message => message.sender = owner))
+        Message.distinctAuthoredCount execution.network.ledger owner)
     (shape : (response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩) ∨
       (who = owner ∧ runtime.submittedEvent? leaks response = some event)) :
     let next := execution.respond (runtime.reactiveApplication leaks) who response
     runtime.eventRecorded leaks (next.recall owner) event = false →
       next.network.nextSerial owner =
-        next.network.ledger.countP (fun message => message.sender = owner) := by
+        Message.distinctAuthoredCount next.network.ledger owner := by
   intro next unsent
   rcases shape with (rfl | ⟨id, rfl⟩) | ⟨rfl, submitted⟩
   · have previous := runtime.eventRecorded_respond_other leaks execution who owner ⟨none⟩ event

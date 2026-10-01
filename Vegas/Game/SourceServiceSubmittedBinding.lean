@@ -56,7 +56,7 @@ theorem sourceService_submitted_binding
         before.application.accepted (.inr event) = none ∧
         before.network.SerialsBeforeNext ∧
         (∀ player, before.network.nextSerial player =
-          before.network.ledger.countP (fun message => message.sender = player)) ∧
+          Message.distinctAuthoredCount before.network.ledger player) ∧
         before.network.Satisfies (fun message =>
           message.id ∈ before.network.ledger.map Message.id) ∧
         prior ∈ ((runtime setup).runInteractionPlan leaks
@@ -132,7 +132,7 @@ theorem sourceService_recorded_binding_resources
     (recorded : (runtime setup).eventRecorded leaks (control.execution.recall owner) event = true) :
     let serial := control.execution.application.publicView.bindingCount owner
     let id : MessageId Player := (owner,
-      control.execution.network.ledger.countP (fun message => message.sender = owner))
+      Message.distinctAuthoredCount control.execution.network.ledger owner)
     let message : Message Player (WitnessedPacket (graph setup)) :=
       ⟨id, ⟨.commitment event (owner, .prepared serial), none⟩⟩
     ∃ value ∈ bounds.typedValues payload,
@@ -204,7 +204,7 @@ theorem sourceService_recorded_binding_resources
     rw [sampled]
     exact ledger
   have currentId : before.network.nextSerial owner =
-      control.execution.network.ledger.countP (fun message => message.sender = owner) := by
+      Message.distinctAuthoredCount control.execution.network.ledger owner := by
     rw [currentLedger]
     exact accounted owner
   have candidate : submitted.application.candidates.lookup (owner, .prepared serial) =
