@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Interaction.ReactiveRoundReachability
+import Interaction.ReactiveMenuPolicy
 
 /-! # Round support yields actual legal menu histories
 
@@ -58,9 +59,10 @@ theorem trace_environment (remaining : Nat) (execution next : app.Execution)
     rw [PMF.support_map]
     exact ⟨next, moved, rfl⟩
 
-theorem trace_round (players : Principal → app.Policy)
-    (covered : ∀ who past view action, action ∈ (players who past view).support →
-      action ∈ menu.actions who past view)
+/-- One supported round of admissible players from a legal idle history is a
+legal idle history. Admissibility is needed only at legal decisions. -/
+theorem trace_round_of_admissible (players : Principal → app.Policy)
+    (admissible : ∀ who, menu.Admissible initial horizon scheduler who (players who))
     (remaining : Nat) (execution next : app.Execution)
     (trace : (menu.protocol initial horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
@@ -85,11 +87,29 @@ theorem trace_round (players : Principal → app.Policy)
       rw [active] at resumed
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ resumed
       exact menu.trace_respond initial horizon scheduler remaining observed who response pending
-        (covered who _ _ response chosen)
+        (admissible who _ pending rfl response chosen)
 
-theorem trace_runRounds (players : Principal → app.Policy)
+/-- Players whose responses always lie in the menu are admissible. -/
+theorem admissible_of_covered (players : Principal → app.Policy)
+    (covered : ∀ who past view action, action ∈ (players who past view).support →
+      action ∈ menu.actions who past view) (who : Principal) :
+    menu.Admissible initial horizon scheduler who (players who) :=
+  fun _ _ _ action chosen => covered who _ _ action chosen
+
+theorem trace_round (players : Principal → app.Policy)
     (covered : ∀ who past view action, action ∈ (players who past view).support →
       action ∈ menu.actions who past view)
+    (remaining : Nat) (execution next : app.Execution)
+    (trace : (menu.protocol initial horizon scheduler).Trace
+      (some ⟨remaining + 1, none, execution⟩))
+    (supported : next ∈ (app.round scheduler players execution).support) :
+    Nonempty ((menu.protocol initial horizon scheduler).Trace (some ⟨remaining, none, next⟩)) :=
+  menu.trace_round_of_admissible initial horizon scheduler players
+    (menu.admissible_of_covered initial horizon scheduler players covered) remaining execution
+    next trace supported
+
+theorem trace_runRounds_of_admissible (players : Principal → app.Policy)
+    (admissible : ∀ who, menu.Admissible initial horizon scheduler who (players who))
     (remaining count : Nat) (execution next : app.Execution)
     (trace : (menu.protocol initial horizon scheduler).Trace
       (some ⟨remaining + count, none, execution⟩))
@@ -102,13 +122,24 @@ theorem trace_runRounds (players : Principal → app.Policy)
   | succ count ih =>
       obtain ⟨middle, moved, finished⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-      obtain ⟨middleTrace⟩ := menu.trace_round initial horizon scheduler players covered
-        (remaining + count) execution middle trace moved
+      obtain ⟨middleTrace⟩ := menu.trace_round_of_admissible initial horizon scheduler players
+        admissible (remaining + count) execution middle trace moved
       exact ih middle middleTrace finished
 
-theorem trace_roundsFrom (players : Principal → app.Policy)
+theorem trace_runRounds (players : Principal → app.Policy)
     (covered : ∀ who past view action, action ∈ (players who past view).support →
       action ∈ menu.actions who past view)
+    (remaining count : Nat) (execution next : app.Execution)
+    (trace : (menu.protocol initial horizon scheduler).Trace
+      (some ⟨remaining + count, none, execution⟩))
+    (supported : next ∈ (app.runRounds scheduler players count execution).support) :
+    Nonempty ((menu.protocol initial horizon scheduler).Trace (some ⟨remaining, none, next⟩)) :=
+  menu.trace_runRounds_of_admissible initial horizon scheduler players
+    (menu.admissible_of_covered initial horizon scheduler players covered) remaining count
+    execution next trace supported
+
+theorem trace_roundsFrom_of_admissible (players : Principal → app.Policy)
+    (admissible : ∀ who, menu.Admissible initial horizon scheduler who (players who))
     (count : Nat) (bounded : count ≤ horizon) (execution : app.Execution)
     (supported : execution ∈ (app.roundsFrom initial scheduler players count).support) :
     Nonempty ((menu.protocol initial horizon scheduler).Trace
@@ -126,8 +157,19 @@ theorem trace_roundsFrom (players : Principal → app.Policy)
       rw [PMF.support_map]
       exact ⟨state, stateMem, rfl⟩
   obtain ⟨trace⟩ := start
-  exact menu.trace_runRounds initial horizon scheduler players covered (horizon - count) count
-    (Execution.initial app state) execution (by simpa only [Nat.sub_add_cancel bounded] using trace)
-      reached
+  exact menu.trace_runRounds_of_admissible initial horizon scheduler players admissible
+    (horizon - count) count (Execution.initial app state) execution
+    (by simpa only [Nat.sub_add_cancel bounded] using trace) reached
+
+theorem trace_roundsFrom (players : Principal → app.Policy)
+    (covered : ∀ who past view action, action ∈ (players who past view).support →
+      action ∈ menu.actions who past view)
+    (count : Nat) (bounded : count ≤ horizon) (execution : app.Execution)
+    (supported : execution ∈ (app.roundsFrom initial scheduler players count).support) :
+    Nonempty ((menu.protocol initial horizon scheduler).Trace
+      (some ⟨horizon - count, none, execution⟩)) :=
+  menu.trace_roundsFrom_of_admissible initial horizon scheduler players
+    (menu.admissible_of_covered initial horizon scheduler players covered) count bounded
+    execution supported
 
 end Interaction.ReactiveApplication.ResponseMenu

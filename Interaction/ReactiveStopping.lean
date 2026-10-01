@@ -273,8 +273,7 @@ variable {app} (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Na
 /-- Every stopped point of a legal idle history is itself a legal idle history,
 with the horizon still accounted by the environment recall. -/
 theorem trace_runUntilHorizon (players : Principal → app.Policy)
-    (covered : ∀ who past view action, action ∈ (players who past view).support →
-      action ∈ menu.actions who past view)
+    (admissible : ∀ who, menu.Admissible initial horizon scheduler who (players who))
     (stop : app.Execution → Prop) [DecidablePred stop]
     (remaining : Nat) (execution stopped : app.Execution)
     (accounted : execution.environmentRecall.length + remaining = horizon)
@@ -290,7 +289,8 @@ theorem trace_runUntilHorizon (players : Principal → app.Policy)
   refine ⟨by omega, ?_⟩
   have left : horizon - stopped.environmentRecall.length = remaining - used := by omega
   rw [left]
-  exact menu.trace_runRounds initial horizon scheduler players covered (remaining - used) used
+  exact menu.trace_runRounds_of_admissible initial horizon scheduler players admissible
+    (remaining - used) used
     execution stopped (by rwa [Nat.sub_add_cancel within]) rounds
 
 end ResponseMenu
