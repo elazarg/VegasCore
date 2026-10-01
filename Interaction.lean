@@ -103,6 +103,8 @@ import Interaction.CommunicationBounded
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveEvaluation
 import Interaction.ReactiveRounds
+import Interaction.ReactiveStopping
+import Interaction.ReactiveHorizonContinuation
 import Interaction.ReactiveRoundReachability
 import Interaction.ReactiveInvariant
 import Interaction.ReactivePolicyInvariant

@@ -105,9 +105,11 @@ variable {app} (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Na
   (full : ∀ who past view action, action ∈ menu.actions who past view →
     action ∈ (players who past view).support)
 
-include full in
 theorem roundSupported_transition (before after : app.ProtocolState)
     (joint : Principal → Option app.Action)
+    (fullAt : ∀ remaining who execution, before = some ⟨remaining, some who, execution⟩ →
+      ∀ action ∈ menu.actions who (execution.recall who) (execution.observe app who),
+        action ∈ (players who (execution.recall who) (execution.observe app who)).support)
     (valid : app.RoundSupported initial horizon scheduler players before)
     (legal : (menu.protocol initial horizon scheduler).Legal before joint)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
@@ -149,7 +151,7 @@ theorem roundSupported_transition (before after : app.ProtocolState)
               apply Set.mem_iUnion₂.mpr
               refine ⟨execution, observed, ?_⟩
               simp only [resume, active, invoke, PMF.support_map]
-              exact ⟨action, full who _ _ action localLegal.2, rfl⟩
+              exact ⟨action, fullAt remaining who execution rfl action localLegal.2, rfl⟩
       | none =>
           cases remaining with
           | zero => cases (PMF.mem_support_pure_iff _ _).mp reached; exact valid
@@ -179,14 +181,27 @@ theorem roundSupported_transition (before after : app.ProtocolState)
                   apply Set.mem_iUnion₂.mpr
                   exact ⟨next, supported, by simp [resume, active]⟩
 
-include full in
-theorem roundSupported_history :
+/-- Round support along every legal history needs full support of the players
+only at the legal decision histories themselves. -/
+theorem roundSupported_history_of_reachable
+    (reachable : ∀ remaining who execution,
+      (menu.protocol initial horizon scheduler).Trace (some ⟨remaining, some who, execution⟩) →
+      ∀ action ∈ menu.actions who (execution.recall who) (execution.observe app who),
+        action ∈ (players who (execution.recall who) (execution.observe app who)).support) :
     ∀ {state} (_trace : (menu.protocol initial horizon scheduler).Trace state),
       app.RoundSupported initial horizon scheduler players state
   | _, .start => trivial
   | _, .extend prior joint legal reached =>
-      menu.roundSupported_transition initial horizon scheduler players full _ _ joint
-        (roundSupported_history prior) legal reached
+      menu.roundSupported_transition initial horizon scheduler players _ _ joint
+        (fun remaining who execution same => reachable remaining who execution (same ▸ prior))
+        (roundSupported_history_of_reachable reachable prior) legal reached
+
+include full in
+theorem roundSupported_history {state}
+    (trace : (menu.protocol initial horizon scheduler).Trace state) :
+    app.RoundSupported initial horizon scheduler players state :=
+  menu.roundSupported_history_of_reachable initial horizon scheduler players
+    (fun _ who _ _ action member => full who _ _ action member) trace
 
 theorem roundSupported_uniform {state}
     (trace : (menu.protocol initial horizon scheduler).Trace state) :
