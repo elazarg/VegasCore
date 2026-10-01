@@ -22,7 +22,7 @@ receives no record of those samples; its public-history memory remains.
 SPE preservation for this model remains open. See the
 [passive-observation contract](passive-eavesdropping.md).
 
-The fixed-service comparison model has three consecutive owner invocations after each grant.
+The fixed-service comparison model has three consecutive owner invocations at each event's turn.
 The checked [fixed-service pending-menu impossibility](subgame-preservation.md#a-restricted-menu-in-a-proper-native-subgame)
 cuts between the second and third. Coalescing that block removes this particular
 root. The theorem about the split protocol remains correct; it does not apply

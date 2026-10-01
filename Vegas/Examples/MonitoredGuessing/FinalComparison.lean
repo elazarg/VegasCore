@@ -26,7 +26,6 @@ private theorem final_maintenance_pure (execution : nativeApp.Execution)
       PMF.pure state := by
     cases command with
     | executeSample event => exact (maintenance event rfl).elim
-    | grant event => exact ⟨_, rfl⟩
     | advanceClock => exact ⟨_, rfl⟩
     | expire event => exact ⟨_, rfl⟩
   obtain ⟨state, pureLaw⟩ := statePure
@@ -157,7 +156,6 @@ private theorem final_maintenance_local (left right nextLeft nextRight : nativeA
         PMF.pure state := by
     cases command with
     | executeSample event => exact (maintenance event rfl).elim
-    | grant event => exact ⟨_, rfl⟩
     | advanceClock => exact ⟨_, rfl⟩
     | expire event => exact ⟨_, rfl⟩
   obtain ⟨leftState, leftPure⟩ := pureStep left

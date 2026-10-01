@@ -84,7 +84,7 @@ private theorem maintenance_result_view
     exact ⟨first, firstSupported, rfl⟩
   cases command with
   | executeSample event => exact (maintenance event rfl).elim
-  | grant event | advanceClock | expire event =>
+  | advanceClock | expire event =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at secondSupported
       subst second
       simpa only [environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] using member
@@ -117,7 +117,7 @@ theorem reactive_maintenance_hidden_congr
   dsimp only
   cases command with
   | executeSample event => exact (maintenance event rfl).elim
-  | grant event | advanceClock | expire event =>
+  | advanceClock | expire event =>
       simp only [ReactiveApplication.Execution.environmentStep, application_environment,
         environmentStep, PMF.pure_map]
       congr 1

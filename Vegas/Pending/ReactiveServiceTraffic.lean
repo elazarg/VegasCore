@@ -40,7 +40,7 @@ theorem executionTraffic_passive_step
     cases instruction with
     | wire => exact (notWire rfl).elim
     | player who => exact (notPlayer who rfl).elim
-    | grant event | sample event | tick | expire event =>
+    | sample event | tick | expire event =>
         cases (PMF.mem_support_pure_iff _ _).mp selected
         rfl
     | includeLatest event owner =>

@@ -68,12 +68,6 @@ theorem reactive_environment_activationOrigin (runtime : EventGraphRuntime graph
       obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ supported
       obtain ⟨state, reached, rfl⟩ := PMF.support_map .. ▸ selected
       cases command with
-      | grant event =>
-          change state ∈ (environmentStep runtime execution.application (.grant event)).support
-            at reached
-          simp only [environmentStep, PMF.mem_support_pure_iff _ _] at reached
-          subst state
-          exact State.activationOrigin_of_activatedEq rfl
       | advanceClock =>
           change state ∈ (environmentStep runtime execution.application .advanceClock).support
             at reached

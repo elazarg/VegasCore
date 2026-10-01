@@ -270,10 +270,6 @@ theorem environmentStep_clock (runtime : EventGraphRuntime graph)
     (member : next ∈ (environmentStep runtime state command).support) :
     next.clock = state.clock + command.clockTicks := by
   cases command with
-  | grant event =>
-      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
-      subst next
-      rfl
   | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
@@ -296,10 +292,6 @@ theorem environmentStep_invariant {inputs : graph.Inputs}
     (member : next ∈ (environmentStep runtime state command).support) :
     next.Invariant inputs := by
   cases command with
-  | grant event =>
-      simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
-      subst next
-      exact invariant.copy rfl rfl rfl
   | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
@@ -340,7 +332,7 @@ theorem environmentStep_completed_subset (runtime : EventGraphRuntime graph)
     (member : next ∈ (environmentStep runtime state command).support) :
     state.config.cut.completed ⊆ next.config.cut.completed := by
   cases command with
-  | grant event | advanceClock =>
+  | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact Finset.Subset.rfl
@@ -371,7 +363,7 @@ theorem environmentStep_activatedAt_of_not_completed {inputs : graph.Inputs}
     (unfinished : query ∉ next.config.cut.completed) :
     next.activatedAt query = some entered := by
   cases command with
-  | grant event | advanceClock =>
+  | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact activated

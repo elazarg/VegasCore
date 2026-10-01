@@ -122,7 +122,7 @@ theorem environmentPolicyStep_prescribed_resolution_completion
       change next ∈ (environmentStep runtime execution.native.application
         applicationCommand).support at nextMem
       cases applicationCommand with
-      | grant query | advanceClock =>
+      | advanceClock =>
           simp only [environmentStep, PMF.mem_support_pure_iff _ _] at nextMem
           rw [afterApplication, nextMem] at completed
           exact (ready.1 completed).elim
@@ -233,11 +233,6 @@ theorem serviceControlStep_prescribed_resolution_completion
           focal owner other before.execution after.execution assumptions event payload binding
           checks outputEq codeEq viewNode ready actor action cached command environmentStep
           completed
-    | grant query =>
-        exact runtime.environmentPolicyStep_prescribed_resolution_completion feasible ordered
-          focal owner other before.execution after.execution assumptions event payload binding
-          checks outputEq codeEq viewNode ready actor action cached (.application (.grant query))
-          step completed
     | includeLatest query who =>
         exact runtime.environmentPolicyStep_prescribed_resolution_completion feasible ordered
           focal owner other before.execution after.execution assumptions event payload binding

@@ -6,7 +6,7 @@
 reactive interpreter and canonical compiled opening. The service offers two
 owner responses, with a foreign pending-message observation between them.
 The owner sends the same opening at the first or second visit. No inclusion,
-clock tick, expiry or grant change occurs during the window.
+clock tick or expiry occurs during the window.
 
 The checked facts are:
 

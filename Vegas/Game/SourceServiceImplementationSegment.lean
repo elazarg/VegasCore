@@ -127,7 +127,6 @@ theorem roster_segment_runJoint
             cases Option.some.inj same
             exact absent List.mem_cons_self
         | wire => intro impossible; cases impossible
-        | grant _ => intro impossible; cases impossible
         | includeLatest _ _ => intro impossible; cases impossible
         | sample _ => intro impossible; cases impossible
         | tick => intro impossible; cases impossible

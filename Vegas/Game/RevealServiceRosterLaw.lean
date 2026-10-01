@@ -40,7 +40,7 @@ theorem servicePlan_players_eq
         cases instruction with
         | player who => exact False.elim (noPlayers who (by simp))
         | wire => exact False.elim (noWire (by simp))
-        | grant event | sample event | tick | expire event =>
+        | sample event | tick | expire event =>
             simp only [EventGraphRuntime.interactionStep, EventGraphRuntime.interactionInstruction,
               PMF.pure_bind, ReactiveApplication.dispatch,
               ReactiveApplication.Command.actor?]

@@ -57,7 +57,6 @@ def ServiceOrderPolicy.FiniteSupport {runtime : EventGraphRuntime graph}
 inductive ServiceInstruction (graph : Vegas.EventGraph Player L) where
   | player (who : Player)
   | wire
-  | grant (event : graph.EventId)
   | includeLatest (event : graph.EventId) (owner : Player)
   | sample (event : graph.EventId)
   | tick
@@ -97,8 +96,6 @@ def serviceStep (runtime : EventGraphRuntime graph)
       (runtime.application.wireEnvironment wire) execution (.player who)
   | .wire => runtime.application.invoke players
       (runtime.application.wireEnvironment wire) execution .environment
-  | .grant event => runtime.application.environmentPolicyStep execution
-      (.application (.grant event))
   | .includeLatest event owner => runtime.application.environmentPolicyStep execution
       (runtime.latestEventSubmissionCommand event owner
         (MessageApplication.State.environmentView runtime.application execution.native))

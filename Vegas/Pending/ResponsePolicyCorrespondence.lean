@@ -101,7 +101,7 @@ private theorem responseBoundaries_step
                 rw [show (runtime.takeActions who execution actions).principalHistory observer =
                   execution.principalHistory observer from recall]
                 exact valid observer
-          | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
+          | wire | includeLatest event owner | sample event | tick | expire event =>
               obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ reached
               obtain ⟨next, _, rfl⟩ := PMF.support_map .. ▸ supported
               exact valid

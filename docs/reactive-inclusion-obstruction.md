@@ -49,7 +49,7 @@ the deadline; no clock tick is needed.
 | **Subgame root** | Both commitments are pending and their meanings are fixed. |
 | Third activation | Alice may submit a fresh envelope, replay, or remain silent. |
 | Binding inclusion | Include envelope 0 if fresh envelope 2 is pending; otherwise include envelope 1. |
-| Disclosure | Grant disclosure, activate Alice once, then include her latest disclosure packet, if any. |
+| Disclosure | Activate Alice once, then include her latest disclosure packet, if any. |
 
 The inclusion rule never chooses fresh envelope 2 for the binding event.
 Even submitting a valid commitment to `0` cannot make `0` the accepted value.

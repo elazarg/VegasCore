@@ -7,7 +7,7 @@ import Vegas.Examples.SelectiveAssociation.OpeningIncentives
 /-! # Alice's initial native information site has a single possible control
 
 The statement covers every legal compatible history, independently of an
-assessment's support. The public grant separates later Alice responses from
+assessment's support. Alice's own recall separates her later responses from
 the initial ambient response.
 -/
 

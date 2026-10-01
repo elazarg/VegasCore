@@ -129,42 +129,6 @@ theorem environmentDeliver
     rw [replay.pool]
   · exact replay.receipts
 
-/-- Granting the same public service cursor preserves native replay. -/
-theorem environmentGrant
-    (runtime : EventGraphRuntime graph) (focal : Player) (event : graph.EventId)
-    {left right leftNext rightNext : runtime.application.PolicyExecution}
-    (replay : NativeReplay runtime focal left right)
-    (leftSupported : leftNext ∈ (runtime.application.environmentPolicyStep left
-      (.application (.grant event))).support)
-    (rightSupported : rightNext ∈ (runtime.application.environmentPolicyStep right
-      (.application (.grant event))).support) :
-    NativeReplay runtime focal leftNext rightNext := by
-  have leftMem := leftSupported
-  have rightMem := rightSupported
-  simp only [application, MessageApplication.environmentPolicyStep,
-    MessageApplication.advance, MessageApplication.EnvironmentPolicyCommand.toAction,
-    MessageApplication.step, environmentStep, PMF.pure_map, PMF.pure_bind,
-    PMF.mem_support_pure_iff _ _] at leftMem rightMem
-  subst leftNext
-  subst rightNext
-  have applicationView :
-      ({ left.native.application with serviceGrant := some event }).playerView focal =
-        ({ right.native.application with serviceGrant := some event }).playerView focal := by
-    unfold State.playerView
-    congr 1
-    · change { left.native.application.publicView with serviceGrant := some event } =
-        { right.native.application.publicView with serviceGrant := some event }
-      rw [replay.publicView]
-    · exact replay.observation
-    · exact replay.remembered
-    · exact replay.candidates
-  apply afterEnvironmentStep runtime focal replay (.application (.grant event))
-  · exact leftSupported
-  · exact rightSupported
-  · exact applicationView
-  · exact replay.pool
-  · exact replay.receipts
-
 /-- Advancing the common public clock preserves native replay. -/
 theorem environmentAdvanceClock
     (runtime : EventGraphRuntime graph) (focal : Player)

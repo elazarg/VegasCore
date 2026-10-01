@@ -301,19 +301,11 @@ theorem environmentStep_sample_prescribedContinuation (runtime : EventGraphRunti
         · exact law
   · rw [environmentStep_executeSample_of_not_ready runtime state event ready, PMF.pure_bind]
 
-/-- Service announcements and clock increments have no semantic effect before
+/-- Clock increments have no semantic effect before
 the separate expiry instructions run. -/
 theorem environmentStep_tick_prescribedContinuation (runtime : EventGraphRuntime graph)
     (state : State graph) (profile : graph.BehavioralProfile) :
     (environmentStep runtime state .advanceClock).bind
-      (fun next => next.prescribedContinuation profile prescribed) =
-        state.prescribedContinuation profile prescribed := by
-  rw [environmentStep, PMF.pure_bind]
-  rfl
-
-theorem environmentStep_grant_prescribedContinuation (runtime : EventGraphRuntime graph)
-    (state : State graph) (profile : graph.BehavioralProfile) (event : graph.EventId) :
-    (environmentStep runtime state (.grant event)).bind
       (fun next => next.prescribedContinuation profile prescribed) =
         state.prescribedContinuation profile prescribed := by
   rw [environmentStep, PMF.pure_bind]

@@ -57,7 +57,6 @@ import Vegas.Pending.ReactiveBindingStopped
 import Vegas.Pending.ReactiveOpeningContinuationExpiry
 import Vegas.Pending.EventApplication
 import Vegas.Pending.RevealEvidence
-import Vegas.Pending.ReactiveServiceGrant
 import Vegas.Pending.ReactiveBindingFrame
 import Vegas.Pending.ReactiveBindingFrameStep
 import Vegas.Pending.ReactiveBindingFrameOpening
@@ -165,7 +164,6 @@ import Vegas.Pending.EventExpiryObservation
 import Vegas.Pending.EventReplayInitialization
 import Vegas.Pending.EventServiceReachability
 import Vegas.Pending.EventServicePosition
-import Vegas.Pending.EventServiceGrant
 import Vegas.Pending.EventPrescribedBoundary
 import Vegas.Pending.EventPrescribedReachability
 import Vegas.Pending.EventSubmissionCompletion

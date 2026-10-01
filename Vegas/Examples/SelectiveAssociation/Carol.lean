@@ -89,7 +89,7 @@ private theorem maintenance_views (players : Player → nativeApp.Policy)
     exact ⟨afterLeft.application, leftMoved, rfl⟩
   cases command with
   | executeSample event => exact (maintenance event rfl).elim
-  | advanceClock | grant event | expire event =>
+  | advanceClock | expire event =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at rightMoved
       simp only [environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] at mapped
       rw [rightMoved]

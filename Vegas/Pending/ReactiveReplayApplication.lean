@@ -57,11 +57,6 @@ theorem application_service_law (runtime : EventGraphRuntime graph)
       | player who => exact False.elim (head.2.1 who rfl)
       | wire => exact False.elim (head.1 rfl)
       | includeLatest event who => exact False.elim (head.2.2 event who rfl)
-      | grant event =>
-          simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
-            interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,
-            ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-            idle, PMF.bind_pure] using step (.grant event)
       | sample event =>
           simpa only [runInteractionPlan, PMF.map_bind, interactionStep,
             interactionInstruction, PMF.pure_bind, ReactiveApplication.dispatch,

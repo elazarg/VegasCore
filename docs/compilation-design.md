@@ -38,8 +38,7 @@ the protocol still admits arbitrary native policies and does not require
 players to run generated client software.
 The wire policy may adapt to the public pool and environment history. At each
 epoch boundary a public order policy adaptively chooses a permutation of all
-event IDs. The fixed epoch protocol grants and services every event in that
-order, advances the clock once, and checks every expiry. Reserved inclusion,
+event IDs. The fixed epoch protocol services every event in that order, advances the clock once, and checks every expiry. Reserved inclusion,
 fixed reaction rounds, and relative expiry delimit the proved runtime contract;
 `ServiceFeasible` requires every event deadline to be at least two ticks.
 

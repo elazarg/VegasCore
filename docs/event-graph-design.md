@@ -112,7 +112,7 @@ completion order. A public graph scheduler sees public values and completion
 order, but not hidden binding meanings.
 
 The pending-message target adds actual submission, delivery, inclusion, receipt,
-clock, and grant observations. Ideal commitment meanings remain private semantic
+and clock observations. Ideal commitment meanings remain private semantic
 state. Arbitrary players may disclose their own values through their traffic;
 the theorem fixes the other players to their compiled policies and accounts for
 public environment reactions. It does not prohibit a deviator from speaking.
@@ -154,7 +154,7 @@ and [audited results](../Paper.lean) give the owning declarations.
 The shared runtime uses opaque ideal commitment handles, authenticated messages,
 public opening verification, and relative deadlines. Every epoch adaptively
 chooses a permutation of all event IDs from the public environment view/history.
-Each event receives a grant, three owner calls when owned, configured
+Each event receives three owner calls when owned (no announcement), configured
 wire/reaction rounds, reserved inclusion, and a sample opportunity. The sweep is
 followed by one clock tick and expiry checks.
 

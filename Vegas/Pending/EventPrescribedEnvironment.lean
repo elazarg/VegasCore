@@ -223,9 +223,6 @@ theorem environmentStep_prescribedContinuation
         (fun next => next.prescribedContinuation profile prescribed) =
       execution.native.application.prescribedContinuation profile prescribed := by
   cases command with
-  | grant event =>
-      exact environmentStep_grant_prescribedContinuation prescribed runtime
-        execution.native.application profile event
   | advanceClock =>
       exact environmentStep_tick_prescribedContinuation prescribed runtime
         execution.native.application profile

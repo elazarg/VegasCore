@@ -47,7 +47,7 @@ private theorem maintenance_unfinished (runtime : EventGraphRuntime graph)
     (moved : after ∈ (environmentStep runtime before command).support) :
     query ∉ after.config.cut.completed := by
   cases command with
-  | grant event | advanceClock =>
+  | advanceClock =>
       cases (PMF.mem_support_pure_iff _ _).mp moved
       exact unfinished
   | executeSample event =>
@@ -123,12 +123,6 @@ theorem reactive_instruction_unfinished (runtime : EventGraphRuntime graph)
             exact handle_unfinished runtime _ state _ query
               (by rw [addressed]; exact fun same => different (Option.some.inj same))
               unfinished handled
-  | grant event =>
-      cases (PMF.mem_support_pure_iff _ _).mp selected
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
-      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      apply maintenance_unfinished runtime _ state (.grant event) query _ unfinished changed
-      all_goals simp_all [ServiceInstruction.targets]
   | tick =>
       cases (PMF.mem_support_pure_iff _ _).mp selected
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved

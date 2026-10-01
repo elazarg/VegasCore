@@ -261,7 +261,6 @@ theorem serviceControlStep_reached_prescribedContinuation
                 Set.mem_iUnion]
               exact ⟨command, commandMem, afterMem⟩
             _ = _ := PMF.bind_const _ _
-      | grant event => exact environment _ fun _ afterMem => afterMem
       | includeLatest event owner => exact environment _ fun _ afterMem => afterMem
       | sample event => exact environment _ fun _ afterMem => afterMem
       | tick => exact environment _ fun _ afterMem => afterMem

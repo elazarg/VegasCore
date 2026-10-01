@@ -156,7 +156,7 @@ theorem serviceStep_canonicalResources (runtime : EventGraphRuntime graph)
       obtain ⟨command, _, step⟩ := member
       exact runtime.environmentPolicyStep_canonicalResources before after owner command
         safe resources step
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       exact runtime.environmentPolicyStep_canonicalResources before after owner _ safe
         resources member
 

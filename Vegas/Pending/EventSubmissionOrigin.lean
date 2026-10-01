@@ -103,7 +103,7 @@ theorem serviceStep_canonicalCommitments
       obtain ⟨command, _, step⟩ := member
       exact runtime.application.environmentPolicyStep_pool_satisfies _ before after command
         safe step
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       exact runtime.application.environmentPolicyStep_pool_satisfies _ before after _ safe member
 
 /-- Arbitrary service instructions preserve canonical commitment provenance

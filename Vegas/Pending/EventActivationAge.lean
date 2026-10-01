@@ -219,13 +219,6 @@ private theorem environmentPolicyStep_activationOrigin
         (fun result : runtime.application.State => result.application) same.symm
       rw [nextEq]
       cases command with
-      | grant event =>
-          apply State.activationOrigin_of_activatedEq
-          change state ∈ (Vegas.EventGraphRuntime.environmentStep runtime
-            execution.native.application (.grant event)).support at supported
-          simp [Vegas.EventGraphRuntime.environmentStep] at supported
-          subst state
-          rfl
       | advanceClock =>
           apply State.activationOrigin_of_activatedEq
           change state ∈ (Vegas.EventGraphRuntime.environmentStep runtime
@@ -289,7 +282,7 @@ theorem serviceStep_activationOrigin (runtime : EventGraphRuntime graph)
       obtain ⟨command, _, member⟩ := member
       exact environmentPolicyStep_activationOrigin runtime execution next
         (command.toEnvironmentCommand runtime.application) member
-  | grant event | includeLatest event owner | sample event | tick | expire event =>
+  | includeLatest event owner | sample event | tick | expire event =>
       exact environmentPolicyStep_activationOrigin runtime execution next _ member
 
 /-- Activation origins compose through every actual finite service plan. -/

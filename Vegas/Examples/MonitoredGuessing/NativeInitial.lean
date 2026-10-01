@@ -85,7 +85,7 @@ theorem native_instruction_actor_eq (history : List nativeApp.EnvironmentEntry)
       history view instruction).support) :
     command.actor? nativeApp = instructionPlayer instruction := by
   cases instruction with
-  | player who | grant event | sample event | tick | expire event =>
+  | player who | sample event | tick | expire event =>
       cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | includeLatest event owner =>

@@ -56,7 +56,7 @@ theorem nativeInstructionStep_progress (runtime : EventGraphRuntime graph) (inpu
       execution.native.application next.native.application := by
   cases instruction with
   | player who => exact runtime.nativeStep_progress inputs who execution next _ invariant reached
-  | wire | grant event | includeLatest event who | sample event | tick | expire event =>
+  | wire | includeLatest event who | sample event | tick | expire event =>
       obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact runtime.serviceStep_facts inputs (fun _ _ _ => PMF.pure .wait)
         wire _ (execution.environmentExecution runtime) middle invariant supported
@@ -69,7 +69,7 @@ theorem nativeInstructionStep_native (runtime : EventGraphRuntime graph)
     ∃ actions, next.native ∈ (runtime.application.run actions execution.native).support := by
   cases instruction with
   | player who => exact runtime.actionStep_native who execution next _ reached
-  | wire | grant event | includeLatest event who | sample event | tick | expire event =>
+  | wire | includeLatest event who | sample event | tick | expire event =>
       obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨actions, _, member⟩ := runtime.serviceStep_native_support
         (fun _ _ _ => PMF.pure .wait) wire _
@@ -240,7 +240,7 @@ theorem nativeInstructionStep_history_prefix (runtime : EventGraphRuntime graph)
         rw [runtime.takeAction_history_self]
         exact List.prefix_append _ _
       · simp only [takeAction, ite_eq_right acts, List.prefix_refl]
-  | wire | grant event | includeLatest event actor | sample event | tick | expire event =>
+  | wire | includeLatest event actor | sample event | tick | expire event =>
       obtain ⟨middle, _, rfl⟩ := PMF.support_map .. ▸ reached
       exact List.prefix_refl _
 
@@ -343,7 +343,7 @@ theorem nativeInstructionStep_remembered (runtime : EventGraphRuntime graph)
         PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, member⟩ := supported
       exact runtime.environmentPolicyStep_remembered _ middle _ member
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       obtain ⟨middle, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact runtime.environmentPolicyStep_remembered _ middle _ supported
 

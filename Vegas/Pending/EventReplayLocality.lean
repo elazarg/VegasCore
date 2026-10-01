@@ -253,12 +253,6 @@ theorem environmentExecuteSample_of_observation
         unfold State.refreshActivated
         funext query
         rw [postCut, preClock, preActivated]
-  have serviceGrant : leftApplication.serviceGrant = rightApplication.serviceGrant := by
-    rw [environmentStep_serviceGrant runtime left.native.application leftApplication
-        (.executeSample event) leftApplicationMem,
-      environmentStep_serviceGrant runtime right.native.application rightApplication
-        (.executeSample event) rightApplicationMem]
-    exact congrArg PublicView.serviceGrant replay.publicView
   have publicResult : leftNext.native.application.publicView =
       rightNext.native.application.publicView := by
     rw [leftApplicationEq, rightApplicationEq]
@@ -632,35 +626,6 @@ theorem prescribedPlayerStep_noTurn (runtime : EventGraphRuntime graph)
       native := replay.native.nonfocalPlayerStep runtime focal owner different
         (.wait : NativeReplay.PrescribedCommandPair runtime .wait .wait) leftStep rightStep }
 
-/-- Executing the common grant head instruction preserves synchronized
-control replay. -/
-theorem grantStep (runtime : EventGraphRuntime graph)
-    (roster : List Player) (reactionRounds : Nat)
-    (players : Player → runtime.application.PlayerPolicy)
-    (wire : runtime.application.WirePolicy) (order : runtime.ServiceOrderPolicy)
-    (focal : Player) (event : graph.EventId)
-    {left right leftNext rightNext : ServiceControl runtime}
-    (replay : ServiceReplay runtime focal left right)
-    (rest : List (ServiceInstruction graph))
-    (leftPlan : left.plan = .grant event :: rest)
-    (leftSupported : leftNext ∈
-      (runtime.serviceControlStep roster reactionRounds players wire order left).support)
-    (rightSupported : rightNext ∈
-      (runtime.serviceControlStep roster reactionRounds players wire order right).support) :
-    ServiceReplay runtime focal leftNext rightNext := by
-  have rightPlan : right.plan = .grant event :: rest := by
-    rw [← replay.plan]
-    exact leftPlan
-  simp only [serviceControlStep, leftPlan, PMF.support_map, Set.mem_image] at leftSupported
-  simp only [serviceControlStep, rightPlan, PMF.support_map, Set.mem_image] at rightSupported
-  obtain ⟨leftExecution, leftExecutionMem, rfl⟩ := leftSupported
-  obtain ⟨rightExecution, rightExecutionMem, rfl⟩ := rightSupported
-  exact
-    { epochs := replay.epochs
-      plan := rfl
-      native := replay.native.environmentGrant runtime focal event leftExecutionMem
-        rightExecutionMem }
-
 /-- Executing the common public clock head instruction preserves synchronized
 control replay. -/
 theorem tickStep (runtime : EventGraphRuntime graph)
@@ -1005,9 +970,6 @@ theorem pairedControlStep (runtime : EventGraphRuntime graph)
       | wire =>
           exact replay.wireStep runtime inputs roster reactionRounds players wire order ordered
             focal prescribedOthers wireResponse fixedWire leftReachable rightReachable rest
-            leftPlanEq leftSupported rightSupported
-      | grant event =>
-          exact replay.grantStep runtime roster reactionRounds players wire order focal event rest
             leftPlanEq leftSupported rightSupported
       | includeLatest event owner =>
           exact replay.includeLatestStep runtime inputs roster reactionRounds players wire order

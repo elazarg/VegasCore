@@ -603,7 +603,7 @@ whole-history induction and reverse information correspondence.
 The [reverse observation lemmas](../Vegas/Game/ServiceObservation.lean)
 recover the native graph observation and candidate catalogue from the source
 view at reachable ranked prefixes. They reduce complete before-view equality
-to the actual public accepted-handle, clock, activation, grant, ledger, leak
+to the actual public accepted-handle, clock, activation, ledger, leak
 and receipt invariants. They do not assume information-fiber equality or a
 belief-preserving target assessment.
 The [policy adapter](../Vegas/Game/RevealServicePolicy.lean) uses the existing

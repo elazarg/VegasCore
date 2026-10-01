@@ -180,7 +180,7 @@ theorem serviceStep_policyCoherentAll
       obtain ⟨command, _, stepMem⟩ := supported
       exact runtime.environmentPolicyStep_policyCoherentAll execution next owner command coherent
         stepMem
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       exact runtime.environmentPolicyStep_policyCoherentAll execution next owner _ coherent
         supported
 

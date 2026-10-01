@@ -488,7 +488,7 @@ theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
     next.BindingInvariant := by
   classical
   cases command with
-  | grant event | advanceClock =>
+  | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact invariant.copy rfl rfl rfl

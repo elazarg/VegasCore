@@ -97,7 +97,7 @@ theorem response_records_multiple : ∀ {state} (_trace : arena.Trace state), re
                   rw [runtime.takeActions_history_length, length]
                   change (execution.principalHistory ()).length % 3 = 0 at earlier
                   omega
-              | wire | grant event | includeLatest event owner
+              | wire | includeLatest event owner
               | sample event | tick | expire event =>
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ reached
                   obtain ⟨middle, _, rfl⟩ := PMF.support_map .. ▸ supported

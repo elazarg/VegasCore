@@ -146,7 +146,7 @@ observations agree.
 
 The actual control-step comparison now covers pure focal, wire, and order
 responses, opaque prescribed submissions, authenticated packet inclusion,
-delivery, grants, clocks, and expiry. Expiry's observation congruence has no
+delivery, clocks, and expiry. Expiry's observation congruence has no
 private-value premise. `ServiceControlPath.prescribed_resolutionPayload_eq_of_endpoint`
 and `ServiceReplay.sampleStep_of_endpoint` obtain prescribed-resolution packet
 equality and chance observation equality from the actual endpoint paths. They
@@ -173,13 +173,13 @@ that filtered table. The local equations are:
   its sample once, including across partially completed service blocks.
 - An accepted prescribed action performs its saved graph step. An accepted
   focal action performs the graph step identified by locality and extraction.
-- Application chance performs the original graph kernel. Grants, delivery,
+- Application chance performs the original graph kernel. Delivery,
   rejected inclusion, and clock advancement stutter semantically. Protected
   opponent events do not expire; focal expiry contributes its effective failure
   action.
 
 `EventPrescribedPotential` checks the free-player command, prescribed sample,
-cached step, chance, grant, and clock equations. `EventPrescribedInvocation`
+cached step, chance, and clock equations. `EventPrescribedInvocation`
 checks actual player invocations, including partial staging.
 `EventPrescribedEnvironment` checks actual inclusion, delivery, sampling, clock,
 and expiry instructions under local action matching and protected-owner age.

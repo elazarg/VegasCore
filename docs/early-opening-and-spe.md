@@ -56,9 +56,8 @@ The remaining service schedule is fixed:
 
 1. Activate Alice once. She may submit or replay one envelope, or remain silent.
 2. Uniformly select a distinct, unpublished envelope addressed to the binding event.
-3. Grant the disclosure event.
-4. Activate Alice once more.
-5. Uniformly select a distinct, unpublished envelope addressed to the disclosure event.
+3. Activate Alice once more.
+4. Uniformly select a distinct, unpublished envelope addressed to the disclosure event.
 
 The selection rule reads event addresses and the ledger. It does not inspect
 hidden values, rank identifiers, remember private reads, or change activation

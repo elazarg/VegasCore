@@ -102,20 +102,17 @@ party that must be live, and possibly one that must not be strategic.
 | `handle`: readiness, deadline, owner and handle checks | Contract code | Contract |
 | `State.activatedAt`, `deadline` (`Vegas/Pending/EventApplication.lean`) | Contract state and parameters | Contract |
 | `.expire`, `.executeSample` | Anyone-can-call contract functions, applied lazily | Contract (effect), service (caller) |
-| `.grant`, `State.serviceGrant`, the order policy | Not enforced by `handle`: a public cursor. The fixed calendar no longer issues it. Prescribed clients, response menus and the audit no longer read it: clients act at `PublicView.ownTurn?`, the least ready event the player owns (`no_turn_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`), and the audit's conformance check requires readiness and ownership (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
+| The order policy and the service calendar | Not enforced by `handle`. Prescribed clients, response menus and the audit read readiness: clients act at `PublicView.ownTurn?`, the least ready event the player owns (`no_turn_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`), and the audit's conformance check requires readiness and ownership (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
 | Disclosure reports feeding the audit | The watcher | Service |
 
-The grant is public and computed from public data, so it is not a private
-channel. It used to be a coordination service that the fixed-calendar proof
-depended on: prescribed owners transmitted only when granted and the audit
-classified a fresh packet as conforming only for the granted event. Since step
-3 below, both use readiness instead, so a prescribed owner acts exactly when a
-deviator could, and the calendar proofs identify the event a decision belongs
-to by readiness as well. Neither the roster calendar nor the watcher calendar
-issues grants any more, so their executions keep the empty grant throughout.
-The field and the command survive only for the event-service stack
-(`Vegas/Pending/EventBindingPolicyService.lean`); removing them is the rest of
-step 4.
+The runtime used to carry a public service grant (a state field, set by a
+grant environment command) naming the current event. It was a coordination
+service the fixed-calendar proof depended on: prescribed owners transmitted only
+when granted and the audit classified a fresh packet as conforming only for the
+granted event. Since step 3 below, both use readiness instead, so a prescribed
+owner acts exactly when a deviator could, and the calendar proofs identify the
+event a decision belongs to by readiness or by the player's own response count.
+The field, the command and the service instruction are deleted.
 
 ### Modeling priorities
 
@@ -458,7 +455,8 @@ design evidence, not proofs.
    plan position (`sourceService_phase_boundary`). The watcher calendar issues
    no grant either; its decision depths are read from the public clock
    (`Vegas.decisionDepth` in `Vegas/Game/RevealServiceClock.lean`). The
-   event-service stack and the grant field itself remain.
+   event-service stack serves owners at their turn, and the grant field and
+   command are deleted.
 5. **The general theorem**, with the fixed calendar recovered as an instance.
 6. **Joint transmission-and-ordering deviations**, a separate theorem beyond
    the target, if players that can buy the order are to be covered.

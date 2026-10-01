@@ -53,7 +53,7 @@ theorem responseLength_prefix (who : Player) (plan : List (ServiceInstruction gr
               List.cons_append, ih]
           · simp only [responseLength, ite_eq_right same, List.replicate_zero, List.drop_zero,
               List.nil_append]
-      | wire | grant event | includeLatest event owner | sample event | tick | expire event => rfl
+      | wire | includeLatest event owner | sample event | tick | expire event => rfl
 
 def responseCount (runtime : EventGraphRuntime graph) : NativeProtocolState runtime → Nat
   | some ⟨_, .player who :: rest, _⟩ => responseLength who (.player who :: rest)
@@ -185,7 +185,7 @@ theorem responseRemaining_step (runtime : EventGraphRuntime graph)
               simp only [nativeRemaining, List.length_drop, List.length_cons,
                 responseLength, ↓reduceIte]
               omega
-          | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
+          | wire | includeLatest event owner | sample event | tick | expire event =>
               have consumed := runtime.nativeRemaining_step inputs roster reactionRounds wire order
                 _ after (fun _ => none) running reached
               omega

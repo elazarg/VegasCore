@@ -98,7 +98,7 @@ theorem serviceStep_native_step (runtime : EventGraphRuntime graph)
   | wire =>
       exact runtime.application.invoke_native_step players
         (runtime.application.wireEnvironment wire) before after .environment member
-  | grant event | includeLatest event owner | sample event | tick | expire event =>
+  | includeLatest event owner | sample event | tick | expire event =>
       exact environment _ member
 
 /-- The recorded suffix also retains the exact action labels of that step. -/
@@ -116,7 +116,7 @@ theorem serviceStep_native_support (runtime : EventGraphRuntime graph)
   | wire =>
       exact runtime.application.invoke_native_support players
         (runtime.application.wireEnvironment wire) before after .environment member
-  | grant event | includeLatest event owner | sample event | tick | expire event =>
+  | includeLatest event owner | sample event | tick | expire event =>
       exact runtime.application.environmentStep_native_support before _ after member
 
 /-- A concrete service plan retains its complete native trace as an execution
@@ -313,7 +313,7 @@ theorem serviceStep_facts (runtime : EventGraphRuntime graph) (inputs : graph.In
       have progress := environmentPolicyStep_progress runtime inputs execution next
         (command.toEnvironmentCommand runtime.application) invariant member
       cases command <;> exact progress
-  | grant event | sample event | tick | expire event =>
+  | sample event | tick | expire event =>
       exact environmentPolicyStep_progress runtime inputs execution next _ invariant member
   | includeLatest event owner =>
       have progress := environmentPolicyStep_progress runtime inputs execution next

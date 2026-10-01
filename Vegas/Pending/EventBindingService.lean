@@ -63,7 +63,7 @@ theorem serviceStep_bindingInvariant (runtime : EventGraphRuntime graph)
         exact invariant
       · exact applicationStep_bindingInvariant runtime execution.native next.native action
           invariant supported
-  | grant event | includeLatest event owner | sample event | tick | expire event =>
+  | includeLatest event owner | sample event | tick | expire event =>
       exact environmentPolicyStep_bindingInvariant runtime execution next _ invariant member
 
 /-- A finite adaptive service plan preserves binding provenance. -/

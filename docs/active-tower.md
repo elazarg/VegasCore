@@ -327,8 +327,7 @@ traffic, private candidate preparation, explicit expiry, and chance execution.
 
 This application is an ideal-commitment model: the semantic state retains
 binding meanings and original player decisions, while public projections
-expose handles, publication results, clocks, activation times, and service
-grants. Authenticated player observations include this full public projection.
+expose handles, publication results, clocks, and activation times. Authenticated player observations include this full public projection.
 
 `EventGraphRuntime.servicedEventGame` runs a concrete bounded service: each
 epoch visits every event in a permutation sampled from the full public

@@ -639,7 +639,7 @@ theorem serviceStep_bindingPolicyCoherentAll
       obtain ⟨command, _, stepMem⟩ := supported
       exact runtime.environmentPolicyStep_bindingPolicyCoherentAll owner execution next command
         safe coherent stepMem
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       exact runtime.environmentPolicyStep_bindingPolicyCoherentAll owner execution next _ safe
         coherent supported
 

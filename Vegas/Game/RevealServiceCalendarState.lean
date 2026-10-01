@@ -200,9 +200,6 @@ theorem source_checkpoint_observe_eq
       ((graph setup).publicObserve nativeLeft.application.config) rank)
     (rightActivated : nativeRight.application.activatedAt = checkpointActivations setup accepted
       ((graph setup).publicObserve nativeRight.application.config) rank)
-    (granted : Option (graph setup).EventId)
-    (leftGrant : nativeLeft.application.serviceGrant = granted)
-    (rightGrant : nativeRight.application.serviceGrant = granted)
     (leftLedger : nativeLeft.network.ledger = publicationLedger accepted
       ((graph setup).publicObserve nativeLeft.application.config))
     (rightLedger : nativeRight.network.ledger = publicationLedger accepted
@@ -225,7 +222,6 @@ theorem source_checkpoint_observe_eq
   · exact leftAccepted.trans rightAccepted.symm
   · exact leftClock.trans rightClock.symm
   · rw [leftActivated, rightActivated, publicObservation]
-  · exact leftGrant.trans rightGrant.symm
   · rw [leftLedger, rightLedger, publicObservation]
   · exact leaked
   · rw [leftReceipts, rightReceipts, publicObservation]

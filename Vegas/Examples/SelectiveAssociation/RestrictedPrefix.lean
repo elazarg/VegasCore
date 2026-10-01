@@ -34,7 +34,7 @@ theorem environment_pure (execution : app.Execution) (command : app.Command) :
       exact ⟨_, rfl⟩
   | application command =>
       cases command with
-      | grant event | advanceClock | expire event =>
+      | advanceClock | expire event =>
           simp only [ReactiveApplication.Execution.environmentStep, app, serviceApp,
             reactiveApplication, environmentStep, PMF.pure_map]
           exact ⟨_, rfl⟩

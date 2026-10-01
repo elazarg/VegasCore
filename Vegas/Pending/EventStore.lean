@@ -45,7 +45,7 @@ theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
     (stored : state.config.store field = some value) :
     next.config.store field = some value := by
   cases command with
-  | grant event | advanceClock =>
+  | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact stored
@@ -80,7 +80,7 @@ theorem environmentStep_history_prefix (runtime : EventGraphRuntime graph)
     rw [state.config.step_history event ready action next.config supported]
     exact ⟨_, rfl⟩
   cases command with
-  | grant event | advanceClock =>
+  | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact ⟨[], by simp⟩

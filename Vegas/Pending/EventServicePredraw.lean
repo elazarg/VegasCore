@@ -412,7 +412,7 @@ private theorem serviceProtocol_step_growth (runtime : EventGraphRuntime graph)
                     omega
                   · intro history view site
                     simp [serviceDecisionSite?] at site
-      | grant event | includeLatest event who | sample event | tick | expire event =>
+      | includeLatest event who | sample event | tick | expire event =>
           have inactive : joint () = none := by
             cases choiceEq : joint () with
             | none => rfl
@@ -495,7 +495,7 @@ private theorem active_serviceSite_not_precedes (runtime : EventGraphRuntime gra
           simp only [serviceDecisionSite?, Option.some.injEq] at active
           subst site
           simp [serviceSitePrecedes]
-      | grant event | includeLatest event who | sample event | tick | expire event =>
+      | includeLatest event who | sample event | tick | expire event =>
           simp [serviceDecisionSite?] at active
 
 private theorem service_actedAt_precedes (runtime : EventGraphRuntime graph)
@@ -925,9 +925,6 @@ private theorem serviceBehavioral_step (runtime : EventGraphRuntime graph)
                     serviceControlStep, serviceStep, MessageApplication.invoke,
                     MessageApplication.wireEnvironment, PMF.map_bind, PMF.bind_map,
                     PMF.map_comp, Function.comp_def]
-              | grant event =>
-                  simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
-                    serviceControlStep, serviceStep, PMF.map_comp, Function.comp_def]
               | includeLatest event owner =>
                   simp [serviceProtocolSite?, serviceDecisionSite?, serviceProtocolTransition,
                     serviceControlStep, serviceStep, PMF.map_comp, Function.comp_def]

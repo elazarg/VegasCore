@@ -396,9 +396,9 @@ be read**. No additional production semantics is introduced.
 | Every pending call remains ready at every state | A persistent condition on the entire pool | The existing pool does not satisfy this: selecting one winner leaves a stale competitor. A clock step can also invalidate an otherwise ready call. |
 | Drop stale packets after state changes | Additional pool maintenance | Replacing the pool preserves current player inputs. Clearing it after association retains Bob's certified evidence and Carol's indistinguishability. This is a state calculation, not a checked new service. |
 
-The service grant records the service's current event; the application handler does
-not use it as authorization. Thus Alice's first certificate-bearing commitment
-already succeeds while its grant is `none`. Confusing the grant with a call's
+The service calendar decides when an owner is activated; the application handler
+does not consult it. Thus Alice's first certificate-bearing commitment already
+succeeds before her service turn. Confusing the calendar with a call's
 precondition would incorrectly classify this disclosure as premature.
 
 Here “premature opening” means an opening **call** whose dependencies are not

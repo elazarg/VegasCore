@@ -60,7 +60,6 @@ theorem State.acceptHandle_playerView_congr (left right : State graph) (focal : 
   have publicObserved := congrArg PublicView.observation publicEq
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
-  have grantEq := congrArg PublicView.serviceGrant publicEq
   unfold State.playerView State.publicView
   congr 1
   congr 1
@@ -94,7 +93,6 @@ theorem State.complete_playerView_congr (left right : State graph) (focal : Play
   have acceptedEq := congrArg PublicView.accepted publicEq
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
-  have grantEq := congrArg PublicView.serviceGrant publicEq
   have nextActivated :
       State.refreshActivated (left.config.complete event leftReady leftAction leftValue)
           left.clock left.activatedAt =

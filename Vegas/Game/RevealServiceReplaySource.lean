@@ -165,7 +165,7 @@ theorem replay_scheduler_eq
   | none => rfl
   | some instruction =>
       cases instruction with
-      | player who | grant event | sample event | tick | expire event => rfl
+      | player who | sample event | tick | expire event => rfl
       | includeLatest event owner =>
           exact congrArg PMF.pure (same.reserved_selection event owner)
       | wire =>

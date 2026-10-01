@@ -5,7 +5,7 @@ import Vegas.Pending.ResponseProtocolRefinement
 /-! # A concrete response-capacity certificate
 
 With an empty reaction roster, every player response has exactly three slots.
-Wire opportunities, inclusion, grants, sampling, clocks, and expiry remain in
+Wire opportunities, inclusion, sampling, clocks, and expiry remain in
 the service. The constant budget is adequate at every legal history, so the
 canonical information model uses precisely the original native input.
 
@@ -151,7 +151,7 @@ private theorem responsePlanThree_step (runtime : EventGraphRuntime graph)
               change ThreeCallPlan ((ServiceInstruction.player who :: rest).drop _)
               rw [consumed.1]
               exact consumed.2
-          | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
+          | wire | includeLatest event owner | sample event | tick | expire event =>
               obtain ⟨next, _, rfl⟩ := PMF.support_map .. ▸ reached
               exact consumed
 
@@ -187,12 +187,12 @@ theorem responseBudget_empty_roster (runtime : EventGraphRuntime graph)
               rw [stateEq] at valid
               have count := (ThreeCallPlan.consume valid).1
               simpa only [stateEq, responseCount] using count.symm
-          | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
+          | wire | includeLatest event owner | sample event | tick | expire event =>
               simp [stateEq, nativeActor] at active
 
 end Vegas.EventGraphRuntime
 
 -- OPEN OBLIGATION: Response budgets for nonempty reaction rosters
 -- Recover the initial three owner slots and later roster-run lengths from own
--- recall and the observed grant/clock. Prove adequacy at all legal histories,
+-- recall and the observed clock. Prove adequacy at all legal histories,
 -- including repeated roster entries, without exposing the hidden service suffix.

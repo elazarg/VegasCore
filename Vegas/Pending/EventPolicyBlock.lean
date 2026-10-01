@@ -82,20 +82,6 @@ policy command; pending-message observations remain included in the view. -/
         cases execution.native.application.remembered event <;> rfl
       · rw [privateStep, dite_eq_right owned]
 
-@[simp] theorem afterPrivate_serviceGrant (runtime : EventGraphRuntime graph)
-    (execution : runtime.application.PolicyExecution) (who : Player)
-    (command : PrivateCommand graph) :
-    (runtime.application.afterPrivate execution who command).native.application.serviceGrant =
-      execution.native.application.serviceGrant := by
-  change (privateStep execution.native.application who command).serviceGrant = _
-  cases command with
-  | prepare => rfl
-  | remember event action =>
-      by_cases owned : graph.actor? event = some who
-      · rw [privateStep, dite_eq_left owned]
-        cases execution.native.application.remembered event <;> rfl
-      · rw [privateStep, dite_eq_right owned]
-
 /-- Private commands leave the public view, and hence every player's turn,
 unchanged. -/
 @[simp] theorem afterPrivate_publicView (runtime : EventGraphRuntime graph)

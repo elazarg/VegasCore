@@ -31,7 +31,7 @@ theorem roster_instruction_actor (setup : Setup (Player := Player) (L := L))
       past view instruction).support) :
     command.actor? (application setup leaks) = instructionActor instruction := by
   cases instruction with
-  | player who | grant event | sample event | tick | expire event =>
+  | player who | sample event | tick | expire event =>
       simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       rfl

@@ -116,7 +116,7 @@ theorem serviceStep_focalHistory_length (runtime : EventGraphRuntime graph)
       rw [congrFun (runtime.application.environmentStep_principalHistory execution
         (WireCommand.toEnvironmentCommand runtime.application command) next step) focal]
       rfl
-  | grant event | sample event | tick | expire event =>
+  | sample event | tick | expire event =>
       rw [congrFun (runtime.application.environmentStep_principalHistory execution _ next
         supported) focal]
       rfl
@@ -149,7 +149,7 @@ theorem serviceStep_environmentHistory_length (runtime : EventGraphRuntime graph
       simpa [ServiceInstruction.isEnvironment] using
         runtime.application.environmentStep_history_length execution
           (WireCommand.toEnvironmentCommand runtime.application command) next step
-  | grant event | sample event | tick | expire event =>
+  | sample event | tick | expire event =>
       simpa [ServiceInstruction.isEnvironment] using
         runtime.application.environmentStep_history_length execution _ next supported
   | includeLatest event owner =>

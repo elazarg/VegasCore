@@ -54,7 +54,7 @@ private theorem native_instruction_actor (history : List nativeApp.EnvironmentEn
       subst command
       unfold reactiveLatest at active
       split at active <;> cases active
-  | grant event | sample event | tick | expire event =>
+  | sample event | tick | expire event =>
       simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command
       cases active

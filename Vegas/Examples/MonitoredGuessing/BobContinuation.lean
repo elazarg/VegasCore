@@ -97,7 +97,7 @@ private theorem same_alice_maintenance (left right nextLeft nextRight : nativeAp
       ∃ result, environmentStep nativeRuntime state command = PMF.pure result := by
     cases command with
     | executeSample event => exact (maintenance event rfl).elim
-    | grant event | advanceClock | expire event => exact ⟨_, rfl⟩
+    | advanceClock | expire event => exact ⟨_, rfl⟩
   obtain ⟨leftResult, leftPure⟩ := pureStep left.application
   obtain ⟨rightResult, rightPure⟩ := pureStep right.application
   change leftState ∈ (environmentStep nativeRuntime left.application command).support

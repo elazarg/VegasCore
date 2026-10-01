@@ -6,8 +6,8 @@ import Vegas.Pending.EventSampleObservation
 /-! # Service constructors of the concrete binding-repair frame
 
 Public chance and publication completions use the same result on both sides;
-their original private bindings may differ. Clock and service grants change
-only the public metadata already present in the runtime.
+their original private bindings may differ. Clock steps change only the public
+metadata already present in the runtime.
 -/
 
 noncomputable section
@@ -160,29 +160,6 @@ theorem advanceClock (frame : Frame runtime leaks memory owner original repaired
       { view with publicView := { view.publicView with clock := view.publicView.clock + 1 } })
         (frame.views who different)
 
-theorem grant (frame : Frame runtime leaks memory owner original repaired)
-    (event : graph.EventId) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory owner
-      { original with
-        application := { original.application with serviceGrant := some event }
-        environmentRecall := original.environmentRecall ++
-          [⟨original.observeEnvironment app, .application (.grant event)⟩] }
-      { repaired with
-        application := { repaired.application with serviceGrant := some event }
-        environmentRecall := repaired.environmentRecall ++
-          [⟨repaired.observeEnvironment app, .application (.grant event)⟩] } := by
-  refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.recall, frame.slots,
-    frame.successful, frame.submissions⟩
-  · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
-      { view with application := { view.application with publicView :=
-        { view.application.publicView with serviceGrant := some event } } }) frame.observed
-  · rw [frame.service, frame.environment]
-  · intro who different
-    exact congrArg (fun view : PlayerView graph =>
-      { view with publicView := { view.publicView with serviceGrant := some event } })
-        (frame.views who different)
-
 omit [DecidableEq Player] in
 private theorem complete_publicView (left right : State graph)
     (publicEq : left.publicView = right.publicView)
@@ -213,7 +190,6 @@ private theorem complete_publicView (left right : State graph)
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
   have acceptedEq := congrArg PublicView.accepted publicEq
-  have grantEq := congrArg PublicView.serviceGrant publicEq
   have nextActivated :
       State.refreshActivated (left.config.complete event leftReady action value)
           left.clock left.activatedAt =

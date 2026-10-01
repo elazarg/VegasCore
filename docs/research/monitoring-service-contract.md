@@ -61,7 +61,7 @@ still requires induction over all ordinary response histories.
 
 This service activates only the source owner for that event. With additional
 ambient activations, that owner could send a valid current opening before its
-canonical slot: the handler ignores the public service grant, so neither rejection nor a
+canonical slot: the handler ignores the service calendar, so neither rejection nor a
 static packet-format check detects that early timing. Covering such a roster
 requires a separate phase witness/enforcement argument, or a proved coalescing
 argument when no strategic decision intervenes. The other-event rejection lemma

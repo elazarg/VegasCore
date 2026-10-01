@@ -234,7 +234,7 @@ theorem instruction_actor (watcher : Player)
       ((runtime setup).reportNetwork leaks watcher) history view instruction).support) :
     command.actor? (application setup leaks) = instructionActor instruction := by
   cases instruction with
-  | player who | grant event | sample event | tick | expire event =>
+  | player who | sample event | tick | expire event =>
       simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
         at supported
       subst command
@@ -536,7 +536,7 @@ private theorem instruction_ticks (watcher : Player)
       ((runtime setup).reportNetwork leaks watcher) history view instruction).support) :
     commandTicks setup leaks command = instruction.ticks := by
   cases instruction with
-  | player who | grant event | sample event | tick | expire event =>
+  | player who | sample event | tick | expire event =>
       simp only [EventGraphRuntime.interactionInstruction, PMF.mem_support_pure_iff _ _]
         at supported
       subst command

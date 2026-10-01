@@ -8,7 +8,7 @@ import Interaction.ReactivePublication
 A network opportunity can activate any player, include a packet, or wait.
 Activation samples private observations using a separate rule. Those samples
 are absent from scheduler state and recall.
-Application grants, sampling, clock ticks, and expiry remain controlled by the
+Application sampling, clock ticks, and expiry remain controlled by the
 service contract. Each strategic visit reserves one owner activation followed
 by network opportunities and event-addressed inclusion. There is no reaction
 roster and no private preparation phase.
@@ -82,7 +82,6 @@ def interactionInstruction (runtime : EventGraphRuntime graph)
   | .player who => PMF.pure (.activate who)
   | .wire => (network history view).map (fun choice =>
       (runtime.reactiveApplication leaks).atMostOnceCommand view (choice.command runtime leaks))
-  | .grant event => PMF.pure (.application (.grant event))
   | .includeLatest event owner => PMF.pure (runtime.reactiveLatest leaks event owner view)
   | .sample event => PMF.pure (.application (.executeSample event))
   | .tick => PMF.pure (.application .advanceClock)

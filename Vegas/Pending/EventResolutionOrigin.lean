@@ -372,7 +372,7 @@ theorem serviceStep_resolutionOrigins
         (runtime.application.Retained before.native.pool) before after command
         (satisfies_retained_all runtime before.native.pool) step
       exact satisfies_retained_elim safe retained
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       apply ResolutionOrigins.of_retained runtime inputs ordered players wire _ before after owner
         invariant origins member
       intro message retained

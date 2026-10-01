@@ -123,7 +123,7 @@ theorem response_step_native_history
               simp only [responseTransition, selected, Option.getD_some,
                 PMF.mem_support_pure_iff _ _] at target
               exact ⟨next, by rw [endpoint, length]; exact target.symm⟩
-          | wire | grant event | includeLatest event owner | sample event | tick | expire event =>
+          | wire | includeLatest event owner | sample event | tick | expire event =>
               exact environment (by rw [stateEq]; rfl) (by rw [stateEq]; rfl)
 
 /-- Every legal coalesced history has a native realization. This includes

@@ -74,7 +74,7 @@ theorem environmentStep_config_of_ready_public_unfinished
     rw [state.config.step_cut event actualReady action next.config step]
     exact Finset.mem_insert_self _ _
   cases command with
-  | grant query | advanceClock =>
+  | advanceClock =>
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
       subst next
       rfl

@@ -5,7 +5,8 @@ import GameTheoryExtensions.Protocol.SequentialChoices
 
 /-! # Information-local incentives for ordinary opening
 
-The public grant, unfinished event, and owned binding are all observable.
+The owner's turn (read from its own recall), unfinished event, and owned
+binding are all observable.
 Consequently the same legal opening response gives the checked continuation
 guarantee throughout the information fiber, including zero-belief histories.
 -/

@@ -7,9 +7,10 @@ import GameTheoryExtensions.Math.Probability.Uniform
 /-! # A legal native strategy for selective disclosure
 
 Alice privately randomizes a Boolean candidate on her initial response and
-carries its opening evidence in that envelope. At her binding grant she
+carries its opening evidence in that envelope. At her binding turn she
 reoffers the same immutable candidate without evidence. At her publication
-grant she chooses the ordinary available opening. All other responses are
+turn she chooses the ordinary available opening; she reads the turn from her
+own recall. All other responses are
 silent; each response is in the full finite native menu at every input.
 -/
 

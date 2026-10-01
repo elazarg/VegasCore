@@ -111,14 +111,6 @@ theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
           publicView := { right.publicView with clock := right.clock + 1 } }
       have clocks : left.clock = right.clock := congrArg PublicView.clock publicEq
       rw [views, publicEq, clocks]
-  | grant event =>
-      simp only [environmentStep, PMF.pure_map]
-      congr 1
-      change { left.playerView who with
-        publicView := { left.publicView with serviceGrant := some event } } =
-        { right.playerView who with
-          publicView := { right.publicView with serviceGrant := some event } }
-      rw [views, publicEq]
   | expire event =>
       obtain ⟨a, ha⟩ := (environmentStep runtime left (.expire event)).support_nonempty
       obtain ⟨b, hb⟩ := (environmentStep runtime right (.expire event)).support_nonempty

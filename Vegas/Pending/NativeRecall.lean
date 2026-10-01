@@ -88,7 +88,7 @@ theorem nativeInstructionStep_counters (runtime : EventGraphRuntime graph)
         PMF.bind_map, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨command, _, supported⟩ := supported
       exact environment _ after supported
-  | grant event | includeLatest event owner | sample event | tick | expire event =>
+  | includeLatest event owner | sample event | tick | expire event =>
       obtain ⟨after, supported, rfl⟩ := PMF.support_map .. ▸ reached
       exact environment _ after supported
 

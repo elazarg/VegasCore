@@ -209,10 +209,7 @@ theorem PublicCheckpoint.reveal_endpoint
     receipts := transcript.2.1
     counters := transcript.2.2
     clock := actualCalendar.1
-    activated := actualCalendar.2
-    noGrant := by
-      rw [applicationEq]
-      cases disclose <;> exact checkpoint.noGrant }
+    activated := actualCalendar.2 }
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
   · intro successor nextRank actor

@@ -66,7 +66,7 @@ theorem nativeControlStep_eq_of_marginals (runtime : EventGraphRuntime graph)
               simpa only [PMF.bind_map, Option.getD_some, nativeTransition,
                 nativeInstructionStep, nativeControlStep, invokeNative,
                 PMF.map_bind, Function.comp_def] using selected
-          | wire | grant event | includeLatest event who | sample event | tick | expire event =>
+          | wire | includeLatest event who | sample event | tick | expire event =>
               simp [nativeControlStep, nativeTransition, nativeInstructionStep,
                 PMF.bind_const]
 

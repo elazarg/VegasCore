@@ -203,7 +203,6 @@ private theorem complete_binding_public_congr
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
   have acceptedEq := congrArg PublicView.accepted publicEq
-  have grantEq := congrArg PublicView.serviceGrant publicEq
   have nextActivated :
       State.refreshActivated (left.config.complete event leftReady leftAction leftValue)
           left.clock left.activatedAt =
@@ -275,7 +274,6 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
   have observed := congrArg PublicView.observation completed
   have activated := congrArg PublicView.activatedAt completed
   have clockEq := congrArg PublicView.clock completed
-  have grant := congrArg PublicView.serviceGrant completed
   unfold State.publicView
   congr 1
   exact congrArg (fun accepted : graph.Field → Option (Handle graph) =>

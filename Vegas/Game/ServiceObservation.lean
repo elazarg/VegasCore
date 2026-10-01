@@ -225,7 +225,7 @@ theorem checkpoint_candidates_eq (who : Player)
 
 /-- Assemble the actual native before-view from its semantic observation and
 the service's public fields. The source execution induction must establish
-the stated clock, activation, grant, ledger, leak, and receipt equalities.
+the stated clock, activation, ledger, leak, and receipt equalities.
 Own response recall is deliberately absent: published replay aliases retain it. -/
 theorem checkpoint_observe_eq
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -239,7 +239,6 @@ theorem checkpoint_observe_eq
     (accepted : left.application.accepted = right.application.accepted)
     (clock : left.application.clock = right.application.clock)
     (activated : left.application.activatedAt = right.application.activatedAt)
-    (grant : left.application.serviceGrant = right.application.serviceGrant)
     (ledger : left.network.ledger = right.network.ledger)
     (leaked : left.network.leaked who = right.network.leaked who)
     (receipts : left.receipts = right.receipts) :
@@ -250,7 +249,7 @@ theorem checkpoint_observe_eq
     left.application.config right.application.config same
   have publicView : left.application.publicView = right.application.publicView := by
     unfold EventGraphRuntime.State.publicView
-    rw [publicObservation, accepted, clock, activated, grant]
+    rw [publicObservation, accepted, clock, activated]
   change ReactiveApplication.PlayerView.mk
       ⟨left.network.leaked who, left.network.ledger⟩
       ⟨who, left.application.publicView,

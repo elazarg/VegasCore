@@ -77,7 +77,7 @@ checks run as usual. Every event-graph theorem stays untouched.
 ### Cost
 
 The work lands in the runtime-to-graph refinement: every lemma assuming that
-one inclusion causes at most one graph step, service grants for a resolve that
+one inclusion causes at most one graph step, service turns for a resolve that
 is already complete, deadlines and `ServiceFeasible`, the honest and deviation
 chains under `Vegas/Pending`, the audit's permitted-envelope predicate, and
 the reveal-service sequential-equilibrium development, which models the

@@ -48,7 +48,7 @@ theorem interactionInstruction_fresh (runtime : EventGraphRuntime graph)
   | includeLatest event owner =>
       exact runtime.reactiveLatest_fresh leaks event owner view id
         ((PMF.mem_support_pure_iff _ _).mp selected).symm
-  | player who | grant event | sample event | tick | expire event =>
+  | player who | sample event | tick | expire event =>
       cases (PMF.mem_support_pure_iff _ _).mp selected
 
 theorem interactionScheduler_atMostOnce (runtime : EventGraphRuntime graph)

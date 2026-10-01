@@ -70,7 +70,7 @@ theorem serviceStep_new_submission (runtime : EventGraphRuntime graph)
       obtain ⟨command, _, step⟩ := member
       exact (impossible (congrFun (runtime.application.environmentStep_principalHistory before
         command after step) owner)).elim
-  | grant query | includeLatest query who | sample query | tick | expire query =>
+  | includeLatest query who | sample query | tick | expire query =>
       exact (impossible (congrFun (runtime.application.environmentStep_principalHistory before
         _ after member) owner)).elim
 

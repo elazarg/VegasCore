@@ -72,8 +72,6 @@ structure PublicCheckpoint (setup : Setup (Player := Player) (L := L))
   activated : execution.application.activatedAt = checkpointActivations setup
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
     ((graph setup).publicObserve execution.application.config) rank
-  /-- The service calendar issues no grants. -/
-  noGrant : execution.application.serviceGrant = none
 
 /-- The fixed one-owner service additionally has empty private leak lists.
 This specialization is useful for that calendar's exact observation theorem;
@@ -125,8 +123,7 @@ theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
     receipts := rfl
     counters := rfl
     clock := rfl
-    activated := ?_
-    noGrant := rfl }
+    activated := ?_ }
   · exact EventOrder.Cut.empty_isPrefix _
   · intro event first strategic
     apply EventGraphRuntime.State.initial_withinDeadline _ (runtime setup) event _ strategic
@@ -202,9 +199,7 @@ theorem PublicCheckpoint.observe_eq {setup : Setup (Player := Player) (L := L)}
     (EventGraphRuntime.State.initial (graph := graph setup)
       (setup.eventInputs leftInitial)).accepted
     leftCheckpoint.accepted rightCheckpoint.accepted leftCheckpoint.clock rightCheckpoint.clock
-    leftCheckpoint.activated rightCheckpoint.activated nativeRight.application.serviceGrant
-    (leftCheckpoint.noGrant.trans rightCheckpoint.noGrant.symm)
-    rfl leftCheckpoint.ledger rightCheckpoint.ledger
+    leftCheckpoint.activated rightCheckpoint.activated leftCheckpoint.ledger rightCheckpoint.ledger
     leaked
     leftCheckpoint.receipts rightCheckpoint.receipts same
 
@@ -496,10 +491,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
     receipts := transcript.2.1
     counters := transcript.2.2
     clock := actualCalendar.1
-    activated := actualCalendar.2
-    noGrant := by
-      rw [applicationEq]
-      cases sourceChoice setup leaks response <;> exact checkpoint.noGrant }
+    activated := actualCalendar.2 }
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
   · exact boundAfter.copy configEq tables.1 tables.2.1

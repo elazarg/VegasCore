@@ -485,7 +485,7 @@ theorem serviceStep_prescribedBindingSubmissions
       obtain ⟨command, _, step⟩ := member
       exact runtime.application.environmentPolicyStep_pool_satisfies _ before after command safe
         step
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       exact runtime.application.environmentPolicyStep_pool_satisfies _ before after _ safe member
 
 /-- Prescribed binding-packet shape lifts through a concrete service plan. -/
@@ -543,7 +543,7 @@ theorem serviceStep_authorship
         Set.mem_iUnion] at member
       obtain ⟨command, _, step⟩ := member
       exact runtime.application.environmentStep_authorship before after command authorship step
-  | grant event | includeLatest event who | sample event | tick | expire event =>
+  | includeLatest event who | sample event | tick | expire event =>
       exact runtime.application.environmentStep_authorship before after _ authorship member
 
 /-- Authorship lifts through a finite concrete service plan. -/
