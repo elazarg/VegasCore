@@ -712,15 +712,26 @@ public events has completed.
   sensitivity to copies. Removing them makes off-turn sites single-action and
   needs no deduplication clause. The distinct-identifier audit count stays: it
   is what a contract keeps as a nonce if a chain does duplicate.
-- **Send-time audit evidence (open).** The per-packet check
-  (`EventGraphRuntime.permittedServiceEnvelope`) judges a packet against the
-  public view at the moment it was sent: readiness, the deadline, and the
-  serial against the sender's ledger. An auditor cannot prove send time; it
-  sees a packet when it receives it, and a missed binding is attributable
-  only after the deadline. An implementable variant would have each packet
-  sign the block it was made against and check conformance relative to that
-  block; what claiming an older block permits is not yet analysed. Late
-  sends are not charged: they are deferral, and end in inclusion or a miss.
+- **Readiness tokens replace send-time evidence (decided).** The per-packet
+  check (`EventGraphRuntime.permittedServiceEnvelope`) judges a packet
+  against the public view at the moment it was sent, but an auditor cannot
+  prove send time. Instead, when an event becomes ready the contract fixes a
+  readiness token that nobody can know earlier (on EVM, derived from the
+  block hash of the completing transaction, or a running hash of the
+  contract's own completions), and every packet for the event must carry it.
+  A packet then cannot exist before its prerequisites have landed, so "too
+  early" is a property of the packet alone, decidable at any time; late
+  sends are not charged (they are deferral, and end in inclusion or a miss).
+  The watcher reports with its own transaction carrying the signed
+  offending packet, and the contract decides it at settlement. The builder
+  enforces nothing: its report-inclusion duty is deleted, and the only new
+  chain assumption is a challenge window (a report sent before the last
+  deadline is included within `W` slots, and settlement waits `W`), the
+  standard fraud-proof assumption. Two signed packets of one author for one
+  event, both with the valid token, are equivocation evidence on their own,
+  which may replace the serial count. Order: tokens in the contract and the
+  packet format; watcher reports and the challenge window; then removal of
+  copies; then, optionally, equivocation evidence.
 
 ### Milestones
 
