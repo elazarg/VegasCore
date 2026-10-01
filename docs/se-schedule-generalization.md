@@ -460,7 +460,7 @@ is a design, not a checked result.
 | Finite probes | Done (above). Design evidence, not proofs. |
 | Library lemmas | Done: proportional Bayes transport and the depth-free restriction extension in `GameTheoryExtensions`. |
 | Readiness instead of announcements | Done. Prescribed clients, response menus and the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`); the service grant is deleted from the runtime. `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved against this, still under the fixed calendar. |
-| Asynchronous chain model | Not started. |
+| Asynchronous chain model | Milestone 1 done: the contract is `AsyncContract` with per-event bounds and `AsyncTimely` (`Vegas/Pending/ReactiveAsyncContract.lean`); `rosterScheduler_asyncContract` proves the fixed calendar an instance with reaction bounds `event.val` and inclusion bound 0 (`Vegas/Game/ServiceRosterAsync.lean`). The timeliness lemma for prescribed play waits for milestone 2's prescribed policy. |
 | Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the watcher calendar reads decision depths from the public clock. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
 | General theorem | Not started. |
 
