@@ -21,11 +21,10 @@ open GameTheory.Math.Probability
 def prescribedBit (who : Player) (view : app.PlayerView) : Bool :=
   if who = alice then false else publicGuess view
 
-theorem response_binds (who : Player) (view : app.PlayerView)
-    (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who)) :
-    response who view = correctiveBinding who (nativeBindingEvent who) (prescribedBit who view)
-      view :=
-    by
+theorem response_binds (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
+    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who)) :
+    response who past view = correctiveBinding who (nativeBindingEvent who)
+      (prescribedBit who view) view := by
   have owner : who = nativeOwner (nativeBindingEvent who) := (native_binding_owner who).symm
   have binding : (nativeBindingEvent who).val < 3 := by fin_cases who <;> decide
   simp only [response, granted, ite_eq_left owner, ite_eq_left binding, prescribedBit]
@@ -35,7 +34,7 @@ policy. The hypothesis fixes just the current response law. -/
 theorem binding_success (players : Profile model.behavioralSignature)
     (who : Player) (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) control)
     (bit : Bool)
     (chooses : menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players
       who (control.execution.recall who) (control.execution.observe app who) =
@@ -77,7 +76,7 @@ theorem binding_success (players : Profile model.behavioralSignature)
 
 theorem profile_binding_success (who : Player) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) control)
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile fuel ⟨some control, trace⟩).support) :
@@ -86,6 +85,6 @@ theorem profile_binding_success (who : Player) (control : app.Control)
         some (.success (prescribedBit who (control.execution.observe app who))) := by
   apply binding_success profile who control trace active granted _ _ fuel enough final supported
   rw [decode_profile]
-  exact congrArg PMF.pure (response_binds who _ granted)
+  exact congrArg PMF.pure (response_binds who _ _ (granted.turnEvent?_of_active active))
 
 end Vegas.Examples.SelectiveAssociation.Restricted

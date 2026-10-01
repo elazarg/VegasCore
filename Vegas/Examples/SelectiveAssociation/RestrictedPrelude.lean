@@ -19,9 +19,9 @@ open GameTheory.Math.Probability
 
 theorem prelude_position (who : Player) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some who)
-    (ambient : control.execution.application.serviceGrant = none) :
-    (who = alice ∧ control.remaining = 88 ∧ control.execution.environmentRecall.length = 1) ∨
-      (who = bob ∧ control.remaining = 87 ∧ control.execution.environmentRecall.length = 2) := by
+    (ambient : nativeTurnEvent? who (control.execution.recall who).length = none) :
+    (who = alice ∧ control.remaining = 82 ∧ control.execution.environmentRecall.length = 1) ∨
+      (who = bob ∧ control.remaining = 81 ∧ control.execution.environmentRecall.length = 2) := by
   obtain ⟨accounted, supported⟩ := menu.roundSupported_uniform (PMF.pure nativeInitial)
     nativeHorizon scheduler trace
   rw [active] at supported
@@ -43,41 +43,36 @@ theorem prelude_position (who : Player) (control : app.Control)
         simp only [Option.bind_some]
         exact (native_instruction_actor instruction _ _ command commandMem).symm.trans actor
   have positions : (count = 0 ∧ who = alice) ∨ (count = 1 ∧ who = bob) ∨
-      ∃ event : nativeGraph.EventId, count = (nativeBeforeResponse event).length := by
+      ∃ event : nativeGraph.EventId,
+        count = (nativeBeforeResponse event).length ∧ who = nativeOwner event := by
     have all : ∀ index : Fin nativePlan.length, ∀ player : Player,
         (nativePlan[index.val]?).bind nativeInstructionPlayer = some player →
           (index.val = 0 ∧ player = alice) ∨ (index.val = 1 ∧ player = bob) ∨
-            ∃ event : nativeGraph.EventId, index.val = (nativeBeforeResponse event).length := by
+            ∃ event : nativeGraph.EventId,
+              index.val = (nativeBeforeResponse event).length ∧ player = nativeOwner event := by
       decide
     exact all ⟨count, bounded⟩ who selected
-  rcases positions with ⟨early, owner⟩ | ⟨early, owner⟩ | ⟨event, same⟩
+  rcases positions with ⟨early, owner⟩ | ⟨early, owner⟩ | ⟨event, same, owner⟩
   · rw [native_horizon] at accounted
     exact Or.inl ⟨owner, by omega, by omega⟩
   · rw [native_horizon] at accounted
     exact Or.inr ⟨owner, by omega, by omega⟩
-  · have evaluated := priorMem
-    rw [same, native_roundsFrom_prefix menu.uniformResponses (nativeBeforeResponse event)
-      (.player (nativeOwner event) :: nativeAfterResponse event)
-        (native_response_split event)] at evaluated
-    have grant := native_response_prefix_grant menu.uniformResponses event prior evaluated
-    have sameGrant := native_activation_grant prior control.execution who (by
-      cases command <;> simp only [ReactiveApplication.Command.actor?] at actor <;>
-        try cases actor
-      exact observed)
-    rw [sameGrant, grant] at ambient
+  · have turn := native_turn_of_decision_cursor (observation := leaks) event control trace
+      (owner ▸ active) (same ▸ position)
+    rw [turn.turnEvent?_of_active active] at ambient
     cases ambient
 
-def preludeSteps (who : Player) : Nat := if who = alice then 5 else 3
+def preludeSteps (who : Player) : Nat := if who = alice then 4 else 2
 
 theorem prelude_reaches_binding (players : Profile model.behavioralSignature) (who : Player)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (ambient : control.execution.application.serviceGrant = none)
+    (ambient : nativeTurnEvent? who (control.execution.recall who).length = none)
     (later : arena.History)
     (supported : later ∈ (model.runBehavioralFrom players (preludeSteps who)
       ⟨some control, trace⟩).support) :
     ∃ result, later.state = some result ∧ result.actor = some alice ∧
-      result.execution.application.serviceGrant = some aliceBinding := by
+      NativeTurn aliceBinding result := by
   have computed := native_behavioral_position (observation := leaks) players (preludeSteps who)
     ⟨some control, trace⟩ later supported
   change nativePosition later.state = nativeAdvancePosition^[preludeSteps who]
@@ -87,7 +82,7 @@ theorem prelude_reaches_binding (players : Profile model.behavioralSignature) (w
     prelude_position who control trace active ambient
   all_goals
     rw [remaining, active, cursor] at computed
-    change nativePosition later.state = some (85, some alice, 4) at computed
+    change nativePosition later.state = some (80, some alice, 3) at computed
     rcases later with ⟨state, laterTrace⟩
     cases state with
     | none => cases computed
@@ -95,12 +90,13 @@ theorem prelude_reaches_binding (players : Profile model.behavioralSignature) (w
         have fields := Option.some.inj computed
         have actor := congrArg (fun value : Nat × Option Player × Nat => value.2.1) fields
         have position := congrArg (fun value : Nat × Option Player × Nat => value.2.2) fields
-        exact ⟨result, rfl, actor, native_grant_of_decision_cursor (observation := leaks)
+        exact ⟨result, rfl, actor, native_turn_of_decision_cursor (observation := leaks)
           aliceBinding result laterTrace actor position⟩
 
 theorem prescribed_prelude_results (who : Player) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some who)
-    (ambient : control.execution.application.serviceGrant = none) (final : arena.History)
+    (ambient : nativeTurnEvent? who (control.execution.recall who).length = none)
+    (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :
     ∃ result, final.state = some result ∧ nativeResults result.execution.application.config =
@@ -121,7 +117,7 @@ theorem bob_prelude_rational (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (site : model.InformationSite bob)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (ambient : view.application.publicView.serviceGrant = none) :
+    (ambient : nativeTurnEvent? bob past.length = none) :
     assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site
       (fun history => nativeUtility bob history.state) (2 * nativeHorizon + 1)) := by
   refine (Context.isLocallyOptimal_iff_of_integrable
@@ -132,13 +128,13 @@ theorem bob_prelude_rational (assessment : model.BehavioralAssessment)
     expect_bind_of_finite, strategy, Profile.update_eq_self]
   refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
     (payoffIntegrable_of_finite _ _)
-  obtain ⟨control, stateEq, active, _, observed⟩ :=
+  obtain ⟨control, stateEq, active, recalled, _⟩ :=
     information_control bob past view ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  have controlAmbient : control.execution.application.serviceGrant = none := by
-    rw [← observed] at ambient
+  have controlAmbient : nativeTurnEvent? bob (control.execution.recall bob).length = none := by
+    rw [recalled]
     exact ambient
   have prescribed : expect (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩) (fun final => nativeUtility bob final.state) = 1 := by

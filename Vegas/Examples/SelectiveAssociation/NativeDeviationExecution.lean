@@ -69,8 +69,8 @@ theorem native_deviation_settled_global (players : Player → nativeApp.Policy)
     (settled : nativeApp.Execution)
     (settledMem : settled ∈ (nativeCarolPlay (nativeAliceProfile players) bit prior).support) :
     settled ∈ (nativeApp.runRounds nativeScheduler (nativeAliceProfile players)
-      13 nativeRoot).support := by
-  rw [native_alice_thirteen_rounds, PMF.support_bind]
+      11 nativeRoot).support := by
+  rw [native_alice_eleven_rounds, PMF.support_bind]
   apply Set.mem_iUnion₂.mpr
   refine ⟨bit, ?_, ?_⟩
   · exact PMF.mem_support_uniformOfFintype bit

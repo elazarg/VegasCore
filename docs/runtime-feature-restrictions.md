@@ -74,7 +74,7 @@ instantiates the empty observation rule on that same native fixture. It proves:
 | --- | --- |
 | `two_rounds` and `bob_response_same` | Alice's certified pending packet gives Bob identical complete inputs for either bit. His arbitrary raw response therefore has a bit-independent law. |
 | `first_response_guess_bound` | Any guess decoded from that response predicts Alice's fair bit with probability at most one half, including failure-valued reports. |
-| `five_rounds` and `prefixPlayers_available` | The unchanged first five service instructions reach an accepted association using responses admitted by the full raw menu. |
+| `four_rounds` and `prefixPlayers_available` | The unchanged first four service instructions reach an accepted association using responses admitted by the full raw menu. |
 | `association_input_hidden` | At those paired accepted-association prefixes, every non-Alice player's complete input, including recall, is identical across the two bit values. |
 | `observation_feature_contrast` | Restoring the original observation rule supplies Bob with the certificate while it is still absent from the ledger. |
 

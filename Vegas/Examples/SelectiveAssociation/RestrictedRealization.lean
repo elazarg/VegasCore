@@ -34,7 +34,7 @@ theorem history_invariants (control : app.Control) (trace : arena.Trace (some co
 including histories created by arbitrary earlier raw responses. -/
 theorem binding_fresh (control : app.Control) (trace : arena.Trace (some control))
     (who : Player) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who)) :
+    (granted : NativeTurn (nativeBindingEvent who) control) :
     ∃ slot : Fin 2,
       freshSlot (control.execution.observe app who) = some slot ∧
       control.execution.application.candidates.lookup (who, .prepared slot.val) = .fresh := by
@@ -141,7 +141,7 @@ decision. The statement uses actual native histories and the unchanged selector.
 theorem correctiveBinding_realizes (players : Player → app.Policy)
     (control : app.Control) (trace : arena.Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) control)
     (unfinished : nativeBindingEvent who ∉ control.execution.application.config.cut.completed)
     (bit : Bool) :
     ∃ next, (nativeBindingRef who).get? next.config.store = some (.success bit) ∧

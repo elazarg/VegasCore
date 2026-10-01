@@ -114,7 +114,7 @@ theorem native_decision_unfinished (event : nativeGraph.EventId) (control : (ser
   observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some event) :
+    (granted : NativeTurn event control) :
     event ∉ control.execution.application.config.cut.completed := by
   have cursor := (native_decision_cursor event control trace who active granted).2
   have raw := (serviceMenu observation).toRawTrace (PMF.pure nativeInitial) nativeHorizon

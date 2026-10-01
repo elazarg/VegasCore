@@ -22,7 +22,7 @@ theorem native_reserved_result (players : Player → nativeApp.Policy)
     (afterInvariant : nativeApp.PolicyInvariant players Q)
     (step : ∀ (control : nativeApp.Control), nativeArena.Trace (some control) →
       control.actor = some (nativeOwner event) →
-      control.execution.application.serviceGrant = some event → P control.execution →
+      NativeTurn event control → P control.execution →
       ∀ response, response ∈ (players (nativeOwner event)
         (control.execution.recall (nativeOwner event))
         (control.execution.observe nativeApp (nativeOwner event))).support →
@@ -50,7 +50,8 @@ theorem native_reserved_result (players : Player → nativeApp.Policy)
   have observedValid := beforeInvariant.environment before observed
     (.activate (nativeOwner event))
     (beforeInvariant.runRounds nativeScheduler delay execution before valid beforeMem) observedMem
-  have afterValid := step _ trace rfl granted observedValid response chosen after included
+  have afterValid := step _ trace rfl ⟨rfl, granted⟩ observedValid response chosen after
+    included
   exact afterInvariant.runRounds nativeScheduler tail after final afterValid finished
 
 theorem native_alice_deviation_opening
@@ -58,16 +59,16 @@ theorem native_alice_deviation_opening
     (execution final : nativeApp.Execution)
     (global : execution ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
-        nativeHorizon nativeScheduler profile)) 13 nativeRoot).support)
+        nativeHorizon nativeScheduler profile)) 11 nativeRoot).support)
     (stored : aliceBindingRef.get? execution.application.config.store = some (.success bit))
     (supported : final ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
-        nativeHorizon nativeScheduler profile)) 76 execution).support) :
+        nativeHorizon nativeScheduler profile)) 72 execution).support) :
     alicePublicationRef.get? final.application.config.store = some (.success bit) := by
   let players := nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
     nativeHorizon nativeScheduler profile)
   apply native_reserved_result players (native_alice_profile_covered profile) alicePublication
-    13 9 65 rfl
+    11 7 63 rfl
     (fun current => aliceBindingRef.get? current.application.config.store = some (.success bit))
     (fun current => alicePublicationRef.get? current.application.config.store = some (.success bit))
     (ReactiveApplication.Invariant.policyInvariant nativeApp
@@ -79,7 +80,7 @@ theorem native_alice_deviation_opening
   have law : players alice (control.execution.recall alice)
       (control.execution.observe nativeApp alice) =
         PMF.pure (nativeOpeningResponse alice (control.execution.observe nativeApp alice)) :=
-    native_alice_opening _ _ granted
+    native_alice_opening _ _ (granted.turnEvent?_of_active active)
   change response ∈ (players alice (control.execution.recall alice)
     (control.execution.observe nativeApp alice)).support at chosen
   rw [law] at chosen
@@ -103,18 +104,18 @@ theorem native_deviation_bob_binding (assessment : nativeModel.BehavioralAssessm
     (bit : Bool) (execution final : nativeApp.Execution)
     (global : execution ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
-        nativeHorizon nativeScheduler assessment.strategy)) 13 nativeRoot).support)
+        nativeHorizon nativeScheduler assessment.strategy)) 11 nativeRoot).support)
     (observed : execution.application.BindingInvariant ∧
       nativeRuntime.bindingEvidenceObserved nativeLeaks (execution.observe nativeApp bob)
         (aliceBindingEvidence bit))
     (supported : final ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
-        nativeHorizon nativeScheduler assessment.strategy)) 3 execution).support) :
+        nativeHorizon nativeScheduler assessment.strategy)) 2 execution).support) :
     bobBindingRef.get? final.application.config.store = some (.success bit) := by
   let players := nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
     nativeHorizon nativeScheduler assessment.strategy)
   apply native_reserved_result players (native_alice_profile_covered assessment.strategy)
-    bobBinding 13 1 0 rfl
+    bobBinding 11 0 0 rfl
     (fun current => current.application.BindingInvariant ∧
       nativeRuntime.bindingEvidenceObserved nativeLeaks (current.observe nativeApp bob)
         (aliceBindingEvidence bit))
@@ -136,16 +137,16 @@ theorem native_deviation_bob_opening (assessment : nativeModel.BehavioralAssessm
     (bit : Bool) (execution final : nativeApp.Execution)
     (global : execution ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
-        nativeHorizon nativeScheduler assessment.strategy)) 16 nativeRoot).support)
+        nativeHorizon nativeScheduler assessment.strategy)) 13 nativeRoot).support)
     (stored : bobBindingRef.get? execution.application.config.store = some (.success bit))
     (supported : final ∈ (nativeApp.runRounds nativeScheduler
       (nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
-        nativeHorizon nativeScheduler assessment.strategy)) 73 execution).support) :
+        nativeHorizon nativeScheduler assessment.strategy)) 70 execution).support) :
     bobPublicationRef.get? final.application.config.store = some (.success bit) := by
   let players := nativeAliceProfile (nativeMenu.decodeProfile (PMF.pure nativeInitial)
     nativeHorizon nativeScheduler assessment.strategy)
   apply native_reserved_result players (native_alice_profile_covered assessment.strategy)
-    bobPublication 16 38 33 rfl
+    bobPublication 13 35 33 rfl
     (fun current => bobBindingRef.get? current.application.config.store = some (.success bit))
     (fun current => bobPublicationRef.get? current.application.config.store = some (.success bit))
     (ReactiveApplication.Invariant.policyInvariant nativeApp

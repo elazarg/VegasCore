@@ -50,7 +50,7 @@ theorem native_settlement_behavioral
     (profile : ∀ who, nativeModel.BehavioralPolicy who)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (who : Player) (response : nativeApp.Action) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (chooses : nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon nativeScheduler
       profile who (control.execution.recall who) (control.execution.observe nativeApp who) =
@@ -78,20 +78,21 @@ theorem native_settlement_behavioral
   exact ⟨middle, middleMem, by
     simpa only [nativePublicationAt, stateEq, Option.bind_some] using published⟩
 
-private theorem publication_site_facts (who : Player) (view : nativeApp.PlayerView)
-    (control : nativeApp.Control) (observed : control.execution.observe nativeApp who = view)
-    (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+private theorem publication_site_facts (who : Player) (past : List nativeApp.PlayerEntry)
+    (view : nativeApp.PlayerView) (control : nativeApp.Control)
+    (active : control.actor = some who) (recalled : control.execution.recall who = past)
+    (observed : control.execution.observe nativeApp who = view) (bit : Bool)
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store =
       some (.success bit)) :
-    control.execution.application.serviceGrant = some (nativePublicationEvent who) ∧
+    NativeTurn (nativePublicationEvent who) control ∧
       nativePublicationEvent who ∉ control.execution.application.config.cut.completed ∧
       (nativeBindingRef who).get? control.execution.application.config.store =
         some (.success bit) := by
-  rw [← observed] at granted unfinished stored
-  refine ⟨granted, ?_, ?_⟩
+  rw [← observed] at unfinished stored
+  refine ⟨.of_turnEvent? active (by rw [recalled]; exact granted), ?_, ?_⟩
   · change nativePublicationEvent who ∉
       control.execution.application.config.history.map EventGraph.Completion.event at unfinished
     exact fun completed => unfinished
@@ -106,7 +107,7 @@ owner's information set, even when the continuations of other players differ. -/
 theorem native_committed_publication_local
     (profile : ∀ who, nativeModel.BehavioralPolicy who) (who : Player)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -135,9 +136,11 @@ theorem native_committed_publication_local
   let changed := Profile.update (sig := nativeModel.behavioralSignature) profile who
     ((profile who).commit (some (past, view)) choice)
   obtain ⟨leftGrant, leftUnfinished, leftStored⟩ :=
-    publication_site_facts who view left leftView bit granted unfinished stored
+    publication_site_facts who past view left leftActive leftRecall leftView bit granted
+      unfinished stored
   obtain ⟨rightGrant, rightUnfinished, _⟩ :=
-    publication_site_facts who view right rightView bit granted unfinished stored
+    publication_site_facts who past view right rightActive rightRecall rightView bit granted
+      unfinished stored
   obtain ⟨afterLeft, afterLeftMem, leftPublished⟩ := native_settlement_behavioral changed left
     leftTrace who response leftActive leftGrant leftUnfinished
     (native_committed_response profile who _ choice response selected _ _
@@ -160,7 +163,7 @@ open Classical in
 theorem native_committed_publication_present
     (profile : ∀ who, nativeModel.BehavioralPolicy who) (who : Player)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -179,7 +182,8 @@ theorem native_committed_publication_present
   change state = some control at stateEq
   subst state
   obtain ⟨grant, incomplete, _⟩ :=
-    publication_site_facts who view control observed bit granted unfinished stored
+    publication_site_facts who past view control active recall observed bit granted unfinished
+      stored
   obtain ⟨_, _, published⟩ := native_settlement_behavioral _ control trace who response active
     grant incomplete (native_committed_response profile who _ choice response selected _ _
       (congrArg some (Prod.ext recall observed))) final supported
@@ -193,7 +197,7 @@ theorem native_supported_opening_succeeds
     (site : nativeModel.InformationSite who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -240,7 +244,7 @@ theorem native_sequentially_rational_opening_succeeds
     (site : nativeModel.InformationSite who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -309,7 +313,7 @@ theorem native_sequentially_rational_opening_exact
     (site : nativeModel.InformationSite who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -322,13 +326,13 @@ theorem native_sequentially_rational_opening_exact
     nativePublicationAt who final.state = some (.success bit) := by
   obtain ⟨publishedBit, published⟩ := native_sequentially_rational_opening_succeeds assessment who
     site past view siteEq bit granted unfinished stored rational history final supported
-  obtain ⟨control, stateEq, _, _, observed⟩ :=
+  obtain ⟨control, stateEq, active, recall, observed⟩ :=
     native_information_control who past view ⟨history.1, history.2.trans siteEq⟩
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
   subst state
-  have binding :=
-    (publication_site_facts who view control observed bit granted unfinished stored).2.2
+  have binding := (publication_site_facts who past view control active recall observed bit
+    granted unfinished stored).2.2
   obtain ⟨result, finalEq, preserved⟩ := native_binding_continuation assessment.strategy control
     trace who (.success bit) binding final supported
   rcases final with ⟨finalState, finalTrace⟩

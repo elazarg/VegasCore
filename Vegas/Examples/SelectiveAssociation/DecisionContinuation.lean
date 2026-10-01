@@ -110,21 +110,9 @@ theorem native_behavioral_position (profile : ∀ who, (serviceModel observation
   rw [PMF.support_map]
   exact ⟨final, supported, rfl⟩
 
-theorem native_grant_of_decision_cursor (event : nativeGraph.EventId)
-    (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
-      control))
-    (active : control.actor = some (nativeOwner event))
-    (position : control.execution.environmentRecall.length =
-      (nativeBeforeResponse event).length + 1) :
-    control.execution.application.serviceGrant = some event := by
-  obtain ⟨_, prior, priorMem, activated⟩ :=
-    native_decision_predecessor event control trace active position
-  rw [native_activation_grant prior control.execution (nativeOwner event) activated]
-  exact native_response_prefix_grant (serviceMenu observation).uniformResponses event prior priorMem
-
 private theorem next_position (event next : nativeGraph.EventId)
     (consecutive : next.val = event.val + 1) :
-    nativeAdvancePosition^[nativeRuntime.deadline event + 5]
+    nativeAdvancePosition^[nativeRuntime.deadline event + 4]
         (some (nativeHorizon - ((nativeBeforeResponse event).length + 1),
           some (nativeOwner event), (nativeBeforeResponse event).length + 1)) =
       some (nativeHorizon - ((nativeBeforeResponse next).length + 1),
@@ -138,18 +126,18 @@ theorem native_next_decision (profile : ∀ who, (serviceModel observation).Beha
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (active : control.actor = some (nativeOwner event))
-    (granted : control.execution.application.serviceGrant = some event)
+    (granted : NativeTurn event control)
     (later : (serviceArena observation).History)
     (supported : later ∈ ((serviceModel observation).runBehavioralFrom profile
-      (nativeRuntime.deadline event + 5) ⟨some control, trace⟩).support) :
+      (nativeRuntime.deadline event + 4) ⟨some control, trace⟩).support) :
     ∃ result, later.state = some result ∧ result.actor = some (nativeOwner next) ∧
-      result.execution.application.serviceGrant = some next := by
+      NativeTurn next result := by
   have position := (native_decision_cursor event control trace _ active granted).2
   have accounted := (native_decision_predecessor event control trace active position).1
   have remaining : control.remaining =
       nativeHorizon - ((nativeBeforeResponse event).length + 1) := by omega
   have computed := native_behavioral_position profile _ ⟨some control, trace⟩ later supported
-  change nativePosition later.state = nativeAdvancePosition^[nativeRuntime.deadline event + 5]
+  change nativePosition later.state = nativeAdvancePosition^[nativeRuntime.deadline event + 4]
     (some (control.remaining, control.actor, control.execution.environmentRecall.length))
     at computed
   rw [remaining, active, position, next_position event next consecutive] at computed
@@ -161,6 +149,6 @@ theorem native_next_decision (profile : ∀ who, (serviceModel observation).Beha
       have actor := congrArg (fun value : Nat × Option Player × Nat => value.2.1) fields
       have cursor := congrArg (fun value : Nat × Option Player × Nat => value.2.2) fields
       exact ⟨result, rfl, actor,
-        native_grant_of_decision_cursor next result laterTrace actor cursor⟩
+        native_turn_of_decision_cursor next result laterTrace actor cursor⟩
 
 end Vegas.Examples.SelectiveAssociation

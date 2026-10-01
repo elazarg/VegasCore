@@ -162,8 +162,7 @@ theorem bob_ledger_subset (responses : BobResponses) :
   exact environmentResult_ledger_subset _ _
     (environmentResult_ledger_subset _ _
       (environmentResult_ledger_subset _ _
-        (environmentResult_ledger_subset _ _
-          (environmentResult_ledger_subset _ _ submitted))))
+        (environmentResult_ledger_subset _ _ submitted)))
 
 theorem environmentResult_inputRecall (execution : app.Execution) (command : app.Command)
     (valid : execution.InputRecall app) :
@@ -177,7 +176,6 @@ theorem bobPrelude_inputRecall (first : app.Action) : (bobPreludeInput first).In
 
 theorem aliceInput_inputRecall (first second : app.Action) :
     (aliceInput first second).InputRecall app :=
-  environmentResult_inputRecall _ _
-    (app.respond_inputRecall _ bob second (bobPrelude_inputRecall first))
+  app.respond_inputRecall _ bob second (bobPrelude_inputRecall first)
 
 end Vegas.Examples.SelectiveAssociation.Restricted.Prefix

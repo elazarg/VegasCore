@@ -19,13 +19,13 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Math.Probability
 
 def aliceControl (responses : app.Action × app.Action) : app.ProtocolState :=
-  some ⟨85, some alice, aliceInput responses.1 responses.2⟩
+  some ⟨80, some alice, aliceInput responses.1 responses.2⟩
 
 def carolControl (responses : CarolResponses) : app.ProtocolState :=
-  some ⟨80, some carol, carolInput responses⟩
+  some ⟨76, some carol, carolInput responses⟩
 
 def bobControl (responses : BobResponses) : app.ProtocolState :=
-  some ⟨74, some bob, bobInput responses⟩
+  some ⟨71, some bob, bobInput responses⟩
 
 def decisionDepth (event : nativeGraph.EventId) : Nat :=
   1 + ((nativeBeforeResponse event).length + 1) +
@@ -33,7 +33,7 @@ def decisionDepth (event : nativeGraph.EventId) : Nat :=
 
 theorem decision_depth (event : nativeGraph.EventId) (control : app.Control)
     (trace : arena.Trace (some control)) (who : Player) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some event) :
+    (granted : NativeTurn event control) :
     trace.length = decisionDepth event := by
   rw [← menu.toRawTrace_length (PMF.pure nativeInitial) nativeHorizon scheduler trace,
     app.trace_length_of_control]
@@ -44,12 +44,12 @@ theorem decision_depth (event : nativeGraph.EventId) (control : app.Control)
   exact native_decision_recall_count (observation := leaks) event control trace who active
     granted observer
 
-theorem carol_depth : decisionDepth carolBinding = 13 := by decide
-theorem bob_depth : decisionDepth bobBinding = 20 := by decide
+theorem carol_depth : decisionDepth carolBinding = 11 := by decide
+theorem bob_depth : decisionDepth bobBinding = 17 := by decide
 
 private theorem step_initial (players : Player → app.Policy) :
     app.controlStep (PMF.pure nativeInitial) nativeHorizon scheduler players none =
-      PMF.pure (some ⟨89, none, initial⟩) := by
+      PMF.pure (some ⟨83, none, initial⟩) := by
   simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_none,
     ReactiveApplication.transition, PMF.pure_map]
   rfl
@@ -74,18 +74,18 @@ theorem step_environment (players : Player → app.Policy) (execution : app.Exec
     ReactiveApplication.transition, environmentResult_law, ← PMF.bind_pure_comp, Function.comp_def,
         PMF.pure_bind]
 
-theorem prefix_lookup (index : Nat) (early : index < 15) :
+theorem prefix_lookup (index : Nat) (early : index < 12) :
     nativePlan[index]? =
-      ([.player alice, .player bob, .grant aliceBinding, .player alice,
-        .includeLatest aliceBinding alice, .tick, .expire aliceBinding, .grant carolBinding,
+      ([.player alice, .player bob, .player alice,
+        .includeLatest aliceBinding alice, .tick, .expire aliceBinding,
         .player carol, .includeLatest carolBinding carol, .tick, .tick,
-        .expire carolBinding, .grant bobBinding, .player bob] :
+        .expire carolBinding, .player bob] :
           List (ServiceInstruction nativeGraph))[index]? := by
-  have front : nativePlan.take 15 =
-      [.player alice, .player bob, .grant aliceBinding, .player alice,
-        .includeLatest aliceBinding alice, .tick, .expire aliceBinding, .grant carolBinding,
+  have front : nativePlan.take 12 =
+      [.player alice, .player bob, .player alice,
+        .includeLatest aliceBinding alice, .tick, .expire aliceBinding,
         .player carol, .includeLatest carolBinding carol, .tick, .tick,
-        .expire carolBinding, .grant bobBinding, .player bob] := rfl
+        .expire carolBinding, .player bob] := rfl
   rw [← front, List.getElem?_take_of_lt early]
 
 theorem activation_recall (execution : app.Execution) (who : Player) :
@@ -107,21 +107,21 @@ theorem application_actor (command : EnvironmentCommand nativeGraph) :
 
 theorem alice_control_law (players : Player → app.Policy) :
     (fun distribution => distribution.bind
-      (app.controlStep (PMF.pure nativeInitial) nativeHorizon scheduler players))^[7]
+      (app.controlStep (PMF.pure nativeInitial) nativeHorizon scheduler players))^[6]
         (PMF.pure none) = (preludeLaw players).map aliceControl := by
   simp (disch := decide) only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, step_initial, step_player, step_environment, scheduler, serviceScheduler,
-    ReactiveApplication.respond_environmentRecall, environmentResult_recall, activation_recall,
+    ReactiveApplication.respond_environmentRecall, activation_recall,
     initial, ReactiveApplication.Execution.initial, List.length_nil, List.length_append,
     List.length_singleton, Nat.zero_add, prefix_lookup, List.getElem?_cons_zero,
     List.getElem?_cons_succ, interactionInstruction, PMF.pure_map, PMF.bind_map,
     PMF.bind_bind, PMF.map_bind, environmentResult_activate,
-    activation_actor, application_actor, preludeLaw, PMF.map_comp, Function.comp_def]
+    activation_actor, preludeLaw, PMF.map_comp, Function.comp_def]
   rfl
 
 theorem carol_control_law (players : Player → app.Policy) :
     (fun distribution => distribution.bind
-      (app.controlStep (PMF.pure nativeInitial) nativeHorizon scheduler players))^[13]
+      (app.controlStep (PMF.pure nativeInitial) nativeHorizon scheduler players))^[11]
         (PMF.pure none) = (carolLaw players).map carolControl := by
   simp (disch := decide) only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, step_initial, step_player, step_environment, scheduler, serviceScheduler,
@@ -136,7 +136,7 @@ theorem carol_control_law (players : Player → app.Policy) :
 
 theorem bob_control_law (players : Player → app.Policy) :
     (fun distribution => distribution.bind
-      (app.controlStep (PMF.pure nativeInitial) nativeHorizon scheduler players))^[20]
+      (app.controlStep (PMF.pure nativeInitial) nativeHorizon scheduler players))^[17]
         (PMF.pure none) = (bobLaw players).map bobControl := by
   simp (disch := decide) only [Function.iterate_succ_apply', Function.iterate_zero_apply,
     PMF.pure_bind, step_initial, step_player, step_environment, scheduler, serviceScheduler,
@@ -150,21 +150,21 @@ theorem bob_control_law (players : Player → app.Policy) :
   rfl
 
 theorem alice_history_law (players : Profile model.behavioralSignature) :
-    (model.runBehavioral players 7).map ExecutionProtocol.History.state =
+    (model.runBehavioral players 6).map ExecutionProtocol.History.state =
       (preludeLaw (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
         players)).map aliceControl := by
   rw [InformationModel.runBehavioral, menu.run_map_controlStep]
   exact alice_control_law _
 
 theorem carol_history_law (players : Profile model.behavioralSignature) :
-    (model.runBehavioral players 13).map ExecutionProtocol.History.state =
+    (model.runBehavioral players 11).map ExecutionProtocol.History.state =
       (carolLaw (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
         players)).map carolControl := by
   rw [InformationModel.runBehavioral, menu.run_map_controlStep]
   exact carol_control_law _
 
 theorem bob_history_law (players : Profile model.behavioralSignature) :
-    (model.runBehavioral players 20).map ExecutionProtocol.History.state =
+    (model.runBehavioral players 17).map ExecutionProtocol.History.state =
       (bobLaw (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
         players)).map bobControl := by
   rw [InformationModel.runBehavioral, menu.run_map_controlStep]
@@ -176,7 +176,7 @@ theorem alice_legal (players : Profile model.behavioralSignature)
       nativeHorizon scheduler players)).support) :
     Nonempty (arena.Trace (aliceControl responses)) := by
   have reached : aliceControl responses ∈
-      ((model.runBehavioral players 7).map ExecutionProtocol.History.state).support := by
+      ((model.runBehavioral players 6).map ExecutionProtocol.History.state).support := by
     rw [alice_history_law, PMF.support_map]
     exact ⟨responses, supported, rfl⟩
   obtain ⟨history, _, same⟩ := PMF.support_map .. ▸ reached
@@ -187,7 +187,7 @@ theorem carol_legal (players : Profile model.behavioralSignature) (responses : C
       nativeHorizon scheduler players)).support) :
     Nonempty (arena.Trace (carolControl responses)) := by
   have reached : carolControl responses ∈
-      ((model.runBehavioral players 13).map ExecutionProtocol.History.state).support := by
+      ((model.runBehavioral players 11).map ExecutionProtocol.History.state).support := by
     rw [carol_history_law, PMF.support_map]
     exact ⟨responses, supported, rfl⟩
   obtain ⟨history, _, same⟩ := PMF.support_map .. ▸ reached
@@ -198,7 +198,7 @@ theorem bob_legal (players : Profile model.behavioralSignature) (responses : Bob
       nativeHorizon scheduler players)).support) :
     Nonempty (arena.Trace (bobControl responses)) := by
   have reached : bobControl responses ∈
-      ((model.runBehavioral players 20).map ExecutionProtocol.History.state).support := by
+      ((model.runBehavioral players 17).map ExecutionProtocol.History.state).support := by
     rw [bob_history_law, PMF.support_map]
     exact ⟨responses, supported, rfl⟩
   obtain ⟨history, _, same⟩ := PMF.support_map .. ▸ reached
@@ -222,10 +222,6 @@ theorem bob_support_carol (players : Player → app.Policy) (responses : BobResp
   obtain ⟨second, _, same⟩ := PMF.support_map .. ▸ reached
   exact congrArg BobResponses.beforeCarol same ▸ firstMem
 
-theorem aliceInput_granted (first second : app.Action) :
-    (aliceInput first second).application.serviceGrant = some aliceBinding := by
-  simp only [aliceInput, environmentResult_grant, activate, granted]
-
 theorem carolInput_preserves {predicate : app.State → Prop}
     (invariant : app.Invariant predicate) (responses : CarolResponses)
     (valid : predicate (includeLatest
@@ -233,8 +229,7 @@ theorem carolInput_preserves {predicate : app.State → Prop}
         responses.aliceBinding) aliceBinding alice).application) :
     predicate (carolInput responses).application := by
   exact environmentResult_preserves invariant _ _
-    (environmentResult_preserves invariant _ _
-      (environmentResult_preserves invariant _ _ valid))
+    (environmentResult_preserves invariant _ _ valid)
 
 theorem bobInput_preserves {predicate : app.State → Prop}
     (invariant : app.Invariant predicate) (responses : BobResponses)
@@ -244,8 +239,7 @@ theorem bobInput_preserves {predicate : app.State → Prop}
     (environmentResult_preserves invariant _ _
       (environmentResult_preserves invariant _ _
         (environmentResult_preserves invariant _ _
-          (environmentResult_preserves invariant _ _
-            (invariant.respond _ carol responses.carolBinding valid)))))
+          (invariant.respond _ carol responses.carolBinding valid))))
 
 /-- The prescribed fresh correction rules out a true Alice binding, even
 after arbitrary earlier raw responses and subsequent maintenance steps. -/
@@ -254,21 +248,21 @@ theorem carol_prescribed_alice_false (players : Profile model.behavioralSignatur
     (supported : responses ∈ (carolLaw (menu.decodeProfile (PMF.pure nativeInitial)
       nativeHorizon scheduler players)).support)
     (prescribed : responses.aliceBinding = response alice
+      ((aliceInput responses.alicePrelude responses.bobPrelude).recall alice)
       ((aliceInput responses.alicePrelude responses.bobPrelude).observe app alice)) :
     aliceBindingRef.get? (carolInput responses).application.config.store =
       some (.success false) := by
   obtain ⟨trace⟩ := alice_legal players _ (carol_support_prelude _ responses supported)
   let control : app.Control :=
-    ⟨85, some alice, aliceInput responses.alicePrelude responses.bobPrelude⟩
-  have grant : control.execution.application.serviceGrant = some (nativeBindingEvent alice) :=
-    aliceInput_granted _ _
+    ⟨80, some alice, aliceInput responses.alicePrelude responses.bobPrelude⟩
+  have grant : NativeTurn (nativeBindingEvent alice) control := ⟨rfl, rfl⟩
   have unfinished := native_decision_unfinished (observation := leaks) (nativeBindingEvent alice)
     control trace alice rfl grant
   obtain ⟨next, stored, law⟩ :=
     correctiveBinding_realizes policy control trace alice rfl grant unfinished false
   have selected : responses.aliceBinding = correctiveBinding alice aliceBinding false
       (control.execution.observe app alice) :=
-    prescribed.trans (response_binds alice _ grant)
+    prescribed.trans (response_binds alice _ _ (grant.turnEvent?_of_active rfl))
   rw [include_step, PMF.pure_map] at law
   have same := (PMF.mem_support_pure_iff _ _).mp (law ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
   apply carolInput_preserves (binding_invariant alice (.success false)) responses
@@ -286,6 +280,7 @@ theorem carol_true_response_different (players : Profile model.behavioralSignatu
     (trueBinding : aliceBindingRef.get? (carolInput responses).application.config.store =
       some (.success true)) :
     responses.aliceBinding ≠ response alice
+      ((aliceInput responses.alicePrelude responses.bobPrelude).recall alice)
       ((aliceInput responses.alicePrelude responses.bobPrelude).observe app alice) := by
   intro prescribed
   have falseBinding := carol_prescribed_alice_false players responses supported prescribed
@@ -299,6 +294,8 @@ theorem bob_true_response_different (players : Profile model.behavioralSignature
     (trueBinding : aliceBindingRef.get? (bobInput responses).application.config.store =
       some (.success true)) :
     responses.beforeCarol.aliceBinding ≠ response alice
+      ((aliceInput responses.beforeCarol.alicePrelude responses.beforeCarol.bobPrelude).recall
+        alice)
       ((aliceInput responses.beforeCarol.alicePrelude responses.beforeCarol.bobPrelude).observe
         app alice) := by
   intro prescribed

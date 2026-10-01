@@ -19,16 +19,17 @@ open GameTheory GameTheory.Protocol
 
 theorem native_binding_site_facts
     {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
-    (who : Player) (view : (serviceApp observation).PlayerView)
-    (control : (serviceApp observation).Control)
+    (who : Player) (past : List (serviceApp observation).PlayerEntry)
+    (view : (serviceApp observation).PlayerView) (control : (serviceApp observation).Control)
+    (active : control.actor = some who) (recalled : control.execution.recall who = past)
     (observed : control.execution.observe (serviceApp observation) who = view)
-    (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (unfinished : (nativeBindingEvent who) ∉
       view.application.publicView.observation.completionOrder) :
-    control.execution.application.serviceGrant = some (nativeBindingEvent who) ∧
+    NativeTurn (nativeBindingEvent who) control ∧
       (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed := by
-  rw [← observed] at granted unfinished
-  refine ⟨granted, ?_⟩
+  rw [← observed] at unfinished
+  refine ⟨.of_turnEvent? active (by rw [recalled]; exact granted), ?_⟩
   change (nativeBindingEvent who) ∉
     control.execution.application.config.history.map EventGraph.Completion.event at unfinished
   exact fun completed => unfinished
@@ -42,7 +43,7 @@ theorem native_committed_binding_local
     (who : Player)
     (profile : ∀ who, (serviceModel observation).BehavioralPolicy who)
     (past : List (serviceApp observation).PlayerEntry) (view : (serviceApp observation).PlayerView)
-    (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (choice : (serviceModel observation).Choice who (some (past, view)))
     (first second : (serviceModel observation).InformationHistory who (some (past, view)))
     (firstFinal secondFinal : (serviceArena observation).History)
@@ -67,12 +68,10 @@ theorem native_committed_binding_local
   subst rightState
   let changed := Profile.update (sig := (serviceModel observation).behavioralSignature) profile who
     ((profile who).commit (some (past, view)) choice)
-  have leftGrant : left.execution.application.serviceGrant = some (nativeBindingEvent who) := by
-    rw [← leftView] at granted
-    exact granted
-  have rightGrant : right.execution.application.serviceGrant = some (nativeBindingEvent who) := by
-    rw [← rightView] at granted
-    exact granted
+  have leftGrant : NativeTurn (nativeBindingEvent who) left :=
+    .of_turnEvent? leftActive (by rw [leftRecall]; exact granted)
+  have rightGrant : NativeTurn (nativeBindingEvent who) right :=
+    .of_turnEvent? rightActive (by rw [rightRecall]; exact granted)
   have leftUnfinished := native_decision_unfinished (nativeBindingEvent who) left leftTrace who
     leftActive leftGrant
   have rightUnfinished := native_decision_unfinished (nativeBindingEvent who) right rightTrace who
@@ -160,7 +159,7 @@ holds against the original arbitrary future strategy of every player. -/
 theorem native_bob_corrective_binding
     (profile : ∀ who, nativeModel.BehavioralPolicy who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some bobBinding)
+    (granted : nativeTurnEvent? bob past.length = some bobBinding)
     (unfinished : bobBinding ∉ view.application.publicView.observation.completionOrder)
     (history : nativeModel.InformationHistory bob (some (past, view)))
     (final : nativeArena.History)
@@ -175,7 +174,7 @@ theorem native_bob_corrective_binding
   change state = some control at stateEq
   subst state
   obtain ⟨grant, incomplete⟩ :=
-    native_binding_site_facts bob view control observed granted unfinished
+    native_binding_site_facts bob past view control active recall observed granted unfinished
   let changed := Profile.update (sig := nativeModel.behavioralSignature) profile bob
     ((profile bob).commit (some (past, view)) (bobCorrectiveChoice bit past view))
   obtain ⟨middle, middleMem, result⟩ :=

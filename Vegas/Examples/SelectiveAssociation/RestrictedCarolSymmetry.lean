@@ -128,9 +128,9 @@ theorem afterCarol_accepted (execution : app.Execution) (action : app.Action)
     (afterCarol execution action).application.accepted aliceBindingRef.field =
       execution.application.accepted aliceBindingRef.field := by
   unfold afterCarol
-  change (Prefix.environmentResult _ (.application (.grant bobBinding))).application.accepted
+  change (Prefix.environmentResult _ (.application (.expire carolBinding))).application.accepted
     aliceBindingRef.field = _
-  rw [environment_accepted, environment_accepted, environment_accepted, environment_accepted]
+  rw [environment_accepted, environment_accepted, environment_accepted]
   rw [inclusion_accepted_of_present _ carolBinding carol aliceBindingRef.field (by
     rw [(nativeRuntime.reactive_respond_application leaks execution carol action).1]
     exact present)]

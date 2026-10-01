@@ -18,11 +18,11 @@ namespace Vegas.Examples.SelectiveAssociation
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open GameTheory GameTheory.Protocol ReactiveAssociationEvidence
 
-def nativeInitialControl : nativeApp.Control := ⟨88, some alice, activatedInitial⟩
+def nativeInitialControl : nativeApp.Control := ⟨82, some alice, activatedInitial⟩
 
 theorem native_initial_representation (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (active : control.actor = some alice)
-    (ambient : control.execution.application.serviceGrant = none) :
+    (ambient : nativeTurnEvent? alice (control.execution.recall alice).length = none) :
     control = nativeInitialControl := by
   obtain ⟨accounted, supported⟩ := nativeMenu.roundSupported_uniform
     (PMF.pure nativeInitial) nativeHorizon nativeScheduler trace
@@ -45,13 +45,14 @@ theorem native_initial_representation (control : nativeApp.Control)
         simp only [Option.bind_some]
         exact (native_instruction_actor instruction _ _ command commandMem).symm.trans actor
   have positions : count = 0 ∨ ∃ event : nativeGraph.EventId,
-      count = (nativeBeforeResponse event).length := by
+      count = (nativeBeforeResponse event).length ∧ alice = nativeOwner event := by
     have all : ∀ index : Fin nativePlan.length,
         (nativePlan[index.val]?).bind nativeInstructionPlayer = some alice →
           index.val = 0 ∨ ∃ event : nativeGraph.EventId,
-            index.val = (nativeBeforeResponse event).length := by decide
+            index.val = (nativeBeforeResponse event).length ∧ alice = nativeOwner event := by
+      decide
     exact all ⟨count, bounded⟩ selected
-  rcases positions with early | ⟨event, same⟩
+  rcases positions with early | ⟨event, same, owner⟩
   · rw [early] at priorMem position
     have priorEq : prior = nativeRoot := by
       simpa only [ReactiveApplication.roundsFrom, PMF.pure_bind,
@@ -63,25 +64,18 @@ theorem native_initial_representation (control : nativeApp.Control)
     subst command
     change control.execution ∈ (initial.environmentStep app (.activate 0)).support at observed
     rw [initial_activation, PMF.mem_support_pure_iff _ _] at observed
-    have remaining : control.remaining = 88 := by
+    have remaining : control.remaining = 82 := by
       rw [native_horizon] at accounted
       omega
     cases control
     simp_all only [nativeInitialControl]
-  · have evaluated := priorMem
-    rw [same, native_roundsFrom_prefix nativeMenu.uniformResponses (nativeBeforeResponse event)
-      (.player (nativeOwner event) :: nativeAfterResponse event)
-      (native_response_split event)] at evaluated
-    have grant := native_response_prefix_grant nativeMenu.uniformResponses event prior evaluated
-    have sameGrant := native_activation_grant prior control.execution alice (by
-      cases command <;> simp only [ReactiveApplication.Command.actor?] at actor <;>
-        try cases actor
-      exact observed)
-    rw [sameGrant, grant] at ambient
+  · have turn := native_turn_of_decision_cursor event control trace (owner ▸ active)
+      (same ▸ position)
+    rw [turn.turnEvent?_of_active active] at ambient
     cases ambient
 
 theorem native_initial_trace : Nonempty (nativeArena.Trace (some nativeInitialControl)) := by
-  have setup : Nonempty (nativeArena.Trace (some ⟨89, none, nativeRoot⟩)) := by
+  have setup : Nonempty (nativeArena.Trace (some ⟨83, none, nativeRoot⟩)) := by
     refine ⟨.extend .start (fun _ => none) ?_ ?_⟩
     · constructor
       · change ¬False
@@ -94,7 +88,7 @@ theorem native_initial_trace : Nonempty (nativeArena.Trace (some nativeInitialCo
       rfl
   obtain ⟨setupTrace⟩ := setup
   apply nativeMenu.trace_environment (PMF.pure nativeInitial) nativeHorizon nativeScheduler
-    88 nativeRoot activatedInitial (.activate alice) setupTrace
+    82 nativeRoot activatedInitial (.activate alice) setupTrace
   · change _ ∈ (PMF.pure (.activate alice : nativeApp.Command)).support
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
   · change activatedInitial ∈ (initial.environmentStep app (.activate 0)).support
@@ -111,7 +105,7 @@ def nativeInitialSite : nativeModel.InformationSite alice := by
     rfl
   refine ⟨some (activatedInitial.recall alice, activatedInitial.observe nativeApp alice),
     ⟨⟨some nativeInitialControl, trace⟩, information⟩, ?_, ?_⟩
-  · change ¬(88 = 0 ∧ (some alice : Option Player) = none)
+  · change ¬(82 = 0 ∧ (some alice : Option Player) = none)
     simp
   · obtain ⟨response, available⟩ := nativeMenu.nonempty alice
       (activatedInitial.recall alice) (activatedInitial.observe nativeApp alice)
@@ -120,7 +114,7 @@ def nativeInitialSite : nativeModel.InformationSite alice := by
 theorem native_initial_information_control
     (history : nativeModel.InformationHistory alice nativeInitialSite.1) :
     history.1.state = some nativeInitialControl := by
-  obtain ⟨control, stateEq, active, _, observed⟩ := native_information_control alice
+  obtain ⟨control, stateEq, active, recalled, _⟩ := native_information_control alice
     (activatedInitial.recall alice) (activatedInitial.observe nativeApp alice) history
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
@@ -128,8 +122,7 @@ theorem native_initial_information_control
   change some control = some nativeInitialControl
   apply congrArg some
   apply native_initial_representation control trace active
-  have grant := congrArg (fun view : nativeApp.PlayerView =>
-    view.application.publicView.serviceGrant) observed
-  exact grant
+  rw [recalled]
+  decide
 
 end Vegas.Examples.SelectiveAssociation

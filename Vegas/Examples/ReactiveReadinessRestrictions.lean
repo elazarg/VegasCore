@@ -8,9 +8,9 @@ import GameTheoryExtensions.Math.Probability.Uniform
 
 The selective-association fixture discloses its certificate on a commitment
 call. That event is already dependency-ready, within its deadline, and would
-accept the packet immediately. The service grant is merely a cursor; it is
-not a precondition of the call handler. No opening call is needed before the
-later accepted association. Bob may remain silent in the intervening response.
+accept the packet immediately: the call handler checks readiness and the
+deadline, not the service calendar. No opening call is needed before the later
+accepted association. Bob may remain silent in the intervening response.
 
 These results certify operational capabilities of the existing runtime. They
 do not transfer the sequential-equilibrium separation to a game with restricted
@@ -44,7 +44,8 @@ def OnlyCommitmentCalls (execution : nativeApp.Execution) : Prop :=
     message.payload.call = .commitment event handle
 
 /-- All three players' initial binding events are concurrent dependencies.
-An early Bob binding is not premature merely because his grant comes later. -/
+An early Bob binding is not premature merely because his service turn comes
+later. -/
 theorem initial_bindings_ready :
     nativeInitial.config.cut.Ready aliceBinding ∧
       nativeInitial.config.cut.Ready bobBinding ∧
@@ -65,7 +66,7 @@ theorem first_event_ready (bit : Bool) :
   cases bit <;> decide
 
 /-- The certificate-carrying call can succeed immediately after submission,
-even though the service has not yet issued Alice's binding grant. -/
+before Alice's service turn for her binding. -/
 theorem first_call_succeeds (bit : Bool) (serial : Nat) :
     (handle nativeRuntime (first bit).application
       ⟨(alice, serial), .commitment aliceBinding candidate⟩).isSome = true := by
@@ -82,20 +83,19 @@ theorem first_call_succeeds (bit : Bool) (serial : Nat) :
   rfl
 
 theorem offered_application (bit : Bool) :
-    (offeredAfter bit ⟨none⟩).application =
-      { (first bit).application with serviceGrant := some aliceBinding } := by
+    (offeredAfter bit ⟨none⟩).application = (first bit).application := by
   cases bit <;> rfl
 
 theorem offered_call_succeeds (bit : Bool) (serial : Nat) :
     (handle nativeRuntime (offeredAfter bit ⟨none⟩).application
       ⟨(alice, serial), .commitment aliceBinding candidate⟩).isSome = true := by
-  rw [offered_application, handle_serviceGrant_update]
-  simpa using first_call_succeeds bit serial
+  rw [offered_application]
+  exact first_call_succeeds bit serial
 
 theorem first_pending_ready_and_successful (bit : Bool) :
     PendingEventsReady (first bit) ∧ PendingCallsSucceed (first bit) ∧
-      OnlyCommitmentCalls (first bit) ∧ (first bit).application.serviceGrant = none := by
-  refine ⟨?_, ?_, ?_, rfl⟩
+      OnlyCommitmentCalls (first bit) := by
+  refine ⟨?_, ?_, ?_⟩
   · intro message member
     rw [first_pending] at member
     rcases List.mem_singleton.mp member with rfl
@@ -150,18 +150,18 @@ theorem certified_submission_authorized (bit : Bool) :
 
 def silentPlayers : Player → nativeApp.Policy := fun _ _ _ => PMF.pure ⟨none⟩
 
-/-- This is the actual first five service rounds. Bob sends nothing; the
+/-- This is the actual first four service rounds. Bob sends nothing; the
 certificate is learned passively, before Alice's certificate-free inclusion. -/
 theorem silent_bob_prefix :
-    nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 5 nativeRoot =
+    nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 4 nativeRoot =
       (PMF.uniformOfFintype Bool).map (fun bit => includedAfter bit ⟨none⟩) := by
   have bridge := native_prefix_rounds (nativeAliceProfile silentPlayers)
-    (nativePlan.take 5) (nativePlan.drop 5) (by simp)
-  change nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 5 nativeRoot = _
+    (nativePlan.take 4) (nativePlan.drop 4) (by simp)
+  change nativeApp.runRounds nativeScheduler (nativeAliceProfile silentPlayers) 4 nativeRoot = _
     at bridge
   rw [bridge]
   change nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile silentPlayers)
-    nativeNetwork [.player alice, .player bob, .grant aliceBinding, .player alice,
+    nativeNetwork [.player alice, .player bob, .player alice,
       .includeLatest aliceBinding alice] initial = _
   rw [runInteractionPlan, native_alice_first_round, PMF.bind_map]
   rw [← PMF.bind_pure_comp, Function.comp_def]
@@ -170,7 +170,7 @@ theorem silent_bob_prefix :
   rw [runInteractionPlan, native_alice_bob_round]
   simp only [silentPlayers, PMF.pure_map, PMF.pure_bind]
   change nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile silentPlayers)
-    nativeNetwork ([.grant aliceBinding, .player alice] ++
+    nativeNetwork ([.player alice] ++
       [.includeLatest aliceBinding alice]) (reacted bit ⟨none⟩) = _
   rw [runInteractionPlan_append, native_alice_offer_rounds, PMF.pure_bind,
     runInteractionPlan, native_alice_include_round, PMF.pure_bind]
@@ -193,7 +193,7 @@ theorem disclosure_with_ready_commitment_calls (bit : Bool) :
         (includedAfter true ⟨none⟩).observe nativeApp carol := by
   have firstReady := first_pending_ready_and_successful bit
   have offeredReady := offered_pending_ready_and_successful bit
-  exact ⟨firstReady.1, firstReady.2.1, firstReady.2.2.1,
+  exact ⟨firstReady.1, firstReady.2.1, firstReady.2.2,
     offeredReady.1, offeredReady.2.1, offeredReady.2.2,
     (proof_before_association bit).1, (association_after_arbitrary_response bit ⟨none⟩).2,
     congrArg Prod.snd (carol_input_after_arbitrary_responses ⟨none⟩ ⟨none⟩)⟩

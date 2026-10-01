@@ -167,12 +167,7 @@ theorem first_response_guess_bound (policy : app.Policy)
 
 def reacted (bit : Bool) : app.Execution := (bobInput bit).respond app bob ⟨none⟩
 
-def beforeOffer (bit : Bool) : app.Execution :=
-  let granted : app.Execution := { reacted bit with
-    application := { (reacted bit).application with serviceGrant := some aliceBinding }
-    environmentRecall := (reacted bit).environmentRecall ++
-      [⟨(reacted bit).observeEnvironment app, .application (.grant aliceBinding)⟩] }
-  activate granted alice
+def beforeOffer (bit : Bool) : app.Execution := activate (reacted bit) alice
 
 def offered (bit : Bool) : app.Execution := (beforeOffer bit).respond app alice associate
 
@@ -229,10 +224,9 @@ private theorem included_receipts (bit : Bool) :
   rfl
 
 theorem beforeOffer_law (bit : Bool) :
-    (((reacted bit).environmentStep app (.application (.grant aliceBinding))).bind
-      fun next => next.environmentStep app (.activate alice)) = PMF.pure (beforeOffer bit) := by
+    (reacted bit).environmentStep app (.activate alice) = PMF.pure (beforeOffer bit) := by
   simp [ReactiveApplication.Execution.environmentStep, app, serviceApp, reactiveApplication,
-    environmentStep, leaks, PMF.pure_map, beforeOffer, activate]
+    leaks, PMF.pure_map, beforeOffer, activate]
 
 theorem association_selected (bit : Bool) :
     nativeRuntime.reactiveLatest leaks aliceBinding alice
@@ -299,10 +293,11 @@ theorem association_input_hidden (who : Player) (foreign : who ≠ alice) :
   · fin_cases who <;> first | exact (foreign rfl).elim | rfl
   · exact association_hidden who foreign
 
-def prefixPlayers (bit : Bool) : Player → app.Policy := fun who _ view =>
+/-- Alice offers at her ambient response and associates at her later turn;
+her own recall tells the two apart. -/
+def prefixPlayers (bit : Bool) : Player → app.Policy := fun who past _ =>
   if who = alice then
-    if view.application.publicView.serviceGrant = some aliceBinding then PMF.pure associate
-    else PMF.pure (certifiedOffer bit)
+    if past.isEmpty then PMF.pure (certifiedOffer bit) else PMF.pure associate
   else PMF.pure ⟨none⟩
 
 theorem prefixPlayers_available (bit : Bool) (who : Player) (past : List app.PlayerEntry)
@@ -315,9 +310,9 @@ theorem prefixPlayers_available (bit : Bool) (who : Player) (past : List app.Pla
     subst who
     split at supported
     · cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact associate_available past view
-    · cases (PMF.mem_support_pure_iff _ _).mp supported
       exact certifiedOffer_available bit past view
+    · cases (PMF.mem_support_pure_iff _ _).mp supported
+      exact associate_available past view
   · cases (PMF.mem_support_pure_iff _ _).mp supported
     change (⟨none⟩ : app.Action) ∈ (nativeBounds.rawMenu nativeRuntime leaks).actions who past view
     rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
@@ -345,15 +340,13 @@ private theorem prefix_bob (bit : Bool) :
 
 private theorem prefix_offer (bit : Bool) :
     nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
-      [.grant aliceBinding, .player alice] (reacted bit) = PMF.pure (offered bit) := by
+      [.player alice] (reacted bit) = PMF.pure (offered bit) := by
   have combined : nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
-      [.grant aliceBinding, .player alice] (reacted bit) =
-      (((reacted bit).environmentStep app (.application (.grant aliceBinding))).bind
-        fun next => next.environmentStep app (.activate alice)).bind
-          (app.invoke (prefixPlayers bit) alice) := by
+      [.player alice] (reacted bit) =
+      ((reacted bit).environmentStep app (.activate alice)).bind
+        (app.invoke (prefixPlayers bit) alice) := by
     simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
-      PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-      ReactiveApplication.resume, PMF.bind_bind]
+      PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
     rfl
   rw [combined, beforeOffer_law, PMF.pure_bind]
   change (PMF.pure associate).map _ = _
@@ -369,18 +362,17 @@ private theorem prefix_include (bit : Bool) :
   rw [PMF.bind_pure, association_inclusion]
 
 /-- Both values reach their indistinguishable accepted-association states
-through the first five instructions of the unchanged service calendar, using
+through the first four instructions of the unchanged service calendar, using
 responses admitted in the complete native menu. -/
-theorem five_rounds (bit : Bool) :
+theorem four_rounds (bit : Bool) :
     nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
-      (nativePlan.take 5) initial = PMF.pure (included bit) := by
+      (nativePlan.take 4) initial = PMF.pure (included bit) := by
   change nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
-    [.player alice, .player bob, .grant aliceBinding, .player alice,
-      .includeLatest aliceBinding alice] initial = _
+    [.player alice, .player bob, .player alice, .includeLatest aliceBinding alice] initial = _
   rw [runInteractionPlan, prefix_first, PMF.pure_bind,
     runInteractionPlan, prefix_bob, PMF.pure_bind]
   change nativeRuntime.runInteractionPlan leaks (prefixPlayers bit) network
-    ([.grant aliceBinding, .player alice] ++ [.includeLatest aliceBinding alice]) (reacted bit) = _
+    ([.player alice] ++ [.includeLatest aliceBinding alice]) (reacted bit) = _
   rw [runInteractionPlan_append, prefix_offer, PMF.pure_bind,
     runInteractionPlan, prefix_include, PMF.pure_bind]
   rfl

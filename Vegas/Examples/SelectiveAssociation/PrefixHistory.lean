@@ -61,7 +61,7 @@ private theorem trace_environment (remaining : Nat) (execution next : nativeApp.
     exact ⟨next, moved, rfl⟩
 
 private theorem initial_trace :
-    Nonempty (nativeRawArena.Trace (some ⟨89, none, initial⟩)) := by
+    Nonempty (nativeRawArena.Trace (some ⟨83, none, initial⟩)) := by
   refine ⟨.extend .start (fun _ => none) ?_ ?_⟩
   · constructor
     · change ¬False
@@ -80,18 +80,18 @@ private theorem environment_cursor (execution next : nativeApp.Execution)
   simp only [List.length_append, List.length_singleton]
 
 private theorem first_trace (bit : Bool) :
-    Nonempty (nativeRawArena.Trace (some ⟨88, none, first bit⟩)) := by
-  apply trace_response 88 activatedInitial alice _
-  apply trace_environment 88 initial activatedInitial (.activate alice) initial_trace
+    Nonempty (nativeRawArena.Trace (some ⟨82, none, first bit⟩)) := by
+  apply trace_response 82 activatedInitial alice _
+  apply trace_environment 82 initial activatedInitial (.activate alice) initial_trace
   · change _ ∈ (PMF.pure (.activate alice : nativeApp.Command)).support
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
   · rw [initial_activation]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 private theorem reacted_trace (bit : Bool) (response : nativeApp.Action) :
-    Nonempty (nativeRawArena.Trace (some ⟨87, none, reacted bit response⟩)) := by
-  apply trace_response 87 (observed bit) bob response
-  apply trace_environment 87 (first bit) (observed bit) (.activate bob)
+    Nonempty (nativeRawArena.Trace (some ⟨81, none, reacted bit response⟩)) := by
+  apply trace_response 81 (observed bit) bob response
+  apply trace_environment 81 (first bit) (observed bit) (.activate bob)
     (first_trace bit)
   · change _ ∈ (PMF.pure (.activate bob : nativeApp.Command)).support
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
@@ -104,28 +104,20 @@ private theorem reacted_cursor (bit : Bool) (response : nativeApp.Action) :
   rfl
 
 private theorem offered_trace (bit : Bool) (response : nativeApp.Action) :
-    Nonempty (nativeRawArena.Trace (some ⟨85, none, offeredAfter bit response⟩)) := by
-  apply trace_response 85 (beforeOffer (reacted bit response)) alice _
-  have reached := (PMF.mem_support_pure_iff _ _).mpr
-    (rfl : beforeOffer (reacted bit response) = _)
-  rw [← beforeOffer_law] at reached
-  obtain ⟨granted, grantMem, activateMem⟩ :=
-    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have grantedTrace := trace_environment 86 (reacted bit response) granted
-    (.application (.grant aliceBinding)) (reacted_trace bit response) (by
-      simp only [serviceScheduler, reacted_cursor]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl) grantMem
-  apply trace_environment 85 granted _ (.activate alice) grantedTrace _ activateMem
-  have cursor := environment_cursor _ _ _ grantMem
-  rw [reacted_cursor] at cursor
-  simp only [serviceScheduler, cursor]
-  exact (PMF.mem_support_pure_iff _ _).mpr rfl
+    Nonempty (nativeRawArena.Trace (some ⟨80, none, offeredAfter bit response⟩)) := by
+  apply trace_response 80 (beforeOffer (reacted bit response)) alice _
+  apply trace_environment 80 (reacted bit response) _ (.activate alice)
+    (reacted_trace bit response)
+  · simp only [serviceScheduler, reacted_cursor]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  · rw [beforeOffer_law]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem native_included_raw_trace (bit : Bool) (response : nativeApp.Action) :
-    Nonempty (nativeRawArena.Trace (some ⟨84, none, includedAfter bit response⟩)) := by
-  apply trace_environment 84 (offeredAfter bit response) _ (.include (alice, 1))
+    Nonempty (nativeRawArena.Trace (some ⟨79, none, includedAfter bit response⟩)) := by
+  apply trace_environment 79 (offeredAfter bit response) _ (.include (alice, 1))
     (offered_trace bit response)
-  · have cursor : (offeredAfter bit response).environmentRecall.length = 4 := by
+  · have cursor : (offeredAfter bit response).environmentRecall.length = 3 := by
       simp only [offeredAfter, nativeApp.respond_environmentRecall, beforeOffer,
         List.length_append, List.length_singleton, reacted_cursor]
     simp only [serviceScheduler, cursor]
@@ -137,38 +129,30 @@ theorem native_included_raw_trace (bit : Bool) (response : nativeApp.Action) :
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 theorem native_carol_raw_trace (bit : Bool) (response : nativeApp.Action) :
-    Nonempty (nativeRawArena.Trace (some ⟨80, some carol, carolSite bit response⟩)) := by
+    Nonempty (nativeRawArena.Trace (some ⟨76, some carol, carolSite bit response⟩)) := by
   have reached := (PMF.mem_support_pure_iff _ _).mpr (rfl : carolSite bit response = _)
   rw [← carolSite_law] at reached
   obtain ⟨ticked, tickMem, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  obtain ⟨expired, expireMem, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rest)
-  obtain ⟨granted, grantMem, activateMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rest)
-  have includedCursor : (includedAfter bit response).environmentRecall.length = 5 := by
+  obtain ⟨expired, expireMem, activateMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ rest)
+  have includedCursor : (includedAfter bit response).environmentRecall.length = 4 := by
     simp only [includedAfter, offeredAfter, nativeApp.respond_environmentRecall,
       beforeOffer, List.length_append, List.length_singleton, reacted_cursor]
-  have tickTrace := trace_environment 83 (includedAfter bit response) ticked
+  have tickTrace := trace_environment 78 (includedAfter bit response) ticked
     (.application .advanceClock) (native_included_raw_trace bit response) (by
       simp only [serviceScheduler, includedCursor]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) tickMem
-  have tickCursor : ticked.environmentRecall.length = 6 := by
+  have tickCursor : ticked.environmentRecall.length = 5 := by
     rw [environment_cursor _ _ _ tickMem, includedCursor]
-  have expireTrace := trace_environment 82 ticked expired (.application (.expire aliceBinding))
+  have expireTrace := trace_environment 77 ticked expired (.application (.expire aliceBinding))
     tickTrace (by
       simp only [serviceScheduler, tickCursor]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl)
       expireMem
-  have expireCursor : expired.environmentRecall.length = 7 := by
+  have expireCursor : expired.environmentRecall.length = 6 := by
     rw [environment_cursor _ _ _ expireMem, tickCursor]
-  have grantTrace := trace_environment 81 expired granted (.application (.grant carolBinding))
-    expireTrace (by
-      simp only [serviceScheduler, expireCursor]
-      exact (PMF.mem_support_pure_iff _ _).mpr rfl)
-      grantMem
-  have grantCursor : granted.environmentRecall.length = 8 := by
-    rw [environment_cursor _ _ _ grantMem, expireCursor]
-  exact trace_environment 80 granted _ (.activate carol) grantTrace
+  exact trace_environment 76 expired _ (.activate carol) expireTrace
     (by
-      simp only [serviceScheduler, grantCursor]
+      simp only [serviceScheduler, expireCursor]
       exact (PMF.mem_support_pure_iff _ _).mpr rfl) activateMem
 
 theorem native_transport_raw_history (control : nativeApp.Control)

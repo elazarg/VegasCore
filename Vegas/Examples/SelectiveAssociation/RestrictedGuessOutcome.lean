@@ -51,7 +51,7 @@ theorem guessReward_of_binding (control : app.Control) (value guess : Publicatio
 theorem alice_binding_at_guess (who : Player) (guesser : who ≠ alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who)) :
+    (granted : NativeTurn (nativeBindingEvent who) control) :
     ∃ value, aliceBindingRef.get? control.execution.application.config.store = some value := by
   have complete := earlier_completed (nativeBindingEvent who) aliceBinding
     (by fin_cases who <;> first | exact False.elim (guesser rfl) | decide)
@@ -98,7 +98,7 @@ theorem guesser_continuation_bound (who : Player) (guesser : who ≠ alice)
     (players : Profile model.behavioralSignature) (opens : Opens players alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom players (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :
@@ -123,7 +123,7 @@ theorem guesser_continuation_bound (who : Player) (guesser : who ≠ alice)
 theorem profile_guesser_payoff (who : Player) (guesser : who ≠ alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :

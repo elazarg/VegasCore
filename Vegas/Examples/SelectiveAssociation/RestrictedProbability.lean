@@ -89,7 +89,7 @@ theorem mixed_flip_le (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : w
     (firstPast secondPast : List app.PlayerEntry) (firstView secondView : app.PlayerView)
     (same : (ReactiveApplication.ResponseMenu.knownPackets firstPast firstView).map Message.id =
       (ReactiveApplication.ResponseMenu.knownPackets secondPast secondView).map Message.id)
-    (chosen : app.Action) (different : chosen ≠ response who firstView) :
+    (chosen : app.Action) (different : chosen ≠ response who firstPast firstView) :
     ((mixed weight nonnegative atMostOne who firstPast firstView) chosen).toReal ≤
       ((mixed weight nonnegative atMostOne who secondPast secondView)
         (CandidateFlip.action selected chosen)).toReal := by
@@ -106,8 +106,8 @@ theorem mixed_flip_silent (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne
     (firstPast secondPast : List app.PlayerEntry) (firstView secondView : app.PlayerView)
     (same : (ReactiveApplication.ResponseMenu.knownPackets firstPast firstView).map Message.id =
       (ReactiveApplication.ResponseMenu.knownPackets secondPast secondView).map Message.id)
-    (firstSilent : response who firstView = ⟨none⟩)
-    (secondSilent : response who secondView = ⟨none⟩) (chosen : app.Action) :
+    (firstSilent : response who firstPast firstView = ⟨none⟩)
+    (secondSilent : response who secondPast secondView = ⟨none⟩) (chosen : app.Action) :
     ((mixed weight nonnegative atMostOne who firstPast firstView) chosen).toReal =
       ((mixed weight nonnegative atMostOne who secondPast secondView)
         (CandidateFlip.action selected chosen)).toReal := by

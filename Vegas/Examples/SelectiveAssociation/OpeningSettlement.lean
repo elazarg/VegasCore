@@ -122,7 +122,7 @@ cannot change it. -/
 theorem native_response_settlement_finish (players : Player → nativeApp.Policy)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (who : Player) (response : nativeApp.Action) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (chooses : players who (control.execution.recall who)
       (control.execution.observe nativeApp who) = PMF.pure response)

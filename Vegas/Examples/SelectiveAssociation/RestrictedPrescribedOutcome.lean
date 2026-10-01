@@ -19,7 +19,7 @@ open GameTheory.Math.Probability
 
 theorem profile_alice_binding_results_full (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some alice)
-    (granted : control.execution.application.serviceGrant = some aliceBinding)
+    (granted : NativeTurn aliceBinding control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support) :
@@ -84,7 +84,7 @@ theorem profile_alice_binding_results_full (control : app.Control)
 
 theorem profile_alice_binding_results (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some alice)
-    (granted : control.execution.application.serviceGrant = some aliceBinding)
+    (granted : NativeTurn aliceBinding control)
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile fuel ⟨some control, trace⟩).support) :
@@ -98,7 +98,7 @@ theorem profile_alice_binding_results (control : app.Control)
 
 theorem profile_alice_binding_payoff (who : Player) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some alice)
-    (granted : control.execution.application.serviceGrant = some aliceBinding)
+    (granted : NativeTurn aliceBinding control)
     (fuel : Nat) (enough : app.rank nativeHorizon (some control) ≤ fuel)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom profile fuel ⟨some control, trace⟩).support) :
@@ -112,13 +112,13 @@ theorem initialized_results (final : arena.History)
     (supported : final ∈ (model.runBehavioral profile (2 * nativeHorizon + 1)).support) :
     ∃ result, final.state = some result ∧ nativeResults result.execution.application.config =
       ⟨.success false, .success false, .success false⟩ := by
-  change final ∈ (model.runBehavioralFrom profile (7 + 172) arena.initHistory).support at supported
+  change final ∈ (model.runBehavioralFrom profile (6 + 161) arena.initHistory).support at supported
   rw [model.runBehavioralFrom_add] at supported
   obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
-  have position := native_behavioral_position (observation := leaks) profile 7 arena.initHistory
+  have position := native_behavioral_position (observation := leaks) profile 6 arena.initHistory
     later laterMem
-  have advance : nativeAdvancePosition^[7] (nativePosition arena.initHistory.state) =
-      some (85, some alice, 4) := by decide
+  have advance : nativeAdvancePosition^[6] (nativePosition arena.initHistory.state) =
+      some (80, some alice, 3) := by decide
   rw [advance] at position
   rcases later with ⟨state, laterTrace⟩
   cases state with
@@ -128,13 +128,13 @@ theorem initialized_results (final : arena.History)
       have remaining := congrArg (fun value : Nat × Option Player × Nat => value.1) fields
       have active := congrArg (fun value : Nat × Option Player × Nat => value.2.1) fields
       have cursor := congrArg (fun value : Nat × Option Player × Nat => value.2.2) fields
-      change control.remaining = 85 at remaining
+      change control.remaining = 80 at remaining
       change control.actor = some alice at active
-      change control.execution.environmentRecall.length = 4 at cursor
-      have granted := native_grant_of_decision_cursor (observation := leaks) aliceBinding control
+      change control.execution.environmentRecall.length = 3 at cursor
+      have granted := native_turn_of_decision_cursor (observation := leaks) aliceBinding control
         laterTrace active cursor
-      apply profile_alice_binding_results control laterTrace active granted 172 _ final finalMem
-      change 2 * control.remaining + (if control.actor.isSome then 1 else 0) ≤ 172
+      apply profile_alice_binding_results control laterTrace active granted 161 _ final finalMem
+      change 2 * control.remaining + (if control.actor.isSome then 1 else 0) ≤ 161
       rw [remaining, active]
       decide
 

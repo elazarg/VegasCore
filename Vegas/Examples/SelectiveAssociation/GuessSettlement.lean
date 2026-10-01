@@ -108,7 +108,7 @@ theorem native_binding_response_settlement_finish (who : Player) (players : Play
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (response : (serviceApp observation).Action) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) control)
     (unfinished : (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed)
     (chooses : players who (control.execution.recall who)
       (control.execution.observe (serviceApp observation) who) = PMF.pure response)
@@ -194,7 +194,7 @@ theorem native_binding_settlement_behavioral (who : Player)
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (response : (serviceApp observation).Action) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) control)
     (unfinished : (nativeBindingEvent who) ∉ control.execution.application.config.cut.completed)
     (chooses : (serviceMenu observation).decodeProfile (PMF.pure nativeInitial) nativeHorizon
       (serviceScheduler observation)

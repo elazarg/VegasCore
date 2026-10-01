@@ -35,21 +35,20 @@ theorem history_observe (who : Player) (history : arena.History) :
 
 theorem information_depth (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
     (event : nativeGraph.EventId)
-    (granted : view.application.publicView.serviceGrant = some event)
+    (granted : nativeTurnEvent? who past.length = some event)
     (history : model.InformationHistory who (some (past, view))) :
     history.1.trace.length = Prefix.decisionDepth event := by
-  obtain ⟨control, stateEq, active, _, observed⟩ := information_control who past view history
+  obtain ⟨control, stateEq, active, recalled, observed⟩ := information_control who past view history
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  have grant : control.execution.application.serviceGrant = some event := by
-    rw [← observed] at granted
-    exact granted
+  have grant : NativeTurn event control :=
+    .of_turnEvent? active (by rw [recalled]; exact granted)
   exact Prefix.decision_depth event control trace who active grant
 
 theorem carol_history_joint (players : Profile model.behavioralSignature)
     (input : List app.PlayerEntry × app.PlayerView) (bit : Bool) :
-    ((model.runBehavioral players 13).toOuterMeasure
+    ((model.runBehavioral players 11).toOuterMeasure
         {history | model.infoOf carol history.trace = some input ∧ hasAliceBit bit
         history.state}).toReal =
     ((Prefix.carolLaw (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
@@ -70,7 +69,7 @@ theorem carol_history_joint (players : Profile model.behavioralSignature)
 
 theorem bob_history_joint (players : Profile model.behavioralSignature)
     (input : List app.PlayerEntry × app.PlayerView) (bit : Bool) :
-    ((model.runBehavioral players 20).toOuterMeasure
+    ((model.runBehavioral players 17).toOuterMeasure
         {history | model.infoOf bob history.trace = some input ∧ hasAliceBit bit
         history.state}).toReal =
     ((Prefix.bobLaw (menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
@@ -149,7 +148,7 @@ def GuessBeliefs (assessment : model.BehavioralAssessment) : Prop :=
   ∀ (who : Player) (site : model.InformationSite who)
     (past : List app.PlayerEntry) (view : app.PlayerView),
     site.1 = some (past, view) → who ≠ alice →
-    view.application.publicView.serviceGrant = some (nativeBindingEvent who) →
+    nativeTurnEvent? who past.length = some (nativeBindingEvent who) →
     publicGuess view = false →
     ((assessment.belief who site).toOuterMeasure
         {history | hasAliceBit true history.1.state}).toReal ≤
@@ -185,13 +184,13 @@ theorem tremble_guessBeliefs_of_prefix_comparison (weight : ℝ) (positive : 0 <
   intro who site past view observed guesser granted hidden
   fin_cases who
   · exact False.elim (guesser rfl)
-  · apply tremble_bit_belief_le weight positive atMostOne bob site 20
+  · apply tremble_bit_belief_le weight positive atMostOne bob site 17
       (fun history => (information_depth bob past view bobBinding granted
         ⟨history.1, history.2.trans observed⟩).trans Prefix.bob_depth)
     rw [observed, bob_history_joint, bob_history_joint]
     simp only [tremble, Prefix.decode_perturbed]
     exact bobComparison past view hidden
-  · apply tremble_bit_belief_le weight positive atMostOne carol site 13
+  · apply tremble_bit_belief_le weight positive atMostOne carol site 11
       (fun history => (information_depth carol past view carolBinding granted
         ⟨history.1, history.2.trans observed⟩).trans Prefix.carol_depth)
     rw [observed, carol_history_joint, carol_history_joint]

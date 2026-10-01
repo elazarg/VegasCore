@@ -48,7 +48,7 @@ theorem native_opening_exact_from_control
             history.state) (2 * nativeHorizon + 1))
     (who : Player) (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (bit : Bool) (stored : (nativeBindingRef who).get?
       control.execution.application.config.store = some (.success bit))
@@ -77,7 +77,7 @@ theorem native_opening_exact_from_control
   obtain ⟨full, fullMem, same⟩ := native_full_continuation_of_enough assessment.strategy
     control trace fuel enough final supported
   have exactResult := native_sequentially_rational_opening_exact assessment who site past view
-    rfl bit granted (by
+    rfl bit (granted.turnEvent?_of_active active) (by
       change nativePublicationEvent who ∉
         control.execution.application.config.history.map EventGraph.Completion.event
       intro completed
@@ -93,7 +93,7 @@ theorem native_decision_earlier_completed (event earlier : nativeGraph.EventId)
     (before : earlier.val < event.val) (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control))
     (active : control.actor = some (nativeOwner event))
-    (granted : control.execution.application.serviceGrant = some event) :
+    (granted : NativeTurn event control) :
     earlier ∈ control.execution.application.config.cut.completed := by
   have position := (native_decision_cursor event control trace _ active granted).2
   obtain ⟨_, prior, priorMem, activated⟩ :=
@@ -111,7 +111,7 @@ theorem native_binding_at_opening_from_final
     (profile : ∀ who, nativeModel.BehavioralPolicy who) (who : Player)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (fuel : Nat) (final : nativeArena.History)
     (supported : final ∈ (nativeModel.runBehavioralFrom profile fuel
       ⟨some control, trace⟩).support)

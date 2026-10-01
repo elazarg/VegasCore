@@ -49,8 +49,9 @@ theorem alice_associate_available (past : List nativeApp.PlayerEntry)
   rw [MessageBounds.submissions_mem]
   exact ⟨⟨by change 0 < 2; decide, trivial⟩, trivial⟩
 
+/-- Alice reads her current turn from her own recall. -/
 def nativeAlicePolicy : nativeApp.Policy := fun past view =>
-  match view.application.publicView.serviceGrant with
+  match nativeTurnEvent? alice past.length with
   | none => if past = [] then (PMF.uniformOfFintype Bool).map aliceCertifiedOffer
       else PMF.pure ⟨none⟩
   | some event =>
@@ -98,14 +99,16 @@ theorem native_alice_initial :
     nativeAlicePolicy (activatedInitial.recall alice) (activatedInitial.observe nativeApp alice) =
       (PMF.uniformOfFintype Bool).map aliceCertifiedOffer := rfl
 
-theorem native_alice_association (execution : nativeApp.Execution) :
-    nativeAlicePolicy ((beforeOffer execution).recall alice)
-      ((beforeOffer execution).observe nativeApp alice) = PMF.pure aliceAssociate := by
-  simp [nativeAlicePolicy, beforeOffer, ReactiveApplication.Execution.observe,
-    nativeApp, serviceApp, reactiveApplication, State.publicView, aliceBinding]
+theorem native_alice_association (bit : Bool) (response : nativeApp.Action) :
+    nativeAlicePolicy ((beforeOffer (reacted bit response)).recall alice)
+      ((beforeOffer (reacted bit response)).observe nativeApp alice) =
+        PMF.pure aliceAssociate := by
+  have counted : ((beforeOffer (reacted bit response)).recall alice).length = 1 := rfl
+  have turn : nativeTurnEvent? alice 1 = some aliceBinding := by decide
+  simp only [nativeAlicePolicy, counted, turn, ↓reduceIte]
 
 theorem native_alice_opening (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
-    (granted : view.application.publicView.serviceGrant = some alicePublication) :
+    (granted : nativeTurnEvent? alice past.length = some alicePublication) :
     nativeAlicePolicy past view = PMF.pure (nativeOpeningResponse alice view) := by
   simp only [nativeAlicePolicy, granted]
   rw [ite_eq_right (by decide : alicePublication ≠ aliceBinding), ite_true]
@@ -133,20 +136,16 @@ theorem native_alice_bob_round (players : Player → nativeApp.Policy) (bit : Bo
 theorem native_alice_offer_rounds (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) :
     nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-      [.grant aliceBinding, .player alice] (reacted bit response) =
+      [.player alice] (reacted bit response) =
       PMF.pure (offeredAfter bit response) := by
-  have law : (((reacted bit response).environmentStep nativeApp
-      (.application (.grant aliceBinding))).bind fun next =>
-      next.environmentStep nativeApp (.activate alice)) =
+  have law : (reacted bit response).environmentStep nativeApp (.activate alice) =
       PMF.pure (beforeOffer (reacted bit response)) := beforeOffer_law _
   have combined : nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players)
-      nativeNetwork [.grant aliceBinding, .player alice] (reacted bit response) =
-      (((reacted bit response).environmentStep nativeApp (.application (.grant aliceBinding))).bind
-        fun next => next.environmentStep nativeApp (.activate alice)).bind
-          (nativeApp.invoke (nativeAliceProfile players) alice) := by
+      nativeNetwork [.player alice] (reacted bit response) =
+      ((reacted bit response).environmentStep nativeApp (.activate alice)).bind
+        (nativeApp.invoke (nativeAliceProfile players) alice) := by
     simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
-      PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-      ReactiveApplication.resume, PMF.bind_bind]
+      PMF.pure_bind, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
     rfl
   rw [combined, law, PMF.pure_bind]
   simp only [ReactiveApplication.invoke, nativeAliceProfile, Function.update_self,
@@ -171,7 +170,7 @@ theorem native_alice_include_round (players : Player → nativeApp.Policy)
 theorem native_alice_carol_rounds (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) :
     nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-      [.tick, .expire aliceBinding, .grant carolBinding, .player carol]
+      [.tick, .expire aliceBinding, .player carol]
         (includedAfter bit response) =
       (players carol ((carolSite bit response).recall carol)
         ((carolSite bit response).observe nativeApp carol)).map
@@ -179,11 +178,10 @@ theorem native_alice_carol_rounds (players : Player → nativeApp.Policy)
   let observedPrefix := ((includedAfter bit response).environmentStep nativeApp
     (.application .advanceClock)).bind fun next =>
       (next.environmentStep nativeApp (.application (.expire aliceBinding))).bind fun next =>
-        (next.environmentStep nativeApp (.application (.grant carolBinding))).bind fun next =>
-          next.environmentStep nativeApp (.activate carol)
+        next.environmentStep nativeApp (.activate carol)
   have law : observedPrefix = PMF.pure (carolSite bit response) := carolSite_law _ _
   have combined : nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players)
-      nativeNetwork [.tick, .expire aliceBinding, .grant carolBinding, .player carol]
+      nativeNetwork [.tick, .expire aliceBinding, .player carol]
         (includedAfter bit response) =
       observedPrefix.bind (nativeApp.invoke (nativeAliceProfile players) carol) := by
     dsimp only [observedPrefix]
@@ -198,51 +196,51 @@ theorem native_alice_carol_rounds (players : Player → nativeApp.Policy)
 theorem native_alice_after_bob (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) :
     nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-      [.grant aliceBinding, .player alice, .includeLatest aliceBinding alice,
-        .tick, .expire aliceBinding, .grant carolBinding, .player carol] (reacted bit response) =
+      [.player alice, .includeLatest aliceBinding alice,
+        .tick, .expire aliceBinding, .player carol] (reacted bit response) =
       (players carol ((carolSite bit response).recall carol)
         ((carolSite bit response).observe nativeApp carol)).map
           ((carolSite bit response).respond nativeApp carol) := by
   change nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-    ([.grant aliceBinding, .player alice] ++
+    ([.player alice] ++
       [.includeLatest aliceBinding alice, .tick, .expire aliceBinding,
-        .grant carolBinding, .player carol]) (reacted bit response) = _
+        .player carol]) (reacted bit response) = _
   rw [runInteractionPlan_append, native_alice_offer_rounds, PMF.pure_bind,
     runInteractionPlan, native_alice_include_round, PMF.pure_bind]
   exact native_alice_carol_rounds players bit response
 
-/-- Nine scheduler rounds include Carol's ordinary response. Her activation
+/-- Seven scheduler rounds include Carol's ordinary response. Her activation
 input is exactly the concrete selectively informed prefix. -/
-theorem native_alice_nine_rounds (players : Player → nativeApp.Policy) :
-    nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 9 nativeRoot =
+theorem native_alice_seven_rounds (players : Player → nativeApp.Policy) :
+    nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 7 nativeRoot =
       (PMF.uniformOfFintype Bool).bind fun bit =>
         (players bob ((observed bit).recall bob) ((observed bit).observe nativeApp bob)).bind
           fun response => (players carol ((carolSite bit response).recall carol)
             ((carolSite bit response).observe nativeApp carol)).map
               ((carolSite bit response).respond nativeApp carol) := by
-  have bridge := native_prefix_rounds (nativeAliceProfile players) (nativePlan.take 9)
-    (nativePlan.drop 9) (List.take_append_drop 9 nativePlan).symm
-  change nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 9 nativeRoot = _ at bridge
+  have bridge := native_prefix_rounds (nativeAliceProfile players) (nativePlan.take 7)
+    (nativePlan.drop 7) (List.take_append_drop 7 nativePlan).symm
+  change nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 7 nativeRoot = _ at bridge
   rw [bridge]
   change nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-    (.player alice :: .player bob :: [.grant aliceBinding, .player alice,
+    (.player alice :: .player bob :: [.player alice,
       .includeLatest aliceBinding alice, .tick, .expire aliceBinding,
-      .grant carolBinding, .player carol]) initial = _
+      .player carol]) initial = _
   rw [runInteractionPlan, native_alice_first_round, PMF.bind_map]
   apply bind_congr_on_support _
   intro bit _
   rw [Function.comp_apply, runInteractionPlan, native_alice_bob_round, PMF.bind_map]
   exact bind_congr_on_support _ fun response _ => native_alice_after_bob players bit response
 
-/-- After thirteen rounds Carol's guess is fixed. This is the actual service
+/-- After eleven rounds Carol's guess is fixed. This is the actual service
 continuation of the legal Alice deviation, with both opponents unrestricted. -/
-theorem native_alice_thirteen_rounds (players : Player → nativeApp.Policy) :
-    nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 13 nativeRoot =
+theorem native_alice_eleven_rounds (players : Player → nativeApp.Policy) :
+    nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 11 nativeRoot =
       (PMF.uniformOfFintype Bool).bind fun bit =>
         (players bob ((observed bit).recall bob) ((observed bit).observe nativeApp bob)).bind
           (nativeCarolPlay (nativeAliceProfile players) bit) := by
-  change nativeApp.runRounds nativeScheduler (nativeAliceProfile players) (9 + 4) nativeRoot = _
-  rw [ReactiveApplication.runRounds_add, native_alice_nine_rounds, PMF.bind_bind]
+  change nativeApp.runRounds nativeScheduler (nativeAliceProfile players) (7 + 4) nativeRoot = _
+  rw [ReactiveApplication.runRounds_add, native_alice_seven_rounds, PMF.bind_bind]
   apply bind_congr_on_support _
   intro bit _
   rw [PMF.bind_bind]
@@ -258,20 +256,19 @@ theorem native_alice_thirteen_rounds (players : Player → nativeApp.Policy) :
 private theorem native_alice_activation_after_bob (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) :
     (nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-      [.grant aliceBinding, .player alice, .includeLatest aliceBinding alice,
-        .tick, .expire aliceBinding, .grant carolBinding] (reacted bit response)).bind
+      [.player alice, .includeLatest aliceBinding alice,
+        .tick, .expire aliceBinding] (reacted bit response)).bind
           (fun prior => prior.environmentStep nativeApp (.activate carol)) =
       PMF.pure (carolSite bit response) := by
   change (nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-    ([.grant aliceBinding, .player alice] ++ [.includeLatest aliceBinding alice,
-      .tick, .expire aliceBinding, .grant carolBinding]) (reacted bit response)).bind _ = _
+    ([.player alice] ++ [.includeLatest aliceBinding alice,
+      .tick, .expire aliceBinding]) (reacted bit response)).bind _ = _
   rw [runInteractionPlan_append, native_alice_offer_rounds, PMF.pure_bind,
     runInteractionPlan, native_alice_include_round, PMF.pure_bind]
   have law : (((includedAfter bit response).environmentStep nativeApp
       (.application .advanceClock)).bind fun next =>
         (next.environmentStep nativeApp (.application (.expire aliceBinding))).bind fun next =>
-          (next.environmentStep nativeApp (.application (.grant carolBinding))).bind fun next =>
-            next.environmentStep nativeApp (.activate carol)) =
+          next.environmentStep nativeApp (.activate carol)) =
       PMF.pure (carolSite bit response) := carolSite_law _ _
   convert law using 1
   simp only [runInteractionPlan, PMF.bind_pure, interactionStep, interactionInstruction,
@@ -281,18 +278,18 @@ private theorem native_alice_activation_after_bob (players : Player → nativeAp
 /-- Stop immediately after Carol's passive observation and before her response.
 This is her genuine decision input, with the exact private-leak rule intact. -/
 theorem native_alice_carol_activation (players : Player → nativeApp.Policy) :
-    (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 8 nativeRoot).bind
+    (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 6 nativeRoot).bind
         (fun prior => prior.environmentStep nativeApp (.activate carol)) =
       (PMF.uniformOfFintype Bool).bind fun bit =>
         (players bob ((observed bit).recall bob) ((observed bit).observe nativeApp bob)).map
           (carolSite bit) := by
-  have bridge := native_prefix_rounds (nativeAliceProfile players) (nativePlan.take 8)
-    (nativePlan.drop 8) (List.take_append_drop 8 nativePlan).symm
-  change nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 8 nativeRoot = _ at bridge
+  have bridge := native_prefix_rounds (nativeAliceProfile players) (nativePlan.take 6)
+    (nativePlan.drop 6) (List.take_append_drop 6 nativePlan).symm
+  change nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 6 nativeRoot = _ at bridge
   rw [bridge]
   change (nativeRuntime.runInteractionPlan nativeLeaks (nativeAliceProfile players) nativeNetwork
-    (.player alice :: .player bob :: [.grant aliceBinding, .player alice,
-      .includeLatest aliceBinding alice, .tick, .expire aliceBinding, .grant carolBinding])
+    (.player alice :: .player bob :: [.player alice,
+      .includeLatest aliceBinding alice, .tick, .expire aliceBinding])
       initial).bind _ = _
   rw [runInteractionPlan, native_alice_first_round, PMF.bind_map, PMF.bind_bind]
   apply bind_congr_on_support _

@@ -50,7 +50,7 @@ The conclusion even allows foreign envelopes recalled from earlier replays. -/
 theorem native_old_publication_unique (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (bit : Bool)
     (stored : (nativeBindingRef who).get? control.execution.application.config.store =
       some (.success bit)) :
@@ -131,7 +131,7 @@ theorem native_opening_reserved_local (left right : nativeApp.Control)
     (who : Player) (leftActive : left.actor = some who) (rightActive : right.actor = some who)
     (sameInput : (left.execution.recall who, left.execution.observe nativeApp who) =
       (right.execution.recall who, right.execution.observe nativeApp who))
-    (granted : left.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) left)
     (bit : Bool)
     (stored : (nativeBindingRef who).get? left.execution.application.config.store =
       some (.success bit))
@@ -148,10 +148,10 @@ theorem native_opening_reserved_local (left right : nativeApp.Control)
   have views := congrArg Prod.snd sameInput
   have applicationViews := congrArg ReactiveApplication.PlayerView.application views
   have ledgers := congrArg (fun view : nativeApp.PlayerView => view.messages.ledger) views
-  have grants := congrArg (fun view : nativeApp.PlayerView =>
-    view.application.publicView.serviceGrant) views
-  have rightGrant : right.execution.application.serviceGrant =
-      some (nativePublicationEvent who) := grants.symm.trans granted
+  have rightGrant : NativeTurn (nativePublicationEvent who) right :=
+    .of_turnEvent? rightActive (by
+      rw [← show left.execution.recall who = right.execution.recall who from recalls]
+      exact granted.turnEvent?_of_active leftActive)
   have rightStored : (nativeBindingRef who).get? right.execution.application.config.store =
       some (.success bit) := by
     have bindingViews := congrArg (fun view : nativeApp.PlayerView =>

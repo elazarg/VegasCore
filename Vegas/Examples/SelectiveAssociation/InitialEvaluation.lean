@@ -15,7 +15,7 @@ open GameTheory GameTheory.Protocol ReactiveAssociationEvidence
 
 theorem native_initial_finish (players : Player → nativeApp.Policy) :
     nativeApp.finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler players
-      (some ⟨88, some alice, activatedInitial⟩) =
+      (some ⟨82, some alice, activatedInitial⟩) =
         (nativeApp.runRounds nativeScheduler players nativeHorizon nativeRoot).map
           nativeApp.finished := by
   have firstRound : nativeApp.runRounds nativeScheduler players 1 nativeRoot =
@@ -28,13 +28,13 @@ theorem native_initial_finish (players : Player → nativeApp.Policy) :
     rw [show nativeRoot.environmentStep nativeApp (.activate alice) =
       PMF.pure activatedInitial from initial_activation, PMF.pure_bind]
     rfl
-  change _ = (nativeApp.runRounds nativeScheduler players (1 + 88) nativeRoot).map _
+  change _ = (nativeApp.runRounds nativeScheduler players (1 + 82) nativeRoot).map _
   rw [ReactiveApplication.runRounds_add, firstRound, PMF.map_bind]
   simp only [ReactiveApplication.finish, ReactiveApplication.resume, PMF.map_bind]
 
 theorem native_initial_finish_value (players : Player → nativeApp.Policy) :
     expect (nativeApp.finish (PMF.pure nativeInitial) nativeHorizon nativeScheduler players
-      (some ⟨88, some alice, activatedInitial⟩)) (nativeUtility alice) =
+      (some ⟨82, some alice, activatedInitial⟩)) (nativeUtility alice) =
         expect (nativeApp.runRounds nativeScheduler players nativeHorizon nativeRoot)
           (fun final => utility (nativeResults final.application.config) alice) := by
   rw [native_initial_finish, expect_map]

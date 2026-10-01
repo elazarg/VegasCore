@@ -129,7 +129,7 @@ theorem publicGuess_include_uncertified (execution : app.Execution)
 
 theorem corrective_inclusion_keeps_guess (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some carol)
-    (granted : control.execution.application.serviceGrant = some carolBinding) (bit : Bool)
+    (granted : NativeTurn carolBinding control) (bit : Bool)
     (observer : Player) :
     publicGuess ((Prefix.includeLatest
       (control.execution.respond app carol

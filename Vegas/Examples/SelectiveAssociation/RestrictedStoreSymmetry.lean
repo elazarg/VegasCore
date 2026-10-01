@@ -293,14 +293,6 @@ theorem handle_other_binding (selected : Handle nativeGraph) (selectedOwner : se
         rw [rejectedFlip, rejected]
         rfl
 
-theorem environment_grant (selected : Handle nativeGraph)
-    (before : EventGraphRuntime.State nativeGraph)
-    (event : nativeGraph.EventId) :
-    environmentStep nativeRuntime (state selected before) (.grant event) =
-      (environmentStep nativeRuntime before (.grant event)).map (state selected) := by
-  simp only [environmentStep, PMF.pure_map]
-  rfl
-
 theorem environment_tick (selected : Handle nativeGraph)
     (before : EventGraphRuntime.State nativeGraph) :
     environmentStep nativeRuntime (state selected before) .advanceClock =

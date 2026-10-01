@@ -23,16 +23,16 @@ def nativeDeviationOutcomes (players : Player → nativeApp.Policy) (bit : Bool)
     PMF Results :=
   ((players bob ((observed bit).recall bob) ((observed bit).observe nativeApp bob)).bind
     (nativeCarolPlay (nativeAliceProfile players) bit)).bind fun settled =>
-      (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 76 settled).map
+      (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) 72 settled).map
         (fun final => nativeResults final.application.config)
 
 theorem native_deviation_outcome_law (players : Player → nativeApp.Policy) :
     (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) nativeHorizon nativeRoot).map
         (fun final => nativeResults final.application.config) =
       (PMF.uniformOfFintype Bool).bind (nativeDeviationOutcomes players) := by
-  change (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) (13 + 76)
+  change (nativeApp.runRounds nativeScheduler (nativeAliceProfile players) (11 + 72)
     nativeRoot).map _ = _
-  rw [ReactiveApplication.runRounds_add, native_alice_thirteen_rounds,
+  rw [ReactiveApplication.runRounds_add, native_alice_eleven_rounds,
     PMF.map_bind, PMF.bind_bind]
   rfl
 
@@ -43,13 +43,13 @@ theorem native_deviation_carol_bound (players : Player → nativeApp.Policy) (bi
   let changed := nativeAliceProfile players
   have each (prior : nativeApp.Action) :
       expect ((nativeCarolPlay changed bit prior).bind fun settled =>
-        (nativeApp.runRounds nativeScheduler changed 76 settled).map
+        (nativeApp.runRounds nativeScheduler changed 72 settled).map
           (fun final => nativeResults final.application.config))
             (fun result => correctness (.success bit) result.carol) ≤
       expect (nativeCarolGuessLaw changed) (correctness (.success bit)) := by
     rw [expect_bind_of_finite]
     have bound : expect (nativeCarolPlay changed bit prior)
-        (fun settled => expect ((nativeApp.runRounds nativeScheduler changed 76 settled).map
+        (fun settled => expect ((nativeApp.runRounds nativeScheduler changed 72 settled).map
           (fun final => nativeResults final.application.config))
             (fun result => correctness (.success bit) result.carol)) ≤
       expect (nativeCarolPlay changed bit prior) (fun settled => correctness (.success bit)
@@ -63,7 +63,7 @@ theorem native_deviation_carol_bound (players : Player → nativeApp.Policy) (bi
       obtain ⟨valid, guess, stored⟩ := native_carol_guess_stored changed bit prior response
         settled settledMem
       rw [expect_map, stored, Option.getD_some]
-      exact native_carol_continuation_bound changed nativeScheduler 76 settled valid guess stored _
+      exact native_carol_continuation_bound changed nativeScheduler 72 settled valid guess stored _
     apply bound.trans_eq
     rw [← native_carol_common_law changed bit prior, expect_map]
     rfl

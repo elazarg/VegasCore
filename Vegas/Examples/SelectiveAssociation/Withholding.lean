@@ -86,7 +86,7 @@ theorem native_withhold_realizes (players : Player → nativeApp.Policy)
 theorem native_withhold_finish (players : Player → nativeApp.Policy)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (who : Player) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (withholds : players who (control.execution.recall who)
       (control.execution.observe nativeApp who) = PMF.pure (nativeWithholdAction who))
@@ -128,7 +128,7 @@ theorem native_not_supported_withhold
     (site : nativeModel.InformationSite who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -151,9 +151,8 @@ theorem native_not_supported_withhold
     ((assessment.strategy who).commit site.1 choice)
   let players := nativeMenu.decodeProfile (PMF.pure nativeInitial) nativeHorizon
     nativeScheduler profile
-  have grant : control.execution.application.serviceGrant = some (nativePublicationEvent who) := by
-    rw [← observed] at granted
-    exact granted
+  have grant : NativeTurn (nativePublicationEvent who) control :=
+    .of_turnEvent? active (by rw [recall]; exact granted)
   have incomplete : nativePublicationEvent who ∉
       control.execution.application.config.cut.completed := by
     rw [← observed] at unfinished

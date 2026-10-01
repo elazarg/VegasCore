@@ -57,6 +57,13 @@ theorem environmentResult_eq (execution : app.Execution) (command : app.Command)
   have same := (environmentResult_law execution command).symm.trans law
   exact (PMF.mem_support_pure_iff _ _).mp (same ▸ (PMF.mem_support_pure_iff _ _).mpr rfl)
 
+/-- Environment commands never change a player's recall. -/
+theorem environmentResult_playerRecall (execution : app.Execution) (command : app.Command) :
+    (environmentResult execution command).recall = execution.recall :=
+  app.environmentStep_recall execution _ command (by
+    rw [environmentResult_law]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl)
+
 theorem environmentResult_application_law (execution : app.Execution)
     (command : EnvironmentCommand nativeGraph) :
     app.environment execution.application command =
@@ -93,12 +100,6 @@ theorem environmentResult_preserves {predicate : app.State → Prop}
   rw [environmentResult_law]
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
-theorem environmentResult_grant (execution : app.Execution) (event : nativeGraph.EventId) :
-    environmentResult execution (.application (.grant event)) = granted execution event := by
-  apply environmentResult_eq
-  simp only [ReactiveApplication.Execution.environmentStep, app, serviceApp,
-    reactiveApplication, environmentStep, PMF.pure_map, granted]
-
 def includeLatest (execution : app.Execution) (event : nativeGraph.EventId) (who : Player) :
     app.Execution :=
   environmentResult execution
@@ -113,12 +114,6 @@ private theorem passive_step (players : Player → app.Policy) (execution : app.
       PMF.pure (environmentResult execution command) := by
   simp only [interactionStep, selected, PMF.pure_bind, ReactiveApplication.dispatch,
     environmentResult_law, PMF.pure_bind, passive, ReactiveApplication.resume]
-
-theorem grant_step (players : Player → app.Policy) (execution : app.Execution)
-    (event : nativeGraph.EventId) :
-    nativeRuntime.interactionStep leaks players network (.grant event) execution =
-      PMF.pure (environmentResult execution (.application (.grant event))) :=
-  passive_step players execution _ _ rfl rfl
 
 theorem tick_step (players : Player → app.Policy) (execution : app.Execution) :
     nativeRuntime.interactionStep leaks players network .tick execution =
@@ -161,8 +156,7 @@ def bobPreludeInput (first : app.Action) : app.Execution :=
   activate ((activate initial alice).respond app alice first) bob
 
 def aliceInput (first second : app.Action) : app.Execution :=
-  activate (environmentResult ((bobPreludeInput first).respond app bob second)
-    (.application (.grant aliceBinding))) alice
+  activate ((bobPreludeInput first).respond app bob second) alice
 
 def carolInput (responses : CarolResponses) : app.Execution :=
   let submitted := (aliceInput responses.alicePrelude responses.bobPrelude).respond app alice
@@ -170,7 +164,7 @@ def carolInput (responses : CarolResponses) : app.Execution :=
   let included := includeLatest submitted aliceBinding alice
   let ticked := environmentResult included (.application .advanceClock)
   let expired := environmentResult ticked (.application (.expire aliceBinding))
-  activate (environmentResult expired (.application (.grant carolBinding))) carol
+  activate expired carol
 
 def bobInput (responses : BobResponses) : app.Execution :=
   let submitted := (carolInput responses.beforeCarol).respond app carol responses.carolBinding
@@ -178,7 +172,7 @@ def bobInput (responses : BobResponses) : app.Execution :=
   let firstTick := environmentResult included (.application .advanceClock)
   let secondTick := environmentResult firstTick (.application .advanceClock)
   let expired := environmentResult secondTick (.application (.expire carolBinding))
-  activate (environmentResult expired (.application (.grant bobBinding))) bob
+  activate expired bob
 
 def preludeLaw (players : Player → app.Policy) : PMF (app.Action × app.Action) :=
   (players alice (initial.recall alice) (initial.observe app alice)).bind fun first =>
@@ -208,10 +202,10 @@ def decisionLaw (players : Player → app.Policy) (event : nativeGraph.EventId) 
 theorem carol_factorization (players : Player → app.Policy) :
     decisionLaw players carolBinding = (carolLaw players).map carolInput := by
   change ((nativeRuntime.runInteractionPlan leaks players network
-    [.player alice, .player bob, .grant aliceBinding, .player alice,
-      .includeLatest aliceBinding alice, .tick, .expire aliceBinding, .grant carolBinding]
+    [.player alice, .player bob, .player alice,
+      .includeLatest aliceBinding alice, .tick, .expire aliceBinding]
       initial).bind fun prior => prior.environmentStep app (.activate carol)) = _
-  simp only [runInteractionPlan, player_step, grant_step, tick_step, expire_step, include_step,
+  simp only [runInteractionPlan, player_step, tick_step, expire_step, include_step,
     PMF.pure_bind, PMF.bind_pure, PMF.bind_map, PMF.map_bind,
     PMF.bind_bind, activation_law, carolLaw, PMF.map_comp, Function.comp_def]
   rfl
@@ -219,12 +213,12 @@ theorem carol_factorization (players : Player → app.Policy) :
 theorem bob_factorization (players : Player → app.Policy) :
     decisionLaw players bobBinding = (bobLaw players).map bobInput := by
   change ((nativeRuntime.runInteractionPlan leaks players network
-    [.player alice, .player bob, .grant aliceBinding, .player alice,
-      .includeLatest aliceBinding alice, .tick, .expire aliceBinding, .grant carolBinding,
+    [.player alice, .player bob, .player alice,
+      .includeLatest aliceBinding alice, .tick, .expire aliceBinding,
       .player carol, .includeLatest carolBinding carol, .tick, .tick,
-      .expire carolBinding, .grant bobBinding]
+      .expire carolBinding]
       initial).bind fun prior => prior.environmentStep app (.activate bob)) = _
-  simp only [runInteractionPlan, player_step, grant_step, tick_step, expire_step, include_step,
+  simp only [runInteractionPlan, player_step, tick_step, expire_step, include_step,
     PMF.pure_bind, PMF.bind_pure, PMF.bind_map, PMF.map_bind,
     PMF.bind_bind, activation_law, bobLaw, carolLaw, PMF.map_comp, Function.comp_def]
   rfl

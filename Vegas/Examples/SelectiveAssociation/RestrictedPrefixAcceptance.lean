@@ -5,8 +5,8 @@ import Vegas.Examples.SelectiveAssociation.RestrictedCarolSymmetry
 /-! # Reconstructing Alice's accepted handle from a concrete prefix
 
 There is one inclusion before Carol binds. The prelude and submission leave
-the accepted table empty, and subsequent clock, expiry and grant operations
-leave it unchanged. An accepted handle at Carol's input must therefore be the
+the accepted table empty, and subsequent clock and expiry operations leave it
+unchanged. An accepted handle at Carol's input must therefore be the
 handle in that actual successful inclusion.
 -/
 
@@ -26,9 +26,9 @@ theorem alice_before_inclusion_empty (responses : Prefix.CarolResponses) :
       responses.aliceBinding).application.accepted aliceBindingRef.field) = none := by
   rw [respond_accepted]
   unfold Prefix.aliceInput
-  change (Prefix.environmentResult _ (.application (.grant aliceBinding))).application.accepted
-    aliceBindingRef.field = none
-  rw [environment_accepted, respond_accepted]
+  change ((Prefix.bobPreludeInput responses.alicePrelude).respond app bob
+    responses.bobPrelude).application.accepted aliceBindingRef.field = none
+  rw [respond_accepted]
   unfold Prefix.bobPreludeInput
   change ((activate initial alice).respond app alice responses.alicePrelude).application.accepted
     aliceBindingRef.field = none
@@ -41,8 +41,8 @@ theorem carolInput_accepted (responses : Prefix.CarolResponses) :
         ((Prefix.aliceInput responses.alicePrelude responses.bobPrelude).respond app alice
           responses.aliceBinding) aliceBinding alice).application.accepted := by
   unfold Prefix.carolInput
-  change (Prefix.environmentResult _ (.application (.grant carolBinding))).application.accepted = _
-  rw [environment_accepted, environment_accepted, environment_accepted]
+  change (Prefix.environmentResult _ (.application (.expire aliceBinding))).application.accepted = _
+  rw [environment_accepted, environment_accepted]
 
 theorem included_application (execution : app.Execution) (id : MessageId Player)
     (sent : Message Player app.Payload) (found : execution.network.lookup id = some sent) :

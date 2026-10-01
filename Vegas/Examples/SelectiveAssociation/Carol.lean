@@ -108,8 +108,8 @@ theorem native_carol_guess_rounds (players : Player → nativeApp.Policy)
     nativeApp.runRounds nativeScheduler players 4
       ((carolSite bit prior).respond nativeApp carol response) =
       nativeCarolGuess players bit prior response := by
-  exact native_segment_rounds players (nativePlan.take 9) nativeCarolSettlement
-    (nativePlan.drop 13) rfl _ (by
+  exact native_segment_rounds players (nativePlan.take 7) nativeCarolSettlement
+    (nativePlan.drop 11) rfl _ (by
       rw [nativeApp.respond_environmentRecall, carolSite_rounds]
       rfl)
 

@@ -2,11 +2,14 @@
 
 import Vegas.Examples.SelectiveAssociation.History
 
-/-! # The public grant determines the native decision cursor
+/-! # The owner's response count determines the native decision cursor
 
 These facts apply to every legal history, including histories outside an
-assessment's support. The two ambient prelude responses have no grant; each
-later activation follows the unique grant of its source event.
+assessment's support. Each player's activations follow the fixed calendar, so
+a player's own count of earlier responses identifies which of its scheduled
+decisions is current: the two ambient prelude responses and each owner's
+service turn are told apart by the owner's recall, with no service
+announcement.
 -/
 
 noncomputable section
@@ -43,98 +46,158 @@ theorem native_instruction_actor (instruction : ServiceInstruction nativeGraph)
       unfold reactiveLatest
       split <;> rfl
 
-private theorem player_positions (count : Nat) (who : Player)
-    (bounded : count < nativePlan.length)
-    (selected : (nativePlan[count]?).bind nativeInstructionPlayer = some who) :
-    count = 0 ∨ count = 1 ∨ ∃ event : nativeGraph.EventId,
-      count = (nativeBeforeResponse event).length ∧ who = nativeOwner event := by
-  have all : ∀ cursor : Fin nativePlan.length, ∀ actor : Player,
-      (nativePlan[cursor.val]?).bind nativeInstructionPlayer = some actor →
-        cursor.val = 0 ∨ cursor.val = 1 ∨ ∃ event : nativeGraph.EventId,
-          cursor.val = (nativeBeforeResponse event).length ∧ actor = nativeOwner event := by
-    decide
-  exact all ⟨count, bounded⟩ who selected
+def nativeResponseCount (who : Player) (plan : List (ServiceInstruction nativeGraph)) : Nat :=
+  (plan.map fun instruction => if nativeInstructionPlayer instruction = some who then 1 else 0).sum
 
-theorem native_response_grant (execution : (serviceApp observation).Execution) (who : Player)
-    (response : (serviceApp observation).Action) :
-    (execution.respond (serviceApp observation) who response).application.serviceGrant =
-      execution.application.serviceGrant := by
-  rcases response with ⟨transmission⟩
-  cases transmission with
-  | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id => rfl
-      | submit material =>
-          change (submitStep (material.call.register execution.application who) who
-            material.call.packet).serviceGrant = _
-          rw [submitStep_serviceGrant]
-          exact congrArg PublicView.serviceGrant
-            (material.call.register_facts who execution.application).2.2
+private theorem dispatch_recall_count (players : Player → (serviceApp observation).Policy)
+    (execution next : (serviceApp observation).Execution) (command : (serviceApp
+      observation).Command) (who : Player)
+    (reached : next ∈ ((serviceApp observation).dispatch players command execution).support) :
+    (next.recall who).length = (execution.recall who).length +
+      if command.actor? (serviceApp observation) = some who then 1 else 0 := by
+  obtain ⟨observed, observedMem, resumed⟩ :=
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  have same := (serviceApp observation).environmentStep_recall execution observed command
+    observedMem
+  cases actor : command.actor? (serviceApp observation) with
+  | none =>
+      simp only [actor, ReactiveApplication.resume, PMF.mem_support_pure_iff _ _] at resumed
+      subst next
+      simp only [same, reduceCtorEq, ↓reduceIte, Nat.add_zero]
+  | some owner =>
+      rw [actor] at resumed
+      obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
+      by_cases identical : who = owner
+      · subst who
+        have count := congrArg List.length ((serviceApp observation).respond_actions observed
+          owner response)
+        simp only [List.length_map, List.length_append, List.length_singleton] at count
+        simpa only [same, ↓reduceIte] using count
+      · rw [(serviceApp observation).respond_recall_other observed owner who identical response,
+        same]
+        simp only [Option.some.injEq, Ne.symm identical, ↓reduceIte, Nat.add_zero]
 
-theorem native_activation_grant (execution next : (serviceApp observation).Execution) (who : Player)
-    (reached : next ∈ (execution.environmentStep (serviceApp observation) (.activate
-      who)).support) :
-    next.application.serviceGrant = execution.application.serviceGrant := by
-  obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-  obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-  rfl
+theorem native_step_recall_count (players : Player → (serviceApp observation).Policy)
+    (instruction : ServiceInstruction nativeGraph) (execution next : (serviceApp
+      observation).Execution)
+    (who : Player)
+    (reached : next ∈ (nativeRuntime.interactionStep observation players (serviceNetwork
+      observation)
+      instruction execution).support) :
+    (next.recall who).length = (execution.recall who).length +
+      if nativeInstructionPlayer instruction = some who then 1 else 0 := by
+  obtain ⟨command, commandMem, dispatched⟩ :=
+    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  have count := dispatch_recall_count players execution next command who dispatched
+  rw [native_instruction_actor instruction _ _ command commandMem] at count
+  exact count
 
-private theorem prelude_grant (count : Nat) (early : count = 0 ∨ count = 1)
+theorem native_plan_recall_count (players : Player → (serviceApp observation).Policy)
+    (plan : List (ServiceInstruction nativeGraph)) (execution next : (serviceApp
+      observation).Execution)
+    (who : Player)
+    (reached : next ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
+      observation)
+      plan execution).support) :
+    (next.recall who).length = (execution.recall who).length + nativeResponseCount who plan := by
+  induction plan generalizing execution with
+  | nil =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      simp [nativeResponseCount]
+  | cons instruction rest ih =>
+      obtain ⟨middle, first, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      rw [ih middle later, native_step_recall_count players instruction execution middle who first]
+      simp only [nativeResponseCount, List.map_cons, List.sum_cons, Nat.add_assoc]
+
+/-- Every player's recall after a legal prefix of `count` rounds counts that
+player's scheduled responses in the prefix. -/
+theorem native_rounds_recall_count (players : Player → (serviceApp observation).Policy)
+    (count : Nat) (bounded : count ≤ nativePlan.length)
     (execution : (serviceApp observation).Execution)
     (reached : execution ∈ ((serviceApp observation).roundsFrom (PMF.pure nativeInitial)
-      (serviceScheduler observation) (serviceMenu observation).uniformResponses count).support) :
-    execution.application.serviceGrant = none := by
-  rcases early with rfl | rfl
-  · simp only [ReactiveApplication.roundsFrom, PMF.pure_bind,
-      ReactiveApplication.runRounds, PMF.mem_support_pure_iff _ _] at reached
-    subst execution
-    rfl
-  · change execution ∈ ((serviceApp observation).roundsFrom (PMF.pure nativeInitial)
-      (serviceScheduler observation) (serviceMenu observation).uniformResponses
-      ([.player alice] : List (ServiceInstruction nativeGraph)).length).support at reached
-    rw [native_roundsFrom_prefix (serviceMenu observation).uniformResponses [.player alice]
-      nativePlan.tail (by rfl)] at reached
-    simp only [runInteractionPlan, interactionStep, interactionInstruction,
-      PMF.pure_bind, PMF.bind_pure] at reached
-    obtain ⟨observed, observedMem, invoked⟩ :=
-      Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-    obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ invoked
-    rw [native_response_grant]
-    exact native_activation_grant nativeRoot observed alice observedMem
+      (serviceScheduler observation) players count).support) (who : Player) :
+    (execution.recall who).length = nativeResponseCount who (nativePlan.take count) := by
+  have split := native_roundsFrom_prefix players (nativePlan.take count) (nativePlan.drop count)
+    (List.take_append_drop count nativePlan).symm
+  rw [List.length_take_of_le bounded] at split
+  rw [split] at reached
+  simpa only [nativeRoot, ReactiveApplication.Execution.initial, List.length_nil,
+    Nat.zero_add] using native_plan_recall_count players _ nativeRoot execution who reached
 
-theorem native_response_prefix_grant (players : Player → (serviceApp observation).Policy)
-    (event : nativeGraph.EventId) (execution : (serviceApp observation).Execution)
-    (reached : execution ∈ (nativeRuntime.runInteractionPlan observation players (serviceNetwork
-      observation)
-      (nativeBeforeResponse event) nativeRoot).support) :
-    execution.application.serviceGrant = some event := by
-  rw [nativeBeforeResponse, runInteractionPlan_append] at reached
-  obtain ⟨prior, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have law : nativeRuntime.runInteractionPlan observation players (serviceNetwork observation)
-      [.grant event] prior = prior.environmentStep (serviceApp observation) (.application
-        (.grant event)) := by
-    simp only [runInteractionPlan, interactionStep, interactionInstruction,
-      PMF.pure_bind, PMF.bind_pure, ReactiveApplication.dispatch]
-    change (prior.environmentStep (serviceApp observation) (.application (.grant event))).bind
-      (fun next => PMF.pure next) = _
-    exact PMF.bind_pure _
-  rw [law] at moved
-  simp only [ReactiveApplication.Execution.environmentStep, serviceApp,
-    reactiveApplication,
-    environmentStep, PMF.pure_map, PMF.mem_support_pure_iff _ _] at moved
-  subst execution
-  rfl
+/-- The owner's response count at `event`'s service turn. -/
+def nativeTurnCount (event : nativeGraph.EventId) : Nat :=
+  nativeResponseCount (nativeOwner event) (nativeBeforeResponse event)
 
-/-- Public service grants distinguish all six later decision sites, even when
-the same player owns several events. -/
+/-- `control` is the owner's decision at `event`'s service turn: the owner is
+active, and its own count of earlier responses is the one scheduled before
+that turn. This is the owner's own knowledge; no public announcement names the
+event. -/
+def NativeTurn (event : nativeGraph.EventId) (control : (serviceApp observation).Control) :
+    Prop :=
+  control.actor = some (nativeOwner event) ∧
+    (control.execution.recall (nativeOwner event)).length = nativeTurnCount event
+
+/-- The event, if any, whose service turn is the decision of `who` after
+`count` earlier responses of its own; `none` at the ambient prelude responses.
+Players read it from their own recall. -/
+def nativeTurnEvent? (who : Player) (count : Nat) : Option nativeGraph.EventId :=
+  (List.finRange nativeGraph.order.eventCount).find? fun event =>
+    nativeOwner event = who ∧ nativeTurnCount event = count
+
+theorem nativeTurnEvent?_spec {who : Player} {count : Nat} {event : nativeGraph.EventId}
+    (selected : nativeTurnEvent? who count = some event) :
+    nativeOwner event = who ∧ nativeTurnCount event = count := by
+  have chosen := List.find?_some selected
+  exact of_decide_eq_true chosen
+
+theorem nativeTurnEvent?_turnCount (event : nativeGraph.EventId) :
+    nativeTurnEvent? (nativeOwner event) (nativeTurnCount event) = some event := by
+  fin_cases event <;> decide
+
+theorem NativeTurn.of_turnEvent? {event : nativeGraph.EventId}
+    {control : (serviceApp observation).Control} {who : Player}
+    (active : control.actor = some who)
+    (selected : nativeTurnEvent? who (control.execution.recall who).length = some event) :
+    NativeTurn event control := by
+  obtain ⟨owner, counted⟩ := nativeTurnEvent?_spec selected
+  subst who
+  exact ⟨active, counted.symm⟩
+
+theorem NativeTurn.turnEvent? {event : nativeGraph.EventId}
+    {control : (serviceApp observation).Control} (turn : NativeTurn event control) :
+    nativeTurnEvent? (nativeOwner event) (control.execution.recall (nativeOwner event)).length =
+      some event := by
+  rw [turn.2]
+  exact nativeTurnEvent?_turnCount event
+
+theorem NativeTurn.turnEvent?_of_active {event : nativeGraph.EventId}
+    {control : (serviceApp observation).Control} {who : Player} (turn : NativeTurn event control)
+    (active : control.actor = some who) :
+    nativeTurnEvent? who (control.execution.recall who).length = some event := by
+  obtain rfl : who = nativeOwner event := Option.some.inj (active.symm.trans turn.1)
+  exact turn.turnEvent?
+
+/-- Among each owner's scheduled activations, its earlier-response count picks
+out the service turn of each event it owns. -/
+private theorem turn_positions : ∀ position : Fin nativePlan.length,
+    ∀ event : nativeGraph.EventId,
+      (nativePlan[position.val]?).bind nativeInstructionPlayer = some (nativeOwner event) →
+      nativeResponseCount (nativeOwner event) (nativePlan.take position.val) =
+        nativeTurnCount event →
+      position.val = (nativeBeforeResponse event).length := by
+  decide
+
+/-- The owner's response count distinguishes all six later decision sites,
+even when the same player owns several events. -/
 theorem native_decision_cursor (event : nativeGraph.EventId) (control : (serviceApp
   observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (who : Player)
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some event) :
+    (turn : NativeTurn event control) :
     who = nativeOwner event ∧ control.execution.environmentRecall.length =
       (nativeBeforeResponse event).length + 1 := by
+  have owner : who = nativeOwner event := Option.some.inj (active.symm.trans turn.1)
+  subst who
   obtain ⟨accounted, supported⟩ := (serviceMenu observation).roundSupported_uniform
     (PMF.pure nativeInitial) nativeHorizon (serviceScheduler observation) trace
   rw [active] at supported
@@ -145,7 +208,8 @@ theorem native_decision_cursor (event : nativeGraph.EventId) (control : (service
   have bounded : count < nativePlan.length := by
     change _ + _ = nativePlan.length at accounted
     omega
-  have selected : (nativePlan[count]?).bind nativeInstructionPlayer = some who := by
+  have selected : (nativePlan[count]?).bind nativeInstructionPlayer =
+      some (nativeOwner event) := by
     simp only [serviceScheduler, cursor] at commandMem
     cases found : nativePlan[count]? with
     | none =>
@@ -156,25 +220,29 @@ theorem native_decision_cursor (event : nativeGraph.EventId) (control : (service
         rw [found] at commandMem
         simp only [Option.bind_some]
         exact (native_instruction_actor instruction _ _ command commandMem).symm.trans actor
-  have grantSame := native_activation_grant prior control.execution who (by
-    cases command <;> simp only [ReactiveApplication.Command.actor?] at actor <;>
-      try cases actor
-    exact observed)
-  rcases player_positions count who bounded selected with early | early | ⟨current, same, owner⟩
-  · rw [grantSame, prelude_grant count (Or.inl early) prior priorMem] at granted
-    cases granted
-  · rw [grantSame, prelude_grant count (Or.inr early) prior priorMem] at granted
-    cases granted
-  · have evaluated := priorMem
-    rw [same, native_roundsFrom_prefix (serviceMenu observation).uniformResponses
-      (nativeBeforeResponse current)
-      (.player (nativeOwner current) :: nativeAfterResponse current)
-      (native_response_split current)] at evaluated
-    have grant := native_response_prefix_grant (serviceMenu observation).uniformResponses
-      current prior evaluated
-    have identified : current = event :=
-      Option.some.inj (grant.symm.trans (grantSame.symm.trans granted))
-    subst current
-    exact ⟨owner, by omega⟩
+  have recalled := native_rounds_recall_count (serviceMenu observation).uniformResponses count
+    bounded.le prior priorMem (nativeOwner event)
+  rw [← (serviceApp observation).environmentStep_recall prior control.execution _ observed,
+    turn.2] at recalled
+  have located : count = (nativeBeforeResponse event).length :=
+    turn_positions ⟨count, bounded⟩ event selected recalled.symm
+  exact ⟨rfl, by omega⟩
+
+/-- At the scheduled cursor of `event`'s turn, the active owner's response
+count is the scheduled one. -/
+theorem native_turn_of_decision_cursor (event : nativeGraph.EventId)
+    (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
+      control))
+    (active : control.actor = some (nativeOwner event))
+    (position : control.execution.environmentRecall.length =
+      (nativeBeforeResponse event).length + 1) :
+    NativeTurn event control := by
+  obtain ⟨_, prior, priorMem, activated⟩ :=
+    native_decision_predecessor event control trace active position
+  refine ⟨active, ?_⟩
+  rw [(serviceApp observation).environmentStep_recall prior control.execution _ activated]
+  simpa only [nativeTurnCount, nativeRoot, ReactiveApplication.Execution.initial, List.length_nil,
+    Nat.zero_add] using native_plan_recall_count (serviceMenu observation).uniformResponses
+      (nativeBeforeResponse event) nativeRoot prior (nativeOwner event) priorMem
 
 end Vegas.Examples.SelectiveAssociation

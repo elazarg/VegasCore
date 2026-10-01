@@ -19,7 +19,7 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
 
 def nativeBeforeResponse (event : nativeGraph.EventId) : List (ServiceInstruction nativeGraph) :=
-  nativeBefore event.val ++ [.grant event]
+  nativeBefore event.val
 
 def nativeAfterResponse (event : nativeGraph.EventId) : List (ServiceInstruction nativeGraph) :=
   [.includeLatest event (nativeOwner event)] ++
@@ -93,19 +93,16 @@ theorem native_response_prefix_facts (players : Player → (serviceApp observati
     execution.application.clock = nativeRuntime.deadline event - 1 ∧
     (∀ earlier : nativeGraph.EventId, earlier.val < event.val →
       earlier ∈ execution.application.config.cut.completed) := by
-  rw [nativeBeforeResponse, runInteractionPlan_append] at reached
-  obtain ⟨prior, priorMem, grantMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  rw [nativeBeforeResponse] at reached
   have before := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
-    (serviceNetwork observation) _ nativeRoot prior (State.initial_invariant nativeInputs) priorMem
-  have grant := nativeRuntime.runInteractionPlan_facts observation nativeInputs players
-    (serviceNetwork observation) _ prior execution before.invariant grantMem
-  refine ⟨grant.invariant, ?_, ?_⟩
-  · rw [grant.clock, before.clock, nativeBefore_ticks]
-    change 0 + (nativeRuntime.deadline event - 1) + 0 = nativeRuntime.deadline event - 1
+    (serviceNetwork observation) _ nativeRoot execution (State.initial_invariant nativeInputs)
+      reached
+  refine ⟨before.invariant, ?_, ?_⟩
+  · rw [before.clock, nativeBefore_ticks]
+    change 0 + (nativeRuntime.deadline event - 1) = nativeRuntime.deadline event - 1
     omega
-  · intro earlier beforeEvent
-    exact grant.completed (native_before_completed players event.val
-      (Nat.le_of_lt event.isLt) prior priorMem earlier beforeEvent)
+  · exact native_before_completed players event.val (Nat.le_of_lt event.isLt) execution
+      reached
 
 /-- At every legal history at the response cursor, the current event is
 already settled or ready within its deadline; all earlier events are settled. -/

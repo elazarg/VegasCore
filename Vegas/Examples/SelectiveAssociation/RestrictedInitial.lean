@@ -15,22 +15,9 @@ namespace Vegas.Examples.SelectiveAssociation.Restricted
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
-def granted (execution : app.Execution) (event : nativeGraph.EventId) : app.Execution :=
-  { execution with
-    application := { execution.application with serviceGrant := some event }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant event)⟩] }
-
-theorem grant_step (execution : app.Execution) (event : nativeGraph.EventId) :
-    nativeRuntime.interactionStep leaks policy network (.grant event) execution =
-      PMF.pure (granted execution event) := by
-  simp [interactionStep, interactionInstruction, ReactiveApplication.dispatch,
-    ReactiveApplication.Execution.environmentStep, app, serviceApp, reactiveApplication,
-    environmentStep,
-    ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_map, granted]
-
 theorem player_step (execution : app.Execution) (who : Player) (action : app.Action)
-    (selected : response who ((activate execution who).observe app who) = action) :
+    (selected : response who ((activate execution who).recall who)
+      ((activate execution who).observe app who) = action) :
     nativeRuntime.interactionStep leaks policy network (.player who) execution =
       PMF.pure ((activate execution who).respond app who action) := by
   simp only [interactionStep, interactionInstruction, PMF.pure_bind,
@@ -48,7 +35,7 @@ theorem prelude_law :
     runInteractionPlan, player_step _ bob ⟨none⟩ rfl, PMF.pure_bind]
   rfl
 
-def aliceReady : app.Execution := activate (granted quietPrelude aliceBinding) alice
+def aliceReady : app.Execution := activate quietPrelude alice
 
 def aliceSent : app.Execution :=
   aliceReady.respond app alice (bindingResponse alice aliceBinding 0 false)
@@ -58,7 +45,8 @@ def aliceIncluded : app.Execution :=
     environmentRecall := aliceSent.environmentRecall ++
       [⟨aliceSent.observeEnvironment app, .include (alice, 0)⟩] }
 
-private theorem alice_choice : response alice (aliceReady.observe app alice) =
+private theorem alice_choice :
+    response alice (aliceReady.recall alice) (aliceReady.observe app alice) =
     bindingResponse alice aliceBinding 0 false := by
   change correctiveBinding alice aliceBinding false (aliceReady.observe app alice) = _
   have fresh : (aliceReady.observe app alice).application.candidates (.prepared 0) = .fresh := rfl
@@ -76,14 +64,13 @@ private theorem alice_inclusion :
     ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
   rfl
 
-theorem initial_five_rounds :
-    nativeRuntime.runInteractionPlan leaks policy network (nativePlan.take 5) initial =
+theorem initial_four_rounds :
+    nativeRuntime.runInteractionPlan leaks policy network (nativePlan.take 4) initial =
       PMF.pure aliceIncluded := by
   change nativeRuntime.runInteractionPlan leaks policy network
-    ([.player alice, .player bob] ++ [.grant aliceBinding, .player alice,
+    ([.player alice, .player bob] ++ [.player alice,
       .includeLatest aliceBinding alice]) initial = _
   rw [runInteractionPlan_append, prelude_law, PMF.pure_bind,
-    runInteractionPlan, grant_step, PMF.pure_bind,
     runInteractionPlan, player_step _ alice _ alice_choice, PMF.pure_bind]
   change nativeRuntime.runInteractionPlan leaks policy network
     [.includeLatest aliceBinding alice] aliceSent = _

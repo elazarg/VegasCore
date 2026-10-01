@@ -61,7 +61,7 @@ theorem native_response_execution (players : Player → nativeApp.Policy)
       observed ∈ (before.environmentStep nativeApp (.activate (nativeOwner event))).support ∧
       response ∈ (players (nativeOwner event) (observed.recall (nativeOwner event))
         (observed.observe nativeApp (nativeOwner event))).support ∧
-      observed.application.serviceGrant = some event ∧
+      (observed.recall (nativeOwner event)).length = nativeTurnCount event ∧
       Nonempty (nativeArena.Trace (some
         ⟨nativeHorizon - ((nativeBeforeResponse event).length + 1),
           some (nativeOwner event), observed⟩)) ∧
@@ -89,12 +89,16 @@ theorem native_response_execution (players : Player → nativeApp.Policy)
   obtain ⟨response, chosen, included⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ finalMem)
   refine ⟨observed, response, observedMem, chosen, ?_, ?_, ?_⟩
-  · rw [native_activation_grant before observed (nativeOwner event) observedMem]
-    apply native_response_prefix_grant players event before
+  · rw [nativeApp.environmentStep_recall before observed _ observedMem]
     have exactPrefix := native_roundsFrom_prefix players (nativeBeforeResponse event)
       (.player (nativeOwner event) :: nativeAfterResponse event) (native_response_split event)
-    rw [← exactPrefix]
-    simpa only [ReactiveApplication.roundsFrom, PMF.pure_bind, nativeRoot] using beforeMem
+    have reached : before ∈ (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
+        (nativeBeforeResponse event) nativeRoot).support := by
+      rw [← exactPrefix]
+      simpa only [ReactiveApplication.roundsFrom, PMF.pure_bind, nativeRoot] using beforeMem
+    simpa only [nativeTurnCount, nativeRoot, ReactiveApplication.Execution.initial,
+      List.length_nil, Nat.zero_add] using native_plan_recall_count players _ nativeRoot before
+        (nativeOwner event) reached
   · have remaining : nativeHorizon - count = nativeHorizon - (count + 1) + 1 := by omega
     apply nativeMenu.trace_environment (PMF.pure nativeInitial) nativeHorizon nativeScheduler
       (nativeHorizon - (count + 1)) before observed (.activate (nativeOwner event))

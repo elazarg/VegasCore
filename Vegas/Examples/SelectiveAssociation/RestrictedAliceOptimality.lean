@@ -22,18 +22,18 @@ open GameTheory.Math.Probability
 theorem update_binds_other (who other : Player) (different : other ≠ who)
     (alternative : model.BehavioralPolicy who) (past : List app.PlayerEntry)
     (view : app.PlayerView)
-    (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent other)) :
+    (granted : nativeTurnEvent? other past.length = some (nativeBindingEvent other)) :
     menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler
       (Profile.update (sig := model.behavioralSignature) profile who alternative) other past view =
         PMF.pure (correctiveBinding other (nativeBindingEvent other)
           (prescribedBit other view) view) := by
   rw [menu.decodeProfile_update, Function.update_of_ne different, decode_profile]
-  exact congrArg PMF.pure (response_binds other view granted)
+  exact congrArg PMF.pure (response_binds other past view granted)
 
 theorem alice_carol_payoff_bound (alternative : model.BehavioralPolicy alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some carol)
-    (granted : control.execution.application.serviceGrant = some carolBinding)
+    (granted : NativeTurn carolBinding control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom
       (Profile.update (sig := model.behavioralSignature) profile alice alternative)
@@ -42,7 +42,8 @@ theorem alice_carol_payoff_bound (alternative : model.BehavioralPolicy alice)
   let players := Profile.update (sig := model.behavioralSignature) profile alice alternative
   let bit := publicGuess (control.execution.observe app carol)
   have chooses := update_binds_other alice carol (by decide) alternative
-    (control.execution.recall carol) (control.execution.observe app carol) granted
+    (control.execution.recall carol) (control.execution.observe app carol)
+    (granted.turnEvent?_of_active active)
   change menu.decodeProfile (PMF.pure nativeInitial) nativeHorizon scheduler players carol
     (control.execution.recall carol) (control.execution.observe app carol) =
       PMF.pure (correctiveBinding carol carolBinding bit
@@ -50,7 +51,7 @@ theorem alice_carol_payoff_bound (alternative : model.BehavioralPolicy alice)
   obtain ⟨result, stateEq, carolBound⟩ := binding_success players carol control trace active granted
     bit chooses _ (full_enough control trace) final supported
   have split := supported
-  change final ∈ (model.runBehavioralFrom players (7 + 172) ⟨some control, trace⟩).support at split
+  change final ∈ (model.runBehavioralFrom players (6 + 161) ⟨some control, trace⟩).support at split
   rw [model.runBehavioralFrom_add] at split
   obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ split)
   have exactLater := afterCarol_history players control trace active granted _ chooses later
@@ -66,15 +67,16 @@ theorem alice_carol_payoff_bound (alternative : model.BehavioralPolicy alice)
   change laterState = some bobControl at bobEq
   subst laterState
   have bobChooses := update_binds_other alice bob (by decide) alternative
-    (bobControl.execution.recall bob) (bobControl.execution.observe app bob) bobGrant
+    (bobControl.execution.recall bob) (bobControl.execution.observe app bob)
+    (bobGrant.turnEvent?_of_active bobActive)
   have prescribed : prescribedBit bob (bobControl.execution.observe app bob) = bit := by
     simpa only [prescribedBit, show bob ≠ alice by decide, ↓reduceIte] using sameGuess
   rw [prescribed] at bobChooses
-  have enough : app.rank nativeHorizon (some bobControl) ≤ 172 := by
+  have enough : app.rank nativeHorizon (some bobControl) ≤ 161 := by
     rw [decision_rank bobBinding bobControl laterTrace bobActive bobGrant]
     decide
   obtain ⟨sameResult, sameEq, bobBound⟩ := binding_success players bob bobControl laterTrace
-    bobActive bobGrant bit bobChooses 172 enough final finalMem
+    bobActive bobGrant bit bobChooses 161 enough final finalMem
   have same : sameResult = result := Option.some.inj (sameEq.symm.trans stateEq)
   subst sameResult
   have carolPublished := final_binding_published players carolBinding carol (by decide)
@@ -98,14 +100,14 @@ theorem alice_carol_payoff_bound (alternative : model.BehavioralPolicy alice)
 theorem alice_binding_payoff_bound (alternative : model.BehavioralPolicy alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some alice)
-    (granted : control.execution.application.serviceGrant = some aliceBinding)
+    (granted : NativeTurn aliceBinding control)
     (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom
       (Profile.update (sig := model.behavioralSignature) profile alice alternative)
         (2 * nativeHorizon + 1) ⟨some control, trace⟩).support) :
     nativeUtility alice final.state ≤ 0 := by
   let players := Profile.update (sig := model.behavioralSignature) profile alice alternative
-  change final ∈ (model.runBehavioralFrom players (6 + 173) ⟨some control, trace⟩).support
+  change final ∈ (model.runBehavioralFrom players (5 + 162) ⟨some control, trace⟩).support
     at supported
   rw [model.runBehavioralFrom_add] at supported
   obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
@@ -115,10 +117,10 @@ theorem alice_binding_payoff_bound (alternative : model.BehavioralPolicy alice)
   rcases later with ⟨state, laterTrace⟩
   change state = some atCarol at carolEq
   subst state
-  have enough : app.rank nativeHorizon (some atCarol) ≤ 173 := by
+  have enough : app.rank nativeHorizon (some atCarol) ≤ 162 := by
     rw [decision_rank carolBinding atCarol laterTrace carolActive carolGrant]
     decide
-  obtain ⟨other, otherMem, same⟩ := full_continuation_state players atCarol laterTrace 173 enough
+  obtain ⟨other, otherMem, same⟩ := full_continuation_state players atCarol laterTrace 162 enough
     final finalMem
   rw [← same]
   exact alice_carol_payoff_bound alternative atCarol laterTrace carolActive carolGrant other
@@ -127,13 +129,14 @@ theorem alice_binding_payoff_bound (alternative : model.BehavioralPolicy alice)
 theorem alice_prelude_payoff_bound (alternative : model.BehavioralPolicy alice)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some alice)
-    (ambient : control.execution.application.serviceGrant = none) (final : arena.History)
+    (ambient : nativeTurnEvent? alice (control.execution.recall alice).length = none)
+    (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom
       (Profile.update (sig := model.behavioralSignature) profile alice alternative)
         (2 * nativeHorizon + 1) ⟨some control, trace⟩).support) :
     nativeUtility alice final.state ≤ 0 := by
   let players := Profile.update (sig := model.behavioralSignature) profile alice alternative
-  change final ∈ (model.runBehavioralFrom players (5 + 174) ⟨some control, trace⟩).support
+  change final ∈ (model.runBehavioralFrom players (4 + 163) ⟨some control, trace⟩).support
     at supported
   rw [model.runBehavioralFrom_add] at supported
   obtain ⟨later, laterMem, finalMem⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
@@ -142,10 +145,10 @@ theorem alice_prelude_payoff_bound (alternative : model.BehavioralPolicy alice)
   rcases later with ⟨state, laterTrace⟩
   change state = some atBinding at bindingEq
   subst state
-  have enough : app.rank nativeHorizon (some atBinding) ≤ 174 := by
+  have enough : app.rank nativeHorizon (some atBinding) ≤ 163 := by
     rw [decision_rank aliceBinding atBinding laterTrace ownerActive ownerGrant]
     decide
-  obtain ⟨other, otherMem, same⟩ := full_continuation_state players atBinding laterTrace 174 enough
+  obtain ⟨other, otherMem, same⟩ := full_continuation_state players atBinding laterTrace 163 enough
     final finalMem
   rw [← same]
   exact alice_binding_payoff_bound alternative atBinding laterTrace ownerActive ownerGrant other
@@ -155,8 +158,8 @@ theorem alice_early_rational (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (site : model.InformationSite alice)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (early : view.application.publicView.serviceGrant = none ∨
-      view.application.publicView.serviceGrant = some aliceBinding) :
+    (early : nativeTurnEvent? alice past.length = none ∨
+      nativeTurnEvent? alice past.length = some aliceBinding) :
     assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site
       (fun history => nativeUtility alice history.state) (2 * nativeHorizon + 1)) := by
   refine (Context.isLocallyOptimal_iff_of_integrable
@@ -167,15 +170,15 @@ theorem alice_early_rational (assessment : model.BehavioralAssessment)
     expect_bind_of_finite, strategy, Profile.update_eq_self]
   refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
     (payoffIntegrable_of_finite _ _)
-  obtain ⟨control, stateEq, active, _, observed⟩ :=
+  obtain ⟨control, stateEq, active, recalled, _⟩ :=
     information_control alice past view ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  have current : control.execution.application.serviceGrant = none ∨
-      control.execution.application.serviceGrant = some aliceBinding := by
-    rw [← observed] at early
-    exact early
+  have current : nativeTurnEvent? alice (control.execution.recall alice).length = none ∨
+      NativeTurn aliceBinding control := by
+    rw [← recalled] at early
+    exact early.imp id (.of_turnEvent? active)
   have prescribed : expect (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩) (fun final => nativeUtility alice final.state) = 0 := by
     refine (expect_congr_on_support (g := fun _ => (0 : ℝ)) ?_).trans

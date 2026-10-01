@@ -74,7 +74,7 @@ theorem native_binding_node (who : Player) : nodeView nativeGraph (nativeBinding
   fin_cases who <;> rfl
 
 def nativeVisit (event : nativeGraph.EventId) : List (ServiceInstruction nativeGraph) :=
-  [.grant event, .player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
+  [.player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
     List.replicate (nativeRuntime.deadline event) .tick ++ [.expire event]
 
 def nativePlan : List (ServiceInstruction nativeGraph) :=
@@ -126,7 +126,7 @@ abbrev nativeScheduler := serviceScheduler nativeLeaks
 abbrev nativeArena := serviceArena nativeLeaks
 abbrev nativeModel := serviceModel nativeLeaks
 
-theorem native_horizon : nativeHorizon = 89 := by decide
+theorem native_horizon : nativeHorizon = 83 := by decide
 theorem native_ticks : serviceTicks nativePlan = 63 := by decide
 
 def aliceBindingRef : EventGraph.FieldRef nativeGraph.layout (.binding alice .bool) :=

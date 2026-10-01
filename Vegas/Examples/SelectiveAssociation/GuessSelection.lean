@@ -20,7 +20,7 @@ variable {observation : MessageNetwork.ObservationRule Player (WitnessedPacket n
 
 theorem native_old_binding_unique (who : Player) (control : (serviceApp observation).Control)
     (trace : (serviceArena observation).Trace (some control)) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativeBindingEvent who)) :
+    (granted : NativeTurn (nativeBindingEvent who) control) :
     nativeRuntime.UniqueEventOutput observation who (nativeBindingEvent who)
       (control.execution.recall who) := by
   have count := native_decision_recall_count (observation := observation) (nativeBindingEvent who)
@@ -52,7 +52,7 @@ theorem native_binding_reserved_local (who : Player) (left right : (serviceApp o
     (leftActive : left.actor = some who) (rightActive : right.actor = some who)
     (sameInput : (left.execution.recall who, left.execution.observe (serviceApp observation) who) =
       (right.execution.recall who, right.execution.observe (serviceApp observation) who))
-    (granted : left.execution.application.serviceGrant = some (nativeBindingEvent who))
+    (granted : NativeTurn (nativeBindingEvent who) left)
     (response : (serviceApp observation).Action) (players : Player → (serviceApp
       observation).Policy)
     (afterLeft afterRight : (serviceApp observation).Execution)
@@ -71,10 +71,10 @@ theorem native_binding_reserved_local (who : Player) (left right : (serviceApp o
   have applicationViews := congrArg ReactiveApplication.PlayerView.application views
   have ledgers := congrArg (fun view : (serviceApp observation).PlayerView =>
     view.messages.ledger) views
-  have grants := congrArg (fun view : (serviceApp observation).PlayerView =>
-    view.application.publicView.serviceGrant) views
-  have rightGrant : right.execution.application.serviceGrant = some (nativeBindingEvent who) :=
-    grants.symm.trans granted
+  have rightGrant : NativeTurn (nativeBindingEvent who) right :=
+    .of_turnEvent? rightActive (by
+      rw [← show left.execution.recall who = right.execution.recall who from recalls]
+      exact granted.turnEvent?_of_active leftActive)
   obtain ⟨leftOrigins, leftRecall, leftRetained, leftSerials, leftMemory, leftAudit⟩ :=
     native_transport_history left leftTrace who leftActive
   obtain ⟨rightOrigins, rightRecall, rightRetained, rightSerials, rightMemory, rightAudit⟩ :=

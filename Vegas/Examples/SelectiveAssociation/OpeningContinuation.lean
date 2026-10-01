@@ -62,7 +62,7 @@ theorem native_response_finish (players : Player → (serviceApp observation).Po
     (who : Player) (response : (serviceApp observation).Action) (publication : PublicationResult
       Bool)
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (chooses : players who (control.execution.recall who)
       (control.execution.observe (serviceApp observation) who) = PMF.pure response)
     (included : ∀ middle ∈ (nativeRuntime.interactionStep observation players (serviceNetwork
@@ -92,7 +92,7 @@ theorem native_opening_finish (players : Player → (serviceApp observation).Pol
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (who : Player) (bit : Bool) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (stored : (nativeBindingRef who).get? control.execution.application.config.store =
       some (.success bit))
@@ -186,7 +186,7 @@ theorem native_opening_behavioral_lower
     (control : (serviceApp observation).Control) (trace : (serviceArena observation).Trace (some
       control))
     (who : Player) (bit : Bool) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (unfinished : nativePublicationEvent who ∉ control.execution.application.config.cut.completed)
     (stored : (nativeBindingRef who).get? control.execution.application.config.store =
       some (.success bit))

@@ -31,7 +31,7 @@ theorem native_reserved_finish (players : Player → (serviceApp observation).Po
     (predicate : EventGraphRuntime.State nativeGraph → Prop)
     (invariant : (serviceApp observation).Invariant predicate)
     (active : control.actor = some (nativeOwner event))
-    (granted : control.execution.application.serviceGrant = some event)
+    (granted : NativeTurn event control)
     (chooses : players (nativeOwner event) (control.execution.recall (nativeOwner event))
       (control.execution.observe (serviceApp observation) (nativeOwner event)) =
         PMF.pure response)

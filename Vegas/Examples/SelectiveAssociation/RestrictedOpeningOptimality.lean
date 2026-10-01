@@ -63,7 +63,7 @@ theorem prescribed_later_publication (players : Profile model.behavioralSignatur
     (ordered : (nativePublicationEvent first).val ≤ (nativePublicationEvent last).val)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some first)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent first))
+    (granted : NativeTurn (nativePublicationEvent first) control)
     (value : PublicationResult Bool)
     (stored : (nativeBindingRef last).get? control.execution.application.config.store = some value)
     (opens : Opens players last) (final : arena.History)
@@ -83,7 +83,7 @@ theorem earlier_publication_fixed (players : Profile model.behavioralSignature)
     (ordered : (nativePublicationEvent last).val < (nativePublicationEvent first).val)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some first)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent first))
+    (granted : NativeTurn (nativePublicationEvent first) control)
     (fuel : Nat) (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom players fuel ⟨some control, trace⟩).support) :
     publication last final.state = publication last (some control) := by
@@ -114,7 +114,7 @@ an arbitrary complete policy deviation from the current opening. -/
 theorem other_publication_same (who other : Player) (different : other ≠ who)
     (alternative : model.BehavioralPolicy who) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (prescribed deviated : arena.History)
     (prescribedMem : prescribed ∈ (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support)
@@ -176,7 +176,7 @@ posterior premise and no restriction on the deviator's raw response policy. -/
 theorem opening_payoff_optimal (who : Player) (alternative : model.BehavioralPolicy who)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (prescribed deviated : arena.History)
     (prescribedMem : prescribed ∈ (model.runBehavioralFrom profile (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support)
@@ -209,7 +209,7 @@ theorem opening_payoff_optimal (who : Player) (alternative : model.BehavioralPol
 theorem opening_expectation_optimal (who : Player) (alternative : model.BehavioralPolicy who)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who)) :
+    (granted : NativeTurn (nativePublicationEvent who) control) :
     expect (model.runBehavioralFrom (Profile.update (sig := model.behavioralSignature) profile who
       alternative) (2 * nativeHorizon + 1) ⟨some control, trace⟩)
         (fun history => nativeUtility who history.state) ≤
@@ -258,7 +258,7 @@ theorem profile_opening_rational (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (who : Player) (site : model.InformationSite who)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who)) :
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who)) :
     assessment.IsSequentiallyRationalAt site (assessment.truncatedContinuationContext site
       (fun history => nativeUtility who history.state) (2 * nativeHorizon + 1)) := by
   refine (Context.isLocallyOptimal_iff_of_integrable
@@ -269,15 +269,13 @@ theorem profile_opening_rational (assessment : model.BehavioralAssessment)
     expect_bind_of_finite, strategy, Profile.update_eq_self]
   refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
     (payoffIntegrable_of_finite _ _)
-  obtain ⟨control, stateEq, active, _, observed⟩ :=
+  obtain ⟨control, stateEq, active, recalled, _⟩ :=
     information_control who past view ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  have controlGrant : control.execution.application.serviceGrant =
-      some (nativePublicationEvent who) := by
-    rw [← observed] at granted
-    exact granted
+  have controlGrant : NativeTurn (nativePublicationEvent who) control :=
+    .of_turnEvent? active (by rw [recalled]; exact granted)
   exact opening_expectation_optimal who alternative control trace active controlGrant
 
 end Vegas.Examples.SelectiveAssociation.Restricted

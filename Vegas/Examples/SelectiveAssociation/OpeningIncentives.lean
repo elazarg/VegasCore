@@ -43,7 +43,7 @@ theorem native_information_control
 theorem native_opening_fiber_lower
     (profile : ∀ who, nativeModel.BehavioralPolicy who)
     (who : Player) (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))
@@ -56,9 +56,8 @@ theorem native_opening_fiber_lower
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
   subst state
-  have grant : control.execution.application.serviceGrant = some (nativePublicationEvent who) := by
-    rw [← observed] at granted
-    exact granted
+  have grant : NativeTurn (nativePublicationEvent who) control :=
+    .of_turnEvent? active (by rw [recall]; exact granted)
   have incomplete : nativePublicationEvent who ∉
       control.execution.application.config.cut.completed := by
     rw [← observed] at unfinished
@@ -99,7 +98,7 @@ theorem native_not_supported_failing_opening
     (site : nativeModel.InformationSite who)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some (nativePublicationEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativePublicationEvent who))
     (unfinished : nativePublicationEvent who ∉
       view.application.publicView.observation.completionOrder)
     (stored : (nativeBindingRef who).get? view.application.observation.store = some (.success bit))

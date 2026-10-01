@@ -24,7 +24,7 @@ theorem native_supported_certified_guess
     (site : nativeModel.InformationSite bob)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some bobBinding)
+    (granted : nativeTurnEvent? bob past.length = some bobBinding)
     (unfinished : bobBinding ∉ view.application.publicView.observation.completionOrder)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks view (aliceBindingEvidence bit))
     (choice : nativeModel.Choice bob site.1)
@@ -86,15 +86,17 @@ theorem native_supported_certified_guess
 history. This is derived from the actual service, not required of the view. -/
 theorem native_bob_view_unfinished (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView)
-    (granted : view.application.publicView.serviceGrant = some bobBinding)
+    (granted : nativeTurnEvent? bob past.length = some bobBinding)
     (history : nativeModel.InformationHistory bob (some (past, view))) :
     bobBinding ∉ view.application.publicView.observation.completionOrder := by
-  obtain ⟨control, stateEq, active, _, observed⟩ := native_information_control bob past view history
+  obtain ⟨control, stateEq, active, recalled, observed⟩ :=
+    native_information_control bob past view history
   rcases history with ⟨⟨state, trace⟩, information⟩
   change state = some control at stateEq
   subst state
-  rw [← observed] at granted ⊢
-  have unfinished := native_decision_unfinished bobBinding control trace bob active granted
+  rw [← observed]
+  have unfinished := native_decision_unfinished bobBinding control trace bob active
+    (.of_turnEvent? active (by rw [recalled]; exact granted))
   change bobBinding ∉
     control.execution.application.config.history.map EventGraph.Completion.event
   intro completed
@@ -112,7 +114,7 @@ theorem native_sequentially_rational_certified_guess
     (site : nativeModel.InformationSite bob)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView)
     (siteEq : site.1 = some (past, view)) (bit : Bool)
-    (granted : view.application.publicView.serviceGrant = some bobBinding)
+    (granted : nativeTurnEvent? bob past.length = some bobBinding)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks view (aliceBindingEvidence bit))
     (history : nativeModel.InformationHistory bob site.1) (final : nativeArena.History)
     (supported : final ∈ (nativeModel.runBehavioralFrom assessment.strategy

@@ -48,12 +48,8 @@ def observed (bit : Bool) : app.Execution :=
       [⟨(first bit).observeEnvironment app, .activate 1⟩] }
 
 def beforeOffer (execution : app.Execution) : app.Execution :=
-  let granted : app.Execution := { execution with
-    application := { execution.application with serviceGrant := some 0 }
-    environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment app, .application (.grant 0)⟩] }
-  { granted with environmentRecall := granted.environmentRecall ++
-    [⟨granted.observeEnvironment app, .activate 0⟩] }
+  { execution with environmentRecall := execution.environmentRecall ++
+    [⟨execution.observeEnvironment app, .activate 0⟩] }
 
 def offered (bit : Bool) : app.Execution :=
   (beforeOffer (observed bit)).respond app 0
@@ -112,11 +108,9 @@ theorem initial_activation : initial.environmentStep app (.activate 0) =
     PMF.pure_map, activatedInitial, initial, ReactiveApplication.Execution.initial]
 
 theorem beforeOffer_law (execution : app.Execution) :
-    ((execution.environmentStep app (.application (.grant 0))).bind
-      fun next => next.environmentStep app (.activate 0)) =
-        PMF.pure (beforeOffer execution) := by
+    execution.environmentStep app (.activate 0) = PMF.pure (beforeOffer execution) := by
   simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
-    environmentStep, leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
+    leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
     MessageNetwork.learn_empty,
     PMF.pure_map, beforeOffer]
 
@@ -253,21 +247,19 @@ private theorem reacted_ledger (bit : Bool) (response : app.Action) :
           all_goals rfl
 
 private theorem offeredAfter_application (bit : Bool) (response : app.Action) :
-    (offeredAfter bit response).application =
-      { (reacted bit response).application with serviceGrant := some 0 } := by
-  change submitStep { (reacted bit response).application with serviceGrant := some 0 }
-    0 (.commitment 0 candidate) = _
+    (offeredAfter bit response).application = (reacted bit response).application := by
+  change submitStep (reacted bit response).application 0 (.commitment 0 candidate) = _
   simp only [submitStep, candidate, ↓reduceIte]
   rw [CommitmentCandidates.freeze_eq_self_of_not_fresh _ _ (by
     rw [reacted_candidate]
     simp)]
+  rfl
 
 private theorem offeredAfter_public (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).application.publicView =
-      { (observed bit).application.publicView with serviceGrant := some 0 } := by
+      (observed bit).application.publicView := by
   rw [offeredAfter_application]
-  exact congrArg (fun view : PublicView graph => { view with serviceGrant := some 0 })
-    (reacted_public bit response)
+  exact reacted_public bit response
 
 private theorem offeredAfter_config (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).application.config = (observed bit).application.config := by
@@ -396,10 +388,7 @@ private theorem offeredAfter_carol (bit : Bool) (response : app.Action) :
       ((beforeOffer (reacted bit response)).recall 2,
         (beforeOffer (reacted bit response)).observe app 2) =
       ((beforeOffer (observed bit)).recall 2, (beforeOffer (observed bit)).observe app 2) := by
-    exact congrArg (fun input : List app.PlayerEntry × app.PlayerView =>
-      (input.1, { input.2 with application := { input.2.application with
-        publicView := { input.2.application.publicView with serviceGrant := some 0 } } }))
-          (arbitrary_response_private bit response 2 (by decide))
+    exact arbitrary_response_private bit response 2 (by decide)
   exact (runtime.reactive_response_other_input leaks (beforeOffer (reacted bit response)) 0 2
     (by decide) _).trans (middle.trans
       (runtime.reactive_response_other_input leaks (beforeOffer (observed bit)) 0 2
@@ -561,15 +550,11 @@ private def ticked (bit : Bool) (response : app.Action) : app.Execution :=
 private def expired (bit : Bool) (response : app.Action) : app.Execution :=
   afterApplication (ticked bit response) (ticked bit response).application (.expire 0)
 
-private def carolGranted (bit : Bool) (response : app.Action) : app.Execution :=
-  afterApplication (expired bit response)
-    { (expired bit response).application with serviceGrant := some 1 } (.grant 1)
-
 /-- The execution at Carol's actual activation in the fixed calendar. -/
 def carolSite (bit : Bool) (response : app.Action) : app.Execution :=
-  let granted := carolGranted bit response
-  { granted with environmentRecall := granted.environmentRecall ++
-    [⟨granted.observeEnvironment app, .activate 2⟩] }
+  let before := expired bit response
+  { before with environmentRecall := before.environmentRecall ++
+    [⟨before.observeEnvironment app, .activate 2⟩] }
 
 private theorem ticked_not_ready (bit : Bool) (response : app.Action) :
     ¬(ticked bit response).application.config.cut.Ready 0 := by
@@ -578,13 +563,12 @@ private theorem ticked_not_ready (bit : Bool) (response : app.Action) :
   intro ready
   exact ready.1 (by simp [boundAfter, State.complete, EventGraph.Config.complete])
 
-/-- The four intervening service commands are precisely the calendar's clock
-tick, expiry, next grant, and Carol activation. -/
+/-- The three intervening service commands are precisely the calendar's clock
+tick, expiry, and Carol activation. -/
 theorem carolSite_law (bit : Bool) (response : app.Action) :
     (((includedAfter bit response).environmentStep app (.application .advanceClock)).bind
       fun next => (next.environmentStep app (.application (.expire 0))).bind
-        fun next => (next.environmentStep app (.application (.grant 1))).bind
-          fun next => next.environmentStep app (.activate 2)) =
+        fun next => next.environmentStep app (.activate 2)) =
       PMF.pure (carolSite bit response) := by
   have tick : (includedAfter bit response).environmentStep app (.application .advanceClock) =
       PMF.pure (ticked bit response) := by
@@ -598,8 +582,8 @@ theorem carolSite_law (bit : Bool) (response : app.Action) :
     rfl
   rw [tick, PMF.pure_bind, expiry, PMF.pure_bind]
   simp [ReactiveApplication.Execution.environmentStep, app, reactiveApplication,
-    environmentStep, leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
-    MessageNetwork.learn_empty, PMF.pure_map, carolSite, carolGranted, afterApplication]
+    leaks, SelectiveAssociation.nativeLeaks, SelectiveAssociation.bob,
+    MessageNetwork.learn_empty, PMF.pure_map, carolSite]
 
 /-- Carol receives the same entire input at her scheduled choice, for either
 Alice value and any two earlier Bob responses. -/
@@ -609,12 +593,12 @@ theorem carolSite_input (left right : app.Action) :
   exact congrArg (fun input : List app.PlayerEntry × app.PlayerView =>
     (input.1, { input.2 with application := { input.2.application with
       publicView := { input.2.application.publicView with
-        clock := input.2.application.publicView.clock + 1, serviceGrant := some 1 } } }))
+        clock := input.2.application.publicView.clock + 1 } } }))
       (carol_input_after_arbitrary_responses left right)
 
 theorem carolSite_rounds (bit : Bool) (response : app.Action) :
-    (carolSite bit response).environmentRecall.length = 9 := by
-  simp [carolSite, carolGranted, expired, ticked, afterApplication, includedAfter,
+    (carolSite bit response).environmentRecall.length = 7 := by
+  simp [carolSite, expired, ticked, afterApplication, includedAfter,
     offeredAfter, beforeOffer, reacted, observed, first, activatedInitial, initial,
     ReactiveApplication.Execution.respond, ReactiveApplication.Execution.initial]
 

@@ -67,7 +67,7 @@ theorem native_deadline_pos (event : nativeGraph.EventId) :
   fin_cases event <;> decide
 
 theorem nativeVisit_prefix_ticks (event : nativeGraph.EventId) :
-    serviceTicks ([.grant event, .player (nativeOwner event),
+    serviceTicks ([.player (nativeOwner event),
       .includeLatest event (nativeOwner event)] ++
       List.replicate (nativeRuntime.deadline event) .tick) = nativeRuntime.deadline event := by
   fin_cases event <;> decide
@@ -91,7 +91,7 @@ theorem native_visit_completes (players : Player → (serviceApp observation).Po
   obtain ⟨prior, priorMem, expired, expiredMem, finalMem⟩ :=
     nativeRuntime.runInteractionPlan_support_instruction observation players (serviceNetwork
       observation)
-      ([.grant event, .player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
+      ([.player (nativeOwner event), .includeLatest event (nativeOwner event)] ++
         List.replicate (nativeRuntime.deadline event) .tick) [] (.expire event)
       execution next reached
   have progress := nativeRuntime.runInteractionPlan_facts observation nativeInputs players

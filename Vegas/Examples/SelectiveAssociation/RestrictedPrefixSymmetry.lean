@@ -488,13 +488,6 @@ theorem related_application (selected : Handle nativeGraph) (first second : app.
   simpa only [List.length_append, List.length_singleton] using
     congrArg (· + 1) related.environmentCount
 
-theorem related_grant (selected : Handle nativeGraph) (first second : app.Execution)
-    (related : Related selected first second) (event : nativeGraph.EventId) :
-    Related selected (Prefix.environmentResult first (.application (.grant event)))
-      (Prefix.environmentResult second (.application (.grant event))) :=
-  related_application selected first second related (.grant event)
-    (StoreFlip.environment_grant selected first.application event)
-
 theorem related_tick (selected : Handle nativeGraph) (first second : app.Execution)
     (related : Related selected first second) :
     Related selected (Prefix.environmentResult first (.application .advanceClock))
@@ -654,7 +647,6 @@ theorem related_aliceInput (selected : Handle nativeGraph) (owner : selected.1 =
     Related selected (Prefix.aliceInput first second)
       (Prefix.aliceInput (CandidateFlip.action selected first) second) := by
   apply related_activate
-  apply related_grant
   apply related_respond_other selected owner _ _ (related_bobPrelude selected first)
     bob (by decide) (bobPrelude_unobserved selected first)
   intro sent member
@@ -688,7 +680,6 @@ theorem related_carolInput (selected : Handle nativeGraph) (responses : Prefix.C
     Related selected (Prefix.carolInput responses)
       (Prefix.carolInput (flipCarol selected responses)) := by
   apply related_activate
-  apply related_grant
   exact related_expire_binding selected _ _ (related_tick selected _ _ included) alice
 
 theorem related_carolSubmitted (selected : Handle nativeGraph) (owner : selected.1 = alice)
@@ -715,7 +706,6 @@ theorem related_bobInput (selected : Handle nativeGraph) (responses : Prefix.Bob
     Related selected (Prefix.bobInput responses)
       (Prefix.bobInput (flipBob selected responses)) := by
   apply related_activate
-  apply related_grant
   exact related_expire_binding selected _ _
     (related_tick selected _ _ (related_tick selected _ _ included)) carol
 

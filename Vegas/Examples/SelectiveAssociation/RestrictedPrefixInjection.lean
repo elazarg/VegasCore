@@ -59,16 +59,22 @@ theorem carol_flip_facts (players : Profile model.behavioralSignature)
   exact ⟨related, related_guesser_input selected owner _ _ related carol (Or.inr rfl)
     (Prefix.no_certificate_observed _ trace selected unpublished carol)⟩
 
-theorem carolInput_granted (responses : Prefix.CarolResponses) :
-    (Prefix.carolInput responses).application.serviceGrant = some carolBinding := by
-  simp only [Prefix.carolInput, Prefix.environmentResult_grant, activate, granted]
+/-- Carol has not responded before her binding turn. -/
+theorem carolInput_turn (responses : Prefix.CarolResponses) :
+    NativeTurn carolBinding (⟨76, some carol, Prefix.carolInput responses⟩ : app.Control) := by
+  refine ⟨rfl, ?_⟩
+  change ((Prefix.carolInput responses).recall carol).length = 0
+  simp (disch := decide) only [Prefix.carolInput, Prefix.includeLatest,
+    Prefix.environmentResult_playerRecall, activate, Prefix.aliceInput, Prefix.bobPreludeInput,
+    ReactiveApplication.respond_recall_other]
+  rfl
 
 theorem carol_alice_present (responses : Prefix.CarolResponses)
     (trace : arena.Trace (Prefix.carolControl responses)) :
     ((Prefix.carolInput responses).application.config.store aliceBindingRef.field).isSome = true :=
   ((Prefix.carolInput responses).application.config.output_available aliceBinding).mpr
     (earlier_completed carolBinding aliceBinding (by decide) _ trace rfl
-      (carolInput_granted responses))
+      (carolInput_turn responses))
 
 theorem bob_flip_facts (players : Profile model.behavioralSignature)
     (responses : Prefix.BobResponses)

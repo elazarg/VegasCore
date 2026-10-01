@@ -50,7 +50,7 @@ theorem carol_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weigh
         nativeHorizon scheduler players)).support := by
       rw [decoded]
       exact supported
-    let control : app.Control := ⟨80, some carol, carolInput responses⟩
+    let control : app.Control := ⟨76, some carol, carolInput responses⟩
     obtain ⟨trace⟩ : Nonempty (arena.Trace (some control)) := carol_legal players responses support
     have observed := congrArg Prod.snd member.1
     dsimp only at observed
@@ -100,7 +100,7 @@ theorem bob_joint_le (weight : ℝ) (positive : 0 < weight) (atMostOne : weight 
         nativeHorizon scheduler players)).support := by
       rw [decoded]
       exact supported
-    let control : app.Control := ⟨74, some bob, bobInput responses⟩
+    let control : app.Control := ⟨71, some bob, bobInput responses⟩
     obtain ⟨trace⟩ : Nonempty (arena.Trace (some control)) := bob_legal players responses support
     have observed := congrArg Prod.snd member.1
     dsimp only at observed

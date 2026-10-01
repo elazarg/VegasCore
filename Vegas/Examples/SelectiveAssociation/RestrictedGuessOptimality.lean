@@ -77,7 +77,7 @@ theorem committed_guesser_bound (assessment : model.BehavioralAssessment)
     (who : Player) (guesser : who ≠ alice) (site : model.InformationSite who)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (alternative : model.BehavioralPolicy who) (choice : model.Choice who site.1) :
     ∃ guess : PublicationResult Bool,
       ∀ history : model.InformationHistory who site.1, ∀ final : arena.History,
@@ -96,13 +96,12 @@ theorem committed_guesser_bound (assessment : model.BehavioralAssessment)
     (2 * nativeHorizon + 1) reference.1).support_nonempty
   refine ⟨(nativeBindingAt who referenceFinal.state).getD .failure, ?_⟩
   intro history final supported
-  obtain ⟨control, stateEq, active, _, observed⟩ := information_control who past view history
+  obtain ⟨control, stateEq, active, recalled, observed⟩ := information_control who past view history
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
   subst state
-  have grant : control.execution.application.serviceGrant = some (nativeBindingEvent who) := by
-    rw [← observed] at granted
-    exact granted
+  have grant : NativeTurn (nativeBindingEvent who) control :=
+    .of_turnEvent? active (by rw [recalled]; exact granted)
   obtain ⟨result, resultEq, bound⟩ := guesser_continuation_bound who guesser changed
     (update_opens_other who alice (Ne.symm guesser) _) control trace active grant final supported
   have same := native_committed_binding_local (observation := leaks) who
@@ -120,7 +119,7 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (who : Player) (guesser : who ≠ alice)
     (site : model.InformationSite who) (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who)) :
+    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who)) :
     (assessment.truncatedContinuationContext site (fun history => nativeUtility who history.state)
       (2 * nativeHorizon + 1)).value (assessment.strategy who) =
       expect (assessment.belief who site) (fun history =>
@@ -129,7 +128,7 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
     Profile.update_eq_self, expect_bind_of_finite, strategy]
   apply expect_congr_on_support
   intro history _
-  obtain ⟨control, stateEq, active, _, observed⟩ := information_control who past view
+  obtain ⟨control, stateEq, active, recalled, observed⟩ := information_control who past view
     ⟨history.1, history.2.trans information⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at stateEq
@@ -138,9 +137,8 @@ theorem profile_guesser_context (assessment : model.BehavioralAssessment)
     guessReward (.success (publicGuess view)) (some control)) ?_).trans
       (expect_constant _ _)
   intro final supported
-  have grant : control.execution.application.serviceGrant = some (nativeBindingEvent who) := by
-    rw [← observed] at granted
-    exact granted
+  have grant : NativeTurn (nativeBindingEvent who) control :=
+    .of_turnEvent? active (by rw [recalled]; exact granted)
   simpa only [observed] using profile_guesser_payoff who guesser control trace active grant final
     supported
 
@@ -150,7 +148,7 @@ theorem profile_guesser_rational (assessment : model.BehavioralAssessment)
     (strategy : assessment.strategy = profile) (who : Player) (guesser : who ≠ alice)
     (site : model.InformationSite who) (past : List app.PlayerEntry) (view : app.PlayerView)
     (information : site.1 = some (past, view))
-    (granted : view.application.publicView.serviceGrant = some (nativeBindingEvent who))
+    (granted : nativeTurnEvent? who past.length = some (nativeBindingEvent who))
     (posterior : publicGuess view = false →
       ((assessment.belief who site).toOuterMeasure
           {history | hasAliceBit true history.1.state}).toReal ≤

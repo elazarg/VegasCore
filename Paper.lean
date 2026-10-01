@@ -1037,10 +1037,10 @@ depends on axioms:
 #print axioms
   GameTheory.Protocol.InformationModel.ContinuationDecision.observation_fiber_has_common_maximizer
 
-/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.five_rounds' depends on axioms:
+/-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.four_rounds' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Examples.SelectiveAssociation.Restricted.five_rounds
+#print axioms Vegas.Examples.SelectiveAssociation.Restricted.four_rounds
 
 /-- info: 'Vegas.Examples.SelectiveAssociation.Restricted.association_input_hidden' depends on
 axioms:

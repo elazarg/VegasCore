@@ -22,7 +22,7 @@ def decisionSteps (first last : nativeGraph.EventId) : Nat :=
 
 theorem decision_rank (event : nativeGraph.EventId) (control : app.Control)
     (trace : arena.Trace (some control)) (active : control.actor = some (nativeOwner event))
-    (granted : control.execution.application.serviceGrant = some event) :
+    (granted : NativeTurn event control) :
     app.rank nativeHorizon (some control) =
       2 * (nativeHorizon - ((nativeBeforeResponse event).length + 1)) + 1 := by
   have position := (native_decision_cursor (observation := leaks) event control trace _ active
@@ -58,12 +58,12 @@ theorem future_decision (players : Profile model.behavioralSignature)
     (first last : nativeGraph.EventId) (ordered : first.val ≤ last.val)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some (nativeOwner first))
-    (granted : control.execution.application.serviceGrant = some first)
+    (granted : NativeTurn first control)
     (later : arena.History)
     (supported : later ∈ (model.runBehavioralFrom players (decisionSteps first last)
       ⟨some control, trace⟩).support) :
     ∃ result, later.state = some result ∧ result.actor = some (nativeOwner last) ∧
-      result.execution.application.serviceGrant = some last := by
+      NativeTurn last result := by
   have position := (native_decision_cursor (observation := leaks) first control trace _ active
     granted).2
   have accounted := (native_decision_predecessor (observation := leaks) first control trace active
@@ -92,14 +92,14 @@ theorem future_decision (players : Profile model.behavioralSignature)
       have actor := congrArg (fun value : Nat × Option Player × Nat => value.2.1) fields
       have cursor := congrArg (fun value : Nat × Option Player × Nat => value.2.2) fields
       exact ⟨result, rfl, actor,
-        native_grant_of_decision_cursor (observation := leaks) last result laterTrace actor cursor⟩
+        native_turn_of_decision_cursor (observation := leaks) last result laterTrace actor cursor⟩
 
 theorem publication_from_earlier_binding (players : Profile model.behavioralSignature)
     (event : nativeGraph.EventId) (who : Player)
     (ordered : event.val ≤ (nativePublicationEvent who).val)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some (nativeOwner event))
-    (granted : control.execution.application.serviceGrant = some event)
+    (granted : NativeTurn event control)
     (value : PublicationResult Bool)
     (stored : (nativeBindingRef who).get? control.execution.application.config.store = some value)
     (opens : Opens players who) (final : arena.History)
@@ -133,7 +133,8 @@ theorem publication_from_earlier_binding (players : Profile model.behavioralSign
         rw [opening_rank who atOpening laterTrace ownerActive ownerGrant]
         fin_cases event <;> fin_cases who <;> decide
       obtain ⟨result, resultEq, published⟩ := opening_success players who atOpening laterTrace
-        ownerActive ownerGrant bit preserved (opens _ _ ownerGrant) _ enough final finalMem
+        ownerActive ownerGrant bit preserved
+        (opens _ _ (ownerGrant.turnEvent?_of_active ownerActive)) _ enough final finalMem
       simp only [publication, resultEq, Option.elim_some, published, Option.getD_some]
 
 /-- A successful final binding was already fixed at its owner's opening site.
@@ -144,7 +145,7 @@ theorem final_binding_published (players : Profile model.behavioralSignature)
     (ordered : event.val ≤ (nativePublicationEvent who).val)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some (nativeOwner event))
-    (granted : control.execution.application.serviceGrant = some event)
+    (granted : NativeTurn event control)
     (opens : Opens players who) (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom players (2 * nativeHorizon + 1)
       ⟨some control, trace⟩).support)
@@ -175,7 +176,8 @@ theorem final_binding_published (players : Profile model.behavioralSignature)
     rw [opening_rank who atOpening laterTrace ownerActive ownerGrant]
     fin_cases event <;> fin_cases who <;> decide
   obtain ⟨opened, openedEq, published⟩ := opening_success players who atOpening laterTrace
-    ownerActive ownerGrant bit stored (opens _ _ ownerGrant) _ enough final finalMem
+    ownerActive ownerGrant bit stored (opens _ _ (ownerGrant.turnEvent?_of_active ownerActive))
+      _ enough final finalMem
   simp only [publication, openedEq, Option.elim_some, published, Option.getD_some]
 
 /-- Earlier completed bindings cannot acquire their final value only later.
@@ -185,7 +187,7 @@ theorem binding_from_final (players : Profile model.behavioralSignature)
     (earlier : (nativeBindingEvent who).val < event.val)
     (control : app.Control) (trace : arena.Trace (some control))
     (active : control.actor = some (nativeOwner event))
-    (granted : control.execution.application.serviceGrant = some event)
+    (granted : NativeTurn event control)
     (fuel : Nat) (final : arena.History)
     (supported : final ∈ (model.runBehavioralFrom players fuel ⟨some control, trace⟩).support)
     (result : app.Control) (stateEq : final.state = some result) (value : PublicationResult Bool)

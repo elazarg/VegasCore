@@ -35,36 +35,25 @@ theorem site_observation (who : Player) (site : model.InformationSite who) :
       refine ⟨control.execution.recall who, control.execution.observe app who, ?_⟩
       simpa only [ReactiveApplication.observe, active, ↓reduceIte] using observed.symm
 
-theorem site_granted_owner (who : Player) (site : model.InformationSite who)
-    (past : List app.PlayerEntry) (view : app.PlayerView)
-    (observed : site.1 = some (past, view)) (event : nativeGraph.EventId)
-    (granted : view.application.publicView.serviceGrant = some event) :
-    who = nativeOwner event := by
-  obtain ⟨history, _, _⟩ := site.2
-  obtain ⟨control, same, active, _, viewed⟩ := information_control who past view
-    ⟨history.1, history.2.trans observed⟩
-  rcases history with ⟨⟨state, trace⟩, historyInfo⟩
-  change state = some control at same
-  subst state
-  have grant : control.execution.application.serviceGrant = some event := by
-    rw [← viewed] at granted
-    exact granted
-  exact (native_decision_cursor (observation := leaks) event control trace who active grant).1
+theorem site_turn_owner (who : Player) (past : List app.PlayerEntry)
+    (event : nativeGraph.EventId) (turn : nativeTurnEvent? who past.length = some event) :
+    who = nativeOwner event :=
+  (nativeTurnEvent?_spec turn).1.symm
 
 theorem site_ambient_owner (who : Player) (site : model.InformationSite who)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (observed : site.1 = some (past, view))
-    (ambient : view.application.publicView.serviceGrant = none) : who = alice ∨ who = bob := by
+    (ambient : nativeTurnEvent? who past.length = none) : who = alice ∨ who = bob := by
   obtain ⟨history, _, _⟩ := site.2
-  obtain ⟨control, same, active, _, viewed⟩ := information_control who past view
+  obtain ⟨control, same, active, recalled, _⟩ := information_control who past view
     ⟨history.1, history.2.trans observed⟩
   rcases history with ⟨⟨state, trace⟩, historyInfo⟩
   change state = some control at same
   subst state
-  have noGrant : control.execution.application.serviceGrant = none := by
-    rw [← viewed] at ambient
+  have noTurn : nativeTurnEvent? who (control.execution.recall who).length = none := by
+    rw [recalled]
     exact ambient
-  rcases prelude_position who control trace active noGrant with first | second
+  rcases prelude_position who control trace active noTurn with first | second
   · exact Or.inl first.1
   · exact Or.inr second.1
 
@@ -75,13 +64,13 @@ theorem prescribed_sequentiallyRational (assessment : model.BehavioralAssessment
             history.state) (2 * nativeHorizon + 1) := by
   intro who site
   obtain ⟨past, view, observed⟩ := site_observation who site
-  cases grant : view.application.publicView.serviceGrant with
+  cases grant : nativeTurnEvent? who past.length with
   | none =>
       rcases site_ambient_owner who site past view observed grant with rfl | rfl
       · exact alice_early_rational assessment strategy site past view observed (Or.inl grant)
       · exact bob_prelude_rational assessment strategy site past view observed grant
   | some event =>
-      have owner := site_granted_owner who site past view observed event grant
+      have owner := site_turn_owner who past event grant
       subst who
       fin_cases event
       · exact alice_early_rational assessment strategy site past view observed (Or.inr grant)

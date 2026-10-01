@@ -40,13 +40,13 @@ theorem native_deviation_publications (assessment : nativeModel.BehavioralAssess
     global aliceStored finalMem
   have evidence := native_carol_settlement_evidence players bit prior settled carolMem
   have continuation : final ∈
-      (nativeApp.runRounds nativeScheduler players (3 + 73) settled).support := finalMem
+      (nativeApp.runRounds nativeScheduler players (2 + 70) settled).support := finalMem
   rw [ReactiveApplication.runRounds_add] at continuation
   obtain ⟨bound, boundMem, restMem⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ continuation)
   have bobStored := native_deviation_bob_binding assessment rational bit settled bound global
     evidence boundMem
-  have boundGlobal := native_run_support_append players 13 3 settled bound global boundMem
+  have boundGlobal := native_run_support_append players 11 2 settled bound global boundMem
   have bobPublished := native_deviation_bob_opening assessment rational bit bound final
     boundGlobal bobStored restMem
   exact ⟨by simp only [nativeResults, alicePublished, Option.getD_some],

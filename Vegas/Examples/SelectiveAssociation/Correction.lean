@@ -58,7 +58,7 @@ theorem bob_corrective_response_available (bit : Bool)
 theorem bob_correction_fresh (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control))
     (active : control.actor = some bob)
-    (granted : control.execution.application.serviceGrant = some bobBinding) (bit : Bool) :
+    (granted : NativeTurn bobBinding control) (bit : Bool) :
     ∃ serial, serial < 2 ∧
       control.execution.application.candidates.lookup (bob, .prepared serial) = .fresh ∧
       bobCorrectiveResponse bit (control.execution.observe nativeApp bob) =
@@ -154,7 +154,7 @@ including after an arbitrary first response. No extra candidate is assumed. -/
 theorem bob_corrective_response_realizes (players : Player → nativeApp.Policy)
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some bob)
-    (granted : control.execution.application.serviceGrant = some bobBinding)
+    (granted : NativeTurn bobBinding control)
     (unfinished : bobBinding ∉ control.execution.application.config.cut.completed) (bit : Bool) :
     ∃ next, bobBindingRef.get? next.config.store = some (.success bit) ∧
       (nativeRuntime.interactionStep nativeLeaks players nativeNetwork

@@ -2,6 +2,7 @@
 
 import Vegas.Examples.SelectiveAssociation.Restricted
 import Vegas.Examples.SelectiveAssociation.OpeningService
+import Vegas.Examples.SelectiveAssociation.Cursor
 import Vegas.Pending.ReactiveCandidateBudget
 import Interaction.ReactiveMenuPolicy
 import Interaction.ReactiveConsistentAssessment
@@ -181,8 +182,11 @@ theorem openingResponse_available (who : Player) (past : List app.PlayerEntry)
     · exact silence_available who past view
   · exact silence_available who past view
 
-def response (who : Player) (view : app.PlayerView) : app.Action :=
-  match view.application.publicView.serviceGrant with
+/-- The prescribed response; the player reads its current turn from its own
+recall. -/
+def response (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView) :
+    app.Action :=
+  match nativeTurnEvent? who past.length with
   | none => ⟨none⟩
   | some event =>
       if who = nativeOwner event then
@@ -191,10 +195,10 @@ def response (who : Player) (view : app.PlayerView) : app.Action :=
         else openingResponse who view
       else ⟨none⟩
 
-def policy (who : Player) : app.Policy := fun _ view => PMF.pure (response who view)
+def policy (who : Player) : app.Policy := fun past view => PMF.pure (response who past view)
 
 theorem response_available (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView) :
-    response who view ∈ menu.actions who past view := by
+    response who past view ∈ menu.actions who past view := by
   unfold response
   split
   · exact silence_available who past view

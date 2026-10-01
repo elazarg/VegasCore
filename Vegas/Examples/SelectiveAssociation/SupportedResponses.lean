@@ -64,7 +64,7 @@ theorem native_supported_guess_inclusion
             history.state) (2 * nativeHorizon + 1))
     (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some bob)
-    (granted : control.execution.application.serviceGrant = some bobBinding) (bit : Bool)
+    (granted : NativeTurn bobBinding control) (bit : Bool)
     (observed : nativeRuntime.bindingEvidenceObserved nativeLeaks
       (control.execution.observe nativeApp bob) (aliceBindingEvidence bit))
     (response : nativeApp.Action)
@@ -100,7 +100,9 @@ theorem native_supported_guess_inclusion
     (2 * nativeHorizon + 1) ⟨some control, trace⟩).support_nonempty
   have incomplete := native_decision_unfinished bobBinding control trace bob active granted
   have finalCorrect := native_supported_certified_guess assessment rational site past view rfl bit
-    granted (native_bob_view_unfinished past view granted history) observed choice choiceMem history
+    (granted.turnEvent?_of_active active)
+    (native_bob_view_unfinished past view (granted.turnEvent?_of_active active) history) observed
+    choice choiceMem history
     final finalMem
   obtain ⟨middle, middleMem, settled⟩ :=
     native_binding_settlement_behavioral bob changed control trace
@@ -124,7 +126,7 @@ theorem native_supported_opening_inclusion
             history.state) (2 * nativeHorizon + 1))
     (who : Player) (control : nativeApp.Control) (trace : nativeArena.Trace (some control))
     (active : control.actor = some who)
-    (granted : control.execution.application.serviceGrant = some (nativePublicationEvent who))
+    (granted : NativeTurn (nativePublicationEvent who) control)
     (bit : Bool) (stored : (nativeBindingRef who).get?
       control.execution.application.config.store = some (.success bit))
     (response : nativeApp.Action)
@@ -173,7 +175,8 @@ theorem native_supported_opening_inclusion
       (nativeGraph.playerStore who control.execution.application.config.store) = _
     rwa [(nativeBindingRef who).get?_playerStore who _ rfl]
   obtain ⟨publishedBit, finalPublished⟩ := native_supported_opening_succeeds assessment who site
-    past view rfl bit granted viewIncomplete viewStored (rational who site) choice choiceMem
+    past view rfl bit (granted.turnEvent?_of_active active) viewIncomplete viewStored
+    (rational who site) choice choiceMem
     history final finalMem
   obtain ⟨result, finalEq, preserved⟩ := native_binding_continuation changed control trace who
     (.success bit) stored final finalMem

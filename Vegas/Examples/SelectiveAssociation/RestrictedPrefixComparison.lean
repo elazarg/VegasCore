@@ -31,6 +31,7 @@ theorem carol_flip_probability (weight : ℝ) (nonnegative : 0 ≤ weight)
     (atMostOne : weight ≤ 1) (selected : Handle nativeGraph) (owner : selected.1 = alice)
     (responses : CarolResponses)
     (different : responses.aliceBinding ≠ response alice
+      ((aliceInput responses.alicePrelude responses.bobPrelude).recall alice)
       ((aliceInput responses.alicePrelude responses.bobPrelude).observe app alice)) :
     ((carolLaw (mixed weight nonnegative atMostOne)) responses).toReal ≤
       ((carolLaw (mixed weight nonnegative atMostOne)) (flipCarol selected responses)).toReal := by
@@ -60,6 +61,8 @@ theorem bob_flip_probability (weight : ℝ) (nonnegative : 0 ≤ weight)
     (atMostOne : weight ≤ 1) (selected : Handle nativeGraph) (owner : selected.1 = alice)
     (responses : BobResponses)
     (different : responses.beforeCarol.aliceBinding ≠ response alice
+      ((aliceInput responses.beforeCarol.alicePrelude responses.beforeCarol.bobPrelude).recall
+        alice)
       ((aliceInput responses.beforeCarol.alicePrelude responses.beforeCarol.bobPrelude).observe
         app alice))
     (carolSame :
