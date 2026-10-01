@@ -501,35 +501,37 @@ the clock, when to expire or sample. The rows of the modeling priorities above
 become properties of that scheduler. A *slot* is the stretch of environment
 history between two consecutive clock advances.
 
-A scheduler satisfies the asynchronous contract when, at every reachable
-history, including off-path ones:
+A scheduler satisfies the asynchronous contract (`AsyncContract` in
+`Vegas/Pending/ReactiveAsyncContract.lean`) when, at every legal history of the
+raw protocol, including off-path ones:
 
-1. **Opportunity within `r event`.** When an owned event becomes ready, its
-   owner is activated within `r event` slots. Further activations of anyone
-   are allowed.
-2. **Protected inclusion within `Δ event`.** When the owner has emitted
-   exactly one packet addressed to its event, authored it, and did so while
-   the event was ready in slot `t`, that packet is included by the end of slot
-   `t + Δ event` unless the event has completed. Including any other packet, in
-   any order, is allowed. This is today's reserved `ServiceInstruction.includeLatest`, stated
-   as a deadline instead of a calendar position. Only the sole packet is
-   protected: replays keep the original author and identifier, so a third
-   party can re-queue an owner's older packet behind a newer one, and the
-   calendar's latest-by-author selector then includes the stale copy. A
-   prescribed owner submits one packet of its own per event, and every copy of
-   it carries its identifier, so timeliness of prescribed play needs nothing
-   more. Several packets from one owner for one event, or another player's
-   packet relayed as the owner's move, are deviations, whose law the scheduler
-   may shape (milestone 5).
-3. **Lazy settlement.** In every slot, every ready sample event is executed,
-   and every ready event whose deadline has elapsed is expired. Anyone may
-   call these.
-4. **Bounded length.** A slot holds at most a fixed number of commands, and
-   after a fixed number of slots the scheduler only waits. The bounds must
-   leave every event time to complete: at least the sum over events of
-   `deadline + 1` slots.
-5. **Finite branching.** The scheduler, like the network policy today, has
-   finite support (`FiniteNature`).
+1. **Opportunity within `r event`** (`Opportunity`). Once an owned event has
+   been ready for more than `r event` slots, its owner has been activated since
+   it became ready. Further activations of anyone are allowed.
+2. **Protected inclusion within `Δ event`** (`ProtectedInclusion`). When the
+   owner has authored a packet addressed to its event while the event was
+   ready in slot `t`, and every packet the owner ever emits for that event
+   carries the same identifier, that packet has a receipt by the end of slot
+   `t + Δ event` unless the event has completed. Including any other packet,
+   in any order, is allowed. This is today's reserved
+   `ServiceInstruction.includeLatest`, stated as a deadline instead of a
+   calendar position. Only the sole identifier is protected: replays keep the
+   original author and identifier, so a third party can re-queue an owner's
+   older packet behind a newer one, and the calendar's latest-by-author
+   selector then includes the stale copy; an owner can also relay another
+   player's packet, which that selector never picks. A prescribed owner
+   submits one packet of its own per event and may replay it, and every copy
+   carries its identifier. Packets with several identifiers from one owner for
+   one event, or a relayed packet as the owner's move, are deviations, whose
+   law the scheduler may shape (milestone 5).
+3. **Complete play** (`CompletesPlay`). Every legal terminal state has
+   completed every event. This replaces lazy settlement and a per-slot bound
+   in the formal contract: the horizon is fixed, and the scheduler must sample,
+   include or expire every event within it.
+
+Finite branching is the separate `FiniteNature` instance, as for the network
+policy today. The horizon is part of the service; today it is the calendar's
+`planLength`, and the general spec must carry it as a field.
 
 Requirement 1 asks only for the first opportunity. Repeated activations are
 realistic and allowed, but the theorem needs only that a prescribed owner can
@@ -555,31 +557,37 @@ does four jobs. Each gets a schedule-independent replacement.
 
 1. **Which event a decision belongs to.** On the sequentialized graph exactly
    one event is ready, so the decision's event is the sole ready event of the
-   public view (`soleReady_of_ready`). Within the event, the player's own
-   response count since the event became ready replaces the roster slot,
-   as `NativeTurn` does in the selective-association example. `DecisionPhase`
-   keeps its event and readiness fields, and drops `slot` and `position`.
+   public view (`soleReady_of_ready`). `DecisionPhase` keeps its event and
+   readiness fields, and drops `slot` and `position`.
 2. **The continuation law from a decision.** Today the continuation is the
-   rest of the plan, evaluated block by block (`SourceServicePhaseLaw`). The
-   replacement is a *completion-stopped phase law*: run until the sole ready
-   event `e` completes. Where the run starts matters. From an *undecided
-   boundary*, a reachable state where `e` is the sole ready event and its
-   owner has emitted no packet addressed to `e`, the typed source readout at
-   completion has the source step law for `e` under every contract scheduler.
-   That law is a sample for an actorless event, the owner's value for a
-   binding, and the publication for a resolve. A decision state inside the
-   phase is different: the owner's earlier packet may already be pending. For
-   example, a commitment to `0` makes the completion law a point mass at `0`
-   even though the source decision mixes. There the phase law is conditional:
-   given the pending prescribed packet, completion takes its value, provided
-   its inclusion is timely. The continuation comparison at a decision uses the
-   conditional law for the current phase and the boundary law for later
-   phases. The readout does not change
-   afterwards, because completed fields are preserved (`EventStore`). Chaining
-   the phase law over the remaining events gives the source continuation law
-   by induction on the number of unfinished events, not on plan length. Fuel
-   comes from the rank, which every scheduler decreases, so the existing
-   `2 * horizon + 1` bounds carry over.
+   rest of the plan, evaluated block by block. The replacement is a
+   *completion-stopped phase law*: run the scheduler until the current event
+   completes, a stopping time. Where the run starts matters.
+   - At a stopping point every next event is *untouched*: completion happens
+     only through inclusion, sampling or expiry, which have no actor, so no
+     player has yet responded while the next event was ready. From an
+     untouched boundary the typed source readout at the next completion has
+     the source step law under every contract scheduler: a sample for an
+     actorless event, the owner's value for a binding, the publication for a
+     resolve.
+   - Inside a phase there are three cases: the owner is undecided (the source
+     kernel), the owner decided and has a pending sole packet (a point mass at
+     its value, given timely acceptance), or the owner decided to stay silent
+     (expiry: failure for a binding, withholding for a resolve). For example,
+     a pending commitment to `0` makes the completion law a point mass at `0`
+     even though the source decision mixes.
+   - The readout does not change after completion, because completed fields
+     are preserved (`EventStore`). Chaining the step law over the remaining
+     events gives the source continuation law by induction on the number of
+     unfinished events, not on plan length. Fuel comes from the rank, which
+     every scheduler decreases, so the `2 * horizon + 1` bounds carry over.
+   - At the calendar, the stopped law equals today's block law only on
+     configurations: the block keeps ticking and expiring after completion,
+     which changes only the clock. And calendar completion boundaries lie
+     inside the predecessor's block, not at block starts.
+   - The bridge needs only the marginal law of the readout. The joint
+     factorization with the focal player's traffic noise is for beliefs
+     (milestone 4).
 3. **Deviations.** Under prescribed play the phase law is the same for every
    scheduler. A deviating owner can emit several packets for its event, and
    then the builder's choice among them makes the resulting value a lottery
@@ -660,35 +668,50 @@ public events has completed.
 Each milestone ends with the full build, the checkers and the paper pins green,
 and is committed separately.
 
-1. **Contract.** Define the asynchronous scheduler contract with per-event
-   bounds, the timeliness lemma (prescribed inclusion within
-   `r event + Δ event`, hence on time when `r event + Δ event < deadline event`),
-   and the instance `rosterScheduler` with `r event = event.val` and
-   `Δ event = 0`.
-   Small, and it fixes the vocabulary.
-2. **Completion-stopped phase law.** The proof already factors through one
-   continuation bridge, `TimedApproximant.response_continuation_law`: the
-   readout after a response is the configuration law at the next event
-   boundary, bound with the source continuation from there. Only its
-   `DecisionPhase.tail`, the rest of the calendar block, ties it to the
-   calendar. Define the boundary law for an arbitrary contract scheduler (run
-   until the current event completes), prove the bridge for it, and show it
-   equals the calendar's block law at `rosterScheduler`. The theorem is
-   unchanged.
+1. **Contract.** Done: the contract with per-event bounds, and the instance
+   `rosterScheduler` with `r event = event.val` and `Δ event = 0`. The
+   timeliness lemma for prescribed play moves to milestone 2b, with the
+   prescribed policy it is about.
+2. **Completion-stopped phase law.** The bridge
+   `TimedApproximant.response_continuation_law` is tied to the calendar
+   through more than `DecisionPhase.tail`: the two lemmas it calls state
+   support and continuation under plan prefixes, and the prescribed policy's
+   `timing` (which of the owner's visits in a block makes the source decision)
+   is a calendar lottery. Split in two.
+   - **2a, on the calendar.** A stopping-time runner in `Interaction` (run
+     until a predicate, the decomposition of a full run at the stopping time,
+     fuel monotonicity, trace and support lemmas); the generic local law and
+     full-mixing reachability for any scheduler; the completion law and
+     untouched boundaries; the generic bridge under an explicit hypothesis
+     that the continuation from every untouched boundary is the source
+     continuation; and the calendar instance of that hypothesis, from which
+     today's bridge is re-derived. The pinned theorem is unchanged.
+   - **2b, the prescribed policy.** Under the contract only the first
+     activation is guaranteed, so a timing lottery over later visits cannot
+     keep the phase law exact: an undrawn later visit silently turns the
+     source decision into expiry. Replace the timed policy by deciding once,
+     at the first activation where the event is the player's turn, and make
+     the retained menu decide once to match (a fresh call only at the first
+     turn; an unsent binding submitted then). The raw extension must then
+     cover the removed deviations, such as a late opening after withholding.
+     Do this on the calendar first; the pinned statement names neither the
+     menu nor the timing. Then prove the timeliness lemma and the general step
+     law for the new policy under every contract scheduler. The step law is
+     the largest new proof, comparable in size to the calendar instance.
 3. **Phase without position.** With the bridge independent of the block,
    replace `DecisionPhase.slot` and `DecisionPhase.position` by the sole ready
-   event and the owner's own response count, still at the calendar. This is
-   the large mechanical refactor (about 94 files refer to the roster plan). Do
-   it as an inventory-then-batch port.
+   event, still at the calendar. This is the large mechanical refactor (about
+   94 files refer to the roster plan). Do it as an inventory-then-batch port.
 4. **Depth-free extension and proportional beliefs.** Retarget the
-   fixed-depth Bayes projections and restriction extensions; build beliefs at
-   scheduler-created sites.
-5. **Deviation lottery.** Prove that a deviator's multi-packet outcome is a
-   mixture of the deviator's source actions, under every contract scheduler.
+   fixed-depth Bayes projections and restriction extensions, including the
+   joint factorization with traffic noise; build beliefs at scheduler-created
+   sites.
+5. **Deviation lottery.** Prove that a deviator's multi-identifier outcome is
+   a mixture of the deviator's source actions, under every contract scheduler.
 6. **General theorem, stage A.** Generalize the scheduler parameter of
-   `SourceServiceSpec` to any contract scheduler, re-derive the deposit and
-   horizon, and pin the new capstone in `Paper.lean`. The fixed-calendar
-   theorem becomes a corollary through milestone 1's instance.
+   `SourceServiceSpec` to any contract scheduler, with the horizon as a field,
+   re-derive the deposit, and pin the new capstone in `Paper.lean`. The
+   fixed-calendar theorem becomes a corollary through milestone 1's instance.
 7. **Stage B.** Barrier-order graph: commutation, timing information,
    concurrent phase law.
 8. **Pending-message stack.** Collapse staging, express the epoch service as
@@ -701,8 +724,13 @@ stays green throughout; only milestone 6 changes its statement.
 
 - **Off-path contract obligations.** The contract must hold at histories
   where a deviator floods the pool. Requirement 2 protects only an owner's
-  sole packet, and requirement 4 bounds each slot, so flooding cannot starve
-  protected inclusion. But a concrete builder must be checked against this.
+  sole identifier, so a concrete builder needs only to reach that one packet
+  in time, but it must be checked against flooding. The calendar instance
+  already holds on every legal history.
+- **Redefining the prescribed policy** (milestone 2b) reaches many files: the
+  timed policy, the timing law and the roster offset each appear in tens of
+  files, and site lemmas built on "silent now, submit at a later visit"
+  disappear with the decide-once menu.
 - **The deviation lottery** (milestone 5) is the least understood obligation.
   If the builder's choice among a deviator's packets can depend on something
   that is not a function of public data and the deviator's own choices, the
