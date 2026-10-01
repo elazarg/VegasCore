@@ -781,8 +781,12 @@ stays green throughout; only milestone 6 changes its statement.
   completed bindings) diverge, so the audit would treat that owner's later
   prescribed commitments as nonconforming. This happens only on
   tremble-reached histories, but sequential rationality must hold there too.
-  It must be resolved before milestones 4 and 6, most likely by having the
-  prescribed decision use the audit's canonical slot.
+  It is being resolved by giving the turn-counted policy its own decision at
+  the audit's canonical slot, with a gate: no fresh call unless protected
+  inclusion still lands before the deadline, so neither a late call nor a
+  call overtaken by expiry desynchronizes the audit's checks. The retained
+  menu is still built from the calendar decision and needs a canonical
+  variant before milestones 4 and 6.
 - **Removed actions must be framed or charged.** Every action outside the
   retained menu must be dominated under every extension of the source, which
   the repair argument achieves only by keeping play on retained histories or
