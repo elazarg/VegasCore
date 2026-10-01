@@ -1,0 +1,296 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceFirstTurnCompletes
+
+/-! # Geometric deferral of the turn-counted decision
+
+`Vegas.deferralTiming` spreads the deferral weight uniformly over the later
+turns, so an owner that has deferred to a turn `0 < k` defers again with conditional
+probability `1 - 1 / (turns + 1 - k)`, which does not vanish with the weight.
+The geometric timing instead decides at each turn with the same probability
+`1 - weight`: the decision falls on turn `k < turns` with probability
+`(1 - weight) * weight ^ k`, and on the last turn with the remaining
+`weight ^ turns` (`Vegas.geometricTurnLaw_apply_toReal`). It reaches turn `k`
+with probability `weight ^ k` (`Vegas.geometricTurnLaw_tail_toReal`), so a
+reached turn before the last decides with conditional probability
+`1 - weight` (`Vegas.geometricTurnLaw_decides`). Its deferral weight
+is at most `weight` (`Vegas.geometricTiming_deferral_le`), so every per-turn
+deferral probability vanishes with it.
+
+The first-turn premises hold for every timing
+(`Vegas.sourceServiceTurnPolicy_firstTurnCompletes`), and the chained step law
+uses a timing only through its deferral weights
+(`Vegas.sourceServiceTurnPolicy_boundaryContinuationWithin`), so under the asynchronous
+contract the geometric policy is within `eventCount * weight` of the source
+continuation (`Vegas.geometricTiming_boundaryContinuationWithin`), and this
+error vanishes along any weights tending to zero
+(`Vegas.geometricTiming_deferral_tendsto`). The weights can be chosen to vanish
+faster than any given positive sequence, such as the source's own trembles
+(`Vegas.exists_deferralWeights_faster`).
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram
+
+open GameTheory.Math.Probability Interaction EventGraphRuntime Filter
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+
+/-- The truncated geometric law over turn indices: decide at the current turn
+with probability `1 - weight`, otherwise defer; the last turn decides surely. -/
+def geometricTurnLaw (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1) :
+    (turns : Nat) → PMF (Fin (turns + 1))
+  | 0 => PMF.pure 0
+  | turns + 1 => mix weight nonnegative bounded
+      ((geometricTurnLaw weight nonnegative bounded turns).map Fin.succ) (PMF.pure 0)
+
+/-- The geometric law's mass: `(1 - weight) * weight ^ k` at a turn `k` before
+the last, and `weight ^ turns` at the last turn. -/
+theorem geometricTurnLaw_apply_toReal (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) (turns : Nat) (slot : Fin (turns + 1)) :
+    (geometricTurnLaw weight nonnegative bounded turns slot).toReal =
+      if slot.val < turns then (1 - weight) * weight ^ slot.val else weight ^ turns := by
+  induction turns with
+  | zero =>
+      have zero : slot = 0 := Fin.ext (by omega)
+      subst zero
+      simp [geometricTurnLaw]
+  | succ turns ih =>
+      rw [geometricTurnLaw, mix_apply_toReal]
+      cases slot using Fin.cases with
+      | zero =>
+          have absent : ((geometricTurnLaw weight nonnegative bounded turns).map Fin.succ) 0 =
+              0 := by
+            rw [PMF.map_apply]
+            exact ENNReal.tsum_eq_zero.mpr fun other => by
+              simp [(Fin.succ_ne_zero other).symm]
+          simp [absent]
+      | succ slot =>
+          have moved : ((geometricTurnLaw weight nonnegative bounded turns).map Fin.succ)
+              slot.succ = geometricTurnLaw weight nonnegative bounded turns slot := by
+            rw [PMF.map_apply, tsum_eq_single slot]
+            · simp
+            · intro other different
+              simp [Fin.succ_inj, Ne.symm different]
+          have away : (PMF.pure (0 : Fin (turns + 1 + 1))) slot.succ = 0 :=
+            PMF.pure_apply_of_ne _ _ (Fin.succ_ne_zero slot)
+          rw [moved, away, ih slot]
+          simp only [Fin.val_succ, ENNReal.toReal_zero, mul_zero, add_zero,
+            Nat.add_lt_add_iff_right]
+          split <;> ring
+
+private theorem geometricMass_tail (weight : ℝ) :
+    ∀ turns k : Nat, k ≤ turns →
+      ∑ slot : Fin (turns + 1), (if k ≤ slot.val then
+        (if slot.val < turns then (1 - weight) * weight ^ slot.val else weight ^ turns)
+        else 0) = weight ^ k
+  | 0, k, le => by
+      obtain rfl : k = 0 := by omega
+      simp
+  | turns + 1, k, le => by
+      have step (slot : Fin (turns + 1)) :
+          (if slot.val + 1 < turns + 1 then (1 - weight) * weight ^ (slot.val + 1)
+            else weight ^ (turns + 1)) =
+            weight * (if slot.val < turns then (1 - weight) * weight ^ slot.val
+              else weight ^ turns) := by
+        by_cases inside : slot.val < turns
+        · simp only [show slot.val + 1 < turns + 1 by omega, inside, ↓reduceIte]
+          ring
+        · simp only [show ¬ slot.val + 1 < turns + 1 by omega, inside, ↓reduceIte]
+          ring
+      rw [Fin.sum_univ_succ]
+      cases k with
+      | zero =>
+          have ih := geometricMass_tail weight turns 0 (Nat.zero_le _)
+          simp only [Nat.zero_le, ↓reduceIte, Fin.val_zero, Fin.val_succ, step,
+            ← Finset.mul_sum] at ih ⊢
+          rw [ih]
+          simp only [Nat.zero_lt_succ, ↓reduceIte]
+          ring
+      | succ k =>
+          have ih := geometricMass_tail weight turns k (by omega)
+          simp only [Fin.val_zero, show ¬ k + 1 ≤ 0 by omega, ↓reduceIte, zero_add]
+          rw [show weight ^ (k + 1) = weight * weight ^ k from pow_succ' weight k, ← ih,
+            Finset.mul_sum]
+          apply Finset.sum_congr rfl
+          intro slot _
+          simp only [Fin.val_succ, Nat.add_le_add_iff_right]
+          split
+          · exact step slot
+          · rw [mul_zero]
+
+/-- **Constant per-turn decision.** The geometric law reaches turn `k` with
+probability `weight ^ k`. -/
+theorem geometricTurnLaw_tail_toReal (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) (turns k : Nat) (inside : k ≤ turns) :
+    ∑ slot ∈ Finset.univ.filter (fun slot : Fin (turns + 1) => k ≤ slot.val),
+        (geometricTurnLaw weight nonnegative bounded turns slot).toReal = weight ^ k := by
+  rw [Finset.sum_filter]
+  simp only [geometricTurnLaw_apply_toReal]
+  exact geometricMass_tail weight turns k inside
+
+/-- **Constant per-turn decision.** Having reached a turn before the last, the
+geometric law decides there with conditional probability `1 - weight`. -/
+theorem geometricTurnLaw_decides (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) (turns : Nat) (slot : Fin (turns + 1)) (early : slot.val < turns) :
+    (geometricTurnLaw weight nonnegative bounded turns slot).toReal =
+      (1 - weight) * ∑ later ∈ Finset.univ.filter (fun later : Fin (turns + 1) =>
+        slot.val ≤ later.val),
+        (geometricTurnLaw weight nonnegative bounded turns later).toReal := by
+  rw [geometricTurnLaw_tail_toReal weight nonnegative bounded turns slot.val early.le,
+    geometricTurnLaw_apply_toReal]
+  simp only [early, ↓reduceIte]
+
+/-- Every turn index has positive mass when `0 < weight < 1`. -/
+theorem geometricTurnLaw_fullSupport (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) (positive : 0 < weight) (below : weight < 1) (turns : Nat) :
+    FullSupport (geometricTurnLaw weight nonnegative bounded turns) := by
+  intro slot
+  rw [PMF.mem_support_iff]
+  intro zero
+  have mass := geometricTurnLaw_apply_toReal weight nonnegative bounded turns slot
+  rw [zero, ENNReal.toReal_zero] at mass
+  split at mass
+  · exact (mul_pos (by linarith) (pow_pos positive _)).ne' mass.symm
+  · exact (pow_pos positive _).ne' mass.symm
+
+variable (setup : Setup (Player := Player) (L := L))
+
+/-- Decide at each turn with probability `1 - weight`. -/
+def geometricTiming (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) : TurnTiming setup turns := fun _ _ _ =>
+  geometricTurnLaw weight nonnegative bounded turns
+
+theorem geometricTiming_fullSupport (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) (positive : 0 < weight) (below : weight < 1)
+    (event : (graph setup).EventId) (who : Player)
+    (owned : (graph setup).actor? event = some who) :
+    FullSupport (geometricTiming setup turns weight nonnegative bounded event who owned) :=
+  geometricTurnLaw_fullSupport weight nonnegative bounded positive below turns
+
+/-- The geometric timing defers an owned event with probability `weight` when
+there is a later turn, and never otherwise. -/
+theorem geometricTiming_deferral (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) (event : (graph setup).EventId) (who : Player)
+    (owned : (graph setup).actor? event = some who) :
+    (geometricTiming setup turns weight nonnegative bounded).deferral event =
+      if 0 < turns then weight else 0 := by
+  rw [deferral_eq _ event who owned, geometricTiming,
+    geometricTurnLaw_apply_toReal weight nonnegative bounded turns 0]
+  simp only [Fin.val_zero, pow_zero, mul_one]
+  split
+  · ring
+  · obtain rfl : turns = 0 := by omega
+    simp
+
+theorem geometricTiming_deferral_le (turns : Nat) (weight : ℝ) (nonnegative : 0 ≤ weight)
+    (bounded : weight ≤ 1) (event : (graph setup).EventId) :
+    (geometricTiming setup turns weight nonnegative bounded).deferral event ≤ weight := by
+  cases owned : (graph setup).actor? event with
+  | none =>
+      unfold TurnTiming.deferral
+      split
+      · exact nonnegative
+      · rename_i who ownedWho
+        rw [owned] at ownedWho
+        cases ownedWho
+  | some who =>
+      rw [geometricTiming_deferral setup turns weight nonnegative bounded event who owned]
+      split
+      · exact le_rfl
+      · exact nonnegative
+
+/-- The remaining deferral weight from any rank is at most `eventCount * weight`. -/
+theorem geometricTiming_remainingDeferral_le (turns : Nat) (weight : ℝ)
+    (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1) (rank : Nat) :
+    ∑ event ∈ Finset.univ.filter (fun event : (graph setup).EventId => rank ≤ event.val),
+        (geometricTiming setup turns weight nonnegative bounded).deferral event ≤
+      (graph setup).order.eventCount * weight := by
+  calc
+    _ ≤ ∑ event ∈ Finset.univ.filter (fun event : (graph setup).EventId => rank ≤ event.val),
+          weight :=
+        Finset.sum_le_sum fun event _ =>
+          geometricTiming_deferral_le setup turns weight nonnegative bounded event
+    _ ≤ ∑ _event : (graph setup).EventId, weight :=
+        Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
+          fun _ _ _ => nonnegative
+    _ = (graph setup).order.eventCount * weight := by
+        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
+
+/-- **The remaining deferral weight vanishes with the weight.** Along any
+weights tending to zero, the geometric timing's remaining deferral weight from
+every rank tends to zero. -/
+theorem geometricTiming_deferral_tendsto (turns : Nat) (weight : ℕ → ℝ)
+    (nonnegative : ∀ n, 0 ≤ weight n) (bounded : ∀ n, weight n ≤ 1)
+    (vanishes : Tendsto weight atTop (nhds 0)) (rank : Nat) :
+    Tendsto (fun n => ∑ event ∈ Finset.univ.filter
+        (fun event : (graph setup).EventId => rank ≤ event.val),
+        (geometricTiming setup turns (weight n) (nonnegative n) (bounded n)).deferral event)
+      atTop (nhds 0) := by
+  have scaled : Tendsto (fun n => (graph setup).order.eventCount * weight n) atTop (nhds 0) := by
+    simpa only [mul_zero] using vanishes.const_mul ((graph setup).order.eventCount : ℝ)
+  exact squeeze_zero (fun n => Finset.sum_nonneg fun event _ => deferral_nonneg _ event)
+    (fun n => geometricTiming_remainingDeferral_le setup turns (weight n) (nonnegative n)
+      (bounded n) rank) scaled
+
+variable {setup}
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- **Approximate continuation law of the geometric policy.** Under the
+asynchronous contract with `delay + bound < deadline`, for every source profile
+with effective disclosures, the geometric turn-counted policy runs from every
+completion boundary within the horizon within `eventCount * weight` of the
+source continuation. -/
+theorem geometricTiming_boundaryContinuationWithin [Finite Player]
+    {scheduler : (application setup leaks).Scheduler} {horizon turns : Nat}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    (weight : ℝ) (nonnegative : 0 ≤ weight) (bounded : weight ≤ 1)
+    (profile : BehavioralProfile setup.program)
+    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context)) :
+    BoundaryContinuationWithin setup leaks scheduler horizon
+      (sourceServiceTurnPolicy setup leaks bound turns
+        (geometricTiming setup turns weight nonnegative bounded) profile) profile
+      (fun _ => (graph setup).order.eventCount * weight) := by
+  intro rank execution boundary within
+  exact (sourceServiceTurnPolicy_boundaryContinuationWithin
+    (sourceServiceTurnPolicy_firstTurnCompletes contract timely
+      (geometricTiming setup turns weight nonnegative bounded) profile effective)
+    rank execution boundary within).mono
+    (geometricTiming_remainingDeferral_le setup turns weight nonnegative bounded rank)
+
+/-- **Deferral weights vanishing faster than a given sequence.** For every
+positive sequence, such as the smallest tremble of a source perturbation
+sequence, some weights in `(0, 1)` tend to zero and are eventually negligible
+against it. -/
+theorem exists_deferralWeights_faster (reference : ℕ → ℝ) (positive : ∀ n, 0 < reference n) :
+    ∃ weight : ℕ → ℝ, (∀ n, 0 < weight n) ∧ (∀ n, weight n < 1) ∧
+      Tendsto weight atTop (nhds 0) ∧
+      Tendsto (fun n => weight n / reference n) atTop (nhds 0) := by
+  let weight := fun n : ℕ => min (1 / ((n : ℝ) + 2)) (reference n / ((n : ℝ) + 1))
+  have weightPositive (n : ℕ) : 0 < weight n :=
+    lt_min (by positivity) (div_pos (positive n) (by positivity))
+  have belowFirst (n : ℕ) : weight n ≤ 1 / ((n : ℝ) + 1) :=
+    (min_le_left _ _).trans (one_div_le_one_div_of_le (by positivity) (by linarith))
+  refine ⟨weight, weightPositive, fun n => ?_, ?_, ?_⟩
+  · have half : 1 / ((n : ℝ) + 2) < 1 := by
+      rw [div_lt_one (by positivity)]
+      have : (0 : ℝ) ≤ n := Nat.cast_nonneg n
+      linarith
+    exact (min_le_left _ _).trans_lt half
+  · exact squeeze_zero (fun n => (weightPositive n).le) belowFirst
+      tendsto_one_div_add_atTop_nhds_zero_nat
+  · refine squeeze_zero (fun n => (div_pos (weightPositive n) (positive n)).le) (fun n => ?_)
+      tendsto_one_div_add_atTop_nhds_zero_nat
+    rw [div_le_iff₀ (positive n)]
+    calc weight n ≤ reference n / ((n : ℝ) + 1) := min_le_right _ _
+      _ = 1 / ((n : ℝ) + 1) * reference n := by ring
+
+end Vegas

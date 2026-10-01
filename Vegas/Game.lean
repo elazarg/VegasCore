@@ -52,6 +52,10 @@ import Vegas.Game.SourceServiceFirstTurnCompletes
 import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceCanonicalConformance
 import Vegas.Game.SourceServiceCanonicalSerial
+import Vegas.Game.SourceServiceSiteBridge
+import Vegas.Game.SourceServiceGeometricTiming
+import Vegas.Game.AsyncServiceSpec
+import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
