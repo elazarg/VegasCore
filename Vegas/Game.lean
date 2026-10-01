@@ -49,6 +49,8 @@ import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Game.SourceServiceDecidedCompletion
 import Vegas.Game.SourceServiceFirstTurnCompletes
+import Vegas.Game.SourceServiceCanonicalSlots
+import Vegas.Game.SourceServiceCanonicalConformance
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
