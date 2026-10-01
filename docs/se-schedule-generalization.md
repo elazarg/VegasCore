@@ -442,11 +442,41 @@ controls confirm the checker rejects non-equilibria. Results:
 | C3 | Order reads a certificate on a forbidden commitment | An equilibrium with the source law exists exactly when the expected charge is at least the gain from revealing (here 1/2). |
 | C4 | Order reads a permitted opening while the other binding is unserved (excluded by the barrier order) | No assessment with the source law is sequentially rational; an order blind to opening contents restores one. |
 | C5 | An unobserved wait before the other player's service step | The translated profile is an equilibrium although its information set spans two depths: the depth requirement is a proof requirement, not an obstruction. |
+| C6 | One guaranteed turn, deferral with weight ε, a late turn granted with probability p, a public charged miss (`deferral_miss_probe.py`) | The compiled image of the penalized-miss extended source is an equilibrium with the source law exactly when the deposit is at least Alice's gain from a miss (here 1/2), for p in {0, 1/2, 1}. A grant probability that depends on the owner's value breaks the route at the turn-2 acceptance, not only after a miss. |
 
 C1 compares D4 without enlarged deadlines against D3's timers; D1, where owners
 do not wait, is not probed. Under the barrier order C4 cannot arise, so the
 probes support preservation in every design once timeliness holds. They are
 design evidence, not proofs.
+
+C6 tests the penalized-miss route below. Alice's private value v is uniform;
+she commits a = v, and Bob, without seeing it, plays matching pennies or a
+coordination game. After a public miss Bob aborts (worth 1/3 to him) or
+proceeds (worth v), so his post-miss play depends on his belief about v;
+Alice gains 1 if he proceeds, minus the deposit D. The extended source's
+equilibrium supplies post-miss play (proceed, under the prior belief); its
+compiled image, in which a late turn repeats the source action and Bob ignores
+timing, has Bob's limit beliefs equal to the extended source's at every
+information set and is a target equilibrium exactly when D >= 1/2. Deferring
+and then playing x is worth exactly the mixture of a miss and x to Alice.
+Controls fail as expected: with D = 0 deferring and staying silent pays; a
+Bob who aborts after a miss violates sequential rationality there. When p
+depends on v (1/4 and 3/4), the post-miss belief moves off the prior, and
+even with the extended source's miss trembles set to match it, acceptance at
+turn 2 reveals v and Bob's timing-blind play fails there. So the mixture
+condition must exclude the owner's own private values: the grant probability
+must not vary across the histories inside any other player's information set,
+which a function of public data satisfies. Existence itself survived that
+control, through profiles the route does not construct. The deposit
+threshold is sufficient, not necessary: with 1/2 <= p < 1 there are equilibria with the source law for every D <= 1/2 in
+which value 0 stays silent at a late turn just often enough that Bob is
+indifferent after a miss. With p = 0 or p = 1 the searched family has none
+below the threshold. Timing works as cheap talk only with a free late turn
+and common interest (coordination, p = 1), where a separating equilibrium
+exists alongside the source-law one; the source-law equilibrium exists in
+every case probed. The probe has one binding, one other player and a binary
+value; it does not test several pending bindings or a builder whose grant
+depends on other players' actions.
 
 ## Completion plan
 
@@ -879,8 +909,10 @@ Open obligations this creates:
   restriction extension supplies play after a miss there, because the penalty
   pays its comparison, and compiled deferral is the mixture of that miss and
   deciding later. This requires the chance that a deferring owner gets no
-  further turn to be independent of hidden values given the owner's
-  information. To be validated by a finite probe before implementation.
+  further turn to be independent of every hidden value, the owner's own
+  included: acceptance timing is public, so a grant probability that varies
+  with the owner's value lets a late acceptance reveal it. Probe C6
+  supports the route under that condition.
 
 ### Risks and open questions
 
