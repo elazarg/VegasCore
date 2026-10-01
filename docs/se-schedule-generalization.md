@@ -459,10 +459,10 @@ is a design, not a checked result.
 | --- | --- |
 | Finite probes | Done (above). Design evidence, not proofs. |
 | Library lemmas | Done: proportional Bayes transport and the depth-free restriction extension in `GameTheoryExtensions`. |
-| Readiness instead of announcements | Done. Prescribed clients, response menus and the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`); the service grant is deleted from the runtime. `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved against this, still under the fixed calendar. |
+| Readiness instead of announcements | Done. Prescribed clients, response menus and the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`); the service grant is deleted from the runtime. The calendar menu's required binding at the owner's last visit (`bindingRequired`) still reads the roster. `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved against this, still under the fixed calendar. |
 | Asynchronous chain model | Milestone 1 done: the contract is `AsyncContract` with per-event bounds and `AsyncTimely` (`Vegas/Pending/ReactiveAsyncContract.lean`); `rosterScheduler_asyncContract` proves the fixed calendar an instance with reaction bounds `event.val` and inclusion bound 0 (`Vegas/Game/ServiceRosterAsync.lean`). The timeliness lemma for prescribed play waits for milestone 2's prescribed policy. |
 | Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the watcher calendar reads decision depths from the public clock. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
-| Completion-stopped phase law (milestone 2a) | Done. `Interaction/ReactiveStopping.lean` runs any scheduler until a stopping predicate and splits a full run there. `SourceServiceCompletion.lean` defines the completion law and completion boundaries and proves the bridge `response_completion_law` for any scheduler that completes play, under a boundary-continuation hypothesis. `SourceServiceContinuationBridge.lean` proves that hypothesis for the fixed calendar and re-derives `response_continuation_law` from it. |
+| Completion-stopped phase law (milestone 2a) | Done. `Interaction/ReactiveStopping.lean` runs any scheduler until a stopping predicate and splits a full run there. `SourceServiceCompletion.lean` defines the completion law and completion boundaries and proves the bridge `response_completion_law` under a boundary-continuation hypothesis. Only `CompletionBoundary` and the continuation hypotheses are scheduler-generic: the bridge itself is still stated on `TimedApproximant`, `DecisionPhase`, the calendar menu and plan length, with an exact hypothesis, and needs a position-free `Within` restatement. `SourceServiceContinuationBridge.lean` proves that hypothesis for the fixed calendar and re-derives `response_continuation_law` from it. |
 | Turn-counted policy and approximate continuation (milestone 2b) | Done for every contract scheduler. `sourceServiceTurnPolicy_boundaryContinuationWithin` bounds the distance from the source continuation by the sum of the remaining events' deferral weights, and `sourceServiceTurnPolicy_firstTurnCompletes` discharges its hypothesis from `AsyncContract` and `AsyncTimely` alone (`Vegas/Game/SourceServiceFirstTurnCompletes.lean`). The calendar keeps its timed policy. |
 | Audit serial clause | Done. The audit's per-packet rule counts distinct identifiers per author (`Interaction.Message.distinctAuthoredCount`), so re-included copies do not shift serials, and the contract rejects a re-inclusion (`EventGraphRuntime.handle_eq_none_after_accepted_run`). Under `AsyncContract` alone, every fresh call of a player following the turn-counted policy, trembles included and whatever others do, carries the audit's serial and passes the full rule (`Vegas.sourceServiceTurnPolicy_serial`, `Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope` in `Vegas/Game/SourceServiceCanonicalSerial.lean`). |
 | General theorem | Not started. |
@@ -759,27 +759,116 @@ and is committed separately.
      absence of early expiry, not only a receipt. The step law's invariant
      keeps the pool for the current event to one owner identifier and its
      copies, and makes deferral the only error.
-3. **Phase without position.** With the bridge independent of the block,
-   replace `DecisionPhase.slot` and `DecisionPhase.position` by the sole ready
-   event, still at the calendar. This is the large mechanical refactor (about
-   94 files refer to the roster plan). Do it as an inventory-then-batch port.
+3. **Phase without position.** Dropped. The calendar chain is retired at
+   milestone 6 rather than ported, and the position-free site datum (event,
+   readiness, sole readiness) is a small definition inside the generic bridge
+   of step 6 below.
 4. **Depth-free extension and proportional beliefs.** Retarget the
    fixed-depth Bayes projections and restriction extensions, including the
    joint factorization with traffic noise; build beliefs at scheduler-created
    sites.
-5. **Deviation lottery.** Prove that a deviator's multi-identifier outcome is
-   a mixture of the deviator's source actions, under every contract scheduler.
+5. **Deviation lottery.** Mostly discharged by the serial audit: a second own
+   identifier for an event is nonconforming whether or not the first was
+   published, and the compiled menu never makes a second fresh call. The
+   builder's choice among a deviator's packets therefore matters only on
+   charged histories, where the extension bound holds whatever the builder
+   does. What remains is the lemma that every second own identifier is a
+   forbidden record. The obligation that the original wording missed is
+   builder sensitivity to rebroadcasts (see "Waiting, misses and the
+   charge").
 6. **General theorem, stage A.** Generalize the scheduler parameter of
    `SourceServiceSpec` to any contract scheduler, with the horizon as a field,
    re-derive the deposit, and pin the new capstone in `Paper.lean`. The
    fixed-calendar theorem becomes a corollary through milestone 1's instance.
+   The work, as new modules that leave the calendar chain green until the
+   last step:
+   1. `AsyncServiceSpec` (scheduler, horizon, delay, bound, contract, finite
+      nature) and the calendar instance.
+   2. The deposit over `(horizon, scheduler)` and its gain bound.
+   3. The bound-aware audit gate, equal to today's rule at bound 0.
+   4. Geometric deferral: a constant per-turn deferral probability that
+      vanishes faster than the source's own trembles, so that beliefs after a
+      withhold converge to the source's. The uniform split over later turns
+      does not vanish at later turns.
+   5. The canonical gated menu and its lemma suite; `bindingRequired`, which
+      still reads the roster, is deleted.
+   6. The generic bridge: `response_completion_law` and `completion_boundary`
+      restated for any scheduler, with a `Within` version.
+   7. Zero charge on retained histories, lifting the canonical conformance
+      and serial results from "follows the policy" to "responds in the menu",
+      with the treatment of misses fixed in "Waiting, misses and the charge".
+   8. Milestone 4's beliefs.
+   9. Generic local comparisons for the seven site kinds, each bound with
+      `BoundaryContinuationWithin`. Large; not previously listed.
+   10. Generic source-to-compiled step through the `lawError` limit lemma.
+   11. Generic repair coupling (same public state, different private
+       catalogue, round by round), the second-identifier lemma, and the
+       compiled-to-native step through the depth-free extension. Large; not
+       previously listed.
+   12. The new capstone, the calendar corollary, and retirement of the
+       calendar chain.
+
+   Steps 1, 3, 4 and 6 are independent. After step 5, steps 7 and 11 run
+   alongside steps 8, 9 and 10.
 7. **Stage B.** Barrier-order graph: commutation, timing information,
    concurrent phase law.
 8. **Pending-message stack.** Collapse staging, express the epoch service as
    a contract scheduler, and retarget or retire.
 
-Milestones 2 to 5 are each meaningful on the fixed calendar, so the capstone
-stays green throughout; only milestone 6 changes its statement.
+Milestones 2, 4 and 5 are each meaningful on the fixed calendar, so the
+capstone stays green throughout; only milestone 6 changes its statement.
+
+### Waiting, misses and the charge
+
+The source is an idealization; the target must be realistic and the source
+must compile to it. In the target, waiting is a real option: an owner who
+waits gives up inclusion probability in exchange for a later, possibly better
+informed decision. Within one game the builder is fixed, so that price is a
+well-defined probability, and a builder that grants no second turn makes
+waiting expensive.
+
+What waiting buys depends on the graph. On the sequentialized graph nothing
+else in the game completes while an owner's event is ready, so waiting learns
+nothing the source game models: only inclusion timing, leaked packets and
+rebroadcasts, which are stated limitations. Against the source's information,
+waiting is pure cost. Under the barrier order (stage B) waiting does learn
+who has committed, and the barrier order is what must keep that from mattering.
+
+A missed binding is charged. The contract cannot distinguish an owner who
+chose not to send from one who was censored, so it charges both alike: it
+plays along with censorship. Protected inclusion is exactly the assumption
+that a timely sole packet is never censored, so a prescribed owner is charged
+only after waiting past its guarantee. A miss differs from a source forfeit:
+the forfeit stays hidden until the reveal (it compiles to a handle with no
+opening), while a miss is public at the deadline. The source therefore stays
+as it is, and the miss is a charged outcome of the target.
+
+Open obligations this creates:
+
+- **Charges on retained histories.** Retained deferral reaches a miss with
+  probability of order the deferral weight, so zero charge cannot hold on
+  every retained history. Either the charge enters the compiled game's
+  payoff and vanishes in the limit, or deferral past the last turn whose
+  successor still fits the gate leaves the retained menu as a charged gamble.
+  The second is dominated only if waiting buys nothing source-relevant, which
+  holds on the sequentialized graph up to the stated limitations.
+- **Play after a miss.** Other players need rational play at sites where an
+  owner has publicly missed. If such histories are reached only through
+  removed actions, the extension argument supplies the continuation as it
+  does for charged evidence today.
+- **The audit gate (proposed).** The policy stops fresh calls once protected
+  inclusion can no longer land before the deadline, but the audit permits
+  them until the deadline. Calls in that gap are uncharged and their outcome
+  is a builder lottery others observe. Proposed: the audit permits a fresh
+  call only while `clock - entered + bound < deadline`, which is today's rule
+  at bound 0.
+- **Builder sensitivity to rebroadcasts (proposed).** The builder reads the
+  pool, so a rebroadcast can change whether a waiting owner gets another
+  turn, and off-turn choices then affect payoffs. Proposed: a contract clause
+  that the builder's decisions do not change when copies of an identifier
+  already pending or on the ledger are added (builders deduplicate by
+  transaction hash). Whether the calendar satisfies it literally is
+  unchecked.
 
 ### Risks and open questions
 
