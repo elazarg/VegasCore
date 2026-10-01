@@ -59,11 +59,9 @@ horizon:
 * `terminal`: at the terminal boundary the source continuation is the point
   mass at the readout.
 
-These are discharged by the decision-resource development for every contract
-scheduler: admissibility of the turn policy with complete play, decoding of
-reached configurations, the value-mixture realization of the first-turn
-decision, and deterministic completion of a fixed decision. No pinned result
-assumes them. -/
+They hold for every scheduler satisfying the asynchronous contract with
+`delay + bound < deadline` and every source profile with effective disclosures
+(`Vegas.sourceServiceTurnPolicy_firstTurnCompletes`). -/
 structure FirstTurnCompletes (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
     (turns : Nat) (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program) :
     Prop where
