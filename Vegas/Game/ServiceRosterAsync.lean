@@ -17,8 +17,9 @@ protected inclusion of its owner's latest packet (or public sampling), then
 ready only when its predecessor completes inside the predecessor's block, at
 the latest at that block's inclusion, so the owner is activated at most
 `e.val` slots after `e` became ready. Every owner response that sees `e` ready
-happens in `e`'s roster, before its inclusion, so the owner's sole packet is
-included within the same slot. Expiry completes every owned event that is
+happens in `e`'s roster, before its inclusion, so an authored packet is
+included within the same slot whenever every packet the owner emits for `e`
+carries its identifier. Expiry completes every owned event that is
 still ready at the end of its block.
 
 The proof is one invariant over every legal history of the raw protocol, for
@@ -162,7 +163,7 @@ theorem nodeView_sample_actor {graph : EventGraph Player L} {event : graph.Event
     rfl
   exact (EventGraph.EventCode.actor_cast outputEq (graph.nodes event)).symm.trans castActor
 
-/-! ## Selecting a sole authored packet -/
+/-! ## Selecting an owner's protected identifier -/
 
 omit [DecidableEq Player] in
 private theorem forall₂_exists_right {α β : Type} {R : α → β → Prop} :
@@ -192,9 +193,11 @@ section Selection
 variable {graph : EventGraph Player L} (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- An owner's sole authored packet for an event, when unpublished, is pending
-and is exactly what `reactiveLatest` selects: every pending envelope by that
-author addressed to the event is a copy of it, whatever replays occurred. -/
+/-- When every packet an owner emits for an event carries the identifier of
+its authored packet, that packet, when unpublished, is pending and its
+identifier is exactly what `reactiveLatest` selects: every pending envelope by
+that author addressed to the event was emitted by the owner, so it carries that
+identifier, whatever replays occurred. -/
 theorem reactiveLatest_sole
     (execution : (runtime.reactiveApplication leaks).Execution)
     (origins : execution.Provenance (runtime.reactiveApplication leaks))
@@ -207,7 +210,7 @@ theorem reactiveLatest_sole
     (split : execution.recall owner = earlier ++ entry :: later)
     (emitted : entry.emitted = some message) (authored : message.sender = owner)
     (addressed : message.payload.call.event? graph = some event)
-    (sole : ∀ other ∈ earlier ++ later, ¬ EmitsFor runtime leaks other event)
+    (sole : ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor runtime leaks other event message.id)
     (unpublished : message.id ∉ execution.network.ledger.map Message.id) :
     message ∈ execution.network.pending ∧
       runtime.reactiveLatest leaks event owner
@@ -233,16 +236,18 @@ theorem reactiveLatest_sole
         selectedPending
     obtain ⟨other, member, otherEmitted⟩ := List.mem_filterMap.mp selectedOutput
     rw [split] at member
-    have same : other = entry := by
-      by_contra different
-      have outside : other ∈ earlier ++ later := by
-        simp only [List.mem_append, List.mem_cons] at member ⊢
-        tauto
-      exact sole other outside ⟨selected, otherEmitted, selectedAddressed⟩
-    subst other
-    rw [emitted] at otherEmitted
-    cases Option.some.inj otherEmitted
-    rfl
+    have sameId : selected.id = message.id := by
+      by_cases same : other = entry
+      · subst other
+        rw [emitted] at otherEmitted
+        cases Option.some.inj otherEmitted
+        rfl
+      · have outside : other ∈ earlier ++ later := by
+          simp only [List.mem_append, List.mem_cons] at member ⊢
+          tauto
+        by_contra different
+        exact sole other outside ⟨selected, otherEmitted, selectedAddressed, different⟩
+    rw [sameId]
 
 /-- Including the identifier of a pending envelope records a receipt for it. -/
 theorem includePending_receipt_of_pending
@@ -469,7 +474,8 @@ structure RosterPhase (setup : Setup (Player := Player) (L := L))
         control.execution.recall owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
         message.payload.call.event? (graph setup) = some event →
-        (∀ other ∈ earlier ++ later, ¬ EmitsFor (runtime setup) leaks other event) →
+        (∀ other ∈ earlier ++ later,
+          ¬ EmitsOtherFor (runtime setup) leaks other event message.id) →
         ∃ accepted, (message.id, accepted) ∈ control.execution.receipts
 
 /-- Every reachable protocol state is inside some block, or after the plan
@@ -736,8 +742,9 @@ theorem RosterPhase.activate_step
     inclusion := fun late => absurd late (by omega) }
 
 /-- Protected inclusion at the end of the roster. Whatever packet is included,
-only the ready event can complete; an owner's sole authored packet for it gets
-a receipt. -/
+only the ready event can complete; an owner's authored packet for it gets a
+receipt when every packet the owner emits for the event carries its
+identifier. -/
 theorem RosterPhase.include_step
     (phase : RosterPhase setup leaks rosters event offset control)
     (atInclusion : offset = (rosters event).length) (owner : Player)
@@ -1336,9 +1343,10 @@ theorem rosterReach_history (setup : Setup (Player := Player) (L := L))
 /-! ## The asynchronous contract -/
 
 /-- **The fixed roster calendar is an asynchronous service.** An owner is
-activated within `event.val` slots of its event becoming ready, its sole
-authored packet is included in the slot it was sent, and the plan completes
-every event. The roster must give each event's actor an activation. -/
+activated within `event.val` slots of its event becoming ready, a packet it
+authored for the event is included in the slot it was sent when every packet it
+emits for the event carries that identifier, and the plan completes every
+event. The roster must give each event's actor an activation. -/
 theorem rosterScheduler_asyncContract (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
