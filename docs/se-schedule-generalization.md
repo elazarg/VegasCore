@@ -463,6 +463,7 @@ is a design, not a checked result.
 | Asynchronous chain model | Milestone 1 done: the contract is `AsyncContract` with per-event bounds and `AsyncTimely` (`Vegas/Pending/ReactiveAsyncContract.lean`); `rosterScheduler_asyncContract` proves the fixed calendar an instance with reaction bounds `event.val` and inclusion bound 0 (`Vegas/Game/ServiceRosterAsync.lean`). The timeliness lemma for prescribed play waits for milestone 2's prescribed policy. |
 | Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the watcher calendar reads decision depths from the public clock. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
 | Completion-stopped phase law (milestone 2a) | Done. `Interaction/ReactiveStopping.lean` runs any scheduler until a stopping predicate and splits a full run there. `SourceServiceCompletion.lean` defines the completion law and completion boundaries and proves the bridge `response_completion_law` for any scheduler that completes play, under a boundary-continuation hypothesis. `SourceServiceContinuationBridge.lean` proves that hypothesis for the fixed calendar and re-derives `response_continuation_law` from it. |
+| Turn-counted policy and approximate continuation (milestone 2b) | Done for every contract scheduler. `sourceServiceTurnPolicy_boundaryContinuationWithin` bounds the distance from the source continuation by the sum of the remaining events' deferral weights, and `sourceServiceTurnPolicy_firstTurnCompletes` discharges its hypothesis from `AsyncContract` and `AsyncTimely` alone (`Vegas/Game/SourceServiceFirstTurnCompletes.lean`). The calendar keeps its timed policy. |
 | General theorem | Not started. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
@@ -739,7 +740,9 @@ and is committed separately.
      the support of the turn policy, trembles included, not under arbitrary
      deviations. The step law and its chaining are proved first under a named
      hypothesis that the first turn completes the event, then the hypothesis
-     is discharged. Timeliness must prove acceptance and the
+     is discharged. Both are done: the discharge needs no condition on
+     payload values, catalogue capacity or admission, only effective
+     disclosures of the source profile. Timeliness must prove acceptance and the
      absence of early expiry, not only a receipt. The step law's invariant
      keeps the pool for the current event to one owner identifier and its
      copies, and makes deferral the only error.
