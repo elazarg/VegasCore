@@ -5,9 +5,10 @@ import Interaction.ReactiveRoundsFiniteness
 
 /-! # Scheduler rounds stopped at a predicate
 
-`runUntil` executes scheduler rounds until a stopping predicate holds or its
-round budget is spent. Every round records exactly one scheduler command, so
-the rounds left before a horizon are read from the environment recall
+`Interaction.ReactiveApplication.runUntil` executes scheduler rounds until a
+stopping predicate holds or its round budget is spent. Every round records
+exactly one scheduler command, so the rounds left before a horizon are read
+from the environment recall
 (`runToHorizon`). Running to the horizon is the same as running to the
 stopping point and then on to the horizon
 (`runToHorizon_eq_runUntilHorizon_bind`): the round evaluator has the Markov

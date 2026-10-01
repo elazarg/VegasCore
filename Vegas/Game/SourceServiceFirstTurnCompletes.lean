@@ -13,7 +13,7 @@ effective (`Vegas.sourceServiceTurnPolicy_firstTurnCompletes`).
 * `terminal`: at the terminal rank the decoded source state is terminal.
 * `exact`: at a chance event every response replays, the configuration stays
   put until the scheduler samples, and the sample has the source law
-  (`Vegas.sample_phase_law`). At an owned event the first-turn decision is a
+  (`Vegas.sample_runUntil`). At an owned event the first-turn decision is a
   mixture over source actions (`Vegas.firstTurn_runUntil_mixture`), and each
   fixed action completes the event with exactly that action
   (`Vegas.decided_completion`); the source continuation decomposes the same way
