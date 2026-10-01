@@ -772,6 +772,14 @@ stays green throughout; only milestone 6 changes its statement.
   sole identifier, so a concrete builder needs only to reach that one packet
   in time, but it must be checked against flooding. The calendar instance
   already holds on every legal history.
+- **Audit slot after a silent expiry.** When a deferred binding expires
+  without a submission, the prescribed client's next fresh candidate slot
+  (the lowest fresh slot) and the slot the audit expects (the count of
+  completed bindings) diverge, so the audit would treat that owner's later
+  prescribed commitments as nonconforming. This happens only on
+  tremble-reached histories, but sequential rationality must hold there too.
+  It must be resolved before milestones 4 and 6, most likely by having the
+  prescribed decision use the audit's canonical slot.
 - **Removed actions must be framed or charged.** Every action outside the
   retained menu must be dominated under every extension of the source, which
   the repair argument achieves only by keeping play on retained histories or
