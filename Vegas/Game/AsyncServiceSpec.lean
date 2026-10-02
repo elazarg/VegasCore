@@ -142,8 +142,10 @@ end Vegas
 -- risk-menu game has that actual continuation law. One fixed comparator has zero
 -- owner collection across every hidden history of a clear information site;
 -- terminal base bounds give its clean lower bound under any belief. The source
--- equilibrium embedding remains open. Signed constructor breaches have actual
--- terminal collection bounds from an authentic challenge-report backend. The
+-- equilibrium embedding remains open. Constructor breaches, wrong current-event
+-- handles and public guard failures have actual terminal collection bounds
+-- from authentic final-record challenge coverage. Their information-local
+-- classifier reconstructs the actual envelope from own recall and view. The
 -- risk-menu-to-effective SE extension derives the clean comparator, collection
 -- and fixed-deposit bound; other excluded-action comparisons remain hypotheses.
 -- Exact private-alias transport supplies the final bounded raw-runtime stage.
@@ -154,7 +156,9 @@ end Vegas
 -- every public scheduler command. Decision and disclosure kernels, joint beliefs
 -- at every native information site, the auxiliary risk-menu source embedding,
 -- local incentives and general continuation repair remain to be proved.
--- Resolution silence can hide a selected false source decision. A deferral
--- rate faster than a vanishing false tremble can give an irrational waiting
--- prescription; compatible rates and later closed gates need their own proof.
+-- Resolution silence can hide a selected false source decision. Fast deferral
+-- can give an irrational waiting prescription. Slow deferral supplies a checked
+-- local decision limit but can dominate rare false outcomes and change their
+-- downstream conditional beliefs. Current protection supplies earlier windows;
+-- source likelihood transport and default-false treatment remain open.
 -- The fixed-calendar SourceServiceSpec capstone does not discharge this edge.

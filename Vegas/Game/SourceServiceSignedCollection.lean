@@ -5,7 +5,7 @@ import Vegas.Pending.ReactiveSettledCollection
 import Interaction.ReactiveLocalContinuation
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
-/-! # Collection after an actual committed signed content breach
+/-! # Collection after an actual committed signed packet
 
 An information-site commitment performs its actual physical response. The
 resulting signed packet is derived from that transition, then persists through
@@ -13,8 +13,9 @@ every later policy. Bounded terminal play supplies the remaining continuation
 fuel and the complete-play contract supplies the final settled record.
 
 The authentic backend covers signed packets forbidden by the final record,
-with observation and conditional report-delivery bounds. Complete play makes
-constructor breaches forbidden. No send-time evidence, certain monitoring,
+with observation and conditional report-delivery bounds. The packet's final
+forbiddenness remains an explicit operational obligation over actual reachable
+complete records. No payoff comparison, send-time evidence, certain monitoring,
 caller-supplied traffic or continuation-fuel premise is used.
 -/
 
@@ -31,10 +32,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 open Classical in
-/-- Every actual active history committing a signed content breach has the
-backend's collection bound, under arbitrary later behavioral policies. The
-information equality permits application to embedded retained histories. -/
-theorem signedContentBreach_collection_committed
+/-- An actual active history committing a packet forbidden at every reachable
+complete record has the backend's collection bound under arbitrary later
+behavioral policies. Actual emission, persistence and fuel are derived. -/
+theorem settledPacket_collection_committed
     (menu : (application setup leaks).ResponseMenu)
     (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
     (completes : CompletesPlay (runtime setup) leaks (initialLaw setup) horizon scheduler)
@@ -50,11 +51,16 @@ theorem signedContentBreach_collection_committed
       history.trace = info)
     (material : (application setup leaks).Submission)
     (selected : choice.1 = some ⟨some material⟩)
-    (breach : SignedContentBreach (⟨(who, execution.network.nextSerial who),
-      (application setup leaks).packet
-        ((application setup leaks).submit execution.application who material) who
-          (execution.network.known who) material⟩ :
-            Message Player (WitnessedPacket (graph setup))))
+    (forbidden : ∀ fuel
+      (final : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).History),
+      ((application setup leaks).protocol (initialLaw setup) horizon scheduler).ReachesWithin fuel
+        (menu.toRawHistory (initialLaw setup) horizon scheduler history) final →
+      ∀ control, final.state = some control → control.execution.application.config.cut.Terminal →
+        ((runtime setup).settledRecord leaks control.execution).permits
+          (⟨(who, execution.network.nextSerial who), (application setup leaks).packet
+            ((application setup leaks).submit execution.application who material) who
+              (execution.network.known who) material⟩ :
+                Message Player (WitnessedPacket (graph setup))) = false)
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ player, 0 ≤ deliveryRate player)
     (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate) :
@@ -144,9 +150,27 @@ theorem signedContentBreach_collection_committed
       have enough : 2 * horizon + 1 ≤ next.trace.length + fuel := by
         dsimp only [fuel]
         omega
-      have bound := (runtime setup).signedContentBreach_collection_continuation_of_finalCoverage
-        leaks menu (initialLaw setup) horizon scheduler completes backend observationRate
-        deliveryRate delivery_nonnegative coverage updated fuel next enough record present breach
-      exact bound
+      apply (runtime setup).settledPacket_collection_continuation leaks menu (initialLaw setup)
+        horizon scheduler backend observationRate deliveryRate delivery_nonnegative coverage
+        updated fuel next record present
+      intro final finalSupported control finalState
+      have stopped : app.terminal final.state := by
+        rcases protocol.runRandomizedFor_terminal_or_length (model.randomizedChooser updated)
+            fuel next final finalSupported with terminal | terminalLength
+        · exact terminal
+        · have bound := app.trace_bound (initialLaw setup) horizon scheduler
+            (menu.toRawTrace (initialLaw setup) horizon scheduler final.trace)
+          rw [menu.toRawTrace_length] at bound
+          have exhausted : app.rank horizon final.state = 0 := by omega
+          exact (app.rank_zero horizon final.state).mp exhausted
+      have terminalTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace
+          (some control) :=
+        finalState ▸ menu.toRawTrace (initialLaw setup) horizon scheduler final.trace
+      have complete := completes control terminalTrace (finalState ▸ stopped)
+      have suffix := protocol.runRandomizedFor_reachesWithin (model.randomizedChooser updated)
+        fuel next final finalSupported
+      exact forbidden (1 + fuel) (menu.toRawHistory (initialLaw setup) horizon scheduler final)
+        (menu.reaches_raw (initialLaw setup) horizon scheduler (path.trans suffix)) control
+        finalState complete
 
 end Vegas

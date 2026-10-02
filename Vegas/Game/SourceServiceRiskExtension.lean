@@ -2,7 +2,7 @@
 
 import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.AsyncServiceDeposit
-import Vegas.Game.SourceServiceSignedCollection
+import Vegas.Game.SourceServiceAuditableCollection
 import Vegas.Pending.ReactiveSignedEvidence
 import Interaction.ReactiveFiniteAssessment
 import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
@@ -96,11 +96,11 @@ local instance effectiveHistory_nonempty :
   ⟨((service.bounds.menu (runtime service.setup) service.leaks).protocol
     (initialLaw service.setup) service.horizon service.scheduler).initHistory⟩
 
-/-- An excluded response is enforced by the signed-content route when its
-actual emitted envelope breaches content at every hidden history of the site.
-This is a uniform proof classification, not a new runtime observation or gate.
-Private material and certificate capability are not classified as breaches. -/
-def signedContentBreachAtSite
+/-- A charged excluded response is classified directly from the information
+state and chosen material. Constructor breaches, noncanonical current-event
+handles and current-event guard failures are auditable. No hidden-history
+quantification, new runtime observation or gate is introduced. -/
+def auditableBreachAtSite
     (who : Player)
     (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
       service.bound).information (initialLaw service.setup) service.horizon
@@ -108,20 +108,12 @@ def signedContentBreachAtSite
     (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
       (initialLaw service.setup) service.horizon service.scheduler).Choice who
         ((service.riskRestriction.site who site).1)) : Prop :=
-  ∀ history : ((service.bounds.riskMenu (runtime service.setup) service.leaks
-      service.bound).information (initialLaw service.setup) service.horizon
-        service.scheduler).InformationHistory who site.1,
-    ∃ remaining execution material,
-      history.1.state = some ⟨remaining, some who, execution⟩ ∧
-        action.1 = some ⟨some material⟩ ∧
-        SignedContentBreach (⟨(who, execution.network.nextSerial who),
-          (application service.setup service.leaks).packet
-            ((application service.setup service.leaks).submit execution.application who material)
-              who (execution.network.known who) material⟩ :
-                Message Player (WitnessedPacket (graph service.setup)))
+  auditableServiceChoice service.setup service.leaks
+    (service.bounds.menu (runtime service.setup) service.leaks) service.horizon service.scheduler
+    who (service.riskRestriction.site who site).1 action
 
 open Classical in
-/-- Every excluded effective response outside the signed-content class has a
+/-- Every excluded effective response outside the auditable packet classes has a
 legal risk-menu continuation dominating its actual audited continuation.
 One policy serves all hidden histories under the specified belief. Private
 binding material and certificate capabilities remain explicit obligations. -/
@@ -148,7 +140,7 @@ def riskOtherExclusionComparisons
       (action : (effective.information initial count scheduler).Choice who
         (restriction.site who site).1),
       action ∉ Set.range (restriction.choice who site.1) →
-      ¬ service.signedContentBreachAtSite who site action →
+      ¬ service.auditableBreachAtSite who site action →
       ∀ belief : PMF ((menu.information initial count scheduler).InformationHistory who site.1),
         ∃ alternative : (menu.information initial count scheduler).BehavioralPolicy who,
           expect belief (fun history =>
@@ -177,7 +169,7 @@ fixed clean comparator are derived for this service.
 Coverage concerns actual signed evidence forbidden by the final settled
 record. Delivery is conditional on the full observation and includes delivery
 before the challenge-window bound. This contract implies collection after
-each excluded signed breach without independence or a continuation-fuel
+each classified excluded packet without independence or a continuation-fuel
 premise. The other comparison requires one legal continuation shared across
 the belief's hidden histories. Both remain hypotheses. -/
 theorem risk_sequentialEquilibrium_extends
@@ -248,7 +240,7 @@ theorem risk_sequentialEquilibrium_extends
       (effective.decisionRecall initial count scheduler)
       (fun who final => payoff final.state who) (fun who final => base final.state who)
       (fun who final => TerminalAudit.charge observe audit final.state who) deposit
-      (fun _ _ => rfl) (service.signedContentBreachAtSite)
+      (fun _ _ => rfl) (service.auditableBreachAtSite)
       (fun who _ => FinitePayoffBounds.lower (extremum who))
       (fun who _ => FinitePayoffBounds.upper (extremum who)) (fun who _ => probability who)
       (fun who => asyncAuditDeposit_nonnegative service.setup service.leaks service.bounds
@@ -262,16 +254,32 @@ theorem risk_sequentialEquilibrium_extends
         exact le_of_eq (by ring))
       (fun _ who _ _ _ _ _ final _ => (effectiveBounds who final).2)
       (fun targetProfile who site action _ breach history => by
-        obtain ⟨remaining, execution, material, current, selected, forbidden⟩ := breach history
-        have currentEffective : (restriction.history history.1).state =
-            some ⟨remaining, some who, execution⟩ := current
+        let app := application service.setup service.leaks
+        have classified : auditableServiceChoice service.setup service.leaks effective count
+            scheduler who (restriction.site who site).1 action := breach
+        obtain ⟨past, view, _response, input, _⟩ := classified
         have observed : (effective.information initial count scheduler).infoOf who
             (restriction.history history.1).trace = (restriction.site who site).1 :=
           (restriction.observed who history.1).trans history.2
-        exact signedContentBreach_collection_committed service.setup service.leaks effective count
-          scheduler service.completes backend targetProfile (restriction.history history.1) who
-          remaining execution currentEffective (restriction.site who site).1 action observed
-          material selected forbidden observationRate deliveryRate delivery_nonnegative coverage)
+        have observedState : app.observe who (restriction.history history.1).state =
+            some (past, view) :=
+          (effective.info initial count scheduler who
+            (restriction.history history.1).trace).symm.trans
+            (observed.trans input)
+        have active := (app.observe_isSome who (restriction.history history.1).state).mp
+          (by rw [observedState]; rfl)
+        cases current : (restriction.history history.1).state with
+        | none => rw [current] at active; cases active
+        | some control =>
+            rcases control with ⟨remaining, actor, execution⟩
+            rw [current] at active
+            change actor = some who at active
+            subst actor
+            exact auditableServiceChoice_collection_committed service.setup service.leaks
+              effective count scheduler service.completes backend targetProfile
+              (restriction.history history.1) who remaining execution current
+              (restriction.site who site).1 action observed breach observationRate deliveryRate
+              delivery_nonnegative coverage)
       (fun sourceProfile _ _ who site action extra _ belief => by
         obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
           service.riskRestriction_extra_clear who site action extra

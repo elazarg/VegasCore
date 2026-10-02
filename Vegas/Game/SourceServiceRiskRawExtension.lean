@@ -5,7 +5,7 @@ import Vegas.Game.SourceServiceAliasEquilibrium
 
 /-! # Audited risk-menu equilibrium in the bounded raw runtime
 
-Signed-content enforcement and the explicit remaining effective-action
+Auditable packet enforcement and the explicit remaining effective-action
 comparisons extend the risk-menu equilibrium to the complete effective menu.
 Private-alias transport then supplies a raw-runtime equilibrium with the same
 joint typed source readout and actual sampled payoff vector. The stages use

@@ -59,6 +59,8 @@ import Vegas.Game.SourceServiceSilentChoicePosterior
 import Vegas.Game.SourceServiceResolutionLikelihood
 import Vegas.Game.SourceServiceResolutionSilenceRates
 import Vegas.Game.SourceServiceResolutionRecallPosterior
+import Vegas.Game.SourceServiceResolutionOpeningPosterior
+import Vegas.Game.SourceServiceResolutionRecallWindows
 import Vegas.Game.SourceServiceResolutionTerminal
 import Vegas.Game.SourceServiceProtectedBinding
 import Vegas.Game.SourceServiceBindingMiss
@@ -80,6 +82,8 @@ import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.SourceServiceSignedExclusion
 import Vegas.Game.SourceServiceSignedCollection
 import Vegas.Game.SourceServiceNoncanonicalBinding
+import Vegas.Game.SourceServiceGuardFailure
+import Vegas.Game.SourceServiceAuditableCollection
 import Vegas.Game.SourceServiceRiskExtension
 import Vegas.Game.SourceServiceAliasEquilibrium
 import Vegas.Game.SourceServiceRiskRawExtension
@@ -87,11 +91,13 @@ import Vegas.Game.SourceServiceSignedInformation
 import Vegas.Game.BindingSubmissionCoupling
 import Vegas.Game.BindingFrameSettlement
 import Vegas.Game.BindingCapabilityReadout
+import Vegas.Game.BindingCapabilitySubmission
 import Vegas.Game.SourceServiceCanonicalConformance
 import Vegas.Game.SourceServiceCanonicalSerial
 import Vegas.Game.SourceServiceSiteBridge
 import Vegas.Game.SourceServiceResponseCompletion
 import Vegas.Game.SourceServiceGeometricTiming
+import Vegas.Game.SourceServiceTimingRates
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.AsyncServiceFirstTurnLaw
@@ -102,6 +108,7 @@ import Vegas.Game.AsyncServiceCleanCompletionLaw
 import Vegas.Game.AsyncServicePrescribedSites
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceResidualSites
+import Vegas.Game.SourceServiceReadyObservation
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
 import Vegas.Game.SourceServiceSiteKind

@@ -12,8 +12,9 @@ the current view, the known packets. The same submission therefore emits the
 same entire signed envelope at every hidden history of one information site.
 
 A constructor breach witnessed at one such history consequently supplies the
-uniform classification used by collection. No new player observation, menu
-gate, prescribed policy or global clear-history premise is introduced.
+information-local auditable classification used by collection. No new player
+observation, menu gate, prescribed policy or global clear-history premise is
+introduced.
 -/
 
 noncomputable section
@@ -87,10 +88,10 @@ variable [Fintype Player]
 
 variable (service : AsyncServiceSpec Player L)
 
-/-- One actual signed breach suffices for the whole information site. Every
-other hidden history has the same active owner, recalled inputs and emitted
-envelope; uniformity is proved from legal histories rather than assumed. -/
-theorem signedContentBreachAtSite_of_witness
+/-- One actual constructor breach supplies the broader information-local
+auditable classification. Legal recall reconstructs its signed envelope;
+no uniform hidden-history breach premise is assumed. -/
+theorem auditableBreachAtSite_of_signed_witness
     (who : Player)
     (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
       service.bound).information (initialLaw service.setup) service.horizon
@@ -110,43 +111,28 @@ theorem signedContentBreachAtSite_of_witness
         ((application service.setup service.leaks).submit execution.application who material)
           who (execution.network.known who) material⟩ :
             Message Player (WitnessedPacket (graph service.setup)))) :
-    service.signedContentBreachAtSite who site action := by
-  intro other
+    service.auditableBreachAtSite who site action := by
   let app := application service.setup service.leaks
   let menu := service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
-  have sameInfo := witness.2.trans other.2.symm
-  have sameObserved : app.observe who witness.1.state = app.observe who other.1.state :=
-    (menu.info (initialLaw service.setup) service.horizon service.scheduler who
-      witness.1.trace).symm.trans (sameInfo.trans
-        (menu.info (initialLaw service.setup) service.horizon service.scheduler who other.1.trace))
-  have isSome : (app.observe who other.1.state).isSome := by
-    rw [← sameObserved, current]
-    simp only [ReactiveApplication.observe, ↓reduceIte, Option.isSome_some]
-  have active := (app.observe_isSome who other.1.state).mp isSome
-  cases target : other.1.state with
-  | none =>
-      rw [target] at active
-      cases active
-  | some control =>
-      rcases control with ⟨otherRemaining, otherActor, otherExecution⟩
-      rw [target] at active
-      change otherActor = some who at active
-      subst otherActor
-      rw [current, target] at sameObserved
-      simp only [ReactiveApplication.observe, ↓reduceIte] at sameObserved
-      have past := congrArg Prod.fst (Option.some.inj sameObserved)
-      have view := congrArg Prod.snd (Option.some.inj sameObserved)
-      have leftTrace : (app.protocol (initialLaw service.setup) service.horizon
-          service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-        current ▸ menu.toRawTrace (initialLaw service.setup) service.horizon service.scheduler
-          witness.1.trace
-      have rightTrace : (app.protocol (initialLaw service.setup) service.horizon
-          service.scheduler).Trace (some ⟨otherRemaining, some who, otherExecution⟩) :=
-        target ▸ menu.toRawTrace (initialLaw service.setup) service.horizon service.scheduler
-          other.1.trace
-      have sameEnvelope := sourceService_response_envelope_eq service.setup service.leaks
-        execution otherExecution who material leftTrace rightTrace past view
-      exact ⟨otherRemaining, otherExecution, material, rfl, selected, sameEnvelope ▸ breach⟩
+  have input : (service.riskRestriction.site who site).1 =
+      some (execution.recall who, execution.observe app who) := by
+    change site.1 = _
+    calc
+      site.1 = (menu.information (initialLaw service.setup) service.horizon
+          service.scheduler).infoOf who witness.1.trace := witness.2.symm
+      _ = app.observe who witness.1.state :=
+        menu.info (initialLaw service.setup) service.horizon service.scheduler who witness.1.trace
+      _ = some (execution.recall who, execution.observe app who) := by
+        rw [current]
+        simp only [ReactiveApplication.observe, ↓reduceIte]
+  have rawTrace : (app.protocol (initialLaw service.setup) service.horizon
+      service.scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
+    current ▸ menu.toRawTrace (initialLaw service.setup) service.horizon service.scheduler
+      witness.1.trace
+  refine ⟨execution.recall who, execution.observe app who, ⟨some material⟩, input, selected,
+    material, rfl, Or.inl ?_⟩
+  rw [localServiceEnvelope_actual service.setup service.leaks rawTrace who material]
+  exact breach
 
 end AsyncServiceSpec
 end Vegas
