@@ -39,8 +39,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
   (admission : CommitmentInterface setup.program)
 
-/-- Reporting is forced by this restricted menu, at every local input. Its
-optimality therefore imposes no assumption on the reporting player's utility. -/
+/-- Silence is forced on the watcher by this restricted menu, at every local
+input. Its optimality therefore imposes no assumption on the watcher's utility. -/
 theorem watcher_choice_subsingleton (info : (application setup leaks).Info) :
     Subsingleton ((information setup leaks bounds watcher).Choice watcher info) := by
   classical
@@ -49,19 +49,12 @@ theorem watcher_choice_subsingleton (info : (application setup leaks).Info) :
   | none => exact first.2.trans second.2.symm
   | some data =>
       obtain ⟨past, view⟩ := data
-      have deterministic : ∃ response,
-          (application setup leaks).reportFirstUnpublished past view = PMF.pure response := by
-        unfold ReactiveApplication.reportFirstUnpublished
-        split <;> exact ⟨_, rfl⟩
-      obtain ⟨response, chosen⟩ := deterministic
       obtain ⟨left, leftMember, leftEq⟩ := first.2
       obtain ⟨right, rightMember, rightEq⟩ := second.2
-      have leftChoice : left = response := by
-        simpa only [menu, ↓reduceIte, chosen, Set.Finite.mem_toFinset,
-          PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using leftMember
-      have rightChoice : right = response := by
-        simpa only [menu, ↓reduceIte, chosen, Set.Finite.mem_toFinset,
-          PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using rightMember
+      have leftChoice : left = ⟨none⟩ := by
+        simpa only [menu, ↓reduceIte, Finset.mem_singleton] using leftMember
+      have rightChoice : right = ⟨none⟩ := by
+        simpa only [menu, ↓reduceIte, Finset.mem_singleton] using rightMember
       exact leftEq.trans ((congrArg some (leftChoice.trans rightChoice.symm)).trans rightEq.symm)
 
 include reveals observer openable in

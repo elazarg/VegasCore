@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.ReactiveCanonicalDecision
@@ -11,8 +12,8 @@ import Interaction.ReactiveMessageIdentity
 An owner emits a fresh call for its ready event early enough that an inclusion
 within `bound` slots still lands before the deadline, acceptable on the view it
 saw (the handler's part of the audit's public conformance rule), and emits no
-other identifier of its own for the event. Under the asynchronous contract
-that call is accepted, and the event completes only through it: it is never
+other identifier of its own for the event. Under the contract's protected
+inclusion that call is accepted, and the event completes only through it: it is never
 rejected and the event never expires first (`Vegas.prescribed_packet_settles`).
 
 The proof is one invariant over every legal history, for every scheduler and
@@ -34,69 +35,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-section Handle
-
-variable {graph : EventGraph Player L} (runtime : EventGraphRuntime graph)
-
-/-- An accepted packet is authored by its event's actor. -/
-theorem handle_sender_actor (state next : EventGraphRuntime.State graph)
-    (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) (event : graph.EventId)
-    (named : Payload.event? graph message.payload = some event) :
-    graph.actor? event = some message.sender := by
-  rcases message with ⟨id, packet⟩
-  cases packet with
-  | malformed raw => simp [handle] at accepted
-  | commitment actual candidate =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | bind owner payload outputEq codeEq =>
-              by_cases sender : id.1 = owner
-              · exact (nodeView_bind_actor outputEq codeEq).trans (congrArg some sender.symm)
-              · simp [handle, ready, timely, view, Message.sender, sender] at accepted
-          | resolve owner payload binding checks outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
-  | opening actual candidate raw =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | resolve owner payload binding checks outputEq codeEq =>
-              by_cases sender : id.1 = owner
-              · exact (nodeView_resolve_actor outputEq codeEq).trans (congrArg some sender.symm)
-              · simp [handle, ready, timely, view, Message.sender, sender] at accepted
-          | bind owner payload outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
-  | withhold actual =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | resolve owner payload binding checks outputEq codeEq =>
-              by_cases sender : id.1 = owner
-              · exact (nodeView_resolve_actor outputEq codeEq).trans (congrArg some sender.symm)
-              · simp [handle, ready, timely, view, Message.sender, sender] at accepted
-          | bind owner payload outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
-
-end Handle
 
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -336,11 +274,12 @@ theorem settlesFreshCalls_respond (owner : Player) (event : (graph setup).EventI
   · rw [app.respond_recall_other execution who owner (Ne.symm same) action] at split
     exact valid earlier entry later message split call sole
 
-/-- A scheduler command preserves the settlement invariant under the contract. -/
+/-- A scheduler command preserves the settlement invariant under protected
+inclusion. -/
 theorem settlesFreshCalls_environment {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
+    {scheduler : (application setup leaks).Scheduler} {bound : (graph setup).EventId → Nat}
+    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
+      bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (remaining : Nat) (execution : (application setup leaks).Execution)
@@ -366,7 +305,7 @@ theorem settlesFreshCalls_environment {horizon : Nat}
       execution.application.clock ≤
         entry.beforeView.application.publicView.clock + bound event := by
     by_contra late
-    obtain ⟨accepted, receipt⟩ := contract.inclusion ⟨remaining + 1, none, execution⟩ prior event
+    obtain ⟨accepted, receipt⟩ := inclusion ⟨remaining + 1, none, execution⟩ prior event
       owner owned earlier later entry message split call.emitted call.authored call.addressed
       call.ready sole unfinished (by change _ < execution.application.clock; omega)
     exact unfinished (before.2.2 (before.2.1 accepted receipt))
@@ -463,8 +402,11 @@ theorem settlesFreshCalls_environment {horizon : Nat}
                 event call.addressed (withinDeadline finished)
                 (fun fact fact_member => facts.evidence.pending envelope pending fact fact_member)
                 facts.binding
-              change app.handle execution.application envelope = some accepted at handled
-              rw [handled]
+              have reactiveHandled : app.handle execution.application envelope = some accepted :=
+                (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ envelope
+                  (EventGraphRuntime.freshServiceAcceptable.tokenValid (runtime setup)
+                    call.conforming)).trans handled
+              rw [reactiveHandled]
               obtain ⟨named, namedEq, ready, action, stepped⟩ :=
                 handle_config_mem_step (runtime setup) _ _ _ handled
               have namedIs : named = event := Option.some.inj (namedEq.symm.trans call.addressed)
@@ -492,14 +434,14 @@ theorem settlesFreshCalls_environment {horizon : Nat}
                 | some accepted =>
                     intro completedNow
                     obtain ⟨named, namedEq, ready, action, stepped⟩ :=
-                      handle_config_mem_step (runtime setup) _ _ _ handled
+                      handle_config_mem_step (runtime setup) _ _ _ (reactiveHandle_call handled)
                     have afterCut := execution.application.config.step_cut named ready action _
                       stepped
                     change event ∈ accepted.config.cut.completed at completedNow
                     rw [afterCut, EventOrder.Cut.mem_complete] at completedNow
                     rcases completedNow with rfl | old
-                    · have sender := handle_sender_actor (runtime setup) _ _ _ handled event
-                        namedEq
+                    · have sender := handle_sender_actor (runtime setup) _ _ _
+                        (reactiveHandle_call handled) event namedEq
                       rw [owned] at sender
                       have senderEq : envelope.sender = owner := (Option.some.inj sender).symm
                       obtain ⟨issuer, issuerMember, material, submitted, issued, _⟩ :=
@@ -579,9 +521,9 @@ theorem settlesFreshCalls_environment {horizon : Nat}
 
 /-- The settlement invariant holds at every legal history. -/
 theorem settlesFreshCalls_history {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
+    {scheduler : (application setup leaks).Scheduler} {bound : (graph setup).EventId → Nat}
+    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
+      bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner) :
     ∀ {state} (_trace : ((application setup leaks).protocol (initialLaw setup) horizon
@@ -589,7 +531,7 @@ theorem settlesFreshCalls_history {horizon : Nat}
       ReactiveApplication.serviceInvariant (SettlesFreshCalls setup leaks owner event bound) state
   | _, .start => trivial
   | _, .extend (source := before) prior joint _ reached => by
-      have valid := settlesFreshCalls_history contract owner event owned prior
+      have valid := settlesFreshCalls_history inclusion owner event owned prior
       cases before with
       | none =>
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ reached
@@ -609,19 +551,19 @@ theorem settlesFreshCalls_history {horizon : Nat}
                   obtain ⟨command, _, moved⟩ :=
                     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  exact settlesFreshCalls_environment setup leaks contract owner event
+                  exact settlesFreshCalls_environment setup leaks inclusion owner event
                     owned remaining execution prior valid command next supported
 
-/-- **Timeliness of an acceptable fresh call.** Under the asynchronous contract
-an owner's fresh call for its ready event, sent while an inclusion within
+/-- **Timeliness of an acceptable fresh call.** Under the contract's protected
+inclusion an owner's fresh call for its ready event, sent while an inclusion within
 `bound` slots lands before the deadline and acceptable on the view it saw,
 with no other identifier of its own emitted by the owner for the event, is accepted once the
 bound has passed; and the event completes only through it, so it is neither
 rejected nor preceded by expiry. -/
 theorem prescribed_packet_settles {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {delay bound : (graph setup).EventId → Nat}
-    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
-      delay bound)
+    {scheduler : (application setup leaks).Scheduler} {bound : (graph setup).EventId → Nat}
+    (inclusion : ProtectedInclusion (runtime setup) leaks (initialLaw setup) horizon scheduler
+      bound)
     {control : (application setup leaks).Control}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
@@ -639,12 +581,12 @@ theorem prescribed_packet_settles {horizon : Nat}
       (message.id, true) ∈ control.execution.receipts) ∧
       (event ∈ control.execution.application.config.cut.completed →
         (message.id, true) ∈ control.execution.receipts) := by
-  have settled := settlesFreshCalls_history setup leaks contract owner event owned trace
+  have settled := settlesFreshCalls_history setup leaks inclusion owner event owned trace
     earlier entry later message split call sole
   refine ⟨fun late => ?_, settled.1⟩
   by_cases finished : event ∈ control.execution.application.config.cut.completed
   · exact settled.1 finished
-  · obtain ⟨accepted, receipt⟩ := contract.inclusion control trace event owner owned earlier
+  · obtain ⟨accepted, receipt⟩ := inclusion control trace event owner owned earlier
       later entry message split call.emitted call.authored call.addressed call.ready sole
       finished late
     exact settled.2.1 accepted receipt

@@ -32,7 +32,8 @@ theorem reactiveBindingInvariant (runtime : EventGraphRuntime graph)
     | none => exact valid
     | some command => exact privateStep_bindingInvariant state valid who command
   handle state message next valid accepted :=
-    handle_bindingInvariant runtime state next ⟨message.id, message.payload.call⟩ valid accepted
+    handle_bindingInvariant runtime state next ⟨message.id, message.payload.call⟩ valid
+      (reactiveHandle_call accepted)
   environment state command next valid reached :=
     environmentStep_bindingInvariant runtime state next command valid reached
 

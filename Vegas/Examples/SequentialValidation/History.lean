@@ -149,13 +149,15 @@ def nativeWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
     simpa only [responded, nativeApp.respond_environmentRecall, activated,
       nativeActivate, nativeRecord, List.length_append, List.length_singleton] using select
   have pending : responded.network.pending =
-      [⟨(who, execution.network.nextSerial who), ⟨submission.packet, none⟩⟩] := by
+      [⟨(who, execution.network.nextSerial who), ⟨submission.packet, none,
+        execution.application.publicView.tokenFor submission.packet⟩⟩] := by
     change execution.network.pending ++ [_] = _
-    rw [empty, List.nil_append]
+    rw [empty, List.nil_append, reactiveApplication_packet_none]
     rfl
   have permitted : nativeApp.SubmissionPermitted dependencyCondition
       responded.environmentRecall
-        ⟨(who, execution.network.nextSerial who), ⟨submission.packet, none⟩⟩ :=
+        ⟨(who, execution.network.nextSerial who), ⟨submission.packet, none,
+          execution.application.publicView.tokenFor submission.packet⟩⟩ :=
       by
     rw [show responded.environmentRecall = activated.environmentRecall from rfl]
     apply (nativeApp.submissionPermitted_fresh_history ReactivePlayerView.publicView

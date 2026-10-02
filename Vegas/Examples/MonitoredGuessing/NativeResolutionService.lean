@@ -84,8 +84,17 @@ theorem resolution_submission_inclusion (players : Player → nativeApp.Policy)
       some ⟨(who, execution.network.nextSerial who),
         submission.emit (execution.respond nativeApp who ⟨some (.submit submission)⟩).application
           who (execution.network.known who)⟩ := serials.lookup_submit who _
+  have valid : (submission.emit (execution.respond nativeApp who
+      ⟨some (.submit submission)⟩).application who (execution.network.known who)).tokenValid =
+        true := by
+    rw [WitnessedSubmission.tokenValid_emit, unchanged]
+    exact tokenFor_tokenValid_of_handle nativeRuntime _ next _ _ none accepted
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [lookup]
+  simp only [reactiveApplication_handle_of_tokenValid nativeRuntime nativeLeaks _
+    ⟨(who, execution.network.nextSerial who), submission.emit
+      (execution.respond nativeApp who ⟨some (.submit submission)⟩).application who
+        (execution.network.known who)⟩ valid]
   change PMF.pure
     (((handle nativeRuntime
       (execution.respond nativeApp who ⟨some (.submit submission)⟩).application

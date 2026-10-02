@@ -77,6 +77,10 @@ theorem native_withhold_realizes (players : Player → nativeApp.Policy)
     ReactiveApplication.resume, PMF.pure_map]
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [lookup]
+  change PMF.pure (((nativeRuntime.reactiveApplication nativeLeaks).handle execution.application
+    ⟨(who, execution.network.nextSerial who), (nativeWithholdSubmission who).emit
+      execution.application who (execution.network.known who)⟩).getD execution.application) = _
+  rw [reactiveApplication_handle_of_current_token nativeRuntime nativeLeaks _ _ rfl]
   change PMF.pure ((handle nativeRuntime execution.application
     ⟨(who, execution.network.nextSerial who), .withhold (nativePublicationEvent who)⟩).getD
       execution.application) = _

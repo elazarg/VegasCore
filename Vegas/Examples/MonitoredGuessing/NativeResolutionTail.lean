@@ -91,7 +91,9 @@ theorem resolution_tail_summary (players : Player → nativeApp.Policy)
   have bobOpened : bobPublicationRef.get? opened.config.store = some guess :=
     bobInvariant.handle execution.application
       ⟨(alice, execution.network.nextSerial alice),
-        ⟨.opening alicePublication aliceHandle ⟨.bool, bit⟩, none⟩⟩ opened stored accepted'
+        ⟨.opening alicePublication aliceHandle ⟨.bool, bit⟩, none, some ⟨alicePublication⟩⟩⟩
+      opened stored ((reactiveApplication_handle_of_tokenValid nativeRuntime nativeLeaks _ _
+        (WitnessedPacket.tokenValid_opening _ _ _ _)).trans accepted')
   apply pmf_eq_pure_of_support_subset_singleton
   intro summary supported
   change summary = _

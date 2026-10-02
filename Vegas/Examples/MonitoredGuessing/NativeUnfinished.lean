@@ -76,14 +76,14 @@ theorem bob_include_keeps_alice_unfinished (execution : nativeApp.Execution)
         rw [same, owner]
         decide
       change alicePublication ∉
-        ((handle nativeRuntime execution.application ⟨message.id, message.payload.call⟩).getD
+        ((nativeApp.handle execution.application message).getD
           execution.application).config.cut.completed
-      cases accepted : handle nativeRuntime execution.application
-          ⟨message.id, message.payload.call⟩ with
+      cases accepted : nativeApp.handle execution.application message with
       | none => exact unfinished
       | some after =>
           exact foreign_handle_keeps_alice_unfinished execution.application after
-            ⟨message.id, message.payload.call⟩ foreign accepted unfinished
+            ⟨message.id, message.payload.call⟩ foreign (reactiveHandle_call accepted)
+              unfinished
 
 theorem native_player_keeps_alice_unfinished (players : Player → nativeApp.Policy)
     (who : Player) (before after : nativeApp.Execution)

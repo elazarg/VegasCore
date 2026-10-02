@@ -142,10 +142,14 @@ theorem MessageBounds.compiled_resolution_settlement (bounds : MessageBounds gra
         let completed := initial.application.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) true)
           (cast (congrArg EventField.Value outputEq.symm) (.success value))
-        have handled : app.handle submitted.application message = some completed :=
-          runtime.handle_opening_eq initial.application _ event candidate owner payload binding
+        have baseHandled := runtime.handle_opening_eq initial.application
+          (owner, initial.network.nextSerial owner) event candidate owner payload binding
             checks outputEq codeEq node ready timely rfl candidateOwner associated value fixed
               stored (.success value) resolved
+        have handled : app.handle submitted.application message = some completed :=
+          (reactiveApplication_handle_of_tokenValid runtime leaks _ message
+            (tokenFor_tokenValid_of_handle runtime initial.application _ _ _ _
+              baseHandled)).trans baseHandled
         have recorded : runtime.eventRecorded leaks (submitted.recall owner) event = true :=
           runtime.eventRecorded_respond leaks activated owner _ event rfl
         have transport := fun current actor action same recalled supported =>

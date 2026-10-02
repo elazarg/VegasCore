@@ -226,7 +226,8 @@ theorem before_alice_opening (bit guess : Bool) :
   have known : ReactiveApplication.ResponseMenu.knownPackets
       ((beforeAlice bit guess).recall alice) ((beforeAlice bit guess).observe nativeApp alice) =
         if guess then [⟨(bob, 0), ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
-          some ⟨bobHandle, ⟨.bool, true⟩⟩⟩⟩] else [] := by cases guess <;> rfl
+          some ⟨bobHandle, ⟨.bool, true⟩⟩, some ⟨bobPublication⟩⟩⟩] else [] := by
+    cases guess <;> rfl
   rw [known]
   cases guess <;> simp [EvidenceRequest.forwardingPacket, EvidenceRequest.forwardedEvidence,
     aliceHandle, bobHandle, alice, bob]

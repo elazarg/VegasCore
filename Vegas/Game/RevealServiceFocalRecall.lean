@@ -48,8 +48,8 @@ theorem run_source_prefix_focal_recall
     (leftPlayers rightPlayers : Player → (application setup leaks).Policy)
     (selectedPolicy : leftPlayers who =
       focalPolicy setup leaks bounds wholeProfile weight nonnegative atMostOne who reference)
-    (leftWatcher : leftPlayers watcher = (application setup leaks).reportFirstUnpublished)
-    (rightWatcher : rightPlayers watcher = (application setup leaks).reportFirstUnpublished)
+    (leftWatcher : leftPlayers watcher = (application setup leaks).silentPolicy)
+    (rightWatcher : rightPlayers watcher = (application setup leaks).silentPolicy)
     (leftOrdinary : ∀ player, player ≠ watcher → ∀ past view response,
       response ∈ (leftPlayers player past view).support → response ∈
         ordinaryActions setup leaks bounds player past view)
@@ -75,11 +75,11 @@ theorem run_source_prefix_focal_recall
       leftStart.recall who = rightStart.recall who →
       ∀ leftEnd rightEnd,
       leftEnd ∈ ((runtime setup).runInteractionPlan leaks leftPlayers
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         (((List.finRange (eventCount program)).take count).flatMap fun index =>
           block setup watcher (embedding.event index)) leftStart).support →
       rightEnd ∈ ((runtime setup).runInteractionPlan leaks rightPlayers
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         (((List.finRange (eventCount program)).take count).flatMap fun index =>
           block setup watcher (embedding.event index)) rightStart).support →
       rightEnd.recall who = reference →
@@ -154,11 +154,11 @@ theorem run_source_prefix_focal_recall
               obtain ⟨leftOpportunity, leftActive, _leftOpportunityApp,
                   leftOpportunityLaw, leftRecall⟩ :=
                 leftCheckpoint.owner_opportunity leftPlayers
-                  ((runtime setup).reportNetwork leaks watcher) owner
+                  ((runtime setup).idleNetwork leaks) owner
               obtain ⟨rightOpportunity, rightActive, _rightOpportunityApp,
                   rightOpportunityLaw, rightRecall⟩ :=
                 rightCheckpoint.owner_opportunity rightPlayers
-                  ((runtime setup).reportNetwork leaks watcher) owner
+                  ((runtime setup).idleNetwork leaks) owner
               let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
               let resultRef : EventGraph.FieldRef (graphLayout setup.program)
                 (.publication payload) := ⟨.inr event, outputEq⟩
@@ -274,7 +274,7 @@ theorem run_source_prefix_focal_recall
                   obtain ⟨entry, appended, entryView, entryAction⟩ :=
                     (runtime setup).response_recall_entry leaks rightOpportunity who rightResponse
                   have retained := (runtime setup).runInteractionPlan_recall_prefix leaks
-                    rightPlayers ((runtime setup).reportNetwork leaks watcher) remaining
+                    rightPlayers ((runtime setup).idleNetwork leaks) remaining
                     rightAfter rightEnd rightContinued who
                   rw [rightAfterRecall who ordinaryWho, appended, referenceEq] at retained
                   obtain ⟨earlierReference, nextReference⟩ := reference_next _ _ entry retained
@@ -324,8 +324,8 @@ theorem initialized_focal_recall
     (leftPlayers rightPlayers : Player → (application setup leaks).Policy)
     (selectedPolicy : leftPlayers who =
       focalPolicy setup leaks bounds profile weight nonnegative atMostOne who reference)
-    (leftWatcher : leftPlayers watcher = (application setup leaks).reportFirstUnpublished)
-    (rightWatcher : rightPlayers watcher = (application setup leaks).reportFirstUnpublished)
+    (leftWatcher : leftPlayers watcher = (application setup leaks).silentPolicy)
+    (rightWatcher : rightPlayers watcher = (application setup leaks).silentPolicy)
     (leftOrdinary : ∀ player, player ≠ watcher → ∀ past view response,
       response ∈ (leftPlayers player past view).support → response ∈
         ordinaryActions setup leaks bounds player past view)
@@ -336,11 +336,11 @@ theorem initialized_focal_recall
     (leftEnd rightEnd : (application setup leaks).Execution)
     (leftSupport : leftEnd ∈ ((initialLaw setup).bind fun initial =>
       (runtime setup).runInteractionPlan leaks leftPlayers
-        ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher count)
+        ((runtime setup).idleNetwork leaks) (planPrefix setup watcher count)
         (ReactiveApplication.Execution.initial (application setup leaks) initial)).support)
     (rightSupport : rightEnd ∈ ((initialLaw setup).bind fun initial =>
       (runtime setup).runInteractionPlan leaks rightPlayers
-        ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher count)
+        ((runtime setup).idleNetwork leaks) (planPrefix setup watcher count)
         (ReactiveApplication.Execution.initial (application setup leaks) initial)).support)
     (referenceEq : rightEnd.recall who = reference)
     (same : setup.protocolObserve who (sourcePrefix? setup count leftEnd.application.config) =

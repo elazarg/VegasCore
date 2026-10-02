@@ -56,7 +56,7 @@ private theorem acceptedRecall_handle (execution : (runtime.reactiveApplication 
     (handled : handle runtime execution.application
       ⟨message.id, message.payload.call⟩ = some next) :
     runtime.AcceptedRecall leaks { execution with application := next } := by
-  rcases message with ⟨id, packet, evidence⟩
+  rcases message with ⟨id, packet, evidence, token⟩
   cases packet with
   | commitment event candidate =>
       obtain ⟨_, accepted, owner⟩ :=
@@ -70,7 +70,7 @@ private theorem acceptedRecall_handle (execution : (runtime.reactiveApplication 
         cases Option.some.inj associated
         obtain ⟨entry, member, _, _, emitted, _⟩ := issued
         change entry ∈ execution.recall id.1 at member
-        refine ⟨⟨id, ⟨.commitment event candidate, evidence⟩⟩, ?_, owner.symm, rfl⟩
+        refine ⟨⟨id, ⟨.commitment event candidate, evidence, token⟩⟩, ?_, owner.symm, rfl⟩
         exact List.mem_filterMap.mpr ⟨entry, by simpa only [owner] using member, emitted⟩
       · rw [Function.update_of_ne (fun equal => same (Sum.inr.inj equal))] at associated
         exact valid current handle associated
@@ -108,14 +108,14 @@ theorem acceptedRecall_environment
       | none => exact valid
       | some message =>
           change runtime.AcceptedRecall leaks { execution with
-            application := (handle runtime execution.application
-              ⟨message.id, message.payload.call⟩).getD execution.application }
-          cases accepted : handle runtime execution.application
-              ⟨message.id, message.payload.call⟩ with
+            application := ((runtime.reactiveApplication leaks).handle execution.application
+              message).getD execution.application }
+          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+              message with
           | none => exact valid
           | some state =>
               exact acceptedRecall_handle runtime leaks execution state message valid
-                (origins.lookup id message found) accepted
+                (origins.lookup id message found) (reactiveHandle_call accepted)
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported

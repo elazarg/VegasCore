@@ -89,7 +89,7 @@ theorem successful_response_frame
   have leftVerified := (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr leftFixed
   have rightVerified := (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr rightFixed
   simp only [call, disclosureSubmission, WitnessedSubmission.emit, owned,
-    leftVerified, rightVerified, and_self, ↓reduceIte]
+    leftVerified, rightVerified, and_self, ↓reduceIte, frame.publicView]
 
 /-- A complete finite response law on the clean resolve branch is coupled to
 the actual legal implementation. The support premise is an explicit packet

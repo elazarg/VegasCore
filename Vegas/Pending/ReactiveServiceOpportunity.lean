@@ -56,14 +56,15 @@ theorem reactive_environment_activationOrigin (runtime : EventGraphRuntime graph
       | none => exact State.activationOrigin_of_activatedEq rfl
       | some message =>
           change State.ActivationOrigin execution.application
-            ((handle runtime execution.application
-              ⟨message.id, message.payload.call⟩).getD execution.application)
-          cases accepted : handle runtime execution.application
-              ⟨message.id, message.payload.call⟩ with
+            (((runtime.reactiveApplication leaks).handle execution.application
+              message).getD execution.application)
+          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+              message with
           | none => exact State.activationOrigin_of_activatedEq rfl
           | some state =>
               exact State.activationOrigin_of_refreshEq (handle_clock_activated runtime
-                execution.application state ⟨message.id, message.payload.call⟩ accepted).2
+                execution.application state ⟨message.id, message.payload.call⟩
+                (reactiveHandle_call accepted)).2
   | application command =>
       obtain ⟨updated, selected, rfl⟩ := PMF.support_map .. ▸ supported
       obtain ⟨state, reached, rfl⟩ := PMF.support_map .. ▸ selected

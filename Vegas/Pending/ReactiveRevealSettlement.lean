@@ -3,12 +3,12 @@
 import Vegas.Pending.ReactiveRevealBlock
 import Vegas.Pending.ReactiveMonitoring
 
-/-! # Monitored revelation settlement in the existing service
+/-! # Observed revelation settlement in the existing service
 
 After reserved inclusion, the same watcher, tick, and expiry suffix settles
 either source choice. Published replay copies may remain pending. The watcher
-has no fresh information on these paths and performs its actual silent response;
-the equations retain that private recall and the complete network state.
+has no fresh information on these paths and performs its silent response; the
+equations retain that private recall and the complete network state.
 
 Timely acceptance of an opening and the elapsed deadline on withholding are
 separate operational premises, supplied by the source/calendar induction.
@@ -67,22 +67,18 @@ theorem settled_reveal_expiry (runtime : EventGraphRuntime graph)
     runInteractionPlan, step, PMF.pure_bind]
   rfl
 
-/-- The complete monitored tail after successful opening is quiet. No sampling
-restriction is required when all pending and retained evidence is published. -/
+/-- The complete observed tail after successful opening is quiet when every
+pending packet is published. -/
 theorem monitored_settled_reveal (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy) (watcher : Player)
-    (policy : players watcher = (runtime.reactiveApplication leaks).reportFirstUnpublished)
+    (policy : players watcher = (runtime.reactiveApplication leaks).silentPolicy)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
-    (leaked : ∀ message ∈ execution.network.leaked watcher,
-      message.id ∈ execution.network.ledger.map Message.id)
-    (inputs : ∀ input ∈ execution.network.inputs, input.broadcaster = watcher →
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
     (event : graph.EventId) (settled : ¬execution.application.config.cut.Ready event)
     (ticks : Nat) :
-    ∃ next, runtime.runInteractionPlan leaks players (runtime.reportNetwork leaks watcher)
+    ∃ next, runtime.runInteractionPlan leaks players (runtime.idleNetwork leaks)
         ([.player watcher, .wire] ++ List.replicate ticks .tick ++ [.expire event])
         execution = PMF.pure next ∧
       next.application =
@@ -91,35 +87,31 @@ theorem monitored_settled_reveal (runtime : EventGraphRuntime graph)
       next.recall =
         (execution.respond (runtime.reactiveApplication leaks) watcher ⟨none⟩).recall := by
   obtain ⟨watched, monitor, application, messages, receipts, recall, _length⟩ :=
-    (runtime.reactiveApplication leaks).reportInclusion_quiescent players watcher policy
-      execution pending leaked inputs
+    (runtime.reactiveApplication leaks).observationRound_quiescent players watcher policy
+      execution pending
   have notReady : ¬watched.application.config.cut.Ready event := by
     rw [application]
     exact settled
   obtain ⟨next, suffix, after, networkEq, receiptEq, recallEq⟩ :=
-    runtime.settled_reveal_expiry leaks players (runtime.reportNetwork leaks watcher)
+    runtime.settled_reveal_expiry leaks players (runtime.idleNetwork leaks)
       watched event notReady ticks
   refine ⟨next, ?_, ?_, networkEq.trans messages, receiptEq.trans receipts,
     recallEq.trans recall⟩
-  · rw [List.append_assoc, runtime.runInteractionPlan_append, runtime.run_report_plan,
+  · rw [List.append_assoc, runtime.runInteractionPlan_append, runtime.run_observation_plan,
       monitor, PMF.pure_bind]
     exact suffix
   · simpa only [application] using after
 
-/-- The same monitored tail after withholding performs the actual failure
-completion once the current deadline is due. The reporter adds no publication,
+/-- The same observed tail after withholding performs the actual failure
+completion once the current deadline is due. The watcher adds no publication,
 receipt, or private knowledge on this source-representable path. -/
 theorem monitored_silent_reveal (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy) (watcher : Player)
-    (policy : players watcher = (runtime.reactiveApplication leaks).reportFirstUnpublished)
+    (policy : players watcher = (runtime.reactiveApplication leaks).silentPolicy)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
-    (leaked : ∀ message ∈ execution.network.leaked watcher,
-      message.id ∈ execution.network.ledger.map Message.id)
-    (inputs : ∀ input ∈ execution.network.inputs, input.broadcaster = watcher →
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -130,7 +122,7 @@ theorem monitored_silent_reveal (runtime : EventGraphRuntime graph)
     (ready : execution.application.config.cut.Ready event)
     (entered ticks : Nat) (activated : execution.application.activatedAt event = some entered)
     (due : runtime.deadline event ≤ execution.application.clock + ticks - entered) :
-    ∃ next, runtime.runInteractionPlan leaks players (runtime.reportNetwork leaks watcher)
+    ∃ next, runtime.runInteractionPlan leaks players (runtime.idleNetwork leaks)
         ([.player watcher, .wire] ++ List.replicate ticks .tick ++ [.expire event])
         execution = PMF.pure next ∧
       next.application =
@@ -142,8 +134,8 @@ theorem monitored_silent_reveal (runtime : EventGraphRuntime graph)
       next.recall =
         (execution.respond (runtime.reactiveApplication leaks) watcher ⟨none⟩).recall := by
   obtain ⟨watched, monitor, application, messages, receipts, recall, _length⟩ :=
-    (runtime.reactiveApplication leaks).reportInclusion_quiescent players watcher policy
-      execution pending leaked inputs
+    (runtime.reactiveApplication leaks).observationRound_quiescent players watcher policy
+      execution pending
   have watchedReady : watched.application.config.cut.Ready event := by
     rw [application]
     exact ready
@@ -154,12 +146,12 @@ theorem monitored_silent_reveal (runtime : EventGraphRuntime graph)
     rw [application]
     exact due
   obtain ⟨next, suffix, after, networkEq, receiptEq, recallEq⟩ :=
-    runtime.canonical_silent_expiry leaks players (runtime.reportNetwork leaks watcher)
+    runtime.canonical_silent_expiry leaks players (runtime.idleNetwork leaks)
       watched owner event payload binding checks outputEq codeEq node watchedReady
       entered ticks watchedActivation watchedDue
   refine ⟨next, ?_, ?_, networkEq.trans messages, receiptEq.trans receipts,
     recallEq.trans recall⟩
-  · rw [List.append_assoc, runtime.runInteractionPlan_append, runtime.run_report_plan,
+  · rw [List.append_assoc, runtime.runInteractionPlan_append, runtime.run_observation_plan,
       monitor, PMF.pure_bind]
     exact suffix
   · simpa only [application] using after

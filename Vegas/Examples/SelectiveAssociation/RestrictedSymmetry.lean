@@ -271,6 +271,10 @@ def state (selected : Handle nativeGraph)
     (before : EventGraphRuntime.State nativeGraph) : EventGraphRuntime.State nativeGraph :=
   { before with candidates := catalogue selected before.candidates }
 
+@[simp] theorem state_publicView (selected : Handle nativeGraph)
+    (before : EventGraphRuntime.State nativeGraph) :
+    (state selected before).publicView = before.publicView := rfl
+
 def result : PublicationResult Bool → PublicationResult Bool
   | .failure => .failure
   | .success bit => .success (!bit)
@@ -386,7 +390,7 @@ theorem emit (selected : Handle nativeGraph) (submitted : WitnessedSubmission na
   cases submitted with
   | mk submitted evidence =>
       cases evidence with
-      | none => simp [submission, request, WitnessedSubmission.emit, packet]
+      | none => simp [submission, request, WitnessedSubmission.emit, packet, state_publicView]
       | owned evidence =>
           have verified := catalogue_verify selected before.candidates evidence
           rw [fact_handle] at verified
@@ -395,7 +399,7 @@ theorem emit (selected : Handle nativeGraph) (submitted : WitnessedSubmission na
           split <;> rfl
       | forward id =>
           simp only [submission, request, WitnessedSubmission.emit, call_packet, find_message,
-            packet]
+            packet, state_publicView]
           cases known.find? (fun sent => sent.id = id) <;> rfl
 
 theorem emit_evidence_none_iff (selected : Handle nativeGraph)
@@ -414,7 +418,8 @@ theorem emit_other_owner (selected : Handle nativeGraph)
     (known : List (Message Player (WitnessedPacket nativeGraph))) :
     submitted.emit (state selected before) who known = submitted.emit before who known := by
   apply WitnessedSubmission.emit_local
-  exact catalogue_lookup_other_owner selected before.candidates who different
+  · exact catalogue_lookup_other_owner selected before.candidates who different
+  · rfl
 
 /-- The emission equation includes the real registration-and-freezing order
 used by an atomic native submission. It retains every public application call. -/

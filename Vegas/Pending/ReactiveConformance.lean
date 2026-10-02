@@ -30,8 +30,8 @@ def unsupportedEvidence (packet : WitnessedPacket graph) : Bool :=
     | .opening _ candidate raw => decide (fact ≠ ⟨candidate, raw⟩)
     | .commitment .. | .withhold .. | .malformed .. => true
 
-theorem no_evidence_permitted (call : Payload graph) :
-    unsupportedEvidence (⟨call, none⟩ : WitnessedPacket graph) = false := rfl
+theorem no_evidence_permitted (call : Payload graph) (token : Option (ReadinessToken graph)) :
+    unsupportedEvidence (⟨call, none, token⟩ : WitnessedPacket graph) = false := rfl
 
 theorem disclosure_submission_permitted (call : Payload graph) (state : State graph)
     (who : Player) (known : List (Message Player (WitnessedPacket graph))) :

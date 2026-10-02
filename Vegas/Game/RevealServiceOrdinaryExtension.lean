@@ -7,14 +7,15 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 /-! # Restoring every ordinary response in the monitored reveal service
 
 The actual passive observation rule supplies a per-packet sampling bound.
-The service's checkpoint classification and reporting block turn that bound
-into persistent departure evidence, uniformly over all continuation policies.
+The service's checkpoint classification and observation block turn that bound
+into a persistent mark that settlement charges, uniformly over all continuation
+policies.
 A fixed whole-payoff-range deposit therefore extends every retained sequential
 equilibrium. Source withholding and spent public replays remain legal.
 
 The subsequent watcher and private-alias extensions recover every bounded raw
-response at the existing service opportunities. The reporting player must have
-zero utility for that final composition. Collection is the explicit net-utility
+response at the existing service opportunities. The watcher must have zero
+utility for that final composition. Collection is the explicit net-utility
 interpretation; these theorems do not implement an escrow contract.
 -/
 
@@ -33,7 +34,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (watcher : Player)
 
-/-- C and W prescribe the same reporter menu, including at off-path inputs. -/
+/-- C and W prescribe the same watcher menu, including at off-path inputs. -/
 theorem watcher_choice_surjective (info : (application setup leaks).Info) :
     Function.Surjective ((ordinaryRestriction setup leaks bounds watcher).choice watcher info) :=
     by
@@ -163,7 +164,8 @@ theorem ordinary_equilibrium_extends [setup.FiniteInitialLaw] [leaks.FiniteSuppo
       exact Nat.le_refl _
     have collected := owner_extra_collection setup leaks bounds watcher reveals observer openable
       targetProfile who isWatcher site action extra history probability sampling fuel enough
-    have clean : ∀ final ∈ legalLaw.support, ¬ departureAtState setup leaks who final.state := by
+    have clean : ∀ final ∈ legalLaw.support,
+        ¬ departureAtState setup leaks watcher who final.state := by
       intro final supported
       exact continuation_clean setup leaks bounds watcher reveals observer openable
         legalProfile history.1 final fuel enough supported who

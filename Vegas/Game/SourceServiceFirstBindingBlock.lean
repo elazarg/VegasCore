@@ -84,7 +84,7 @@ theorem first_binding_block_coupling
   let left := original.respond app owner response
   let right := repaired.respond app owner changed.1
   let packet : WitnessedPacket (graph setup) :=
-    ⟨.commitment event (owner, .prepared serial), none⟩
+    ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, original.network.nextSerial owner), packet⟩
   have paired := frame.binding_submission event payload outputEq codeEq node serial opening
@@ -111,13 +111,19 @@ theorem first_binding_block_coupling
     intro field same
     rw [accepted] at same
     exact unused field same
+  have networkEq : left.network = (original.network.submit owner packet).2 := by
+    simp only [left, app, response, ReactiveApplication.Execution.respond,
+      reactiveApplication_packet_none, packet,
+      original.application.publicView_tokenFor_of_ready
+        (.commitment event (owner, .prepared serial)) event rfl ready]
   have packets : left.network.Satisfies fun candidate => candidate.sender = owner →
       candidate.id ∈ left.network.ledger.map Message.id ∨ candidate = message := by
-    change (original.network.submit owner packet).2.Satisfies _
+    rw [networkEq]
     apply (published.mono (fun candidate prior same => Or.inl (prior same))).submit owner packet
     exact fun _ => Or.inr rfl
-  have pending : message ∈ left.network.pending :=
-    List.mem_append_right _ (List.mem_singleton_self _)
+  have pending : message ∈ left.network.pending := by
+    rw [networkEq]
+    exact List.mem_append_right _ (List.mem_singleton_self _)
   have repeated : left.network.nextSerial owner ≠
       Message.distinctAuthoredCount left.network.ledger owner := by
     change (Function.update original.network.nextSerial owner
@@ -137,7 +143,7 @@ theorem first_binding_block_coupling
       left right paired reference nextStarted
       (app.respond_inputRecall original owner response leftRecall)
       (app.respond_inputRecall repaired owner changed.1 rightRecall)
-      (serials.submit owner packet) repeated recorded leftReady leftTimely leftVacant
+      (networkEq ▸ serials.submit owner packet) repeated recorded leftReady leftTimely leftVacant
       leftUnused data.1 data.2.1 (Or.inl ⟨data.2.2.1, data.2.2.2.1, data.2.2.2.2⟩) pending
       (serials.next_unpublished owner) packets available before after visits ticks split
       (by rw [app.respond_environmentRecall]; exact position)

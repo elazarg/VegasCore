@@ -91,6 +91,15 @@ theorem native_opening_inclusion (players : Player → (serviceApp observation).
     ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_map]
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [native_opening_lookup execution who event candidate bit serials]
+  have valid := tokenFor_tokenValid_of_handle nativeRuntime execution.application state _ _
+    ((nativeOpeningSubmission event candidate bit).emit execution.application who
+      (execution.network.known who)).evidence accepted
+  change PMF.pure (((serviceApp observation).handle execution.application
+    ⟨(who, execution.network.nextSerial who), (nativeOpeningSubmission event candidate bit).emit
+      execution.application who (execution.network.known who)⟩).getD execution.application) = _
+  rw [reactiveApplication_handle_of_tokenValid nativeRuntime observation _
+    ⟨(who, execution.network.nextSerial who), (nativeOpeningSubmission event candidate bit).emit
+      execution.application who (execution.network.known who)⟩ valid]
   change PMF.pure ((handle nativeRuntime execution.application
     ⟨(who, execution.network.nextSerial who), .opening event candidate ⟨.bool, bit⟩⟩).getD
       execution.application) = _

@@ -196,7 +196,10 @@ theorem roster_reveal_continuation_law [Finite Player]
   obtain ⟨coupling, first, second, endpoint⟩ :=
     (runtime setup).openingWindowMixture_continuation_expiry leaks owner event payload
       (refs.get binding) [] outputEq codeEq node candidate value responseOffset choices visits
-      execution current ready serials owned valid accepted entered (event.val + 1) activated due
+      execution current ready serials owned valid
+      ((reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+        ((runtime setup).windowEnvelope_tokenValid leaks owner event candidate _ execution
+          ready)).trans accepted) entered (event.val + 1) activated due
       remaining complete network frames
   change coupling.map Prod.fst = posterior at first
   let phasePlayers := (runtime setup).openingWindowMixturePlayers leaks owner event candidate

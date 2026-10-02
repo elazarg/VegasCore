@@ -54,9 +54,9 @@ theorem timely : atBinding.application.WithinDeadline runtime 0 := by change 0 <
 checks therefore do not remove this competing binding. -/
 theorem earlier_authorized :
     recoverySubmitted.AuthorizedAtSubmission app (runtime.submissionDependencyCondition leaks)
-      ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩ := by
+      ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none, some ⟨0⟩⟩⟩ := by
   refine ⟨⟨(activated root).observe app (), first,
-    some ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none⟩⟩⟩, rfl, rfl, ?_⟩
+    some ⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none, some ⟨0⟩⟩⟩⟩, rfl, rfl, ?_⟩
   intro event addressed predecessor member
   have same : (0 : graph.EventId) = event := Option.some.inj addressed
   subst event

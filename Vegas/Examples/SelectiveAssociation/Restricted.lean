@@ -86,7 +86,8 @@ theorem bob_activation (bit : Bool) :
 observation rule supplies neither its payload nor its certificate to Bob. -/
 theorem first_packet (bit : Bool) :
     (bobInput bit).network.pending =
-      [⟨(alice, 0), ⟨.commitment aliceBinding candidate, some (opening bit)⟩⟩] ∧
+      [⟨(alice, 0), ⟨.commitment aliceBinding candidate, some (opening bit),
+          some ⟨aliceBinding⟩⟩⟩] ∧
     (nativeRuntime.packetEvidence leaks).observe ((bobInput bit).observe app bob) = [] := by
   cases bit <;> exact ⟨rfl, rfl⟩
 
@@ -187,7 +188,8 @@ private def bound (bit : Bool) : EventGraphRuntime.State nativeGraph :=
 
 private theorem accepts (bit : Bool) :
     app.handle (offered bit).application
-      ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none⟩⟩ = some (bound bit) := by
+      ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none, some ⟨aliceBinding⟩⟩⟩ =
+        some (bound bit) := by
   have unused : (offered bit).application.HandleUnused candidate := by
     intro field
     cases field with
@@ -206,7 +208,7 @@ private theorem accepts (bit : Bool) :
 private theorem included_application (bit : Bool) :
     (included bit).application = bound bit := by
   have lookup : (offered bit).network.lookup (alice, 1) =
-      some ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none⟩⟩ := rfl
+      some ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none, some ⟨aliceBinding⟩⟩⟩ := rfl
   unfold included ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [lookup]
   change (app.handle _ _).getD _ = _
@@ -216,7 +218,7 @@ private theorem included_application (bit : Bool) :
 private theorem included_receipts (bit : Bool) :
     (included bit).receipts = [((alice, 1), true)] := by
   have lookup : (offered bit).network.lookup (alice, 1) =
-      some ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none⟩⟩ := rfl
+      some ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none, some ⟨aliceBinding⟩⟩⟩ := rfl
   unfold included ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [lookup]
   change (offered bit).receipts ++ [((alice, 1), (app.handle _ _).isSome)] = _
@@ -242,7 +244,7 @@ theorem association_inclusion (bit : Bool) :
 fixture. It supplies no opening certificate to either guesser here. -/
 theorem association_without_disclosure (bit : Bool) (who : Player) :
     (included bit).network.ledger =
-      [⟨(alice, 1), ⟨.commitment aliceBinding candidate, none⟩⟩] ∧
+      [⟨(alice, 1), ⟨.commitment aliceBinding candidate, none, some ⟨aliceBinding⟩⟩⟩] ∧
     (included bit).application.accepted (.inr aliceBinding) = some candidate ∧
     (nativeRuntime.packetEvidence leaks).observe ((included bit).observe app who) = [] := by
   refine ⟨rfl, ?_, ?_⟩

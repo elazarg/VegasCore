@@ -30,7 +30,7 @@ theorem prefix_response_option_law
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (wholeProfile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
-    (watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (watcherPolicy : players watcher = (application setup leaks).silentPolicy)
     (ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support → response ∈
         ordinaryActions setup leaks (bounds.withInitialValues (initialLaw setup)) who past view)
@@ -60,7 +60,7 @@ theorem prefix_response_option_law
       ∀ (joint : Player → Option (OwnAction Player L)),
       OwnAction.disclosure (joint who) = sourceChoice setup leaks response →
       ((runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         ((((List.finRange (eventCount program)).drop count).flatMap fun index =>
           block setup watcher (embedding.event index)).drop 1)
         (execution.respond (application setup leaks) who response)).map

@@ -55,7 +55,8 @@ theorem protected_binding_response_cases (bounds : MessageBounds graph)
     (∃ record, app.trafficStep (some ⟨remaining, some who, execution⟩)
         (some ⟨remaining, none, execution.respond app who response⟩) = [record] ∧
       record.input.envelope.sender = who ∧
-      record.input.envelope.payload ≠ ⟨.commitment event (who, .prepared serial), none⟩) ∨
+      record.input.envelope.payload ≠
+        ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩) ∨
     (∃ next, runtime.runInteractionPlan leaks players scheduler
         (.includeLatest event who :: List.replicate ticks .tick ++ [.expire event])
           (execution.respond app who response) = PMF.pure next ∧
@@ -86,7 +87,7 @@ theorem protected_binding_response_cases (bounds : MessageBounds graph)
       | submit submission =>
           by_cases canonical : submission.emit (app.submit execution.application who submission)
               who (execution.network.known who) =
-                ⟨.commitment event (who, .prepared serial), none⟩
+                ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩
           · have normal : submission.normalizeReactive who
                 (app.observePlayer execution.application who)
                   (execution.network.known who) = submission := by

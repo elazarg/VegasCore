@@ -76,7 +76,7 @@ theorem same_view :
 
 theorem claim_visible (bit : Bool) :
     ((leakedClaim bit).observe (nativeRuntime.reactiveApplication leaks) true).messages.leaked =
-      [⟨(false, 0), ⟨(secretOpening true).packet, none⟩⟩] := by rfl
+      [⟨(false, 0), ⟨(secretOpening true).packet, none, none⟩⟩] := by rfl
 
 theorem actual_binding (bit : Bool) :
     (leakedClaim bit).application.candidates.lookup (false, .initial secretInput) =

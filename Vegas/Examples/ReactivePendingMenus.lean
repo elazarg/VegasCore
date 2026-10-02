@@ -153,6 +153,49 @@ private theorem selected_eq (action : app.Action) :
   simp only [Option.isSome_map] at known
   simp only [selected, PendingMenus.selected, known]
 
+private theorem contested_pending : (activated contested).network.pending =
+    [⟨((), 0), ⟨.commitment 0 ((), .prepared 0), none, some ⟨0⟩⟩⟩,
+      ⟨((), 1), ⟨.commitment 0 ((), .prepared 1), none, some ⟨0⟩⟩⟩] := by
+  rfl
+
+private theorem afterAction_pending_prefix (action : app.Action) :
+    ∃ rest, (afterAction action).network.pending =
+      (activated contested).network.pending ++ rest := by
+  rcases action with ⟨transmission⟩
+  cases transmission with
+  | none => exact ⟨[], (List.append_nil _).symm⟩
+  | some transmission =>
+      cases transmission with
+      | submit material => exact ⟨_, rfl⟩
+      | replay id =>
+          change ∃ rest, ((activated contested).network.replay () id).2.pending = _
+          unfold MessageNetwork.replay
+          split
+          · exact ⟨[], (List.append_nil _).symm⟩
+          · exact ⟨_, rfl⟩
+
+/-- Both contested commitments were emitted while their event was ready, so
+the selected one carries a valid token. -/
+private theorem afterAction_selected_valid (action : app.Action)
+    (message : Message Unit (WitnessedPacket graph))
+    (found : (afterAction action).network.lookup ((), selected action) = some message) :
+    message.payload.tokenValid = true := by
+  obtain ⟨rest, pending⟩ := afterAction_pending_prefix action
+  have choice : selected action = 0 ∨ selected action = 1 := by
+    unfold selected
+    split <;> simp
+  unfold MessageNetwork.lookup at found
+  rw [pending, contested_pending] at found
+  rcases choice with zero | one
+  · rw [zero] at found
+    simp only [List.cons_append, List.find?_cons, decide_true, Option.some.injEq] at found
+    subst message
+    rfl
+  · rw [one] at found
+    simp at found
+    subst message
+    rfl
+
 theorem included_application (action : app.Action) : (included action).application =
     (PendingMenus.included (projectedAction action)).application := by
   have lookup := afterAction_lookup action ((), selected action)
@@ -168,9 +211,11 @@ theorem included_application (action : app.Action) : (included action).applicati
       rw [← lookup]
       exact afterAction_application action
   | some message =>
+      have valid := afterAction_selected_valid action message (by rw [selected_eq]; exact found)
       rw [found] at lookup
       rw [← lookup]
       simp only [Option.map_some]
+      rw [reactiveApplication_handle_of_tokenValid runtime leaks _ message valid]
       change (handle runtime (afterAction action).application (plainMessage message)).getD
         (afterAction action).application = _
       rw [afterAction_application]

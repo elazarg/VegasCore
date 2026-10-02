@@ -100,7 +100,7 @@ theorem ordinary_response_transcript (setup : Setup (Player := Player) (L := L))
         (execution.observe (application setup leaks) owner) _ opening response member).mp chosen
       have published : publicationPacket? accepted next.application.config.store event =
           some (owner, ⟨.opening event candidate ⟨payload, value⟩,
-            some ⟨candidate, ⟨payload, value⟩⟩⟩) := by
+            some ⟨candidate, ⟨payload, value⟩⟩, some ⟨event⟩⟩) := by
         rw [completed, publicationPacket?_complete_resolve accepted execution.application.config
           event ready owner payload (refs.get selected) [] outputEq codeEq node]
         rw [acceptedEq] at associated

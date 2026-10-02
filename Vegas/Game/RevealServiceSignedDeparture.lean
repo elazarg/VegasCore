@@ -4,11 +4,11 @@ import Vegas.Game.RevealServiceReplayTraffic
 import Vegas.Game.RevealServiceTrafficDeparture
 import Interaction.ReactiveAllocation
 
-/-! # Every additional response produces attributable signed-envelope evidence
+/-! # Every additional response breaks the signed-envelope rule
 
 All public-ID replays remain admitted. At a retained checkpoint any further
-effective response is therefore a fresh authored submission. Its signer,
-transmission phase and prior ledger suffice to certify the departure.
+effective response is therefore a fresh authored submission, which breaks the
+send-time signed-envelope rule. Its signer is the deviator.
 -/
 
 noncomputable section
@@ -90,18 +90,10 @@ theorem replay_extra_submission
     by_cases watches : who = watcher
     · subst who
       rw [replay_menu_watcher]
-      have quiet : (application setup leaks).reportFirstUnpublished (execution.recall watcher)
-          (execution.observe (application setup leaks) watcher) = PMF.pure ⟨none⟩ := by
-        apply ReactiveApplication.reportFirstUnpublished_silent
-        intro message observed
-        change message ∈ execution.network.leaked watcher at observed
-        rw [clean.1] at observed
-        exact (List.not_mem_nil observed).elim
       rcases ordinary_response_cases setup leaks bounds watcher _ _ response allowed with
         silence | opening | replayed
       · subst response
-        apply Finset.mem_union_left
-        rw [Set.Finite.mem_toFinset, quiet, PMF.mem_support_pure_iff _ _]
+        exact Finset.mem_union_left _ (Finset.mem_singleton_self _)
       · rw [observer_opening_none setup leaks watcher observer] at opening
         cases opening
       · exact Finset.mem_union_right _ ((mem_publishedReplays setup leaks _ response).mpr replayed)

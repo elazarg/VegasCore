@@ -117,6 +117,13 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
     exact equal
   have addressed : message.payload.call.event? graph = some event :=
     reactiveResolutionPacket_event owner event payload binding checks outputEq action _
+  have tokened : message.payload.tokenValid = true := by
+    have token : message.payload.token = some ⟨event⟩ := by
+      change (app.packet (app.submit execution.application owner material) owner
+        (execution.network.known owner) material).token = _
+      rw [reactiveApplication_packet_token]
+      exact execution.application.publicView_tokenFor_of_ready _ event addressed ready
+    exact (WitnessedPacket.tokenValid_iff _).mpr ⟨event, addressed, token⟩
   have emitted : message ∈ app.outputs (submitted.recall owner) := by
     simp only [submitted, ReactiveApplication.Execution.respond, sent, MessageNetwork.submit,
       ↓reduceIte, ReactiveApplication.outputs, List.filterMap_append, List.filterMap_cons,
@@ -145,7 +152,7 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
     exact ((progress.ready_timely_or_completed runtime event ready timely).resolve_left
       afterReady.1).2
   apply runtime.reactive_packet_wire_block leaks inputs owner event actor
-    (cast (congrArg EventField.Value outputEq.symm) result) message rfl addressed players
+    (cast (congrArg EventField.Value outputEq.symm) result) message rfl addressed tokened players
     (fun current => resources current.application)
     (ReactiveApplication.Invariant.policyInvariant app stable players)
     (runtime.reactivePacketIntegrity_policy leaks owner policy players prescribed) ?_ network rounds

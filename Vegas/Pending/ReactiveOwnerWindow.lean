@@ -51,16 +51,9 @@ theorem bindingTraffic_owner_response (runtime : EventGraphRuntime graph)
           (left.network.known owner) submission =
         app.packet (app.submit right.application owner submission) owner
           (right.network.known owner) submission := by
-    have submitted := runtime.submit_playerView_congr leaks left.application
-      right.application owner submission views
-    change submission.emit (app.submit left.application owner submission) owner
-        (left.network.known owner) =
-      submission.emit (app.submit right.application owner submission) owner
-        (right.network.known owner)
-    rw [WitnessedSubmission.emit_eq_resolve, WitnessedSubmission.emit_eq_resolve, networks]
-    exact congrArg (fun table => WitnessedPacket.mk submission.call.packet
-      (submission.evidence.resolve owner table (right.network.known owner)))
-        (congrArg PlayerView.candidates submitted)
+    rw [networks]
+    exact runtime.packet_playerView_congr leaks left.application right.application owner _
+      submission views
   have afterRecall := app.respond_focal_recall_eq left right owner owner response
     networks observed recalled (fun submission _ => packet submission)
   have afterViews := runtime.reactive_respond_playerView_congr leaks left right owner response views

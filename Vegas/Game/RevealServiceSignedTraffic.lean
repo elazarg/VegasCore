@@ -2,13 +2,14 @@
 
 import Vegas.Game.RevealServiceTraffic
 
-/-! # Phase evidence attributed to the signed envelope author
+/-! # A send-time rule attributed to the signed envelope author
 
-The evidence projection omits the broadcaster. Published envelopes may be
-replayed by anyone without accusing their author. Fresh openings are checked
-against their public transmission phase and prior ledger. A deployment must
-supply authentic phase and prior-publication evidence; envelope signatures alone
-do not establish those facts.
+The rule omits the broadcaster. Published envelopes may be replayed by anyone
+without accusing their author. Fresh openings are checked against their
+transmission phase and prior ledger. No audit verdict uses this rule: it is a
+proof device, and in a reveal-only graph its breach breaches the service rule
+(`Vegas.permittedEnvelope_of_permittedService`), which dooms the author at
+settlement.
 -/
 
 noncomputable section
@@ -24,7 +25,7 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- Only public phase, prior ledger and signed envelope are authenticated. -/
+/-- The public phase, prior ledger and signed envelope of a transmission. -/
 abbrev EnvelopeEvidence :=
   (application setup leaks).PublicObservation ×
     List (Message Player (application setup leaks).Payload) ×
@@ -39,42 +40,6 @@ def permittedEnvelope (evidence : EnvelopeEvidence setup leaks) : Bool :=
   decide (evidence.2.2.id ∈ evidence.2.1.map Message.id ∨
     openingTraffic setup leaks ⟨evidence.1, evidence.2.1,
       ⟨evidence.2.2.sender, evidence.2.2⟩⟩)
-
-theorem openingTraffic_authored (record : (application setup leaks).TrafficRecord)
-    (allowed : openingTraffic setup leaks record) :
-    record.input.broadcaster = record.input.envelope.sender := by
-  cases call : record.input.envelope.payload.call with
-  | commitment | withhold | malformed => simp only [openingTraffic, call] at allowed
-  | opening event candidate raw =>
-    simp only [openingTraffic, call] at allowed
-    obtain ⟨_, _, _, linked⟩ := allowed
-    cases node : nodeView (graph setup) event with
-    | bind | sample => simp only [node] at linked
-    | resolve owner payload binding checks outputEq codeEq =>
-      simp only [node] at linked
-      exact linked.1.trans linked.2.1.symm
-
-theorem permittedEnvelope_published (record : (application setup leaks).TrafficRecord)
-    (published : record.input.envelope.id ∈ record.ledger.map Message.id) :
-    permittedEnvelope setup leaks (envelopeEvidence setup leaks record) = true := by
-  classical
-  exact decide_eq_true (Or.inl published)
-
-theorem permittedEnvelope_of_traffic (watcher : Player)
-    (record : (application setup leaks).TrafficRecord)
-    (allowed : permittedTraffic setup leaks watcher record = true) :
-    permittedEnvelope setup leaks (envelopeEvidence setup leaks record) = true := by
-  classical
-  obtain ⟨_ordinary, published | opening⟩ :=
-    (permittedTraffic_iff setup leaks watcher record).mp allowed
-  · exact permittedEnvelope_published setup leaks record published
-  · have authored := openingTraffic_authored setup leaks record opening
-    apply decide_eq_true
-    apply Or.inr
-    change openingTraffic setup leaks
-      { record with input := ⟨record.input.envelope.sender, record.input.envelope⟩ }
-    rw [← authored]
-    exact opening
 
 theorem permittedEnvelope_iff (record : (application setup leaks).TrafficRecord)
     (authored : record.input.broadcaster = record.input.envelope.sender) :
@@ -101,5 +66,23 @@ theorem permittedEnvelope_forbidden (watcher : Player)
       ⟨ordinary, (permittedEnvelope_iff setup leaks record authored).mp verdict⟩
     rw [forbidden] at allowed
     cases allowed
+
+/-- In a reveal-only graph the signed-envelope rule is no stricter than the
+service rule: a packet the service rule permits is published or a conforming
+opening. A breach of the signed-envelope rule therefore breaches the service
+rule. -/
+theorem permittedEnvelope_of_permittedService (reveals : setup.program.RevealOnly)
+    (view : (application setup leaks).PublicObservation)
+    (ledger : List (Message Player (application setup leaks).Payload))
+    (message : Message Player (application setup leaks).Payload)
+    (allowed : (runtime setup).permittedServiceEnvelope view ledger message = true) :
+    permittedEnvelope setup leaks (view, ledger, message) = true := by
+  classical
+  rw [(runtime setup).permittedServiceEnvelope_iff] at allowed
+  unfold permittedEnvelope
+  apply decide_eq_true
+  rcases allowed with published | ⟨_, fresh⟩
+  · exact Or.inl published
+  · exact Or.inr (openingTraffic_of_fresh setup leaks reveals view ledger message fresh)
 
 end Vegas

@@ -134,7 +134,7 @@ theorem sourceService_recorded_binding_resources
     let id : MessageId Player := (owner,
       Message.distinctAuthoredCount control.execution.network.ledger owner)
     let message : Message Player (WitnessedPacket (graph setup)) :=
-      ⟨id, ⟨.commitment event (owner, .prepared serial), none⟩⟩
+      ⟨id, ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩
     ∃ value ∈ bounds.typedValues payload,
       serial < bounds.candidateCount ∧
       control.execution.application.candidates.lookup (owner, .prepared serial) =
@@ -164,7 +164,7 @@ theorem sourceService_recorded_binding_resources
   let response := (runtime setup).reactiveBinding leaks owner event payload (.success value) serial
   let submitted := before.respond app owner response
   let packet : WitnessedPacket (graph setup) :=
-    ⟨.commitment event (owner, .prepared serial), none⟩
+    ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩
   let message : Message Player (WitnessedPacket (graph setup)) :=
     ⟨(owner, before.network.nextSerial owner), packet⟩
   have application := (runtime setup).reactive_respond_application leaks before owner response
@@ -182,13 +182,18 @@ theorem sourceService_recorded_binding_resources
       submitted owner event payload outputEq codeEq node
       (soleReady_of_ready setup submitted.application submittedReady) owned submittedReady
         submittedRecorded current same recalled player action supported
-  have networkEq : submitted.network = (before.network.submit owner packet).2 := rfl
+  have networkEq : submitted.network = (before.network.submit owner packet).2 := by
+    simp only [submitted, app, response, reactiveBinding, ReactiveApplication.Execution.respond,
+      reactiveApplication_packet_none, packet,
+      before.application.publicView_tokenFor_of_ready
+        (.commitment event (owner, .prepared serial)) event rfl beforeReady]
   have packets : submitted.network.Satisfies fun candidate =>
       candidate.id ∈ submitted.network.ledger.map Message.id ∨ candidate = message := by
     rw [networkEq]
     exact (published.mono (fun _ member => Or.inl member)).submit owner packet (Or.inr rfl)
-  have pending : message ∈ submitted.network.pending :=
-    List.mem_append_right _ (List.mem_singleton_self _)
+  have pending : message ∈ submitted.network.pending := by
+    rw [networkEq]
+    exact List.mem_append_right _ (List.mem_singleton_self _)
   have unpublished : message.id ∉ submitted.network.ledger.map Message.id :=
     beforeSerials.next_unpublished owner
   obtain ⟨sameApp, ledger, _, counters, safe, retained⟩ :=

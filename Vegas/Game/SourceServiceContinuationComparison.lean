@@ -37,12 +37,11 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
     (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
-      (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
+    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : ∀ who, ((sourceServiceMenu setup leaks bounds rosters).information
       (initialLaw setup) (rosterPlan setup rosters).length
@@ -151,10 +150,34 @@ theorem sourceService_continuation_settlement_comparison {Parameter : Type}
       exact ⟨pair, supported, rfl⟩
     obtain ⟨final, _, same⟩ := PMF.support_map .. ▸ reached
     exact ⟨same ▸ final.trace⟩
+  have finished (pair) (supported : pair ∈ coupled.support) :
+      pair.1.execution.application.config.cut.Terminal := by
+    have reached : some pair.1 ∈
+        (((effective.information (initialLaw setup) count scheduler).runBehavioralFrom
+          (Function.update target who alternative) (2 * count + 1 - depth)
+          (restriction.history history.1)).map History.state).support := by
+      rw [← left, PMF.support_map]
+      exact ⟨pair, supported, rfl⟩
+    obtain ⟨final, member, same⟩ := PMF.support_map .. ▸ reached
+    have stopped : app.terminal final.state := by
+      rcases (effective.protocol (initialLaw setup) count
+          scheduler).runRandomizedFor_terminal_or_length _ _ _ final member with terminal | long
+      · exact terminal
+      · have finalBound := app.trace_bound (initialLaw setup) count scheduler
+          (effective.toRawTrace (initialLaw setup) count scheduler final.trace)
+        rw [effective.toRawTrace_length] at finalBound
+        have startLength := restriction.length history.1
+        change history.1.trace.length = depth at sameDepth
+        have empty : app.rank count final.state = 0 := by omega
+        exact (app.rank_zero count final.state).mp empty
+    rw [same] at stopped
+    have finalTrace := effective.toRawTrace (initialLaw setup) count scheduler final.trace
+    rw [same] at finalTrace
+    exact rosterScheduler_completesPlay setup leaks rosters network pair.1 finalTrace stopped
   have compared := sourceService_repair_range_settlement_le setup leaks bounds values capacity
     rosters opportunities network parameter utility sample authentic who probability
     (positive who) (coverage who) coupled realized
-    (fun pair member => (related pair member).1)
+    (fun pair member => (related pair member).1) finished
     (fun pair member => (related pair member).2.1)
     (fun pair member => (related pair member).2.2)
   rw [left, right] at compared

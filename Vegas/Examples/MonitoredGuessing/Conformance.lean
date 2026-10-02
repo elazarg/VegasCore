@@ -46,13 +46,18 @@ theorem certified_withholding_available (past : List nativeApp.PlayerEntry)
 theorem certified_withholding_emits (bit : Bool)
     (known : List (Message Player (WitnessedPacket nativeGraph))) :
     certifiedWithholding.emit (quietBob bit).application bob known =
-      ⟨.withhold bobPublication, some ⟨bobHandle, ⟨.bool, true⟩⟩⟩ := by
+      ⟨.withhold bobPublication, some ⟨bobHandle, ⟨.bool, true⟩⟩, some ⟨bobPublication⟩⟩ := by
   have valid : (⟨bobHandle, ⟨.bool, true⟩⟩ : OpeningFact nativeGraph).Holds
       (quietBob bit).application := (quiet_bob_fixed bit).bob_candidate
   have evidence := WitnessedSubmission.emit_owned
     (⟨.withhold bobPublication, none⟩ : Submission nativeGraph)
     (quietBob bit).application bob known ⟨bobHandle, ⟨.bool, true⟩⟩ rfl valid
-  exact congrArg (WitnessedPacket.mk (.withhold bobPublication)) evidence
+  have token := quiet_bob_token bit (.withhold bobPublication) rfl
+  change WitnessedPacket.mk _ _
+    ((quietBob bit).application.publicView.tokenFor (.withhold bobPublication)) = _
+  rw [token]
+  exact congrArg (fun evidence => WitnessedPacket.mk (.withhold bobPublication) evidence
+    (some ⟨bobPublication⟩)) evidence
 
 theorem certified_withholding_included (players : Player → nativeApp.Policy) (bit : Bool) :
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork
@@ -95,7 +100,7 @@ theorem certified_withholding_public_failure (bit : Bool) :
 theorem certified_withholding_network (bit : Bool) :
     (certifiedWithholdRespond bit).network =
       (MessageNetwork.empty.submit bob
-        (⟨.withhold bobPublication, some ⟨bobHandle, ⟨.bool, true⟩⟩⟩ :
+        (⟨.withhold bobPublication, some ⟨bobHandle, ⟨.bool, true⟩⟩, some ⟨bobPublication⟩⟩ :
           WitnessedPacket nativeGraph)).2 := by
   change ((quietBob bit).network.submit bob
     (certifiedWithholding.emit (quietBob bit).application bob
@@ -104,7 +109,8 @@ theorem certified_withholding_network (bit : Bool) :
 
 theorem certified_withholding_ledger (bit : Bool) :
     (certifiedWithholdIncluded bit).network.ledger =
-      [⟨(bob, 0), ⟨.withhold bobPublication, some ⟨bobHandle, ⟨.bool, true⟩⟩⟩⟩] := by
+      [⟨(bob, 0), ⟨.withhold bobPublication, some ⟨bobHandle, ⟨.bool, true⟩⟩,
+        some ⟨bobPublication⟩⟩⟩] := by
   change ((certifiedWithholdRespond bit).includePending nativeApp (bob, 0)).network.ledger = _
   rw [nativeApp.includePending_network, certified_withholding_network]
   simp [MessageNetwork.includePending, MessageNetwork.lookup, MessageNetwork.submit,
@@ -112,13 +118,14 @@ theorem certified_withholding_ledger (bit : Bool) :
 
 theorem canonical_withholding_ledger (bit : Bool) :
     (quietGuessIncluded bit false).network.ledger =
-      [⟨(bob, 0), ⟨.withhold bobPublication, none⟩⟩] := by
+      [⟨(bob, 0), ⟨.withhold bobPublication, none, some ⟨bobPublication⟩⟩⟩] := by
   change ((quietGuessRespond bit false).includePending nativeApp (bob, 0)).network.ledger = _
   rw [nativeApp.includePending_network]
   change (((quietBob bit).network.submit bob
-    (⟨.withhold bobPublication, none⟩ : WitnessedPacket nativeGraph)).2.includePending
-      (bob, 0)).2.ledger = _
-  rw [quiet_bob_network]
+    (⟨.withhold bobPublication, none,
+      (quietBob bit).application.publicView.tokenFor (.withhold bobPublication)⟩ :
+        WitnessedPacket nativeGraph)).2.includePending (bob, 0)).2.ledger = _
+  rw [quiet_bob_network, quiet_bob_token bit (.withhold bobPublication) rfl]
   simp [MessageNetwork.includePending, MessageNetwork.lookup, MessageNetwork.submit,
     MessageNetwork.empty]
 
@@ -159,7 +166,7 @@ def bobPacketPermitted (packet : WitnessedPacket nativeGraph) : Bool :=
   match packet.call, packet.evidence with
   | .opening event candidate raw, some fact =>
       decide (event = bobPublication ∧ candidate = bobHandle ∧ raw = ⟨.bool, true⟩ ∧
-        fact = ⟨candidate, raw⟩)
+        fact = ⟨candidate, raw⟩ ∧ packet.token = some ⟨bobPublication⟩)
   | _, _ => false
 
 def bobLedgerViolation (execution : nativeApp.Execution) : Bool :=
@@ -252,13 +259,16 @@ theorem plain_opening_accepted (bit : Bool) :
 
 theorem plain_opening_ledger (bit : Bool) :
     (plainOpeningIncluded bit).network.ledger =
-      [⟨(bob, 0), ⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩⟩] := by
+      [⟨(bob, 0), ⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none,
+        some ⟨bobPublication⟩⟩⟩] := by
   change ((plainOpeningRespond bit).includePending nativeApp (bob, 0)).network.ledger = _
   rw [nativeApp.includePending_network]
   change (((quietBob bit).network.submit bob
-    (⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩ : WitnessedPacket nativeGraph)).2
+    (⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none,
+      (quietBob bit).application.publicView.tokenFor
+        (.opening bobPublication bobHandle ⟨.bool, true⟩)⟩ : WitnessedPacket nativeGraph)).2
       |>.includePending (bob, 0)).2.ledger = _
-  rw [quiet_bob_network]
+  rw [quiet_bob_network, quiet_bob_token bit (.opening bobPublication bobHandle ⟨.bool, true⟩) rfl]
   simp [MessageNetwork.includePending, MessageNetwork.lookup, MessageNetwork.submit,
     MessageNetwork.empty]
 
@@ -270,13 +280,16 @@ theorem plain_opening_detected (bit : Bool) :
 theorem canonical_opening_ledger (bit : Bool) :
     (quietGuessIncluded bit true).network.ledger =
       [⟨(bob, 0), ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
-        some ⟨bobHandle, ⟨.bool, true⟩⟩⟩⟩] := by
+        some ⟨bobHandle, ⟨.bool, true⟩⟩, some ⟨bobPublication⟩⟩⟩] := by
   have emitted : (⟨⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩,
       .owned ⟨bobHandle, ⟨.bool, true⟩⟩⟩ : WitnessedSubmission nativeGraph).emit
       (quietBob bit).application bob ((quietBob bit).network.known bob) =
         ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
-          some ⟨bobHandle, ⟨.bool, true⟩⟩⟩ := by
-    exact congrArg (WitnessedPacket.mk (.opening bobPublication bobHandle ⟨.bool, true⟩))
+          some ⟨bobHandle, ⟨.bool, true⟩⟩, some ⟨bobPublication⟩⟩ := by
+    change WitnessedPacket.mk _ _ ((quietBob bit).application.publicView.tokenFor _) = _
+    rw [quiet_bob_token bit (.opening bobPublication bobHandle ⟨.bool, true⟩) rfl]
+    exact congrArg (fun evidence => WitnessedPacket.mk
+      (.opening bobPublication bobHandle ⟨.bool, true⟩) evidence (some ⟨bobPublication⟩))
       (WitnessedSubmission.emit_owned
         (⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩ : Submission nativeGraph)
         (quietBob bit).application bob ((quietBob bit).network.known bob)

@@ -3,13 +3,18 @@
 import Vegas.Examples.ReactiveEarlyOpeningIncentives
 import Vegas.Source.Honest
 
-/-! # The honest recovery compiler need not preserve SPE under uniform inclusion
+/-! # Readiness tokens remove the early-opening deviation
 
-The source binds zero and opens. At a proper native root, transmitting an
-opening early strictly improves on the actual compiler's recovery. Every
-selection is uniform over distinct unpublished envelopes for one event;
-activation times are fixed. This refutes this compiler under this service,
-not the existence of all possible SPE-preserving implementations.
+The source binds zero and opens. At a proper native root an earlier
+withholding packet is pending, and the owner may transmit an opening before
+the disclosure is ready. Every selection is uniform over distinct unpublished
+envelopes for one event; activation times are fixed.
+
+Packets carry the readiness token of their event, attached at emission, and
+the contract rejects a packet without one. Both packets sent before the
+disclosure became ready are therefore rejected whenever they are selected,
+and the early opening is strictly worse than the compiler's recovery. An
+unfinished disclosure has the same payoff as a withheld one.
 -/
 
 noncomputable section
@@ -57,8 +62,8 @@ theorem run_publication (policy : app.Policy) :
 
 theorem compiled_publication :
     (run compiled).map (fun final => result final.state) =
-      half (half (PMF.pure (some .failure)) (PMF.pure (some (.success 1))))
-        (half (PMF.pure (some .failure)) (PMF.pure (some (.success 0)))) := by
+      half (half (PMF.pure none) (PMF.pure (some (.success 1))))
+        (half (PMF.pure none) (PMF.pure (some (.success 0)))) := by
   rw [run_publication, compiled_rounds]
   simp only [half, mix_map, PMF.pure_map,
     finished_withholding true false (by simp), finished_withholding true true (by simp),
@@ -66,30 +71,10 @@ theorem compiled_publication :
 
 theorem early_publication :
     (run earlyPolicy).map (fun final => result final.state) =
-      third (PMF.pure (some .failure)) (PMF.pure (some (.success 1))) := by
+      third (PMF.pure none) (half (PMF.pure none) (PMF.pure (some (.success 1)))) := by
   rw [run_publication, early_rounds]
   simp only [half, third, mix_map, PMF.pure_map,
-    early_withholding, early_opening, later_opening, mix_self]
-
-/-- Both compared continuations publish a result on every branch. The
-counterexample does not assign a special payoff to an unfinished execution. -/
-theorem compared_continuations_publish (policy : app.Policy)
-    (compared : policy = compiled ∨ policy = earlyPolicy)
-    (final : arena.History) (supported : final ∈ (run policy).support) :
-    (result final.state).isSome = true := by
-  have observed : result final.state ∈ ((run policy).map (fun last => result last.state)).support :=
-    PMF.support_map .. ▸ ⟨final, supported, rfl⟩
-  rcases compared with rfl | rfl
-  · rw [compiled_publication] at observed
-    simp only [half, mem_support_mix_iff _ _ _ (by norm_num : (0 : ℝ) < 1 / 2)
-      (by norm_num : (1 : ℝ) / 2 < 1)] at observed
-    rcases observed with (observed | observed) | (observed | observed) <;>
-      rw [(PMF.mem_support_pure_iff _ _).mp observed] <;> rfl
-  · rw [early_publication] at observed
-    simp only [third, mem_support_mix_iff _ _ _ (by norm_num : (0 : ℝ) < 1 / 3)
-      (by norm_num : (1 : ℝ) / 3 < 1)] at observed
-    rcases observed with observed | observed <;>
-      rw [(PMF.mem_support_pure_iff _ _).mp observed] <;> rfl
+    early_withholding, early_opening, later_opening]
 
 theorem compiled_value :
     expect (run compiled) (fun final => PendingMenus.publicUtility true (result final.state)) =
@@ -102,54 +87,32 @@ theorem compiled_value :
 
 theorem early_value :
     expect (run earlyPolicy) (fun final => PendingMenus.publicUtility true (result final.state)) =
-      4 / 3 := by
+      2 / 3 := by
   rw [run_value, early_rounds]
   simp only [half, third, expect_mix, payoffIntegrable_mix, payoffIntegrable_pure,
     expect_pure,
     early_withholding, early_opening, later_opening]
   norm_num [PendingMenus.publicUtility]
 
-def payoff (final : arena.History) (_who : Unit) : ℝ :=
-  PendingMenus.publicUtility true (result final.state)
-
-theorem compiled_not_spe :
-    ¬ model.IsSingleMoverBehavioralSubgamePerfect
-        (app.singleMover (PMF.pure initialState) 6 scheduler)
-      (app.bounded (PMF.pure initialState) 6 scheduler)
-      (fun _ => app.encodePolicy compiled) payoff := by
-  intro perfect
-  rw [InformationModel.isSingleMoverBehavioralSubgamePerfect_iff] at perfect
-  have improves := (perfect (secondHistory first second) contested_isSubgameRoot ()
-    (app.encodePolicy earlyPolicy)).2.2
-  have updated : Profile.update (sig := model.behavioralSignature)
-      (fun _ => app.encodePolicy compiled : Profile model.behavioralSignature) ()
-      (app.encodePolicy earlyPolicy) =
-        (fun _ => app.encodePolicy earlyPolicy : Profile model.behavioralSignature) := by
-    funext who
-    cases who
-    simp [Profile.update]
-  rw [updated] at improves
-  have runIntegrable (policy : app.Policy) : UtilityIntegrable payoff () (run policy) :=
-    payoffIntegrable_of_bounded (run policy) _ fun final =>
-      PendingMenus.publicUtility_abs_le true (result final.state)
-  change extendedExpectedUtility payoff () (run earlyPolicy) ≤
-    extendedExpectedUtility payoff () (run compiled) at improves
-  replace improves := (extendedExpectedUtility_le_iff (runIntegrable _)
-    (runIntegrable _)).mp improves
-  change expect (run earlyPolicy) (fun final => PendingMenus.publicUtility true
-    (result final.state)) ≤ expect (run compiled) (fun final => PendingMenus.publicUtility true
-      (result final.state)) at improves
-  rw [early_value, compiled_value] at improves
-  norm_num at improves
+/-- The early opening, whose packets are rejected for lack of a readiness
+token, is strictly worse than the compiler's recovery at the same root. -/
+theorem early_opening_unprofitable :
+    expect (run earlyPolicy) (fun final => PendingMenus.publicUtility true (result final.state)) <
+      expect (run compiled) (fun final =>
+        PendingMenus.publicUtility true (result final.state)) := by
+  rw [early_value, compiled_value]
+  norm_num
 
 theorem source_honest : Honest PendingMenus.sourceProgram (PendingMenus.sourcePolicy ()) := by
   exact ⟨⟨fun _ _ => by simp [PendingMenus.sourcePolicy], trivial⟩,
     ⟨fun _ _ => by simp [PendingMenus.sourcePolicy], trivial⟩⟩
 
-/-- The source profile is honest and SPE for either commitment interface;
-the actual graph-policy recovery compiler is not native SPE. The source/graph
-publication semantics are identified by `PendingMenus.source_graph_publication`. -/
-theorem honest_source_spe_native_failure
+/-- The source profile is honest and SPE for either commitment interface, and
+the early-opening deviation no longer improves on the actual graph-policy
+recovery compiler: the readiness token makes its premature packets inert. The
+source/graph publication semantics are identified by
+`PendingMenus.source_graph_publication`. -/
+theorem honest_source_early_opening_blocked
     (admission : CommitmentInterface PendingMenus.sourceProgram) :
     Honest PendingMenus.sourceProgram (PendingMenus.sourcePolicy ()) ∧
       (PendingMenus.sourceModel admission).IsSingleMoverBehavioralSubgamePerfect
@@ -158,11 +121,10 @@ theorem honest_source_spe_native_failure
         (PendingMenus.sourceProtocolProfile admission)
         (protocolUtility PendingMenus.sourceProgram admission PendingMenus.sourceInitial
           (PendingMenus.sourceUtility true)) ∧
-      ¬ model.IsSingleMoverBehavioralSubgamePerfect
-          (app.singleMover (PMF.pure initialState) 6 scheduler)
-        (app.bounded (PMF.pure initialState) 6 scheduler)
-        (fun _ => app.encodePolicy compiled) payoff :=
-  ⟨source_honest, PendingMenus.source_spe admission true, compiled_not_spe⟩
+      expect (run earlyPolicy) (fun final => PendingMenus.publicUtility true (result final.state)) <
+        expect (run compiled) (fun final =>
+          PendingMenus.publicUtility true (result final.state)) :=
+  ⟨source_honest, PendingMenus.source_spe admission true, early_opening_unprofitable⟩
 
 theorem scheduler_atMostOnce : app.AtMostOnce scheduler := by
   intro history view id supported

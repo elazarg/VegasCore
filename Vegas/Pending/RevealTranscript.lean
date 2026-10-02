@@ -74,7 +74,7 @@ def publicationPacket? (accepted : AcceptedHandles graph)
       | some (.success value) =>
           (accepted binding.field).map fun candidate =>
             (owner, ⟨.opening event candidate ⟨payload, value⟩,
-              some ⟨candidate, ⟨payload, value⟩⟩⟩)
+              some ⟨candidate, ⟨payload, value⟩⟩, some ⟨event⟩⟩)
 
 omit [DecidableEq Player] in
 theorem publicationPacket?_congr (accepted : AcceptedHandles graph)
@@ -131,7 +131,7 @@ theorem publicationPacket?_resolve (accepted : AcceptedHandles graph)
       | .failure => none
       | .success value => (accepted binding.field).map fun candidate =>
           (owner, ⟨.opening event candidate ⟨payload, value⟩,
-            some ⟨candidate, ⟨payload, value⟩⟩⟩) := by
+            some ⟨candidate, ⟨payload, value⟩⟩, some ⟨event⟩⟩) := by
   simp only [publicationPacket?, node, stored]
   cases result <;> rfl
 
@@ -175,7 +175,7 @@ theorem publicationPacket?_complete_resolve (accepted : AcceptedHandles graph)
       | .failure => none
       | .success value => (accepted binding.field).map fun candidate =>
           (owner, ⟨.opening event candidate ⟨payload, value⟩,
-            some ⟨candidate, ⟨payload, value⟩⟩⟩) := by
+            some ⟨candidate, ⟨payload, value⟩⟩, some ⟨event⟩⟩) := by
   have stored : ((config.complete event ready action
       (cast (congrArg EventField.Value outputEq.symm) result)).store (.inr event)).map
         (cast (congrArg EventField.Value outputEq)) = some result := by

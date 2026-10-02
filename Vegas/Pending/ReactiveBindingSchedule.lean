@@ -270,7 +270,7 @@ private theorem scheduled_binding_packets (runtime : EventGraphRuntime graph)
     (initial final : (runtime.reactiveApplication leaks).Execution)
     (ledger : initial.network.ledger = old)
     (packets : initial.network.Satisfies fun message => message.id ∈ old.map Message.id ∨
-      message.payload = ⟨.commitment event (owner, .prepared serial), none⟩) :
+      ∃ token, message.payload = ⟨.commitment event (owner, .prepared serial), none, token⟩) :
     let app := runtime.reactiveApplication leaks
     let players := Function.update (fun _ => app.replayPolicy) owner
       (app.scheduledPolicy offset selected
@@ -280,7 +280,7 @@ private theorem scheduled_binding_packets (runtime : EventGraphRuntime graph)
       (roster.map ServiceInstruction.player) initial).support →
     final.network.ledger = old ∧ final.network.Satisfies fun message =>
       message.id ∈ old.map Message.id ∨
-        message.payload = ⟨.commitment event (owner, .prepared serial), none⟩ := by
+        ∃ token, message.payload = ⟨.commitment event (owner, .prepared serial), none, token⟩ := by
   intro app players reached
   induction roster generalizing initial with
   | nil =>
@@ -300,13 +300,15 @@ private theorem scheduled_binding_packets (runtime : EventGraphRuntime graph)
       have data : (current.respond app actor response).network.ledger = old ∧
           (current.respond app actor response).network.Satisfies fun message =>
             message.id ∈ old.map Message.id ∨
-              message.payload = ⟨.commitment event (owner, .prepared serial), none⟩ := by
+              ∃ token,
+                message.payload = ⟨.commitment event (owner, .prepared serial), none, token⟩ := by
         have replay (supported : response ∈
             (app.replayPolicy (current.recall actor) (current.observe app actor)).support) :
             (current.respond app actor response).network.ledger = old ∧
             (current.respond app actor response).network.Satisfies fun message =>
               message.id ∈ old.map Message.id ∨
-                message.payload = ⟨.commitment event (owner, .prepared serial), none⟩ := by
+                ∃ token,
+                  message.payload = ⟨.commitment event (owner, .prepared serial), none, token⟩ := by
           rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩
           · exact ⟨ledger, currentPackets⟩
           · refine ⟨?_, currentPackets.replay actor id⟩
@@ -319,10 +321,10 @@ private theorem scheduled_binding_packets (runtime : EventGraphRuntime graph)
           unfold ReactiveApplication.scheduledPolicy at chosen
           split at chosen
           · cases (PMF.mem_support_pure_iff _ _).mp chosen
-            have nextPackets := currentPackets.submit owner
-              (⟨.commitment event (owner, .prepared serial), none⟩ : WitnessedPacket graph)
-                (Or.inr rfl)
-            cases result <;> exact ⟨ledger, nextPackets⟩
+            cases result <;>
+              exact ⟨ledger, currentPackets.submit owner _
+                (Or.inr ⟨_, reactiveApplication_packet_none runtime leaks current.application owner
+                  (current.network.known owner) _⟩)⟩
           · exact replay chosen
         · have chosenReplay : response ∈
               (app.replayPolicy (current.recall actor) (current.observe app actor)).support := by
@@ -339,7 +341,7 @@ private theorem bindingTraffic_reserved (runtime : EventGraphRuntime graph)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
     (packets : left.network.Satisfies fun message =>
       message.id ∈ left.network.ledger.map Message.id ∨
-        message.payload = ⟨.commitment event (owner, .prepared serial), none⟩) :
+        ∃ token, message.payload = ⟨.commitment event (owner, .prepared serial), none, token⟩) :
     (runtime.interactionStep leaks players network (.includeLatest event owner) left).map
         (runtime.bindingTraffic leaks focal) =
       (runtime.interactionStep leaks firstPlayers network (.includeLatest event owner) right).map
@@ -402,15 +404,16 @@ private theorem bindingTraffic_reserved (runtime : EventGraphRuntime graph)
               simpa only [decide_eq_true_eq] using List.find?_some found
             have shape := (packets.lookup chosen.id packet found).resolve_left
               (by simpa only [idEq] using chosenGood.2.2)
+            obtain ⟨token, shape⟩ := shape
             have packetEq : packet =
-                ⟨chosen.id, ⟨.commitment event (owner, .prepared serial), none⟩⟩ := by
+                ⟨chosen.id, ⟨.commitment event (owner, .prepared serial), none, token⟩⟩ := by
               cases packet
               cases idEq
               cases shape
               rfl
             rw [packetEq] at found
             exact runtime.bindingTraffic_include leaks focal left right same chosen.id event
-              (owner, .prepared serial) none found
+              (owner, .prepared serial) none token found
       have nextNetworks := congrArg Prod.fst nextEqual
       have nextReceipts := congrArg (fun value => value.2.1) nextEqual
       have nextPrivate := congrArg (fun value => value.2.2.2) nextEqual
@@ -465,7 +468,7 @@ theorem scheduled_binding_inclusion_coupling (runtime : EventGraphRuntime graph)
       (published.mono (fun _ known => Or.inl known)) beforeSupport
   have safe : before.network.Satisfies fun message =>
       message.id ∈ before.network.ledger.map Message.id ∨
-        message.payload = ⟨.commitment event (owner, .prepared serial), none⟩ := by
+        ∃ token, message.payload = ⟨.commitment event (owner, .prepared serial), none, token⟩ := by
     apply packets.2.mono
     intro message good
     rcases good with known | canonical

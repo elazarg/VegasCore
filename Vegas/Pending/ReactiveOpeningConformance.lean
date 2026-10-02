@@ -35,17 +35,17 @@ def certifiedOpening (packet : WitnessedPacket graph) : Bool :=
 
 theorem certifiedOpening_iff (packet : WitnessedPacket graph) :
     certifiedOpening packet = true ↔
-      ∃ event candidate raw, packet =
-        ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ := by
+      ∃ event candidate raw token, packet =
+        ⟨.opening event candidate raw, some ⟨candidate, raw⟩, token⟩ := by
   constructor
   · intro conforming
-    rcases packet with ⟨call, evidence⟩
+    rcases packet with ⟨call, evidence, token⟩
     cases call <;> cases evidence <;>
       simp only [certifiedOpening, Bool.false_eq_true, decide_eq_true_eq] at conforming
     rename_i event candidate raw fact
     subst fact
-    exact ⟨event, candidate, raw, rfl⟩
-  · rintro ⟨event, candidate, raw, rfl⟩
+    exact ⟨event, candidate, raw, token, rfl⟩
+  · rintro ⟨event, candidate, raw, token, rfl⟩
     simp only [certifiedOpening, decide_true]
 
 theorem disclosureSubmission_certified (state : State graph) (who : Player)
@@ -125,9 +125,9 @@ private theorem normalize_opening_of_matching_packet
     (state : State graph) (who : Player)
     (known : List (Message Player (WitnessedPacket graph)))
     (submission : WitnessedSubmission graph) (event : graph.EventId)
-    (candidate : Handle graph) (raw : Raw L)
+    (candidate : Handle graph) (raw : Raw L) (token : Option (ReadinessToken graph))
     (emitted : submission.emit state who known =
-      ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩)
+      ⟨.opening event candidate raw, some ⟨candidate, raw⟩, token⟩)
     (owned : candidate.1 = who) (fixed : state.candidates.lookup candidate = .openable raw) :
     submission.normalizeReactive who ((runtime.reactiveApplication leaks).observePlayer state who)
         known =
@@ -184,7 +184,7 @@ theorem accepted_certified_opening_normalization
         ((runtime.reactiveApplication leaks).observePlayer state owner) known =
       (disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
         ((runtime.reactiveApplication leaks).observePlayer state owner) known := by
-  obtain ⟨actual, submitted, claimed, emitted⟩ := (certifiedOpening_iff _).mp conforming
+  obtain ⟨actual, submitted, claimed, token, emitted⟩ := (certifiedOpening_iff _).mp conforming
   have call := congrArg WitnessedPacket.call emitted
   change submission.call.packet = .opening actual submitted claimed at call
   rw [call] at addressed
@@ -196,12 +196,12 @@ theorem accepted_certified_opening_normalization
   rw [emitted] at accepted
   have identifiers := runtime.accepted_opening_identifies state next owner event payload
     binding checks outputEq codeEq node candidate raw associated fixed (owner, serial)
-      submitted claimed accepted
+      submitted claimed (reactiveHandle_call accepted)
   rcases identifiers with ⟨sameHandle, sameRaw⟩
   subst submitted
   subst claimed
   exact normalize_opening_of_matching_packet runtime leaks state owner known submission event
-    candidate raw emitted owned fixed
+    candidate raw token emitted owned fixed
 
 /-- Successful initialized or earlier source bindings supply the expected
 handle and value through the existing runtime binding invariant. -/

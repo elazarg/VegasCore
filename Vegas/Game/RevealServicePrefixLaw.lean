@@ -50,7 +50,7 @@ theorem run_source_prefix_option_law
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (wholeProfile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
-    (watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (watcherPolicy : players watcher = (application setup leaks).silentPolicy)
     (ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support → response ∈
         ordinaryActions setup leaks (bounds.withInitialValues (initialLaw setup)) who past view)
@@ -72,7 +72,7 @@ theorem run_source_prefix_option_law
       ∀ (count : Nat), count ≤ eventCount program →
       ∀ execution, Checkpoint setup leaks initial source refs offset execution →
       ((runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         (((List.finRange (eventCount program)).take count).flatMap fun index =>
           block setup watcher (embedding.event index)) execution).map
         (fun final => decodePrefix? program refs source.revelations embedding.ref count
@@ -135,7 +135,7 @@ theorem run_source_prefix_option_law
             EventGraphRuntime.nodeView_eq_resolve _ _
           obtain ⟨opportunity, activeCheckpoint, _sameApplication,
               opportunityLaw, _opportunityRecall⟩ :=
-            checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
+            checkpoint.owner_opportunity players ((runtime setup).idleNetwork leaks)
               owner
           have ready : opportunity.application.config.cut.Ready event := by
             have active : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt
@@ -238,7 +238,7 @@ theorem initialized_prefix_source_law
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program admission)
     (players : Player → (application setup leaks).Policy)
-    (watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (watcherPolicy : players watcher = (application setup leaks).silentPolicy)
     (ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support → response ∈
         ordinaryActions setup leaks (bounds.withInitialValues (initialLaw setup)) who past view)
@@ -250,7 +250,7 @@ theorem initialized_prefix_source_law
         sourceChoiceLaw setup leaks profile who view)
     (count : Nat) (within : count ≤ eventCount setup.program) :
     ((initialLaw setup).bind fun state =>
-      (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
+      (runtime setup).runInteractionPlan leaks players ((runtime setup).idleNetwork leaks)
         (planPrefix setup watcher count)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).map
           (fun final => sourcePrefix? setup count final.application.config) =
@@ -311,7 +311,7 @@ theorem compiled_plan_prefix_law
       (runtime setup).runInteractionPlan leaks
         (policy setup leaks (bounds.withInitialValues (initialLaw setup)) watcher
           (setup.decodeBehavioralProfile admission profile) weight nonnegative atMostOne)
-        ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher count)
+        ((runtime setup).idleNetwork leaks) (planPrefix setup watcher count)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).map
           (fun final => sourcePrefix? setup count final.application.config) =
       ((setup.informationModel admission).runBehavioral profile (count + 1)).map
@@ -324,7 +324,7 @@ theorem compiled_plan_prefix_law
     funext fun who => (setup.behavioralPolicyEquiv admission who).apply_symm_apply (profile who)
   let extended := bounds.withInitialValues (initialLaw setup)
   let players := policy setup leaks extended watcher source weight nonnegative atMostOne
-  have reports : players watcher = (application setup leaks).reportFirstUnpublished := by
+  have reports : players watcher = (application setup leaks).silentPolicy := by
     simp only [players, policy, ↓reduceIte]
   have ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support →

@@ -57,12 +57,12 @@ theorem reactive_include_playerView (execution : (runtime.reactiveApplication le
     ((execution.environmentStep (runtime.reactiveApplication leaks) (.include id)).map
       fun next => next.application.playerView who) =
       PMF.pure
-        (((handle runtime execution.application ⟨message.id, message.payload.call⟩).getD
+        ((((runtime.reactiveApplication leaks).handle execution.application
+          message).getD
           execution.application).playerView who) := by
   simp only [ReactiveApplication.Execution.environmentStep,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found,
     PMF.pure_map]
-  rfl
 
 theorem reactive_respond_playerView_congr
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
@@ -201,8 +201,8 @@ theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.E
             (execution.observeEnvironment (runtime.reactiveApplication leaks)).Unpublished
               (runtime.reactiveApplication leaks) message.id) with
         | none => after.application.playerView who
-        | some message => ((handle runtime after.application
-            ⟨message.id, message.payload.call⟩).getD after.application).playerView who) := by
+        | some message => (((runtime.reactiveApplication leaks).handle after.application
+          message).getD after.application).playerView who) := by
   dsimp only
   rw [runtime.reactiveLatest_nonmatching_response leaks who event execution origins recalled
     retained unique response nonmatching]
@@ -280,9 +280,17 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
               who (execution.network.known who)⟩ := serials.lookup_submit who _
     rw [runtime.reactive_include_playerView leaks _ who _ _ (lookup left leftSerials),
       runtime.reactive_include_playerView leaks _ who _ _ (lookup right rightSerials)]
+    have publics : left.application.publicView = right.application.publicView :=
+      congrArg PlayerView.publicView views
+    have tokens : (material.emit ((runtime.reactiveApplication leaks).submit left.application who
+          material) who (left.network.known who)).tokenValid =
+        (material.emit ((runtime.reactiveApplication leaks).submit right.application who
+          material) who (right.network.known who)).tokenValid := by
+      simp only [WitnessedSubmission.tokenValid_emit, reactiveApplication_submit_publicView,
+        publics]
     exact congrArg PMF.pure
-      (runtime.handle_result_playerView_congr _ _ who (left.network.nextSerial who)
-        (right.network.nextSerial who) material.call.packet afterViews)
+      (runtime.reactive_handle_result_playerView_congr leaks _ _ who (left.network.nextSerial who)
+        (right.network.nextSerial who) _ _ rfl tokens afterViews)
   · have nonmatching : ∀ material, response.transmission = some (.submit material) →
         material.call.packet.event? graph ≠ some event := by
       intro material transmitted addressed
@@ -317,6 +325,7 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
         change sender = who at author
         subst sender
         exact congrArg PMF.pure
-          (runtime.handle_result_playerView_congr _ _ who serial serial packet.call afterViews)
+          (runtime.reactive_handle_result_playerView_congr leaks _ _ who serial serial packet
+            packet rfl rfl afterViews)
 
 end Vegas.EventGraphRuntime

@@ -37,7 +37,8 @@ theorem reactiveCompletedInvariant (runtime : EventGraphRuntime graph)
     exact retained
   handle state message next retained accepted :=
     retained.trans (handle_completed_subset runtime state next
-      ⟨message.id, message.payload.call⟩ accepted)
+      ⟨message.id, message.payload.call⟩
+        (reactiveHandle_call accepted))
   environment state command next retained supported :=
     retained.trans (environmentStep_completed_subset runtime state next command supported)
 

@@ -86,9 +86,15 @@ private theorem submission_packet_congr
   have submitted := submit_playerView_congr runtime leaks left.application right.application
     who submission views
   have candidates := congrArg PlayerView.candidates submitted
-  rw [WitnessedSubmission.emit_eq_resolve, WitnessedSubmission.emit_eq_resolve, network]
+  have publics : ((runtime.reactiveApplication leaks).submit left.application who
+        submission).publicView =
+      ((runtime.reactiveApplication leaks).submit right.application who submission).publicView :=
+    congrArg PlayerView.publicView submitted
+  rw [WitnessedSubmission.emit_eq_resolve, WitnessedSubmission.emit_eq_resolve, network, publics]
   exact congrArg (fun table => WitnessedPacket.mk submission.call.packet
-    (submission.evidence.resolve who table (right.network.known who))) candidates
+    (submission.evidence.resolve who table (right.network.known who))
+    (((runtime.reactiveApplication leaks).submit right.application who
+      submission).publicView.tokenFor submission.call.packet)) candidates
 
 /-- A common opponent response preserves all opponents' local states at once.
 The private owner's candidates and recall may differ throughout. -/

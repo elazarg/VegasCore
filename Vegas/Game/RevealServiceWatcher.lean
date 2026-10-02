@@ -10,10 +10,11 @@ import Vegas.Pending.ReactiveAliasEquilibrium
 /-! # Restoring watcher choices and raw responses in the reveal service
 
 The watched game admits every effective ordinary response and prescribes the
-existing reporting policy. If the watcher's actual utility is constant zero,
+watcher's silence: it only observes. If the watcher's actual utility is constant
+zero,
 every watched SE extends to the full bounded raw native game with identical
 joint observation/net-payoff law. All games and utilities are fixed before
-choosing the assessment. Reporting is an equilibrium choice, not a strict
+choosing the assessment. Silence is an equilibrium choice, not a strict
 incentive or a coalition-resistance guarantee.
 
 Source-to-watched correspondence and enforcement of ordinary deviations remain
@@ -38,14 +39,11 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 open Classical in
 def watchedMenu (watcher : Player) : (application setup leaks).ResponseMenu where
-  actions who past view := if who = watcher then
-      ((application setup leaks).reportFirstUnpublished_support_finite past view).toFinset
+  actions who past view := if who = watcher then {⟨none⟩}
     else (bounds.menu (runtime setup) leaks).actions who past view
   nonempty who past view := by
     split
-    · obtain ⟨response, supported⟩ :=
-        ((application setup leaks).reportFirstUnpublished past view).support_nonempty
-      exact ⟨response, (Set.Finite.mem_toFinset _).mpr supported⟩
+    · exact ⟨⟨none⟩, Finset.mem_singleton_self _⟩
     · exact (bounds.menu (runtime setup) leaks).nonempty who past view
 
 theorem menu_in_watched (watcher : Player) :
@@ -61,8 +59,8 @@ theorem watched_in_effective (watcher : Player) :
   intro who past view response member
   change response ∈ (if who = watcher then _ else _) at member
   split at member
-  · exact report_effective setup leaks bounds who past view response
-      ((Set.Finite.mem_toFinset _).mp member)
+  · cases Finset.mem_singleton.mp member
+    exact silence_effective setup leaks bounds who past view
   · exact member
 
 abbrev watchedInformation (watcher : Player) :=
@@ -102,30 +100,23 @@ theorem ordinary_choice_surjective (watcher who : Player) (ordinary : who ≠ wa
         exact ⟨response, by simpa only [watchedMenu, ordinary, ↓reduceIte] using allowed, same⟩
   · exact Subtype.ext rfl
 
-/-- Every watched behavioral profile executes the specified report response,
-including at off-path local inputs. This is imposed by the actual response
-menu and does not assume that players choose a particular continuation. -/
-theorem watched_decode_reports (watcher : Player)
+/-- Every watched behavioral profile keeps the watcher silent, including at
+off-path local inputs. This is imposed by the actual response menu and does
+not assume that players choose a particular continuation. -/
+theorem watched_decode_silent (watcher : Player)
     (profile : Profile (watchedInformation setup leaks bounds watcher).behavioralSignature) :
     (watchedMenu setup leaks bounds watcher).decodeProfile (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) profile watcher =
-        (application setup leaks).reportFirstUnpublished := by
+        (application setup leaks).silentPolicy := by
   funext past view
-  have deterministic : ∃ response,
-      (application setup leaks).reportFirstUnpublished past view = PMF.pure response := by
-    unfold ReactiveApplication.reportFirstUnpublished
-    split <;> exact ⟨_, rfl⟩
-  obtain ⟨reported, law⟩ := deterministic
-  rw [law]
   apply pmf_eq_pure_of_support_subset_singleton
   intro response supported
   have allowed := (watchedMenu setup leaks bounds watcher).decode_embedPolicy_covered
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     watcher (profile watcher) past view response supported
-  simpa only [watchedMenu, ↓reduceIte, law, Set.Finite.mem_toFinset,
-    PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using allowed
+  simpa only [watchedMenu, ↓reduceIte, Finset.mem_singleton, Set.mem_singleton_iff] using allowed
 
-/-- Every equilibrium with prescribed reporting extends to the full bounded
+/-- Every equilibrium with a silent watcher extends to the full bounded
 raw game of this service. Observations and net utilities ignore only the proved
 private submission normalization; public traffic and replay effects are kept.
 The construction supplies consistent off-path play rather than assuming it. -/

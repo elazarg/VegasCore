@@ -106,7 +106,7 @@ theorem menu_owner_readout
   obtain ⟨execution, executed, stateEq⟩ := PMF.support_map .. ▸ reached
   have position : execution.environmentRecall.length = blockOffset event.val := by
     have counted := (runtime setup).runInteractionPlan_recall leaks players
-      ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
+      ((runtime setup).idleNetwork leaks) (planPrefix setup watcher event.val)
       (ReactiveApplication.Execution.initial (application setup leaks) initial) execution executed
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add,
       prefixLength] using counted

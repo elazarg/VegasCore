@@ -72,15 +72,15 @@ private theorem binding_accepted (choice : PublicationResult Int) :
 
 private theorem submitted_lookup (choice : PublicationResult Int) :
     (submitted choice).network.lookup ((), 0) =
-      some ⟨((), 0), ⟨.commitment 0 candidate, none⟩⟩ := by cases choice <;> rfl
+      some ⟨((), 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ := by cases choice <;> rfl
 
 theorem bound_state (choice : PublicationResult Int) :
     (bound choice).application = boundState choice := by
   have found : (submitted choice).network.lookup ((), 0) =
-      some ⟨((), 0), ⟨.commitment 0 candidate, none⟩⟩ := by cases choice <;> rfl
+      some ⟨((), 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ := by cases choice <;> rfl
   change ((submitted choice).includePending app ((), 0)).application = _
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-    found, app, reactiveApplication]
+    found, app, reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true]
   rw [binding_accepted]
   rfl
 
@@ -89,7 +89,8 @@ theorem bound_receipts (choice : PublicationResult Int) :
   have found := submitted_lookup choice
   have accepted := binding_accepted choice
   simp only [bound, ReactiveApplication.Execution.includePending,
-    MessageNetwork.includePending, found, app, reactiveApplication, accepted]
+    MessageNetwork.includePending, found, app, reactiveApplication_handle,
+    WitnessedPacket.tokenValid_commitment, ite_true, accepted]
   cases choice <;> rfl
 
 theorem bound_observation (first second : PublicationResult Int) :
@@ -148,7 +149,11 @@ private theorem withholding_accepted (choice : PublicationResult Int) :
 
 private theorem withheld_lookup (choice : PublicationResult Int) :
     (withheld choice).network.lookup ((), 1) =
-      some ⟨((), 1), ⟨.withhold 1, none⟩⟩ := by
+      some ⟨((), 1), ⟨.withhold 1, none, some ⟨1⟩⟩⟩ := by
+  have ready : (bound choice).application.config.cut.Ready 1 := by
+    rw [bound_state]
+    exact disclosure_ready choice
+  rw [← (bound choice).application.publicView_tokenFor_of_ready (.withhold 1) 1 rfl ready]
   cases choice <;> rfl
 
 theorem finished_state (choice : PublicationResult Int) :
@@ -156,17 +161,30 @@ theorem finished_state (choice : PublicationResult Int) :
   have found := withheld_lookup choice
   have accepted := withholding_accepted choice
   simp only [finished, ReactiveApplication.Execution.includePending,
-    MessageNetwork.includePending, found, app, reactiveApplication, accepted, Option.getD_some]
+    MessageNetwork.includePending, found, app, reactiveApplication_handle,
+    WitnessedPacket.tokenValid_withhold, ite_true, accepted, Option.getD_some]
 
 theorem finished_receipts (choice : PublicationResult Int) :
     (finished choice).receipts = [⟨((), 0), true⟩, ⟨((), 1), true⟩] := by
   have found := withheld_lookup choice
   have accepted := withholding_accepted choice
   simp only [finished, ReactiveApplication.Execution.includePending,
-    MessageNetwork.includePending, found, app, reactiveApplication, accepted]
+    MessageNetwork.includePending, found, app, reactiveApplication_handle,
+    WitnessedPacket.tokenValid_withhold, ite_true, accepted]
   change (bound choice).receipts ++ [⟨((), 1), true⟩] = _
   rw [bound_receipts]
   rfl
+
+private theorem withheld_network (first second : PublicationResult Int) :
+    (withheld first).network = (withheld second).network := by
+  have publicEq := congrArg ReactiveApplication.EnvironmentView.application
+    (bound_observation first second)
+  have networks : (bound first).network = (bound second).network := by
+    cases first <;> cases second <;> rfl
+  have publics : (bound first).application.publicView = (bound second).application.publicView :=
+    publicEq
+  simp only [withheld, withholding, ReactiveApplication.Execution.respond, app,
+    reactiveApplication_packet_none, networks, publics]
 
 theorem withheld_observation (first second : PublicationResult Int) :
     (withheld first).observeEnvironment app = (withheld second).observeEnvironment app := by
@@ -181,7 +199,7 @@ theorem withheld_observation (first second : PublicationResult Int) :
   rw [bound_state, bound_state] at publicEq
   have revealedEq : (revealState first).publicView = (revealState second).publicView := by
     exact publicEq
-  rw [revealedEq]
+  rw [revealedEq, withheld_network first second]
   congr 1
   change (bound first).receipts = (bound second).receipts
   rw [bound_receipts, bound_receipts]
@@ -203,7 +221,15 @@ theorem finished_observation (first second : PublicationResult Int) :
     ReactiveApplication.EnvironmentView.mk (app := app) _
       (finished second).application.publicView _
   rw [finished_state, finished_state, publicEq, finished_receipts, finished_receipts]
-  congr 1
+  have networks : (finished first).network = (finished second).network := by
+    have reduce (execution : app.Execution) :
+        (execution.includePending app ((), 1)).network =
+          (execution.network.includePending ((), 1)).2 := by
+      cases found : execution.network.lookup ((), 1) <;>
+        simp only [ReactiveApplication.Execution.includePending,
+          MessageNetwork.includePending, found]
+    simp only [finished, reduce, withheld_network first second]
+  rw [networks]
 
 /-- These executions keep the different private meanings fixed throughout.
 The public equivalence does not rely on late assignment or a mutable binding. -/

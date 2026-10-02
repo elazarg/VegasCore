@@ -136,9 +136,9 @@ private theorem issued_candidate_slot (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution)
     (id : MessageId Player) (event : graph.EventId) (owner : Player) (serial : Nat)
-    (evidence : Option (OpeningFact graph))
+    (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph))
     (issued : execution.Issued (runtime.reactiveApplication leaks)
-      ⟨id, ⟨.commitment event (owner, .prepared serial), evidence⟩⟩) :
+      ⟨id, ⟨.commitment event (owner, .prepared serial), evidence, token⟩⟩) :
     serial ∈ runtime.submittedCandidateSlots leaks (execution.recall id.1) := by
   obtain ⟨entry, member, material, sent, _, state, known, packet⟩ := issued
   apply List.mem_filterMap.mpr
@@ -157,7 +157,7 @@ private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
     (who : Player) (serial : Nat)
     (absent : serial ∉ runtime.submittedCandidateSlots leaks (execution.recall who)) :
     next.candidates.lookup (who, .prepared serial) = .fresh := by
-  rcases message with ⟨id, packet, evidence⟩
+  rcases message with ⟨id, packet, evidence, token⟩
   cases packet with
   | commitment event candidate =>
       obtain ⟨candidates, _, owner⟩ :=
@@ -168,7 +168,8 @@ private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
         change who = id.1 at owner
         subst who
         exact absent
-          (issued_candidate_slot runtime leaks execution id event id.1 serial evidence issued)
+          (issued_candidate_slot runtime leaks execution id event id.1 serial evidence token
+            issued)
       rw [candidates, CommitmentCandidates.lookup_freeze_other _ _ _ different]
       exact valid who serial absent
   | opening event candidate raw | withhold event =>
@@ -202,16 +203,16 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
       cases found : execution.network.lookup id with
       | none => exact valid who serial absent
       | some message =>
-          change (State.candidates ((handle runtime execution.application
-            ⟨message.id, message.payload.call⟩).getD execution.application)).lookup
+          change (State.candidates (((runtime.reactiveApplication leaks).handle
+            execution.application message).getD execution.application)).lookup
               (who, .prepared serial) = _
-          cases accepted : handle runtime execution.application
-              ⟨message.id, message.payload.call⟩ with
+          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+              message with
           | none => exact valid who serial absent
           | some state =>
               exact candidateRecall_handle runtime leaks execution state message valid
-                (provenance.pending message (List.mem_of_find?_eq_some found)) accepted
-                who serial absent
+                (provenance.pending message (List.mem_of_find?_eq_some found))
+                (reactiveHandle_call accepted) who serial absent
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported

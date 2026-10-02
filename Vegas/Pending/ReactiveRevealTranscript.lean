@@ -34,7 +34,9 @@ theorem normalized_opening_network (runtime : EventGraphRuntime graph)
         (execution.observe (runtime.reactiveApplication leaks) owner)
         (runtime.canonicalRevealResponse leaks event candidate raw true))).network =
       (execution.network.submit owner
-        (⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ : WitnessedPacket graph)).2 := by
+        (⟨.opening event candidate raw, some ⟨candidate, raw⟩,
+          execution.application.publicView.tokenFor (.opening event candidate raw)⟩ :
+            WitnessedPacket graph)).2 := by
   have same := ((runtime.reactiveNormalization leaks).effects execution owner
     (runtime.canonicalRevealResponse leaks event candidate raw true) recall).2.1
   refine same.trans ?_
@@ -44,7 +46,8 @@ theorem normalized_opening_network (runtime : EventGraphRuntime graph)
   have certified :
       (disclosureSubmission (.opening event candidate raw)).emit execution.application owner
           (execution.network.known owner) =
-        ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ := by
+        ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
+          execution.application.publicView.tokenFor (.opening event candidate raw)⟩ := by
     have verifies : execution.application.candidates.verify candidate raw = true :=
       (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr verified
     simp only [disclosureSubmission, WitnessedSubmission.emit, owned, verifies, and_self,
@@ -68,7 +71,8 @@ theorem normalized_opening_included_ledger (runtime : EventGraphRuntime graph)
     (submitted.network.includePending (owner, execution.network.nextSerial owner)).2.ledger =
       execution.network.ledger ++
         [⟨(owner, execution.network.nextSerial owner),
-          ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩⟩] := by
+          ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
+            execution.application.publicView.tokenFor (.opening event candidate raw)⟩⟩] := by
   dsimp only
   rw [normalized_opening_network runtime leaks execution owner event candidate raw recall
     owned verified]
@@ -141,7 +145,7 @@ theorem opening_settlement_transcript (runtime : EventGraphRuntime graph)
     (completed : next.application.config =
       execution.application.config.complete event ready action value)
     (published : publicationPacket? accepted next.application.config.store event =
-      some (owner, ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩))
+      some (owner, ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩))
     (network : next.network =
       ((execution.respond (runtime.reactiveApplication leaks) owner
         ((runtime.reactiveNormalization leaks).action owner (execution.recall owner)
@@ -158,7 +162,8 @@ theorem opening_settlement_transcript (runtime : EventGraphRuntime graph)
   refine ⟨?_, ?_, ?_⟩
   · rw [publicationLedger_complete accepted _ event ready action value owner _ published,
       network, normalized_opening_included_ledger runtime leaks execution owner event candidate
-        raw recall owned verified serials, ledger, counters]
+        raw recall owned verified serials, ledger, counters,
+      execution.application.publicView_tokenFor_of_ready _ event rfl ready]
   · rw [publicationReceipts_complete accepted _ event ready action value owner _ published,
       recorded, receipts, counters]
   · funext observer

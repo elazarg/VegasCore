@@ -127,9 +127,12 @@ theorem guardedDisclosureWindow_config
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
             (cast (congrArg EventGraph.EventField.Value outputEq.symm)
               (PublicationResult.success value))) :=
-      handle_opening_eq (runtime setup) execution.application _ event candidate owner payload
+      (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+        ((runtime setup).windowEnvelope_tokenValid leaks owner event candidate _ execution
+          ready)).trans
+      (handle_opening_eq (runtime setup) execution.application _ event candidate owner payload
         (refs.get binding) _ outputEq codeEq node ready timely rfl owned associated value fixed
-        stored (.success value) resolved
+        stored (.success value) resolved)
     have completed := (runtime setup).openingWindow_expiry leaks owner event payload
       (refs.get binding) _ outputEq codeEq node candidate value execution ready serials packets
       owned fixed accepted entered ticks activated due roster (some slot) network final reached

@@ -154,9 +154,9 @@ theorem malformed_packets_distinct :
         ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩).network.pending := by
   intro same
   change [Message.mk (false, 0)
-      (WitnessedPacket.mk (Payload.malformed (graph := graph) ⟨.bool, false⟩) none)] =
+      (WitnessedPacket.mk (Payload.malformed (graph := graph) ⟨.bool, false⟩) none none)] =
     [Message.mk (false, 0)
-      (WitnessedPacket.mk (Payload.malformed (graph := graph) ⟨.bool, true⟩) none)] at same
+      (WitnessedPacket.mk (Payload.malformed (graph := graph) ⟨.bool, true⟩) none none)] at same
   have raw : (⟨.bool, false⟩ : Raw simpleExpr) = ⟨.bool, true⟩ :=
     Payload.malformed.inj
       (congrArg WitnessedPacket.call (Message.mk.inj (List.cons.inj same).1).2)

@@ -20,22 +20,22 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability Confo
 
 def canonicalBobPacket : WitnessedPacket nativeGraph :=
   ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
-    some ⟨bobHandle, ⟨.bool, true⟩⟩⟩
+    some ⟨bobHandle, ⟨.bool, true⟩⟩, some ⟨bobPublication⟩⟩
 
 theorem bob_packet_permitted_iff (packet : WitnessedPacket nativeGraph) :
     bobPacketPermitted packet = true ↔ packet = canonicalBobPacket := by
-  rcases packet with ⟨call, evidence⟩
+  rcases packet with ⟨call, evidence, token⟩
   cases call <;> cases evidence <;> simp only [bobPacketPermitted, Bool.false_eq_true,
     canonicalBobPacket, WitnessedPacket.mk.injEq, false_and, and_false,
     reduceCtorEq, decide_eq_true_eq]
   rename_i event candidate raw fact
   constructor
-  · rintro ⟨rfl, rfl, rfl, rfl⟩
-    exact ⟨rfl, rfl⟩
-  · rintro ⟨same, sameFact⟩
+  · rintro ⟨rfl, rfl, rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl⟩
+  · rintro ⟨same, sameFact, sameToken⟩
     obtain ⟨rfl, rfl, rfl⟩ := Payload.opening.inj same
     cases Option.some.inj sameFact
-    exact ⟨rfl, rfl, rfl, rfl⟩
+    exact ⟨rfl, rfl, rfl, rfl, sameToken⟩
 
 def bobEmittedPacket (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
     WitnessedPacket nativeGraph :=

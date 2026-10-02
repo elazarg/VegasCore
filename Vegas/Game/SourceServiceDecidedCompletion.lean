@@ -390,15 +390,21 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
       refine ⟨_, decided, ?_, ?_⟩
       · refine ⟨⟨_, congrArg ReactiveApplication.Action.transmission decided⟩, rfl, rfl,
           rfl, readyView, fitsView, ?_⟩
-        change (middle.observe app actor).application.publicView.BindingIncludable (runtime setup)
-          ⟨(actor, middle.network.nextSerial actor), .commitment event (actor, .prepared serial)⟩
-        simp only [PublicView.BindingIncludable, node]
-        refine ⟨readyView, ?_, by trivial, by trivial, vacant, unused⟩
-        change (match middle.application.activatedAt event with
-          | none => False
-          | some entered => middle.application.clock - entered < (runtime setup).deadline event)
-        rw [activated]
-        exact deadline
+        refine ⟨?_, ?_⟩
+        · change (middle.observe app actor).application.publicView.BindingIncludable
+            (runtime setup)
+            ⟨(actor, middle.network.nextSerial actor), .commitment event (actor, .prepared serial)⟩
+          simp only [PublicView.BindingIncludable, node]
+          refine ⟨readyView, ?_, by trivial, by trivial, vacant, unused⟩
+          change (match middle.application.activatedAt event with
+            | none => False
+            | some entered => middle.application.clock - entered < (runtime setup).deadline event)
+          rw [activated]
+          exact deadline
+        · change (app.packet (app.submit middle.application actor _) actor
+            (middle.network.known actor) _).token = some ⟨event⟩
+          rw [reactiveApplication_packet_token]
+          exact PublicView.tokenFor_of_eventReady _ _ event rfl readyView
       · rw [decided]
         unfold RealizesAt
         rw [node]
@@ -440,7 +446,8 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
           (app.observePlayer middle.application actor) (middle.network.known actor)
       have packetEq : app.packet (app.submit middle.application actor material) actor
           (middle.network.known actor) material =
-            ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩⟩ := by
+            ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩,
+              middle.application.publicView.tokenFor (.opening event handle ⟨payload, value⟩)⟩ := by
         have emitted := WitnessedSubmission.normalizeReactive_emit (runtime setup) leaks
           middle.application actor (middle.network.known actor)
             (disclosureSubmission (.opening event handle ⟨payload, value⟩))
@@ -457,9 +464,9 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
         rw [packetEq]
         apply ((runtime setup).freshServiceEnvelope_opening_iff middle.application.publicView
           (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
-          codeEq node handle ⟨payload, value⟩ (some ⟨handle, ⟨payload, value⟩⟩)).mpr
+          codeEq node handle ⟨payload, value⟩ (some ⟨handle, ⟨payload, value⟩⟩) _).mpr
         refine ⟨readyView, ?_, by simp only [certifiedOpening, decide_true], ?_, rfl, handleOwner,
-          associated, rfl⟩
+          associated, rfl, PublicView.tokenFor_of_eventReady _ _ event rfl readyView⟩
         · change (match middle.application.activatedAt event with
             | none => False
             | some entered => middle.application.clock - entered <
@@ -1107,16 +1114,13 @@ theorem DecidedPhase.complete_round {horizon : Nat}
           exact (changed rfl).elim
       | some message =>
           simp only [found] at changed ⊢
-          change ((EventGraphRuntime.handle (runtime setup) execution.application
-            ⟨message.id, message.payload.call⟩).getD execution.application).config ≠ _ at changed
-          change ((EventGraphRuntime.handle (runtime setup) execution.application
-            ⟨message.id, message.payload.call⟩).getD execution.application).config ∈ _
-          cases accepted : EventGraphRuntime.handle (runtime setup) execution.application
-              ⟨message.id, message.payload.call⟩ with
+          cases reactiveAccepted : (application setup leaks).handle execution.application
+              message with
           | none =>
-              rw [accepted] at changed
+              rw [reactiveAccepted] at changed
               exact (changed rfl).elim
           | some state =>
+              have accepted := reactiveHandle_call reactiveAccepted
               change state.config ∈ _
               obtain ⟨named, namedEq, namedReady, _, _⟩ :=
                 handle_config_mem_step (runtime setup) _ _ _ accepted
@@ -1228,14 +1232,14 @@ theorem DecidedPhase.complete_round {horizon : Nat}
                   rw [sameEntry, emittedFirst] at issuerEmitted
                   exact different (by rw [Option.some.inj issuerEmitted])
                 · cases inputEq
-              have settled := settlesFreshCalls_history setup leaks contract owner other
+              have settled := settlesFreshCalls_history setup leaks contract.inclusion owner other
                 owned trace before first after packet split call sole
               obtain ⟨enteredThen, activatedThen, early⟩ := call.fits.exists
               have activatedSame := (entry_view_current setup leaks execution facts.stable owner
                 first firstMember other call.ready unfinished).2.2
               rw [activatedSame, activated, Option.some.injEq] at activatedThen
               subst activatedThen
-              have receipt := (prescribed_packet_settles setup leaks contract trace other
+              have receipt := (prescribed_packet_settles setup leaks contract.inclusion trace other
                 owner owned before after first packet split call sole).1
                 (by change _ < execution.application.clock; omega)
               exact unfinished (settled.2.2 receipt)

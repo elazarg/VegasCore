@@ -50,7 +50,7 @@ theorem owner_source_history
       history supported
   obtain ⟨initial, initialSupport, state, related, decoded, _priorView, sourceReach⟩ :=
     initialized_prefix_support setup leaks bounds watcher reveals observer openable players
-      (menu_decode_reports setup leaks bounds watcher profile)
+      (menu_decode_silent setup leaks bounds watcher profile)
       (menu_decode_ordinary setup leaks bounds watcher profile)
       event.val event.isLt.le boundary boundarySupport
   obtain ⟨source, sourceSupport, sourceState⟩ := setup.exists_history_of_prefix_support admission

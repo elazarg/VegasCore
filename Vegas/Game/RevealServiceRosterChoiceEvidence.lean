@@ -4,11 +4,11 @@ import Vegas.Game.RevealServiceRosterDeparture
 import Interaction.ReactiveTrafficState
 import Interaction.ReactiveLocalContinuation
 
-/-! # One-step signed evidence at every additional roster response
+/-! # One-step roster-rule breach at every additional roster response
 
 The certificate covers every effective response outside the retained menu at
 any retained information history. It uses the actual native behavioral step;
-subsequent strategy choices do not affect the already recorded evidence.
+subsequent strategy choices do not affect the already recorded transmission.
 -/
 
 noncomputable section

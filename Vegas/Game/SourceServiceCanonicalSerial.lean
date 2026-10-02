@@ -198,7 +198,7 @@ theorem nextSerial_eq_distinctAuthoredCount {horizon remaining : Nat}
           submittedOther issuerEmitted emitted)
       · cases inputEq
     have settles : SettlesFreshCalls setup leaks who other bound middle :=
-      settlesFreshCalls_history setup leaks contract who other owned trace
+      settlesFreshCalls_history setup leaks contract.inclusion who other owned trace
     have receipt := (settles earlier entry later message split call sole).1 completed
     have published := receipt_published facts.receipts receipt
     rw [identified] at published

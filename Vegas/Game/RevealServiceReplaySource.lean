@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceWatcherSupport
-import Vegas.Game.RevealServiceTrafficSound
+import Vegas.Game.RevealServiceTraffic
 import Vegas.Game.RevealServiceReplayRelation
 import Vegas.Pending.ReactiveServicePublication
 
@@ -116,49 +116,17 @@ theorem before_activation_published
     after ⟨remaining, some who, next⟩ rfl who rfl
   exact clean.2.1
 
-include reveals observer openable in
-/-- The retained watcher contributes no wire input at any source prefix. -/
-theorem watcher_input_absent
-    (history : (protocol setup leaks bounds watcher).History)
-    (control : (application setup leaks).Control) (state : history.state = some control)
-    (input : NetworkInput Player (application setup leaks).Payload)
-    (member : input ∈ control.execution.network.inputs) : input.broadcaster ≠ watcher := by
-  let app := application setup leaks
-  have allInputs := app.stateTraffic_inputs (initialLaw setup) (horizon setup watcher)
-    (scheduler setup leaks watcher)
-    ((menu setup leaks bounds watcher).toRawTrace (initialLaw setup) (horizon setup watcher)
-      (scheduler setup leaks watcher) history.trace)
-  change (app.stateTraffic history.state).map ReactiveApplication.TrafficRecord.input = _
-    at allInputs
-  rw [state] at allInputs
-  change (app.stateTraffic (some control)).map ReactiveApplication.TrafficRecord.input =
-    control.execution.network.inputs at allInputs
-  rw [← allInputs] at member
-  obtain ⟨record, recorded, rfl⟩ := List.mem_map.mp member
-  have allowed := retained_history_traffic setup leaks bounds watcher reveals observer openable
-    history record (by simpa only [state] using recorded)
-  exact ((permittedTraffic_iff setup leaks watcher record).mp allowed).1
-
-include reveals observer openable in
+omit [Fintype Player] in
 /-- The fixed service makes the same scheduler choice after watcher aliases.
-Its report command is inert because the watcher's inputs are all published. -/
+Its network slot idles. -/
 theorem replay_scheduler_eq
-    (history : (protocol setup leaks bounds watcher).History)
-    (control : (application setup leaks).Control) (state : history.state = some control)
+    (control : (application setup leaks).Control)
     (second : (application setup leaks).Execution)
     (same : ReplayAgreement setup leaks watcher control.execution second) :
     scheduler setup leaks watcher control.execution.environmentRecall
         (control.execution.observeEnvironment (application setup leaks)) =
       scheduler setup leaks watcher second.environmentRecall
         (second.observeEnvironment (application setup leaks)) := by
-  let app := application setup leaks
-  have firstQuiet := app.includeReported_wait_of_published watcher
-    (control.execution.observeEnvironment app) (by
-      intro input member watches
-      exact (watcher_input_absent setup leaks bounds watcher reveals observer openable
-        history control state input member watches).elim)
-  have secondQuiet := app.includeReported_wait_of_published watcher
-    (second.observeEnvironment app) same.watcherPublished
   unfold scheduler
   rw [same.position]
   cases current : (plan setup watcher)[second.environmentRecall.length]? with
@@ -170,8 +138,8 @@ theorem replay_scheduler_eq
           exact congrArg PMF.pure (same.reserved_selection event owner)
       | wire =>
           dsimp only
-          rw [(runtime setup).reportNetwork_instruction,
-            (runtime setup).reportNetwork_instruction, firstQuiet, secondQuiet]
+          rw [(runtime setup).idleNetwork_instruction,
+            (runtime setup).idleNetwork_instruction]
 
 omit [Fintype Player] in
 theorem scheduler_inclusion_fresh
@@ -183,6 +151,6 @@ theorem scheduler_inclusion_fresh
   split at selected
   · cases (PMF.mem_support_pure_iff _ _).mp selected
   · exact (runtime setup).interactionInstruction_fresh leaks
-      ((runtime setup).reportNetwork leaks watcher) past view _ id selected
+      ((runtime setup).idleNetwork leaks) past view _ id selected
 
 end Vegas

@@ -200,7 +200,8 @@ theorem windowOpening_packet (runtime : EventGraphRuntime graph)
     (owned : candidate.1 = owner) (valid : state.candidates.lookup candidate = .openable raw) :
     (runtime.reactiveApplication leaks).packet state owner known
       (disclosureSubmission (.opening event candidate raw)) =
-        ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ := by
+        ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
+          state.publicView.tokenFor (.opening event candidate raw)⟩ := by
   have verified : state.candidates.verify candidate raw = true :=
     (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr valid
   simp only [reactiveApplication, disclosureSubmission, WitnessedSubmission.emit,
@@ -218,7 +219,8 @@ private theorem openingWindowPlayers_packet_eq (runtime : EventGraphRuntime grap
     (owned : candidate.1 = owner)
     (meaning : selected.isSome →
       left.application.candidates.lookup candidate = .openable raw ∧
-        right.application.candidates.lookup candidate = .openable raw) :
+        right.application.candidates.lookup candidate = .openable raw)
+    (publicView : left.application.publicView = right.application.publicView) :
     ∀ submission, action.transmission = some (.submit submission) →
       (runtime.reactiveApplication leaks).packet
         ((runtime.reactiveApplication leaks).submit left.application who submission) who
@@ -240,7 +242,8 @@ private theorem openingWindowPlayers_packet_eq (runtime : EventGraphRuntime grap
         (runtime.reactiveApplication leaks).packet right.application owner
           (right.network.known owner) (disclosureSubmission (.opening event candidate raw))
     rw [windowOpening_packet runtime leaks owner event candidate raw _ _ owned (meaning chosen).1,
-      windowOpening_packet runtime leaks owner event candidate raw _ _ owned (meaning chosen).2]
+      windowOpening_packet runtime leaks owner event candidate raw _ _ owned (meaning chosen).2,
+      publicView]
 
 /-- A scheduled opening/replay branch has the same auxiliary transcript law
 across hidden application states with equal public and focal observations.
@@ -320,7 +323,7 @@ theorem openingWindow_coupling (runtime : EventGraphRuntime graph)
       change (first.respond app who action).application = first.application at firstState
       change (second.respond app who action).application = second.application at secondState
       have packets := runtime.openingWindowPlayers_packet_eq leaks owner event candidate raw
-        offset selected who first second action firstSupported owned meaning
+        offset selected who first second action firstSupported owned meaning publicView
       have before : first.observe app focal = second.observe app focal := by
         have receipts := congrArg (fun value => value.2.1) (sampled ids)
         change first.receipts = second.receipts at receipts

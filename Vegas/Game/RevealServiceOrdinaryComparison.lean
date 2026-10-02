@@ -132,7 +132,7 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
         profile owner ((profile owner).commit
           ((ordinaryRestriction setup leaks bounds watcher).site owner site).1 action))
       fuel ((ordinaryRestriction setup leaks bounds watcher).history history.1)).toOuterMeasure
-          {final | departureAtState setup leaks owner final.state}).toReal := by
+          {final | departureAtState setup leaks watcher owner final.state}).toReal := by
   classical
   let restriction := ordinaryRestriction setup leaks bounds watcher
   have active := InformationModel.InformationSite.active
@@ -217,7 +217,8 @@ theorem ordinary_extra_comparison [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (sufficient : upper - lower ≤ probability * deposit owner)
     (fuel : Nat) (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel)
     (clean : ∀ final ∈ ((information setup leaks bounds watcher).runBehavioralFrom
-      legalProfile fuel history.1).support, ¬ departureAtState setup leaks owner final.state) :
+      legalProfile fuel history.1).support,
+        ¬ departureAtState setup leaks watcher owner final.state) :
     expect ((watchedInformation setup leaks bounds watcher).runBehavioralFrom
       (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
         targetProfile owner ((targetProfile owner).commit

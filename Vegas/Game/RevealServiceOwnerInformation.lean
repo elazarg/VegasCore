@@ -141,8 +141,8 @@ theorem owner_focal_information
   have past : leftBoundary.recall who = rightBoundary.recall who :=
     initialized_focal_recall setup leaks bounds watcher reveals observer openable source
       weight nonnegative atMostOne who different reference leftPlayers rightPlayers selected
-      (menu_decode_reports setup leaks bounds watcher left)
-      (menu_decode_reports setup leaks bounds watcher right)
+      (menu_decode_silent setup leaks bounds watcher left)
+      (menu_decode_silent setup leaks bounds watcher right)
       (menu_decode_ordinary setup leaks bounds watcher left)
       (menu_decode_ordinary setup leaks bounds watcher right)
       event.val event.isLt.le leftBoundary rightBoundary leftBoundarySupport rightBoundarySupport

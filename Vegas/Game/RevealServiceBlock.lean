@@ -29,7 +29,7 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup))
     (players : Player → (application setup leaks).Policy) (watcher : Player)
-    (policy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (policy : players watcher = (application setup leaks).silentPolicy)
     {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
     (selected : HasVar Γ name (.commitment owner payload))
     (source : State L Γ) (refs : ContextRefs (graph setup).layout Γ)
@@ -50,10 +50,6 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
     (due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
-    (leaked : ∀ message ∈ execution.network.leaked watcher,
-      message.id ∈ execution.network.ledger.map Message.id)
-    (inputs : ∀ input ∈ execution.network.inputs,
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
@@ -65,7 +61,7 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
     let result := cast (congrArg EventGraph.EventField.Value outputEq.symm)
       (if disclose then PublicationResult.success value else .failure)
     ∃ next, (runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         ([.includeLatest event owner, .player watcher, .wire] ++
           List.replicate ticks .tick ++ [.expire event]) submitted = PMF.pure next ∧
       next.application =
@@ -93,7 +89,7 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
         · exact Or.inr ⟨message.id, replay, List.mem_map.mpr ⟨message, published, rfl⟩⟩
       obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
         (runtime setup).refusing_response_settlement leaks players watcher policy execution
-          pending leaked inputs owner event payload (refs.get selected) [] outputEq codeEq
+          pending owner event payload (refs.get selected) [] outputEq codeEq
           node ready entered ticks activated due response physical
       refine ⟨next, law, ?_, ?_, ?_, ?_⟩
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using applicationEq
@@ -137,7 +133,7 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
           EventGraph.Config.complete, EventOrder.Cut.complete])
       obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
         (runtime setup).opening_response_settlement leaks players watcher policy execution
-          pending leaked inputs serials owner event candidate ⟨payload, value⟩ evidence after
+          pending serials owner event candidate ⟨payload, value⟩ evidence after
           accepted settled ticks
       refine ⟨next, ?_, ?_, ?_, ?_, ?_⟩
       · simpa only [responseEq] using law
@@ -154,7 +150,7 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup))
     (players : Player → (application setup leaks).Policy) (watcher : Player)
-    (policy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (policy : players watcher = (application setup leaks).silentPolicy)
     {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
     (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
     (source : Config Player L Γ) (empty : source.registry = [])
@@ -184,10 +180,6 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
     (due : (runtime setup).deadline event ≤ execution.application.clock + ticks - entered)
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
-    (leaked : ∀ message ∈ execution.network.leaked watcher,
-      message.id ∈ execution.network.ledger.map Message.id)
-    (inputs : ∀ input ∈ execution.network.inputs,
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
@@ -197,7 +189,7 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
     let resultRef : EventGraph.FieldRef (graph setup).layout (.publication payload) :=
       ⟨.inr event, outputEq⟩
     ∃ next, (runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         ([.includeLatest event owner, .player watcher, .wire] ++
           List.replicate ticks .tick ++ [.expire event])
         (execution.respond (application setup leaks) owner response) = PMF.pure next ∧
@@ -210,7 +202,7 @@ theorem ordinary_response_source_step (setup : Setup (Player := Player) (L := L)
   obtain ⟨next, law, applicationEq, _networkEq, _receiptsEq, _recallEq⟩ :=
     ordinary_response_settlement setup leaks bounds players watcher policy selected source.state
       refs execution agree valid event ownedEvent outputEq codeEq node value bound
-      ready timely entered ticks activated due pending leaked inputs serials response member
+      ready timely entered ticks activated due pending serials response member
   refine ⟨next, law, ?_, ?_⟩
   · have stores :
         (refs.cons (name := published) ⟨.inr event, outputEq⟩).Agrees

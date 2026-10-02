@@ -51,7 +51,8 @@ theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
         ((submitStep_publicView _ who material.call.packet).trans
           (material.call.register_facts who state).2.2)
   handle state message next valid accepted :=
-    handle_invariant runtime state next ⟨message.id, message.payload.call⟩ valid accepted
+    handle_invariant runtime state next ⟨message.id, message.payload.call⟩ valid
+      (reactiveHandle_call accepted)
   environment state command next valid supported :=
     environmentStep_invariant runtime state next command valid supported
 
@@ -67,7 +68,8 @@ theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph)
     exact stored
   handle state message next stored accepted :=
     handle_store_of_some runtime state next ⟨message.id, message.payload.call⟩
-      accepted field value stored
+      (reactiveHandle_call accepted)
+      field value stored
   environment state command next stored supported :=
     environmentStep_store_of_some runtime state next command supported field value stored
 

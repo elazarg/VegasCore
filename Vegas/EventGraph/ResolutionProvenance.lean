@@ -5,7 +5,8 @@ import Vegas.EventGraph.Execution
 /-! # Successful publication comes from the retained binding
 
 Resolution may hide a binding by returning failure. It cannot publish a different
-value. The fact holds throughout every graph-reachable configuration.
+value, and a value it publishes passes the deferred checks on every later
+store. Both facts hold throughout every graph-reachable configuration.
 -/
 
 noncomputable section
@@ -173,5 +174,105 @@ theorem Config.Reachable.publication_binding {inputs : graph.Inputs} {config : g
           (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?_congr
           after.store before.store storedEq
         rwa [viewEq] at published
+
+/-- The deferred checks of a publication read only inputs and outputs of its
+predecessors. A store that retains those outputs keeps their verdict. -/
+theorem Config.publication_guards_retained (event : graph.EventId) (owner : Player)
+    (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (first second : graph.Config)
+    (settled : ∀ predecessor ∈ graph.order.predecessors event,
+      predecessor ∈ first.cut.completed)
+    (retained : ∀ field value, first.store field = some value →
+      second.store field = some value)
+    (proposal : PublicationResult (L.Val payload)) :
+    GuardCheck.allAccepted? checks first.store proposal =
+      GuardCheck.allAccepted? checks second.store proposal := by
+  have readsEq : (graph.nodes event).readFields =
+      insert binding.field (GuardCheck.listReadFields checks) := by
+    calc
+      (graph.nodes event).readFields =
+          (cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event)).readFields :=
+        (EventCode.readFields_cast outputEq (graph.nodes event)).symm
+      _ = (EventCode.resolve owner payload binding checks).readFields :=
+        congrArg EventCode.readFields codeEq
+      _ = insert binding.field (GuardCheck.listReadFields checks) := rfl
+  apply GuardCheck.allAccepted?_congr
+  intro field member
+  have read : field ∈ (graph.nodes event).readFields := by
+    rw [readsEq]
+    exact Finset.mem_insert_of_mem member
+  have available : (first.store field).isSome := by
+    cases field with
+    | inl input => simp [Config.store]
+    | inr producer =>
+        rw [Config.store_output, first.output_available]
+        exact settled producer (graph.reads_available event (.inr producer) read)
+  obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp available
+  rw [stored, retained field value stored]
+
+/-- A successful publication in a reachable configuration passes its deferred
+checks on the current store, including after arbitrary later graph events. -/
+theorem Config.Reachable.publication_guards {inputs : graph.Inputs} {config : graph.Config}
+    (reachable : config.Reachable inputs)
+    (event : graph.EventId) (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (value : L.Val payload)
+    (published : (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+      config.store = some (.success value)) :
+    GuardCheck.allAccepted? checks config.store (.success value) = some true := by
+  induction reachable with
+  | initial =>
+      have absent : (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+          (Config.initial inputs).store = none := by
+        unfold FieldRef.get? Config.store Config.initial
+        exact cast_option_none (congrArg EventField.Value outputEq)
+      rw [absent] at published
+      cases published
+  | @step before prior completed ready action after reached ih =>
+      have retained : ∀ field value, before.store field = some value →
+          after.store field = some value := fun field result stored =>
+        before.step_store_of_some after completed ready action reached field result stored
+      by_cases same : completed = event
+      · subst completed
+        have resolved := Config.resolution_step_output event owner payload binding checks
+          outputEq codeEq before after ready action reached
+        change EventCode.resolveOutput? binding checks _ before.store =
+          (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+            after.store at resolved
+        rw [published] at resolved
+        rw [← Config.publication_guards_retained event owner payload binding checks outputEq
+          codeEq before after (fun predecessor inside => ready.2 inside) retained]
+        exact EventCode.guards_pass_of_resolve_success binding checks _ before.store
+          value resolved
+      · have storedEq : after.outputs event = before.outputs event := by
+          obtain ⟨result, _, rfl⟩ := PMF.support_map .. ▸ reached
+          exact before.complete_output_of_ne completed event ready action result (Ne.symm same)
+        have viewEq :=
+          (⟨.inr event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?_congr
+          after.store before.store storedEq
+        rw [viewEq] at published
+        have done : event ∈ before.cut.completed := by
+          rw [← before.output_available]
+          change (before.store (.inr event)).isSome = true
+          unfold FieldRef.get? at published
+          revert published
+          generalize before.store (.inr event) = stored
+          cases stored with
+          | none =>
+              intro published
+              cases published.symm.trans (cast_option_none (congrArg EventField.Value outputEq))
+          | some _ => intro _; rfl
+        rw [← Config.publication_guards_retained event owner payload binding checks outputEq
+          codeEq before after (fun predecessor inside => before.cut.predecessor_closed done inside)
+          retained]
+        exact ih published
 
 end Vegas.EventGraph

@@ -139,6 +139,23 @@ theorem State.ownTurn_of_ready (state : State graph) (ordered : graph.BarrierOrd
     ordered.ready_actor_unique state.config.cut ((state.publicView_eventReady event).mp ready)
       ((state.publicView_eventReady other).mp otherReady) actor otherActor⟩
 
+omit [DecidableEq Player] in
+/-- A sender whose contract state has the event ready attaches its token. -/
+theorem State.publicView_tokenFor_of_ready (state : State graph) (packet : Payload graph)
+    (event : graph.EventId) (named : packet.event? graph = some event)
+    (ready : state.config.cut.Ready event) :
+    state.publicView.tokenFor packet = some ⟨event⟩ :=
+  state.publicView.tokenFor_eq_some packet event named
+    ((state.publicView_eventReady event).mpr ready).2
+
+omit [DecidableEq Player] in
+/-- A publicly ready event has its token issued. -/
+theorem PublicView.tokenFor_of_eventReady (view : PublicView graph) (packet : Payload graph)
+    (event : graph.EventId) (named : packet.event? graph = some event)
+    (ready : view.EventReady event) :
+    view.tokenFor packet = some ⟨event⟩ :=
+  view.tokenFor_eq_some packet event named ready.2
+
 theorem State.publicView_bindingIncludable (runtime : EventGraphRuntime graph)
     (state : State graph) (id : MessageId Player) (event : graph.EventId)
     (candidate : Handle graph) :

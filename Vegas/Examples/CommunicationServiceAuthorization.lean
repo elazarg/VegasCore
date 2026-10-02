@@ -7,9 +7,10 @@ import Vegas.Pending.ReactiveService
 
 In the existing early-opening execution, the binding has since been included.
 The latest opening was nevertheless submitted before that dependency settled.
-The raw reserved selector accepts it; the existing public-history monitor
-excludes it. This checks the selector on the actual fixture, without asserting
-that its earlier calendar was the recurring epoch calendar.
+The raw reserved selector still selects it, but the packet carries no readiness
+token, so the contract rejects it; the existing public-history monitor excludes
+it before inclusion. This checks the selector on the actual fixture, without
+asserting that its earlier calendar was the recurring epoch calendar.
 -/
 
 noncomputable section
@@ -23,10 +24,17 @@ theorem raw_reserved_selects_premature :
     runtime.reactiveLatest leaks 1 () ((included false false).observeEnvironment app) =
       .include prematureOpeningEnvelope.id := rfl
 
-theorem raw_reserved_accepts_premature :
+/-- The premature opening has no readiness token, so its inclusion leaves the
+disclosure undecided. -/
+theorem contract_rejects_premature :
     (State.config ((included false false).includePending app
-      prematureOpeningEnvelope.id).application).outputs 1 = some (.success 1) :=
-  early_opening
+      prematureOpeningEnvelope.id).application).outputs 1 = none := by
+  have found : (included false false).network.lookup prematureOpeningEnvelope.id =
+      some prematureOpeningEnvelope := rfl
+  simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
+  rw [reactiveApplication_handle_of_not_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_none _ _), included_state false false (by simp)]
+  rfl
 
 theorem original_submission_remains_unauthorized :
     ¬(included false false).AuthorizedAtSubmission app

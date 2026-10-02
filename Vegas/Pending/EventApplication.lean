@@ -97,6 +97,58 @@ structure PublicView (graph : Vegas.EventGraph Player L) where
   clock : Nat
   activatedAt : graph.EventId → Option Nat
 
+/-- The readiness token of one event: the contract's public certificate that
+the event's direct prerequisites have completed. It names its event and nothing
+else, so it is valid for that event only and carries no creation time.
+
+A token is never written by a sender. It is attached at emission from the
+contract state the sender sees (`PublicView.readinessToken?`), the way opening
+certificates are materialized from owned or received evidence. A packet made
+before the prerequisites completed therefore has no token, exactly, with no
+guessing probability. On EVM the token is a hash of the completing block (or a
+running hash of the contract's completions); a refinement bears the
+negligible probability of guessing it, which this symbolic model omits. -/
+structure ReadinessToken (graph : Vegas.EventGraph Player L) where
+  event : graph.EventId
+  deriving DecidableEq
+
+/-- The token issued for `event` once all its direct prerequisites appear in
+the public completion order. Prerequisite completion is permanent, so an
+issued token stays issued. -/
+def PublicView.readinessToken? {graph : Vegas.EventGraph Player L} (view : PublicView graph)
+    (event : graph.EventId) :
+    Option (ReadinessToken graph) :=
+  if ∀ predecessor ∈ graph.order.predecessors event,
+      predecessor ∈ view.observation.completionOrder then some ⟨event⟩ else none
+
+omit [DecidableEq Player] in
+theorem PublicView.readinessToken?_eq_some_iff {graph : Vegas.EventGraph Player L}
+    (view : PublicView graph)
+    (event : graph.EventId) (token : ReadinessToken graph) :
+    view.readinessToken? event = some token ↔
+      token = ⟨event⟩ ∧ ∀ predecessor ∈ graph.order.predecessors event,
+        predecessor ∈ view.observation.completionOrder := by
+  unfold readinessToken?
+  split <;> rename_i issued
+  · constructor
+    · intro same
+      exact ⟨(Option.some.inj same).symm, issued⟩
+    · rintro ⟨rfl, _⟩
+      rfl
+  · constructor
+    · intro impossible
+      cases impossible
+    · rintro ⟨_, complete⟩
+      exact absurd complete issued
+
+omit [DecidableEq Player] in
+/-- An issued token names exactly its own event. -/
+theorem PublicView.readinessToken?_event {graph : Vegas.EventGraph Player L}
+    (view : PublicView graph)
+    (event : graph.EventId) (token : ReadinessToken graph)
+    (issued : view.readinessToken? event = some token) : token.event = event := by
+  rw [((view.readinessToken?_eq_some_iff event token).mp issued).1]
+
 /-- Authenticated player projection. Unfinished remembered choices and this
 player's candidate catalogue are private additions to `playerObserve`. -/
 structure PlayerView (graph : Vegas.EventGraph Player L) where
@@ -124,6 +176,23 @@ def event? (graph : Vegas.EventGraph Player L) : Payload graph → Option graph.
   | .malformed _ => none
 
 end Payload
+
+/-- The readiness token a sender's emission attaches to a call: the issued
+token of the call's own event, if any. -/
+def PublicView.tokenFor {graph : Vegas.EventGraph Player L} (view : PublicView graph)
+    (packet : Payload graph) :
+    Option (ReadinessToken graph) :=
+  (packet.event? graph).bind view.readinessToken?
+
+omit [DecidableEq Player] in
+theorem PublicView.tokenFor_eq_some {graph : Vegas.EventGraph Player L}
+    (view : PublicView graph) (packet : Payload graph) (event : graph.EventId)
+    (named : packet.event? graph = some event)
+    (issued : ∀ predecessor ∈ graph.order.predecessors event,
+      predecessor ∈ view.observation.completionOrder) :
+    view.tokenFor packet = some ⟨event⟩ := by
+  rw [tokenFor, named, Option.bind_some]
+  exact (view.readinessToken?_eq_some_iff event ⟨event⟩).mpr ⟨rfl, issued⟩
 
 /-- Authenticated private actions prepare arbitrary candidates or remember a
 typed graph action. Remembering is first-write and owner-checked. -/

@@ -146,14 +146,14 @@ theorem candidateValues_environment (runtime : EventGraphRuntime graph)
       | none => exact valid
       | some message =>
           change bounds.CandidateValues
-            ((handle runtime execution.application
-              ⟨message.id, message.payload.call⟩).getD execution.application)
-          cases accepted : handle runtime execution.application
-              ⟨message.id, message.payload.call⟩ with
+            (((runtime.reactiveApplication leaks).handle execution.application
+              message).getD execution.application)
+          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+              message with
           | none => exact valid
           | some state =>
               exact bounds.candidateValues_handle runtime execution.application state
-                ⟨message.id, message.payload.call⟩ valid accepted
+                ⟨message.id, message.payload.call⟩ valid (reactiveHandle_call accepted)
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported

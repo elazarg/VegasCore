@@ -33,7 +33,7 @@ private theorem binding_inclusion_completed
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (slot : CandidateSlot graph) (nonce : Nat)
     (found : execution.network.lookup (owner, nonce) =
-      some ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩)
+      some ⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩)
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
     (vacant : execution.application.accepted (.inr event) = none)
@@ -43,10 +43,8 @@ private theorem binding_inclusion_completed
   have handled := runtime.handle_commitment_eq execution.application (owner, nonce) event
     (owner, slot) owner payload outputEq codeEq node ready timely rfl rfl vacant unused
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
-  change event ∈ ((runtime.handle execution.application
-    ⟨(owner, nonce), .commitment event (owner, slot)⟩).getD
-      execution.application).config.cut.completed
-  rw [handled]
+  rw [reactiveApplication_handle_of_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_commitment _ _ _), handled]
   exact Finset.mem_insert_self event _
 
 /-- The pending original binding and the repaired typed binding have the
@@ -77,12 +75,12 @@ theorem pending_binding_foreign_coupling
     (successful : ∀ value,
       original.application.bindingResult (owner, slot) payload = .success value →
         repaired.application.bindingResult (owner, slot) payload = .success value)
-    (pending : (⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩ :
+    (pending : (⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩ :
       Message Player (WitnessedPacket graph)) ∈ original.network.pending)
     (unpublished : (owner, nonce) ∉ original.network.ledger.map Message.id)
     (packets : original.network.Satisfies fun packet => packet.sender = owner →
       packet.id ∈ original.network.ledger.map Message.id ∨
-        packet = ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩)
+        packet = ⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩)
     (visits : List Player) (absent : owner ∉ visits) :
     let app := runtime.reactiveApplication leaks
     let plan := visits.map ServiceInstruction.player ++ [.includeLatest event owner]
@@ -93,7 +91,7 @@ theorem pending_binding_foreign_coupling
         event ∈ next.1.application.config.cut.completed := by
   let app := runtime.reactiveApplication leaks
   let message : Message Player (WitnessedPacket graph) :=
-    ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩
+    ⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩
   let finish (execution : app.Execution) : app.Execution :=
     { execution.includePending app message.id with
       environmentRecall := execution.environmentRecall ++
@@ -249,7 +247,8 @@ theorem binding_submission_foreign_coupling
   intro app view response changed remembered plan
   let left := original.respond app owner response
   let right := repaired.respond app owner changed.1
-  let packet : WitnessedPacket graph := ⟨.commitment event (owner, .prepared serial), none⟩
+  let packet : WitnessedPacket graph :=
+    ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩
   let message : Message Player (WitnessedPacket graph) :=
     ⟨(owner, original.network.nextSerial owner), packet⟩
   have coupled := frame.binding_submission event payload outputEq codeEq node serial opening
@@ -276,13 +275,19 @@ theorem binding_submission_foreign_coupling
     intro field same
     rw [accepted] at same
     exact unused field same
+  have networkEq : left.network = (original.network.submit owner packet).2 := by
+    simp only [left, app, response, ReactiveApplication.Execution.respond,
+      reactiveApplication_packet_none, packet,
+      original.application.publicView_tokenFor_of_ready
+        (.commitment event (owner, .prepared serial)) event rfl ready]
   have packets : left.network.Satisfies fun candidate => candidate.sender = owner →
       candidate.id ∈ left.network.ledger.map Message.id ∨ candidate = message := by
-    change (original.network.submit owner packet).2.Satisfies _
+    rw [networkEq]
     apply (published.mono (fun candidate prior same => Or.inl (prior same))).submit owner packet
     exact fun _ => Or.inr rfl
-  have pending : message ∈ left.network.pending :=
-    List.mem_append_right _ (List.mem_singleton_self _)
+  have pending : message ∈ left.network.pending := by
+    rw [networkEq]
+    exact List.mem_append_right _ (List.mem_singleton_self _)
   exact coupled.pending_binding_foreign_coupling players network event payload outputEq codeEq
     node (.prepared serial) (original.network.nextSerial owner) leftReady leftTimely leftVacant
     leftUnused data.1 data.2.1 data.2.2.1 data.2.2.2.1 data.2.2.2.2 pending

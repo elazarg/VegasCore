@@ -62,7 +62,7 @@ private theorem opening_shape (owner : Player)
                   exact ⟨candidate, ⟨payload, value⟩, evidence, same.symm.trans shape⟩
 
 private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setup))
-    (players : Player → (application setup leaks).Policy) (watcher owner : Player)
+    (players : Player → (application setup leaks).Policy) (owner : Player)
     (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
     (serving : execution.application.publicView.ownTurn? owner = some event)
     (pending : ∀ message ∈ execution.network.pending,
@@ -76,7 +76,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
       (execution.observe (application setup leaks) owner))
     (next : (application setup leaks).Execution)
     (reached : next ∈ ((runtime setup).interactionStep leaks players
-      ((runtime setup).reportNetwork leaks watcher) (.includeLatest event owner)
+      ((runtime setup).idleNetwork leaks) (.includeLatest event owner)
       (execution.respond (application setup leaks) owner response)).support) :
     (∀ message ∈ next.network.pending,
       message.id ∈ next.network.ledger.map Message.id) ∧
@@ -90,7 +90,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     have quietPending : ∀ message ∈ (execution.respond app owner ⟨none⟩).network.pending,
         message.id ∈ (execution.respond app owner ⟨none⟩).network.ledger.map Message.id := pending
     rw [(runtime setup).interaction_includeLatest_of_pending_published leaks players
-      ((runtime setup).reportNetwork leaks watcher) _ owner event quietPending] at reached
+      ((runtime setup).idleNetwork leaks) _ owner event quietPending] at reached
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _] at reached
     subst next
@@ -113,7 +113,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
       · obtain rfl := List.mem_singleton.mp fresh
         exact Or.inr rfl
     rw [(runtime setup).opening_inclusion leaks players
-      ((runtime setup).reportNetwork leaks watcher) execution owner event candidate raw
+      ((runtime setup).idleNetwork leaks) execution owner event candidate raw
       evidence (serials.next_unpublished owner)] at reached
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _] at reached
@@ -133,7 +133,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
     have spent : message.id ∈ execution.network.ledger.map Message.id :=
       List.mem_map.mpr ⟨message, published, rfl⟩
     rw [(runtime setup).published_replay_inclusion leaks players
-      ((runtime setup).reportNetwork leaks watcher) execution owner event message.id
+      ((runtime setup).idleNetwork leaks) execution owner event message.id
       pending spent] at reached
     simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _] at reached
@@ -152,12 +152,12 @@ private theorem include_control_step
     (located : (plan setup watcher)[cursor]? = some (.includeLatest event owner)) :
     (application setup leaks).controlStep (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players (some ⟨remaining + 1, none, execution⟩) =
-      ((runtime setup).interactionStep leaks players ((runtime setup).reportNetwork leaks watcher)
+      ((runtime setup).interactionStep leaks players ((runtime setup).idleNetwork leaks)
         (.includeLatest event owner) execution).map (fun next => some ⟨remaining, none, next⟩) := by
   let app := application setup leaks
   have scheduled : scheduler setup leaks watcher execution.environmentRecall
       (execution.observeEnvironment app) = (runtime setup).interactionInstruction leaks
-        ((runtime setup).reportNetwork leaks watcher) execution.environmentRecall
+        ((runtime setup).idleNetwork leaks) execution.environmentRecall
         (execution.observeEnvironment app) (.includeLatest event owner) := by
     simp only [scheduler, position, located]
   change (scheduler setup leaks watcher execution.environmentRecall
@@ -165,7 +165,7 @@ private theorem include_control_step
   rw [scheduled, interactionStep, PMF.map_bind]
   apply bind_congr_on_support _
   intro command supported
-  have noActor := instruction_actor setup leaks watcher execution.environmentRecall
+  have noActor := instruction_actor setup leaks execution.environmentRecall
     (execution.observeEnvironment app) (.includeLatest event owner) command supported
   change command.actor? app = none at noActor
   dsimp only [app, application] at noActor ⊢
@@ -227,11 +227,11 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
   obtain ⟨next, included, rfl⟩ := middleReached
   obtain ⟨published, quiet, inputPublished⟩ :=
     ordinary_inclusion_published setup leaks bounds players
-    watcher owner event execution serving pending leaked inputs serials response
+    owner event execution serving pending leaked inputs serials response
       (ordinary response supported) next included
   have nextPosition : next.environmentRecall.length = cursor + 1 := by
     have count := (runtime setup).interactionStep_recall leaks players
-      ((runtime setup).reportNetwork leaks watcher) (.includeLatest event owner)
+      ((runtime setup).idleNetwork leaks) (.includeLatest event owner)
       (execution.respond app owner response) next included
     simpa only [responsePosition] using count
   have scheduled : scheduler setup leaks watcher next.environmentRecall
@@ -296,7 +296,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ boundarySupport)
   have position : execution.environmentRecall.length = blockOffset event.val + 1 := by
     have counted := (runtime setup).runInteractionPlan_recall leaks players
-      ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
+      ((runtime setup).idleNetwork leaks) (planPrefix setup watcher event.val)
       (ReactiveApplication.Execution.initial (application setup leaks) initialNative)
       boundary prefixRun
     simp only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add,
@@ -387,23 +387,5 @@ theorem watcher_history_clean (bounds : MessageBounds (graph setup))
   have same : reachedControl = control := Option.some.inj (reachedState.symm.trans state)
   subst reachedControl
   exact clean
-
-/-- The prescribed watcher response is silent at every actual retained site. -/
-theorem watcher_history_silent (bounds : MessageBounds (graph setup))
-    (watcher : Player) (reveals : setup.program.RevealOnly)
-    (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
-    (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
-    (history : (protocol setup leaks bounds watcher).History)
-    (control : (application setup leaks).Control) (state : history.state = some control)
-    (active : control.actor = some watcher) :
-    (application setup leaks).reportFirstUnpublished (control.execution.recall watcher)
-      (control.execution.observe (application setup leaks) watcher) = PMF.pure ⟨none⟩ := by
-  have quiet := (watcher_history_clean setup leaks bounds watcher reveals observer openable
-    history control state active).1
-  apply (application setup leaks).reportFirstUnpublished_silent
-  intro message seen
-  change message ∈ control.execution.network.leaked watcher at seen
-  rw [quiet] at seen
-  exact (List.not_mem_nil seen).elim
 
 end Vegas

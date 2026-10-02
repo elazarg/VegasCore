@@ -16,7 +16,8 @@ chosen. Withholding is a legal source choice and incurs no penalty.
 
 The scope is the explicit revelation service: initial commitments are openable,
 each source decision has its scheduled owner opportunity, and a distinct
-indifferent reporter has reserved observation and inclusion opportunities.
+indifferent watcher has reserved observation opportunities. Its report, the
+packets it observed, is included within the challenge window before settlement.
 This theorem does not remove those service assumptions or cover fresh source
 commitments. Collection is represented by the terminal net utility; an escrow
 or audit implementation must realize that payoff interpretation.

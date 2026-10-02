@@ -46,9 +46,18 @@ private theorem include_hidden_congr
   dsimp only
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     found, rightFound]
+  by_cases valid : packet.tokenValid = true
+  swap
+  · have rejected (state : State graph) :
+        (runtime.reactiveApplication leaks).handle state ⟨id, packet⟩ = none :=
+      reactiveApplication_handle_of_not_tokenValid runtime leaks state ⟨id, packet⟩
+        (Bool.eq_false_iff.mpr valid)
+    simp only [rejected, Option.getD_none, Option.isSome_none]
+    exact ⟨by rw [network], by rw [receipts], views, recall⟩
   have handler (state : State graph) :
       (runtime.reactiveApplication leaks).handle state ⟨id, packet⟩ =
-        handle runtime state ⟨id, packet.call⟩ := rfl
+        handle runtime state ⟨id, packet.call⟩ :=
+    reactiveApplication_handle_of_tokenValid runtime leaks state ⟨id, packet⟩ valid
   simp only [handler]
   refine ⟨by rw [network], by rw [receipts, decision], ?_, recall⟩
   intro who different
@@ -72,8 +81,9 @@ theorem reactive_include_binding_hidden_congr
       left.application.playerView who = right.application.playerView who)
     (recall : ∀ who, who ≠ hidden → left.recall who = right.recall who)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (evidence : Option (OpeningFact graph))
-    (found : left.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
+    (evidence : Option (OpeningFact graph)) {token : Option (ReadinessToken graph)}
+    (found : left.network.lookup id =
+      some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) :
     let first := left.includePending (runtime.reactiveApplication leaks) id
     let second := right.includePending (runtime.reactiveApplication leaks) id
     first.network = second.network ∧ first.receipts = second.receipts ∧
@@ -86,7 +96,7 @@ theorem reactive_include_binding_hidden_congr
     rw [← State.publicView_bindingIncludable runtime left.application id event candidate,
       ← State.publicView_bindingIncludable runtime right.application id event candidate, publicEq]
   apply include_hidden_congr runtime leaks left right hidden network receipts
-    views recall id ⟨.commitment event candidate, evidence⟩ found decision
+    views recall id ⟨.commitment event candidate, evidence, token⟩ found decision
   intro who different
   exact handle_commitment_playerView_congr runtime left.application right.application who
     id event candidate (views who different)
@@ -101,7 +111,8 @@ theorem reactive_include_withhold_hidden_congr
       left.application.playerView who = right.application.playerView who)
     (recall : ∀ who, who ≠ hidden → left.recall who = right.recall who)
     (id : MessageId Player) (event : graph.EventId) (evidence : Option (OpeningFact graph))
-    (found : left.network.lookup id = some ⟨id, ⟨.withhold event, evidence⟩⟩) :
+    {token : Option (ReadinessToken graph)}
+    (found : left.network.lookup id = some ⟨id, ⟨.withhold event, evidence, token⟩⟩) :
     let first := left.includePending (runtime.reactiveApplication leaks) id
     let second := right.includePending (runtime.reactiveApplication leaks) id
     first.network = second.network ∧ first.receipts = second.receipts ∧
@@ -124,7 +135,7 @@ theorem reactive_include_withhold_hidden_congr
     apply Bool.eq_iff_iff.mpr
     rw [handle_withhold_isSome_iff, handle_withhold_isSome_iff, ready, timely]
   apply include_hidden_congr runtime leaks left right hidden network receipts
-    views recall id ⟨.withhold event, evidence⟩ found decision
+    views recall id ⟨.withhold event, evidence, token⟩ found decision
   intro who different
   by_cases authored : id.1 = who
   · exact handle_playerView_congr_of_sender runtime left.application right.application who
@@ -260,9 +271,9 @@ theorem reactive_include_opening_hidden_congr
     (result : PublicationResult (L.Val payload))
     (resolved : EventCode.resolveOutput? binding checks true left.application.config.store =
       some result)
-    (evidence : Option (OpeningFact graph))
+    (evidence : Option (OpeningFact graph)) {token : Option (ReadinessToken graph)}
     (found : left.network.lookup id =
-      some ⟨id, ⟨.opening event candidate ⟨payload, value⟩, evidence⟩⟩) :
+      some ⟨id, ⟨.opening event candidate ⟨payload, value⟩, evidence, token⟩⟩) :
     let first := left.includePending (runtime.reactiveApplication leaks) id
     let second := right.includePending (runtime.reactiveApplication leaks) id
     first.network = second.network ∧ first.receipts = second.receipts ∧
@@ -284,7 +295,7 @@ theorem reactive_include_opening_hidden_congr
         rightStored result rightResolved]
     rfl
   apply include_hidden_congr runtime leaks left right hidden network receipts
-    views recall id ⟨.opening event candidate ⟨payload, value⟩, evidence⟩ found decision
+    views recall id ⟨.opening event candidate ⟨payload, value⟩, evidence, token⟩ found decision
   intro who different
   exact handle_opening_unrepaired_congr runtime left.application right.application who
     (views who different) id event candidate owner payload binding checks outputEq codeEq node

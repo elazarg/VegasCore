@@ -63,6 +63,14 @@ theorem quiet_bob_fixed (bit : Bool) : NativeFixed bit (quietBob bit).applicatio
   have initial := native_initial_fixed bit
   exact ⟨initial.1.copy rfl rfl rfl, initial.2.1.copy rfl rfl rfl, initial.2.2⟩
 
+/-- Bob's publication is ready at his quiet turn, so his packets for it carry
+its readiness token. -/
+theorem quiet_bob_token (bit : Bool) (packet : Payload nativeGraph)
+    (named : packet.event? nativeGraph = some bobPublication) :
+    (quietBob bit).application.publicView.tokenFor packet = some ⟨bobPublication⟩ :=
+  (quietBob bit).application.publicView_tokenFor_of_ready packet bobPublication named
+    (initial_bob_ready bit)
+
 theorem quiet_guess_accepted (bit guess : Bool) :
     ∃ next, handle nativeRuntime (quietBob bit).application
       ⟨(bob, 0), if guess then .opening bobPublication bobHandle ⟨.bool, true⟩
@@ -180,7 +188,9 @@ theorem quiet_guess_fixed (bit guess : Bool) :
   rw [applicationEq]
   exact (native_fixed_invariant bit).handle (quietBob bit).application
     ⟨(bob, 0), ⟨if guess then .opening bobPublication bobHandle ⟨.bool, true⟩
-      else .withhold bobPublication, none⟩⟩ next (quiet_bob_fixed bit) accepted
+      else .withhold bobPublication, none, some ⟨bobPublication⟩⟩⟩ next (quiet_bob_fixed bit)
+      ((reactiveApplication_handle_of_tokenValid nativeRuntime nativeLeaks _ _
+        (by cases guess <;> rfl)).trans accepted)
 
 theorem quiet_alice_fixed (bit guess : Bool) :
     NativeFixed bit (quietAlice bit guess).application := by

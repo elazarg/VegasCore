@@ -33,10 +33,10 @@ variable {Player : Type} [DecidableEq Player]
 def freshServiceEnvelope (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph)) : Prop :=
   match message.payload.call with
-  | .commitment _event candidate =>
+  | .commitment event candidate =>
       view.BindingIncludable runtime ⟨message.id, message.payload.call⟩ ∧
       candidate = (message.sender, .prepared (view.bindingCount message.sender)) ∧
-      message.payload.evidence = none
+      message.payload.evidence = none ∧ message.payload.token = some ⟨event⟩
   | .opening event candidate raw =>
       view.EventReady event ∧
       (match view.activatedAt event with
@@ -47,7 +47,8 @@ def freshServiceEnvelope (view : PublicView graph)
       (match nodeView graph event with
         | .resolve owner payload binding _ _ _ =>
             message.sender = owner ∧ candidate.1 = owner ∧
-            view.accepted binding.field = some candidate ∧ raw.ty = payload
+            view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
+            message.payload.token = some ⟨event⟩
         | .bind .. | .sample .. => False)
   | .withhold .. | .malformed .. => False
 
@@ -103,23 +104,26 @@ theorem permittedServiceEnvelope_wrong_serial (view : PublicView graph)
 
 theorem freshServiceEnvelope_binding_iff (view : PublicView graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (evidence : Option (OpeningFact graph)) :
-    runtime.freshServiceEnvelope view ⟨id, ⟨.commitment event candidate, evidence⟩⟩ ↔
+    (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph)) :
+    runtime.freshServiceEnvelope view ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ ↔
       view.BindingIncludable runtime ⟨id, .commitment event candidate⟩ ∧
-      candidate = (id.1, .prepared (view.bindingCount id.1)) ∧ evidence = none := Iff.rfl
+      candidate = (id.1, .prepared (view.bindingCount id.1)) ∧ evidence = none ∧
+        token = some ⟨event⟩ := Iff.rfl
 
 /-- Every conforming fresh commitment has one fixed public packet. Private
 material is intentionally unrestricted and remains the repair proof's concern. -/
 theorem freshServiceEnvelope_binding_packet
     (view : PublicView graph) (id : MessageId Player) (event : graph.EventId)
     (candidate : Handle graph) (evidence : Option (OpeningFact graph))
+    (token : Option (ReadinessToken graph))
     (permitted : runtime.freshServiceEnvelope view
-      ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
-    (⟨.commitment event candidate, evidence⟩ : WitnessedPacket graph) =
-      ⟨.commitment event (id.1, .prepared (view.bindingCount id.1)), none⟩ := by
-  obtain ⟨_, allocated, empty⟩ :=
-    (runtime.freshServiceEnvelope_binding_iff view id event candidate evidence).mp permitted
-  rw [allocated, empty]
+      ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) :
+    (⟨.commitment event candidate, evidence, token⟩ : WitnessedPacket graph) =
+      ⟨.commitment event (id.1, .prepared (view.bindingCount id.1)), none, some ⟨event⟩⟩ := by
+  obtain ⟨_, allocated, empty, tokened⟩ :=
+    (runtime.freshServiceEnvelope_binding_iff view id event candidate evidence token).mp
+      permitted
+  rw [allocated, empty, tokened]
 
 /-- Every conforming fresh call names a publicly ready event. -/
 theorem freshServiceEnvelope_ready (view : PublicView graph)
@@ -208,20 +212,20 @@ theorem freshServiceEnvelope_binding_shape
     (named : message.payload.call.event? graph = some event)
     (permitted : runtime.freshServiceEnvelope view message) :
     message.sender = owner ∧ message.payload =
-      ⟨.commitment event (owner, .prepared (view.bindingCount owner)), none⟩ := by
-  rcases message with ⟨id, ⟨packet, evidence⟩⟩
+      ⟨.commitment event (owner, .prepared (view.bindingCount owner)), none, some ⟨event⟩⟩ := by
+  rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
       have allowed := (runtime.freshServiceEnvelope_binding_iff view id event candidate
-        evidence).mp permitted
+        evidence token).mp permitted
       have includable := allowed.1
       simp only [PublicView.BindingIncludable, node] at includable
       have authored : id.1 = owner := includable.2.2.1
       refine ⟨authored, ?_⟩
       have canonical := runtime.freshServiceEnvelope_binding_packet view id event candidate
-        evidence permitted
+        evidence token permitted
       simpa only [authored] using canonical
   | opening actual candidate raw =>
       change some actual = some event at named
@@ -240,9 +244,10 @@ theorem permittedServiceEnvelope_binding
     (counted : serial = Message.distinctAuthoredCount ledger who) :
     runtime.permittedServiceEnvelope state.publicView ledger
       ⟨(who, serial),
-        ⟨.commitment event (who, .prepared (state.publicView.bindingCount who)), none⟩⟩ = true :=
+        ⟨.commitment event (who, .prepared (state.publicView.bindingCount who)), none,
+          some ⟨event⟩⟩⟩ = true :=
   (runtime.permittedServiceEnvelope_iff _ _ _).mpr
-    (Or.inr ⟨counted, includable, rfl, rfl⟩)
+    (Or.inr ⟨counted, includable, rfl, rfl, rfl⟩)
 
 /-- The opening branch exposes exactly the phase, association, certificate and
 public-guard facts used by the existing guarded-response classification. -/
@@ -255,16 +260,19 @@ theorem freshServiceEnvelope_opening_iff
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (candidate : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph)) :
-    runtime.freshServiceEnvelope view ⟨id, ⟨.opening event candidate raw, evidence⟩⟩ ↔
+    (candidate : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph))
+    (token : Option (ReadinessToken graph)) :
+    runtime.freshServiceEnvelope view ⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩ ↔
       view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
         | some entered => view.clock - entered < runtime.deadline event) ∧
-      certifiedOpening (⟨.opening event candidate raw, evidence⟩ : WitnessedPacket graph) = true ∧
-      view.openingGuardsAccepted ⟨.opening event candidate raw, evidence⟩ = true ∧
+      certifiedOpening (⟨.opening event candidate raw, evidence, token⟩ :
+        WitnessedPacket graph) = true ∧
+      view.openingGuardsAccepted ⟨.opening event candidate raw, evidence, token⟩ = true ∧
       id.1 = owner ∧ candidate.1 = owner ∧
-      view.accepted binding.field = some candidate ∧ raw.ty = payload := by
+      view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
+        token = some ⟨event⟩ := by
   simp only [freshServiceEnvelope, node, Message.sender]
 
 /-- A conforming packet at a resolve phase is necessarily the currently
@@ -282,9 +290,9 @@ theorem freshServiceEnvelope_resolution_shape
     (permitted : runtime.freshServiceEnvelope view message) :
     ∃ candidate raw, message.sender = owner ∧ candidate.1 = owner ∧
       view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
-      message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ ∧
+      message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ ∧
       view.openingGuardsAccepted message.payload = true := by
-  rcases message with ⟨id, ⟨packet, evidence⟩⟩
+  rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
   | commitment actual candidate =>
       change some actual = some event at named
@@ -294,9 +302,9 @@ theorem freshServiceEnvelope_resolution_shape
   | opening actual candidate raw =>
       change some actual = some event at named
       cases Option.some.inj named
-      obtain ⟨_, _, certified, guards, authored, owned, associated, typed⟩ :=
+      obtain ⟨_, _, certified, guards, authored, owned, associated, typed, tokened⟩ :=
         (runtime.freshServiceEnvelope_opening_iff view id event owner payload binding checks
-          outputEq codeEq node candidate raw evidence).mp permitted
+          outputEq codeEq node candidate raw evidence token).mp permitted
       have evidenceEq : evidence = some ⟨candidate, raw⟩ := by
         cases evidence with
         | none => simp only [certifiedOpening, Bool.false_eq_true] at certified
@@ -304,7 +312,7 @@ theorem freshServiceEnvelope_resolution_shape
             simp only [certifiedOpening, decide_eq_true_eq] at certified
             exact congrArg some certified
       refine ⟨candidate, raw, authored, owned, associated, typed, ?_, guards⟩
-      rw [evidenceEq]
+      rw [evidenceEq, tokened]
   | withhold actual | malformed =>
       simp only [freshServiceEnvelope] at permitted
 

@@ -55,27 +55,20 @@ theorem PrefixCheckpoint.ownerOpportunity
     invariant := checkpoint.invariant.copy rfl rfl rfl
     binding := checkpoint.binding.copy rfl rfl rfl }
 
-theorem menu_decode_reports (setup : Setup (Player := Player) (L := L))
+theorem menu_decode_silent (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (watcher : Player)
     (profile : Profile (information setup leaks bounds watcher).behavioralSignature) :
     (menu setup leaks bounds watcher).decodeProfile (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) profile watcher =
-        (application setup leaks).reportFirstUnpublished := by
+        (application setup leaks).silentPolicy := by
   funext past view
-  have deterministic : ∃ response,
-      (application setup leaks).reportFirstUnpublished past view = PMF.pure response := by
-    unfold ReactiveApplication.reportFirstUnpublished
-    split <;> exact ⟨_, rfl⟩
-  obtain ⟨reported, law⟩ := deterministic
-  rw [law]
   apply pmf_eq_pure_of_support_subset_singleton
   intro response supported
   have allowed := (menu setup leaks bounds watcher).decode_embedPolicy_covered
     (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
     watcher (profile watcher) past view response supported
-  simpa only [menu, ↓reduceIte, law, Set.Finite.mem_toFinset,
-    PMF.mem_support_pure_iff _ _, Set.mem_singleton_iff] using allowed
+  simpa only [menu, ↓reduceIte, Finset.mem_singleton, Set.mem_singleton_iff] using allowed
 
 theorem menu_decode_ordinary (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -145,7 +138,7 @@ theorem owner_supported
     ∃ boundary : (application setup leaks).Execution,
       boundary ∈ ((initialLaw setup).bind fun state =>
         (runtime setup).runInteractionPlan leaks players
-          ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
+          ((runtime setup).idleNetwork leaks) (planPrefix setup watcher event.val)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).support ∧
       history.state = some ⟨horizon setup watcher - blockOffset event.val - 1, some owner,
         ownerOpportunity setup leaks owner boundary⟩ ∧
@@ -178,14 +171,14 @@ theorem owner_supported
   obtain ⟨initialNative, nativeSupport, reached⟩ := Set.mem_iUnion₂.mp seen
   obtain ⟨boundary, executed, stateEq⟩ := PMF.support_map .. ▸ reached
   have boundarySupport : boundary ∈ ((initialLaw setup).bind fun state =>
-      (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
+      (runtime setup).runInteractionPlan leaks players ((runtime setup).idleNetwork leaks)
         (planPrefix setup watcher event.val)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
     rw [PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨initialNative, nativeSupport, executed⟩
   obtain ⟨initial, initialSupport, source, checkpoint, decoded, _priorView⟩ :=
     initialized_prefix_support setup leaks bounds watcher reveals observer openable players
-      (menu_decode_reports setup leaks bounds watcher profile)
+      (menu_decode_silent setup leaks bounds watcher profile)
       (menu_decode_ordinary setup leaks bounds watcher profile)
       event.val event.isLt.le boundary boundarySupport
   have pending : ∀ message ∈ boundary.network.pending,
@@ -207,7 +200,7 @@ theorem owner_supported
     omega
   have position : boundary.environmentRecall.length = blockOffset event.val := by
     have counted := (runtime setup).runInteractionPlan_recall leaks players
-      ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
+      ((runtime setup).idleNetwork leaks) (planPrefix setup watcher event.val)
       (ReactiveApplication.Execution.initial (application setup leaks) initialNative)
       boundary executed
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add,

@@ -106,8 +106,10 @@ theorem rawBinding_reserved_config
     intro field associated
     exact unused field ((congrFun accepted field).symm.trans associated)
   have found : submitted.network.lookup id =
-      some ⟨id, ⟨.commitment event (who, .prepared serial), none⟩⟩ :=
-    serials.lookup_submit who ⟨.commitment event (who, .prepared serial), none⟩
+      some ⟨id, ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩⟩ := by
+    rw [← execution.application.publicView_tokenFor_of_ready
+      (.commitment event (who, .prepared serial)) event rfl ready]
+    exact respond_submit_lookup runtime leaks execution who call serials
   have handled := runtime.handle_commitment_eq submitted.application id event
     (who, .prepared serial) who payload outputEq codeEq node submittedReady submittedTimely
       rfl rfl submittedVacant submittedUnused
@@ -120,11 +122,9 @@ theorem rawBinding_reserved_config
   rw [selectedStep]
   simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
-  change PMF.pure ((handle runtime submitted.application
-    ⟨id, .commitment event (who, .prepared serial)⟩).getD submitted.application |>.config,
-      submitted.receipts ++ [(id, (handle runtime submitted.application
-        ⟨id, .commitment event (who, .prepared serial)⟩).isSome)]) = _
-  rw [handled, Option.getD_some, Option.isSome_some]
+  rw [(reactiveApplication_handle_of_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_commitment _ _ _)).trans handled, Option.getD_some,
+    Option.isSome_some]
   change PMF.pure (submitted.application.config.complete event submittedReady
     (cast (congrArg EventField.Action outputEq.symm) (submitted.application.bindingResult _ _))
     (cast (congrArg EventField.Value outputEq.symm) (submitted.application.bindingResult _ _)),

@@ -86,9 +86,9 @@ policies does not follow from that proof.
 
 The [implementation stack](../se-compilation-stack.md) proposes two restriction
 edges over the same native runtime: first restore ordinary-player choices with
-reporting prescribed, then restore the watcher's choices. The second edge
-initially uses identically zero watcher utility. This separates reporting from
-sender deterrence without assuming collection against arbitrary watcher play.
+the watcher's silence prescribed, then restore the watcher's choices. The second
+edge initially uses identically zero watcher utility. This separates observation
+from sender deterrence without assuming collection against arbitrary watcher play.
 Ordinary-player comparisons remain universal over the other allowed policies;
 accepted side evidence already exposes a gap in the pilot's Alice-only charge.
 The native decision-recall adaptation is checked; the plan puts response coverage

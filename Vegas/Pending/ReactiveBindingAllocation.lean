@@ -140,9 +140,7 @@ theorem rawBinding_reserved_preparedPrefix
     rw [interactionInstruction, chosen, PMF.pure_bind]
     simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
     exact PMF.bind_pure _
-  have found : submitted.network.lookup id =
-      some ⟨id, ⟨.commitment event (who, .prepared serial), none⟩⟩ :=
-    serials.lookup_submit who ⟨.commitment event (who, .prepared serial), none⟩
+  have found := respond_submit_lookup runtime leaks execution who material.call serials
   have fixed : submitted.application.candidates.lookup (who, .prepared serial) ≠ .fresh :=
     submitStep_commitment_fixed _ who event (.prepared serial)
   have unchanged := runtime.reactive_include_fixed_binding_candidates leaks submitted id event

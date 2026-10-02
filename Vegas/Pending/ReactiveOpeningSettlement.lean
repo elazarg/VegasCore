@@ -35,7 +35,20 @@ def windowEnvelope (runtime : EventGraphRuntime graph)
     (initial : (runtime.reactiveApplication leaks).Execution) :
     Message Player (WitnessedPacket graph) :=
   ⟨(owner, initial.network.nextSerial owner),
-    ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩⟩
+    ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
+      initial.application.publicView.tokenFor (.opening event candidate raw)⟩⟩
+
+/-- The prescribed opening envelope of a ready event carries a valid token. -/
+theorem windowEnvelope_tokenValid (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
+    (initial : (runtime.reactiveApplication leaks).Execution)
+    (ready : initial.application.config.cut.Ready event) :
+    (runtime.windowEnvelope leaks owner event candidate raw initial).payload.tokenValid = true := by
+  change (WitnessedPacket.mk (.opening event candidate raw) (some ⟨candidate, raw⟩)
+    (initial.application.publicView.tokenFor (.opening event candidate raw))).tokenValid = true
+  rw [initial.application.publicView_tokenFor_of_ready _ event rfl ready]
+  exact WitnessedPacket.tokenValid_opening event candidate raw _
 
 structure OpeningWindowFrame (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -156,7 +169,8 @@ theorem OpeningWindowFrame.opening_response (runtime : EventGraphRuntime graph)
       (current.respond (runtime.reactiveApplication leaks) owner
         (runtime.windowOpening leaks event candidate raw)) := by
   let app := runtime.reactiveApplication leaks
-  let packet : WitnessedPacket graph := ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩
+  let packet : WitnessedPacket graph := ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
+    initial.application.publicView.tokenFor (.opening event candidate raw)⟩
   have before : openingPassed (some slot) slot.val = false := by simp [openingPassed]
   have after : openingPassed (some slot) (slot.val + 1) = true := by simp [openingPassed]
   have serial : current.network.nextSerial owner = initial.network.nextSerial owner := by
@@ -172,7 +186,7 @@ theorem OpeningWindowFrame.opening_response (runtime : EventGraphRuntime graph)
       (current.network.submit owner packet).2 := by
     change (current.network.submit owner (app.packet current.application owner
       (current.network.known owner) (disclosureSubmission (.opening event candidate raw)))).2 = _
-    rw [materialized]
+    rw [materialized, frame.application]
   refine ⟨frame.application, ?_, frame.receipts, ?_, ?_, ?_, ?_, ?_⟩
   · rw [network]
     exact frame.ledger

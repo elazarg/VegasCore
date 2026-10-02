@@ -67,7 +67,7 @@ theorem owner_history_local_readout
     have count := (runtime setup).runInteractionPlan_recall leaks
       ((menu setup leaks extended watcher).decodeProfile (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher) reference)
-      ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher event.val)
+      ((runtime setup).idleNetwork leaks) (planPrefix setup watcher event.val)
       (ReactiveApplication.Execution.initial (application setup leaks) nativeInitial)
       boundary reached
     simpa only [ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add,

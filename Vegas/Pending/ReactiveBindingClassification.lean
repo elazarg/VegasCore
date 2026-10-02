@@ -35,7 +35,7 @@ theorem normalize_binding_of_canonical_packet
     (fresh : state.candidates.lookup (who, .prepared serial) = .fresh)
     (emitted : submission.emit
       ((runtime.reactiveApplication leaks).submit state who submission) who known =
-        ⟨.commitment event (who, .prepared serial), none⟩) :
+        ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩) :
     submission.normalizeReactive who
         ((runtime.reactiveApplication leaks).observePlayer state who) known =
       ⟨⟨.commitment event (who, .prepared serial), submission.call.opening⟩, .none⟩ := by
@@ -78,7 +78,7 @@ theorem normal_binding_of_canonical_packet
       ((runtime.reactiveApplication leaks).observePlayer state who) known = submission)
     (emitted : submission.emit
       ((runtime.reactiveApplication leaks).submit state who submission) who known =
-        ⟨.commitment event (who, .prepared serial), none⟩) :
+        ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩) :
     submission = ⟨⟨.commitment event (who, .prepared serial), submission.call.opening⟩, .none⟩ :=
   normal.symm.trans (runtime.normalize_binding_of_canonical_packet leaks state who known
     submission event serial fresh emitted)
@@ -114,7 +114,8 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
         opening.bind (fun raw => raw.as? payload) = none) ∨
       (∃ submission, response = ⟨some (.submit submission)⟩ ∧
         submission.emit (app.submit execution.application who submission) who
-          (execution.network.known who) ≠ ⟨.commitment event (who, .prepared serial), none⟩) ∨
+          (execution.network.known who) ≠
+            ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩) ∨
       (response = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
         response = ⟨some (.replay id)⟩) := by
   have turnSome := execution.application.publicView.ownTurn?_of_ownTurn who event turn
@@ -144,7 +145,7 @@ theorem binding_response_cases [Fintype Player] (bounds : MessageBounds graph)
       | submit submission =>
           by_cases emitted : submission.emit (app.submit execution.application who submission)
               who (execution.network.known who) =
-                ⟨.commitment event (who, .prepared serial), none⟩
+                ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩
           · have normal : submission.normalizeReactive who
                 ((runtime.reactiveApplication leaks).observePlayer execution.application who)
                   (execution.network.known who) = submission := by

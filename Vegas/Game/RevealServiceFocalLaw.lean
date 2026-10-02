@@ -45,7 +45,7 @@ theorem focal_plan_prefix_law
     let players := (menu setup leaks extended watcher).decodeProfile (initialLaw setup)
       (horizon setup watcher) (scheduler setup leaks watcher) selected
     ((initialLaw setup).bind fun state =>
-      (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
+      (runtime setup).runInteractionPlan leaks players ((runtime setup).idleNetwork leaks)
         (planPrefix setup watcher count)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).map
           (fun final => sourcePrefix? setup count final.application.config) =

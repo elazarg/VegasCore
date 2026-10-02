@@ -85,9 +85,12 @@ theorem roster_reveal_source_step (setup : Setup (Player := Player) (L := L))
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (PublicationResult.success value))) :=
-    handle_opening_eq (runtime setup) initial.application _ event candidate owner payload
+    (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+      ((runtime setup).windowEnvelope_tokenValid leaks owner event candidate _ initial
+        ready)).trans
+    (handle_opening_eq (runtime setup) initial.application _ event candidate owner payload
       (refs.get binding) [] outputEq codeEq node ready timely rfl owned associated
-      value valid stored (.success value) resolved
+      value valid stored (.success value) resolved)
   obtain ⟨state, publishedPackets, _records⟩ :=
     (runtime setup).openingWindow_expiry leaks owner event payload
     (refs.get binding) [] outputEq codeEq node candidate value initial ready serials clean owned

@@ -69,7 +69,7 @@ private def bound (bit : Bool) : EventGraphRuntime.State graph :=
     candidates := (offered bit).application.candidates.freeze candidate }
 
 private theorem accepts (bit : Bool) :
-    app.handle (offered bit).application ⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩ =
+    app.handle (offered bit).application ⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ =
       some (bound bit) := by
   have unused : (offered bit).application.HandleUnused candidate := by
     intro field
@@ -85,7 +85,7 @@ private theorem accepts (bit : Bool) :
   cases bit <;> rfl
 
 private theorem lookup (bit : Bool) : (offered bit).network.lookup (0, 1) =
-    some ⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩ := rfl
+    some ⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ := rfl
 
 private theorem included_application (bit : Bool) : (included bit).application = bound bit := by
   unfold included ReactiveApplication.Execution.includePending MessageNetwork.includePending
@@ -121,7 +121,7 @@ theorem proof_before_association (bit : Bool) :
   cases bit <;> decide
 
 theorem association_without_new_certificate (bit : Bool) :
-    (included bit).network.ledger = [⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩] ∧
+    (included bit).network.ledger = [⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩] ∧
       (included bit).receipts = [((0, 1), true)] ∧
       runtime.bindingEvidenceObserved leaks ((included bit).observe app 1) (named bit) := by
   refine ⟨rfl, ?_, candidate, ?_, ?_⟩
@@ -279,7 +279,7 @@ private def boundAfter (bit : Bool) (response : app.Action) : EventGraphRuntime.
 
 private theorem acceptsAfter (bit : Bool) (response : app.Action) :
     app.handle (offeredAfter bit response).application
-      ⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩ = some (boundAfter bit response) := by
+      ⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ = some (boundAfter bit response) := by
   have publicEq := offeredAfter_public bit response
   have accepted := congrArg PublicView.accepted publicEq
   change (offeredAfter bit response).application.accepted =
@@ -319,7 +319,7 @@ private theorem acceptsAfter (bit : Bool) (response : app.Action) :
   simpa only [meaning, cast_eq, boundAfter] using result
 
 private theorem bobKnown (bit : Bool) : (observed bit).network.known 1 =
-    [⟨(0, 0), ⟨.commitment 0 candidate, some (opening bit)⟩⟩] := by
+    [⟨(0, 0), ⟨.commitment 0 candidate, some (opening bit), some ⟨0⟩⟩⟩] := by
   cases bit <;> rfl
 
 private theorem reacted_missing (bit : Bool) (response : app.Action) :
@@ -342,10 +342,10 @@ private theorem reacted_missing (bit : Bool) (response : app.Action) :
 
 private theorem lookupAfter (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).network.lookup (0, 1) =
-      some ⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩ := by
+      some ⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ := by
   change ((reacted bit response).network.pending ++
     [(⟨(0, (reacted bit response).network.nextSerial 0),
-      ⟨.commitment 0 candidate, none⟩⟩ : Message (Fin 3) app.Payload)]).find?
+      ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ : Message (Fin 3) app.Payload)]).find?
         (fun message => message.id = (0, 1)) = _
   rw [reacted_alice_serial, List.find?_append]
   have missing := reacted_missing bit response
@@ -456,7 +456,7 @@ private theorem includedAfter_carol (bit : Bool) (response : app.Action) :
             MessageNetwork.PlayerView (Fin 3) app.Payload) =
         ⟨(offered bit).network.leaked 2, (offered bit).network.ledger ++ [_]⟩
       exact congrArg (fun prior : MessageNetwork.PlayerView (Fin 3) app.Payload =>
-        (⟨prior.leaked, prior.ledger ++ [⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩]⟩ :
+        (⟨prior.leaked, prior.ledger ++ [⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩]⟩ :
           MessageNetwork.PlayerView (Fin 3) app.Payload)) messages
     · unfold includedAfter included ReactiveApplication.Execution.includePending
         MessageNetwork.includePending
@@ -493,11 +493,11 @@ private theorem reacted_leaked (bit : Bool) (response : app.Action) (who : Fin 3
 later accepted envelope carries no certificate of its own. -/
 theorem association_after_arbitrary_response (bit : Bool) (response : app.Action) :
     (includedAfter bit response).network.ledger =
-        [⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩] ∧
+        [⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩] ∧
       runtime.bindingEvidenceObserved leaks
         ((includedAfter bit response).observe app 1) (named bit) := by
   have ledger : (includedAfter bit response).network.ledger =
-      [⟨(0, 1), ⟨.commitment 0 candidate, none⟩⟩] := by
+      [⟨(0, 1), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩] := by
     unfold includedAfter ReactiveApplication.Execution.includePending MessageNetwork.includePending
     rw [lookupAfter]
     change (reacted bit response).network.ledger ++ [_] = _

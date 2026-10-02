@@ -122,14 +122,15 @@ private theorem environment_openable_origin
       | none => simpa only [found] using opened
       | some message =>
           rw [found] at opened
-          change ((handle (runtime setup) execution.application
-            ⟨message.id, message.payload.call⟩).getD execution.application).candidates.lookup
+          change (((application setup leaks).handle execution.application
+            message).getD execution.application).candidates.lookup
               candidate = .openable raw at opened
-          cases accepted : handle (runtime setup) execution.application
-              ⟨message.id, message.payload.call⟩ with
-          | none => simpa only [accepted, Option.getD_none] using opened
+          cases reactiveAccepted : (application setup leaks).handle execution.application
+              message with
+          | none => simpa only [reactiveAccepted, Option.getD_none] using opened
           | some state =>
-              simp only [accepted, Option.getD_some] at opened
+              simp only [reactiveAccepted, Option.getD_some] at opened
+              have accepted := reactiveHandle_call reactiveAccepted
               cases packet : message.payload.call with
               | commitment event selected =>
                   rw [packet] at accepted

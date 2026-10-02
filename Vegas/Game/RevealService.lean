@@ -54,6 +54,18 @@ theorem RevealOnly.event_owner {Γ : SourceCtx Player L} {O : Finset VarId}
   | reveal published owner name fresh source unresolved next ih =>
       exact Fin.cases ⟨owner, rfl⟩ (fun later => ih reveals later) event
 
+/-- A revelation program compiles only publications: it has no binding event. -/
+theorem RevealOnly.outputLayout_publication {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (reveals : program.RevealOnly)
+    (event : Fin (eventCount program)) :
+    ∃ payload, outputLayout program event = .publication payload := by
+  induction program with
+  | ret payoffs => exact Fin.elim0 event
+  | sample name fresh law next ih => exact reveals.elim
+  | commit name owner fresh guard next ih => exact reveals.elim
+  | reveal published owner name fresh source unresolved next ih =>
+      exact Fin.cases ⟨_, rfl⟩ (fun later => ih reveals later) event
+
 end Vegas
 
 namespace Vegas
@@ -121,6 +133,17 @@ theorem source_owner (setup : Setup (Player := Player) (L := L))
   change (toEventGraph setup.program).actor? event = some owner
   rw [← eventOwner?_eq_actor, owned]
 
+/-- The service graph of a revelation program has no binding event. -/
+theorem reveal_publications (setup : Setup (Player := Player) (L := L))
+    (reveals : setup.program.RevealOnly) (event : (graph setup).EventId) (owner : Player)
+    (payload : L.Ty) : (graph setup).outputLayout event ≠ .binding owner payload := by
+  obtain ⟨published, publication⟩ :=
+    Vegas.RevealOnly.outputLayout_publication setup.program reveals event
+  intro binding
+  change outputLayout setup.program event = _ at binding
+  rw [publication] at binding
+  cases binding
+
 def block (setup : Setup (Player := Player) (L := L)) (watcher : Player)
     (event : (graph setup).EventId) : List (ServiceInstruction (graph setup)) :=
   (match (graph setup).actor? event with
@@ -170,13 +193,14 @@ abbrev application := (runtime setup).reactiveApplication leaks
 def initialLaw : PMF (EventGraphRuntime.State (graph setup)) :=
   setup.initialLaw.map (fun initial => EventGraphRuntime.State.initial (setup.eventInputs initial))
 
-/-- The fixed service consults only its own public command recall and the
-existing public report selector. Private sampling remains the given rule. -/
+/-- The fixed service consults only its own public command recall. Its network
+slot is idle: it includes nothing beyond the reserved inclusion of each owner's
+latest packet. Private sampling remains the given rule. -/
 def scheduler (watcher : Player) : (application setup leaks).Scheduler := fun history view =>
   match (plan setup watcher)[history.length]? with
   | none => PMF.pure .wait
   | some instruction => (runtime setup).interactionInstruction leaks
-      ((runtime setup).reportNetwork leaks watcher) history view instruction
+      ((runtime setup).idleNetwork leaks) history view instruction
 
 /-- With a finitely supported prior and a finitely branching leak rule, all of
 the fixed service's nature branches finitely: its own instructions are
@@ -193,7 +217,7 @@ instance scheduler_finiteNature [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     · simp
     · rename_i instruction _
       cases instruction with
-      | wire => simp [(runtime setup).reportNetwork_instruction leaks watcher history view]
+      | wire => simp [(runtime setup).idleNetwork_instruction leaks history view]
       | _ => simp [EventGraphRuntime.interactionInstruction]
 
 abbrev horizon (watcher : Player) : Nat := (plan setup watcher).length
@@ -311,36 +335,26 @@ theorem ordinary_response_cases (who : Player)
 open Classical in
 /-- This restricts the existing native menu to silence, a supported opening,
 and published replay aliases. Source value coverage remains a proof obligation.
-The watcher follows the existing reporting policy at every local input. -/
+The watcher only observes: it transmits nothing at every local input. -/
 def menu (watcher : Player) : (application setup leaks).ResponseMenu where
-  actions who past view := if who = watcher then
-      ((application setup leaks).reportFirstUnpublished_support_finite past view).toFinset
+  actions who past view := if who = watcher then {⟨none⟩}
     else ordinaryActions setup leaks bounds who past view
   nonempty who past view := by
     split
-    · obtain ⟨action, supported⟩ :=
-        ((application setup leaks).reportFirstUnpublished past view).support_nonempty
-      exact ⟨action, (Set.Finite.mem_toFinset _).mpr supported⟩
+    · exact ⟨⟨none⟩, Finset.mem_singleton_self _⟩
     · exact ⟨⟨none⟩, silence_ordinary setup leaks bounds who past view⟩
 
-theorem report_effective (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
-    (supported : response ∈
-      ((application setup leaks).reportFirstUnpublished past view).support) :
-    response ∈ (bounds.menu (runtime setup) leaks).actions who past view := by
-  unfold ReactiveApplication.reportFirstUnpublished at supported
-  cases found : view.messages.leaked.find? (fun message =>
-      decide (message.id ∉ view.messages.ledger.map Message.id)) with
-  | none =>
-      rw [found, PMF.mem_support_pure_iff _ _] at supported
-      subst response
-      exact silence_effective setup leaks bounds who past view
-  | some message =>
-      rw [found, PMF.mem_support_pure_iff _ _] at supported
-      subst response
-      apply bounds.known_replay_available (runtime setup) leaks who past view message.id
-      exact ⟨message, List.mem_append_left _ (List.mem_append_right _
-        (List.mem_of_find?_eq_some found)), rfl⟩
+theorem menu_watcher (watcher : Player) (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) :
+    (menu setup leaks bounds watcher).actions watcher past view = {⟨none⟩} := by
+  simp only [menu, ↓reduceIte]
+
+theorem menu_ordinary (watcher who : Player) (ordinary : who ≠ watcher)
+    (past : List (application setup leaks).PlayerEntry)
+    (view : (application setup leaks).PlayerView) :
+    (menu setup leaks bounds watcher).actions who past view =
+      ordinaryActions setup leaks bounds who past view := by
+  simp only [menu, ordinary, ↓reduceIte]
 
 /-- The construction is literally a menu restriction of this bounded native
 backend, at every local input, rather than just along compiled play. -/
@@ -349,8 +363,8 @@ theorem menu_in_effective (watcher : Player) :
   intro who past view response member
   change response ∈ (if who = watcher then _ else _) at member
   split at member
-  · exact report_effective setup leaks bounds who past view response
-      ((Set.Finite.mem_toFinset _).mp member)
+  · cases Finset.mem_singleton.mp member
+    exact silence_effective setup leaks bounds who past view
   · exact ordinary_effective setup leaks bounds who past view member
 
 abbrev protocol (watcher : Player) :=

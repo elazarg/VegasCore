@@ -2,11 +2,11 @@
 
 import Vegas.Game.RevealServiceRosterTraffic
 
-/-! # Signed evidence for responses outside the revelation roster
+/-! # Responses outside the revelation roster break the roster rule
 
-The checker uses only an authentic phase, prior ledger and signed envelope.
-The runtime evidence invariant connects a passing fresh packet to the owner's
-canonical response; the serial test supplies the once-per-phase condition.
+The rule uses only the phase, prior ledger and signed envelope. The runtime
+evidence invariant connects a passing fresh packet to the owner's canonical
+response; the serial test supplies the once-per-phase condition.
 -/
 
 noncomputable section

@@ -89,13 +89,15 @@ theorem reactive_include_progress (runtime : EventGraphRuntime graph)
   | none => exact .refl invariant
   | some message =>
       change State.ServiceProgress inputs 0 execution.application
-        ((handle runtime execution.application
-          ⟨message.id, message.payload.call⟩).getD execution.application)
-      cases accepted : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
+        (((runtime.reactiveApplication leaks).handle execution.application
+          message).getD execution.application)
+      cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+          message with
       | none => exact .refl invariant
       | some next =>
           exact handle_progress runtime inputs _ next
-            ⟨message.id, message.payload.call⟩ invariant accepted
+            ⟨message.id, message.payload.call⟩ invariant
+            (reactiveHandle_call accepted)
 
 theorem reactive_environment_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

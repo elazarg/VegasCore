@@ -151,9 +151,9 @@ theorem prelude_include_application (bit : Bool) (action : nativeApp.Action)
   | none => rfl
   | some message =>
       have rejected : nativeApp.handle execution.application message = none :=
-        prelude_rejects bit execution.application (watcher_config bit action selected reply)
-          ⟨message.id, message.payload.call⟩
-          ((watcher_no_bob_packet bit action selected reply).lookup id message found)
+        reactiveHandle_none (prelude_rejects bit execution.application
+          (watcher_config bit action selected reply) ⟨message.id, message.payload.call⟩
+          ((watcher_no_bob_packet bit action selected reply).lookup id message found))
       change (nativeApp.handle execution.application message).getD execution.application = _
       rw [rejected]
       rfl

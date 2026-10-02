@@ -104,9 +104,9 @@ theorem reactiveBinding_reserved_config (runtime : EventGraphRuntime graph)
     simpa only [State.HandleUnused, acceptedEq] using unused
   have pending : submitted.network.lookup (owner, execution.network.nextSerial owner) =
       some ⟨(owner, execution.network.nextSerial owner),
-        ⟨.commitment event (owner, .prepared serial), none⟩⟩ := by
-    cases result <;> exact serials.lookup_submit owner
-      ⟨.commitment event (owner, .prepared serial), none⟩
+        ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :=
+    runtime.reactiveBinding_lookup leaks execution owner event payload result serial serials
+      ready
   let scheduler : app.Scheduler := fun _ _ => PMF.pure .wait
   have reached : submitted ∈ (app.runRounds scheduler players 0 submitted).support := by
     simp only [ReactiveApplication.runRounds, PMF.mem_support_pure_iff _ _]

@@ -43,7 +43,8 @@ theorem reactiveEvidenceInvariant (runtime : EventGraphRuntime graph)
     exact valid
   handle state message next valid accepted :=
     fact.holds_preserved _ _ (handle_store_of_some runtime state next ⟨message.id,
-      message.payload.call⟩ accepted) valid
+      message.payload.call⟩
+        (reactiveHandle_call accepted)) valid
   environment state command next valid reached :=
     fact.holds_preserved _ _
       (environmentStep_store_of_some runtime state next command reached) valid
@@ -95,7 +96,8 @@ def receiptEvidence (runtime : EventGraphRuntime graph)
   valid state fact := fact.Holds state.config.store
   decode packet := packet.call.bindingEvidence
   persists := runtime.reactiveEvidenceInvariant leaks
-  checked state message next :=
+  checked state message next accepted :=
     handle_bindingEvidence runtime state next ⟨message.id, message.payload.call⟩
+      (reactiveHandle_call accepted)
 
 end Vegas.EventGraphRuntime

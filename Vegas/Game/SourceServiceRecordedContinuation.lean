@@ -246,7 +246,7 @@ theorem recorded_phase_invariant {who : Player} {remaining : Nat}
     (owner, Message.distinctAuthoredCount execution.network.ledger owner)
   let message : Message Player (WitnessedPacket (graph service.setup)) :=
     ⟨id, ⟨.commitment phase.event (owner, .prepared
-      (execution.application.publicView.bindingCount owner)), none⟩⟩
+      (execution.application.publicView.bindingCount owner)), none, some ⟨phase.event⟩⟩⟩
   obtain ⟨value, _, _, _, _, _, pending, packets, _, selected⟩ :=
     sourceService_recorded_binding_resources service.setup service.leaks service.bounds
       service.values service.capacity service.rosters service.opportunities.binding

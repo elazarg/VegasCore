@@ -8,7 +8,9 @@ import Vegas.Game.RevealServiceRosterAudit
 The compiler fixes the native game, service roster and range-based deposit
 before selecting a source equilibrium. Every original source sequential
 equilibrium has a native sequential equilibrium with the same joint typed
-source outcome and realized settlement-payoff law. The authentic partial audit
+source outcome and realized settlement-payoff law. Settlement judges signed
+packets against the contract's settled record once the roster plan has ended;
+no verdict reads when a packet was sent. The authentic partial settlement sample
 and positive conditional coverage are explicit service assumptions.
 
 The program is reveal-only and initial bindings are openable. Every owner has
@@ -41,11 +43,11 @@ theorem roster_audited_source_sequential_equilibrium_preserved
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (admission : CommitmentInterface setup.program)
     (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (sample : List (EnvelopeEvidence setup leaks) → PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
-      permittedRosterEnvelope setup leaks record = false →
+    (coverage : ∀ who actual (record : SettledEvidence setup), record ∈ actual →
+      record.2.sender = who → record.1.permits record.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
@@ -55,10 +57,10 @@ theorem roster_audited_source_sequential_equilibrium_preserved
     let extended := bounds.withInitialValues (initialLaw setup)
     let base := baseUtility setup leaks utility
     let deposit := rosterAuditDeposit setup leaks extended rosters network base probability
-    let audit := (application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
-      (fun evidence => evidence.2.2.sender) (permittedRosterEnvelope setup leaks) sample
-    let net := TerminalAudit.utility base (application setup leaks).stateTraffic audit deposit
-    let settle := TerminalAudit.settlement base (application setup leaks).stateTraffic audit deposit
+    let audit := sourceServiceAudit setup leaks sample
+    let observe := (runtime setup).settlementObservation leaks
+    let net := TerminalAudit.utility base observe audit deposit
+    let settle := TerminalAudit.settlement base observe audit deposit
     let horizon := (rosterPlan setup rosters).length
     let scheduler := rosterScheduler setup leaks rosters network
     let model := (extended.rawMenu (runtime setup) leaks).information
@@ -78,7 +80,7 @@ theorem roster_audited_source_sequential_equilibrium_preserved
               fun who => (setup.protocolReadout final.state).elim 0
                 (fun state => utility state who))) := by
   classical
-  intro extended base deposit audit net settle horizon scheduler model
+  intro extended base deposit audit observe net settle horizon scheduler model
   obtain ⟨retained, _compiled, retainedSE, sourceLaw⟩ :=
     roster_source_sequential_equilibrium_preserved setup leaks bounds rosters rosterCoverage network
       reveals openable admission utility source equilibrium

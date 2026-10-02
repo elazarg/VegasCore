@@ -928,12 +928,12 @@ theorem source_audited_raw_sequential_equilibrium [Fintype Player] [IExpr.Result
     {Parameter : Type} (service : SourceServiceSpec Player L)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (EnvelopeEvidence service.setup service.leaks) →
-      PMF (List (EnvelopeEvidence service.setup service.leaks)))
+    (sample : List (SettledEvidence service.setup) →
+      PMF (List (SettledEvidence service.setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
-      (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
+    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : service.sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibrium
@@ -1405,6 +1405,12 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 open Vegas.EventGraphRuntime.MessageBounds in
 #print axioms audited_raw_sequential_equilibrium
+
+/-- info: 'Vegas.settled_audited_raw_sequential_equilibrium'
+depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms settled_audited_raw_sequential_equilibrium
 
 /-- info: 'Vegas.replay_equilibrium_extends' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -47,12 +47,14 @@ theorem reactive_binding_wire_block (runtime : EventGraphRuntime graph)
       ReactivePlayerView.publicView)
     (recall : execution.InputRecall (runtime.reactiveApplication leaks))
     (serials : execution.network.SerialsBeforeNext)
-    (emitted : (⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩ :
+    (emitted : (⟨(owner, nonce),
+      ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :
       Message Player (WitnessedPacket graph)) ∈
         (runtime.reactiveApplication leaks).outputs (execution.recall owner))
     (ready : execution.application.config.cut.Ready event)
     (timely : execution.application.WithinDeadline runtime event)
-    (pending : (⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩ :
+    (pending : (⟨(owner, nonce),
+      ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :
       Message Player (WitnessedPacket graph)) ∈ execution.network.pending)
     (unpublished : (execution.observeEnvironment (runtime.reactiveApplication leaks)).Unpublished
       (runtime.reactiveApplication leaks) (owner, nonce))
@@ -63,7 +65,7 @@ theorem reactive_binding_wire_block (runtime : EventGraphRuntime graph)
   let app := runtime.reactiveApplication leaks
   let candidate : Handle graph := (owner, .prepared serial)
   let message : Message Player (WitnessedPacket graph) :=
-    ⟨(owner, nonce), ⟨.commitment event candidate, none⟩⟩
+    ⟨(owner, nonce), ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩
   let resources (current : app.Execution) := current.application.BindingInvariant ∧
     runtime.ReactiveCandidateProtection leaks owner event candidate current ∧
     current.application.candidates.lookup candidate =
@@ -89,7 +91,8 @@ theorem reactive_binding_wire_block (runtime : EventGraphRuntime graph)
     rw [EventCode.actor_cast outputEq (graph.nodes event)] at equal
     exact equal
   apply runtime.reactive_packet_wire_block leaks inputs owner event actor
-    (cast (congrArg EventField.Value outputEq.symm) result) message rfl rfl players resources
+    (cast (congrArg EventField.Value outputEq.symm) result) message rfl rfl
+    (WitnessedPacket.tokenValid_commitment event candidate none) players resources
     preserved (runtime.reactivePacketIntegrity_policy leaks owner policy players prescribed) ?_
     network rounds execution next ⟨associated, protection, rfl⟩ valid integrity audit recall serials
     emitted ready timely pending unpublished reached
@@ -159,7 +162,7 @@ theorem reactiveDecision_binding_service (runtime : EventGraphRuntime graph)
   let submitted := execution.respond app owner response
   let message : Message Player (WitnessedPacket graph) :=
     ⟨(owner, execution.network.nextSerial owner),
-      ⟨.commitment event (owner, .prepared serial), none⟩⟩
+      ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩
   have responseEq := runtime.reactiveDecision_binding_eq leaks owner owner event payload outputEq
     codeEq node action _ serial allocated
   rw [responseEq] at reached supported
@@ -168,6 +171,9 @@ theorem reactiveDecision_binding_service (runtime : EventGraphRuntime graph)
   have unused : execution.application.HandleUnused (owner, .prepared serial) :=
     fun field cell => associated.accepted_fixed field _ cell fresh
   have same := runtime.reactive_respond_application leaks execution owner response
+  have tokenEq : execution.application.publicView.tokenFor
+      (.commitment event (owner, .prepared serial)) = some ⟨event⟩ :=
+    execution.application.publicView_tokenFor_of_ready _ event rfl ready
   have newlyIssued : message.id ∉ execution.network.ledger.map Message.id := by
     rintro member
     obtain ⟨previous, prior, equal⟩ := List.mem_map.mp member
@@ -177,12 +183,15 @@ theorem reactiveDecision_binding_service (runtime : EventGraphRuntime graph)
     exact Nat.lt_irrefl _ earlier
   have output : message ∈ app.outputs (submitted.recall owner) := by
     change message ∈ app.outputs ((execution.respond app owner response).recall owner)
-    simp only [response, reactiveBinding, ReactiveApplication.Execution.respond,
+    simp only [response, reactiveBinding, ReactiveApplication.Execution.respond, app,
+      reactiveApplication_packet_none, tokenEq,
       MessageNetwork.submit, ↓reduceIte, ReactiveApplication.outputs, List.filterMap_append,
       List.filterMap_cons, List.filterMap_nil]
     exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
-  have retained : message ∈ submitted.network.pending :=
-    List.mem_append_right _ (List.mem_singleton.mpr rfl)
+  have retained : message ∈ submitted.network.pending := by
+    simp only [submitted, response, reactiveBinding, ReactiveApplication.Execution.respond, app,
+      reactiveApplication_packet_none, tokenEq, MessageNetwork.submit]
+    exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
   have afterReady : submitted.application.config.cut.Ready event := by
     change (execution.respond app owner response).application.config.cut.Ready event
     rwa [same.1]

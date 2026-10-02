@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAudit
+import Vegas.Game.ServiceSettledEvidence
 import Vegas.Game.BindingRepairReadout
 import Vegas.Game.ServicePayoffBounds
 import GameTheoryExtensions.Analysis.Protocol.TerminalAuditCoupling
@@ -8,11 +9,14 @@ import GameTheoryExtensions.Analysis.Protocol.TerminalAuditCoupling
 /-! # Actual settlement comparison from full-source continuation repair
 
 The operational coupling may preserve the initial types and public result,
-exhibit forbidden signed traffic, or certify a public binding omission. Its
-repaired marginal must consist of actual permitted traces. Authentic partial
-sampling then gives zero repaired charge and the stated incremental collection
-bound. A sufficient deposit compares the realized settlements without assuming
-any independence between payoffs, evidence, and detection.
+exhibit a transmission that breaks the send-time conformance rule, or certify
+a public binding omission. A send-time breach at a complete settlement leaves
+its author with a packet the settled record forbids
+(`Vegas.settled_breach_of_sendTime_breach`). The repaired marginal must
+consist of actual retained traces. Authentic partial sampling then gives zero repaired
+charge and the stated incremental collection bound. A sufficient deposit
+compares the realized settlements without assuming any independence between
+payoffs, evidence, and detection.
 
 Constructing this coupling for every native continuation remains a separate
 operational obligation. Private binding values changed by repair are not part
@@ -41,12 +45,11 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
     (network : (runtime setup).NetworkPolicy leaks)
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (who : Player) (rate gap : ℝ) (deposit : Player → ℝ)
-    (coverage : ∀ actual record, record ∈ actual → record.2.2.sender = who →
-      (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
+    (coverage : ∀ actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
       rate ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (nonnegative : 0 ≤ deposit who) (sufficient : gap ≤ min rate 1 * deposit who)
     (coupled : PMF ((application setup leaks).Control ×
@@ -55,6 +58,11 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
       Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
           (some pair.2.1)))
+    (realized : ∀ pair ∈ coupled.support,
+      Nonempty (((application setup leaks).protocol (initialLaw setup)
+        (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
+          (some pair.1)))
+    (finished : ∀ pair ∈ coupled.support, pair.1.execution.application.config.cut.Terminal)
     (onlyBindings : ∀ pair ∈ coupled.support, pair.2.2.shadow.OwnBindings who)
     (related : ∀ pair ∈ coupled.support,
       (∃ record ∈ (application setup leaks).executionTraffic pair.1.execution,
@@ -97,19 +105,16 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
   have collected (pair) (supported : pair ∈ coupled.support) (bad : pair ∈ departed) :
       min rate 1 ≤ TerminalAudit.charge observe audit (some pair.1) who := by
     rcases related pair supported with traffic | missing | framed
-    · obtain ⟨record, present, author, forbidden⟩ := traffic
-      have lower := (runtime setup).serviceAudit_collection_from_record leaks
-        (envelopeEvidence setup leaks) (fun evidence => evidence.2.2.sender)
-        (fun evidence => (runtime setup).permittedServiceEnvelope
-          evidence.1 evidence.2.1 evidence.2.2) sample
-        (PMF.pure (some pair.1)) who rate coverage record
-        (by
-          intro state supported
-          cases (PMF.mem_support_pure_iff _ _).mp supported
-          exact present) author forbidden
-      have lowerCharge : rate ≤ TerminalAudit.charge observe audit (some pair.1) who := by
-        simpa only [PMF.pure_map, PMF.pure_bind, TerminalAudit.charge, observe, audit,
-          sourceServiceAudit] using lower
+    · obtain ⟨record, present, author, breach⟩ := traffic
+      obtain ⟨trace⟩ := realized pair supported
+      obtain ⟨other, otherPresent, sameAuthor, forbidden⟩ :=
+        settled_breach_of_sendTime_breach (initialLaw setup) _ _ trace
+          (finished pair supported) record present breach
+      have lowerCharge : rate ≤ TerminalAudit.charge observe audit (some pair.1) who :=
+        (runtime setup).serviceAudit_charge_from_record leaks
+          (fun settled traffic => (settled, traffic.input.envelope))
+          (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2)
+          sample who rate coverage pair.1 other otherPresent (sameAuthor.trans author) forbidden
       exact (min_le_left _ _).trans lowerCharge
     · change min rate 1 ≤ TerminalAudit.charge
         ((runtime setup).serviceAuditObservation leaks)
@@ -167,12 +172,11 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
     (network : (runtime setup).NetworkPolicy leaks) [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (who : Player) (probability : Player → ℝ) (positive : 0 < probability who)
-    (coverage : ∀ actual record, record ∈ actual → record.2.2.sender = who →
-      (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
+    (coverage : ∀ actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (coupled : PMF ((application setup leaks).Control ×
       (application setup leaks).Control × BindingMemory (runtime setup) leaks))
@@ -184,6 +188,7 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
       Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
           (some pair.2.1)))
+    (finished : ∀ pair ∈ coupled.support, pair.1.execution.application.config.cut.Terminal)
     (onlyBindings : ∀ pair ∈ coupled.support, pair.2.2.shadow.OwnBindings who)
     (related : ∀ pair ∈ coupled.support,
       (∃ record ∈ (application setup leaks).executionTraffic pair.1.execution,
@@ -234,7 +239,11 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
     opportunities network parameter utility sample authentic who (probability who)
     (min (probability who) 1 * deposit who) deposit coverage
     (rosterAuditDeposit_nonnegative setup leaks bounds rosters network base _ who ratePositive)
-    (le_refl _) coupled permitted onlyBindings related ?_ originalIntegrable repairedIntegrable
+    (le_refl _) coupled permitted
+    (fun pair supported => by
+      obtain ⟨trace⟩ := realized pair supported
+      exact ⟨(bounds.menu (runtime setup) leaks).toRawTrace (initialLaw setup) _ _ trace⟩)
+    finished onlyBindings related ?_ originalIntegrable repairedIntegrable
   intro pair supported
   obtain ⟨originalTrace⟩ := realized pair supported
   obtain ⟨repairedTrace⟩ := permitted pair supported

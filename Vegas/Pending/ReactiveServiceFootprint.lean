@@ -115,14 +115,15 @@ theorem reactive_instruction_unfinished (runtime : EventGraphRuntime graph)
         subst after
         simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
           lookup]
-        change query ∉ ((handle runtime before.application
-          ⟨message.id, message.payload.call⟩).getD before.application).config.cut.completed
-        cases handled : handle runtime before.application ⟨message.id, message.payload.call⟩ with
+        change query ∉ (((runtime.reactiveApplication leaks).handle before.application
+            message).getD before.application).config.cut.completed
+        cases handled : (runtime.reactiveApplication leaks).handle before.application
+            message with
         | none => exact unfinished
         | some state =>
             exact handle_unfinished runtime _ state _ query
               (by rw [addressed]; exact fun same => different (Option.some.inj same))
-              unfinished handled
+              unfinished (reactiveHandle_call handled)
   | tick =>
       cases (PMF.mem_support_pure_iff _ _).mp selected
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved

@@ -159,9 +159,9 @@ nothing depends on it.
 
 ### Relation to the early-opening obstruction
 
-The [early-opening counterexample](early-opening-and-spe.md)
-(`honest_source_spe_native_failure`) is a `commit x; reveal x` program: a stale
-withholding envelope and an early opening both address the separate disclosure
-event. A `yield` program has no separate disclosure event, so that witness has
-no counterpart there. This removes one obstruction for public moves; it is not
-a subgame-perfection result.
+The [early-opening witness](early-opening-and-spe.md)
+(`honest_source_early_opening_blocked`) is a `commit x; reveal x` program: a
+stale withholding envelope and an early opening both address the separate
+disclosure event, and readiness tokens make both inert. A `yield` program has no
+separate disclosure event, so that witness has no counterpart there. This is
+not a subgame-perfection result.

@@ -112,15 +112,15 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
         | none => exact valid.1
         | some message =>
             change bounds.AcceptedHandles
-              ((handle runtime execution.application
-                ⟨message.id, message.payload.call⟩).getD execution.application)
-            cases accepted : handle runtime execution.application
-                ⟨message.id, message.payload.call⟩ with
+              (((runtime.reactiveApplication leaks).handle execution.application
+                message).getD execution.application)
+            cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+                message with
             | none => exact valid.1
             | some state =>
                 exact bounds.acceptedHandles_handle runtime execution.application
                   state ⟨message.id, message.payload.call⟩ valid.1
-                  (valid.2.lookup id message found) accepted
+                  (valid.2.lookup id message found) (reactiveHandle_call accepted)
       · change (execution.includePending (runtime.reactiveApplication leaks) id).network.Satisfies _
         rw [ReactiveApplication.includePending_network]
         exact valid.2.includePending id

@@ -66,6 +66,24 @@ theorem submit_playerView_congr (runtime : EventGraphRuntime graph)
   simp only [submitStep_publicView, submitStep_config, submitStep_remembered]
   congr 1
 
+/-- The emitted packet depends on the sender's own view only: its candidate
+catalogue fixes the certificate and its public view fixes the token. -/
+theorem packet_playerView_congr (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (left right : State graph) (who : Player)
+    (known : List (Message Player (WitnessedPacket graph)))
+    (submission : WitnessedSubmission graph)
+    (views : left.playerView who = right.playerView who) :
+    (runtime.reactiveApplication leaks).packet
+        ((runtime.reactiveApplication leaks).submit left who submission) who known submission =
+      (runtime.reactiveApplication leaks).packet
+        ((runtime.reactiveApplication leaks).submit right who submission) who known
+          submission := by
+  have submitted := submit_playerView_congr runtime leaks left right who submission views
+  exact submission.emit_local _ _ who known
+    (fun slot => congrFun (congrArg PlayerView.candidates submitted) slot)
+    (congrArg PlayerView.publicView submitted)
+
 /-- Envelope counters authenticate transport identity but do not enter application handling. -/
 theorem handle_serial_irrel (runtime : EventGraphRuntime graph) (state : State graph)
     (who : Player) (first second : Nat) (packet : Payload graph) :
@@ -88,6 +106,26 @@ theorem handle_result_playerView_congr (runtime : EventGraphRuntime graph)
   · cases same
   · cases same
   · exact Option.some.inj same
+
+/-- The token-checking handler's result for an author depends only on the call
+and on whether the token is valid. -/
+theorem reactive_handle_result_playerView_congr (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (left right : State graph) (who : Player) (first second : Nat)
+    (leftPacket rightPacket : WitnessedPacket graph)
+    (calls : leftPacket.call = rightPacket.call)
+    (tokens : leftPacket.tokenValid = rightPacket.tokenValid)
+    (views : left.playerView who = right.playerView who) :
+    (((runtime.reactiveApplication leaks).handle left ⟨(who, first), leftPacket⟩).getD
+        left).playerView who =
+      (((runtime.reactiveApplication leaks).handle right ⟨(who, second), rightPacket⟩).getD
+        right).playerView who := by
+  simp only [reactiveApplication_handle, tokens]
+  split
+  · rw [calls]
+    exact handle_result_playerView_congr runtime left right who first second rightPacket.call
+      views
+  · exact views
 
 /-- Clocks and failure expiry preserve equality of the owner's view. -/
 theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)

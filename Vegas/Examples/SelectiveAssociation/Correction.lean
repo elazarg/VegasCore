@@ -134,7 +134,8 @@ theorem bob_correction_realizes (players : Player → nativeApp.Policy)
     simp [bobBindingRef, State.complete, EventGraph.Config.store, EventGraph.FieldRef.get?, meaning]
   · have found : submitted.network.lookup (bob, execution.network.nextSerial bob) =
         some ⟨(bob, execution.network.nextSerial bob),
-          ⟨.commitment bobBinding (bob, .prepared serial), none⟩⟩ := serials.lookup_submit bob _
+          ⟨.commitment bobBinding (bob, .prepared serial), none, some
+              ⟨bobBinding⟩⟩⟩ := serials.lookup_submit bob _
     simp only [interactionStep, interactionInstruction,
       bob_correction_selected execution serial bit serials, PMF.pure_bind,
       ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,

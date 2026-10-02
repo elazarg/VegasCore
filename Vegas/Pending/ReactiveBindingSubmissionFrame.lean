@@ -131,7 +131,7 @@ theorem pending_binding_inclusion
     (id : MessageId Player) (candidate : Handle graph)
     (sender : id.1 = owner) (owned : candidate.1 = owner)
     (found : original.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, none⟩⟩)
+      some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩)
     (ready : original.application.config.cut.Ready event)
     (timely : original.application.WithinDeadline runtime event)
     (vacant : original.application.accepted (.inr event) = none)
@@ -164,7 +164,7 @@ theorem pending_binding_inclusion
     simp only [ReactiveApplication.Execution.includePending]
     split <;> rfl
   have foundRight : repaired.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, none⟩⟩ := frame.network ▸ found
+      some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ := frame.network ▸ found
   refine ⟨?_, own, ?_, paired.1, ?_, paired.2.2.1, paired.2.2.2, ?_, ?_, ?_⟩
   · change memory.restoreRecall runtime leaks
       ((repaired.includePending app id).recall owner) =
@@ -207,8 +207,8 @@ theorem pending_binding_inclusion
     change (original.includePending app id).application.config.store.BindingRefines
       (repaired.includePending app id).application.config.store
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found, foundRight, reactiveApplication, handled, handledRight, Option.getD_some,
-      State.complete]
+      found, foundRight, reactiveApplication_handle, WitnessedPacket.tokenValid_commitment,
+      ite_true, handled, handledRight, Option.getD_some, State.complete]
     apply Config.bindingRefines_complete frame.successful event ready rightReady
     apply EventField.BindingRefines.cast_some outputEq.symm
     intro value equal

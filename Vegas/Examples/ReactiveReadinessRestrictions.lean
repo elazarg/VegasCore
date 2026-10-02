@@ -25,10 +25,10 @@ open GameTheory.Math.Probability Interaction Vegas Vegas.EventGraphRuntime
 open SelectiveAssociation ReactiveAssociationEvidence
 
 def certifiedEnvelope (bit : Bool) : Message Player (WitnessedPacket nativeGraph) :=
-  ⟨(alice, 0), ⟨.commitment aliceBinding candidate, some (opening bit)⟩⟩
+  ⟨(alice, 0), ⟨.commitment aliceBinding candidate, some (opening bit), some ⟨aliceBinding⟩⟩⟩
 
 def associationEnvelope : Message Player (WitnessedPacket nativeGraph) :=
-  ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none⟩⟩
+  ⟨(alice, 1), ⟨.commitment aliceBinding candidate, none, some ⟨aliceBinding⟩⟩⟩
 
 def PendingEventsReady (execution : nativeApp.Execution) : Prop :=
   ∀ message ∈ execution.network.pending, ∃ event,

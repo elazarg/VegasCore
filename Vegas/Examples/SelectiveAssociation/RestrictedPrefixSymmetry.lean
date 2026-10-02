@@ -308,7 +308,8 @@ theorem submission_other_packet (selected : Handle nativeGraph)
       app.packet (app.submit before who submitted) who known submitted := by
   rw [submission_other_application selected before who different submitted]
   apply WitnessedSubmission.emit_local
-  exact CandidateFlip.catalogue_lookup_other_owner selected _ who different
+  · exact CandidateFlip.catalogue_lookup_other_owner selected _ who different
+  · exact StoreFlip.publicView selected _
 
 theorem submission_packet_fixed (selected : Handle nativeGraph)
     (before : EventGraphRuntime.State nativeGraph) (who : Player) (different : selected.1 ≠ who)

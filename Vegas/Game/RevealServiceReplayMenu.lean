@@ -5,7 +5,7 @@ import Vegas.Game.RevealService
 /-! # Published watcher replays in the retained proof menu
 
 This enlarges the finite response menu of the existing service. It adds no
-runtime stage or observation. The reporting player's published-ID replays are
+runtime stage or observation. The watcher's published-ID replays are
 included alongside its prescribed response; ordinary players keep exactly the
 same choices. At a clean checkpoint the prescribed response is silence.
 
@@ -68,8 +68,7 @@ theorem replay_menu_watcher
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) :
     (replayMenu setup leaks bounds watcher).actions watcher past view =
-      ((application setup leaks).reportFirstUnpublished_support_finite past view).toFinset ∪
-        publishedReplays setup leaks view := by
+      {⟨none⟩} ∪ publishedReplays setup leaks view := by
   classical
   simp only [replayMenu, menu, ↓reduceIte]
 

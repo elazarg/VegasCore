@@ -89,9 +89,9 @@ theorem sampled_submission_report (bit : Bool) (submission : WitnessedSubmission
       (nativeApp.submit (nativeInitial bit) alice submission) alice [] submission⟩
   have found : before.network.lookup (alice, 0) = some message := rfl
   have rejected : nativeApp.handle before.application message = none :=
-    prelude_rejects bit before.application
+    reactiveHandle_none (prelude_rejects bit before.application
       (watcher_config bit (submissionAction submission) {(alice, 0)} _)
-      ⟨message.id, message.payload.call⟩ (by change alice ≠ bob; decide)
+      ⟨message.id, message.payload.call⟩ (by change alice ≠ bob; decide))
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [found]
   change before.receipts ++ [((alice, 0), (nativeApp.handle before.application message).isSome)] = _

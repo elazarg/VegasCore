@@ -121,7 +121,7 @@ theorem binding_assessment_consistent (horizon : Nat) (scheduler : app.Scheduler
 /-- One decision both fixes the hidden meaning and emits the public envelope. -/
 theorem single_activation (bit : Bool) :
     (submitted bit).application.bindingResult candidate .bool = .success bit ∧
-      (submitted bit).network.pending = [⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩] ∧
+      (submitted bit).network.pending = [⟨(false, 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩] ∧
       ((submitted bit).recall false).length = 1 ∧
       (submitted bit).environmentRecall = [] ∧
       (submitted bit).application.remembered 0 = none := by
@@ -213,7 +213,8 @@ private theorem first_action (bit : Bool) : firstAction bit =
 with no application scratch-table writes or response-memory field. -/
 theorem compiler_sends_and_binds (bit : Bool) :
     (firstResponse bit).application.bindingResult candidate .bool = .success bit ∧
-      (firstResponse bit).network.pending = [⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩] ∧
+      (firstResponse bit).network.pending =
+        [⟨(false, 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩] ∧
       (firstResponse bit).application.remembered 0 = none := by
   unfold firstResponse
   rw [first_action]
@@ -262,7 +263,7 @@ private theorem wrong_response_inconsistent :
   intro consistent
   have recalled : (firstResponse false).recall false = [] ++
       [⟨initial.observe app false, firstAction false,
-        some ⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩⟩] := by
+        some ⟨(false, 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩⟩] := by
     unfold firstResponse
     rw [first_action]
     rfl
@@ -270,7 +271,7 @@ private theorem wrong_response_inconsistent :
   have chosen := (ReactiveApplication.Policy.consistent_snoc_iff
     (runtime.prescribedReactivePolicy leaks false (chooseBit (PMF.pure true))) []
     ⟨initial.observe app false, firstAction false,
-      some ⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩⟩).mp consistent
+      some ⟨(false, 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩⟩).mp consistent
   have law := compiler_samples_on_activation (PMF.pure true)
   rw [compileReactivePolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ .nil] at law
   have same : firstAction false = firstAction true := by
@@ -371,12 +372,12 @@ theorem binding_after_passive_reaction
       (runtime.reactive_respond_application observationRule start false
         (runtime.reactiveBinding observationRule false 0 .bool result 0)).2)
   have observedPending : observed.network.lookup (false, 0) =
-      some ⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩ := by
+      some ⟨(false, 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ := by
     unfold MessageNetwork.lookup
     rw [observedFacts.2]
     rfl
   have pending : (observed.respond reactive observer action).network.lookup
-      (false, 0) = some ⟨(false, 0), ⟨.commitment 0 candidate, none⟩⟩ := by
+      (false, 0) = some ⟨(false, 0), ⟨.commitment 0 candidate, none, some ⟨0⟩⟩⟩ := by
     rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact observedPending

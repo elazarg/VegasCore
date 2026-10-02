@@ -100,12 +100,13 @@ private theorem sample_command_law (players : Player → (application setup leak
       cases found : execution.network.lookup id with
       | none => rfl
       | some message =>
-          change ((EventGraphRuntime.handle (runtime setup) execution.application
-            ⟨message.id, message.payload.call⟩).getD execution.application).config = _
-          cases accepted : EventGraphRuntime.handle (runtime setup) execution.application
-              ⟨message.id, message.payload.call⟩ with
+          change (((application setup leaks).handle execution.application
+            message).getD execution.application).config = _
+          cases reactiveAccepted : (application setup leaks).handle execution.application
+              message with
           | none => rfl
           | some state =>
+              have accepted := reactiveHandle_call reactiveAccepted
               exfalso
               obtain ⟨named, namedEq, namedReady, _, _⟩ :=
                 handle_config_mem_step (runtime setup) _ _ _ accepted

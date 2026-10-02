@@ -61,7 +61,7 @@ private def response (disclose : Bool) : app.Action :=
   runtime.reactiveDecision leaks () 0 disclose (initial.observe app ()).application
 
 private def entry (serial : Nat) (disclose : Bool) : app.PlayerEntry :=
-  ⟨initial.observe app (), response disclose, some ⟨((), serial), ⟨.withhold 0, none⟩⟩⟩
+  ⟨initial.observe app (), response disclose, some ⟨((), serial), ⟨.withhold 0, none, some ⟨0⟩⟩⟩⟩
 
 /-- The game contains a single semantic response for these two intentions. -/
 theorem failed_disclosure_same_action : response true = response false := rfl
@@ -96,7 +96,7 @@ theorem mismatched_intention :
     let forged : app.PlayerEntry :=
       ⟨openable.observe app (),
         ⟨some (.submit ⟨⟨.withhold 0, none⟩, .none⟩)⟩,
-        some ⟨((), 0), ⟨.withhold 0, none⟩⟩⟩
+        some ⟨((), 0), ⟨.withhold 0, none, some ⟨0⟩⟩⟩⟩
     runtime.reactiveOriginal leaks () [forged] [some ⟨0, true⟩] [(((), 0), true)] ⟨0, false⟩ =
       ⟨0, false⟩ := by
   have expected : runtime.reactiveDecision leaks () 0 true

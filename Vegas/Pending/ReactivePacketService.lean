@@ -95,19 +95,22 @@ private theorem include_other_event_output (runtime : EventGraphRuntime graph)
   | none => simp only [ReactiveApplication.Execution.includePending,
       MessageNetwork.includePending, found]
   | some message =>
-      cases accepted : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
+      cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+          message with
       | none => simp only [ReactiveApplication.Execution.includePending,
-          MessageNetwork.includePending, found, reactiveApplication, accepted, Option.getD_none]
+          MessageNetwork.includePending, found, accepted, Option.getD_none]
       | some state =>
           have unique := integrity.retained runtime leaks owner execution original event emitted
             addressed
           obtain ⟨actual, atEvent, ready, action, supported⟩ := handle_config_mem_step runtime
-            execution.application state ⟨message.id, message.payload.call⟩ accepted
+            execution.application state ⟨message.id, message.payload.call⟩
+            (reactiveHandle_call accepted)
           have distinct : event ≠ actual := by
             intro equal
             subst actual
             obtain ⟨address, addressedAgain, authored⟩ := handle_event_actor runtime
-              execution.application state ⟨message.id, message.payload.call⟩ accepted
+              execution.application state ⟨message.id, message.payload.call⟩
+              (reactiveHandle_call accepted)
             have sameAddress := Option.some.inj (atEvent.symm.trans addressedAgain)
             subst address
             have sender : message.sender = owner := Option.some.inj (authored.symm.trans actor)
@@ -123,7 +126,7 @@ private theorem include_other_event_output (runtime : EventGraphRuntime graph)
             exact execution.application.config.complete_output_of_ne actual event ready action
               value distinct
           simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-            found, reactiveApplication, accepted, Option.getD_some] using unchanged
+            found, accepted, Option.getD_some] using unchanged
 
 private theorem packetStatus_include (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -131,6 +134,7 @@ private theorem packetStatus_include (runtime : EventGraphRuntime graph)
     (actor : graph.actor? event = some owner) (value : (graph.outputLayout event).Value)
     (message : Message Player (WitnessedPacket graph))
     (addressed : message.payload.call.event? graph = some event)
+    (tokened : message.payload.tokenValid = true)
     (execution : (runtime.reactiveApplication leaks).Execution)
     (valid : execution.application.Invariant inputs)
     (integrity : runtime.ReactivePacketIntegrity leaks owner execution)
@@ -154,9 +158,11 @@ private theorem packetStatus_include (runtime : EventGraphRuntime graph)
     · subst selected
       have found := audit.lookup_of_mem app ReactivePlayerView.publicView execution message pending
       obtain ⟨state, handled, output⟩ := realizes ready timely
+      have accepted := (reactiveApplication_handle_of_tokenValid runtime leaks
+        execution.application message tokened).trans handled
       apply Or.inl
       simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-        found, reactiveApplication, handled, Option.getD_some] using output
+        found, accepted, Option.getD_some] using output
     · have outputSame := include_other_event_output runtime leaks owner event actor execution
         integrity message emitted addressed selected same
       have progress := runtime.reactive_include_progress leaks inputs execution selected valid
@@ -209,6 +215,7 @@ private theorem packetWireFacts_step (runtime : EventGraphRuntime graph)
     (actor : graph.actor? event = some owner) (value : (graph.outputLayout event).Value)
     (message : Message Player (WitnessedPacket graph))
     (addressed : message.payload.call.event? graph = some event)
+    (tokened : message.payload.tokenValid = true)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (resources : (runtime.reactiveApplication leaks).Execution → Prop)
     (preserved : (runtime.reactiveApplication leaks).PolicyInvariant players resources)
@@ -269,8 +276,8 @@ private theorem packetWireFacts_step (runtime : EventGraphRuntime graph)
           ReactiveApplication.resume] at dispatched
         cases (PMF.mem_support_pure_iff _ _).mp dispatched
         exact packetStatus_include runtime leaks inputs owner event actor value message addressed
-          execution facts.valid facts.integrity (realizes execution facts.resources) facts.audit
-          facts.emitted facts.status id
+          tokened execution facts.valid facts.integrity (realizes execution facts.resources)
+          facts.audit facts.emitted facts.status id
       · simp only [ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
           PMF.pure_map, PMF.pure_bind, ReactiveApplication.Command.actor?,
           ReactiveApplication.resume] at dispatched
@@ -286,6 +293,7 @@ theorem reactive_packet_wire_block (runtime : EventGraphRuntime graph)
     (actor : graph.actor? event = some owner) (value : (graph.outputLayout event).Value)
     (message : Message Player (WitnessedPacket graph)) (authored : message.sender = owner)
     (addressed : message.payload.call.event? graph = some event)
+    (tokened : message.payload.tokenValid = true)
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (resources : (runtime.reactiveApplication leaks).Execution → Prop)
     (preserved : (runtime.reactiveApplication leaks).PolicyInvariant players resources)
@@ -329,7 +337,8 @@ theorem reactive_packet_wire_block (runtime : EventGraphRuntime graph)
         rw [List.replicate_succ, runInteractionPlan] at reached
         obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         exact ih middle after (packetWireFacts_step runtime leaks inputs owner event actor value
-          message addressed players resources preserved unique realizes network before middle facts
+          message addressed tokened players resources preserved unique realizes network before
+          middle facts
             moved) rest
   rw [runtime.runInteractionPlan_append] at reached
   obtain ⟨middle, moved, endpoint⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -351,7 +360,9 @@ theorem reactive_packet_wire_block (runtime : EventGraphRuntime graph)
     have found := facts.audit.lookup_of_mem app ReactivePlayerView.publicView middle message
       retained
     obtain ⟨state, handled, output⟩ := realizes middle facts.resources middleReady middleTimely
+    have accepted := (reactiveApplication_handle_of_tokenValid runtime leaks
+      middle.application message tokened).trans handled
     simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found, reactiveApplication, handled, Option.getD_some] using output
+      found, accepted, Option.getD_some] using output
 
 end Vegas.EventGraphRuntime

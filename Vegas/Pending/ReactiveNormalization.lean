@@ -155,7 +155,7 @@ theorem WitnessedSubmission.normalizeReactive_emit
   change WitnessedPacket.mk submission.call.packet
       (EvidenceRequest.resolve who _ known (submission.evidence.normalize who
         (submission.call.candidateAfter who (fun slot => state.candidates.lookup (who, slot)))
-          known)) = _
+          known)) _ = _
   rw [candidates, EvidenceRequest.resolve_normalize]
 
 def reactiveNormalization (runtime : EventGraphRuntime graph)

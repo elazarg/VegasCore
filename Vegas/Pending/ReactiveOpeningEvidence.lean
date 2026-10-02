@@ -61,7 +61,8 @@ theorem reactiveCandidateInvariant (runtime : EventGraphRuntime graph)
     exact stable.trans fixed
   handle state message next fixed accepted :=
     (handle_lookup_of_not_fresh runtime state next ⟨message.id, message.payload.call⟩ candidate
-      (by rw [fixed]; simp) accepted).trans fixed
+      (by rw [fixed]; simp)
+        (reactiveHandle_call accepted)).trans fixed
   environment state command next fixed supported := by
     rw [(environmentStep_tables runtime state next command supported).2]
     exact fixed
@@ -79,15 +80,18 @@ theorem reactiveOpeningEvidence (runtime : EventGraphRuntime graph)
     (runtime.reactiveCandidateInvariant leaks candidate raw)
     (fun state message next fixed accepted =>
       handle_authenticates runtime state next ⟨message.id, message.payload.call⟩
-        candidate raw fixed accepted) scheduler
+        candidate raw fixed
+        (reactiveHandle_call accepted))
+    scheduler
 
 /-- A successful receipt for this opening occurs in the observer's public ledger. -/
 def openingObserved (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (candidate : Handle graph) (raw : Raw L) : Prop :=
-  ∃ event id evidence, (⟨id, ⟨.opening event candidate raw, evidence⟩⟩, (id, true)) ∈
-    view.messages.ledger.zip view.receipts
+  ∃ event id evidence token,
+    (⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩, (id, true)) ∈
+      view.messages.ledger.zip view.receipts
 
 /-- A visible success receipt identifies the immutable meaning, independently
 of the hidden history or any assessment beliefs. -/
@@ -100,8 +104,8 @@ theorem observed_opening_eq (runtime : EventGraphRuntime graph)
     (observed : runtime.openingObserved leaks
       (execution.observe (runtime.reactiveApplication leaks) who) candidate opened) :
     opened = fixed := by
-  obtain ⟨event, id, evidence, accepted⟩ := observed
+  obtain ⟨event, id, evidence, token, accepted⟩ := observed
   exact sound.certifies (runtime.reactiveApplication leaks) _ execution
-    ⟨id, ⟨.opening event candidate opened, evidence⟩⟩ id accepted event opened rfl
+    ⟨id, ⟨.opening event candidate opened, evidence, token⟩⟩ id accepted event opened rfl
 
 end Vegas.EventGraphRuntime

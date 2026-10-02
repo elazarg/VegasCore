@@ -30,7 +30,8 @@ theorem reactiveFreshInvariant (runtime : EventGraphRuntime graph)
     | none => exact fresh
     | some command => exact privateStep_freshCandidates state who command fresh
   handle state message next fresh accepted :=
-    handle_freshCandidates runtime state next ⟨message.id, message.payload.call⟩ fresh accepted
+    handle_freshCandidates runtime state next ⟨message.id, message.payload.call⟩ fresh
+      (reactiveHandle_call accepted)
   environment state command next fresh supported := by
     have tables := environmentStep_tables runtime state next command supported
     simpa only [State.FreshCandidates, State.HandleUnused, tables.1, tables.2] using fresh

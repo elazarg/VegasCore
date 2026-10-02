@@ -115,14 +115,13 @@ theorem publicGuess_include_uncertified (execution : app.Execution)
   · change (execution.includePending app id).application.accepted aliceBindingRef.field = _
     unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
     rw [found]
-    change ((handle nativeRuntime execution.application ⟨message.id, message.payload.call⟩).getD
+    change ((app.handle execution.application message).getD
       execution.application).accepted aliceBindingRef.field = _
-    cases handled : handle nativeRuntime execution.application ⟨message.id, message.payload.call⟩
-      with
+    cases handled : app.handle execution.application message with
     | none => rfl
     | some state =>
         exact handle_accepted_of_present nativeRuntime execution.application state
-          aliceBindingRef.field present _ handled
+          aliceBindingRef.field present _ (reactiveHandle_call handled)
   · change (execution.includePending app id).network.ledger = _
     unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
     rw [found]
@@ -152,7 +151,7 @@ theorem corrective_inclusion_keeps_guess (control : app.Control)
   rw [choose]
   have lookup : submitted.network.lookup (carol, control.execution.network.nextSerial carol) =
       some ⟨(carol, control.execution.network.nextSerial carol),
-        ⟨.commitment carolBinding (carol, .prepared slot.val), none⟩⟩ :=
+        ⟨.commitment carolBinding (carol, .prepared slot.val), none, some ⟨carolBinding⟩⟩⟩ :=
     serials.lookup_submit carol _
   rw [publicGuess_include_uncertified submitted _ _ lookup rfl (by
     rw [(nativeRuntime.reactive_respond_application leaks control.execution carol

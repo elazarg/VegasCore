@@ -61,9 +61,9 @@ theorem conforming_opening_inclusion
       (runtime.freshServiceEnvelope_event_of_sole _ event sole _ permitted) permitted
   change packet = _ at shaped
   subst packet
-  obtain ⟨ready, timely, _, _, _, _, _, _⟩ :=
+  obtain ⟨ready, timely, _, _, _, _, _, _, _⟩ :=
     (runtime.freshServiceEnvelope_opening_iff original.application.publicView id event actor
-      payload binding checks outputEq codeEq node candidate raw (some ⟨candidate, raw⟩)).mp
+      payload binding checks outputEq codeEq node candidate raw (some ⟨candidate, raw⟩) _).mp
         permitted
   obtain ⟨value, rawEq, acceptedChecks⟩ :=
     (original.application.publicView.openingGuardsAccepted_iff actor event payload binding checks

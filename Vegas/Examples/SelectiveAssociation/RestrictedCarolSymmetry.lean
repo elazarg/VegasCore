@@ -61,15 +61,22 @@ theorem related_carol_inclusion (selected : Handle nativeGraph) (owner : selecte
   apply related_includeLatest selected first second related carolBinding carol
   intro id chosen sent found
   have addressed := latest_lookup_addressed first audit carolBinding carol id chosen sent found
-  change handle nativeRuntime second.application
-      ⟨(CandidateFlip.message selected sent).id,
-        (CandidateFlip.message selected sent).payload.call⟩ =
-    (handle nativeRuntime first.application ⟨sent.id, sent.payload.call⟩).map
-      (StoreFlip.state selected)
-  rw [related.application]
-  exact StoreFlip.handle_other_binding selected owner first.application carolBinding (by decide)
-    carol (by decide) (native_binding_output carol) (native_binding_code carol)
-      (native_binding_node carol) ⟨sent.id, sent.payload.call⟩ addressed
+  change app.handle second.application (CandidateFlip.message selected sent) =
+    (app.handle first.application sent).map (StoreFlip.state selected)
+  have tokens : (CandidateFlip.message selected sent).payload.tokenValid =
+      sent.payload.tokenValid := rfl
+  simp only [app, reactiveApplication_handle, tokens]
+  split
+  · change handle nativeRuntime second.application
+        ⟨(CandidateFlip.message selected sent).id,
+          (CandidateFlip.message selected sent).payload.call⟩ =
+      (handle nativeRuntime first.application ⟨sent.id, sent.payload.call⟩).map
+        (StoreFlip.state selected)
+    rw [related.application]
+    exact StoreFlip.handle_other_binding selected owner first.application carolBinding (by decide)
+      carol (by decide) (native_binding_output carol) (native_binding_code carol)
+        (native_binding_node carol) ⟨sent.id, sent.payload.call⟩ addressed
+  · rfl
 
 theorem environment_accepted (execution : app.Execution)
     (command : EnvironmentCommand nativeGraph) :
@@ -111,14 +118,13 @@ theorem inclusion_accepted_of_present (execution : app.Execution) (event : nativ
       cases found : execution.network.lookup id with
       | none => rfl
       | some sent =>
-          change ((handle nativeRuntime execution.application ⟨sent.id, sent.payload.call⟩).getD
+          change ((app.handle execution.application sent).getD
             execution.application).accepted field = _
-          cases handled : handle nativeRuntime execution.application ⟨sent.id, sent.payload.call⟩
-              with
+          cases handled : app.handle execution.application sent with
           | none => rfl
           | some next =>
               exact handle_accepted_of_present nativeRuntime execution.application next field
-                present _ handled
+                present _ (reactiveHandle_call handled)
   | activate | application =>
       unfold reactiveLatest at command
       split at command <;> cases command

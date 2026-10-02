@@ -44,7 +44,7 @@ theorem segment_control_steps (watcher : Player)
         segment.length + (segment.filterMap instructionActor).length]
         (PMF.pure (some ⟨segment.length + rest.length, none, execution⟩)) =
       ((runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher) segment execution).map
+        ((runtime setup).idleNetwork leaks) segment execution).map
           (fun next => some ⟨rest.length, none, next⟩) := by
   induction segment generalizing before execution with
   | nil => simp only [List.length_nil, List.filterMap_nil, Nat.zero_add,
@@ -61,7 +61,7 @@ theorem segment_control_steps (watcher : Player)
         rfl
       have schedulerEq : (scheduler setup leaks watcher) execution.environmentRecall
           (execution.observeEnvironment (application setup leaks)) =
-          (runtime setup).interactionInstruction leaks ((runtime setup).reportNetwork leaks watcher)
+          (runtime setup).interactionInstruction leaks ((runtime setup).idleNetwork leaks)
             execution.environmentRecall
             (execution.observeEnvironment (application setup leaks)) instruction := by
         simp only [scheduler, position, located]
@@ -69,7 +69,7 @@ theorem segment_control_steps (watcher : Player)
           (execution.observeEnvironment (application setup leaks))).support,
           command.actor? (application setup leaks) = instructionActor instruction := by
         rw [schedulerEq]
-        exact instruction_actor setup leaks watcher execution.environmentRecall
+        exact instruction_actor setup leaks execution.environmentRecall
           (execution.observeEnvironment (application setup leaks)) instruction
       have one := (application setup leaks).control_round (initialLaw setup)
         (horizon setup watcher) (scheduler setup leaks watcher) players
@@ -80,7 +80,7 @@ theorem segment_control_steps (watcher : Player)
       have step : (application setup leaks).round
           (scheduler setup leaks watcher) players execution =
           (runtime setup).interactionStep leaks players
-            ((runtime setup).reportNetwork leaks watcher) instruction execution := by
+            ((runtime setup).idleNetwork leaks) instruction execution := by
         simp only [ReactiveApplication.round, schedulerEq, interactionStep]
       rw [step, ← PMF.bind_pure_comp, Function.comp_def, iterate_bind, runInteractionPlan,
         PMF.map_bind]
@@ -89,7 +89,7 @@ theorem segment_control_steps (watcher : Player)
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
       · have advanced := (runtime setup).interactionStep_recall leaks players
-          ((runtime setup).reportNetwork leaks watcher) instruction execution next reached
+          ((runtime setup).idleNetwork leaks) instruction execution next reached
         simp only [List.length_append, List.length_singleton]
         omega
 
@@ -146,7 +146,7 @@ theorem menu_prefix_state [Fintype Player]
         ((runtime setup).runInteractionPlan leaks
           (responses.decodeProfile (initialLaw setup) (horizon setup watcher)
             (scheduler setup leaks watcher) profile)
-          ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher count)
+          ((runtime setup).idleNetwork leaks) (planPrefix setup watcher count)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).map
             (fun execution =>
               some ⟨horizon setup watcher - blockOffset count, none, execution⟩)) := by

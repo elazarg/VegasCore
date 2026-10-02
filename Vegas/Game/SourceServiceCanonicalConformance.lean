@@ -123,10 +123,12 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
       have unused : middle.application.HandleUnused
           (actor, .prepared (middle.application.publicView.bindingCount actor)) :=
         fun field associated => facts.binding.accepted_fixed field _ associated fresh
+      rw [reactiveApplication_packet_none,
+        middle.application.publicView_tokenFor_of_ready _ event rfl ready]
       apply ((runtime setup).freshServiceEnvelope_binding_iff middle.application.publicView
         (actor, middle.network.nextSerial actor) event
-        (actor, .prepared (middle.application.publicView.bindingCount actor)) none).mpr
-      refine ⟨?_, rfl, rfl⟩
+        (actor, .prepared (middle.application.publicView.bindingCount actor)) none _).mpr
+      refine ⟨?_, rfl, rfl, rfl⟩
       simp only [PublicView.BindingIncludable, node]
       exact ⟨readyView, deadline, by trivial, by trivial, vacant, unused⟩
   | resolve actor payload binding checks outputEq codeEq =>
@@ -183,19 +185,21 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
             actor (middle.network.known actor)
             ((disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
               actor (app.observePlayer middle.application actor) (middle.network.known actor)) =
-              ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩⟩ := by
+              ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩,
+                middle.application.publicView.tokenFor (.opening event handle ⟨payload, value⟩)⟩
+              := by
           have emitted := WitnessedSubmission.normalizeReactive_emit (runtime setup) leaks
             middle.application actor (middle.network.known actor)
               (disclosureSubmission (.opening event handle ⟨payload, value⟩))
           have packet := (runtime setup).windowOpening_packet leaks actor event handle
             ⟨payload, value⟩ middle.application (middle.network.known actor) handleOwner fixed
           exact emitted.trans packet
-        rw [packetEq]
+        rw [packetEq, middle.application.publicView_tokenFor_of_ready _ event rfl ready]
         apply ((runtime setup).freshServiceEnvelope_opening_iff middle.application.publicView
           (actor, middle.network.nextSerial actor) event actor payload binding checks outputEq
-          codeEq node handle ⟨payload, value⟩ (some ⟨handle, ⟨payload, value⟩⟩)).mpr
+          codeEq node handle ⟨payload, value⟩ (some ⟨handle, ⟨payload, value⟩⟩) _).mpr
         refine ⟨readyView, deadline, by simp only [certifiedOpening, decide_true], ?_, rfl,
-          handleOwner, associatedHandle, rfl⟩
+          handleOwner, associatedHandle, rfl, rfl⟩
         apply (middle.application.publicView.openingGuardsAccepted_iff actor event payload
           binding checks outputEq codeEq node handle ⟨payload, value⟩ _).mpr
         refine ⟨value, rfl, ?_⟩

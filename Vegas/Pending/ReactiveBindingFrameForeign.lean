@@ -71,7 +71,7 @@ theorem binding_inclusion_unmodified
     (noAction : memory.shadow.actions event = none)
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
+      some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) :
     let app := runtime.reactiveApplication leaks
     Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
@@ -104,7 +104,8 @@ theorem binding_inclusion_unmodified
   have completed := frame.complete_unmodified event ready rightReady
     noValue noAction action value
   have paired := completed.setAccepted association
-  apply frame.include_accepted id _ found _ _ paired
+  apply frame.include_accepted id _ found (WitnessedPacket.tokenValid_commitment _ _ _) _ _
+    paired
   · rw [handle_commitment_eq runtime original.application id event candidate actor payload outputEq
       codeEq node ready timely sender owned vacant unused,
         original.application.candidates.freeze_eq_self_of_not_fresh candidate fixed]
@@ -136,7 +137,7 @@ theorem foreign_binding_inclusion
     (fixed : original.application.candidates.lookup candidate ≠ .fresh)
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
+      some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) :
     let app := runtime.reactiveApplication leaks
     Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++

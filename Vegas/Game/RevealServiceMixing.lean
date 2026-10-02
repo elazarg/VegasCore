@@ -197,7 +197,9 @@ theorem compiledProfile_fullyMixed
       by_cases watches : who = watcher
       · change response ∈ (if who = watcher then _ else _ ) at member
         rw [ite_eq_left watches] at member
-        simpa only [policy, ite_eq_left watches] using (Set.Finite.mem_toFinset _).mp member
+        simpa only [policy, ite_eq_left watches, Finset.mem_singleton,
+          ReactiveApplication.silentPolicy_apply, PMF.support_pure,
+          Set.mem_singleton_iff] using member
       · obtain ⟨event, owned, _depth, supported⟩ :=
           owner_history_supported setup leaks extended watcher who reveals watches history.1 active
         let reference := (menu setup leaks extended watcher).uniformPolicy (initialLaw setup)

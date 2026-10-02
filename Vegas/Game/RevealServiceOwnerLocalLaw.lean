@@ -86,7 +86,7 @@ theorem owner_local_law_readout
   let responses := menu setup leaks extended watcher
   let players := policy setup leaks extended watcher profile 0 le_rfl (by norm_num)
   have different : who ≠ watcher := fun same => observer event (same ▸ owned)
-  have reports : players watcher = (application setup leaks).reportFirstUnpublished := by
+  have reports : players watcher = (application setup leaks).silentPolicy := by
     simp only [players, policy, ↓reduceIte]
   have ordinary : ∀ player, player ≠ watcher → ∀ past view response,
       response ∈ (players player past view).support → response ∈

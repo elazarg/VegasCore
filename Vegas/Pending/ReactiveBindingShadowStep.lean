@@ -123,16 +123,28 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
         catalog.rememberCompletion_pending runtime leaks after.application who event
           (submittedConfig ▸ ready) _ _]
     exact catalogEq
+  have publicEq : right.application.publicView = left.application.publicView :=
+    congrArg (fun view : app.PlayerView => view.application.publicView) observed
+  have packetEq : (⟨originalCall, .none⟩ : WitnessedSubmission graph).emit
+        (app.submit left.application who ⟨originalCall, .none⟩) who (left.network.known who) =
+      (⟨repairedCall, .none⟩ : WitnessedSubmission graph).emit
+        (app.submit right.application who ⟨repairedCall, .none⟩) who
+          (right.network.known who) := by
+    change WitnessedPacket.mk originalCall.packet none
+        ((app.submit left.application who ⟨originalCall, .none⟩).publicView.tokenFor
+          originalCall.packet) =
+      WitnessedPacket.mk repairedCall.packet none
+        ((app.submit right.application who ⟨repairedCall, .none⟩).publicView.tokenFor
+          repairedCall.packet)
+    rw [reactiveApplication_submit_publicView, reactiveApplication_submit_publicView, publicEq]
   have recallEq := memory.restoreRecall_submit runtime leaks left right who
-    ⟨originalCall, .none⟩ ⟨repairedCall, .none⟩ lengths past observed network rfl
+    ⟨originalCall, .none⟩ ⟨repairedCall, .none⟩ lengths past observed network packetEq
   refine ⟨recallEq, ?_, ?_⟩
   · change (⟨after.network.observe who, shadow.view (app.observePlayer after.application who),
       after.receipts⟩ : app.PlayerView) =
       ⟨before.network.observe who, app.observePlayer before.application who, before.receipts⟩
     have networkEq : before.network = after.network := by
-      change (left.network.submit who ⟨originalCall.packet, none⟩).2 =
-        (right.network.submit who ⟨repairedCall.packet, none⟩).2
-      rw [network]
+      exact congrArg₂ (fun current packet => (current.submit who packet).2) network packetEq
     rw [← networkEq, shadowEq]
     exact congrArg (fun receipts => (⟨before.network.observe who,
       app.observePlayer before.application who, receipts⟩ : app.PlayerView))

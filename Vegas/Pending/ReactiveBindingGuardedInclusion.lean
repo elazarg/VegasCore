@@ -43,6 +43,7 @@ theorem accepted_guarded_inclusion
     (sender : id.1 = actor) (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩)
     (addressed : packet.call.event? graph = some event)
+    (tokened : packet.token = some ⟨event⟩)
     (certified : certifiedOpening packet = true)
     (guards : original.application.publicView.openingGuardsAccepted packet = true)
     (next : State graph)
@@ -53,8 +54,10 @@ theorem accepted_guarded_inclusion
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
-  obtain ⟨actual, offered, raw, rfl⟩ := (certifiedOpening_iff packet).mp certified
+  obtain ⟨actual, offered, raw, token, rfl⟩ := (certifiedOpening_iff packet).mp certified
   cases Option.some.inj addressed
+  change token = some ⟨event⟩ at tokened
+  subst token
   have owned : offered.1 = actor := by
     by_contra foreign
     simp [handle, node, foreign] at accepted
@@ -62,18 +65,21 @@ theorem accepted_guarded_inclusion
     accepted
   let submission := disclosureSubmission (.opening event offered raw)
   have emitted : submission.emit original.application actor [] =
-      ⟨.opening event offered raw, some ⟨offered, raw⟩⟩ := by
+      ⟨.opening event offered raw, some ⟨offered, raw⟩, some ⟨event⟩⟩ := by
     have verified := (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr fixed
     simp only [submission, disclosureSubmission, WitnessedSubmission.emit, owned, verified,
-      and_self, ↓reduceIte]
+      and_self, ↓reduceIte,
+      original.application.publicView_tokenFor_of_ready (.opening event offered raw) event rfl
+        ready]
   have canonicalAccepted : (runtime.reactiveApplication leaks).handle
       ((runtime.reactiveApplication leaks).submit original.application actor submission)
       ⟨(actor, id.2), submission.emit
         ((runtime.reactiveApplication leaks).submit original.application actor submission)
           actor []⟩ = some next := by
-    change runtime.handle original.application
-      ⟨(actor, id.2), (submission.emit original.application actor []).call⟩ = some next
-    rw [emitted]
+    change (runtime.reactiveApplication leaks).handle original.application
+      ⟨(actor, id.2), submission.emit original.application actor []⟩ = some next
+    rw [emitted, reactiveApplication_handle_of_tokenValid runtime leaks _ _
+      (WitnessedPacket.tokenValid_opening _ _ _ _)]
     simpa only [← sender, Prod.mk.eta] using accepted
   obtain ⟨candidate, value, associated, _, stored, resolved, normalized⟩ :=
     runtime.accepted_guarded_opening_normalization leaks original.application next actor event

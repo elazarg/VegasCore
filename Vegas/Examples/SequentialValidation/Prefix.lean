@@ -51,9 +51,16 @@ theorem native_window_application (execution : nativeApp.Execution)
     ReactiveApplication.Execution.respond, MessageNetwork.submit,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     MessageNetwork.lookup, empty, List.nil_append, List.find?_cons, decide_true]
-  change (nativeSubmit execution.application
-    who (execution.network.nextSerial who) submission).getD _ = next
-  rw [accepted]
+  have valid : (WitnessedPacket.mk submission.packet none
+      ((nativeApp.submit execution.application who ⟨submission, .none⟩).publicView.tokenFor
+        submission.packet)).tokenValid = true :=
+    tokenFor_tokenValid_of_handle nativeRuntime _ next _ submission.packet none accepted
+  rw [reactiveApplication_packet_none]
+  rw [reactiveApplication_submit_publicView] at valid
+  rw [show nativeApp.handle (nativeApp.submit execution.application who ⟨submission, .none⟩)
+      ⟨(who, execution.network.nextSerial who), ⟨submission.packet, none,
+        execution.application.publicView.tokenFor submission.packet⟩⟩ = some next from
+    (reactiveApplication_handle_of_tokenValid nativeRuntime nativeLeaks _ _ valid).trans accepted]
   rfl
 
 theorem native_window_pending (execution : nativeApp.Execution)
@@ -82,12 +89,13 @@ theorem native_window_ledger (execution : nativeApp.Execution)
     (empty : execution.network.pending = []) :
     (nativeWindow execution who submission).network.ledger =
       execution.network.ledger ++
-        [⟨(who, execution.network.nextSerial who), ⟨submission.packet, none⟩⟩] := by
+        [⟨(who, execution.network.nextSerial who), ⟨submission.packet, none,
+          execution.application.publicView.tokenFor submission.packet⟩⟩] := by
   simp only [nativeWindow, nativeInclude, nativeActivate, nativeRecord,
     ReactiveApplication.Execution.respond, MessageNetwork.submit,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     MessageNetwork.lookup, empty, List.nil_append, List.find?_cons, decide_true]
-  rfl
+  rw [reactiveApplication_packet_none]
 
 theorem native_window_receipts (execution : nativeApp.Execution)
     (who : Bool) (submission : Submission nativeGraph)
@@ -100,8 +108,16 @@ theorem native_window_receipts (execution : nativeApp.Execution)
     ReactiveApplication.Execution.respond, MessageNetwork.submit,
     ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     MessageNetwork.lookup, empty, List.nil_append, List.find?_cons, decide_true]
-  change execution.receipts ++ [(_, (nativeSubmit _ _ _ _).isSome)] = _
-  rw [accepted]
+  have valid : (WitnessedPacket.mk submission.packet none
+      ((nativeApp.submit execution.application who ⟨submission, .none⟩).publicView.tokenFor
+        submission.packet)).tokenValid = true :=
+    tokenFor_tokenValid_of_handle nativeRuntime _ next _ submission.packet none accepted
+  rw [reactiveApplication_packet_none]
+  rw [reactiveApplication_submit_publicView] at valid
+  rw [show nativeApp.handle (nativeApp.submit execution.application who ⟨submission, .none⟩)
+      ⟨(who, execution.network.nextSerial who), ⟨submission.packet, none,
+        execution.application.publicView.tokenFor submission.packet⟩⟩ = some next from
+    (reactiveApplication_handle_of_tokenValid nativeRuntime nativeLeaks _ _ valid).trans accepted]
   rfl
 
 theorem native_window_length (execution : nativeApp.Execution)
@@ -180,12 +196,28 @@ theorem native_bob_application (bit : Bool) :
   exact native_third_application bit
 
 theorem native_bob_ledger (bit : Bool) : (nativeBobExecution bit).network.ledger =
-    [⟨(false, 0), ⟨dummySubmission.packet, none⟩⟩, ⟨(false, 1), ⟨dummyOpening.packet, none⟩⟩,
-      ⟨(false, 2), ⟨(secretOpening bit).packet, none⟩⟩] := by
+    [⟨(false, 0), ⟨dummySubmission.packet, none, some ⟨bindingEvent⟩⟩⟩,
+      ⟨(false, 1), ⟨dummyOpening.packet, none, some ⟨dummyEvent⟩⟩⟩,
+      ⟨(false, 2), ⟨(secretOpening bit).packet, none, some ⟨secretEvent⟩⟩⟩] := by
   change (nativeThird bit).network.ledger = _
   rw [nativeThird, native_window_ledger _ _ _ (native_second_pending bit), native_second_serial]
   rw [nativeSecond, native_window_ledger _ _ _ (native_first_pending bit), native_first_serial]
   rw [nativeFirst, native_window_ledger _ _ _ rfl]
+  have first : (nativeInitialExecution bit).application.config.cut.Ready bindingEvent :=
+    native_registered_ready bit
+  have second : (nativeFirst bit).application.config.cut.Ready dummyEvent := by
+    rw [native_first_application]
+    exact native_bound_ready bit
+  have third : (nativeSecond bit).application.config.cut.Ready secretEvent := by
+    rw [native_second_application]
+    exact native_dummy_ready bit
+  change (nativeInitialExecution bit).network.ledger ++ [⟨_, ⟨_, none,
+      (nativeInitialExecution bit).application.publicView.tokenFor _⟩⟩] ++
+    [⟨_, ⟨_, none, (nativeFirst bit).application.publicView.tokenFor _⟩⟩] ++
+    [⟨_, ⟨_, none, (nativeSecond bit).application.publicView.tokenFor _⟩⟩] = _
+  rw [State.publicView_tokenFor_of_ready _ _ _ rfl first,
+    State.publicView_tokenFor_of_ready _ _ _ rfl second,
+    State.publicView_tokenFor_of_ready _ _ _ rfl third]
   rfl
 
 theorem native_bob_recall (bit : Bool) : (nativeBobExecution bit).recall true = [] := by

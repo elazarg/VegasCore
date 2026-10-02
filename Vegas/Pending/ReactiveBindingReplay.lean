@@ -110,7 +110,8 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
   let response : app.Action :=
     ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩
   let submitted := execution.respond app owner response
-  let packet : WitnessedPacket graph := ⟨.commitment event (owner, .prepared serial), none⟩
+  let packet : WitnessedPacket graph :=
+    ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩
   let message : Message Player (WitnessedPacket graph) :=
     ⟨(owner, execution.network.nextSerial owner), packet⟩
   have same := runtime.reactive_respond_application leaks execution owner response
@@ -124,7 +125,11 @@ theorem rawBinding_delayed_inclusion (runtime : EventGraphRuntime graph)
     runtime.compiled_binding_tail_transport leaks bounds players lawful submitted owner event
       payload outputEq codeEq node currentSole owned currentReady recorded current application
         recalled who action supported
-  have networkEq : submitted.network = (execution.network.submit owner packet).2 := rfl
+  have networkEq : submitted.network = (execution.network.submit owner packet).2 := by
+    simp only [submitted, response, app, ReactiveApplication.Execution.respond,
+      reactiveApplication_packet_none, packet,
+      execution.application.publicView_tokenFor_of_ready
+        (.commitment event (owner, .prepared serial)) event rfl ready]
   have ledger : submitted.network.ledger = execution.network.ledger := rfl
   have packets : submitted.network.Satisfies fun candidate =>
       candidate.id ∈ submitted.network.ledger.map Message.id ∨ candidate = message := by

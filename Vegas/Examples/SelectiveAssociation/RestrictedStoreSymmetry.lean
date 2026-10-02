@@ -420,7 +420,10 @@ theorem emit (selected : Handle nativeGraph) (submitted : WitnessedSubmission na
   calc
     _ = (CandidateFlip.submission selected submitted).emit (CandidateFlip.state selected before)
         who (known.map (CandidateFlip.message selected)) :=
-      WitnessedSubmission.emit_local _ _ _ _ _ (fun _ => rfl)
+      WitnessedSubmission.emit_local (CandidateFlip.submission selected submitted)
+        (state selected before) (CandidateFlip.state selected before) who
+        (known.map (CandidateFlip.message selected)) (fun _ => rfl)
+        ((publicView selected before).trans (CandidateFlip.state_publicView selected before).symm)
     _ = _ := CandidateFlip.emit selected submitted before who known
 
 end Vegas.Examples.SelectiveAssociation.Restricted.StoreFlip

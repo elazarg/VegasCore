@@ -11,7 +11,7 @@ Each ranked block waits a full relative deadline before its final expiry.
 Events completed by arbitrary messages stay completed. If the current event
 is still unfinished, its earlier activation time makes the expiry effective.
 Induction over the actual plan therefore settles every source event without
-assuming honest responses, reporting, successful monitoring, or equilibrium.
+assuming honest responses, observation, successful monitoring, or equilibrium.
 -/
 
 noncomputable section
@@ -39,7 +39,7 @@ theorem suffix_rounds (watcher : Player)
     (position : execution.environmentRecall.length = before.length) :
     (application setup leaks).runRounds (scheduler setup leaks watcher) players rest.length
         execution =
-      (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
+      (runtime setup).runInteractionPlan leaks players ((runtime setup).idleNetwork leaks)
         rest execution := by
   induction rest generalizing before execution with
   | nil => rfl
@@ -49,7 +49,7 @@ theorem suffix_rounds (watcher : Player)
         rfl
       have step : (application setup leaks).round (scheduler setup leaks watcher) players
           execution = (runtime setup).interactionStep leaks players
-            ((runtime setup).reportNetwork leaks watcher) instruction execution := by
+            ((runtime setup).idleNetwork leaks) instruction execution := by
         simp only [ReactiveApplication.round, scheduler, position, selected, interactionStep]
       rw [List.length_cons, ReactiveApplication.runRounds, step, runInteractionPlan]
       apply bind_congr_on_support _
@@ -57,7 +57,7 @@ theorem suffix_rounds (watcher : Player)
       apply ih (before ++ [instruction])
       · simpa only [List.append_assoc, List.singleton_append] using split
       · have advanced := (runtime setup).interactionStep_recall leaks players
-          ((runtime setup).reportNetwork leaks watcher) instruction execution next supported
+          ((runtime setup).idleNetwork leaks) instruction execution next supported
         simp only [List.length_append, List.length_singleton]
         omega
 
@@ -74,7 +74,7 @@ theorem menu_execution_law [Fintype Player]
         ((runtime setup).runInteractionPlan leaks
           (responses.decodeProfile (initialLaw setup) (horizon setup watcher)
             (scheduler setup leaks watcher) profile)
-          ((runtime setup).reportNetwork leaks watcher) (plan setup watcher)
+          ((runtime setup).idleNetwork leaks) (plan setup watcher)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).map
             (application setup leaks).finished) := by
   rw [InformationModel.runBehavioral, responses.run_eq_finish (initialLaw setup)
@@ -278,7 +278,7 @@ theorem terminal_history_settled
       · cases control
         simp_all only [ReactiveApplication.finished]
       · exact plan_terminal setup leaks watcher reveals responses.uniformResponses
-          ((runtime setup).reportNetwork leaks watcher) (setup.eventInputs source) _
+          ((runtime setup).idleNetwork leaks) (setup.eventInputs source) _
           control.execution (EventGraphRuntime.State.initial_invariant (graph := graph setup)
             (setup.eventInputs source)) continued
 
@@ -310,7 +310,7 @@ theorem menu_settles [Fintype Player]
   rw [PMF.support_map] at continued
   obtain ⟨execution, reached, same⟩ := continued
   refine ⟨execution, same.symm, ?_⟩
-  apply plan_terminal setup leaks watcher reveals _ ((runtime setup).reportNetwork leaks watcher)
+  apply plan_terminal setup leaks watcher reveals _ ((runtime setup).idleNetwork leaks)
     (setup.eventInputs source) _ execution
     (EventGraphRuntime.State.initial_invariant (graph := graph setup)
       (setup.eventInputs source)) reached

@@ -59,12 +59,14 @@ private theorem recorded_response_tail
     (unused : execution.application.HandleUnused (owner, .prepared serial))
     (candidate : execution.application.candidates.lookup (owner, .prepared serial) =
       .openable ⟨payload, value⟩)
-    (pending : (⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩ :
+    (pending : (⟨(owner, nonce),
+      ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :
       Message Player (WitnessedPacket (graph setup))) ∈ execution.network.pending)
     (unpublished : (owner, nonce) ∉ execution.network.ledger.map Message.id)
     (packets : execution.network.Satisfies fun packet =>
       packet.id ∈ execution.network.ledger.map Message.id ∨
-        packet = ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩)
+        packet = ⟨(owner, nonce),
+          ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩)
     (available : ∀ past view action, action ∈ (players owner past view).support →
       action ∈ (bounds.menu (runtime setup) leaks).actions owner past view)
     (before after : List (ServiceInstruction (graph setup))) (visits : List Player) (ticks : Nat)
@@ -87,7 +89,7 @@ private theorem recorded_response_tail
         BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1 := by
   intro app strategy tail
   let message : Message Player (WitnessedPacket (graph setup)) :=
-    ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩
+    ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩
   have data := (runtime setup).replay_response_preserves leaks _ execution packets owner
     response (app.replayPolicy_cases _ _ response replay)
   have rightApp : right.application = execution.application := rightEq ▸ data.1
@@ -236,7 +238,7 @@ private theorem recorded_binding_resources
     let serial := execution.application.publicView.bindingCount owner
     let nonce := Message.distinctAuthoredCount execution.network.ledger owner
     let message : Message Player (WitnessedPacket (graph setup)) :=
-      ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩
+      ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩
     ∃ value : L.Val payload,
       execution.application.config.cut.Ready event ∧
       execution.application.WithinDeadline (runtime setup) event ∧
@@ -375,7 +377,7 @@ theorem recorded_binding_history_response_block_coupling
   let serial := execution.application.publicView.bindingCount owner
   let nonce := Message.distinctAuthoredCount execution.network.ledger owner
   let message : Message Player (WitnessedPacket (graph setup)) :=
-    ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩
+    ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩
   have owned : (graph setup).actor? event = some owner := by
     have actor := congrArg EventCode.actor codeEq
     rw [EventCode.actor_cast outputEq ((graph setup).nodes event)] at actor

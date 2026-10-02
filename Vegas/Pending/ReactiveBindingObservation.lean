@@ -57,7 +57,8 @@ theorem reactiveBinding_network
       (runtime.reactiveBinding leaks owner event payload first serial)).network =
       (execution.respond (runtime.reactiveApplication leaks) owner
         (runtime.reactiveBinding leaks owner event payload second serial)).network := by
-  cases first <;> cases second <;> rfl
+  simp only [ReactiveApplication.Execution.respond, reactiveBinding,
+    reactiveApplication_packet_none]
 
 private theorem reactiveBinding_other_view
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -84,8 +85,9 @@ theorem reactive_include_commitment_input_congr
     (recall : left.recall observer = right.recall observer)
     (observed : left.application.playerView observer = right.application.playerView observer)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (evidence : Option (OpeningFact graph))
-    (found : left.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
+    (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph))
+    (found : left.network.lookup id =
+      some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) :
     let first := left.includePending (runtime.reactiveApplication leaks) id
     let second := right.includePending (runtime.reactiveApplication leaks) id
     first.network = second.network ∧ first.receipts = second.receipts ∧
@@ -93,14 +95,25 @@ theorem reactive_include_commitment_input_congr
         (second.recall observer, second.observe (runtime.reactiveApplication leaks) observer) :=
     by
   have rightFound : right.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, evidence⟩⟩ := network ▸ found
-  have handled := handle_commitment_playerView_congr runtime left.application right.application
-    observer id event candidate observed
+      some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ := network ▸ found
+  have handled : Option.map (fun state => state.playerView observer)
+        ((runtime.reactiveApplication leaks).handle left.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) =
+      Option.map (fun state => state.playerView observer)
+        ((runtime.reactiveApplication leaks).handle right.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) := by
+    simp only [reactiveApplication_handle]
+    split
+    · exact handle_commitment_playerView_congr runtime left.application right.application
+        observer id event candidate observed
+    · rfl
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-    found, rightFound, reactiveApplication]
-  cases first : handle runtime left.application ⟨id, .commitment event candidate⟩ with
+    found, rightFound]
+  cases first : (runtime.reactiveApplication leaks).handle left.application
+      ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
   | none =>
-      cases second : handle runtime right.application ⟨id, .commitment event candidate⟩ with
+      cases second : (runtime.reactiveApplication leaks).handle right.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
       | none =>
           simp only [Option.getD_none, Option.isSome_none]
           refine ⟨by rw [network], by rw [receipts], ?_⟩
@@ -115,7 +128,8 @@ theorem reactive_include_commitment_input_congr
       | some after => simp only [first, second, Option.map_none, Option.map_some] at handled
                       contradiction
   | some before =>
-      cases second : handle runtime right.application ⟨id, .commitment event candidate⟩ with
+      cases second : (runtime.reactiveApplication leaks).handle right.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
       | none => simp only [first, second, Option.map_none, Option.map_some] at handled
                 contradiction
       | some after =>
@@ -164,8 +178,14 @@ theorem reactiveBinding_include_other_input
   apply reactive_include_commitment_input_congr runtime leaks (submitted first) (submitted second)
     observer network rfl recalled observed (owner, execution.network.nextSerial owner) event
     (owner, .prepared serial) none
+    (execution.application.publicView.tokenFor (.commitment event (owner, .prepared serial)))
+  have token := reactiveApplication_packet_none runtime leaks execution.application owner
+    (execution.network.known owner)
   cases first <;>
-    exact freshSerial.lookup_submit owner ⟨.commitment event (owner, .prepared serial), none⟩
+    simpa only [submitted, app, ReactiveApplication.Execution.respond, reactiveBinding, token]
+      using freshSerial.lookup_submit owner
+        ⟨.commitment event (owner, .prepared serial), none,
+          execution.application.publicView.tokenFor (.commitment event (owner, .prepared serial))⟩
 
 /-- Passive observation of the submitted opaque envelope has the same law for
 every foreign player, with its actual preexisting private recall preserved. -/

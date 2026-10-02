@@ -237,12 +237,17 @@ theorem RevealSource.opening_config_law (setup : Setup (Player := Player) (L := 
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
               (cast (congrArg EventGraph.EventField.Value outputEq.symm)
                 (PublicationResult.success value))) :=
-        handle_opening_eq (runtime setup) execution.application _ _ actual owner payload
+        (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+          ((runtime setup).windowEnvelope_tokenValid leaks owner _ actual _ execution
+            ready)).trans
+        (handle_opening_eq (runtime setup) execution.application _ _ actual owner payload
           (refs.get binding) _ outputEq codeEq node ready timely rfl candidateOwned associated
-          value fixed stored (.success value) resolved
+          value fixed stored (.success value) resolved)
       let packet : WitnessedPacket (graph setup) :=
         ⟨.opening (embedding.event ⟨0, by simp [eventCount]⟩) actual ⟨payload, value⟩,
-          some ⟨actual, ⟨payload, value⟩⟩⟩
+          some ⟨actual, ⟨payload, value⟩⟩,
+          execution.application.publicView.tokenFor
+            (.opening (embedding.event ⟨0, by simp [eventCount]⟩) actual ⟨payload, value⟩)⟩
       have materialized := (runtime setup).windowOpening_packet leaks owner
         (embedding.event ⟨0, by simp [eventCount]⟩) actual ⟨payload, value⟩ execution.application
         (execution.network.known owner) candidateOwned fixed

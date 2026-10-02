@@ -44,13 +44,14 @@ theorem native_bob_observed (bit : Bool) : nativeRuntime.openingObserved nativeL
     (false, .initial secretInput) ⟨.bool, bit⟩ := by
   have observed (execution : nativeApp.Execution)
       (ledger : execution.network.ledger =
-        [⟨(false, 0), ⟨dummySubmission.packet, none⟩⟩, ⟨(false, 1), ⟨dummyOpening.packet, none⟩⟩,
-          ⟨(false, 2), ⟨(secretOpening bit).packet, none⟩⟩])
+        [⟨(false, 0), ⟨dummySubmission.packet, none, some ⟨bindingEvent⟩⟩⟩,
+          ⟨(false, 1), ⟨dummyOpening.packet, none, some ⟨dummyEvent⟩⟩⟩,
+          ⟨(false, 2), ⟨(secretOpening bit).packet, none, some ⟨secretEvent⟩⟩⟩])
       (receipts : execution.receipts =
         [((false, 0), true), ((false, 1), true), ((false, 2), true)]) :
       nativeRuntime.openingObserved nativeLeaks (execution.observe nativeApp true)
         (false, .initial secretInput) ⟨.bool, bit⟩ := by
-    refine ⟨secretEvent, (false, 2), none, ?_⟩
+    refine ⟨secretEvent, (false, 2), none, some ⟨secretEvent⟩, ?_⟩
     change _ ∈ execution.network.ledger.zip execution.receipts
     rw [ledger, receipts]
     exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_singleton_self _))

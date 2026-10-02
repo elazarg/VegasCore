@@ -72,9 +72,8 @@ theorem rawBinding_submit_hidden_congr
     exact (submitStep_playerView_other _ owner who different _).trans
       (Submission.register_other _ execution.application owner who different)
   refine ⟨?_, receipts, ?_, ?_, ?_⟩
-  · change (left.network.submit owner ⟨.commitment event (owner, .prepared serial), none⟩).2 =
-      (right.network.submit owner ⟨.commitment event (owner, .prepared serial), none⟩).2
-    rw [network]
+  · simp only [ReactiveApplication.Execution.respond, reactiveApplication_packet_none,
+      network, publicEq]
   · exact (runtime.reactive_respond_application leaks left owner _).2.trans
       (publicEq.trans (runtime.reactive_respond_application leaks right owner _).2.symm)
   · intro who different
@@ -136,8 +135,9 @@ theorem rawBinding_reserved_hidden_congr
     (∀ who, who ≠ owner → before.application.playerView who = after.application.playerView who) ∧
     (∀ who, who ≠ owner → before.recall who = after.recall who) at submitted
   have found : before.network.lookup id =
-      some ⟨id, ⟨.commitment event (owner, .prepared serial), none⟩⟩ :=
-    serials.lookup_submit owner ⟨.commitment event (owner, .prepared serial), none⟩
+      some ⟨id, ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :=
+    respond_submit_lookup_of_ready runtime leaks left owner
+      ⟨.commitment event (owner, .prepared serial), first⟩ serials event rfl ready
   have configEq : before.application.config = left.application.config :=
     (runtime.reactive_respond_application leaks left owner _).1
   have beforePublic : before.application.publicView = left.application.publicView :=

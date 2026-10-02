@@ -29,7 +29,8 @@ theorem reactiveAssociationInvariant (runtime : EventGraphRuntime graph)
       state message next valid.1 accepted, ?_⟩
     exact (handle_accepted_of_present runtime state next field
       (valid.1.accepted_present field candidate valid.2)
-      ⟨message.id, message.payload.call⟩ accepted).trans valid.2
+      ⟨message.id, message.payload.call⟩
+        (reactiveHandle_call accepted)).trans valid.2
   environment state command next valid reached := by
     refine ⟨(runtime.reactiveBindingInvariant leaks).environment
       state command next valid.1 reached, ?_⟩

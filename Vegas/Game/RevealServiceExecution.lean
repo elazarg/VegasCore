@@ -34,7 +34,7 @@ theorem run_source_suffix_option_law
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (wholeProfile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
-    (watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (watcherPolicy : players watcher = (application setup leaks).silentPolicy)
     (ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support → response ∈
         ordinaryActions setup leaks (bounds.withInitialValues (initialLaw setup)) who past view)
@@ -55,7 +55,7 @@ theorem run_source_suffix_option_law
         embedding refsBefore offset →
       ∀ execution, Checkpoint setup leaks initial source refs offset execution →
       ((runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         ((List.finRange (eventCount program)).flatMap fun index =>
           block setup watcher (embedding.event index)) execution).map
         (fun final => decodeState? (terminalRefsWith program refs embedding.ref)
@@ -99,7 +99,7 @@ theorem run_source_suffix_option_law
         EventGraphRuntime.nodeView_eq_resolve _ _
       obtain ⟨opportunity, activeCheckpoint, _sameApplication,
           opportunityLaw, _opportunityRecall⟩ :=
-        checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
+        checkpoint.owner_opportunity players ((runtime setup).idleNetwork leaks)
           owner
       have ready : opportunity.application.config.cut.Ready event := by
         have active : offset < (graph setup).order.eventCount := eventRank ▸ event.isLt

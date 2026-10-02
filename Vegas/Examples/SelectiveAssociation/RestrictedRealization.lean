@@ -124,8 +124,10 @@ theorem binding_realizes (players : Player → app.Policy) (execution : app.Exec
         EventGraph.FieldRef.get?, EventGraph.Config.complete] using meaning
   · have found : submitted.network.lookup (who, execution.network.nextSerial who) =
         some ⟨(who, execution.network.nextSerial who),
-          ⟨.commitment (nativeBindingEvent who) (who, .prepared slot.val), none⟩⟩ :=
-      serials.lookup_submit who _
+          ⟨.commitment (nativeBindingEvent who) (who, .prepared slot.val), none,
+            some ⟨nativeBindingEvent who⟩⟩⟩ :=
+      respond_submit_lookup_of_ready nativeRuntime leaks execution who _ serials
+        (nativeBindingEvent who) rfl ready
     simp only [interactionStep, interactionInstruction, binding_selected execution who slot bit
       serials, PMF.pure_bind, ReactiveApplication.dispatch,
       ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind,
@@ -134,7 +136,7 @@ theorem binding_realizes (players : Player → app.Policy) (execution : app.Exec
       (who, execution.network.nextSerial who)).application = _
     unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
     rw [found]
-    rfl
+    simp only [reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true]
 
 /-- The prescribed correction realizes either bit at every unfinished binding
 decision. The statement uses actual native histories and the unchanged selector. -/

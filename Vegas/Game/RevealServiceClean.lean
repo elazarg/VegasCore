@@ -6,9 +6,10 @@ import Vegas.Game.RevealServicePayoffs
 /-! # Zero liability at every retained terminal history
 
 The operational prefix invariant covers every legal restricted history, not
-only the histories reached by a compiled equilibrium. Its public transcript
-contains successful canonical publications and therefore supplies no departure
-evidence. This remains true after arbitrary retained continuation policies.
+only the histories reached by a compiled equilibrium. Its ledger holds only
+accepted canonical publications, each permitted by the settled record, and the
+watcher's report is empty, so settlement finds no departure evidence. This remains
+true after arbitrary retained continuation policies.
 -/
 
 noncomputable section
@@ -30,12 +31,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
 
 include reveals observer openable in
-/-- A legal terminal C history has no attributable departure evidence for any
-player, independently of all strategies and limiting equilibrium beliefs. -/
-theorem terminal_history_clean
+/-- Every legal terminal C history ends at an execution related to a source
+checkpoint. Any fact of every checkpoint therefore holds there, independently
+of all strategies and limiting equilibrium beliefs. -/
+theorem terminal_history_fact
+    (fact : (application setup leaks).Execution → Prop)
+    (fromCheckpoint : ∀ (initial : State L setup.context) {Γ : SourceCtx Player L}
+      (source : Config Player L Γ) (refs : ContextRefs (graph setup).layout Γ) rank current,
+      Checkpoint setup leaks initial source refs rank current → fact current)
     (history : (protocol setup leaks bounds watcher).History)
-    (terminal : (protocol setup leaks bounds watcher).terminal history.state) (who : Player) :
-    ¬ departureAtState setup leaks who history.state := by
+    (terminal : (protocol setup leaks bounds watcher).terminal history.state) :
+    ∃ execution, history.state = (application setup leaks).finished execution ∧
+      fact execution := by
   let responses := menu setup leaks bounds watcher
   let profile := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)
@@ -64,23 +71,55 @@ theorem terminal_history_clean
     simp only [List.take_eq_self_iff, List.length_finRange]
     exact Nat.le_refl _
   have actual : execution ∈ ((initialLaw setup).bind fun state =>
-      (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
+      (runtime setup).runInteractionPlan leaks players ((runtime setup).idleNetwork leaks)
         (planPrefix setup watcher (eventCount setup.program))
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support := by
     rw [completePlan, PMF.support_bind]
     exact Set.mem_iUnion₂.mpr ⟨initial, initially, reached⟩
   obtain ⟨sourceInitial, _, source, related, _decoded, _priorView, _sourceReach⟩ :=
     initialized_prefix_support setup leaks bounds watcher reveals observer openable players
-      (menu_decode_reports setup leaks bounds watcher profile)
+      (menu_decode_silent setup leaks bounds watcher profile)
       (menu_decode_ordinary setup leaks bounds watcher profile)
       (eventCount setup.program) (Nat.le_refl _) execution actual
-  rw [← same]
-  change ¬ departureEvidence setup leaks who execution
-  exact PrefixCheckpoint.runtime_fact (fun current => ¬ departureEvidence setup leaks who current)
-    (fun _source _refs _rank current checkpoint =>
-      departureEvidence_clear_of_transcript setup leaks who current _
-        checkpoint.ledger checkpoint.receipts)
+  refine ⟨execution, same.symm, ?_⟩
+  exact PrefixCheckpoint.runtime_fact fact
+    (fun source refs rank current checkpoint =>
+      fromCheckpoint sourceInitial source refs rank current checkpoint)
     setup.program _ _ _ 0 (eventCount setup.program) source execution related
+
+include reveals observer openable in
+/-- A legal terminal C history has no attributable departure evidence for any
+player, independently of all strategies and limiting equilibrium beliefs. -/
+theorem terminal_history_clean
+    (history : (protocol setup leaks bounds watcher).History)
+    (terminal : (protocol setup leaks bounds watcher).terminal history.state) (who : Player) :
+    ¬ departureAtState setup leaks watcher who history.state := by
+  obtain ⟨execution, same, clean⟩ := terminal_history_fact setup leaks bounds watcher reveals
+    observer openable (fun current => ¬ departureEvidence setup leaks watcher who current)
+    (fun _ _ _ _ _ current checkpoint =>
+      departureEvidence_clear_of_transcript setup leaks watcher who current _
+        checkpoint.invariant.reachable _ checkpoint.ledger checkpoint.receipts
+        (congrFun checkpoint.leaked watcher))
+    history terminal
+  rw [same]
+  exact clean
+
+include reveals observer openable in
+/-- At a legal terminal C history the settled record permits every ledger
+entry, and every transmitted packet is on the ledger. -/
+theorem terminal_history_published
+    (history : (protocol setup leaks bounds watcher).History)
+    (terminal : (protocol setup leaks bounds watcher).terminal history.state) :
+    ∃ execution, history.state = (application setup leaks).finished execution ∧
+      (∀ message ∈ execution.network.ledger,
+        ((runtime setup).settledRecord leaks execution).permits message = true) ∧
+      ∀ input ∈ execution.network.inputs,
+        input.envelope.id ∈ execution.network.ledger.map Message.id :=
+  terminal_history_fact setup leaks bounds watcher reveals observer openable _
+    (fun _ _ _ _ _ current checkpoint =>
+      ⟨publicationLedger_permitted setup leaks current _ checkpoint.invariant.reachable _
+        checkpoint.ledger checkpoint.receipts, checkpoint.inputs⟩)
+    history terminal
 
 include reveals observer openable in
 /-- Every sufficiently long retained continuation is clean, including pure
@@ -91,7 +130,7 @@ theorem continuation_clean
     (fuel : Nat) (enough : 2 * horizon setup watcher + 1 - history.trace.length ≤ fuel)
     (supported : final ∈ ((information setup leaks bounds watcher).runBehavioralFrom profile fuel
       history).support) (who : Player) :
-    ¬ departureAtState setup leaks who final.state := by
+    ¬ departureAtState setup leaks watcher who final.state := by
   apply terminal_history_clean setup leaks bounds watcher reveals observer openable final _ who
   rcases (protocol setup leaks bounds watcher).runRandomizedFor_terminal_or_length
       ((information setup leaks bounds watcher).randomizedChooser profile) fuel history final

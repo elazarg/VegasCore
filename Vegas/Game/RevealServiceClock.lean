@@ -21,8 +21,8 @@ open GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- The fixed actor of a revelation-service instruction. Report wire turns
-only include or wait, and therefore do not activate another player. -/
+/-- The fixed actor of a revelation-service instruction. Wire turns only
+include or wait, and therefore do not activate another player. -/
 def instructionActor {graph : Vegas.EventGraph Player L} : ServiceInstruction graph → Option Player
   | .player who => some who
   | _ => none
@@ -226,12 +226,12 @@ theorem watcher_activation_count (watcher owner : Player) (reveals : setup.progr
     planPrefix_actors_length setup watcher reveals event.val event.isLt.le]
   rfl
 
-theorem instruction_actor (watcher : Player)
+theorem instruction_actor
     (history : List (application setup leaks).EnvironmentEntry)
     (view : (application setup leaks).EnvironmentView)
     (instruction : ServiceInstruction (graph setup)) (command : (application setup leaks).Command)
     (supported : command ∈ ((runtime setup).interactionInstruction leaks
-      ((runtime setup).reportNetwork leaks watcher) history view instruction).support) :
+      ((runtime setup).idleNetwork leaks) history view instruction).support) :
     command.actor? (application setup leaks) = instructionActor instruction := by
   cases instruction with
   | player who | sample event | tick | expire event =>
@@ -246,16 +246,10 @@ theorem instruction_actor (watcher : Player)
       unfold reactiveLatest
       split <;> rfl
   | wire =>
-      rw [(runtime setup).reportNetwork_instruction leaks watcher history view,
+      rw [(runtime setup).idleNetwork_instruction leaks history view,
         PMF.mem_support_pure_iff _ _] at supported
       subst command
-      unfold ReactiveApplication.includeReported
-      split
-      · rfl
-      · split
-        · simp only [ReactiveApplication.atMostOnceCommand]
-          split <;> rfl
-        · rfl
+      rfl
 
 private theorem scheduler_activation_position (watcher who : Player)
     (reveals : setup.program.RevealOnly)
@@ -276,7 +270,7 @@ private theorem scheduler_activation_position (watcher who : Player)
       rw [selected] at supported
       apply plan_activation_position setup watcher who reveals history.length
       rw [selected]
-      exact (instruction_actor setup leaks watcher history view instruction command supported).symm
+      exact (instruction_actor setup leaks history view instruction command supported).symm
         |>.trans active
 
 private def ActiveCalendar (watcher : Player) : (application setup leaks).ProtocolState → Prop
@@ -360,7 +354,7 @@ theorem scheduled_activation_count (watcher : Player)
         List.append_nil, ReactiveApplication.Command.actor?, List.length_nil, Nat.add_zero]
   | some instruction =>
       rw [selected] at supported
-      have actor := instruction_actor setup leaks watcher history view instruction command supported
+      have actor := instruction_actor setup leaks history view instruction command supported
       simp only [activationCount, List.take_add_one, selected, Option.toList_some,
         List.filterMap_append, List.length_append, List.filterMap_cons, List.filterMap_nil]
       rw [actor]
@@ -528,12 +522,12 @@ private def commandTicks : (application setup leaks).Command → Nat
   | .application command => command.clockTicks
   | _ => 0
 
-private theorem instruction_ticks (watcher : Player)
+private theorem instruction_ticks
     (history : List (application setup leaks).EnvironmentEntry)
     (view : (application setup leaks).EnvironmentView)
     (instruction : ServiceInstruction (graph setup)) (command : (application setup leaks).Command)
     (supported : command ∈ ((runtime setup).interactionInstruction leaks
-      ((runtime setup).reportNetwork leaks watcher) history view instruction).support) :
+      ((runtime setup).idleNetwork leaks) history view instruction).support) :
     commandTicks setup leaks command = instruction.ticks := by
   cases instruction with
   | player who | sample event | tick | expire event =>
@@ -548,16 +542,10 @@ private theorem instruction_ticks (watcher : Player)
       unfold reactiveLatest
       split <;> rfl
   | wire =>
-      rw [(runtime setup).reportNetwork_instruction leaks watcher history view,
+      rw [(runtime setup).idleNetwork_instruction leaks history view,
         PMF.mem_support_pure_iff _ _] at supported
       subst command
-      unfold ReactiveApplication.includeReported
-      split
-      · rfl
-      · split
-        · simp only [ReactiveApplication.atMostOnceCommand]
-          split <;> rfl
-        · rfl
+      rfl
 
 private def calendarTicks (watcher : Player) (count : Nat) : Nat :=
   serviceTicks ((plan setup watcher).take count)
@@ -577,7 +565,7 @@ private theorem scheduled_ticks (watcher : Player)
         List.append_nil, commandTicks, Nat.add_zero]
   | some instruction =>
       rw [selected] at supported
-      rw [instruction_ticks setup leaks watcher history view instruction command supported]
+      rw [instruction_ticks setup leaks history view instruction command supported]
       simp only [calendarTicks, List.take_add_one, selected, Option.toList_some,
         serviceTicks_append, serviceTicks_cons, serviceTicks_nil, Nat.add_zero]
 
@@ -619,12 +607,14 @@ private theorem environment_clock (before after : (application setup leaks).Exec
       cases found : before.network.lookup id with
       | none => rfl
       | some message =>
-          change (((runtime setup).handle before.application
-            ⟨message.id, message.payload.call⟩).getD before.application).clock = _ + 0
-          cases accepted : (runtime setup).handle before.application
-              ⟨message.id, message.payload.call⟩ with
+          change (((application setup leaks).handle before.application
+            message).getD before.application).clock = _ + 0
+          cases accepted : (application setup leaks).handle before.application
+              message with
           | none => rfl
-          | some next => exact ((runtime setup).handle_clock_activated _ _ _ accepted).1
+          | some next =>
+              exact ((runtime setup).handle_clock_activated _ _ _
+                (reactiveHandle_call accepted)).1
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported

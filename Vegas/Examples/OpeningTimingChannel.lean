@@ -40,7 +40,7 @@ private def opening : app.Action :=
 
 private def packet : Message Player app.Payload :=
   ⟨(bob, 0), ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
-    some ⟨bobHandle, ⟨.bool, true⟩⟩⟩⟩
+    some ⟨bobHandle, ⟨.bool, true⟩⟩, some ⟨bobPublication⟩⟩⟩
 
 /-- This is exactly the ordinary activation transition's sampled execution. -/
 private def activated (execution : app.Execution) (who : Player) : app.Execution :=

@@ -141,7 +141,7 @@ theorem premature_not_accepted (runtime : EventGraphRuntime graph)
     (pending : after.execution.network.lookup message.id = some message)
     (selected : .include message.id ∈ (scheduler after.execution.environmentRecall
       (after.execution.observeEnvironment (runtime.reactiveApplication leaks))).support) :
-    handle runtime after.execution.application ⟨message.id, message.payload.call⟩ = none :=
+    (runtime.reactiveApplication leaks).handle after.execution.application message = none :=
   (runtime.reactiveApplication leaks).unauthorized_not_accepted _ initial horizon scheduler contract
     path before after firstEq lastEq inactive running message entry found
     (runtime.premature_not_authorized leaks before.execution message entry found event predecessor

@@ -268,9 +268,15 @@ conformant traffic under authentic partial sampling.
 the same audit from existing service recall at every actual prefix. This adds
 neither runtime memory nor player observations. Its normalization invariance
 lets the final raw-response lift preserve the actual randomized settlement law.
-[Replay traffic soundness](../Vegas/Game/RevealServiceReplayTraffic.lean) and
-[signed departure evidence](../Vegas/Game/RevealServiceSignedDeparture.lean)
-discharge the concrete checker obligations for the revelation service. The
+
+The revelation-service audits judge each sampled signed packet against the
+contract's settled record, once the service horizon ends
+([settled audit](../Vegas/Game/ServiceSettledAudit.lean)). No verdict reads the
+transmission phase or the ledger at transmission. Every retained terminal
+history is clean ([clean settlement](../Vegas/Game/RevealServiceClean.lean)),
+and [signed departure evidence](../Vegas/Game/RevealServiceSignedDeparture.lean)
+shows that every extra effective response breaks the send-time rule, a proof
+device whose breach leaves its author with a forbidden packet at settlement. The
 [signed capstone](../Vegas/Game/RevealServiceSignedCompilation.lean) needs no
 strategic reporting, zero-utility player or broadcaster attribution. The
 projection to signed evidence occurs before partial sampling. Account liability
@@ -340,7 +346,7 @@ The following obligations establish its arbitrary-length theorem:
 | Fixed deposits | Actual finite watched-history extrema yield sufficient real-valued range/rate deposits before an equilibrium is chosen. This is mathematical synthesis; executable rational-table inference is a separate checked result. Collection rates and monetary implementation remain backend obligations. |
 | C → W extension | Checked for every retained SE, preserving retained strategies, beliefs and the full history/net-payoff law. |
 | W → N → raw equilibrium extension | Checked for arbitrary reveal sequences, normalization-invariant observations/utilities, and zero watcher utility at every history. |
-| Terminal-audit enforcement | Checked: the actual public checker accepts every retained prefix and every extra effective response produces forbidden traffic. Authentic partial sampling plus fixed all-player deposits gives the full raw SE and actual joint randomized settlement law. |
+| Terminal-audit enforcement | Checked: the settled record permits every packet of every retained terminal history, and every extra effective response leaves its author with a packet the settled record forbids. Authentic partial sampling plus fixed all-player deposits gives the full raw SE and actual joint randomized settlement law. |
 | End-to-end SE for arbitrary reveal sequences | Checked under either terminal auditing or the separate indifferent-reporter service assumptions. Both preserve every original source SE and the exact joint typed terminal-state/net-payoff law. |
 
 The source-to-C belief proof compares distributions over the existing
@@ -389,17 +395,17 @@ T  Every bounded raw native response
 This path has no strategic reporting edge. Its auxiliary player may have any
 source utility; the audit deters its extra transmissions like every other
 player's. The existing calendar and its auxiliary activations are still present.
-The reporting-based instance uses the following alternative enforcement path:
+The observation-based instance uses the following alternative enforcement path:
 
 ```text
 S  Ordinary source game
    |  Compile through EventGraph; expand decisions into service blocks
    v
 C  Native service with all source-representable choices;
-   prescribed reporting; harmless published replays represent silence
+   prescribed watcher silence; harmless published replays represent silence
    |  Restore ordinary players' other effective responses
    v
-W  Full effective ordinary-player menus; prescribed reporting
+W  Full effective ordinary-player menus; prescribed watcher silence
    |  Restore the watcher's other effective responses
    v
 N  Full effective native menus, including strategic watcher
@@ -439,14 +445,14 @@ do not silently change the player universe in a theorem application.
 | Edge | Contract | Main proof obligation |
 | --- | --- | --- |
 | S → C | Expand source decisions into concrete service blocks; preserve all source choices, continuation incentives and consistent beliefs. | Relate meaningful decision information and checkpoint laws despite different step counts. |
-| C → W | Every C equilibrium has a W equilibrium with matching retained behavior, beliefs and net outcomes. | Actual legal-comparator inequalities for every ordinary player's added response, with the watcher constrained to report. |
+| C → W | Every C equilibrium has a W equilibrium with matching retained behavior, beliefs and net outcomes. | Actual legal-comparator inequalities for every ordinary player's added response, with the watcher constrained to silent observation. |
 | W → N | Restore the watcher's full effective menu while retaining the equilibrium just constructed. | Initially use identically zero watcher utility at every history. Each extra watcher action then has value equal to its prescribed comparator. |
 | N → T | Restore private response representations without changing public packets or strategic outcomes. | Instantiate the checked alias theorem; prove the payoff/charge decoder is invariant under normalization. |
 
 The W → N edge is checked for the reusable reveal service. All traffic caused by ordinary-player deviations is already possible
-in W. Its reporting decisions are therefore retained by the second extension.
+in W. Its watcher decisions are therefore retained by the second extension.
 New sites reached through watcher deviations receive rational completions.
-This is a forward-existence argument: it does not establish strict reporting,
+This is a forward-existence argument: it does not establish strict observation,
 uniqueness, paid participation or coalition resistance. An interested watcher
 needs a different incentive certificate.
 
@@ -505,8 +511,8 @@ setup assumption. It does not establish a cryptographic setup protocol or
 security under key/secret sharing.
 
 The constructed block for event rank `k` activates the event's owner,
-attempts reserved inclusion, activates the watcher, includes its report, advances
-the clock `k+1` times, and expires the event. It issues no grant: the owner acts
+attempts reserved inclusion, activates the watcher, idles one network slot,
+advances the clock `k+1` times, and expires the event. It issues no grant: the owner acts
 on the event its public view shows ready. Its relative deadline is `k+1`.
 The owner is activated once per source event; arbitrary intervening broadcast
 opportunities are outside this backend contract. All other players' passive
@@ -549,20 +555,22 @@ separate normalization edge.
 
 For general pending visibility, monitor each ordinary response opportunity and
 prove a conditional collection bound before settlement. Detection may follow a
-recipient's reading: the payoff-range bound covers the resulting gain. The audit
-must retain the phase in which the packet was sent, or receive its report before
-the phase advances. Otherwise an early opening can become permitted before it
-is audited. On compliant paths the reporter remains silent and canonical
-traffic settles before the next meaningful source decision.
+recipient's reading: the payoff-range bound covers the resulting gain. The
+audit judges every packet against the contract's settled record, never against
+the phase in which it was sent. An early opening carries no readiness token for
+its event, so the contract never accepts it and the settled record forbids it.
+On compliant paths the watcher stays silent and canonical traffic settles
+before the next meaningful source decision.
 
 [ReactiveMonitoring](../Interaction/ReactiveMonitoring.lean) implements the
-sampling-to-evidence step using ordinary watcher activation, local replay,
-public at-most-once inclusion, and receipt persistence under arbitrary later
-policies. The [Vegas phase lemma](../Vegas/Pending/ReactiveMonitoring.lean)
-proves that any packet addressed outside the current ready public event is
-rejected in a barrier-ordered graph. Timely reporting therefore records an
-early opening before it can become legal; no authenticated send-time field is
-needed for this service. Rejection alone is not a general misconduct test:
+sampling-to-evidence step using ordinary watcher activation and the persistence
+of the watcher's observations under arbitrary later policies. The watcher's
+report is what it observed, included in its own transaction within the
+challenge window before settlement. The
+[Vegas phase lemma](../Vegas/Pending/ReactiveMonitoring.lean) proves that any
+packet addressed outside the current ready public event is rejected in a
+barrier-ordered graph; no authenticated send-time field is needed for this
+service. Rejection alone is not a general misconduct test:
 the source correspondence must still prove canonical calls accepted and
 classify all additional responses.
 
@@ -626,7 +634,7 @@ observations. The selected-prefix projection and fiber premises remain to prove.
 - Fix the activation roster independently of player responses. Inclusion
   decisions may vary only within the proved service contract.
 - A canonical owner response is followed by its inclusion attempt before any
-  other player activation. The watcher then reports any remaining unpublished
+  other player activation. The watcher then observes any remaining unpublished
   traffic before ticks and expiry. For an off-address departure the current
   event is still ready; on a canonical opening path it has already completed.
 - Prove timely opportunities and completion for every source opening/withholding
@@ -650,7 +658,7 @@ these premises for the complete calendar; a local block equation alone does
 not establish them for every source execution.
 
 [Monitored settlement](../Vegas/Pending/ReactiveRevealSettlement.lean) composes
-the actual watcher/report, clock ticks and expiry into a deterministic tail
+the actual watcher observation, clock ticks and expiry into a deterministic tail
 for either source branch. It permits spent pending copies and retains the
 watcher's real silent response recall. No private sampling restriction is
 needed on these source-representable paths.
@@ -811,10 +819,10 @@ liability; wrong-addressed packets preserve his joint result/net-payoff law
 against the matched legal Alice response. No rationality premise supplies any
 of these bounds.
 
-### G5. Reporting, attribution and collection
+### G5. Observation, attribution and collection
 
-In W, prescribe reporting at every watcher observation through its singleton
-menu. Prove collection from actual passive sampling, reporting and inclusion,
+In W, prescribe silence at every watcher activation through its singleton
+menu. Prove collection from actual passive sampling and settlement,
 at every retained hidden history and selected departure, uniformly over every
 paired continuation profile required by the capstone. A bound averaged over an
 equilibrium belief is insufficient for this theorem. Existing snapshot sampling

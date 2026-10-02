@@ -332,7 +332,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
     (checkpoint : Checkpoint setup leaks initial source refs rank execution)
     (bounds : MessageBounds (graph setup))
     (players : Player → (application setup leaks).Policy) (watcher : Player)
-    (policy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (policy : players watcher = (application setup leaks).silentPolicy)
     {name : VarId} {owner : Player} {payload : L.Ty}
     (published : VarId) (selected : HasVar Γ name (.commitment owner payload))
     (event : (graph setup).EventId) (eventRank : event.val = rank)
@@ -351,7 +351,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
     (member : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
       (execution.observe (application setup leaks) owner)) :
     ∃ next, (runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         ([.includeLatest event owner, .player watcher, .wire] ++
           List.replicate (event.val + 1) .tick ++ [.expire event])
         (execution.respond (application setup leaks) owner response) = PMF.pure next ∧
@@ -372,21 +372,18 @@ theorem Checkpoint.reveal_response [Fintype Player]
   obtain ⟨entered, activated⟩ := checkpoint.invariant.activatedAt_eq_some_of_ready_actor
     event ready strategic
   have due := checkpoint.invariant.due_after_deadline (runtime setup) event entered activated
-  have leaked : ∀ message ∈ execution.network.leaked watcher,
-      message.id ∈ execution.network.ledger.map Message.id := by
-    simp only [checkpoint.leaked, List.not_mem_nil, IsEmpty.forall_iff, implies_true]
   obtain ⟨value, bound⟩ := checkpoint.openable selected
   obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
     ordinary_response_settlement setup leaks bounds players watcher policy selected source.state
       refs execution checkpoint.agrees checkpoint.binding event ownedEvent outputEq codeEq node
       value bound ready timely entered (event.val + 1) activated due checkpoint.pending
-      leaked checkpoint.inputs checkpoint.serials response member
+      checkpoint.serials response member
   obtain ⟨sourceNext, sourceLaw, store, history⟩ :=
     ordinary_response_source_step setup leaks bounds players watcher policy published selected
       source checkpoint.emptyRegistry refs execution checkpoint.agrees checkpoint.history
       checkpoint.binding event ownedEvent outputEq codeEq node before decoded value bound
-      ready timely entered (event.val + 1) activated due checkpoint.pending leaked checkpoint.inputs
-      checkpoint.serials response member
+      ready timely entered (event.val + 1) activated due checkpoint.pending checkpoint.serials
+      response member
   have sourceSame : sourceNext = next := (PMF.mem_support_pure_iff _ _).mp (by
     rw [← law, sourceLaw]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl)
@@ -406,13 +403,13 @@ theorem Checkpoint.reveal_response [Fintype Player]
     rw [applicationEq]
     cases sourceChoice setup leaks response <;> exact ⟨rfl, rfl, rfl⟩
   have supported : next ∈ ((runtime setup).runInteractionPlan leaks players
-      ((runtime setup).reportNetwork leaks watcher) suffix submitted).support := by
+      ((runtime setup).idleNetwork leaks) suffix submitted).support := by
     rw [show (runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher) suffix submitted = PMF.pure next
+        ((runtime setup).idleNetwork leaks) suffix submitted = PMF.pure next
       from law]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
   have progressed := (runtime setup).runInteractionPlan_facts leaks
-    (setup.eventInputs initial) players ((runtime setup).reportNetwork leaks watcher)
+    (setup.eventInputs initial) players ((runtime setup).idleNetwork leaks)
     suffix submitted next
     ((runtime setup).reactiveStateInvariant leaks (setup.eventInputs initial) |>.respond
       execution owner response checkpoint.invariant) supported
@@ -500,7 +497,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
     exact settlement_successor_timely setup execution.application checkpoint.invariant
       event successor ready (by omega) actor action result (sourceChoice setup leaks response)
   · exact (runtime setup).runInteractionPlan_preserves leaks players
-      ((runtime setup).reportNetwork leaks watcher)
+      ((runtime setup).idleNetwork leaks)
       _ recallInvariant suffix submitted next
       (app.respond_inputRecall execution owner response checkpoint.recall) supported
 

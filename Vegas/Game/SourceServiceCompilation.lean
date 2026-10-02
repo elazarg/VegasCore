@@ -67,12 +67,12 @@ represents every binding value (`SourceServiceSpec.values`). -/
 theorem audited_raw_sequentialEquilibrium_preserved {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (EnvelopeEvidence service.setup service.leaks) →
-      PMF (List (EnvelopeEvidence service.setup service.leaks)))
+    (sample : List (SettledEvidence service.setup) →
+      PMF (List (SettledEvidence service.setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
-      (runtime service.setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
+    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : service.sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibrium
@@ -157,8 +157,8 @@ theorem completeAudit_raw_sequentialEquilibrium_preserved {Parameter : Type}
       service.sourceTerminates
       (fun who final => (service.setup.protocolReadout final.state).elim 0
         (fun state => utility (service.setup.parameterOutcome parameter state) who))) :
-    let sample : List (EnvelopeEvidence service.setup service.leaks) →
-        PMF (List (EnvelopeEvidence service.setup service.leaks)) := PMF.pure
+    let sample : List (SettledEvidence service.setup) →
+        PMF (List (SettledEvidence service.setup)) := PMF.pure
     let raw := service.bounds.rawMenu (runtime service.setup) service.leaks
     let base := baseUtility service.setup service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))

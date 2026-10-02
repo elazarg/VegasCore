@@ -367,13 +367,8 @@ theorem reactiveCandidateProtection_environment (runtime : EventGraphRuntime gra
             exact protection.unused unfinished
         | some message =>
             simp only [found] at unfinished ⊢
-            change ((handle runtime execution.application
-              ⟨message.id, message.payload.call⟩).getD execution.application).HandleUnused candidate
-            change event ∉ ((handle runtime execution.application
-              ⟨message.id, message.payload.call⟩).getD execution.application).config.cut.completed
-              at unfinished
-            cases accepted : handle runtime execution.application
-                ⟨message.id, message.payload.call⟩ with
+            cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+                message with
             | none =>
                 simp only [accepted, Option.getD_none] at unfinished ⊢
                 exact protection.unused unfinished
@@ -381,10 +376,11 @@ theorem reactiveCandidateProtection_environment (runtime : EventGraphRuntime gra
                 simp only [accepted, Option.getD_some] at unfinished ⊢
                 apply runtime.handle_unused_of_commitmentFor execution.application state message
                   who event candidate owned (protection.packets.lookup id message found) _
-                  accepted unfinished
+                  (reactiveHandle_call accepted) unfinished
                 apply protection.unused
                 intro completed
-                exact unfinished (handle_completed_subset runtime _ state _ accepted completed)
+                exact unfinished (handle_completed_subset runtime _ state _
+                  (reactiveHandle_call accepted) completed)
     | application command =>
         obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
         obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported

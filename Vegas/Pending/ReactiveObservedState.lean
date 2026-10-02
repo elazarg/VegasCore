@@ -29,7 +29,8 @@ theorem reactiveRememberedInvariant (runtime : EventGraphRuntime graph)
     rw [submitStep_remembered, (material.call.register_facts who state).2.1]
     exact fixed
   handle state message next fixed accepted := by
-    rw [handle_remembered runtime state next ⟨message.id, message.payload.call⟩ accepted]
+    rw [handle_remembered runtime state next ⟨message.id, message.payload.call⟩
+      (reactiveHandle_call accepted)]
     exact fixed
   environment state command next fixed reached := by
     rw [environmentStep_remembered runtime state next command reached]

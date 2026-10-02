@@ -1,19 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealServiceEquilibrium
-import Vegas.Pending.ReactiveAuditEquilibrium
 import Vegas.Game.RevealServiceAuditDeposits
 import Vegas.Game.RevealServiceSignedDeparture
 import Vegas.Game.RevealServiceReplayExtension
+import Vegas.Game.RevealServiceClean
+import Vegas.Game.ServiceSettledAudit
 
-/-! # Source sequential equilibrium from signed-author terminal evidence
+/-! # Source sequential equilibrium from settled signed-packet evidence
 
 One fixed full bounded native game preserves every original reveal-only source
-SE and its joint typed outcome/realized settlement law. Public envelope replays
-remain lawful for every player. The auditor authenticates the signed envelope,
-its transmission phase and prior ledger, and never authenticates a rebroadcaster.
-The terminal audit is sampled after strategic play; its conditional coverage and
-actual collection are explicit assumptions.
+SE and its joint typed outcome/realized settlement law. Public packet copies
+remain lawful for every player. Settlement happens once the declared service
+horizon ends: it samples authentic signed packets and judges each against the
+contract's settled record. It never authenticates a rebroadcaster or the time of
+transmission. The settlement sample's conditional coverage and actual
+collection are explicit assumptions.
 -/
 
 noncomputable section
@@ -41,12 +43,11 @@ SE. Utilities may depend on persistent private initial data as well as results. 
 theorem signed_audit_source_sequential_equilibrium_preserved
     [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
-      permittedEnvelope setup leaks record = false →
+    (coverage : ∀ who actual (record : SettledEvidence setup), record ∈ actual →
+      record.2.sender = who → record.1.permits record.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (source : (setup.informationModel admission).BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor (setup.decision_antichain admission)
@@ -56,10 +57,10 @@ theorem signed_audit_source_sequential_equilibrium_preserved
     let extended := bounds.withInitialValues (initialLaw setup)
     let base := baseUtility setup leaks utility
     let deposit := auditRangeDeposit setup leaks extended watcher base probability
-    let audit := (application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
-      (fun evidence => evidence.2.2.sender) (permittedEnvelope setup leaks) sample
-    let net := TerminalAudit.utility base (application setup leaks).stateTraffic audit deposit
-    let settle := TerminalAudit.settlement base (application setup leaks).stateTraffic audit deposit
+    let audit := sourceServiceAudit setup leaks sample
+    let observe := (runtime setup).settlementObservation leaks
+    let net := TerminalAudit.utility base observe audit deposit
+    let settle := TerminalAudit.settlement base observe audit deposit
     let model := rawInformation setup leaks extended watcher
     ∃ target : model.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
@@ -76,7 +77,7 @@ theorem signed_audit_source_sequential_equilibrium_preserved
               fun who => (setup.protocolReadout final.state).elim 0
                 (fun state => utility state who))) := by
   classical
-  intro extended base deposit audit net settle model
+  intro extended base deposit audit observe net settle model
   obtain ⟨retained, _compiled, retainedSE, sourceLaw⟩ :=
     source_sequential_equilibrium_preserved setup leaks bounds watcher reveals observer openable
       admission utility source equilibrium
@@ -107,19 +108,98 @@ theorem signed_audit_source_sequential_equilibrium_preserved
       positive who
     change _ - _ ≤ probability who * deposit who at bound
     linarith
-  obtain ⟨target, targetSE, targetLaw⟩ := extended.audited_raw_sequential_equilibrium
-    (runtime setup) leaks (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)
+  let menuProtocol := (replayMenu setup leaks extended watcher).protocol (initialLaw setup)
+    (horizon setup watcher) (scheduler setup leaks watcher)
+  have completes (history : ((extended.menu (runtime setup) leaks).protocol (initialLaw setup)
+      (horizon setup watcher) (scheduler setup leaks watcher)).History)
+      (control : (application setup leaks).Control) (current : history.state = some control)
+      (terminal : (application setup leaks).terminal history.state) :
+      control.execution.application.config.cut.Terminal := by
+    obtain ⟨execution, finishedEq, settled⟩ := terminal_history_settled setup leaks
+      (extended.menu (runtime setup) leaks) watcher reveals history terminal
+    rw [current] at finishedEq
+    obtain rfl := Option.some.inj finishedEq
+    exact settled
+  have conforming (history : menuProtocol.History) (control : (application setup leaks).Control)
+      (current : history.state = some control)
+      (terminal : (application setup leaks).terminal history.state) :
+      (∀ who, control.execution.application.publicView.missedBindingBy who = false) ∧
+      ∀ record ∈ (application setup leaks).executionTraffic control.execution,
+        ((runtime setup).settledRecord leaks control.execution).permits
+          record.input.envelope = true := by
+    refine ⟨control.execution.application.publicView.missedBindingBy_of_publications
+      (reveal_publications setup reveals), ?_⟩
+    obtain ⟨original, first, originalState, same⟩ := replay_history_counterpart setup leaks
+      extended watcher reveals observer openable history control current
+    have originalTerminal : (protocol setup leaks extended watcher).terminal original.state := by
+      rw [current] at terminal
+      rw [originalState]
+      exact terminal
+    obtain ⟨execution, finishedEq, ledgerPermitted, inputsPublished⟩ :=
+      terminal_history_published setup leaks extended watcher reveals observer openable original
+        originalTerminal
+    rw [originalState] at finishedEq
+    have firstEq : first = execution :=
+      Option.some.inj (congrArg (Option.map ReactiveApplication.Control.execution) finishedEq)
+    subst firstEq
+    have recordEq : (runtime setup).settledRecord leaks control.execution =
+        (runtime setup).settledRecord leaks first := by
+      unfold settledRecord
+      rw [same.applicationEq, same.receipts]
+    have published : ∀ input ∈ control.execution.network.inputs,
+        input.envelope.id ∈ control.execution.network.ledger.map Message.id := by
+      intro input member
+      by_cases watches : input.broadcaster = watcher
+      · exact same.watcherPublished input member watches
+      · have filtered : input ∈ control.execution.network.inputs.filter
+            (fun input => input.broadcaster ≠ watcher) :=
+          List.mem_filter.mpr ⟨member, decide_eq_true watches⟩
+        rw [← same.inputs] at filtered
+        rw [← same.ledger]
+        exact inputsPublished input (List.mem_filter.mp filtered).1
+    have rawTrace : ((application setup leaks).protocol (initialLaw setup)
+        (horizon setup watcher) (scheduler setup leaks watcher)).Trace (some control) :=
+      current ▸ (replayMenu setup leaks extended watcher).toRawTrace (initialLaw setup)
+        (horizon setup watcher) (scheduler setup leaks watcher) history.trace
+    have facts := settledFacts_history (initialLaw setup) _ _ rawTrace
+    have inputs := (application setup leaks).stateTraffic_inputs (initialLaw setup) _ _ rawTrace
+    change ((application setup leaks).executionTraffic control.execution).map
+      ReactiveApplication.TrafficRecord.input = control.execution.network.inputs at inputs
+    intro record member
+    have inputMember : record.input ∈ control.execution.network.inputs := by
+      rw [← inputs]
+      exact List.mem_map.mpr ⟨record, member, rfl⟩
+    obtain ⟨message, inLedger, sameId⟩ :=
+      List.mem_map.mp (published record.input inputMember)
+    have equal : message = record.input.envelope :=
+      (facts.unique.inputs record.input inputMember).ledger message inLedger sameId
+    rw [← equal, recordEq]
+    exact ledgerPermitted message (same.ledger ▸ inLedger)
+  obtain ⟨target, targetSE, targetLaw⟩ := settled_audited_raw_sequential_equilibrium setup leaks
+    extended (horizon setup watcher) (scheduler setup leaks watcher)
     (replayMenu setup leaks extended watcher) (replay_in_effective setup leaks extended watcher)
+    completes
     (fun who site => decisionDepth setup leaks watcher who site.1)
     (fun who site => menu_common_decision_depth setup leaks (extended.menu (runtime setup) leaks)
       watcher reveals observer who
       (((replay_in_effective setup leaks extended watcher).actionRestriction
         (initialLaw setup) (horizon setup watcher) (scheduler setup leaks watcher)).site who
           site))
-    (envelopeEvidence setup leaks) (fun evidence => evidence.2.2.sender)
-    (permittedEnvelope setup leaks) sample authentic
-    (replay_history_traffic setup leaks extended watcher reveals observer openable)
-    (replay_extra_choice_traffic setup leaks extended watcher reveals observer openable)
+    sample authentic conforming
+    (fun profile who site action extra history next supported => by
+      obtain ⟨record, present, author, breach⟩ := replay_extra_choice_traffic setup leaks
+        extended watcher reveals observer openable profile who site action extra history next
+          supported
+      refine ⟨record, present, author, ?_⟩
+      cases verdict : (runtime setup).permittedServiceEnvelope record.observation record.ledger
+          record.input.envelope with
+      | false => rfl
+      | true =>
+          have allowed := permittedEnvelope_of_permittedService setup leaks reveals _ _ _ verdict
+          change permittedEnvelope setup leaks
+            (record.observation, record.ledger, record.input.envelope) = false at breach
+          rw [allowed] at breach
+          cases breach)
     base (baseUtility_normalization setup leaks utility)
     (auditPayoffLower setup leaks extended watcher base)
     (auditPayoffUpper setup leaks extended watcher base) probability deposit

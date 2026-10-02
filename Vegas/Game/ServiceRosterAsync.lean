@@ -354,11 +354,13 @@ theorem graphStep_includePending (runtime : EventGraphRuntime graph)
   | none => exact GraphStep.refl _
   | some message =>
       change GraphStep execution.application
-        ((handle runtime execution.application ⟨message.id, message.payload.call⟩).getD
+        (((runtime.reactiveApplication leaks).handle execution.application
+          message).getD
           execution.application)
-      cases accepted : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
+      cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+          message with
       | none => exact GraphStep.refl _
-      | some next => exact graphStep_handle runtime _ next _ accepted
+      | some next => exact graphStep_handle runtime _ next _ (reactiveHandle_call accepted)
 
 omit [DecidableEq Player] in
 theorem graphStep_executeSample (runtime : EventGraphRuntime graph)
@@ -1343,6 +1345,61 @@ theorem rosterReach_history (setup : Setup (Player := Player) (L := L))
 
 /-! ## The asynchronous contract -/
 
+/-- **Protected inclusion on the roster calendar.** An owner's packet sent
+while its event was ready is included in the slot it was sent, whenever every
+packet of its own the owner emits for the event carries that identifier. This
+needs no activation opportunity. -/
+theorem rosterScheduler_protectedInclusion (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (network : (runtime setup).NetworkPolicy leaks) :
+    ProtectedInclusion (runtime setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+      (rosterScheduler setup leaks rosters network) (fun _ => 0) := by
+  intro control trace event owner owned earlier later entry message split emitted authored
+    addressed seen sole unfinished late
+  dsimp only at late
+  rcases rosterReach_history setup leaks rosters network trace with
+    ⟨current, offset, phase⟩ | ⟨_, _, done⟩
+  · have member : entry ∈ control.execution.recall owner := by
+      rw [split]
+      simp
+    have finishedBefore : ∀ query : (graph setup).EventId, query.val < current.val →
+        query ∈ control.execution.application.config.cut.completed := by
+      intro query before
+      rcases phase.completed with ordered | ⟨_, completed⟩
+      · exact (ordered.2 query).mpr before
+      · exact (completed.2 query).mpr (by omega)
+    rcases phase.responses owner entry member event seen with before | ⟨same, sent⟩
+    · exact (unfinished (finishedBefore event before)).elim
+    · subst same
+      by_cases early : offset ≤ (rosters event).length
+      · have clockEq := phase.clock
+        omega
+      · rcases phase.completed with ordered | ⟨_, completed⟩
+        · exact phase.inclusion (by omega) ordered owner owned earlier later entry message
+            split emitted authored addressed sole
+        · exact (unfinished ((completed.2 event).mpr (Nat.lt_succ_self _))).elim
+  · exact (unfinished ((done.2 event).mpr event.isLt)).elim
+
+/-- The roster plan completes every event by the end of the plan, under
+arbitrary responses. -/
+theorem rosterScheduler_completesPlay (setup : Setup (Player := Player) (L := L))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (rosters : (graph setup).EventId → List Player)
+    (network : (runtime setup).NetworkPolicy leaks) :
+    CompletesPlay (runtime setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+      (rosterScheduler setup leaks rosters network) := by
+  intro control trace terminal
+  obtain ⟨finished, _⟩ := terminal
+  rcases rosterReach_history setup leaks rosters network trace with
+    ⟨current, offset, phase⟩ | ⟨_, _, done⟩
+  · have total := phase.remaining
+    have bound := rosterPlan_length_block setup rosters current
+    have inside := phase.inside
+    rw [phase.position, finished] at total
+    omega
+  · exact done.terminal
+
 /-- **The fixed roster calendar is an asynchronous service.** An owner is
 activated within `event.val` slots of its event becoming ready, a packet it
 authored for the event is included in the slot it was sent when every packet of
@@ -1382,43 +1439,8 @@ theorem rosterScheduler_asyncContract (setup : Setup (Player := Player) (L := L)
         have tickBound : offset - ((rosters current).length + 1) ≤ current.val + 1 := by omega
         omega
     · exact (ready.1 ((done.2 event).mpr event.isLt)).elim
-  inclusion := by
-    intro control trace event owner owned earlier later entry message split emitted authored
-      addressed seen sole unfinished late
-    dsimp only at late
-    rcases rosterReach_history setup leaks rosters network trace with
-      ⟨current, offset, phase⟩ | ⟨_, _, done⟩
-    · have member : entry ∈ control.execution.recall owner := by
-        rw [split]
-        simp
-      have finishedBefore : ∀ query : (graph setup).EventId, query.val < current.val →
-          query ∈ control.execution.application.config.cut.completed := by
-        intro query before
-        rcases phase.completed with ordered | ⟨_, completed⟩
-        · exact (ordered.2 query).mpr before
-        · exact (completed.2 query).mpr (by omega)
-      rcases phase.responses owner entry member event seen with before | ⟨same, sent⟩
-      · exact (unfinished (finishedBefore event before)).elim
-      · subst same
-        by_cases early : offset ≤ (rosters event).length
-        · have clockEq := phase.clock
-          omega
-        · rcases phase.completed with ordered | ⟨_, completed⟩
-          · exact phase.inclusion (by omega) ordered owner owned earlier later entry message
-              split emitted authored addressed sole
-          · exact (unfinished ((completed.2 event).mpr (Nat.lt_succ_self _))).elim
-    · exact (unfinished ((done.2 event).mpr event.isLt)).elim
-  completes := by
-    intro control trace terminal
-    obtain ⟨finished, _⟩ := terminal
-    rcases rosterReach_history setup leaks rosters network trace with
-      ⟨current, offset, phase⟩ | ⟨_, _, done⟩
-    · have total := phase.remaining
-      have bound := rosterPlan_length_block setup rosters current
-      have inside := phase.inside
-      rw [phase.position, finished] at total
-      omega
-    · exact done.terminal
+  inclusion := rosterScheduler_protectedInclusion setup leaks rosters network
+  completes := rosterScheduler_completesPlay setup leaks rosters network
 
 /-- The roster calendar's bounds fit every deadline: `event.val + 0` slots
 before inclusion, against a deadline of `event.val + 1`. -/

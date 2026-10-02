@@ -62,12 +62,18 @@ theorem response_packet_eq_of_input_eq (runtime : EventGraphRuntime graph)
   have submitted := submit_playerView_congr runtime leaks left.application right.application
     who submission whole
   have candidates := congrArg (fun observed : PlayerView graph => observed.candidates) submitted
-  rw [WitnessedSubmission.emit_eq_resolve, WitnessedSubmission.emit_eq_resolve]
-  change WitnessedPacket.mk _ (submission.evidence.resolve who _ (left.network.known who)) =
-    WitnessedPacket.mk _ (submission.evidence.resolve who _ (right.network.known who))
+  have publics : ((runtime.reactiveApplication leaks).submit left.application who
+        submission).publicView =
+      ((runtime.reactiveApplication leaks).submit right.application who submission).publicView :=
+    congrArg PlayerView.publicView submitted
+  rw [WitnessedSubmission.emit_eq_resolve, WitnessedSubmission.emit_eq_resolve, publics]
+  change WitnessedPacket.mk _ (submission.evidence.resolve who _ (left.network.known who)) _ =
+    WitnessedPacket.mk _ (submission.evidence.resolve who _ (right.network.known who)) _
   rw [known]
   exact congrArg (fun table => WitnessedPacket.mk submission.call.packet
-    (submission.evidence.resolve who table (right.network.known who))) candidates
+    (submission.evidence.resolve who table (right.network.known who))
+    (((runtime.reactiveApplication leaks).submit right.application who
+      submission).publicView.tokenFor submission.call.packet)) candidates
 
 /-- The source checkpoint transcript supplies the serial premise. Together
 with local input equality this reconstructs the entire next recall prefix. -/

@@ -8,6 +8,8 @@ import Vegas.Pending.ReactiveServiceSoundness
 import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Pending.ReactiveServiceTraffic
 import Vegas.Pending.ReactiveServiceAudit
+import Vegas.Pending.ReactiveSettledStability
+import Vegas.Pending.ReactiveSettledVerdict
 import Vegas.Pending.ReactiveResolutionEvidence
 import Vegas.Pending.ReactiveOffTurnRepair
 import Vegas.Pending.ReactiveOffTurnWindow

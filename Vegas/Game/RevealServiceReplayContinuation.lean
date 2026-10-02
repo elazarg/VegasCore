@@ -131,13 +131,11 @@ theorem replay_control_bind_eq {Outcome : Type}
       rw [step, step, PMF.bind_map, PMF.bind_map]
       by_cases watches : who = watcher
       · subst who
-        have quiet := watcher_history_silent setup leaks bounds watcher reveals observer openable
-          history ⟨remaining, some watcher, first⟩ current rfl
         have prescribed : firstPlayers watcher (first.recall watcher)
             (first.observe app watcher) = PMF.pure ⟨none⟩ := by
-          rw [show firstPlayers watcher = app.reportFirstUnpublished from
-            menu_decode_reports setup leaks bounds watcher source]
-          exact quiet
+          rw [show firstPlayers watcher = app.silentPolicy from
+            menu_decode_silent setup leaks bounds watcher source]
+          rfl
         rw [prescribed, PMF.pure_bind]
         symm
         refine (bind_congr_on_support _ (g := fun _ =>
@@ -150,15 +148,6 @@ theorem replay_control_bind_eq {Outcome : Type}
         change response ∈ targetMenu.actions watcher (second.recall watcher)
           (second.observe app watcher) at allowed
         rw [replay_menu_watcher] at allowed
-        have secondQuiet : app.reportFirstUnpublished (second.recall watcher)
-            (second.observe app watcher) = PMF.pure ⟨none⟩ := by
-          apply app.reportFirstUnpublished_silent
-          intro message seen
-          have clean := (active_history_clean setup leaks bounds watcher reveals observer openable
-            history ⟨remaining, some watcher, first⟩ current watcher rfl).1
-          change message ∈ second.network.leaked watcher at seen
-          rw [← same.leaked, clean] at seen
-          exact (List.not_mem_nil seen).elim
         have reached : some ⟨remaining, none, first.respond app watcher ⟨none⟩⟩ ∈
             (app.controlStep (initialLaw setup) (horizon setup watcher)
               (scheduler setup leaks watcher) firstPlayers
@@ -168,8 +157,7 @@ theorem replay_control_bind_eq {Outcome : Type}
         have related : ReplayAgreement setup leaks watcher
             (first.respond app watcher ⟨none⟩) (second.respond app watcher response) := by
           rcases Finset.mem_union.mp allowed with prescribedResponse | replayed
-          · rw [Set.Finite.mem_toFinset, secondQuiet, PMF.mem_support_pure_iff _ _]
-              at prescribedResponse
+          · rw [Finset.mem_singleton] at prescribedResponse
             subst response
             exact same.respond_watcher_silent
           · obtain ⟨packet, published, rfl⟩ :=
@@ -195,8 +183,8 @@ theorem replay_control_bind_eq {Outcome : Type}
       | succ remaining =>
           simp only [ReactiveApplication.controlStep, ReactiveApplication.actor,
             Option.bind_some, ReactiveApplication.transition, PMF.bind_bind, PMF.bind_map]
-          have scheduled := replay_scheduler_eq setup leaks bounds watcher reveals observer openable
-            history ⟨remaining + 1, none, first⟩ current second same
+          have scheduled := replay_scheduler_eq setup leaks watcher
+            ⟨remaining + 1, none, first⟩ second same
           rw [← scheduled]
           apply bind_congr_on_support _
           intro command supported

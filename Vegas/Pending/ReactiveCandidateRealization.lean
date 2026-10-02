@@ -254,9 +254,9 @@ theorem reactiveBinding_reserved_state (runtime : EventGraphRuntime graph)
     simpa only [State.HandleUnused, acceptedEq] using unused
   have pending : submitted.network.lookup (owner, execution.network.nextSerial owner) =
       some ⟨(owner, execution.network.nextSerial owner),
-        ⟨.commitment event (owner, .prepared serial), none⟩⟩ := by
-    cases result <;> exact serials.lookup_submit owner
-      ⟨.commitment event (owner, .prepared serial), none⟩
+        ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :=
+    runtime.reactiveBinding_lookup leaks execution owner event payload result serial serials
+      ready
   have binding := runtime.reactiveBinding_result leaks owner event payload result serial
     execution fresh
   have fixed : submitted.application.candidates.lookup (owner, .prepared serial) ≠ .fresh := by
@@ -281,7 +281,8 @@ theorem reactiveBinding_reserved_state (runtime : EventGraphRuntime graph)
         (some (owner, .prepared serial)),
       candidates := submitted.application.candidates } := by
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      pending, app, reactiveApplication, handled, Option.isSome_some]
+      pending, app, reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true,
+      handled, Option.isSome_some]
     rw [submitted.application.candidates.freeze_eq_self_of_not_fresh _ fixed]
     rfl
   change (submitted.includePending app _).application.config = _ ∧

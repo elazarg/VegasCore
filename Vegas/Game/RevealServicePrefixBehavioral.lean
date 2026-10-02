@@ -47,7 +47,7 @@ theorem menu_prefix_readout (setup : Setup (Player := Player) (L := L))
         (runtime setup).runInteractionPlan leaks
           (responses.decodeProfile (initialLaw setup) (horizon setup watcher)
             (scheduler setup leaks watcher) profile)
-          ((runtime setup).reportNetwork leaks watcher) (planPrefix setup watcher count)
+          ((runtime setup).idleNetwork leaks) (planPrefix setup watcher count)
           (ReactiveApplication.Execution.initial (application setup leaks) state)).map
             (fun final => sourcePrefix? setup count final.application.config) := by
   change ((responses.information (initialLaw setup) (horizon setup watcher)

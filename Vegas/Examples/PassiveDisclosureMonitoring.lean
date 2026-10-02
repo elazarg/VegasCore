@@ -36,7 +36,7 @@ def violation (message : Message Player (WitnessedPacket nativeGraph)) : Bool :=
   unsupportedEvidence message.payload
 
 def certifiedEnvelope (bit : Bool) : Message Player (WitnessedPacket nativeGraph) :=
-  ⟨(alice, 0), ⟨.commitment aliceBinding candidate, some (opening bit)⟩⟩
+  ⟨(alice, 0), ⟨.commitment aliceBinding candidate, some (opening bit), some ⟨aliceBinding⟩⟩⟩
 
 theorem actual_bob_report (bit : Bool) :
     ((observed bit).observe nativeApp bob).messages.reports violation =

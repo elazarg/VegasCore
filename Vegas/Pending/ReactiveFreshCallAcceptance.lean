@@ -32,7 +32,8 @@ author's canonical serial. Other packets must conform. -/
 def freshServiceAcceptable (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph)) : Prop :=
   match message.payload.call with
-  | .commitment .. => view.BindingIncludable runtime ⟨message.id, message.payload.call⟩
+  | .commitment event _ => view.BindingIncludable runtime ⟨message.id, message.payload.call⟩ ∧
+      message.payload.token = some ⟨event⟩
   | _ => runtime.freshServiceEnvelope view message
 
 /-- A conforming packet is acceptable. -/
@@ -40,12 +41,41 @@ theorem freshServiceEnvelope.acceptable {view : PublicView graph}
     {message : Message Player (WitnessedPacket graph)}
     (conforming : runtime.freshServiceEnvelope view message) :
     runtime.freshServiceAcceptable view message := by
-  rcases message with ⟨id, ⟨packet, evidence⟩⟩
+  rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
-  | commitment event candidate => exact conforming.1
+  | commitment event candidate => exact ⟨conforming.1, conforming.2.2.2⟩
   | opening event candidate raw => exact conforming
   | withhold event => exact conforming
   | malformed raw => exact conforming
+
+/-- An acceptable fresh call carries the readiness token of its event. -/
+theorem freshServiceAcceptable.tokenValid {view : PublicView graph}
+    {message : Message Player (WitnessedPacket graph)}
+    (conforming : runtime.freshServiceAcceptable view message) :
+    message.payload.tokenValid = true := by
+  rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
+  cases packet with
+  | commitment event candidate =>
+      obtain ⟨_, tokened⟩ := conforming
+      change token = some ⟨event⟩ at tokened
+      subst tokened
+      exact WitnessedPacket.tokenValid_commitment _ _ _
+  | opening event candidate raw =>
+      cases node : nodeView graph event with
+      | resolve owner payload binding checks outputEq codeEq =>
+          obtain ⟨_, _, _, _, _, _, _, _, tokened⟩ :=
+            (runtime.freshServiceEnvelope_opening_iff view id event owner payload binding checks
+              outputEq codeEq node candidate raw evidence token).mp conforming
+          subst tokened
+          exact WitnessedPacket.tokenValid_opening _ _ _ _
+      | bind _ _ _ _ =>
+          simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
+          exact conforming.2.2.2.2.elim
+      | sample _ _ _ _ =>
+          simp only [freshServiceAcceptable, freshServiceEnvelope, node] at conforming
+          exact conforming.2.2.2.2.elim
+  | withhold actual => exact conforming.elim
+  | malformed raw => exact conforming.elim
 
 /-- A packet acceptable on the public view its author saw is accepted at a
 state with the same public observation and accepted handles, before the
@@ -61,7 +91,7 @@ theorem freshServiceAcceptable_accepted (state : State graph) (view : PublicView
     (certified : ∀ fact ∈ message.payload.evidence.toList, fact.Holds state)
     (invariant : state.BindingInvariant) :
     ∃ next, handle runtime state ⟨message.id, message.payload.call⟩ = some next := by
-  rcases message with ⟨id, ⟨packet, evidence⟩⟩
+  rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   have readyOf (ready : view.EventReady event) : state.config.cut.Ready event := by
     have same : state.publicView.EventReady event := by
       unfold PublicView.EventReady at ready ⊢
@@ -72,8 +102,8 @@ theorem freshServiceAcceptable_accepted (state : State graph) (view : PublicView
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
-      change view.EventReady event ∧ _ ∧ _ at conforming
-      have includable := conforming
+      have includable := conforming.1
+      change view.EventReady event ∧ _ ∧ _ at includable
       obtain ⟨ready, _, owned⟩ := includable
       cases node : nodeView graph event with
       | bind owner payload outputEq codeEq =>
@@ -89,9 +119,9 @@ theorem freshServiceAcceptable_accepted (state : State graph) (view : PublicView
       cases Option.some.inj named
       cases node : nodeView graph event with
       | resolve owner payload binding checks outputEq codeEq =>
-          obtain ⟨ready, _, certifiedPacket, guards, sender, owned, associated, _⟩ :=
+          obtain ⟨ready, _, certifiedPacket, guards, sender, owned, associated, _, _⟩ :=
             (runtime.freshServiceEnvelope_opening_iff view id event owner payload binding checks
-              outputEq codeEq node candidate raw evidence).mp conforming
+              outputEq codeEq node candidate raw evidence token).mp conforming
           obtain ⟨value, rawEq, publicChecks⟩ :=
             (view.openingGuardsAccepted_iff owner event payload binding checks outputEq codeEq
               node candidate raw evidence).mp guards

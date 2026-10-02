@@ -70,7 +70,10 @@ theorem included_application (bit : Bool) :
     ReactiveApplication.Execution.respond, ReactiveApplication.Execution.includePending,
     MessageNetwork.empty, MessageNetwork.submit, MessageNetwork.includePending,
     MessageNetwork.lookup, reactiveApplication, secretOpening, Submission.register,
-    submitStep_opening, handle_secret, disclosureSubmission, WitnessedSubmission.emit]
+    submitStep_opening, handle_secret, disclosureSubmission, WitnessedSubmission.emit,
+    (nativeDummyPublished bit).publicView_tokenFor_of_ready
+      (.opening secretEvent (false, .initial secretInput) ⟨.bool, bit⟩) secretEvent rfl
+      (native_dummy_ready bit)]
 
 /-- A successful native receipt carries evidence even though publication fails. -/
 theorem observed_fact (bit who : Bool) :
@@ -84,6 +87,9 @@ theorem observed_fact (bit who : Bool) :
     MessageNetwork.lookup, MessageNetwork.observe, reactiveApplication, secretOpening,
     Submission.register, submitStep_opening, handle_secret, receiptEvidence,
     disclosureSubmission, WitnessedSubmission.emit,
+    (nativeDummyPublished bit).publicView_tokenFor_of_ready
+      (.opening secretEvent (false, .initial secretInput) ⟨.bool, bit⟩) secretEvent rfl
+      (native_dummy_ready bit),
     Payload.bindingEvidence, native_secret_node, fact]
 
 theorem failed_publication (bit : Bool) :

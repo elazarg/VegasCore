@@ -209,7 +209,8 @@ theorem WitnessedSubmission.emit_eq_resolve (submission : WitnessedSubmission gr
     (known : List (Message Player (WitnessedPacket graph))) :
     submission.emit state who known =
       ⟨submission.call.packet, submission.evidence.resolve who
-        (fun slot => state.candidates.lookup (who, slot)) known⟩ := by
+        (fun slot => state.candidates.lookup (who, slot)) known,
+        state.publicView.tokenFor submission.call.packet⟩ := by
   classical
   cases request : submission.evidence with
   | none | forward =>

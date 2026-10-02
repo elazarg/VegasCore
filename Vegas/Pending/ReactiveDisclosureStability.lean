@@ -63,9 +63,10 @@ theorem reactiveReadFrameInvariant (runtime : EventGraphRuntime graph)
     obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp (available field member)
     have present : state.config.store field = some value := (agrees field member).1.trans stored
     refine ⟨(handle_store_of_some runtime state next ⟨message.id, message.payload.call⟩
-      handled field value present).trans stored.symm, ?_⟩
+      (reactiveHandle_call handled) field value present).trans stored.symm, ?_⟩
     exact (handle_accepted_of_present runtime state next field (by simp only [present]; rfl)
-      ⟨message.id, message.payload.call⟩ handled).trans (agrees field member).2
+      ⟨message.id, message.payload.call⟩
+        (reactiveHandle_call handled)).trans (agrees field member).2
   environment state command next agrees reached := by
     intro field member
     obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp (available field member)

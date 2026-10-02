@@ -90,7 +90,7 @@ theorem reactiveDecision_binding_continuation_admitted (runtime : EventGraphRunt
             execution.application owner)))).support)
     (pending : next.network.lookup (owner, execution.network.nextSerial owner) =
       some ⟨(owner, execution.network.nextSerial owner),
-        ⟨.commitment event (owner, .prepared serial), none⟩⟩)
+        ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩)
     (ready : next.application.config.cut.Ready event)
     (timely : next.application.WithinDeadline runtime event) :
     PMF.pure ((next.includePending (runtime.reactiveApplication leaks)
@@ -138,12 +138,12 @@ theorem reactiveDecision_binding_retained_or_realized (runtime : EventGraphRunti
           ((runtime.reactiveApplication leaks).observePlayer
             execution.application owner)))).support)
     (pending : (⟨(owner, execution.network.nextSerial owner),
-        ⟨.commitment event (owner, .prepared serial), none⟩⟩ :
+        ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :
           Message Player (WitnessedPacket graph)) ∈ next.network.pending)
     (ready : next.application.config.cut.Ready event)
     (timely : next.application.WithinDeadline runtime event) (selected : MessageId Player) :
     (⟨(owner, execution.network.nextSerial owner),
-        ⟨.commitment event (owner, .prepared serial), none⟩⟩ :
+        ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :
           Message Player (WitnessedPacket graph)) ∈
       (next.includePending (runtime.reactiveApplication leaks) selected).network.pending ∨
     PMF.pure

@@ -34,7 +34,7 @@ theorem run_source_prefix_support
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (wholeProfile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
-    (watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (watcherPolicy : players watcher = (application setup leaks).silentPolicy)
     (ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support → response ∈
         ordinaryActions setup leaks bounds who past view)
@@ -50,7 +50,7 @@ theorem run_source_prefix_support
       ∀ (count : Nat), count ≤ eventCount program →
       ∀ execution, Checkpoint setup leaks initial source refs offset execution →
       ∀ finished, finished ∈ ((runtime setup).runInteractionPlan leaks players
-        ((runtime setup).reportNetwork leaks watcher)
+        ((runtime setup).idleNetwork leaks)
         (((List.finRange (eventCount program)).take count).flatMap fun index =>
           block setup watcher (embedding.event index)) execution).support →
       ∃ state, PrefixCheckpoint setup leaks initial program refs source.revelations
@@ -112,7 +112,7 @@ theorem run_source_prefix_support
             EventGraphRuntime.nodeView_eq_resolve _ _
           obtain ⟨opportunity, activeCheckpoint, _sameApplication,
               opportunityLaw, _opportunityRecall⟩ :=
-            checkpoint.owner_opportunity players ((runtime setup).reportNetwork leaks watcher)
+            checkpoint.owner_opportunity players ((runtime setup).idleNetwork leaks)
               owner
           let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
           let resultRef : EventGraph.FieldRef (graphLayout setup.program) (.publication payload) :=
@@ -194,14 +194,14 @@ theorem initialized_prefix_support
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (openable : ∀ initial ∈ setup.initialLaw.support, initial.BindingsOpenable)
     (players : Player → (application setup leaks).Policy)
-    (watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (watcherPolicy : players watcher = (application setup leaks).silentPolicy)
     (ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support → response ∈
         ordinaryActions setup leaks bounds who past view)
     (count : Nat) (within : count ≤ eventCount setup.program)
     (finished : (application setup leaks).Execution)
     (supported : finished ∈ ((initialLaw setup).bind fun state =>
-      (runtime setup).runInteractionPlan leaks players ((runtime setup).reportNetwork leaks watcher)
+      (runtime setup).runInteractionPlan leaks players ((runtime setup).idleNetwork leaks)
         (planPrefix setup watcher count)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support) :
     ∃ initial ∈ setup.initialLaw.support, ∃ state,

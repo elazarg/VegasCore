@@ -124,6 +124,7 @@ application frame; this lemma adds no assumption about future play. -/
 theorem include_accepted (frame : Frame runtime leaks memory owner original repaired)
     (id : MessageId Player) (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩)
+    (valid : packet.tokenValid = true)
     (leftState rightState : State graph)
     (completed : Frame runtime leaks memory owner
       { original with application := leftState } { repaired with application := rightState })
@@ -152,10 +153,8 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
       (execution.includePending app id).recall = execution.recall := by
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       located]
-    change (handle runtime execution.application ⟨id, packet.call⟩).getD _ = _ ∧
-      execution.receipts ++ [(id,
-        (handle runtime execution.application ⟨id, packet.call⟩).isSome)] = _ ∧ _
-    rw [handled]
+    rw [(reactiveApplication_handle_of_tokenValid runtime leaks _ ⟨id, packet⟩ valid).trans
+      handled]
     exact ⟨rfl, rfl, trivial⟩
   have leftApplied := applyHandler original found leftState leftHandled
   have rightApplied := applyHandler repaired rightFound rightState rightHandled
@@ -239,7 +238,13 @@ theorem opening_submission (frame : Frame runtime leaks memory owner original re
           cases Option.some.inj certified
           exact WitnessedSubmission.emit_owned _ _ _ _ _ available.1 rightFixed
         · cases certified
-  exact congrArg (WitnessedPacket.mk (.opening event candidate raw))
+  have publicEq : original.application.publicView = repaired.application.publicView :=
+    frame.publicView
+  change WitnessedPacket.mk _ _ (original.application.publicView.tokenFor _) =
+    WitnessedPacket.mk _ _ (repaired.application.publicView.tokenFor _)
+  rw [publicEq]
+  exact congrArg (fun evidence => WitnessedPacket.mk (.opening event candidate raw) evidence
+    (repaired.application.publicView.tokenFor (.opening event candidate raw)))
     (certified.trans rightCertified.symm)
 
 /-- A genuine opening of an unchanged binding preserves the entire frame
@@ -269,7 +274,7 @@ theorem opening_inclusion (frame : Frame runtime leaks memory owner original rep
       some result)
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
-      some ⟨id, ⟨.opening event candidate ⟨payload, value⟩, evidence⟩⟩) :
+      some ⟨id, ⟨.opening event candidate ⟨payload, value⟩, evidence, some ⟨event⟩⟩⟩) :
     let app := runtime.reactiveApplication leaks
     Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
@@ -281,7 +286,7 @@ theorem opening_inclusion (frame : Frame runtime leaks memory owner original rep
       event actor payload binding checks candidate ready timely associated value leftStored
         rightStored result resolved
   have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
-  exact frame.include_accepted id _ found _ _
+  exact frame.include_accepted id _ found (WitnessedPacket.tokenValid_opening _ _ _ _) _ _
     (frame.complete_unmodified event ready rightReady
       (onlyBindings.public_value_none (.inr event) visible)
       (onlyBindings.public_action_none event visible) _ _)

@@ -17,10 +17,11 @@ namespace Vegas.Examples.ReactiveEarlyOpening
 
 open GameTheory.Math.Probability Interaction Vegas Vegas.EventGraphRuntime
 
-def withholdingEnvelope : Message Unit (WitnessedPacket graph) := ⟨((), 1), ⟨.withhold 1, none⟩⟩
+def withholdingEnvelope : Message Unit (WitnessedPacket graph) :=
+  ⟨((), 1), ⟨.withhold 1, none, none⟩⟩
 def prematureOpeningEnvelope : Message Unit (WitnessedPacket graph) :=
   ⟨((), 2), ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩,
-    some ⟨((), .prepared 0), ⟨.int, 1⟩⟩⟩⟩
+    some ⟨((), .prepared 0), ⟨.int, 1⟩⟩, none⟩⟩
 
 def withholdingOrigin : app.PlayerEntry :=
   ⟨(activated (afterFirst first)).observe app (), second, some withholdingEnvelope⟩
@@ -65,7 +66,7 @@ theorem premature_opening_unauthorized_after_binding :
 theorem later_opening_authorized :
     (disclosed false false).AuthorizedAtSubmission app (runtime.submissionDependencyCondition leaks)
       ⟨((), 3), ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩,
-        some ⟨((), .prepared 0), ⟨.int, 1⟩⟩⟩⟩ := by
+        some ⟨((), .prepared 0), ⟨.int, 1⟩⟩, some ⟨1⟩⟩⟩ := by
   have ready : (activated (included false false)).application.publicView.EventReady 1 := by
     rw [State.publicView_eventReady]
     exact disclosure_ready false false (by simp)

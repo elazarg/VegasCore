@@ -3,12 +3,15 @@
 import Vegas.Game.RevealServiceSignedTraffic
 import Vegas.Game.RevealServiceRosterEvidence
 
-/-! # Single-record audit evidence for revelation rosters
+/-! # A send-time rule for revelation rosters
 
 One fresh certified opening per phase is admitted. The envelope serial is
-checked against its author's entries in the authenticated prior ledger. A
-second fresh opening changes the serial; replaying an existing envelope does
-not. No missing audit record is treated as evidence of an omitted action.
+checked against its author's entries in the prior ledger. A second fresh opening
+changes the serial; replaying an existing envelope does not. No audit verdict
+uses this rule: it is a proof device, and on a ledger without repeated
+identifiers its breach breaches the service rule
+(`Vegas.permittedRosterEnvelope_of_permittedService`), which dooms the author at
+settlement.
 -/
 
 noncomputable section
@@ -25,8 +28,8 @@ variable {Player : Type} [DecidableEq Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 open Classical in
-/-- The checker authenticates the phase, preceding ledger and signed envelope.
-It does not identify the rebroadcaster or inspect any player's private state. -/
+/-- The rule reads the phase, preceding ledger and signed envelope. It does
+not identify the rebroadcaster or inspect any player's private state. -/
 def permittedRosterEnvelope (evidence : EnvelopeEvidence setup leaks) : Bool :=
   decide (evidence.2.2.id ∈ evidence.2.1.map Message.id ∨
     (evidence.2.2.id.2 =
@@ -47,24 +50,6 @@ theorem permittedRosterEnvelope_iff (record : (application setup leaks).TrafficR
   subst broadcaster
   simp only [permittedRosterEnvelope, envelopeEvidence, decide_eq_true_eq]
 
-theorem permittedRosterEnvelope_published (record : (application setup leaks).TrafficRecord)
-    (published : record.input.envelope.id ∈ record.ledger.map Message.id) :
-    permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = true := by
-  classical
-  exact decide_eq_true (Or.inl published)
-
-/-- The serial witnesses a forbidden fresh envelope even when all other
-transmissions are absent from the auditor's sample. -/
-theorem permittedRosterEnvelope_wrong_serial
-    (record : (application setup leaks).TrafficRecord)
-    (unpublished : record.input.envelope.id ∉ record.ledger.map Message.id)
-    (wrong : record.input.envelope.id.2 ≠
-      record.ledger.countP (fun message => message.sender = record.input.envelope.sender)) :
-    permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = false := by
-  classical
-  simp only [permittedRosterEnvelope, envelopeEvidence, unpublished, wrong, false_and,
-    or_self, decide_false]
-
 /-- At a completed source prefix all allocated fresh envelopes have been
 included once, so the next per-author serial is the public count. -/
 theorem PublicCheckpoint.serial_eq_ledger_count
@@ -77,6 +62,25 @@ theorem PublicCheckpoint.serial_eq_ledger_count
       execution.network.ledger.countP (fun message => message.sender = who) := by
   rw [checkpoint.counters, checkpoint.ledger]
   exact publicationSerial_eq_ledger_count _ _ who
+
+/-- In a reveal-only graph, on a ledger without repeated identifiers, the
+roster rule is no stricter than the service rule. A breach of the roster rule
+therefore breaches the service rule. -/
+theorem permittedRosterEnvelope_of_permittedService (reveals : setup.program.RevealOnly)
+    (view : (application setup leaks).PublicObservation)
+    (ledger : List (Message Player (application setup leaks).Payload))
+    (message : Message Player (application setup leaks).Payload)
+    (nodup : (ledger.map Message.id).Nodup)
+    (allowed : (runtime setup).permittedServiceEnvelope view ledger message = true) :
+    permittedRosterEnvelope setup leaks (view, ledger, message) = true := by
+  classical
+  rw [(runtime setup).permittedServiceEnvelope_iff] at allowed
+  unfold permittedRosterEnvelope
+  apply decide_eq_true
+  rcases allowed with published | ⟨serial, fresh⟩
+  · exact Or.inl published
+  · refine Or.inr ⟨?_, openingTraffic_of_fresh setup leaks reveals view ledger message fresh⟩
+    rw [serial, Message.distinctAuthoredCount_eq_countP ledger message.sender nodup]
 
 variable [Fintype Player]
 

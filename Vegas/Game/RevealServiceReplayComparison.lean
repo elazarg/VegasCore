@@ -126,20 +126,14 @@ theorem replay_extra_continuation_law
   obtain ⟨isWatcher, packet, published, replayed⟩ :=
     replay_extra_response setup leaks bounds watcher who _ _ response allowed excluded
   subst who
-  have quiet := watcher_history_silent setup leaks bounds watcher reveals observer openable
-    history.1 ⟨remaining, some watcher, execution⟩ current rfl
-  change app.reportFirstUnpublished (execution.recall watcher)
-    (execution.observe app watcher) = PMF.pure ⟨none⟩ at quiet
+  have quiet := app.silentPolicy_apply (execution.recall watcher) (execution.observe app watcher)
   have lawSilent : law.map (fun choice => choice.1.getD ⟨none⟩) = PMF.pure ⟨none⟩ := by
     apply pmf_eq_pure_of_support_subset_singleton
     intro physical member
     obtain ⟨choice, _supported, equal⟩ := PMF.support_map .. ▸ member
     obtain ⟨chosen, legal, selectedChoice⟩ := choice.2
     have silence : chosen = ⟨none⟩ := by
-      simp only [menu, reduceIte] at legal
-      change chosen ∈ (app.reportFirstUnpublished_support_finite (execution.recall watcher)
-        (execution.observe app watcher)).toFinset at legal
-      simpa only [quiet, Set.Finite.mem_toFinset, PMF.mem_support_pure_iff _ _] using legal
+      simpa only [menu, reduceIte, Finset.mem_singleton] using legal
     simpa only [selectedChoice, silence, Option.getD_some, Set.mem_singleton_iff]
       using equal.symm
   let native := restriction.history history.1
@@ -159,7 +153,7 @@ theorem replay_extra_continuation_law
       (sourceMenu.decodeProfile initial count service source watcher
         (execution.recall watcher) (execution.observe app watcher)).support := by
     rw [show sourceMenu.decodeProfile initial count service source watcher =
-        app.reportFirstUnpublished from menu_decode_reports setup leaks bounds watcher source,
+        app.silentPolicy from menu_decode_silent setup leaks bounds watcher source,
       quiet]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
   obtain ⟨next, _supported, nextState⟩ := sourceMenu.response_history_exists initial count service

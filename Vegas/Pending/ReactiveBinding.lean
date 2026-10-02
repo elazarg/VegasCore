@@ -72,7 +72,7 @@ theorem reactiveBinding_continuation_result (runtime : EventGraphRuntime graph)
     · intro state message target same accepted
       exact (handle_lookup_of_not_fresh runtime state target
         ⟨message.id, message.payload.call⟩ candidate
-        (by rwa [same]) accepted).trans same
+        (by rwa [same]) (reactiveHandle_call accepted)).trans same
     · intro state command target same supported
       rw [(environmentStep_tables runtime state target command supported).2]
       exact same
@@ -105,7 +105,7 @@ theorem reactiveBinding_continuation_include (runtime : EventGraphRuntime graph)
       (execution.respond (runtime.reactiveApplication leaks) owner
         (runtime.reactiveBinding leaks owner event payload result serial))).support)
     (pending : next.network.lookup (owner, nonce) =
-      some ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none⟩⟩)
+      some ⟨(owner, nonce), ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩)
     (ready : next.application.config.cut.Ready event)
     (timely : next.application.WithinDeadline runtime event)
     (vacant : next.application.accepted (.inr event) = none)
@@ -123,6 +123,7 @@ theorem reactiveBinding_continuation_include (runtime : EventGraphRuntime graph)
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, pending]
   change _ ∧ _
   dsimp only [reactiveApplication]
+  simp only [WitnessedPacket.tokenValid_commitment, ite_true]
   rw [accepted]
   simp only [Option.getD_some, State.complete, meaning, Option.isSome_some]
   exact ⟨trivial, trivial⟩
@@ -150,7 +151,7 @@ theorem reactiveDecision_binding_continuation_step (runtime : EventGraphRuntime 
             execution.application owner)))).support)
     (pending : next.network.lookup (owner, execution.network.nextSerial owner) =
       some ⟨(owner, execution.network.nextSerial owner),
-        ⟨.commitment event (owner, .prepared serial), none⟩⟩)
+        ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩)
     (ready : next.application.config.cut.Ready event)
     (timely : next.application.WithinDeadline runtime event)
     (vacant : next.application.accepted (.inr event) = none)

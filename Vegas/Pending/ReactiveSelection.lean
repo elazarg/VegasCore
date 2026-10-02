@@ -100,6 +100,12 @@ theorem bindingSelection_value_independent (runtime : EventGraphRuntime graph)
       (runtime.reactiveBinding leaks who event payload first serial)).2,
     (runtime.reactive_respond_application leaks execution who
       (runtime.reactiveBinding leaks who event payload second serial)).2]
-  rfl
+  have networks : (execution.respond (runtime.reactiveApplication leaks) who
+        (runtime.reactiveBinding leaks who event payload first serial)).network =
+      (execution.respond (runtime.reactiveApplication leaks) who
+        (runtime.reactiveBinding leaks who event payload second serial)).network := by
+    simp only [ReactiveApplication.Execution.respond, reactiveBinding,
+      reactiveApplication_packet_none]
+  simp only [ReactiveApplication.prioritySelection, networks]
 
 end Vegas.EventGraphRuntime

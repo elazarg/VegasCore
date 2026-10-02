@@ -54,7 +54,7 @@ theorem service_opening_accepted
       payload binding checks outputEq codeEq node _ named permitted
   change submission.emit (app.submit execution.application owner submission) owner
     (execution.network.known owner) =
-      ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ at emitted
+      ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ at emitted
   change execution.application.publicView.openingGuardsAccepted
     (submission.emit (app.submit execution.application owner submission) owner
       (execution.network.known owner)) = true at guards
@@ -66,10 +66,10 @@ theorem service_opening_accepted
     subst packet
     cases material <;> rfl
   rw [emitted] at permitted
-  obtain ⟨ready, timely, _, _, _, _, _, _⟩ :=
+  obtain ⟨ready, timely, _, _, _, _, _, _, _⟩ :=
     (runtime.freshServiceEnvelope_opening_iff execution.application.publicView
       (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq
-        codeEq node candidate raw (some ⟨candidate, raw⟩)).mp permitted
+        codeEq node candidate raw (some ⟨candidate, raw⟩) _).mp permitted
   rw [emitted] at guards
   obtain ⟨value, rawEq, publicChecks⟩ :=
     (execution.application.publicView.openingGuardsAccepted_iff owner event payload binding checks
@@ -96,7 +96,8 @@ theorem service_opening_accepted
     ⟨(owner, execution.network.nextSerial owner), submission.emit
       (app.submit execution.application owner submission) owner (execution.network.known owner)⟩ =
         some next
-  rw [emitted, unchanged]
+  rw [emitted, unchanged, reactiveApplication_handle_of_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_opening _ _ _ _)]
   exact ⟨_, runtime.handle_opening_eq execution.application _ event candidate owner payload binding
     checks outputEq codeEq node ((execution.application.publicView_eventReady event).mp ready)
     timely rfl owned associated value valid stored (.success value) resolved⟩
@@ -141,7 +142,7 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
       payload binding checks outputEq codeEq node _ named permitted
   change submission.emit (app.submit execution.application owner submission) owner
     (execution.network.known owner) =
-      ⟨.opening event candidate raw, some ⟨candidate, raw⟩⟩ at emitted
+      ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ at emitted
   change execution.application.publicView.openingGuardsAccepted
     (submission.emit (app.submit execution.application owner submission) owner
       (execution.network.known owner)) = true at guards
@@ -173,7 +174,7 @@ theorem service_opening_response [Fintype Player] (bounds : MessageBounds graph)
     dsimp only at call
     subst packet
     cases material <;> rfl
-  have handled := accepted
+  have handled := reactiveHandle_call accepted
   change runtime.handle (app.submit execution.application owner submission)
     ⟨(owner, execution.network.nextSerial owner), submission.call.packet⟩ = some next at handled
   rw [unchanged, call] at handled

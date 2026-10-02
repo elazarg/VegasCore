@@ -41,7 +41,8 @@ theorem openingFactInvariant (runtime : EventGraphRuntime graph)
       rw [valid]
       simp
     exact (handle_lookup_of_not_fresh runtime state next
-      ⟨message.id, message.payload.call⟩ fact.handle fixed accepted).trans valid
+      ⟨message.id, message.payload.call⟩ fact.handle fixed
+      (reactiveHandle_call accepted)).trans valid
   environment state command next valid reached := by
     change next.candidates.lookup fact.handle = .openable fact.raw
     rw [(environmentStep_tables runtime state next command reached).2]
@@ -75,7 +76,8 @@ theorem reactive_commitment_disclosure (runtime : EventGraphRuntime graph)
     (execution.respond (runtime.reactiveApplication leaks) who
       ⟨some (.submit submission)⟩).network.pending = execution.network.pending ++
         [⟨(who, execution.network.nextSerial who),
-          ⟨.commitment event fact.handle, some fact⟩⟩] := by
+          ⟨.commitment event fact.handle, some fact,
+            execution.application.publicView.tokenFor (.commitment event fact.handle)⟩⟩] := by
   let fact : OpeningFact graph := ⟨(who, .prepared serial), raw⟩
   let call : Submission graph := ⟨.commitment event fact.handle, some raw⟩
   let state := submitStep (call.register execution.application who) who call.packet
@@ -90,6 +92,9 @@ theorem reactive_commitment_disclosure (runtime : EventGraphRuntime graph)
     [⟨(who, execution.network.nextSerial who),
       (WitnessedSubmission.mk call (.owned fact)).emit state who
         (execution.network.known who)⟩] = _
-  simp [WitnessedSubmission.emit, verified, call, fact]
+  have publicEq : state.publicView = execution.application.publicView :=
+    reactiveApplication_submit_publicView runtime leaks execution.application who
+      ⟨call, .owned fact⟩
+  simp [WitnessedSubmission.emit, verified, call, fact, publicEq]
 
 end Vegas.EventGraphRuntime

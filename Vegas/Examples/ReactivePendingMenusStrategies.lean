@@ -163,7 +163,7 @@ private theorem selected_slot (preferOne : Bool) :
 private theorem selected_pending (preferOne : Bool) :
     (afterAction (selection preferOne)).network.lookup ((), preferredSlot preferOne) =
       some ⟨((), preferredSlot preferOne),
-        ⟨.commitment 0 ((), .prepared (preferredSlot preferOne)), none⟩⟩ :=
+        ⟨.commitment 0 ((), .prepared (preferredSlot preferOne)), none, some ⟨0⟩⟩⟩ :=
   by cases preferOne <;> rfl
 
 private theorem binding_ready (preferOne : Bool) :
@@ -305,8 +305,14 @@ theorem recovery_publication (preferOne : Bool) :
   have pending : (disclosed preferOne).network.lookup ((), if preferOne then 3 else 2) =
       some ⟨((), if preferOne then 3 else 2),
         ⟨.opening 1 ((), .prepared (preferredSlot preferOne))
-          ⟨.int, preferredValue preferOne⟩, none⟩⟩ :=
-    by cases preferOne <;> rfl
+          ⟨.int, preferredValue preferOne⟩, none, some ⟨1⟩⟩⟩ := by
+    have emissionReady :
+        (activated (included (selection preferOne))).application.config.cut.Ready 1 := ready
+    rw [← State.publicView_tokenFor_of_ready _
+      (.opening 1 ((), .prepared (preferredSlot preferOne)) ⟨BaseTy.int, preferredValue preferOne⟩)
+      1
+      rfl emissionReady]
+    cases preferOne <;> rfl
   dsimp only [finalExecution, ReactiveApplication.Execution.includePending,
     MessageNetwork.includePending]
   rw [pending]

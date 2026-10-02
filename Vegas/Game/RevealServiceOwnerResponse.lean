@@ -89,7 +89,7 @@ theorem owner_response_finish_decode_law
     (observer : ∀ event, (graph setup).actor? event ≠ some watcher)
     (profile : BehavioralProfile setup.program)
     (players : Player → (application setup leaks).Policy)
-    (watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished)
+    (watcherPolicy : players watcher = (application setup leaks).silentPolicy)
     (ordinary : ∀ player, player ≠ watcher → ∀ past view response,
       response ∈ (players player past view).support → response ∈
         ordinaryActions setup leaks (bounds.withInitialValues (initialLaw setup)) player past view)
@@ -160,7 +160,7 @@ theorem owner_response_finish_decode_law
     (initialRefsBefore setup.program) 0 (CompiledPolicySuffix.whole setup.program profile)
     event.val event.isLt source execution related who owned response member joint chosen
   change ((runtime setup).runInteractionPlan leaks players
-    ((runtime setup).reportNetwork leaks watcher)
+    ((runtime setup).idleNetwork leaks)
     ((((List.finRange (eventCount setup.program)).drop event.val).flatMap
       (block setup watcher)).drop 1)
     (execution.respond (application setup leaks) who response)).map

@@ -94,12 +94,12 @@ theorem publicStep_reactive_environmentStep
           | none => exact PublicStep.refl _
           | some envelope =>
               change PublicStep execution.application
-                ((handle runtime execution.application
-                  ⟨envelope.id, envelope.payload.call⟩).getD execution.application)
-              cases accepted : handle runtime execution.application
-                  ⟨envelope.id, envelope.payload.call⟩ with
+                (((runtime.reactiveApplication leaks).handle execution.application
+                  envelope).getD execution.application)
+              cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+                  envelope with
               | none => exact PublicStep.refl _
-              | some next => exact publicStep_handle runtime _ next _ accepted
+              | some next => exact publicStep_handle runtime _ next _ (reactiveHandle_call accepted)
   | application command =>
       rw [PMF.support_map] at supported
       obtain ⟨state, changed, rfl⟩ := supported

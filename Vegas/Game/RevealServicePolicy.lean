@@ -136,7 +136,7 @@ theorem ordinaryPolicy_projects (profile : BehavioralProfile setup.program)
 def policy (watcher : Player) (profile : BehavioralProfile setup.program)
     (weight : ℝ) (nonnegative : 0 ≤ weight) (atMostOne : weight ≤ 1)
     (who : Player) : (application setup leaks).Policy :=
-  if who = watcher then (application setup leaks).reportFirstUnpublished
+  if who = watcher then (application setup leaks).silentPolicy
     else ordinaryPolicy setup leaks bounds profile weight nonnegative atMostOne who
 
 theorem policy_covered (watcher : Player) (profile : BehavioralProfile setup.program)
@@ -152,7 +152,8 @@ theorem policy_covered (watcher : Player) (profile : BehavioralProfile setup.pro
   split at supported
   · rename_i same
     rw [ite_eq_left same]
-    exact (Set.Finite.mem_toFinset _).mpr supported
+    rw [ReactiveApplication.silentPolicy, PMF.mem_support_pure_iff] at supported
+    exact Finset.mem_singleton.mpr supported
   · rename_i different
     rw [ite_eq_right different]
     exact ordinaryPolicy_covered setup leaks bounds profile weight nonnegative atMostOne

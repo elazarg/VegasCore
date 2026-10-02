@@ -54,7 +54,7 @@ theorem include_binding_input (memory : BindingShadow graph)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
     (id : MessageId Player) (candidate : Handle graph)
     (sender : id.1 = who) (owned : candidate.1 = who)
-    (found : left.network.lookup id = some ⟨id, ⟨.commitment event candidate, none⟩⟩)
+    (found : left.network.lookup id = some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩)
     (ready : left.application.config.cut.Ready event)
     (timely : left.application.WithinDeadline runtime event)
     (vacant : left.application.accepted (.inr event) = none)
@@ -95,7 +95,7 @@ theorem include_binding_input (memory : BindingShadow graph)
     intro field associated
     exact unused field ((congrFun accepted field).trans associated)
   have found' : right.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, none⟩⟩ := network ▸ found
+      some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ := network ▸ found
   have handled := runtime.handle_commitment_eq left.application id event candidate who payload
     outputEq codeEq node ready timely sender owned vacant unused
   have handled' := runtime.handle_commitment_eq right.application id event candidate who payload
@@ -134,7 +134,8 @@ theorem include_binding_input (memory : BindingShadow graph)
         (cast (congrArg EventField.Value outputEq.symm)
           (left.application.bindingResult candidate payload)) := by
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found, reactiveApplication, handled, Option.getD_some, State.complete]
+      found, reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true,
+      handled, Option.getD_some, State.complete]
   have rightConfig : (right.includePending app id).application.config =
       right.application.config.complete event ready'
         (cast (congrArg EventField.Action outputEq.symm)
@@ -142,7 +143,8 @@ theorem include_binding_input (memory : BindingShadow graph)
         (cast (congrArg EventField.Value outputEq.symm)
           (right.application.bindingResult candidate payload)) := by
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found', reactiveApplication, handled', Option.getD_some, State.complete]
+      found', reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true,
+      handled', Option.getD_some, State.complete]
   have nextObservation :
       (memory.view (app.observePlayer (right.includePending app id).application who)).observation =
         (app.observePlayer (left.includePending app id).application who).observation := by
@@ -180,7 +182,8 @@ theorem include_binding_input (memory : BindingShadow graph)
   have nextReceipts : (left.includePending app id).receipts =
       (right.includePending app id).receipts := by
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found, found', reactiveApplication, handled, handled', Option.isSome_some, receipts]
+      found, found', reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true,
+      handled, handled', Option.isSome_some, receipts]
   rw [← nextNetwork, ← nextReceipts]
   rfl
 
@@ -272,12 +275,12 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
   have networkEq : before.network = after.network := by
     dsimp only [before, after]
     rw [afterAction]
-    change (left.network.submit who ⟨originalCall.packet, none⟩).2 =
-      (right.network.submit who ⟨.commitment event (who, .prepared serial), none⟩).2
-    rw [network]
+    simp only [app, original, ReactiveApplication.Execution.respond,
+      reactiveApplication_packet_none, network, visible]
+    rfl
   have found : before.network.lookup id =
-      some ⟨id, ⟨.commitment event (who, .prepared serial), none⟩⟩ :=
-    serials.lookup_submit who ⟨.commitment event (who, .prepared serial), none⟩
+      some ⟨id, ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩⟩ :=
+    respond_submit_lookup_of_ready runtime leaks left who originalCall serials event rfl ready
   have configEq : before.application.config = left.application.config := by
     change (submitStep (originalCall.register left.application who) who
       originalCall.packet).config = _

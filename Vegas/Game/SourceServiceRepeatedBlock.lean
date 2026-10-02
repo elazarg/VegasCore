@@ -63,12 +63,12 @@ theorem repeated_binding_block_coupling
       (memory.shadow.actions event = none ∧ memory.shadow.values (.inr event) = none ∧
         repaired.application.bindingResult (owner, slot) payload =
           original.application.bindingResult (owner, slot) payload))
-    (pending : (⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩ :
+    (pending : (⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩ :
       Message Player (WitnessedPacket (graph setup))) ∈ original.network.pending)
     (unpublished : (owner, nonce) ∉ original.network.ledger.map Message.id)
     (packets : original.network.Satisfies fun packet => packet.sender = owner →
       packet.id ∈ original.network.ledger.map Message.id ∨
-        packet = ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩)
+        packet = ⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu (runtime setup) leaks).actions owner past view)
     (before after : List (ServiceInstruction (graph setup))) (visits : List Player)
@@ -95,7 +95,7 @@ theorem repeated_binding_block_coupling
   classical
   intro app strategy ending
   let message : Message Player (WitnessedPacket (graph setup)) :=
-    ⟨(owner, nonce), ⟨.commitment event (owner, slot), none⟩⟩
+    ⟨(owner, nonce), ⟨.commitment event (owner, slot), none, some ⟨event⟩⟩⟩
   let finish (execution : app.Execution) : app.Execution :=
     { execution.includePending app message.id with environmentRecall :=
       execution.environmentRecall ++ [⟨execution.observeEnvironment app, .include message.id⟩] }
@@ -226,6 +226,8 @@ theorem repeated_binding_block_coupling
             unusedNow
         simp only [finish, ReactiveApplication.Execution.includePending,
           MessageNetwork.includePending, selection.2]
+        rw [reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+          (WitnessedPacket.tokenValid_commitment _ _ _)]
         change event ∈ (((runtime setup).handle next.1.application
           ⟨message.id, .commitment event (owner, slot)⟩).getD
             next.1.application).config.cut.completed

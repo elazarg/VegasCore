@@ -146,7 +146,7 @@ theorem guarded_submission_retained [Fintype Player] (bounds : MessageBounds gra
     subst packet
     cases material <;> rfl
   have fixed : execution.application.candidates.lookup candidate = .openable ⟨payload, value⟩ := by
-    have applied := accepted
+    have applied := reactiveHandle_call accepted
     change handle runtime (app.submit execution.application owner submission)
       ⟨(owner, serial), submission.call.packet⟩ = some next at applied
     rw [unchanged, originalCall] at applied

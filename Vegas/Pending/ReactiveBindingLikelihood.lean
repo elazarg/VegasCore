@@ -38,8 +38,9 @@ theorem bindingTraffic_include (runtime : EventGraphRuntime graph)
     (focal : Player) (left right : (runtime.reactiveApplication leaks).Execution)
     (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (evidence : Option (OpeningFact graph))
-    (found : left.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence⟩⟩) :
+    (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph))
+    (found : left.network.lookup id =
+      some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) :
     runtime.bindingTraffic leaks focal
         (left.includePending (runtime.reactiveApplication leaks) id) =
       runtime.bindingTraffic leaks focal
@@ -55,14 +56,25 @@ theorem bindingTraffic_include (runtime : EventGraphRuntime graph)
   have publics : left.application.publicView = right.application.publicView :=
     congrArg (fun value => value.2.2.2.2.2) same
   have rightFound : right.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, evidence⟩⟩ := networks ▸ found
-  have handled := handle_commitment_playerView_congr runtime left.application right.application
-    focal id event candidate views
+      some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ := networks ▸ found
+  have handled : Option.map (fun state => state.playerView focal)
+        ((runtime.reactiveApplication leaks).handle left.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) =
+      Option.map (fun state => state.playerView focal)
+        ((runtime.reactiveApplication leaks).handle right.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) := by
+    simp only [reactiveApplication_handle]
+    split
+    · exact handle_commitment_playerView_congr runtime left.application right.application
+        focal id event candidate views
+    · rfl
   simp only [bindingTraffic, ReactiveApplication.Execution.includePending,
-    MessageNetwork.includePending, found, rightFound, reactiveApplication]
-  cases first : handle runtime left.application ⟨id, .commitment event candidate⟩ with
+    MessageNetwork.includePending, found, rightFound]
+  cases first : (runtime.reactiveApplication leaks).handle left.application
+      ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
   | none =>
-      cases second : handle runtime right.application ⟨id, .commitment event candidate⟩ with
+      cases second : (runtime.reactiveApplication leaks).handle right.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
       | none =>
           simp only [Option.getD_none, Option.isSome_none]
           exact Prod.ext (by rw [networks]) (Prod.ext (by rw [receipts])
@@ -71,7 +83,8 @@ theorem bindingTraffic_include (runtime : EventGraphRuntime graph)
           simp only [first, second, Option.map_none, Option.map_some] at handled
           contradiction
   | some before =>
-      cases second : handle runtime right.application ⟨id, .commitment event candidate⟩ with
+      cases second : (runtime.reactiveApplication leaks).handle right.application
+          ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
       | none =>
           simp only [first, second, Option.map_none, Option.map_some] at handled
           contradiction
@@ -216,9 +229,10 @@ theorem binding_replay_window_coupling (runtime : EventGraphRuntime graph)
         (runtime.reactiveBinding leaks owner event payload first serial)).network =
       (right.respond app owner
         (runtime.reactiveBinding leaks owner event payload second serial)).network := by
-    cases first <;> cases second <;>
-      change (left.network.submit owner
-        ⟨.commitment event (owner, .prepared serial), none⟩).2 = _ <;> rw [networks] <;> rfl
+    have publics : left.application.publicView = right.application.publicView :=
+      congrArg PlayerView.publicView observed
+    simp only [app, ReactiveApplication.Execution.respond, reactiveBinding,
+      reactiveApplication_packet_none, networks, publics]
   by_cases different : focal ≠ owner
   · have views (execution : app.Execution) (result : PublicationResult (L.Val payload)) :
         (execution.respond app owner
@@ -263,9 +277,13 @@ theorem binding_replay_window_coupling (runtime : EventGraphRuntime graph)
               (left.network.known owner) =
             submission.emit (app.submit right.application owner submission) owner
               (right.network.known owner)
+          have publics : left.application.publicView = right.application.publicView :=
+            congrArg PlayerView.publicView observed
           rw [WitnessedSubmission.emit_eq_resolve, WitnessedSubmission.emit_eq_resolve, networks]
+          simp only [app, reactiveApplication_submit_publicView, publics]
           exact congrArg (fun table => WitnessedPacket.mk submission.call.packet
-            (submission.evidence.resolve owner table (right.network.known owner)))
+            (submission.evidence.resolve owner table (right.network.known owner))
+            (right.application.publicView.tokenFor submission.call.packet))
               (congrArg PlayerView.candidates submitted))
     exact Prod.ext afterNetworks (Prod.ext receipts (Prod.ext environments
       (Prod.ext afterRecall (Prod.ext afterViews (congrArg PlayerView.publicView afterViews)))))
@@ -289,15 +307,19 @@ private theorem binding_submitted_selection (runtime : EventGraphRuntime graph)
         .include (owner, execution.network.nextSerial owner) ∧
       current.network.lookup (owner, execution.network.nextSerial owner) =
         some ⟨(owner, execution.network.nextSerial owner),
-          ⟨.commitment event (owner, .prepared serial), none⟩⟩ := by
+          ⟨.commitment event (owner, .prepared serial), none,
+            execution.application.publicView.tokenFor
+              (.commitment event (owner, .prepared serial))⟩⟩ := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
     (runtime.reactiveBinding leaks owner event payload result serial)
-  let packet : WitnessedPacket graph := ⟨.commitment event (owner, .prepared serial), none⟩
+  let packet : WitnessedPacket graph := ⟨.commitment event (owner, .prepared serial), none,
+    execution.application.publicView.tokenFor (.commitment event (owner, .prepared serial))⟩
   let message : Message Player (WitnessedPacket graph) :=
     ⟨(owner, execution.network.nextSerial owner), packet⟩
   have networkEq : submitted.network = (execution.network.submit owner packet).2 := by
-    cases result <;> rfl
+    simp only [submitted, ReactiveApplication.Execution.respond, reactiveBinding,
+      reactiveApplication_packet_none, app, packet]
   have ledger : submitted.network.ledger = execution.network.ledger := by
     rw [networkEq]
     rfl
@@ -369,7 +391,7 @@ theorem binding_replay_inclusion_coupling (runtime : EventGraphRuntime graph)
     rw [← observed]
     exact selected
   have nextEqual := runtime.bindingTraffic_include leaks focal before after equal
-    (owner, left.network.nextSerial owner) event (owner, .prepared serial) none found
+    (owner, left.network.nextSerial owner) event (owner, .prepared serial) none _ found
   have nextNetworks := congrArg Prod.fst nextEqual
   have nextReceipts := congrArg (fun value => value.2.1) nextEqual
   have nextPrivate := congrArg (fun value => value.2.2.2) nextEqual

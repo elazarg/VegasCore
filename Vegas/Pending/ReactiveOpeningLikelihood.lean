@@ -58,8 +58,11 @@ theorem bindingTraffic_opening (runtime : EventGraphRuntime graph)
         (disclosureSubmission (.opening event candidate raw)) :=
     (runtime.windowOpening_packet leaks owner event candidate raw left.application
       (left.network.known owner) owned leftValid).trans
+        ((congrArg (fun view : PublicView graph => (⟨.opening event candidate raw,
+          some ⟨candidate, raw⟩, view.tokenFor (.opening event candidate raw)⟩ :
+            WitnessedPacket graph)) publics).trans
         (runtime.windowOpening_packet leaks owner event candidate raw right.application
-          (right.network.known owner) owned rightValid).symm
+          (right.network.known owner) owned rightValid).symm)
   have recallEq := app.respond_focal_recall_eq left right owner focal
     (runtime.windowOpening leaks event candidate raw) networks observed recalled (by
       intro submission transmitted

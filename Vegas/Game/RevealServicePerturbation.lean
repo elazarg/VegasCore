@@ -175,7 +175,7 @@ theorem compiledProfile_converges_at
     by_cases watches : who = watcher
     · simpa only [policy, watches, ↓reduceIte] using
         pmfConvergesPointwise_const
-          ((application setup leaks).reportFirstUnpublished past view)
+          ((application setup leaks).silentPolicy past view)
     · simpa only [policy, ite_eq_right watches] using
         ordinaryPolicy_converges setup leaks bounds sequence profile weight nonnegative
           atMostOne vanishes who past view (choices watches)

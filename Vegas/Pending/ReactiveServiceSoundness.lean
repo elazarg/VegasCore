@@ -138,6 +138,11 @@ theorem service_binding_traffic
   intro app response record member
   rw [app.trafficStep_submit, List.mem_singleton] at member
   subst record
+  change runtime.permittedServiceEnvelope execution.application.publicView execution.network.ledger
+    ⟨(owner, execution.network.nextSerial owner), app.packet
+      (app.submit execution.application owner _) owner (execution.network.known owner) _⟩ = true
+  rw [reactiveApplication_packet_none,
+    execution.application.publicView_tokenFor_of_ready _ event rfl ready]
   apply runtime.permittedServiceEnvelope_binding execution.application owner event
     execution.network.ledger (execution.network.nextSerial owner) _ counted
   simp only [PublicView.BindingIncludable, node]
@@ -188,13 +193,14 @@ theorem service_opening_traffic
     ⟨(owner, execution.network.nextSerial owner), app.packet
       (app.submit execution.application owner submission) owner
         (execution.network.known owner) submission⟩ = true
-  rw [emittedPacket, runtime.permittedServiceEnvelope_iff]
+  rw [emittedPacket, runtime.permittedServiceEnvelope_iff,
+    execution.application.publicView_tokenFor_of_ready _ event rfl ready]
   refine Or.inr ⟨counted, ?_⟩
   apply (runtime.freshServiceEnvelope_opening_iff execution.application.publicView
     (owner, execution.network.nextSerial owner) event owner payload binding checks outputEq codeEq
-      node candidate ⟨payload, value⟩ (some ⟨candidate, ⟨payload, value⟩⟩)).mpr
+      node candidate ⟨payload, value⟩ (some ⟨candidate, ⟨payload, value⟩⟩) _).mpr
   refine ⟨(execution.application.publicView_eventReady event).mpr ready, timely,
-    by simp only [certifiedOpening, decide_true], ?_, rfl, owned, associated, rfl⟩
+    by simp only [certifiedOpening, decide_true], ?_, rfl, owned, associated, rfl, rfl⟩
   apply (execution.application.publicView.openingGuardsAccepted_iff owner event payload binding
     checks outputEq codeEq node candidate ⟨payload, value⟩ _).mpr
   refine ⟨value, rfl, ?_⟩

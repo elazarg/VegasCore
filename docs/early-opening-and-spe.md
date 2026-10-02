@@ -2,24 +2,29 @@
 
 ## Checked result
 
-**The current recovery compiler does not preserve SPE under uniform inclusion
-and at-most-once publication alone.** A source policy that honestly binds zero
-and opens is SPE. Its compiled graph policy has a strictly profitable native
-deviation, at a proper subgame root, under the fixed schedule below.
+**Readiness tokens remove the early-opening deviation.** A source policy that
+honestly binds zero and opens is SPE. At a proper native subgame root, under
+uniform inclusion and at-most-once publication, a player can transmit an
+opening before its disclosure event is ready. Every packet carries the
+readiness token of its event, attached when it is emitted, and the contract
+rejects a packet without a valid token. The premature opening is therefore
+inert, and the exhibited deviation is strictly worse than the actual recovery
+compiler at that root.
 
 The witnessing commitment is valid and binding from submission. The example
 uses one player, no leaks, and no private preparation steps or computation
-costs. It applies with either source commitment interface; admitting commitment
-forfeiture does not remove this witness.
+costs. It applies with either source commitment interface.
 
 The principal theorem is
-[`honest_source_spe_native_failure`](../Vegas/Examples/ReactiveEarlyOpeningSPE.lean).
-It pairs the source honesty and SPE proofs with failure of the actual
-`compileReactivePolicy` on the corresponding bind-and-open graph policy.
+[`honest_source_early_opening_blocked`](../Vegas/Examples/ReactiveEarlyOpeningSPE.lean).
+It pairs the source honesty and SPE proofs with the strict comparison of the
+two continuations under the actual `compileReactivePolicy` on the corresponding
+bind-and-open graph policy.
 [`source_graph_publication`](../Vegas/Examples/PendingMenusSource.lean) identifies
 the source and graph publication kernels for every binding and disclosure
-choice. This is a graph-policy compiler counterexample, not an evaluation of
-the entire `Setup.compileReactiveStrategy` pipeline.
+choice. This compares one deviation at one root; it is not an SPE proof for
+the compiler, and not an evaluation of the entire
+`Setup.compileReactiveStrategy` pipeline.
 
 ## The source game
 
@@ -48,9 +53,9 @@ Two earlier legal responses have left these envelopes pending:
 | 0 | Commit `1` using handle A | A's immutable meaning is already `1` |
 | 1 | Withhold at the disclosure event | If accepted, publish failure |
 
-Neither envelope has been included. Withholding here is an explicit
-application call that resolves the event as failure, as in the current
-runtime. The example relies on that packet remaining available for inclusion.
+Neither envelope has been included. Withholding is an explicit application
+call that resolves the event as failure. Envelope 1 was emitted before the
+disclosure event was ready, so it carries no readiness token for that event.
 
 The remaining service schedule is fixed:
 
@@ -71,9 +76,9 @@ This is the concrete bounded scheduler in
 `scheduler_atMostOnce` proves the contract for all its histories and views.
 It is a particular reactive service instance, not the reserved-epoch service
 and not a verified blockchain implementation. The schedule has no general
-completion certificate against every policy. Both continuations used below
-do publish a result on every branch, proved by
-`compared_continuations_publish`; unfinished runs play no role in the payoff gap.
+completion certificate against every policy: a selected envelope that the
+contract rejects leaves its event unfinished. An unfinished disclosure has the
+same utility as a withheld one.
 
 ## What the compiler does
 
@@ -86,42 +91,46 @@ compiler observes which binding actually took effect and, at the disclosure
 activation, submits its correct opening as envelope 3.
 
 At disclosure inclusion, the old withholding envelope 1 and the new opening
-envelope 3 each have probability one half. Therefore:
+envelope 3 each have probability one half. Envelope 1 has no readiness token
+and is rejected, leaving the disclosure unfinished. Therefore:
 
 | Public outcome | Probability | Contribution to expected utility |
 |---|---:|---:|
 | `0` | 1/4 | 3/4 |
 | `1` | 1/4 | 2/4 |
-| Failure | 1/2 | 0 |
+| Unfinished | 1/2 | 0 |
 
 The compiler's expected utility is **5/4**. These are executions of the
 actual recovery compiler: `compiled_first`, `compiled_later`,
 `compiled_publication`, and `compiled_value` prove the actions and laws.
 
-## A better native continuation
+## The early-opening deviation
 
 At the first remaining activation, Alice instead submits an **early opening
-of handle A**, as envelope 2. She already knows its value, `1`; nothing needs
-to be guessed or assigned later. The packet waits until the disclosure event.
+of handle A**, as envelope 2. She already knows its value, `1`. The disclosure
+event is not ready when the packet is emitted, so it carries no readiness token
+for it.
 
 Only the original binding envelope addresses the binding event, so `1` takes
 effect. At the later disclosure activation Alice follows the compiler again
-and submits another correct opening in a fresh envelope, identifier 3.
+and submits another correct opening in a fresh envelope, identifier 3, which
+carries the disclosure's token.
 
-Disclosure selection now has three distinct candidates:
+Disclosure selection has three distinct candidates:
 
 | Identifier | Packet | Probability | Result |
 |---|---|---:|---|
-| 1 | Earlier withholding | 1/3 | Failure |
-| 2 | Early opening of A | 1/3 | `1` |
+| 1 | Earlier withholding, no token | 1/3 | Unfinished |
+| 2 | Early opening of A, no token | 1/3 | Unfinished |
 | 3 | Later opening of A | 1/3 | `1` |
 
-The expected utility is **4/3**, strictly greater than **5/4**.
-`early_publication` and `early_value` prove the distribution and expectation.
-The improvement uses a fresh submission, so deduplicating rebroadcasts or
-enforcing at-most-once inclusion does not remove it.
+The expected utility is **2/3**, strictly less than **5/4**.
+`early_publication`, `early_value` and `early_opening_unprofitable` prove the
+distribution, the expectation and the comparison. The early packet cannot
+compete for the later event, so spending the first activation on it only
+forgoes the binding repair.
 
-## Why this is an SPE counterexample
+## Why this root matters
 
 The prefix is a legal history of the actual canonical reactive protocol.
 [contested_isSubgameRoot](../Vegas/Examples/ReactiveEarlyOpening.lean) proves
@@ -130,10 +139,9 @@ earlier actions; that recall identifies the deterministic prefix in every
 future decision information set. The reusable argument is in
 [`Interaction/ReactiveSubgamePrefix.lean`](../Interaction/ReactiveSubgamePrefix.lean).
 
-`compiled_not_spe` applies the canonical behavioral SPE definition at this
-root and uses the whole, information-local policy `earlyPolicy` as a unilateral
-replacement. This root follows earlier deviations. SPE still requires
-optimality there, even when the prescribed policy never reaches it.
+The comparison uses the whole, information-local policy `earlyPolicy` as a
+unilateral replacement at this root. This root follows earlier deviations. SPE
+requires optimality there, even when the prescribed policy never reaches it.
 
 The improvement compares public transmissions competing for later inclusion.
 There is no cut inside a private computation or an atomic submission.
@@ -146,18 +154,18 @@ on an early opening changes the candidates available at the **later** event.
 That continuation premise therefore needs an additional argument; regularity
 within each individual event does not supply it.
 
-The compiler faces a tradeoff between improving the binding's value and
-improving the probability of successfully disclosing the existing value.
-The checked witness establishes that its event-by-event recovery rule can
-choose incorrectly. No claim about miner incentives is needed for this
-calculation: the specified scheduler already selects uniformly.
+Without readiness tokens the compiler would face a tradeoff between
+improving the binding's value and improving the probability of successfully
+disclosing the existing value. The token removes that tradeoff for this
+witness: a premature packet never competes for a later event. No claim about
+miner incentives is needed for this calculation: the specified scheduler
+already selects uniformly.
 
 ## Design consequences and remaining questions
 
-This refutes a preservation theorem for **this compiler under the stated
-service assumptions**. It does not prove that every utility-independent
-compiler fails for this uniform service, or that honest SPE is impossible
-under every realistic service contract. The stronger impossibility for an
+This removes one exhibited deviation for **this compiler under the stated
+service assumptions**. It does not prove that the compiler preserves SPE for
+this uniform service. The stronger impossibility for an
 [unrestricted public scheduler](reactive-inclusion-obstruction.md) has a
 different witness and must not be transferred to this case without a proof.
 
@@ -171,12 +179,13 @@ The next design investigation needs to address the tradeoff directly:
   explicit, pending withholding call and two fresh opening envelopes. Changing
   either behavior changes the application/service contract and needs its own
   justification and proof. It is not implied by transaction replay protection.
-- **Authorization after dependencies complete.** Requiring every executable
-  packet to authenticate evidence unavailable before its predecessors complete
-  would exclude the early packets in this witness. The
+- **Authorization after dependencies complete.** The readiness token is the
+  implemented form: a packet names the event it addresses, and the token is
+  valid only when attached at emission to a packet for that event after its
+  predecessors completed. The
   [dependency-authorization note](dependency-authorized-submission.md) separates
-  this proposed contract from ordinary timing checks and records possible
-  blockchain mechanisms. It is not an implemented SPE result.
+  this contract from ordinary timing checks and records possible blockchain
+  mechanisms. It is not an SPE result.
 - **Recovery policy.** A different recovery rule could choose the early
   opening here. General utility-independent preservation would still need a
   proof across source games and utilities. This example does not prove such a
@@ -197,10 +206,10 @@ ineligible for the later draw; a fresh opening after binding is eligible.
 
 The checked full-continuation comparison at the proper contested root is:
 
-| Continuation | Uniform inclusion without authorization | Authorized uniform inclusion |
+| Continuation | Uniform inclusion with readiness tokens | Authorized uniform inclusion |
 |---|---:|---:|
 | Actual compiler recovery | 5/4 | 5/2 |
-| Exhibited early-opening deviation | 4/3 | 2 |
+| Exhibited early-opening deviation | 2/3 | 2 |
 
 Under authorization, the compiler publishes 0 or 1 with equal probability;
 the deviation publishes 1. Both finish. This removes the exhibited profitable

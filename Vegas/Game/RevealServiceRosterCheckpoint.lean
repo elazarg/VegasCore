@@ -134,7 +134,8 @@ theorem PublicCheckpoint.reveal_endpoint
   have packet : publicationPacket? initialAccepted
       (execution.application.config.complete event ready action result).store event =
       if disclose then some (owner, (⟨.opening event candidate ⟨payload, value⟩,
-        some ⟨candidate, ⟨payload, value⟩⟩⟩ : WitnessedPacket (graph setup))) else none := by
+        some ⟨candidate, ⟨payload, value⟩⟩, some ⟨event⟩⟩ : WitnessedPacket (graph setup)))
+      else none := by
     cases choice : disclose <;> simp only [result, choice, Bool.false_eq_true, ↓reduceIte]
     · exact publicationPacket?_complete_resolve initialAccepted execution.application.config
         event ready owner payload (refs.get selected) [] outputEq codeEq node action .failure
@@ -166,7 +167,9 @@ theorem PublicCheckpoint.reveal_endpoint
     · simp only [choice, ↓reduceIte, and_true] at packet ledger receipts counters
       refine ⟨?_, ?_, ?_⟩
       · rw [publicationLedger_complete _ _ _ _ _ _ _ _ packet, ledger]
-        simp only [windowEnvelope, checkpoint.ledger, checkpoint.counters]
+        simp only [windowEnvelope, checkpoint.ledger, checkpoint.counters,
+          execution.application.publicView_tokenFor_of_ready
+            (.opening event candidate ⟨payload, value⟩) event rfl ready]
         rfl
       · rw [publicationReceipts_complete _ _ _ _ _ _ _ _ packet, receipts,
           checkpoint.receipts, checkpoint.counters]
@@ -359,9 +362,12 @@ theorem PublicCheckpoint.reveal_scheduled
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (PublicationResult.success value))) :=
-    handle_opening_eq (runtime setup) execution.application _ event candidate owner payload
+    (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+      ((runtime setup).windowEnvelope_tokenValid leaks owner event candidate _ execution
+        ready)).trans
+    (handle_opening_eq (runtime setup) execution.application _ event candidate owner payload
       (refs.get binding) [] outputEq codeEq node ready timely rfl owned associated
-        value valid stored (.success value) resolved
+        value valid stored (.success value) resolved)
   obtain ⟨applicationEq, _clean, ledger, receipts, counters⟩ :=
     (runtime setup).openingWindow_expiry leaks owner event payload (refs.get binding) [] outputEq
       codeEq node candidate value execution ready serials clean owned valid accepted entered

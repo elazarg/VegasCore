@@ -204,7 +204,12 @@ theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
     change (execution.network.lookup envelope.id).or (some envelope) = some envelope
     rw [absent]
     rfl
-  have handled : app.handle submitted.application envelope = some after := accepted
+  have valid : envelope.payload.tokenValid = true := by
+    change (WitnessedPacket.mk _ _
+      (execution.application.publicView.tokenFor (.opening event candidate raw))).tokenValid = true
+    exact tokenFor_tokenValid_of_handle runtime execution.application after _ _ _ accepted
+  have handled : app.handle submitted.application envelope = some after :=
+    (reactiveApplication_handle_of_tokenValid runtime leaks _ envelope valid).trans accepted
   let next : app.Execution := { submitted.includePending app envelope.id with
     environmentRecall := submitted.environmentRecall ++
       [⟨submitted.observeEnvironment app, .include envelope.id⟩] }

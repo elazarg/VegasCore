@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.RevealService
+import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ReactiveOpeningConformance
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.ReactiveSelectionObservation
@@ -31,7 +32,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- No unobservable silence or old replay is misclassified as a punishable
 departure. An excluded effective response necessarily allocates a fresh packet. -/
 theorem extra_response_submission (execution : (application setup leaks).Execution)
-    (owner : Player) (recall : execution.InputRecall (application setup leaks))
+    (owner : Player) (inputRecall : execution.InputRecall (application setup leaks))
     (published : ∀ message ∈ execution.network.known owner,
       message.id ∈ execution.network.ledger.map Message.id)
     (response : (application setup leaks).Action)
@@ -49,7 +50,7 @@ theorem extra_response_submission (execution : (application setup leaks).Executi
       | replay id =>
           have known := ((bounds.menu_mem (runtime setup) leaks owner _ _ _).mp effective).1
           have actual := (ReactiveApplication.SubmissionNormalization.replayKnown_iff
-            (app := application setup leaks) execution owner recall id).mp known
+            (app := application setup leaks) execution owner inputRecall id).mp known
           obtain ⟨message, member, identified⟩ := actual
           have onLedger := published message member
           obtain ⟨recorded, recordedMem, same⟩ := List.mem_map.mp onLedger
@@ -63,7 +64,7 @@ theorem extra_response_submission (execution : (application setup leaks).Executi
 canonical opening is identified by the existing local decoder; all remaining
 effective responses produce attributable rejection or bad public format. -/
 theorem extra_response_packet_cases (execution : (application setup leaks).Execution)
-    (owner : Player) (recall : execution.InputRecall (application setup leaks))
+    (owner : Player) (inputRecall : execution.InputRecall (application setup leaks))
     (published : ∀ message ∈ execution.network.known owner,
       message.id ∈ execution.network.ledger.map Message.id)
     (event : (graph setup).EventId) (payload : L.Ty)
@@ -95,7 +96,7 @@ theorem extra_response_packet_cases (execution : (application setup leaks).Execu
           ⟨(owner, execution.network.nextSerial owner), packet⟩ = none ∨
         certifiedOpening packet = false := by
   obtain ⟨submission, rfl⟩ := extra_response_submission setup leaks bounds execution owner
-    recall published response effective extra
+    inputRecall published response effective extra
   refine ⟨submission, rfl, ?_⟩
   dsimp only
   by_cases addressed : submission.call.packet.event? (graph setup) = some event
@@ -106,7 +107,7 @@ theorem extra_response_packet_cases (execution : (application setup leaks).Execu
     · have known : ReactiveApplication.ResponseMenu.knownPackets
           (execution.recall owner) (execution.observe (application setup leaks) owner) =
           execution.network.known owner :=
-        ((application setup leaks).known_from_recall execution owner recall).symm
+        ((application setup leaks).known_from_recall execution owner inputRecall).symm
       have normal := ((bounds.menu_mem (runtime setup) leaks owner _ _ _).mp effective).2
       have equivalent : ((runtime setup).reactiveNormalization leaks).action owner
           (execution.recall owner) (execution.observe (application setup leaks) owner)
@@ -136,203 +137,81 @@ theorem extra_response_packet_cases (execution : (application setup leaks).Execu
         ⟨some (.submit submission)⟩).application.config.cut.Ready event
       rw [preserved]
       exact ready
-    exact (runtime setup).handle_eq_none_of_other_event_ready_public
+    exact reactiveHandle_none ((runtime setup).handle_eq_none_of_other_event_ready_public
       setup.eventGraph.sequentialize_barrierOrdered _ event (by rw [outputEq]; trivial)
-      stillReady ⟨(owner, execution.network.nextSerial owner), submission.call.packet⟩ addressed
+      stillReady ⟨(owner, execution.network.nextSerial owner), submission.call.packet⟩ addressed)
 
 omit [Fintype Player] in
-/-- Public evidence attributable to this author. Receipt evidence remembers the
-phase of actual rejection; ledger evidence covers accepted bad-format calls. -/
-def departureEvidence (owner : Player) (execution : (application setup leaks).Execution) : Prop :=
-  (∃ id, id.1 = owner ∧ (id, false) ∈ execution.receipts) ∨
-    ledgerViolation owner certifiedOpening execution.network.ledger = true
+/-- The settlement charges `owner` when a packet it signed, on the contract's
+ledger or in the watcher's report, is forbidden by the settled record. The
+contract judges its own ledger. The watcher's report carries the signed packets
+the watcher observed; it is included within the challenge window, which ends
+before settlement. -/
+def departureEvidence (watcher owner : Player)
+    (execution : (application setup leaks).Execution) : Prop :=
+  ∃ message, (message ∈ execution.network.ledger ∨ message ∈ execution.network.leaked watcher) ∧
+    message.sender = owner ∧
+    ((runtime setup).settledRecord leaks execution).permits message = false
 
 omit [Fintype Player] in
-theorem departureEvidence_persistent (owner : Player)
+/-- A mark that settlement will charge `owner`: a condemned packet it signed is
+on the ledger or in the watcher's report. -/
+def markedDeparture (watcher owner : Player)
+    (execution : (application setup leaks).Execution) : Prop :=
+  ∃ message, (message ∈ execution.network.ledger ∨ message ∈ execution.network.leaked watcher) ∧
+    message.sender = owner ∧ CondemnedFacts setup leaks message execution
+
+omit [Fintype Player] in
+/-- A ledger entry stays on the ledger. -/
+theorem ledger_policyInvariant (players : Player → (application setup leaks).Policy)
+    (message : Message Player (WitnessedPacket (graph setup))) :
+    (application setup leaks).PolicyInvariant players
+      (fun execution => message ∈ execution.network.ledger) where
+  respond execution who action published _ := by
+    rw [(application setup leaks).respond_ledger]
+    exact published
+  environment execution next command published reached := by
+    obtain ⟨_, _, effect⟩ := environmentStep_shape setup leaks execution next command reached
+    rcases effect with ⟨_, ledgerEq, _⟩ | ⟨id, included, found, networkEq, _, _⟩
+    · rw [ledgerEq]
+      exact published
+    · rw [networkEq, (includePending_found execution.network id included found).2.2]
+      exact List.mem_append_left _ published
+
+omit [Fintype Player] in
+theorem markedDeparture_persistent (watcher owner : Player)
     (players : Player → (application setup leaks).Policy) :
-    (application setup leaks).PolicyInvariant players (departureEvidence setup leaks owner) where
-  respond execution who response evidence supported := by
-    rcases evidence with ⟨id, authored, rejected⟩ | malformed
-    · exact Or.inl ⟨id, authored, ((application setup leaks).receipt_policyInvariant players
-        (id, false)).respond execution who response rejected supported⟩
-    · exact Or.inr ((application setup leaks).ledgerViolation_respond owner certifiedOpening
-        execution who response malformed)
-  environment execution next command evidence reached := by
-    rcases evidence with ⟨id, authored, rejected⟩ | malformed
-    · exact Or.inl ⟨id, authored, ((application setup leaks).receipt_policyInvariant players
-        (id, false)).environment execution next command rejected reached⟩
-    · exact Or.inr ((application setup leaks).ledgerViolation_environment owner certifiedOpening
-        execution next command malformed reached)
+    (application setup leaks).PolicyInvariant players
+      (markedDeparture setup leaks watcher owner) where
+  respond execution who action marked supported := by
+    obtain ⟨message, place, authored, held⟩ := marked
+    refine ⟨message, ?_, authored,
+      (condemnedFacts_persistent message players).respond execution who action held supported⟩
+    rcases place with published | observed
+    · exact Or.inl ((ledger_policyInvariant setup leaks players message).respond execution who
+        action published supported)
+    · exact Or.inr (((application setup leaks).leaked_policyInvariant players watcher
+        message).respond execution who action observed supported)
+  environment execution next command marked reached := by
+    obtain ⟨message, place, authored, held⟩ := marked
+    refine ⟨message, ?_, authored,
+      (condemnedFacts_persistent message players).environment execution next command held
+        reached⟩
+    rcases place with published | observed
+    · exact Or.inl ((ledger_policyInvariant setup leaks players message).environment execution
+        next command published reached)
+    · exact Or.inr (((application setup leaks).leaked_policyInvariant players watcher
+        message).environment execution next command observed reached)
 
 omit [Fintype Player] in
-/-- Actual inclusion records evidence in both arms of the packet classifier. -/
-theorem inclusion_records_departure (owner : Player)
-    (execution : (application setup leaks).Execution) (id : MessageId Player)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (found : execution.network.lookup id = some message) (identified : message.id = id)
-    (authored : id.1 = owner)
-    (departure : (application setup leaks).handle execution.application message = none ∨
-      certifiedOpening message.payload = false) :
-    departureEvidence setup leaks owner
-      (execution.includePending (application setup leaks) id) := by
-  rcases departure with rejected | malformed
-  · refine Or.inl ⟨id, authored, ?_⟩
-    simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-      found, rejected, Option.isSome_none]
-    exact List.mem_append_right _ (List.mem_singleton_self _)
-  · apply Or.inr
-    exact (application setup leaks).ledgerViolation_includePending owner certifiedOpening
-      execution id message found (by change message.id.1 = owner; rw [identified, authored])
-      malformed
-
-omit [Fintype Player] in
-/-- Sampling followed by the fixed reporter supplies the corresponding
-evidence bound. Later responses and scheduler choices remain arbitrary. -/
-theorem report_departure_lower (owner watcher : Player)
-    (players : Player → (application setup leaks).Policy)
-    (reporter : players watcher = (application setup leaks).reportFirstUnpublished)
-    (execution : (application setup leaks).Execution) (id : MessageId Player)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (found : execution.network.lookup id = some message) (identified : message.id = id)
-    (authored : id.1 = owner) (foreign : id.1 ≠ watcher)
-    (unknown : (execution.network.known watcher).any (fun packet => packet.id = id) = false)
-    (fresh : id ∉ execution.network.ledger.map Message.id)
-    (oldPublished : ∀ packet ∈ execution.network.leaked watcher,
-      packet.id ∈ execution.network.ledger.map Message.id)
-    (uniquePending : ∀ packet ∈ execution.network.pending,
-      packet.id ∉ execution.network.ledger.map Message.id → packet.id = id)
-    (departure : (application setup leaks).handle execution.application message = none ∨
-      certifiedOpening message.payload = false)
-    (continuation : (application setup leaks).Scheduler) (count : Nat) :
-    ((leaks watcher execution.network.pending).toOuterMeasure {selected | id ∈ selected}).toReal ≤
-      ((((application setup leaks).reportInclusion players watcher execution).bind
-        ((application setup leaks).runRounds continuation players count)).toOuterMeasure
-            {final | departureEvidence setup leaks owner final}).toReal := by
-  classical
-  have reports : ∀ observed ∈ (execution.environmentStep (application setup leaks)
-      (.activate watcher)).support,
-      message ∈ (observed.observe (application setup leaks) watcher).messages.leaked →
-        players watcher (observed.recall watcher)
-          (observed.observe (application setup leaks) watcher) =
-            PMF.pure ⟨some (.replay id)⟩ := by
-    intro observed reached seen
-    rw [reporter]
-    exact (application setup leaks).reportFirstUnpublished_after_activation execution watcher
-      id message identified fresh oldPublished uniquePending observed reached seen
-  rcases departure with rejected | malformed
-  · have detection := (application setup leaks).sampling_rejected_receipt_lower players watcher
-      execution id message found foreign unknown fresh reports rejected continuation count
-    apply detection.trans
-    rw [← expect_indicator, ← expect_indicator]
-    refine expect_mono ?_ (payoffIntegrable_ite_one_zero _ _) (payoffIntegrable_ite_one_zero _ _)
-    intro final _
-    simp only [Set.mem_ofPred_eq]
-    split
-    · rename_i present
-      have evidence : departureEvidence setup leaks owner final := Or.inl ⟨id, authored, present⟩
-      simp only [evidence, ↓reduceIte, le_refl]
-    · split <;> norm_num
-  · have detection := (application setup leaks).sampling_ledger_violation_lower players watcher
-      owner certifiedOpening execution id message found foreign unknown fresh
-      (by change message.id.1 = owner; rw [identified, authored]) malformed reports
-      continuation count
-    apply detection.trans
-    rw [← expect_indicator, ← expect_indicator]
-    refine expect_mono ?_ (payoffIntegrable_ite_one_zero _ _) (payoffIntegrable_ite_one_zero _ _)
-    intro final _
-    simp only [Set.mem_ofPred_eq]
-    split
-    · rename_i present
-      have evidence : departureEvidence setup leaks owner final := Or.inr present
-      simp only [evidence, ↓reduceIte, le_refl]
-    · split <;> norm_num
-
-
-omit [Fintype Player] in
-/-- A clean pending pool plus one newly authored packet satisfies the fixed
-reporter's premises, even when published replay copies remain in the pool.
-The snapshot may include intervening service bookkeeping such as a reserved
-wait; its exact submitted network is the only required correspondence. -/
-theorem fresh_submission_report_lower (owner watcher : Player) (different : owner ≠ watcher)
-    (players : Player → (application setup leaks).Policy)
-    (reporter : players watcher = (application setup leaks).reportFirstUnpublished)
-    (before snapshot : (application setup leaks).Execution)
-    (packet : WitnessedPacket (graph setup))
-    (network : snapshot.network = (before.network.submit owner packet).2)
-    (serials : before.network.SerialsBeforeNext)
-    (pendingPublished : ∀ message ∈ before.network.pending,
-      message.id ∈ before.network.ledger.map Message.id)
-    (knownPublished : ∀ message ∈ before.network.known watcher,
-      message.id ∈ before.network.ledger.map Message.id)
-    (departure : (application setup leaks).handle snapshot.application
-        ⟨(owner, before.network.nextSerial owner), packet⟩ = none ∨
-      certifiedOpening packet = false)
-    (continuation : (application setup leaks).Scheduler) (count : Nat) :
-    ((leaks watcher snapshot.network.pending).toOuterMeasure
-        {selected | (owner, before.network.nextSerial owner) ∈ selected}).toReal ≤
-      ((((application setup leaks).reportInclusion players watcher snapshot).bind
-        ((application setup leaks).runRounds continuation players count)).toOuterMeasure
-            {final | departureEvidence setup leaks owner final}).toReal := by
-  let id := (owner, before.network.nextSerial owner)
-  have found : snapshot.network.lookup id = some ⟨id, packet⟩ := by
-    rw [network]
-    exact serials.lookup_submit owner packet
-  have ledger : snapshot.network.ledger = before.network.ledger := by rw [network]; rfl
-  have fresh : id ∉ snapshot.network.ledger.map Message.id := by
-    rw [ledger]
-    exact serials.next_unpublished owner
-  have known : snapshot.network.known watcher = before.network.known watcher := by
-    rw [network]
-    simp only [MessageNetwork.known, MessageNetwork.submit, List.filterMap_append,
-      List.filterMap_cons, List.filterMap_nil, different, ↓reduceIte, List.append_nil]
-  have unknown : (snapshot.network.known watcher).any (fun message => message.id = id) =
-      false := by
-    rw [known]
-    cases selected : (before.network.known watcher).any (fun message => message.id = id) with
-    | false => rfl
-    | true =>
-        obtain ⟨message, member, same⟩ := List.any_eq_true.mp selected
-        have published := knownPublished message member
-        have identified : message.id = id := of_decide_eq_true same
-        rw [identified, ← ledger] at published
-        exact (fresh published).elim
-  have oldPublished : ∀ message ∈ snapshot.network.leaked watcher,
-      message.id ∈ snapshot.network.ledger.map Message.id := by
-    intro message member
-    have retained : message ∈ snapshot.network.known watcher := by
-      simp only [MessageNetwork.known, List.mem_append]
-      exact Or.inl (Or.inr member)
-    rw [known] at retained
-    rw [ledger]
-    exact knownPublished message retained
-  have uniquePending : ∀ message ∈ snapshot.network.pending,
-      message.id ∉ snapshot.network.ledger.map Message.id → message.id = id := by
-    intro message member unpublished
-    rw [network] at member
-    change message ∈ before.network.pending ++ [⟨id, packet⟩] at member
-    rcases List.mem_append.mp member with old | freshPacket
-    · exact (unpublished (ledger ▸ pendingPublished message old)).elim
-    · cases List.mem_singleton.mp freshPacket
-      rfl
-  exact report_departure_lower setup leaks owner watcher players reporter snapshot id
-    ⟨id, packet⟩ found rfl rfl different unknown fresh oldPublished uniquePending
-    departure continuation count
-omit [Fintype Player] in
-private theorem evidence_after_report (owner watcher : Player)
-    (players : Player → (application setup leaks).Policy)
-    (execution final : (application setup leaks).Execution)
-    (evidence : departureEvidence setup leaks owner execution)
-    (continuation : (application setup leaks).Scheduler) (count : Nat)
-    (reached : final ∈ (((application setup leaks).reportInclusion players watcher execution).bind
-      ((application setup leaks).runRounds continuation players count)).support) :
-    departureEvidence setup leaks owner final := by
-  have invariant := departureEvidence_persistent setup leaks owner players
-  obtain ⟨reported, report, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  obtain ⟨observed, activate, included⟩ :=
-    Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ report)
-  exact invariant.runRounds continuation count reported final
-    (invariant.dispatch _ observed reported
-      (invariant.dispatch (.activate watcher) execution observed evidence activate) included) rest
+/-- At a settlement that completed every event, a mark is a charge. -/
+theorem markedDeparture_evidence (watcher owner : Player)
+    (execution : (application setup leaks).Execution)
+    (marked : markedDeparture setup leaks watcher owner execution)
+    (terminal : execution.application.config.cut.Terminal) :
+    departureEvidence setup leaks watcher owner execution := by
+  obtain ⟨message, place, authored, facts, emitted, condemned⟩ := marked
+  exact ⟨message, place, authored, condemned.forbidden facts terminal emitted⟩
 
 omit [Fintype Player] in
 private theorem nonmatching_submission_wait (owner : Player)
@@ -369,16 +248,20 @@ private theorem nonmatching_submission_wait (owner : Player)
     MessageNetwork.publicView, ReactiveApplication.EnvironmentView.Unpublished, absent]
 
 omit [Fintype Player] in
-/-- The actual reserved inclusion followed by the fixed watcher collects
-departure evidence with at least the fresh packet's sampling probability.
-Current-address packets are included immediately; other packets remain for
-passive observation. Subsequent responses and scheduling are unrestricted. -/
-theorem reserved_report_departure_lower (owner watcher : Player) (different : owner ≠ watcher)
+/-- The actual reserved inclusion followed by the watcher's observation marks a
+departure with at least the fresh packet's sampling probability. A packet for
+the current event is included at once and lands on the ledger; any other packet
+stays pending for passive observation. Subsequent responses and scheduling are
+unrestricted. -/
+theorem reserved_observation_departure_lower (owner watcher : Player) (different : owner ≠ watcher)
     (players : Player → (application setup leaks).Policy)
-    (reporter : players watcher = (application setup leaks).reportFirstUnpublished)
     (before : (application setup leaks).Execution) (event : (graph setup).EventId)
     (submission : WitnessedSubmission (graph setup))
-    (serials : before.network.SerialsBeforeNext)
+    (facts : SettledFacts setup leaks before)
+    (sound : ((runtime setup).packetEvidence leaks).Sound before)
+    (binding : before.application.BindingInvariant)
+    (publications : ∀ event owner payload,
+      (graph setup).outputLayout event ≠ .binding owner payload)
     (pendingPublished : ∀ message ∈ before.network.pending,
       message.id ∈ before.network.ledger.map Message.id)
     (knownPublished : ∀ message ∈ before.network.known watcher,
@@ -394,35 +277,52 @@ theorem reserved_report_departure_lower (owner watcher : Player) (different : ow
     ((leaks watcher submitted.network.pending).toOuterMeasure
         {selected | (owner, before.network.nextSerial owner) ∈ selected}).toReal ≤
       (((((runtime setup).interactionStep leaks players
-          ((runtime setup).reportNetwork leaks watcher)
+          ((runtime setup).idleNetwork leaks)
           (.includeLatest event owner) submitted).bind
-        ((application setup leaks).reportInclusion players watcher)).bind
+        ((application setup leaks).observationRound players watcher)).bind
           ((application setup leaks).runRounds continuation players count)).toOuterMeasure
-              {final | departureEvidence setup leaks owner final}).toReal := by
+              {final | markedDeparture setup leaks watcher owner final}).toReal := by
   classical
   let app := application setup leaks
   let submitted := before.respond app owner ⟨some (.submit submission)⟩
   let id := (owner, before.network.nextSerial owner)
   let packet := submission.emit submitted.application owner (before.network.known owner)
+  let message : Message Player (WitnessedPacket (graph setup)) := ⟨id, packet⟩
+  have serials := facts.serials
+  have condemned : CondemnedFacts setup leaks message submitted :=
+    ⟨settledFacts_respond before facts owner _,
+      List.mem_map.mpr ⟨⟨owner, message⟩, List.mem_append_right _
+        (List.mem_singleton_self _), rfl⟩,
+      condemned_of_unacceptable before facts sound binding publications owner submission
+        departure⟩
+  have persistent := markedDeparture_persistent setup leaks watcher owner players
+  have heldPersistent := condemnedFacts_persistent message players
   change ((leaks watcher submitted.network.pending).toOuterMeasure
       {selected | id ∈ selected}).toReal ≤
-    (((((runtime setup).interactionStep leaks players ((runtime setup).reportNetwork leaks watcher)
-      (.includeLatest event owner) submitted).bind (app.reportInclusion players watcher)).bind
+    (((((runtime setup).interactionStep leaks players ((runtime setup).idleNetwork leaks)
+      (.includeLatest event owner) submitted).bind (app.observationRound players watcher)).bind
         (app.runRounds continuation players count)).toOuterMeasure _).toReal
   rw [(runtime setup).interaction_includeLatest_environment]
   by_cases addressed : submission.call.packet.event? (graph setup) = some event
   · rw [(runtime setup).reactiveLatest_after_submit leaks owner event before serials submission
       addressed]
-    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.pure_bind]
-    have found : submitted.network.lookup id = some ⟨id, packet⟩ :=
-      serials.lookup_submit owner packet
-    have evidence := inclusion_records_departure setup leaks owner submitted id ⟨id, packet⟩
-      found rfl rfl departure
     let recorded : app.Execution := { submitted.includePending app id with
       environmentRecall := submitted.environmentRecall ++
         [⟨submitted.observeEnvironment app, .include id⟩] }
-    have recordedEvidence : departureEvidence setup leaks owner recorded := evidence
+    have recordedMem : recorded ∈ (submitted.environmentStep app (.include id)).support := by
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl
+    have found : submitted.network.lookup id = some message :=
+      serials.lookup_submit owner packet
+    have marked : markedDeparture setup leaks watcher owner recorded := by
+      refine ⟨message, Or.inl ?_, rfl,
+        heldPersistent.environment submitted recorded (.include id) condemned recordedMem⟩
+      change message ∈ (submitted.includePending app id).network.ledger
+      rw [app.includePending_network, (includePending_found submitted.network id message
+        found).2.2]
+      exact List.mem_append_right _ (List.mem_singleton_self _)
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.pure_bind]
     rw [← expect_indicator, ← expect_indicator]
     calc
       _ ≤ expect (leaks watcher submitted.network.pending) (fun _ => (1 : ℝ)) := by
@@ -433,22 +333,69 @@ theorem reserved_report_departure_lower (owner watcher : Player) (different : ow
       _ = _ := by
         symm
         calc
-          _ = expect (((app.reportInclusion players watcher _).bind
+          _ = expect (((app.observationRound players watcher recorded).bind
               (app.runRounds continuation players count))) (fun _ => (1 : ℝ)) := by
             apply expect_congr_on_support
             intro final reached
-            have detected := evidence_after_report setup leaks owner watcher players recorded final
-              recordedEvidence continuation count reached
+            obtain ⟨observed, round, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+            obtain ⟨activated, activation, waited⟩ :=
+              Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ round)
+            have detected := persistent.runRounds continuation count observed final
+              (persistent.dispatch _ activated observed
+                (persistent.dispatch _ recorded activated marked activation) waited) rest
             exact ite_eq_left detected
           _ = 1 := expect_constant ..
   · rw [nonmatching_submission_wait setup leaks owner before event submission pendingPublished
       addressed]
-    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.pure_bind]
     let waited : app.Execution := { submitted with
       environmentRecall := submitted.environmentRecall ++
         [⟨submitted.observeEnvironment app, .wait⟩] }
-    exact fresh_submission_report_lower setup leaks owner watcher different players reporter
-      before waited packet rfl serials pendingPublished knownPublished departure continuation count
+    have waitedMem : waited ∈ (submitted.environmentStep app .wait).support := by
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
+      exact (PMF.mem_support_pure_iff _ _).mpr rfl
+    have held : CondemnedFacts setup leaks message waited :=
+      heldPersistent.environment submitted waited .wait condemned waitedMem
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.pure_bind]
+    have found : waited.network.lookup id = some message :=
+      serials.lookup_submit owner packet
+    have ledger : waited.network.ledger = before.network.ledger := rfl
+    have fresh : id ∉ waited.network.ledger.map Message.id := by
+      rw [ledger]
+      exact serials.next_unpublished owner
+    have known : waited.network.known watcher = before.network.known watcher := by
+      change (before.network.submit owner packet).2.known watcher = _
+      simp only [MessageNetwork.known, MessageNetwork.submit, List.filterMap_append,
+        List.filterMap_cons, List.filterMap_nil, different, ↓reduceIte, List.append_nil]
+    have unknown : (waited.network.known watcher).any (fun message => message.id = id) =
+        false := by
+      rw [known]
+      cases selected : (before.network.known watcher).any (fun message => message.id = id) with
+      | false => rfl
+      | true =>
+          obtain ⟨other, member, same⟩ := List.any_eq_true.mp selected
+          have published := knownPublished other member
+          have identified : other.id = id := of_decide_eq_true same
+          rw [identified, ← ledger] at published
+          exact (fresh published).elim
+    have observed := app.sampling_observed_lower players watcher waited id message found
+      different unknown fresh continuation count
+    apply observed.trans
+    rw [← expect_indicator, ← expect_indicator]
+    refine expect_mono ?_ (payoffIntegrable_ite_one_zero _ _) (payoffIntegrable_ite_one_zero _ _)
+    intro final reached
+    simp only [Set.mem_ofPred_eq]
+    split
+    · rename_i seen
+      obtain ⟨middle, round, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨activated, activation, idle⟩ :=
+        Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ round)
+      have heldFinal := heldPersistent.runRounds continuation count middle final
+        (heldPersistent.dispatch _ activated middle
+          (heldPersistent.dispatch _ waited activated held activation) idle) rest
+      have marked : final ∈ {final | markedDeparture setup leaks watcher owner final} :=
+        ⟨message, Or.inr seen, rfl, heldFinal⟩
+      rw [ite_eq_left marked]
+    · split <;> norm_num
 
 end Vegas

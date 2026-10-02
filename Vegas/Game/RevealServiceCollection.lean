@@ -8,9 +8,10 @@ import Interaction.ReactiveRoundReachability
 /-! # Monitoring bounds at behavioral continuation histories
 
 The existing finite-menu evaluator connects focal response deviations to the
-actual reserved inclusion and passive reporting block. The conclusion concerns
-the standard behavioral continuation law. Clean execution and sampling
-hypotheses remain operational premises; no posterior or incentive premise is introduced.
+actual reserved inclusion and the watcher's observation round. The conclusion
+concerns the standard behavioral continuation law, read at settlement. Clean
+execution and sampling hypotheses remain operational premises; no posterior or
+incentive premise is introduced.
 -/
 
 noncomputable section
@@ -39,7 +40,7 @@ theorem finish_owner_response (watcher owner : Player)
       (players owner (execution.recall owner)
         (execution.observe (application setup leaks) owner)).bind
         (fun response => ((runtime setup).runInteractionPlan leaks players
-          ((runtime setup).reportNetwork leaks watcher) rest
+          ((runtime setup).idleNetwork leaks) rest
           (execution.respond (application setup leaks) owner response)).map
             (application setup leaks).finished) := by
   simp only [ReactiveApplication.finish, ReactiveApplication.resume,
@@ -53,8 +54,8 @@ theorem finish_owner_response (watcher owner : Player)
       List.length_append, List.length_singleton] using position
 
 /-- The first three remaining instructions are exactly the reserved inclusion
-and ordinary-view report block. The remainder uses the unchanged scheduler. -/
-theorem finish_owner_report (watcher owner : Player)
+and the watcher's observation round. The remainder uses the unchanged scheduler. -/
+theorem finish_owner_observation (watcher owner : Player)
     (players : Player → (application setup leaks).Policy)
     (before rest : List (ServiceInstruction (graph setup))) (event : (graph setup).EventId)
     (split : plan setup watcher = before ++ .player owner :: .includeLatest event owner ::
@@ -66,9 +67,9 @@ theorem finish_owner_report (watcher owner : Player)
       (players owner (execution.recall owner)
         (execution.observe (application setup leaks) owner)).bind
         (fun response => ((((runtime setup).interactionStep leaks players
-          ((runtime setup).reportNetwork leaks watcher) (.includeLatest event owner)
+          ((runtime setup).idleNetwork leaks) (.includeLatest event owner)
           (execution.respond (application setup leaks) owner response)).bind
-          ((application setup leaks).reportInclusion players watcher)).bind
+          ((application setup leaks).observationRound players watcher)).bind
           ((application setup leaks).runRounds (scheduler setup leaks watcher) players
             rest.length)).map (application setup leaks).finished) := by
   have finish := finish_owner_response setup leaks watcher owner players before
@@ -83,17 +84,17 @@ theorem finish_owner_report (watcher owner : Player)
   change (runtime setup).runInteractionPlan leaks players _ (segment ++ rest) _ = _
   rw [(runtime setup).runInteractionPlan_append]
   have report : (runtime setup).runInteractionPlan leaks players
-      ((runtime setup).reportNetwork leaks watcher) segment
+      ((runtime setup).idleNetwork leaks) segment
       (execution.respond (application setup leaks) owner response) =
-      ((runtime setup).interactionStep leaks players ((runtime setup).reportNetwork leaks watcher)
+      ((runtime setup).interactionStep leaks players ((runtime setup).idleNetwork leaks)
         (.includeLatest event owner)
         (execution.respond (application setup leaks) owner response)).bind
-          ((application setup leaks).reportInclusion players watcher) := by
+          ((application setup leaks).observationRound players watcher) := by
     rw [show segment = .includeLatest event owner :: [.player watcher, .wire] from rfl,
       runInteractionPlan]
     apply bind_congr_on_support _
     intro next _
-    exact (runtime setup).run_report_plan leaks players watcher next
+    exact (runtime setup).run_observation_plan leaks players watcher next
   rw [← report]
   apply bind_congr_on_support _
   intro next reached
@@ -102,12 +103,12 @@ theorem finish_owner_report (watcher owner : Player)
   · simpa only [segment, List.append_assoc, List.cons_append, List.nil_append,
       List.singleton_append] using split
   · have advanced := (runtime setup).runInteractionPlan_recall leaks players
-      ((runtime setup).reportNetwork leaks watcher) segment
+      ((runtime setup).idleNetwork leaks) segment
       (execution.respond (application setup leaks) owner response) next reached
     rw [advanced, ReactiveApplication.respond_environmentRecall]
     simp only [List.length_append, List.length_singleton, position]
 
-/-- Every ordinary-player decision in any menu has the reporting suffix and
+/-- Every ordinary-player decision in any menu has the observation suffix and
 remaining horizon used above. The position is recovered from legal history. -/
 theorem owner_continuation_layout (responses : (application setup leaks).ResponseMenu)
     (watcher owner : Player) (different : owner ≠ watcher)
@@ -162,18 +163,21 @@ theorem menu_remaining_fuel (responses : (application setup leaks).ResponseMenu)
   rw [responses.toRawTrace_length] at bounded
   omega
 
-/-- Evidence read from the actual native control state; no private monitor
-observation or submission request is used in this settlement predicate. -/
-def departureAtState (owner : Player) : (application setup leaks).ProtocolState → Prop
+/-- The settlement charge read from the actual native control state: the
+contract's ledger, the watcher's report, and the settled record. No submission
+request or send-time state is read. -/
+def departureAtState (watcher owner : Player) :
+    (application setup leaks).ProtocolState → Prop
   | none => False
-  | some control => departureEvidence setup leaks owner control.execution
+  | some control => departureEvidence setup leaks watcher owner control.execution
 
 variable [Fintype Player]
 
 open Classical in
 /-- A focal behavioral submission at any legal watched information history
 inherits the actual monitor's collection bound. Every later behavioral choice
-is arbitrary within W; the reporter equation follows from its fixed menu.
+is arbitrary within W, the watcher's included. The
+charge is read at the settled final state, which every legal history reaches.
 The clean checkpoint hypotheses are exactly those used by packet monitoring. -/
 theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (watcher owner : Player) (different : owner ≠ watcher)
@@ -206,7 +210,7 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
       (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
         (Profile.update (sig := (watchedInformation setup leaks bounds watcher).behavioralSignature)
           profile owner ((profile owner).commit site.1 action)) fuel history.1).toOuterMeasure
-              {final | departureAtState setup leaks owner final.state}).toReal := by
+              {final | departureAtState setup leaks watcher owner final.state}).toReal := by
   classical
   let app := application setup leaks
   let responses := watchedMenu setup leaks bounds watcher
@@ -245,26 +249,67 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
         (fun selected => selected.1.getD ⟨none⟩) = _
     rw [← observed, InformationModel.BehavioralPolicy.commit_self, PMF.pure_map, chosen]
     rfl
-  have reporter : players watcher = app.reportFirstUnpublished :=
-    watched_decode_reports setup leaks bounds watcher changed
   have exactLaw := responses.run_eq_finish (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher) changed fuel history.1
     ((menu_remaining_fuel setup leaks responses watcher history.1).trans enough)
-  have finish := finish_owner_report setup leaks watcher owner players before rest event split
+  have finish := finish_owner_observation setup leaks watcher owner players before rest event split
     control.execution position
   have controlEq : control = ⟨rest.length + 3, some owner, control.execution⟩ := by
     cases control
     exact congrArg₂ (fun time who => ReactiveApplication.Control.mk time who _)
       remaining active
   rw [state, controlEq, finish, response, PMF.pure_bind] at exactLaw
-  have monitored := reserved_report_departure_lower setup leaks owner watcher different players
-    reporter control.execution event submission serials pendingPublished knownPublished departure
+  have raw := responses.toRawTrace (initialLaw setup) (horizon setup watcher)
+    (scheduler setup leaks watcher) trace
+  have binding := ((runtime setup).reactiveBindingInvariant leaks).history (initialLaw setup)
+    (horizon setup watcher) (scheduler setup leaks watcher) (fun state member => by
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
+      exact State.initial_bindingInvariant _) raw
+  have monitored := reserved_observation_departure_lower setup leaks owner watcher different
+    players control.execution event submission
+    (settledFacts_history (initialLaw setup) (horizon setup watcher)
+      (scheduler setup leaks watcher) raw)
+    (((runtime setup).packetEvidence leaks).history_sound (initialLaw setup)
+      (horizon setup watcher) (scheduler setup leaks watcher) raw)
+    binding (reveal_publications setup reveals) pendingPublished knownPublished departure
     (scheduler setup leaks watcher) rest.length
+  let final := (((runtime setup).interactionStep leaks players ((runtime setup).idleNetwork leaks)
+    (.includeLatest event owner)
+    (control.execution.respond app owner ⟨some (.submit submission)⟩)).bind
+      (app.observationRound players watcher)).bind
+        (app.runRounds (scheduler setup leaks watcher) players rest.length)
+  have settled : ∀ execution ∈ final.support,
+      markedDeparture setup leaks watcher owner execution →
+        departureAtState setup leaks watcher owner (app.finished execution) := by
+    intro execution reached marked
+    have stateReached : app.finished execution ∈
+        (((watchedInformation setup leaks bounds watcher).runBehavioralFrom changed fuel
+          history.1).map History.state).support := by
+      rw [exactLaw, PMF.support_map]
+      exact ⟨execution, reached, rfl⟩
+    rw [PMF.support_map] at stateReached
+    obtain ⟨reachedHistory, _, same⟩ := stateReached
+    obtain ⟨settledExecution, settledState, terminal⟩ :=
+      terminal_history_settled setup leaks responses watcher reveals reachedHistory
+        (by rw [same]; exact ⟨rfl, rfl⟩)
+    rw [same] at settledState
+    cases settledState
+    exact markedDeparture_evidence setup leaks watcher owner execution marked terminal
   have mapped := congrArg
     (fun law : PMF app.ProtocolState =>
-        (law.toOuterMeasure {s | departureAtState setup leaks owner s}).toReal)
+        (law.toOuterMeasure {s | departureAtState setup leaks watcher owner s}).toReal)
     exactLaw
-  rw [PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply] at mapped
-  exact monitored.trans_eq mapped.symm
+  simp only [PMF.toOuterMeasure_map_apply] at mapped
+  refine monitored.trans (le_of_le_of_eq ?_ mapped.symm)
+  rw [← expect_indicator, ← expect_indicator]
+  refine expect_mono ?_ (payoffIntegrable_ite_one_zero _ _) (payoffIntegrable_ite_one_zero _ _)
+  intro execution reached
+  split
+  · rename_i marked
+    split
+    · exact le_refl _
+    · rename_i missing
+      exact (missing (settled execution reached marked)).elim
+  · split <;> norm_num
 
 end Vegas

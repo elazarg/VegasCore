@@ -39,13 +39,13 @@ theorem compiled_plan_source_law
       (runtime setup).runInteractionPlan leaks
         (policy setup leaks (bounds.withInitialValues (initialLaw setup)) watcher profile
           weight nonnegative atMostOne)
-        ((runtime setup).reportNetwork leaks watcher) (plan setup watcher)
+        ((runtime setup).idleNetwork leaks) (plan setup watcher)
         (ReactiveApplication.Execution.initial (application setup leaks) state)).map
       (fun final => decodeState? (terminalRefs setup.program)
         final.application.config.store) = (setup.run profile).map some := by
   let extended := bounds.withInitialValues (initialLaw setup)
   let players := policy setup leaks extended watcher profile weight nonnegative atMostOne
-  have watcherPolicy : players watcher = (application setup leaks).reportFirstUnpublished := by
+  have watcherPolicy : players watcher = (application setup leaks).silentPolicy := by
     simp only [players, policy, ↓reduceIte]
   have ordinary : ∀ who, who ≠ watcher → ∀ past view response,
       response ∈ (players who past view).support →
@@ -110,7 +110,7 @@ theorem compiled_behavioral_source_law
   intro final supported
   have settled := plan_terminal setup leaks watcher reveals
     (policy setup leaks (bounds.withInitialValues (initialLaw setup)) watcher profile
-      weight nonnegative atMostOne) ((runtime setup).reportNetwork leaks watcher)
+      weight nonnegative atMostOne) ((runtime setup).idleNetwork leaks)
     (setup.eventInputs initial) _ final
     (EventGraphRuntime.State.initial_invariant (graph := graph setup) (setup.eventInputs initial))
     supported

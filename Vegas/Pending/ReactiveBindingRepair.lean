@@ -106,10 +106,8 @@ theorem reactiveBinding_submit_hidden_congr (runtime : EventGraphRuntime graph)
         before.application.playerView who = after.application.playerView who) ∧
       (∀ who, who ≠ owner → before.recall who = after.recall who) := by
   refine ⟨?_, receipts, ?_, ?_, ?_⟩
-  · cases first <;> cases second <;>
-      change (left.network.submit owner ⟨.commitment event (owner, .prepared serial), none⟩).2 =
-        (right.network.submit owner ⟨.commitment event (owner, .prepared serial), none⟩).2 <;>
-      rw [network]
+  · simp only [ReactiveApplication.Execution.respond, reactiveBinding,
+      reactiveApplication_packet_none, network, publicEq]
   · exact (binding_public_view runtime leaks left owner event payload first serial).trans
       (publicEq.trans
         (binding_public_view runtime leaks right owner event payload second serial).symm)
@@ -153,19 +151,21 @@ theorem reactive_include_fixed_binding_candidates (runtime : EventGraphRuntime g
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (evidence : Option (OpeningFact graph))
-    (found : execution.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence⟩⟩)
+    (evidence : Option (OpeningFact graph)) {token : Option (ReadinessToken graph)}
+    (found : execution.network.lookup id =
+      some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh) :
     (execution.includePending (runtime.reactiveApplication leaks) id).application.candidates =
       execution.application.candidates := by
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-    found, reactiveApplication]
-  cases accepted : handle runtime execution.application ⟨id, .commitment event candidate⟩ with
+    found]
+  cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+      ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
   | none => rfl
   | some next =>
       change next.candidates = execution.application.candidates
       rw [(handle_commitment_tables runtime execution.application next id event candidate
-        accepted).1]
+        (reactiveHandle_call accepted)).1]
       exact execution.application.candidates.freeze_eq_self_of_not_fresh candidate fixed
 
 omit [DecidableEq Player] in
@@ -229,7 +229,8 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (id : MessageId Player) (candidate : Handle graph) (evidence : Option (OpeningFact graph))
     (sender : id.1 = owner) (owned : candidate.1 = owner)
-    (found : left.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence⟩⟩)
+    (found : left.network.lookup id =
+      some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩)
     (ready : left.application.config.cut.Ready event)
     (timely : left.application.WithinDeadline runtime event)
     (vacant : left.application.accepted (.inr event) = none)
@@ -258,9 +259,10 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
   have handled' := runtime.handle_commitment_eq right.application id event candidate owner payload
     outputEq codeEq node ready' timely' sender owned vacant' unused'
   have found' : right.network.lookup id =
-      some ⟨id, ⟨.commitment event candidate, evidence⟩⟩ := network ▸ found
+      some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩ := network ▸ found
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-    found, found', reactiveApplication, handled, handled', Option.getD_some]
+    found, found', reactiveApplication_handle, WitnessedPacket.tokenValid_commitment,
+    ite_true, handled, handled', Option.getD_some]
   have completed := complete_binding_public_congr left.application right.application publicEq
     owner payload event outputEq ready ready'
     (cast (congrArg EventGraph.EventField.Action outputEq.symm)
@@ -332,9 +334,8 @@ theorem reactiveBinding_reserved_hidden_congr (runtime : EventGraphRuntime graph
     (∀ who, who ≠ owner → before.application.playerView who = after.application.playerView who) ∧
     (∀ who, who ≠ owner → before.recall who = after.recall who) at submitted
   have found : before.network.lookup id =
-      some ⟨id, ⟨.commitment event (owner, .prepared serial), none⟩⟩ := by
-    cases first <;> exact serials.lookup_submit owner
-      ⟨.commitment event (owner, .prepared serial), none⟩
+      some ⟨id, ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :=
+    runtime.reactiveBinding_lookup leaks left owner event payload first serial serials ready
   have configEq : before.application.config = left.application.config := by
     change (submitStep (Submission.register _ left.application owner) owner _).config = _
     rw [submitStep_config]

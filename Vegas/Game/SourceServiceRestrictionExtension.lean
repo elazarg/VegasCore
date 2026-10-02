@@ -37,12 +37,12 @@ theorem sourceService_audited_equilibrium_extends {Parameter Observation : Type}
     [network.FiniteSupport]
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) →
+      PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) (positive : ∀ who, 0 < probability who)
-    (coverage : ∀ who actual record, record ∈ actual → record.2.2.sender = who →
-      (runtime setup).permittedServiceEnvelope record.1 record.2.1 record.2.2 = false →
+    (coverage : ∀ who actual record, record ∈ actual → record.2.sender = who →
+      record.1.permits record.2 = false →
       probability who ≤ ((sample actual).toOuterMeasure {observed | record ∈ observed}).toReal)
     (observe : (application setup leaks).ProtocolState → Observation)
     (source : ((sourceServiceMenu setup leaks bounds rosters).information

@@ -2,15 +2,14 @@
 
 import Vegas.Game.SourceServiceConformance
 import Vegas.Game.ServiceRosterClock
-import Vegas.Game.RevealServiceSignedTraffic
 
-/-! # Authentic partial audits accept every retained source history
+/-! # Every retained transmission conforms on the view its author saw
 
 The complete-execution conformance theorem also covers intermediate protocol
-histories. Every permitted finite prefix extends to a complete permitted run,
-and authentic transmission records persist. The resulting audit statement
-authenticates the signed author, phase and ledger, without authenticating the
-rebroadcaster or requiring observation of every pending envelope.
+histories. Every retained finite prefix extends to a complete retained run, and
+transmission records persist. The send-time rule is a proof device: the settled
+audit reads no send time, and it permits every retained packet because each
+conforms on the view its author saw (`Vegas.sourceService_history_settled`).
 -/
 
 noncomputable section
@@ -106,33 +105,5 @@ theorem sourceService_history_traffic
           rw [app.executionTraffic_environment prior execution command observed]
           exact initialized_sourceService_partial_conformance bounds values capacity opportunities
             menu.uniformResponses lawful network count prior reached
-
-/-- Any authentic partial sample of signed phase evidence collects zero
-traffic penalties on a retained history. No sampling coverage is needed for
-this soundness direction. -/
-theorem sourceService_history_traffic_audit_clear
-    (bounds : MessageBounds (graph setup)) (values : bounds.CoversBindingValues)
-    (capacity : (graph setup).order.eventCount ≤ bounds.candidateCount)
-    (opportunities : BindingOpportunities setup rosters)
-    (network : (runtime setup).NetworkPolicy leaks)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
-    (authentic : ∀ actual observed,
-      observed ∈ (sample actual).support → observed ⊆ actual)
-    (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
-      (rosterPlan setup rosters).length
-      (rosterScheduler setup leaks rosters network)).History)
-    (who : Player) :
-    ((((application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
-      (fun evidence => evidence.2.2.sender)
-      (fun evidence => (runtime setup).permittedServiceEnvelope
-        evidence.1 evidence.2.1 evidence.2.2)
-      sample ((application setup leaks).stateTraffic history.state)).map
-        (fun verdict => verdict who)) true).toReal = 0 := by
-  apply (application setup leaks).sampledTrafficAudit_sound
-  · exact authentic _
-  · intro record member _
-    exact sourceService_history_traffic bounds values capacity opportunities network
-      history record member
 
 end Vegas

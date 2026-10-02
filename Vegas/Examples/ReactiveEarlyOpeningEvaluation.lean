@@ -92,7 +92,7 @@ def boundState (repair fresh : Bool) : EventGraphRuntime.State graph :=
 theorem included_state (repair fresh : Bool) (possible : fresh = true → repair = true) :
     (included repair fresh).application = boundState repair fresh := by
   have pending : (afterResponse repair).network.lookup (selectedId fresh) =
-      some ⟨selectedId fresh, ⟨.commitment 0 (candidate fresh), none⟩⟩ := by
+      some ⟨selectedId fresh, ⟨.commitment 0 (candidate fresh), none, some ⟨0⟩⟩⟩ := by
     cases repair <;> cases fresh <;> first | contradiction | rfl
   have law := handle_commitment_eq runtime (afterResponse repair).application
     (selectedId fresh) 0 (candidate fresh) () .int rfl rfl rfl (binding_ready repair)
@@ -109,8 +109,9 @@ theorem included_state (repair fresh : Bool) (possible : fresh = true → repair
   dsimp only [included, ReactiveApplication.Execution.includePending,
     MessageNetwork.includePending]
   rw [pending]
-  dsimp only [app, reactiveApplication]
-  rw [law, meaning]
+  dsimp only [app]
+  rw [reactiveApplication_handle_of_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_commitment _ _ _), law, meaning]
   rfl
 
 theorem disclosed_state (repair fresh : Bool) (possible : fresh = true → repair = true) :
@@ -133,20 +134,23 @@ theorem final_opening_emitted (repair fresh : Bool) (possible : fresh = true →
     (disclosureSubmission (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩)).emit
       (included repair fresh).application () ((included repair fresh).network.known ()) =
         ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
-          some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩ := by
+          some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩, some ⟨1⟩⟩ := by
   have meaning : (included repair fresh).application.candidates.lookup (candidate fresh) =
       .openable ⟨.int, selectedValue fresh⟩ := by
     change (disclosed repair fresh).application.candidates.lookup _ = _
     rw [disclosed_state repair fresh possible]
     cases repair <;> cases fresh <;> first | contradiction | rfl
   have owned : (candidate fresh).1 = () := rfl
+  have ready : (included repair fresh).application.config.cut.Ready 1 :=
+    disclosure_ready repair fresh possible
   simp [disclosureSubmission, WitnessedSubmission.emit, CommitmentCandidates.verify, meaning,
-    owned]
+    owned, (included repair fresh).application.publicView_tokenFor_of_ready
+      (.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩) 1 rfl ready]
 
 theorem final_opening_pending (repair fresh : Bool) (possible : fresh = true → repair = true) :
     (disclosed repair fresh).network.lookup ((), 3) =
       some ⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
-        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩ := by
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩, some ⟨1⟩⟩⟩ := by
   have emitted := final_opening_emitted repair fresh possible
   have pending : (disclosed repair fresh).network.lookup ((), 3) =
       some ⟨((), 3),
@@ -158,7 +162,7 @@ theorem final_opening_pending (repair fresh : Bool) (possible : fresh = true →
 theorem disclosed_pending (repair fresh : Bool) (possible : fresh = true → repair = true) :
     (disclosed repair fresh).network.pending = (included repair fresh).network.pending ++
       [⟨((), 3), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
-        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩] := by
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩, some ⟨1⟩⟩⟩] := by
   have emitted := final_opening_emitted repair fresh possible
   have pending : (disclosed repair fresh).network.pending =
       (included repair fresh).network.pending ++ [⟨((), 3),
@@ -167,29 +171,31 @@ theorem disclosed_pending (repair fresh : Bool) (possible : fresh = true → rep
     cases repair <;> cases fresh <;> rfl
   rw [pending, emitted]
 
+/-- The disclosure is still undecided at the final publication choice. -/
+theorem disclosed_undecided (repair fresh : Bool) (possible : fresh = true → repair = true) :
+    (disclosed repair fresh).application.config.outputs 1 = none := by
+  rw [disclosed_state repair fresh possible]
+  cases repair <;> cases fresh <;> first | contradiction | rfl
+
+/-- The withholding packet was sent before the disclosure was ready, so it
+carries no readiness token: its inclusion is rejected and leaves the
+disclosure undecided. -/
 theorem finished_withholding (repair fresh : Bool) (possible : fresh = true → repair = true) :
-    (finished repair fresh 1).application.config.outputs 1 = some .failure := by
+    (finished repair fresh 1).application.config.outputs 1 = none := by
   have pending : (disclosed repair fresh).network.lookup ((), 1) =
-      some ⟨((), 1), ⟨.withhold 1, none⟩⟩ := by cases repair <;> cases fresh <;> rfl
-  have ready := disclosure_ready repair fresh possible
-  have timely := disclosure_timely repair fresh possible
-  have remembered : (disclosed repair fresh).application.remembered 1 = none := by
-    rw [disclosed_state repair fresh possible]
-    cases repair <;> rfl
-  have accepted := handle_withhold_unremembered_eq runtime (disclosed repair fresh).application
-    ((), 1) 1 () .int PendingMenus.binding [] rfl rfl rfl ready timely rfl remembered
+      some ⟨((), 1), ⟨.withhold 1, none, none⟩⟩ := by cases repair <;> cases fresh <;> rfl
   dsimp only [finished, ReactiveApplication.Execution.includePending,
     MessageNetwork.includePending]
   rw [pending]
-  change (((handle runtime (disclosed repair fresh).application ⟨((), 1), .withhold 1⟩).getD
-    (disclosed repair fresh).application).config.outputs 1) = _
-  rw [accepted]
-  exact EventGraph.Config.complete_output_same ..
+  dsimp only [app]
+  rw [reactiveApplication_handle_of_not_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_none _ _)]
+  exact disclosed_undecided repair fresh possible
 
 theorem finished_opening (repair fresh : Bool) (possible : fresh = true → repair = true)
     (serial : Nat) (pending : (disclosed repair fresh).network.lookup ((), serial) =
       some ⟨((), serial), ⟨.opening 1 (candidate fresh) ⟨.int, selectedValue fresh⟩,
-        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩⟩⟩) :
+        some ⟨candidate fresh, ⟨.int, selectedValue fresh⟩⟩, some ⟨1⟩⟩⟩) :
     (finished repair fresh serial).application.config.outputs 1 =
       some (.success (selectedValue fresh)) := by
   have associated : (disclosed repair fresh).application.accepted PendingMenus.binding.field =
@@ -216,8 +222,9 @@ theorem finished_opening (repair fresh : Bool) (possible : fresh = true → repa
   dsimp only [finished, ReactiveApplication.Execution.includePending,
     MessageNetwork.includePending]
   rw [pending]
-  dsimp only [app, reactiveApplication]
-  rw [accepted]
+  dsimp only [app]
+  rw [reactiveApplication_handle_of_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_opening _ _ _ _), accepted]
   exact EventGraph.Config.complete_output_same ..
 
 theorem repaired_opening (fresh : Bool) :
@@ -226,12 +233,23 @@ theorem repaired_opening (fresh : Bool) :
   exact finished_opening true fresh (by simp) 3 (final_opening_pending true fresh (by simp))
 
 theorem early_withholding :
-    (finished false false 1).application.config.outputs 1 = some .failure :=
+    (finished false false 1).application.config.outputs 1 = none :=
   finished_withholding false false (by simp)
 
+/-- The early opening carries no readiness token: it is rejected even though
+the disclosure is ready when it is included. -/
 theorem early_opening :
-    (finished false false 2).application.config.outputs 1 = some (.success 1) :=
-  finished_opening false false (by simp) 2 rfl
+    (finished false false 2).application.config.outputs 1 = none := by
+  have pending : (disclosed false false).network.lookup ((), 2) =
+      some ⟨((), 2), ⟨.opening 1 ((), .prepared 0) ⟨.int, 1⟩,
+        some ⟨((), .prepared 0), ⟨.int, 1⟩⟩, none⟩⟩ := rfl
+  dsimp only [finished, ReactiveApplication.Execution.includePending,
+    MessageNetwork.includePending]
+  rw [pending]
+  dsimp only [app]
+  rw [reactiveApplication_handle_of_not_tokenValid runtime leaks _ _
+    (WitnessedPacket.tokenValid_none _ _)]
+  exact disclosed_undecided false false (by simp)
 
 theorem later_opening :
     (finished false false 3).application.config.outputs 1 = some (.success 1) :=

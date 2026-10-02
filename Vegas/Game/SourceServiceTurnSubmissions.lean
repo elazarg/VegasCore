@@ -460,13 +460,14 @@ theorem environmentStep_candidate_fixed (execution next : (application setup lea
       cases found : execution.network.lookup id with
       | none => rfl
       | some message =>
-          change ((EventGraphRuntime.handle (runtime setup) execution.application
-            ⟨message.id, message.payload.call⟩).getD execution.application).candidates.lookup
+          change (((application setup leaks).handle execution.application
+            message).getD execution.application).candidates.lookup
               handle = _
-          cases accepted : EventGraphRuntime.handle (runtime setup) execution.application
-              ⟨message.id, message.payload.call⟩ with
+          cases reactiveAccepted : (application setup leaks).handle execution.application
+              message with
           | none => rfl
           | some state =>
+              have accepted := reactiveHandle_call reactiveAccepted
               change state.candidates.lookup handle = _
               cases call : message.payload.call with
               | commitment event candidate =>

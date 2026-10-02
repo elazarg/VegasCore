@@ -42,7 +42,7 @@ def afterFirst : nativeApp.Execution :=
 
 theorem known_certificate :
     (afterFirst.network.known alice).find? (fun message => message.id = (alice, 0)) =
-      some ⟨(alice, 0), ⟨call.packet, some certificate⟩⟩ := by
+      some ⟨(alice, 0), ⟨call.packet, some certificate, none⟩⟩ := by
   rfl
 
 theorem same_submission_effect :
@@ -68,12 +68,12 @@ theorem actions_distinct : ownedAction ≠ forwardedAction := by
 
 theorem known_packets : ReactiveApplication.ResponseMenu.knownPackets
     (afterFirst.recall alice) (afterFirst.observe nativeApp alice) =
-      [⟨(alice, 0), ⟨call.packet, some certificate⟩⟩] := rfl
+      [⟨(alice, 0), ⟨call.packet, some certificate, none⟩⟩] := rfl
 
 theorem canonical_packet : EvidenceRequest.forwardingPacket
     (ReactiveApplication.ResponseMenu.knownPackets (afterFirst.recall alice)
       (afterFirst.observe nativeApp alice)) certificate =
-        some ⟨(alice, 0), ⟨call.packet, some certificate⟩⟩ := by
+        some ⟨(alice, 0), ⟨call.packet, some certificate, none⟩⟩ := by
   rw [known_packets]
   simp [EvidenceRequest.forwardingPacket, EvidenceRequest.forwardedEvidence]
 
@@ -138,7 +138,7 @@ theorem both_available :
     · have localFound : (ReactiveApplication.ResponseMenu.knownPackets
           (afterFirst.recall alice) (afterFirst.observe nativeApp alice)).find?
             (fun message => message.id = (alice, 0)) =
-              some ⟨(alice, 0), ⟨call.packet, some certificate⟩⟩ := rfl
+              some ⟨(alice, 0), ⟨call.packet, some certificate, none⟩⟩ := rfl
       exact ⟨_, List.mem_of_find?_eq_some localFound, rfl⟩
 
 /-- Every effect other than the responding owner's recorded syntax agrees. -/

@@ -120,13 +120,25 @@ theorem related_alice_inclusion (selected : Handle nativeGraph) (first second : 
     unfold Prefix.includeLatest at accepted
     rw [chosen, included_application first id sent found] at accepted
     exact accepted
-  change handle nativeRuntime second.application
-      ⟨(CandidateFlip.message selected sent).id,
-        (CandidateFlip.message selected sent).payload.call⟩ =
-    (handle nativeRuntime first.application ⟨sent.id, sent.payload.call⟩).map
-      (StoreFlip.state selected)
-  rw [related.application]
-  exact alice_handler_of_accepted selected first.application ⟨sent.id, sent.payload.call⟩
-    addressed vacant handled
+  change app.handle second.application (CandidateFlip.message selected sent) =
+    (app.handle first.application sent).map (StoreFlip.state selected)
+  by_cases valid : sent.payload.tokenValid = true
+  · have flipped : (CandidateFlip.message selected sent).payload.tokenValid = true := valid
+    rw [reactiveApplication_handle_of_tokenValid nativeRuntime leaks _ _ flipped,
+      reactiveApplication_handle_of_tokenValid nativeRuntime leaks _ _ valid]
+    rw [reactiveApplication_handle_of_tokenValid nativeRuntime leaks _ _ valid] at handled
+    change handle nativeRuntime second.application
+        ⟨(CandidateFlip.message selected sent).id,
+          (CandidateFlip.message selected sent).payload.call⟩ =
+      (handle nativeRuntime first.application ⟨sent.id, sent.payload.call⟩).map
+        (StoreFlip.state selected)
+    rw [related.application]
+    exact alice_handler_of_accepted selected first.application ⟨sent.id, sent.payload.call⟩
+      addressed vacant handled
+  · have invalid := Bool.eq_false_iff.mpr valid
+    have flipped : (CandidateFlip.message selected sent).payload.tokenValid = false := invalid
+    rw [reactiveApplication_handle_of_not_tokenValid nativeRuntime leaks _ _ flipped,
+      reactiveApplication_handle_of_not_tokenValid nativeRuntime leaks _ _ invalid]
+    rfl
 
 end Vegas.Examples.SelectiveAssociation.Restricted.PrefixSymmetry

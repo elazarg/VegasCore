@@ -76,7 +76,8 @@ theorem false_claim_uncertified :
 theorem foreign_query_fails (bit : Bool) :
     ((initial bit).respond app true
       ⟨some (.submit ⟨call, .owned (fact true)⟩)⟩).network.pending =
-        [⟨(true, 0), ⟨call.packet, none⟩⟩] := by
+        [⟨(true, 0), ⟨call.packet, none,
+            (initial bit).application.publicView.tokenFor call.packet⟩⟩] := by
   rfl
 
 private def forwarded : app.Execution :=
@@ -85,7 +86,8 @@ private def forwarded : app.Execution :=
 /-- Forwarding creates Bob's own envelope and retains Alice's candidate evidence. -/
 theorem forwarding_preserves_certificate :
     forwarded.network.lookup (true, 0) =
-      some ⟨(true, 0), ⟨call.packet, some (fact true)⟩⟩ := by
+      some ⟨(true, 0), ⟨call.packet, some (fact true),
+        (leaked true).application.publicView.tokenFor call.packet⟩⟩ := by
   rfl
 
 private def included : app.Execution := forwarded.includePending app (true, 0)

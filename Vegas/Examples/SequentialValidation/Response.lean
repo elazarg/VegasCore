@@ -93,6 +93,7 @@ theorem native_bob_round (bit : Bool) (control : nativeApp.Control)
               ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
             simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
               native_bob_fresh_lookup control trace empty submission]
+            rw [reactiveApplication_handle_of_current_token nativeRuntime nativeLeaks _ _ rfl]
             simp only [nativeChosenState, address, ↓reduceIte]
             rfl
           · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,

@@ -105,7 +105,8 @@ party that must be live, and possibly one that must not be strategic.
 | `State.activatedAt`, `deadline` (`Vegas/Pending/EventApplication.lean`) | Contract state and parameters | Contract |
 | `.expire`, `.executeSample` | Anyone-can-call contract functions, applied lazily | Contract (effect), service (caller) |
 | The order policy and the service calendar | Not enforced by `handle`. Prescribed clients, response menus and the audit read readiness: clients act at `PublicView.ownTurn?`, the least ready event the player owns (`no_turn_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`), and the audit's conformance check requires readiness and ownership (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
-| Disclosure reports feeding the audit | The watcher | Service |
+| Reports of observed signed packets, judged at settlement | The watcher, in its own transaction | Service |
+| A report sent before the last deadline is included within `W` slots, and settlement waits `W` (the challenge window) | Inclusion of the watcher's transaction | Chain |
 
 The runtime used to carry a public service grant (a state field, set by a
 grant environment command) naming the current event. It was a coordination

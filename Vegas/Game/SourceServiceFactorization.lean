@@ -564,6 +564,10 @@ theorem guarded_opening_handler_focal
       _ outputEq rightCode rightNode rightReady rightTimely rfl owned rightAssociated value
         rightValid (stored rightSource right.application rightAgrees rightSuccess)
           (.success value) rightResolved
+  have valid := (runtime setup).windowEnvelope_tokenValid leaks owner event candidate
+    ⟨payload, value⟩ left leftReady
+  rw [reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _ valid,
+    reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _ valid]
   change (handle (runtime setup) left.application
       ⟨(owner, left.network.nextSerial owner), .opening event candidate ⟨payload, value⟩⟩).map _ =
     (handle (runtime setup) right.application

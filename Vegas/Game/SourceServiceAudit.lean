@@ -1,18 +1,19 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Game.SourceServiceTrafficSound
+import Vegas.Game.SourceServiceSettledSound
 import Vegas.Game.SourceServiceOmission
 import Vegas.Game.SourceServiceLaw
 import Vegas.Pending.ReactiveServiceAudit
 
 /-! # Actual settlement on full-source compiled executions
 
-The fixed service checks authentic sampled transmission evidence and public
-missed-binding obligations. Every permitted history has zero collection
-probability, including intermediate histories and correlated private inputs.
-Consequently the compiled profile preserves the original joint terminal-state
-and realized-payoff law. Incentives for arbitrary raw deviations remain the
-separate continuation-repair obligation.
+The fixed service samples authentic signed packets, judges each against the
+contract's settled record, and checks the record's missed-binding obligations.
+No verdict reads when a packet was sent. Every retained history has zero
+collection probability, including intermediate histories and correlated
+private inputs. Consequently the compiled profile preserves the original joint
+terminal-state and realized-payoff law. Incentives for arbitrary raw deviations
+remain the separate continuation-repair obligation.
 -/
 
 noncomputable section
@@ -27,21 +28,25 @@ open Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-/-- A terminal audit of signed phase evidence and public binding omissions.
-The sample is authenticated separately; the verdict denotes an actually
-collected charge under the declared inclusion and escrow service contract. -/
+/-- Authenticated audit evidence: the contract's settled record and one signed
+packet. Neither the broadcaster nor the time of transmission is part of it. -/
+abbrev SettledEvidence (setup : Setup (Player := Player) (L := L)) :=
+  SettledRecord (graph setup) × Message Player (WitnessedPacket (graph setup))
+
+/-- A terminal audit of signed packets against the settled record and of public
+binding omissions. The sample is authenticated separately; the verdict denotes
+an actually collected charge under the declared inclusion and escrow service
+contract. -/
 def sourceServiceAudit
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks))) :=
-  (runtime setup).serviceAudit leaks
-    ((application setup leaks).sampledTrafficAudit (envelopeEvidence setup leaks)
-      (fun evidence => evidence.2.2.sender)
-      (fun evidence => (runtime setup).permittedServiceEnvelope
-        evidence.1 evidence.2.1 evidence.2.2) sample)
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup))) :=
+  (runtime setup).serviceAudit leaks fun record =>
+    (application setup leaks).sampledTrafficAudit
+      (fun traffic => (record, traffic.input.envelope))
+      (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2) sample
 
-/-- Soundness is over all permitted histories, independently of the compiled
+/-- Soundness is over all retained histories, independently of the compiled
 equilibrium. Partial monitoring needs authenticity but no positive coverage
 assumption for this direction. -/
 theorem sourceService_history_audit_clear
@@ -52,27 +57,28 @@ theorem sourceService_history_audit_clear
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History)
     (who : Player) :
     TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
       (sourceServiceAudit setup leaks sample) history.state who = 0 := by
-  have quiet := sourceService_history_traffic_audit_clear bounds values capacity opportunities
-    network sample authentic history who
-  have noOmission : history.state.elim false (fun control =>
-      control.execution.application.publicView.missedBindingBy who) = false := by
-    cases selected : history.state with
-    | none => rfl
-    | some control =>
-        exact control.execution.application.publicView.missedBindingBy_clear
-          (sourceService_history_no_omission setup leaks bounds values capacity rosters
-            opportunities network control (selected ▸ history.trace)) who
-  unfold sourceServiceAudit
-  rw [(runtime setup).serviceAudit_charge, noOmission]
-  exact quiet
+  obtain ⟨state, trace⟩ := history
+  cases state with
+  | none => exact (runtime setup).serviceAudit_charge_none leaks _ who
+  | some control =>
+      have noOmission := control.execution.application.publicView.missedBindingBy_clear
+        (sourceService_history_no_omission setup leaks bounds values capacity rosters
+          opportunities network control trace) who
+      unfold sourceServiceAudit
+      rw [(runtime setup).serviceAudit_charge, noOmission]
+      simp only [Bool.false_eq_true, ↓reduceIte]
+      apply (application setup leaks).sampledTrafficAudit_sound
+      · exact authentic _
+      · intro record member _
+        exact sourceService_history_settled bounds values capacity opportunities network trace
+          record member
 
 /-- The joint settlement vector is exactly the base payoff on every legal
 history, not just equal playerwise in expectation. -/
@@ -84,8 +90,7 @@ theorem sourceService_history_settlement
     (rosters : (graph setup).EventId → List Player)
     (opportunities : BindingOpportunities setup rosters)
     (network : (runtime setup).NetworkPolicy leaks)
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (history : ((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
@@ -112,8 +117,7 @@ theorem sourceServiceCompiledProfile_settlement_law
     (original : BehavioralProfile setup.program)
     (permitted : ∀ who, (original who).Admitted setup.program
       (CommitmentInterface.values setup.program))
-    (sample : List (EnvelopeEvidence setup leaks) →
-      PMF (List (EnvelopeEvidence setup leaks)))
+    (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
     let model := (sourceServiceMenu setup leaks bounds rosters).information (initialLaw setup)

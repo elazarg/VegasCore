@@ -211,42 +211,38 @@ sampler laws for pools with different replay multiplicities.
 
 ## Audit evidence and attribution
 
-`TrafficRecord` contains the public application observation, ledger and
-network input. The application observation carries the public event progress,
-but no global step index. Equal application views
-can recur. A checker using only those records cannot distinguish two owner
-visits in the same unchanged phase; the phase rule above does not need to.
-
-Admitting a replay because it was already published needs evidence of publication
-**before that transmission**. Terminal ledger membership is insufficient: fresh
-misconduct can be included later. The record therefore retains the preceding
-ledger, authenticated along with its phase. Partial observations must
-not turn missing records into a proof of absence.
+Settlement samples signed packets and judges each against the contract's
+settled record: its final public view and the receipt of every inclusion. The
+verdict reads neither the time a packet was sent nor the ledger at
+transmission, which an auditor cannot establish. A copy of an accepted packet
+carries its original identifier and is permitted; a packet for a settled event
+that the contract did not accept is forbidden, so of two fresh openings of one
+event at most one is accepted and the other is forbidden.
 
 The envelope authenticates its original author, not a subsequent broadcaster.
 The retained menu admits every known replay, including pending envelopes, so
 every extra effective response is a fresh submission. Attribution for that
-first-departure comparison can use its author without identifying rebroadcasters.
-Accountability after arbitrary earlier misconduct is a stronger requirement:
-charging a rebroadcaster requires separately authenticated transmission evidence.
+first-departure comparison uses its author without identifying rebroadcasters.
+Accountability after arbitrary earlier misconduct is a stronger requirement.
 
-The [roster checker](../../Vegas/Game/RevealServiceRosterTraffic.lean) compares a
-fresh envelope's serial with the number of its author's entries in the prior
-ledger. `roster_fresh_iff_serial` proves that this public test is exactly the
-owner's private stopping test at every legal retained activation. A second
-fresh opening has an incorrect serial; replaying the first preserves its
-identifier. Thus one authentic sampled record can witness the departure;
-the auditor need not observe two transmissions together or infer anything from
-missing records. The proof uses the actual allocator and protected inclusion,
-not a uniqueness assumption imposed on raw player responses.
+The proofs use the send-time [roster rule](../../Vegas/Game/RevealServiceRosterTraffic.lean)
+as a device. It compares a fresh envelope's serial with the number of its
+author's entries in the prior ledger; `roster_fresh_iff_serial` proves that this
+public test is exactly the owner's private stopping test at every legal retained
+activation. A second fresh opening has an incorrect serial; replaying the first
+preserves its identifier. A breach of the rule dooms its author: at a complete
+settlement some packet the author signed is forbidden. The proof uses the actual
+allocator and protected inclusion, not a uniqueness assumption imposed on raw
+player responses.
 
 The [departure theorem](../../Vegas/Game/RevealServiceRosterDeparture.lean)
 classifies every extra effective response at every retained history. The
-[conformance theorem](../../Vegas/Game/RevealServiceRosterTrafficSound.lean)
-proves every retained history passes, including foreign rebroadcasts of pending
-openings. These are first-departure and retained-history guarantees, not a claim
-of nonframing after arbitrary prior misconduct. Deployment still needs authentic
-phase and prior-ledger evidence and a positive conditional collection rate.
+[settled audit](../../Vegas/Game/RevealServiceRosterAudit.lean) proves that every
+terminal retained history is clean under the settled record
+(`roster_terminal_published`). These are first-departure and retained-history
+guarantees, not a claim of nonframing after arbitrary prior misconduct.
+Deployment still needs an authentic settlement sample and a positive conditional
+collection rate.
 
 [`roster_audited_sequential_equilibrium`](../../Vegas/Game/RevealServiceRosterAudit.lean)
 composes these operational facts with the generic audit extension. A fixed

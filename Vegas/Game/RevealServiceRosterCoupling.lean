@@ -163,22 +163,28 @@ theorem PublicCheckpoint.reveal_scheduled_coupling
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
               (cast (congrArg EventGraph.EventField.Value outputEq.symm)
                 (PublicationResult.success leftValue))) :=
-        handle_opening_eq (runtime setup) left.application
+        (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+          ((runtime setup).windowEnvelope_tokenValid leaks owner event candidate _ left
+            leftReady)).trans
+        (handle_opening_eq (runtime setup) left.application
         (owner, left.network.nextSerial owner) event candidate
         owner payload (refs.get binding) [] outputEq codeEq node leftReady
           (leftCheckpoint.timely event eventRank strategic) rfl owned leftAssociated leftValue
-            leftValid leftStored (.success leftValue) leftResolved
+            leftValid leftStored (.success leftValue) leftResolved)
       have rightAccepted : ((runtime setup).reactiveApplication leaks).handle right.application
           ((runtime setup).windowEnvelope leaks owner event candidate ⟨payload, leftValue⟩ right) =
             some (right.application.complete event rightReady
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
               (cast (congrArg EventGraph.EventField.Value outputEq.symm)
                 (PublicationResult.success leftValue))) :=
-        handle_opening_eq (runtime setup) right.application
+        (reactiveApplication_handle_of_tokenValid (runtime setup) leaks _ _
+          ((runtime setup).windowEnvelope_tokenValid leaks owner event candidate _ right
+            rightReady)).trans
+        (handle_opening_eq (runtime setup) right.application
         (owner, right.network.nextSerial owner) event candidate
         owner payload (refs.get binding) [] outputEq codeEq node rightReady
           (rightCheckpoint.timely event eventRank strategic) rfl owned rightAssociated leftValue
-            rightValid rightStored (.success leftValue) rightResolved
+            rightValid rightStored (.success leftValue) rightResolved)
       have observationEq : (graph setup).playerObserve focal left.application.config =
           (graph setup).playerObserve focal right.application.config := by
         have fields := congrArg (fun view : ReactivePlayerView (graph setup) =>

@@ -97,8 +97,9 @@ theorem rawBinding_reserved_all_preparedPrefix
     simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
     exact PMF.bind_pure _
   have found : submitted.network.lookup id =
-      some ⟨id, ⟨.commitment event (owner, .prepared serial), none⟩⟩ :=
-    serials.lookup_submit owner ⟨.commitment event (owner, .prepared serial), none⟩
+      some ⟨id, ⟨.commitment event (owner, .prepared serial), none, some ⟨event⟩⟩⟩ :=
+    respond_submit_lookup_of_ready runtime leaks execution owner material.call serials event rfl
+      ready
   have fixed : submitted.application.candidates.lookup (owner, .prepared serial) ≠ .fresh :=
     submitStep_commitment_fixed _ owner event (.prepared serial)
   have unchanged := runtime.reactive_include_fixed_binding_candidates leaks submitted id event

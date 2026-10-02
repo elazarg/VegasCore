@@ -74,8 +74,9 @@ theorem PublicView.openingGuardsAccepted_iff
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
-    (candidate : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph)) :
-    view.openingGuardsAccepted ⟨.opening event candidate raw, evidence⟩ = true ↔
+    (candidate : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph))
+    {token : Option (ReadinessToken graph)} :
+    view.openingGuardsAccepted ⟨.opening event candidate raw, evidence, token⟩ = true ↔
       ∃ value, raw = ⟨payload, value⟩ ∧
         GuardCheck.allAccepted? checks view.observation.store (.success value) = some true := by
   simp only [openingGuardsAccepted, node]
@@ -120,7 +121,7 @@ theorem accepted_guarded_opening_normalization
           ((runtime.reactiveApplication leaks).observePlayer state owner) known =
         (disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive owner
           ((runtime.reactiveApplication leaks).observePlayer state owner) known := by
-  obtain ⟨actual, candidate, raw, emitted⟩ := (certifiedOpening_iff _).mp certified
+  obtain ⟨actual, candidate, raw, token, emitted⟩ := (certifiedOpening_iff _).mp certified
   have call := congrArg WitnessedPacket.call emitted
   change submission.call.packet = .opening actual candidate raw at call
   rw [call] at addressed
@@ -137,6 +138,7 @@ theorem accepted_guarded_opening_normalization
     cases material <;> rfl
   have applicationAccepted := accepted
   rw [emitted, unchanged] at applicationAccepted
+  replace applicationAccepted := reactiveHandle_call applicationAccepted
   change handle runtime state ⟨(owner, serial),
     .opening event candidate ⟨payload, value⟩⟩ = some next at applicationAccepted
   have associated : state.accepted binding.field = some candidate := by

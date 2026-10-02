@@ -100,14 +100,15 @@ theorem reactiveMissedBindingInvariant [DecidableEq Player] (runtime : EventGrap
       (state.config.output_available event).mpr completed
     obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp present
     have retained := handle_store_of_some runtime state next ⟨message.id, message.payload.call⟩
-      handled (.inr event) value stored
+      (reactiveHandle_call handled) (.inr event) value stored
     apply (next.publicView_missedBinding event owner payload binding).mpr
     refine ⟨(next.config.output_available event).mp ?_, ?_⟩
     · change (next.config.store (.inr event)).isSome = true
       rw [retained]
       rfl
     · exact (handle_accepted_of_present runtime state next (.inr event) present
-        ⟨message.id, message.payload.call⟩ handled).trans absent
+        ⟨message.id, message.payload.call⟩
+          (reactiveHandle_call handled)).trans absent
   environment state command next missed reached := by
     obtain ⟨completed, absent⟩ :=
       (state.publicView_missedBinding event owner payload binding).mp missed

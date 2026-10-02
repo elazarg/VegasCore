@@ -56,15 +56,13 @@ theorem reactive_include_candidate_fixed (runtime : EventGraphRuntime graph)
   | none => rfl
   | some envelope =>
       simp only
-      change (State.candidates ((handle runtime execution.application
-        ⟨envelope.id, envelope.payload.call⟩).getD
-        execution.application)).lookup candidate = _
-      cases accepted : handle runtime execution.application
-          ⟨envelope.id, envelope.payload.call⟩ with
+      cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+          envelope with
       | none => rfl
       | some next =>
           exact handle_lookup_of_not_fresh runtime _ next
-            ⟨envelope.id, envelope.payload.call⟩ candidate fixed accepted
+            ⟨envelope.id, envelope.payload.call⟩ candidate fixed
+            (reactiveHandle_call accepted)
 
 theorem reactive_environment_candidate_fixed (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
