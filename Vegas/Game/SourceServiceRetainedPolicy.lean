@@ -215,6 +215,66 @@ private theorem retained_resolutionPacket_allowed
     · trivial
   · trivial
 
+/-- Local decision admission depends on the actual bounded record and its
+selected canonical slot, rather than on how the history reached that record. -/
+theorem sourceServiceCanonicalPolicy_retained_of_resources
+    (bounds : MessageBounds (graph setup)) (covered : bounds.CoversBindingValues)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (permitted : (profile who).Admitted setup.program (CommitmentInterface.values _))
+    (execution : (application setup leaks).Execution)
+    (valid : execution.application.BindingInvariant)
+    (values : bounds.CandidateValues execution.application)
+    (handles : bounds.AcceptedHandles execution.application)
+    (event : (graph setup).EventId)
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (timely : execution.application.publicView.WithinDeadline (runtime setup) event)
+    (unsent : (runtime setup).eventRecorded leaks (execution.recall who) event = false)
+    (counted : execution.application.publicView.bindingCount who < bounds.candidateCount)
+    (selected : canonicalFreshSlot who
+      (execution.observe (application setup leaks) who).application =
+        some (execution.application.publicView.bindingCount who))
+    (response : (application setup leaks).Action)
+    (supported : response ∈ (sourceServiceCanonicalPolicy setup leaks profile who
+      (execution.recall who) (execution.observe (application setup leaks) who)).support) :
+    response ∈ bounds.canonicalActions (runtime setup) leaks who (execution.recall who)
+      (execution.observe (application setup leaks) who) := by
+  have readyView := (PublicView.ownTurn?_spec _ who event turn).1
+  have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  have ready := (execution.application.publicView_eventReady event).mp readyView
+  rw [sourceServiceCanonicalPolicy_at_event setup leaks profile who execution event
+    turn owned] at supported
+  obtain ⟨choice, chosen, rfl⟩ := PMF.support_map .. ▸ supported
+  cases node : nodeView (graph setup) event with
+  | sample payload law outputEq codeEq =>
+      have ownerless := nodeView_sample_actor outputEq codeEq
+      rw [owned] at ownerless
+      cases ownerless
+  | bind actor payload outputEq codeEq =>
+      have actorEq : actor = who :=
+        Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
+      subst actorEq
+      obtain ⟨value, rfl⟩ := retained_compiled_binding_success profile actor permitted
+        execution event ready owned payload outputEq choice chosen
+      apply bounds.canonical_binding_value_retained (runtime setup) leaks actor _ _ event
+        payload outputEq codeEq node turn owned readyView timely unsent _ selected counted value
+      have all := covered event
+      rw [outputEq] at all
+      exact all value
+  | resolve actor payload binding checks outputEq codeEq =>
+      have actorEq : actor = who :=
+        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+      subst actorEq
+      obtain ⟨disclose, rfl⟩ : ∃ disclose : Bool,
+          choice = cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose :=
+        ⟨cast (congrArg EventGraph.EventField.Action outputEq) choice,
+          ((cast_cast (congrArg EventGraph.EventField.Action outputEq)
+            (congrArg EventGraph.EventField.Action outputEq.symm) choice).trans
+              (cast_eq _ choice)).symm⟩
+      apply bounds.canonical_resolution_retained (runtime setup) leaks actor _ _ event actor
+        payload binding checks outputEq codeEq node turn owned readyView timely unsent disclose
+      exact retained_resolutionPacket_allowed bounds execution valid values handles actor event
+        payload binding checks outputEq _
+
 /-- Every timely prescribed canonical decision is in the retained menu at
 every legal retained history, including histories with prior public misses. -/
 theorem sourceServiceCanonicalPolicy_retained
@@ -237,55 +297,21 @@ theorem sourceServiceCanonicalPolicy_retained
       (control.execution.observe (application setup leaks) who)).support) :
     response ∈ bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
       (control.execution.observe (application setup leaks) who) := by
-  let app := application setup leaks
-  have readyView := (PublicView.ownTurn?_spec _ who event turn).1
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready := (control.execution.application.publicView_eventReady event).mp readyView
-  rw [sourceServiceCanonicalPolicy_at_event setup leaks profile who control.execution event
-    turn owned] at supported
-  obtain ⟨choice, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-  cases node : nodeView (graph setup) event with
-  | sample payload law outputEq codeEq =>
-      have ownerless := nodeView_sample_actor outputEq codeEq
-      rw [owned] at ownerless
-      cases ownerless
-  | bind actor payload outputEq codeEq =>
-      have actorEq : actor = who :=
-        Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
-      subst actorEq
-      obtain ⟨value, rfl⟩ := retained_compiled_binding_success profile actor permitted
-        control.execution event ready owned payload outputEq choice chosen
-      obtain ⟨counted, _, selected⟩ := retainedCanonicalSlot_resources bounds capacity control
-        trace actor event turn unsent
-      apply bounds.canonical_binding_value_retained (runtime setup) leaks actor _ _ event
-        payload outputEq codeEq node turn owned readyView timely unsent _ selected counted value
-      have all := covered event
-      rw [outputEq] at all
-      exact all value
-  | resolve actor payload binding checks outputEq codeEq =>
-      have actorEq : actor = who :=
-        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
-      subst actorEq
-      obtain ⟨disclose, rfl⟩ : ∃ disclose : Bool,
-          choice = cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose :=
-        ⟨cast (congrArg EventGraph.EventField.Action outputEq) choice,
-          ((cast_cast (congrArg EventGraph.EventField.Action outputEq)
-            (congrArg EventGraph.EventField.Action outputEq.symm) choice).trans
-              (cast_eq _ choice)).symm⟩
-      have rawTrace := (bounds.canonicalMenu (runtime setup) leaks).toRawTrace
-        (initialLaw setup) horizon scheduler trace
-      have facts := legalFacts setup leaks horizon scheduler control rawTrace
-      have boundedTrace := (canonicalMenu_in_raw bounds).trace (initialLaw setup) horizon scheduler
-        trace
-      have values := bounds.candidateValues_raw_history (runtime setup) leaks (initialLaw setup)
-        horizon scheduler initialCovered boundedTrace
-      rw [initialLaw_eq_inputs] at boundedTrace
-      have handles := bounds.executionHandles_raw_history (runtime setup) leaks
-        (setup.initialLaw.map setup.eventInputs) horizon scheduler boundedTrace
-      apply bounds.canonical_resolution_retained (runtime setup) leaks actor _ _ event actor
-        payload binding checks outputEq codeEq node turn owned readyView timely unsent disclose
-      exact retained_resolutionPacket_allowed bounds control.execution facts.binding values
-        handles.1 actor event payload binding checks outputEq _
+  obtain ⟨counted, _, selected⟩ := retainedCanonicalSlot_resources bounds capacity control trace
+    who event turn unsent
+  have rawTrace := (bounds.canonicalMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  have facts := legalFacts setup leaks horizon scheduler control rawTrace
+  have boundedTrace := (canonicalMenu_in_raw bounds).trace (initialLaw setup) horizon scheduler
+    trace
+  have values := bounds.candidateValues_raw_history (runtime setup) leaks (initialLaw setup)
+    horizon scheduler initialCovered boundedTrace
+  rw [initialLaw_eq_inputs] at boundedTrace
+  have handles := bounds.executionHandles_raw_history (runtime setup) leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler boundedTrace
+  exact sourceServiceCanonicalPolicy_retained_of_resources bounds covered profile who permitted
+    control.execution facts.binding values handles.1 event turn timely unsent counted selected
+    response supported
 
 /-- A guarded opportunity is either silence or a retained canonical source
 decision. The protection gate implies the menu's actual deadline gate. -/

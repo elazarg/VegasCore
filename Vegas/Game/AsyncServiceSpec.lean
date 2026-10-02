@@ -132,6 +132,9 @@ end Vegas
 -- settled record for any turn timing; authentic sampling and first-turn absence
 -- of public misses give zero owner charge. These results do not establish the
 -- strategic source embedding or the local clean-continuation comparisons.
+-- Prescribed responses are locally admitted at clear risk-menu histories, even
+-- after foreign raw branches. Actual supported responses supply completion
+-- boundaries and the generic continuation-error bridge within the raw horizon.
 -- The source extension supplying play at first unprotected binding opportunities,
 -- after misses and after unprotected attempts,
 -- joint beliefs with traffic observations, local incentives and general

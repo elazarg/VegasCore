@@ -867,9 +867,10 @@ and is committed separately.
       canonical calls that can still be accepted, including calls outside
       the prescribed policy's protected-inclusion gate. Delete the roster
       rule `bindingRequired` when its calendar callers are replaced.
-   6. The generic bridge: `TimedApproximant.response_completion_law` and
-      `TimedApproximant.completion_boundary` restated for any scheduler, with
-      a `Within` version.
+   6. Use `ReadySite.response_completion_within` and its completion-boundary
+      theorem for any scheduler. Actual policy-supported responses supply
+      the needed support through `sourceResponse_roundSupported`; legal
+      one-shot deviations need a fully mixed menu or changed-profile witness.
    7. The retained audit and the source extension by penalized public misses.
       Retained deferrals can miss and be charged; zero charge is required on
       final equilibrium-supported play. Establish the builder's grant law
@@ -1072,6 +1073,21 @@ These results apply to the sequentialized graph and prescribed owner play
 from initialization. They do not assert completion at every prefix, usable
 private openings, or safety after that owner's own raw deviations.
 
+[SourceServiceRiskPolicy](../Vegas/Game/SourceServiceRiskPolicy.lean)
+supplies a distinct local fact: at any legal risk-menu history where this
+owner's full flag is clear, its prescribed responses are admitted for every
+turn timing. Foreign owners may already have used their raw branches. The
+proof derives bounded record and canonical-slot resources from that history;
+it does not prescribe source responses at a risky site or prove rationality.
+
+[SourceServiceResponseCompletion](../Vegas/Game/SourceServiceResponseCompletion.lean)
+derives the post-response support and horizon budget from an actual active
+control and a response in the current players' policy support. The existing
+generic stopping bridge then yields a completion boundary and a continuation
+error equal to the remaining events' deferral-weight sum. This covers actual
+prescribed responses; an excluded one-shot response requires its own support
+witness under the changed profile or a fully mixed menu assessment.
+
 [SourceServiceOwnerSettled](../Vegas/Game/SourceServiceOwnerSettled.lean)
 proves that every actual authored packet is permitted by the actual settled
 record, for any turn timing and arbitrary foreign raw policies. A protected
@@ -1189,6 +1205,15 @@ not needed for normalization or for equality of settlement along a preserved
 frame. Scheduler assumptions belong to protected source play and the generic
 continuation coupling. Keeping these premises explicit isolates unresolved
 cases without weakening the capstone or duplicating the proof machinery.
+
+The initialized-play audit theorem does not supply a clean comparator from
+every clear prefix. A false risk flag alone says nothing about an earlier
+packet's extra evidence. Even at a legal canonical prefix, an earlier silent
+binding turn can leave another protected opportunity at turn index `1`; the
+fixed turn-`0` policy then stays silent. A clean suffix must decide at the
+first remaining protected unrecorded binding, preserve recorded pending calls,
+and be proved uniformly across the local information set. Its earlier packet
+conformance and future zero charge are separate proof obligations.
 
 Disqualification with default future actions is not the planned simplification.
 An implementable trigger would require a public contract verdict, whose timing
