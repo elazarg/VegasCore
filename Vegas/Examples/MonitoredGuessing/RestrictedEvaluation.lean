@@ -109,7 +109,7 @@ theorem mixed_branch_summary (players : Player → nativeApp.Policy)
       ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
         resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
-        (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
+        (fun final => (nativeResults final.application.config, aliceLiability final)) =
       disclosures.map (fun disclose =>
         (sourceResults (finalConfig bit guess disclose).state, false)) := by
   rw [runInteractionPlan_append, bob_to_alice, aliceChoice, PMF.map_comp,

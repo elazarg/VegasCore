@@ -5,11 +5,11 @@ import Vegas.Examples.MonitoredGuessing.NativePayoff
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform
 
-/-! # Native settlement readout for the source return-table family
+/-! # Native comparison readout for the source return-table family
 
 The execution graph is shared; the terminal decoder is compiled from the
 source's declared table. The initialized law below retains the private input,
-public results and actual net payoff vector. It proves zero charge on that
+public results and comparison payoff vector. It proves zero evidence charge on that
 law, without an equilibrium or escrow-implementation claim.
 -/
 
@@ -24,7 +24,7 @@ def nativeTableUtility (table : PayoffTable) (charge : ℝ) (who : Player)
     (state : nativeApp.ProtocolState) : ℝ :=
   state.elim 0 fun control =>
     (table (nativeResults control.execution.application.config) who : ℝ) -
-      if who = alice ∧ rejectedAlice control.execution.receipts then charge else 0
+      if who = alice ∧ aliceLiability control.execution then charge else 0
 
 def tableObservation (table : PayoffTable) (charge : ℝ)
     (observation : Bool × Results × Bool) : Bool × Results × (Player → ℝ) :=

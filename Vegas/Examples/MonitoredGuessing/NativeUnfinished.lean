@@ -24,10 +24,7 @@ theorem prelude_report_config (bit : Bool) (action : nativeApp.Action)
     (selected : Finset (MessageId Player)) (reply : nativeApp.Action) :
     (reported (watcherRespond bit action selected reply)).application.config =
       (nativeInitial bit).config := by
-  unfold reported
-  cases reportCommand (watcherRespond bit action selected reply) with
-  | «include» id => exact prelude_include_config bit action selected reply id
-  | activate who | application command | wait => exact watcher_config bit action selected reply
+  exact watcher_config bit action selected reply
 
 theorem native_prelude_config (bit : Bool) (players : Player → nativeApp.Policy)
     (execution : nativeApp.Execution)

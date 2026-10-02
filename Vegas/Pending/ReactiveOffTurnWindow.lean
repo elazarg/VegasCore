@@ -28,9 +28,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 private def departed (owner : Player)
     (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
   ∃ record ∈ (runtime.reactiveApplication leaks).executionTraffic execution,
-    record.input.envelope.sender = owner ∧
+    record.envelope.sender = owner ∧
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = false
+        record.envelope = false
 
 omit [Fintype Player] in
 private theorem activation_resources
@@ -114,13 +114,10 @@ private theorem foreign_activation_view
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id => rfl
-      | submit material =>
-          exact (submitStep_playerView_other (material.call.register execution.application actor)
-            actor owner different.symm material.call.packet).trans
-              (material.call.register_other execution.application actor owner different.symm)
+  | some material =>
+      exact (submitStep_playerView_other (material.call.register execution.application actor)
+        actor owner different.symm material.call.packet).trans
+          (material.call.register_other execution.application actor owner different.symm)
 
 namespace BindingMemory.Frame
 
@@ -133,13 +130,11 @@ private theorem off_turn_owner_activation_coupling
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
-    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
     (idle : original.application.publicView.Idle owner)
     (coverage : ∀ past view,
       view.application.publicView.Idle owner →
-      ∀ response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support,
+      ∀ response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support,
         response ∈ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu runtime leaks).actions owner past view) :
@@ -152,9 +147,9 @@ private theorem off_turn_owner_activation_coupling
       ∀ next ∈ coupling.support,
         (∃ record, app.trafficStep (some ⟨1, none, original⟩)
             (some ⟨0, none, next.1⟩) = [record] ∧
-          record.input.envelope.sender = owner ∧
+          record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.2.2.shadow = memory.shadow ∧
@@ -167,7 +162,7 @@ private theorem off_turn_owner_activation_coupling
     exact idle
   have existsStep (selected) (_supported : selected ∈ sample.support) :=
     (frame.activate owner selected).off_turn_stopped_response_coupling
-      bounds menu players reference started leftRecall rightRecall (serials.learn owner selected)
+      bounds menu players reference started (serials.learn owner selected)
         0 idle (coverage _ _ rightIdle) (available _ _)
   let step := fun selected supported => (existsStep selected supported).choose
   refine ⟨sample.bindOnSupport step, ?_, ?_, ?_⟩
@@ -196,13 +191,11 @@ private theorem off_turn_activation_coupling
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
-    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
     (idle : original.application.publicView.Idle owner)
     (coverage : ∀ past view,
       view.application.publicView.Idle owner →
-      ∀ response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support,
+      ∀ response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support,
         response ∈ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu runtime leaks).actions owner past view)
@@ -225,7 +218,7 @@ private theorem off_turn_activation_coupling
   · subst actor
     obtain ⟨coupling, first, second, related⟩ :=
       frame.off_turn_owner_activation_coupling bounds menu players reference started
-        leftRecall rightRecall serials idle coverage available
+        serials idle coverage available
     refine ⟨coupling, first, second, ?_⟩
     intro next supported
     rcases related next supported with ⟨record, step, authored, rejected⟩ | good
@@ -282,7 +275,7 @@ theorem run_off_turn_stopped_coupling
     (idle : original.application.publicView.Idle owner)
     (coverage : ∀ past view,
       view.application.publicView.Idle owner →
-      ∀ response ∈ ((runtime.reactiveApplication leaks).replayPolicy past view).support,
+      ∀ response ∈ ((runtime.reactiveApplication leaks).silentPolicy past view).support,
         response ∈ menu.actions owner past view)
     (available : ∀ past view response, response ∈ (players owner past view).support →
       response ∈ (bounds.menu runtime leaks).actions owner past view)
@@ -299,9 +292,9 @@ theorem run_off_turn_stopped_coupling
       coupling.map Prod.fst = app.runRounds scheduler players count original ∧
       coupling.map Prod.snd = strategy.runJoint owner players scheduler count repaired memory ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow = memory.shadow ∧
           next.2.1.application.playerView owner = repaired.application.playerView owner := by
@@ -330,7 +323,7 @@ theorem run_off_turn_stopped_coupling
                 next.2.1.application.playerView owner = repaired.application.playerView owner := by
         obtain ⟨actor, rfl⟩ := commands original (by omega) (by omega) command chosen
         obtain ⟨step, first, second, related⟩ := frame.off_turn_activation_coupling
-          bounds menu players reference started leftRecall rightRecall serials idle
+          bounds menu players reference started serials idle
             coverage available actor
         have existsTail (next) (member : next ∈ step.support) :
             ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),

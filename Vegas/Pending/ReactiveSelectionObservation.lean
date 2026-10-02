@@ -74,16 +74,9 @@ theorem reactive_respond_playerView_congr
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact views
-  | some transmission =>
-      cases transmission with
-      | submit material =>
-          exact runtime.submit_playerView_congr leaks left.application right.application who
-            material views
-      | replay id =>
-          cases first : (left.network.known who).find? (fun message => message.id = id) <;>
-            cases second : (right.network.known who).find? (fun message => message.id = id) <;>
-            simpa only [ReactiveApplication.Execution.respond, MessageNetwork.replay,
-              first, second] using views
+  | some material =>
+      exact runtime.submit_playerView_congr leaks left.application right.application who
+        material views
 
 def UniqueEventOutput (who : Player) (event : graph.EventId)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry) : Prop :=
@@ -125,15 +118,11 @@ theorem reactiveLatest_from_recall (who : Player) (event : graph.EventId)
     | some message => .include message.id) selection
 
 /-- A response that submits no new call to this event leaves the selected
-older envelope unchanged, including arbitrary replay responses. -/
+older envelope unchanged. -/
 theorem reactiveLatest_nonmatching_response (who : Player) (event : graph.EventId)
     (execution : (runtime.reactiveApplication leaks).Execution)
-    (origins : execution.Provenance (runtime.reactiveApplication leaks))
-    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
-    (retained : execution.network.PendingOrPublished)
-    (unique : runtime.UniqueEventOutput leaks who event (execution.recall who))
     (response : (runtime.reactiveApplication leaks).Action)
-    (nonmatching : ∀ material, response.transmission = some (.submit material) →
+    (nonmatching : ∀ material, response.transmission = some material →
       material.call.packet.event? graph ≠ some event) :
     runtime.reactiveLatest leaks event who
       ((execution.respond (runtime.reactiveApplication leaks) who response).observeEnvironment
@@ -143,41 +132,15 @@ theorem reactiveLatest_nonmatching_response (who : Player) (event : graph.EventI
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material =>
-          have different := nonmatching material rfl
-          simp only [reactiveLatest, ReactiveApplication.Execution.respond,
-            ReactiveApplication.Execution.observeEnvironment, MessageNetwork.submit,
-            MessageNetwork.publicView, List.reverse_append, List.reverse_cons,
-            List.reverse_nil, List.nil_append, List.singleton_append, List.find?_cons,
-            reactiveApplication, WitnessedSubmission.emit_call, different,
-            and_false, false_and, decide_false]
-          rfl
-      | replay id =>
-          have selected := (runtime.reactiveApplication leaks).find_pending_replay_from_recall
-            execution who who id
-            (fun message => decide (message.sender = who ∧
-              message.payload.call.event? graph = some event ∧
-              (execution.observeEnvironment (runtime.reactiveApplication leaks)).Unpublished
-                (runtime.reactiveApplication leaks) message.id))
-            (fun _ good => (of_decide_eq_true good).1)
-            (fun _ good => (of_decide_eq_true good).2.2) origins recalled retained
-            (fun first firstMem second secondMem firstGood secondGood =>
-              unique first firstMem second secondMem (of_decide_eq_true firstGood).1
-                (of_decide_eq_true secondGood).1 (of_decide_eq_true firstGood).2.1
-                (of_decide_eq_true secondGood).2.1)
-          cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
-            simp only [MessageNetwork.replay, found] at selected
-          all_goals
-            simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
-          · rfl
-          · exact congrArg (fun chosen :
-                Option (Message Player (runtime.reactiveApplication leaks).Payload) =>
-              match chosen with
-              | none => (ReactiveApplication.Command.wait :
-                  (runtime.reactiveApplication leaks).Command)
-              | some message => .include message.id) selected
+  | some material =>
+      have different := nonmatching material rfl
+      simp only [reactiveLatest, ReactiveApplication.Execution.respond,
+        ReactiveApplication.Execution.observeEnvironment, MessageNetwork.submit,
+        MessageNetwork.publicView, List.reverse_append, List.reverse_cons,
+        List.reverse_nil, List.nil_append, List.singleton_append, List.find?_cons,
+        reactiveApplication, WitnessedSubmission.emit_call, different,
+        and_false, false_and, decide_false]
+      rfl
 
 theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.EventId)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -188,7 +151,7 @@ theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.E
     (response : (runtime.reactiveApplication leaks).Action)
     (audit : (execution.respond (runtime.reactiveApplication leaks) who response).SubmissionAudit
       (runtime.reactiveApplication leaks) ReactivePlayerView.publicView)
-    (nonmatching : ∀ material, response.transmission = some (.submit material) →
+    (nonmatching : ∀ material, response.transmission = some material →
       material.call.packet.event? graph ≠ some event) :
     let after := execution.respond (runtime.reactiveApplication leaks) who response
     ((after.environmentStep (runtime.reactiveApplication leaks)
@@ -204,8 +167,7 @@ theorem reactive_reserved_nonmatching_playerView (who : Player) (event : graph.E
         | some message => (((runtime.reactiveApplication leaks).handle after.application
           message).getD after.application).playerView who) := by
   dsimp only
-  rw [runtime.reactiveLatest_nonmatching_response leaks who event execution origins recalled
-    retained unique response nonmatching]
+  rw [runtime.reactiveLatest_nonmatching_response leaks who event execution response nonmatching]
   rw [runtime.reactiveLatest_from_recall leaks who event execution origins recalled retained unique]
   cases selected : ((runtime.reactiveApplication leaks).outputs (execution.recall who)).find?
       (fun message => message.sender = who ∧ message.payload.call.event? graph = some event ∧
@@ -264,7 +226,7 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
           fun next => next.application.playerView who) := by
   dsimp only
   have afterViews := runtime.reactive_respond_playerView_congr leaks left right who response views
-  by_cases matching : ∃ material, response.transmission = some (.submit material) ∧
+  by_cases matching : ∃ material, response.transmission = some material ∧
       material.call.packet.event? graph = some event
   · obtain ⟨material, transmitted, addressed⟩ := matching
     rcases response with ⟨transmission⟩
@@ -274,7 +236,7 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
     have lookup (execution : (runtime.reactiveApplication leaks).Execution)
         (serials : execution.network.SerialsBeforeNext) :
         (execution.respond (runtime.reactiveApplication leaks) who
-          ⟨some (.submit material)⟩).network.lookup (who, execution.network.nextSerial who) =
+          ⟨some material⟩).network.lookup (who, execution.network.nextSerial who) =
           some ⟨(who, execution.network.nextSerial who), material.emit
             ((runtime.reactiveApplication leaks).submit execution.application who material)
               who (execution.network.known who)⟩ := serials.lookup_submit who _
@@ -291,7 +253,7 @@ theorem reactive_reserved_playerView_congr (who : Player) (event : graph.EventId
     exact congrArg PMF.pure
       (runtime.reactive_handle_result_playerView_congr leaks _ _ who (left.network.nextSerial who)
         (right.network.nextSerial who) _ _ rfl tokens afterViews)
-  · have nonmatching : ∀ material, response.transmission = some (.submit material) →
+  · have nonmatching : ∀ material, response.transmission = some material →
         material.call.packet.event? graph ≠ some event := by
       intro material transmitted addressed
       exact matching ⟨material, transmitted, addressed⟩

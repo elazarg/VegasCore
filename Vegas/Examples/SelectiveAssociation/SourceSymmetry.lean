@@ -9,7 +9,7 @@ import GameTheoryExtensions.Math.Probability.Uniform
 
 At Alice's binding response, flip her Boolean choice and the value in her
 private Alice-certificate request. Claims, addresses, request kinds, silence,
-and every replay stay unchanged. This is a permutation of the full response
+and every forwarded certificate stay unchanged. This is a permutation of the full response
 menu. The history and conditional-belief consequences require additional
 prefix laws; local distribution symmetry alone is not an equilibrium proof.
 -/
@@ -56,7 +56,7 @@ theorem flipSubmission_involutive {Claim : Type} :
 def flipResponse {Claim : Type} (action : (application Claim).Action) :
     (application Claim).Action :=
   match action.transmission with
-  | some (.submit submission) => ⟨some (.submit (flipSubmission submission))⟩
+  | some submission => ⟨some (flipSubmission submission)⟩
   | _ => action
 
 theorem flipResponse_involutive {Claim : Type} :
@@ -64,13 +64,10 @@ theorem flipResponse_involutive {Claim : Type} :
   rintro ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay => rfl
-      | submit submission =>
-          change (⟨some (.submit (flipSubmission (flipSubmission submission)))⟩ :
-            (application Claim).Action) = _
-          rw [flipSubmission_involutive]
+  | some submission =>
+      change (⟨some (flipSubmission (flipSubmission submission))⟩ :
+        (application Claim).Action) = _
+      rw [flipSubmission_involutive]
 
 theorem flipResponse_available (Claim : Type) [Fintype Claim] (who : Player)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
@@ -80,10 +77,7 @@ theorem flipResponse_available (Claim : Type) [Fintype Claim] (who : Player)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact allowed
-  | some transmission =>
-      cases transmission with
-      | replay => exact allowed
-      | submit submission => exact every_submission Claim who past view _
+  | some submission => exact every_submission Claim who past view _
 
 def responseFlip (Claim : Type) [Fintype Claim] (who : Player)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView) :

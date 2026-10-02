@@ -32,9 +32,6 @@ theorem playerStep_nonprivate_prescribedContinuation
   | submit payload =>
       rw [runtime.application.playerStep_submit_eq, PMF.pure_bind]
       rfl
-  | replay id =>
-      simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
-        MessageApplication.advance, MessageApplication.step, PMF.pure_bind]
   | wait =>
       simp only [MessageApplication.playerStep, MessageApplication.PlayerCommand.toAction,
         MessageApplication.advance, PMF.pure_bind]

@@ -148,56 +148,6 @@ theorem serviceAudit_charge_of_omission (runtime : EventGraphRuntime graph)
   simp only [control.execution.application.publicView.missedBindingBy_of_event who event owned
     missed, ↓reduceIte]
 
-open Classical in
-/-- The settlement observation: the traffic history and the settled record,
-read once the declared service horizon has ended. Before settlement nothing is
-observed. -/
-def settlementObservation (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (state : (runtime.reactiveApplication leaks).ProtocolState) :
-    List (runtime.reactiveApplication leaks).TrafficRecord × Option (SettledRecord graph) :=
-  if (runtime.reactiveApplication leaks).terminal state then
-    runtime.serviceAuditObservation leaks state
-  else ([], none)
-
-theorem settlementObservation_normalization (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (normal : (runtime.reactiveApplication leaks).SubmissionNormalization)
-    (state : (runtime.reactiveApplication leaks).ProtocolState) :
-    runtime.settlementObservation leaks (normal.state state) =
-      runtime.settlementObservation leaks state := by
-  cases state <;> rfl
-
-/-- Nothing is collected before settlement. -/
-theorem settlementAudit_charge_unsettled (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (state : (runtime.reactiveApplication leaks).ProtocolState)
-    (unsettled : ¬ (runtime.reactiveApplication leaks).terminal state) (who : Player) :
-    TerminalAudit.charge (runtime.settlementObservation leaks)
-      (runtime.serviceAudit leaks trafficAudit) state who = 0 := by
-  classical
-  unfold TerminalAudit.charge settlementObservation
-  rw [ite_eq_right_iff.mpr fun settled => (unsettled settled).elim]
-  simp only [serviceAudit, PMF.pure_map]
-  rw [PMF.pure_apply_of_ne _ _ Bool.noConfusion, ENNReal.toReal_zero]
-
-/-- At settlement the charge is the service audit's charge. -/
-theorem settlementAudit_charge_settled (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (state : (runtime.reactiveApplication leaks).ProtocolState)
-    (settled : (runtime.reactiveApplication leaks).terminal state) (who : Player) :
-    TerminalAudit.charge (runtime.settlementObservation leaks)
-        (runtime.serviceAudit leaks trafficAudit) state who =
-      TerminalAudit.charge (runtime.serviceAuditObservation leaks)
-        (runtime.serviceAudit leaks trafficAudit) state who := by
-  classical
-  unfold TerminalAudit.charge settlementObservation
-  rw [ite_eq_left settled]
-
 /-- A charge of the traffic branch is a lower bound for the collected charge. -/
 theorem serviceAudit_charge_ge_traffic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

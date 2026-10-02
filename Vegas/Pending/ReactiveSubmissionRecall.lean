@@ -6,8 +6,7 @@ import Interaction.ReactiveRecall
 /-! # A fresh submission is made at most once per event
 
 The test reads only the player's existing response recall and the unique event
-identifier. It requires no phase counter, timing oracle, or memory cost. Replays
-are distinct responses and do not count as a new submission.
+identifier. It requires no phase counter, timing oracle, or memory cost.
 -/
 
 noncomputable section
@@ -26,9 +25,9 @@ and private submission material do not enter the test. -/
 def submittedEvent? (response : (runtime.reactiveApplication leaks).Action) :
     Option graph.EventId :=
   match response.transmission with
-  | some (.submit material) =>
+  | some material =>
       material.call.packet.event? graph
-  | none | some (.replay _) => none
+  | none => none
 
 open Classical in
 def eventRecorded (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -79,12 +78,7 @@ theorem submittedEvent_normalization (who : Player)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material => rfl
-      | replay id =>
-          simp only [ReactiveApplication.SubmissionNormalization.action]
-          split <;> rfl
+  | some material => rfl
 
 theorem firstSubmission_normalization (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)

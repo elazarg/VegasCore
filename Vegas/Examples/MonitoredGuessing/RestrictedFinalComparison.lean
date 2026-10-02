@@ -66,12 +66,12 @@ theorem final_comparator_payoff_le (payoff : Results → ℝ) (charge : ℝ)
     expect (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice response))
         (fun final => payoff (nativeResults final.application.config) -
-          if rejectedAlice final.receipts then charge else 0) ≤
+          if aliceLiability final then charge else 0) ≤
     expect (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice
         (finalComparator (aliceInput bit guess) response)))
           (fun final => payoff (nativeResults final.application.config) -
-            if rejectedAlice final.receipts then charge else 0) := by
+            if aliceLiability final then charge else 0) := by
   have summary := alice_service_summary legalPlayers bit guess
     (finalResponseChoice (beforeAlice bit guess) response)
   have expected := congrArg (fun law : PMF (Results × Bool) =>
@@ -90,12 +90,12 @@ theorem final_comparator_declared_payoff_le (table : PayoffTable) (charge : ℝ)
     expect (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice response))
         (fun final => (table (nativeResults final.application.config) alice : ℝ) -
-          if rejectedAlice final.receipts then charge else 0) ≤
+          if aliceLiability final then charge else 0) ≤
     expect (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice
         (finalComparator (aliceInput bit guess) response)))
           (fun final => (table (nativeResults final.application.config) alice : ℝ) -
-            if rejectedAlice final.receipts then charge else 0) :=
+            if aliceLiability final then charge else 0) :=
   final_comparator_payoff_le (fun outcome => (table outcome alice : ℝ)) charge nonnegative
     rawPlayers legalPlayers bit guess response
 

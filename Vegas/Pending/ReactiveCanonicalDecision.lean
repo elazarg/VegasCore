@@ -72,15 +72,15 @@ def canonicalReactiveDecision (runtime : EventGraphRuntime graph)
   transmission := match nodeView graph event with
     | .sample .. => none
     | .bind _owner payload outputEq _codeEq =>
-        (canonicalFreshSlot who view).map fun serial => .submit
+        (canonicalFreshSlot who view).map fun serial =>
           ⟨⟨.commitment event (who, .prepared serial),
             match (cast (congrArg EventField.Action outputEq) action :
                 PublicationResult (L.Val payload)) with
             | .failure => none
             | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding checks outputEq _codeEq =>
-        some (.submit ((disclosureSubmission (reactiveResolutionPacket who event payload
-          binding checks outputEq action view)).normalizeReactive who view []))
+        some ((disclosureSubmission (reactiveResolutionPacket who event payload
+          binding checks outputEq action view)).normalizeReactive who view [])
 
 /-- `serviceDecision` over `canonicalReactiveDecision`: withheld publications
 are settled by expiry and private response aliases are normalized. -/
@@ -92,7 +92,7 @@ def canonicalServiceDecision (runtime : EventGraphRuntime graph)
     (runtime.reactiveApplication leaks).Action :=
   let response := runtime.canonicalReactiveDecision leaks who event choice view.application
   match response.transmission with
-  | some (.submit ⟨⟨.withhold _, _⟩, _⟩) => ⟨none⟩
+  | some ⟨⟨.withhold _, _⟩, _⟩ => ⟨none⟩
   | _ => (runtime.reactiveNormalization leaks).action who past view response
 
 /-- Away from bindings the canonical decision is the existing decision. -/
@@ -128,12 +128,9 @@ theorem canonicalServiceDecision_eq_of_not_bind (runtime : EventGraphRuntime gra
   obtain ⟨transmission⟩ := response
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay => rfl
-      | submit material =>
-          obtain ⟨⟨packet, _⟩, _⟩ := material
-          cases packet <;> rfl
+  | some material =>
+      obtain ⟨⟨packet, _⟩, _⟩ := material
+      cases packet <;> rfl
 
 /-- A binding decision submits the canonical binding at the selected slot. -/
 theorem canonicalServiceDecision_binding (runtime : EventGraphRuntime graph)

@@ -71,7 +71,7 @@ theorem checkpoint_extra_submission
       (execution.recall owner) (execution.observe (application setup leaks) owner))
     (extra : response ∉ ordinaryActions setup leaks bounds owner (execution.recall owner)
       (execution.observe (application setup leaks) owner)) :
-    ∃ submission, response = ⟨some (.submit submission)⟩ ∧
+    ∃ submission, response = ⟨some submission⟩ ∧
       let state := (application setup leaks).submit execution.application owner submission
       let packet := submission.emit state owner (execution.network.known owner)
       (application setup leaks).handle state
@@ -116,15 +116,15 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
       owner site.1))
     (probability : ℝ)
     (sampling : ∀ submission : WitnessedSubmission (graph setup),
-      (⟨some (.submit submission)⟩ : (application setup leaks).Action) ∈
+      (⟨some submission⟩ : (application setup leaks).Action) ∈
         (bounds.menu (runtime setup) leaks).actions owner (control.execution.recall owner)
           (control.execution.observe (application setup leaks) owner) →
-      (⟨some (.submit submission)⟩ : (application setup leaks).Action) ∉
+      (⟨some submission⟩ : (application setup leaks).Action) ∉
         ordinaryActions setup leaks bounds owner (control.execution.recall owner)
           (control.execution.observe (application setup leaks) owner) →
       probability ≤ ((leaks watcher
         (control.execution.respond (application setup leaks) owner
-          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure
+          ⟨some submission⟩).network.pending).toOuterMeasure
               {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
     (fuel : Nat) (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
     probability ≤ (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
@@ -154,7 +154,7 @@ theorem ordinary_extra_collection (watcher owner : Player) (different : owner �
   obtain ⟨submission, same, departure⟩ := checkpoint_extra_submission setup leaks bounds
     source refs rank control.execution checkpoint selected event eventRank ownedEvent outputEq
     codeEq node response effective excluded
-  have chosenSubmission : action.1 = some ⟨some (.submit submission)⟩ := by rw [chosen, same]
+  have chosenSubmission : action.1 = some ⟨some submission⟩ := by rw [chosen, same]
   have collected := watched_commit_collection setup leaks bounds watcher owner different reveals
     profile (restriction.site owner site) (restriction.informationHistory owner site history)
     control state submission action chosenSubmission checkpoint.serials
@@ -196,15 +196,15 @@ theorem ordinary_extra_comparison [setup.FiniteInitialLaw] [leaks.FiniteSupport]
       owner site.1))
     (probability : ℝ)
     (sampling : ∀ submission : WitnessedSubmission (graph setup),
-      (⟨some (.submit submission)⟩ : (application setup leaks).Action) ∈
+      (⟨some submission⟩ : (application setup leaks).Action) ∈
         (bounds.menu (runtime setup) leaks).actions owner (control.execution.recall owner)
           (control.execution.observe (application setup leaks) owner) →
-      (⟨some (.submit submission)⟩ : (application setup leaks).Action) ∉
+      (⟨some submission⟩ : (application setup leaks).Action) ∉
         ordinaryActions setup leaks bounds owner (control.execution.recall owner)
           (control.execution.observe (application setup leaks) owner) →
       probability ≤ ((leaks watcher
         (control.execution.respond (application setup leaks) owner
-          ⟨some (.submit submission)⟩).network.pending).toOuterMeasure
+          ⟨some submission⟩).network.pending).toOuterMeasure
               {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal)
     (base : (application setup leaks).ProtocolState → Player → ℝ) (deposit : Player → ℝ)
     (nonnegative : 0 ≤ deposit owner) (lower upper : ℝ)

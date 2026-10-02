@@ -58,27 +58,14 @@ private theorem packetStatus_respond (runtime : EventGraphRuntime graph)
     · rcases action with ⟨transmission⟩
       cases transmission with
       | none => exact pending
-      | some transmission =>
-          cases transmission with
-          | submit material => exact List.mem_append_left _ pending
-          | replay id =>
-              cases found : (execution.network.known who).find?
-                  (fun envelope => envelope.id = id) <;>
-                simp [ReactiveApplication.Execution.respond, MessageNetwork.replay, found, pending]
+      | some material => exact List.mem_append_left _ pending
     · change message.id ∉ (execution.respond (runtime.reactiveApplication leaks) who
         action).network.ledger.map Message.id
       change message.id ∉ execution.network.ledger.map Message.id at unpublished
       rcases action with ⟨transmission⟩
       cases transmission with
       | none => exact unpublished
-      | some transmission =>
-          cases transmission with
-          | submit material => exact unpublished
-          | replay id =>
-              cases found : (execution.network.known who).find?
-                  (fun envelope => envelope.id = id) <;>
-                simpa only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
-                  using unpublished
+      | some material => exact unpublished
 
 private theorem include_other_event_output (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

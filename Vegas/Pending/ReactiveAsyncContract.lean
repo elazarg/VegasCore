@@ -71,15 +71,14 @@ same identifier,
 that packet has a receipt once the clock passes `sent + bound event`, unless the
 event has completed. Including any other packet, in any order, is allowed.
 
-Only an owner's sole identifier is protected. Replays keep the original author
-and identifier, so anyone, the owner included, can re-queue copies of an
-owner's packet, and every copy carries its identifier. A prescribed owner
-submits one packet of its own per event and may replay it. Relaying another
-player's packet, even one addressed to the owner's event, does not void the
-protection: the builder distinguishes authors by signature. An owner that
-emits several identifiers of its own for one event deviates from every
-prescribed client, and what the scheduler then includes is part of that
-deviation's law, not a guarantee of the contract. -/
+Only an owner's sole identifier is protected. Each fresh submission allocates
+an identifier owned by its sender. A prescribed owner submits one packet per
+event and remains silent afterward. Another player's fresh packet, even one
+addressed to the owner's event or carrying forwarded evidence, does not void
+the protection: the builder distinguishes authors by signature. An owner that
+emits several identifiers for one event deviates from every prescribed client;
+what the scheduler then includes is part of that deviation's law, rather than
+a guarantee of the contract. -/
 def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
     (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     (bound : graph.EventId → Nat) : Prop :=

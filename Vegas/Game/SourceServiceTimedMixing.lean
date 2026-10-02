@@ -112,8 +112,7 @@ private theorem opportunity_source
   · rename_i silent
     have same : response = ⟨none⟩ := by cases response; cases silent; rfl
     rw [same]
-    exact (application setup leaks).replayPolicy_support past view none
-      (Finset.mem_insert_self _ _)
+    exact (application setup leaks).silentPolicy_support past view
   · exact (PMF.mem_support_pure_iff _ _).mpr rfl
 
 omit [Fintype Player] in
@@ -127,7 +126,7 @@ private theorem opportunity_replay
     (silence : (⟨none⟩ : (application setup leaks).Action) ∈
       (sourceServicePolicy setup leaks profile who past view).support)
     (response : (application setup leaks).Action)
-    (supported : response ∈ ((application setup leaks).replayPolicy past view).support) :
+    (supported : response ∈ ((application setup leaks).silentPolicy past view).support) :
     response ∈ (sourceServiceOpportunity setup leaks profile who event past view).support := by
   simp only [sourceServiceOpportunity, unsent, Bool.false_eq_true, ↓reduceIte,
     PMF.support_bind]
@@ -272,7 +271,8 @@ theorem sourceServiceTimedPolicy_supported
           have denied := (runtime setup).firstSubmission_false_of_recorded leaks past event
             recorded response submitted
           simp only [denied, Bool.false_eq_true] at first
-      · exact ((application setup leaks).mem_replayActions_iff _ _ _).mp replay
+      · exact (application setup leaks).mem_silentPolicy_support.mpr
+          (Finset.mem_singleton.mp replay)
     · have unsent : (runtime setup).eventRecorded leaks past event = false :=
         Bool.eq_false_iff.mpr recorded
       obtain ⟨current, count, ready⟩ := current_slot setup leaks bounds values capacity rosters

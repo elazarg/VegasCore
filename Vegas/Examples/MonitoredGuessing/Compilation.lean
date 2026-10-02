@@ -1,12 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.Equilibrium
+import Vegas.Examples.MonitoredGuessing.NativeSettlement
 
 /-! # A fixed playerwise translation for the monitored guessing game
 
 Only Bob's own source policy determines his native completion. Alice's opening
-policy and Watcher's reporting policy are fixed. The completion is chosen once
-for each receiver mixture and fixed deposit; it does not inspect other source
+policy and Watcher's silent monitoring policy are fixed. The completion is chosen once
+for each receiver mixture and fixed charge; it does not inspect other source
 strategies or their beliefs. This is a semantic, noncomputable translation for
 this game, with no claim of general deviation transport or effective synthesis.
 -/
@@ -15,81 +16,118 @@ noncomputable section
 
 namespace Vegas.Examples.MonitoredGuessing
 
-open Vegas Vegas.SourceProgram GameTheory GameTheory.Protocol
+open Vegas Vegas.SourceProgram Interaction GameTheory GameTheory.Protocol
 open GameTheory.Protocol.InformationModel GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability
 
-private def completion (deposit : ℝ) (sufficient : 2 ≤ deposit) (guesses : PMF Bool) :
+private def completion (charge : ℝ) (sufficient : 2 ≤ charge) (guesses : PMF Bool) :
     nativeModel.BehavioralAssessment :=
-  (exists_native_sequential_equilibrium guesses deposit sufficient).choose
+  (exists_native_sequential_equilibrium guesses charge sufficient).choose
 
-private theorem completion_facts (deposit : ℝ) (sufficient : 2 ≤ deposit)
+private theorem completion_facts (charge : ℝ) (sufficient : 2 ≤ charge)
     (guesses : PMF Bool) :
-    (completion deposit sufficient guesses).strategy alice = nativeAliceBehavior ∧
-    (completion deposit sufficient guesses).strategy watcher = nativeWatcherBehavior ∧
-    (completion deposit sufficient guesses).strategy bob quietBobSite.1 =
+    (completion charge sufficient guesses).strategy alice = nativeAliceBehavior ∧
+    (completion charge sufficient guesses).strategy watcher = nativeWatcherBehavior ∧
+    (completion charge sufficient guesses).strategy bob quietBobSite.1 =
       nativeGuessBehavior guesses quietBobSite.1 ∧
-    (completion deposit sufficient guesses).IsSequentialEquilibriumFor nativeAntichain
-      (fun who site => (completion deposit sufficient guesses).truncatedContinuationContext site
-        (fun history => nativeUtility deposit who history.state) (2 * nativeHorizon + 1)) :=
-  (exists_native_sequential_equilibrium guesses deposit sufficient).choose_spec
+    (completion charge sufficient guesses).IsSequentialEquilibriumFor nativeAntichain
+      (fun who site => (completion charge sufficient guesses).truncatedContinuationContext site
+        (fun history => nativeComparisonUtility charge who history.state) (2 * nativeHorizon +
+          1)) :=
+  (exists_native_sequential_equilibrium guesses charge sufficient).choose_spec
 
 /-- Each translated policy has only that player's source policy as an input.
-The fixed target game and deposit are shared by every source equilibrium. -/
-def compileNative (deposit : ℝ) (sufficient : 2 ≤ deposit) :
+The fixed target game and charge are shared by every source equilibrium. -/
+def compileNative (charge : ℝ) (sufficient : 2 ≤ charge) :
     (who : Player) → sourceModel.BehavioralPolicy who → nativeModel.BehavioralPolicy who :=
   Fin.cases (fun _ => nativeAliceBehavior)
     (Fin.cases (fun policy =>
-      (completion deposit sufficient
+      (completion charge sufficient
         ((policy sourceBobSite.1).map (fun choice => OwnAction.disclosure choice.1))).strategy bob)
       (Fin.cases (fun _ => nativeWatcherBehavior) (fun i => i.elim0)))
 
-private theorem compiled_profile (deposit : ℝ) (sufficient : 2 ≤ deposit)
+private theorem compiled_profile (charge : ℝ) (sufficient : 2 ≤ charge)
     (profile : Profile sourceModel.behavioralSignature) :
     Profile.map (sig := sourceModel.behavioralSignature)
-        (target := nativeModel.behavioralSignature) (compileNative deposit sufficient) profile =
-      (completion deposit sufficient (sourceDecisionLaw profile bob sourceBobSite.1)).strategy := by
+        (target := nativeModel.behavioralSignature) (compileNative charge sufficient) profile =
+      (completion charge sufficient (sourceDecisionLaw profile bob sourceBobSite.1)).strategy := by
   funext who
   fin_cases who
-  · exact (completion_facts deposit sufficient _).1.symm
-  · change (completion deposit sufficient
+  · exact (completion_facts charge sufficient _).1.symm
+  · change (completion charge sufficient
       ((profile bob sourceBobSite.1).map (fun choice => OwnAction.disclosure choice.1))).strategy
         bob = _
     have law : (profile bob sourceBobSite.1).map
         (fun choice => OwnAction.disclosure choice.1) =
         sourceDecisionLaw profile bob sourceBobSite.1 := by
-      simp only [sourceDecisionLaw, sourceChoice, PMF.map_comp, Function.comp_def]
+      change _ = ((profile bob sourceBobSite.1).map Subtype.val).map OwnAction.disclosure
+      exact (PMF.map_comp Subtype.val (profile bob sourceBobSite.1) OwnAction.disclosure).symm
     rw [law]
     rfl
-  · exact (completion_facts deposit sufficient _).2.1.symm
+  · exact (completion_facts charge sufficient _).2.1.symm
 
-/-- Every source sequential equilibrium admits consistent target beliefs for
-this one fixed playerwise policy translation, preserving the exact joint law
-of initial secret, public results and actual net payoff vector. -/
-theorem compiled_source_equilibrium (deposit : ℝ) (sufficient : 2 ≤ deposit)
+/-- The comparison game preserves the initialized source observation law.
+Physical settlement and its terminal payoff adequacy are proved separately. -/
+theorem compiled_comparison_equilibrium (charge : ℝ) (sufficient : 2 ≤ charge)
     (source : sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.truncatedContinuationContext site (sourcePayoff who) 3)) :
     ∃ target : nativeModel.BehavioralAssessment,
       target.strategy = Profile.map (sig := sourceModel.behavioralSignature)
-        (target := nativeModel.behavioralSignature) (compileNative deposit sufficient)
+        (target := nativeModel.behavioralSignature) (compileNative charge sufficient)
           source.strategy ∧
       target.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
         target.truncatedContinuationContext site
-          (fun history => nativeUtility deposit who history.state) (2 * nativeHorizon + 1)) ∧
+          (fun history => nativeComparisonUtility charge who history.state) (2 * nativeHorizon
+            + 1)) ∧
       (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
         (fun history => ((nativeObservation history.state).1,
           (nativeObservation history.state).2.1,
-          fun who => nativeUtility deposit who history.state)) =
+          fun who => nativeComparisonUtility charge who history.state)) =
       (sourceModel.runBehavioral source.strategy 3).map
         (fun history => ((sourceObservation history.state).1,
           (sourceObservation history.state).2.1, fun who => sourcePayoff who history)) := by
-  let target := completion deposit sufficient
+  let target := completion charge sufficient
     (sourceDecisionLaw source.strategy bob sourceBobSite.1)
   obtain ⟨alicePolicy, watcherPolicy, atQuiet, nativeEquilibrium⟩ :=
-    completion_facts deposit sufficient (sourceDecisionLaw source.strategy bob sourceBobSite.1)
-  exact ⟨target, (compiled_profile deposit sufficient source.strategy).symm, nativeEquilibrium,
-    native_source_joint_payoffs deposit source equilibrium target.strategy
+    completion_facts charge sufficient (sourceDecisionLaw source.strategy bob sourceBobSite.1)
+  exact ⟨target, (compiled_profile charge sufficient source.strategy).symm, nativeEquilibrium,
+    native_source_joint_payoffs charge source equilibrium target.strategy
       alicePolicy watcherPolicy atQuiet⟩
+
+/-- Source equilibrium is preserved under actual terminal collection, provided
+the backend delivers observed reports with the fixed conditional rate. The
+joint law includes the realized deposit deduction, including delivery failure. -/
+theorem compiled_source_equilibrium (window : ChallengeWindow) (rate : ℝ)
+    (nonnegative : 0 ≤ rate) (bounded : rate ≤ 1) (deposit : ℝ)
+    (sufficient : 2 ≤ rate * deposit)
+    (source : sourceModel.BehavioralAssessment)
+    (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
+      source.truncatedContinuationContext site (sourcePayoff who) 3)) :
+    ∃ target : nativeModel.BehavioralAssessment,
+      target.strategy = Profile.map (sig := sourceModel.behavioralSignature)
+        (target := nativeModel.behavioralSignature)
+        (compileNative (rate * deposit) sufficient) source.strategy ∧
+      target.IsSequentialEquilibriumFor nativeAntichain (fun who site =>
+        target.truncatedContinuationContext site
+          (fun history => nativeSettledUtility window rate nonnegative bounded deposit who
+            history.state) (2 * nativeHorizon + 1)) ∧
+      (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).bind
+        (fun history => nativeCollectedObservation window rate nonnegative bounded deposit
+          history.state) =
+      (sourceModel.runBehavioral source.strategy 3).map
+        (fun history => ((sourceObservation history.state).1,
+          (sourceObservation history.state).2.1, fun who => sourcePayoff who history)) := by
+  let guesses := sourceDecisionLaw source.strategy bob sourceBobSite.1
+  let target := completion (rate * deposit) sufficient guesses
+  obtain ⟨alicePolicy, watcherPolicy, atQuiet, nativeEquilibrium⟩ :=
+    completion_facts (rate * deposit) sufficient guesses
+  refine ⟨target, (compiled_profile (rate * deposit) sufficient source.strategy).symm,
+    (native_settled_equilibrium_iff window rate nonnegative bounded deposit target).mp
+      nativeEquilibrium, ?_⟩
+  rw [native_initialized_collection_eq_payoffs window rate nonnegative bounded deposit
+    target.strategy guesses alicePolicy watcherPolicy atQuiet]
+  exact native_source_joint_payoffs (rate * deposit) source equilibrium target.strategy
+    alicePolicy watcherPolicy atQuiet
 
 end Vegas.Examples.MonitoredGuessing

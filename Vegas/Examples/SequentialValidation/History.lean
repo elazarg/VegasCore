@@ -90,20 +90,19 @@ theorem native_select_singleton (execution : nativeApp.Execution)
 theorem native_packet_available (who : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) (packet : Payload nativeGraph)
     (bounded : nativeBounds.AllowsPacket packet) :
-    (⟨some (.submit ⟨⟨packet, none⟩, .none⟩)⟩ : nativeApp.Action) ∈
+    (⟨some ⟨⟨packet, none⟩, .none⟩⟩ : nativeApp.Action) ∈
       nativeMenu.actions who past view :=
       by
   rw [MessageBounds.menu_mem]
   refine ⟨⟨⟨bounded, trivial⟩, trivial⟩, ?_⟩
-  change (⟨some (.submit
-    ⟨(⟨packet, none⟩ : Submission nativeGraph).normalizeReactive who view.application,
-      .none⟩)⟩ : nativeApp.Action) = _
+  change (⟨some ⟨(⟨packet, none⟩ : Submission nativeGraph).normalizeReactive who view.application,
+      .none⟩⟩ : nativeApp.Action) = _
   rw [Submission.normalizeReactive_none]
 
 theorem native_opening_available (who : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) (event : nativeGraph.EventId) (candidate : Handle nativeGraph)
     (bit : Bool) (bounded : nativeBounds.AllowsHandle candidate) :
-    (⟨some (.submit ⟨⟨.opening event candidate ⟨.bool, bit⟩, none⟩, .none⟩)⟩ : nativeApp.Action) ∈
+    (⟨some ⟨⟨.opening event candidate ⟨.bool, bit⟩, none⟩, .none⟩⟩ : nativeApp.Action) ∈
       nativeMenu.actions who past view := by
   apply native_packet_available
   refine ⟨bounded, ?_⟩
@@ -112,7 +111,7 @@ theorem native_opening_available (who : Bool) (past : List nativeApp.PlayerEntry
 
 theorem native_withhold_available (who : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) (event : nativeGraph.EventId) :
-    (⟨some (.submit ⟨⟨.withhold event, none⟩, .none⟩)⟩ : nativeApp.Action) ∈
+    (⟨some ⟨⟨.withhold event, none⟩, .none⟩⟩ : nativeApp.Action) ∈
       nativeMenu.actions who past view :=
   native_packet_available who past view _ trivial
 
@@ -134,12 +133,12 @@ def nativeWindowTrace (remaining : Nat) (execution : nativeApp.Execution)
     (empty : execution.network.pending = [])
     (address : submission.packet.event? nativeGraph = some event)
     (ready : execution.application.config.cut.Ready event)
-    (available : (⟨some (.submit ⟨submission, .none⟩)⟩ : nativeApp.Action) ∈ nativeMenu.actions who
+    (available : (⟨some ⟨submission, .none⟩⟩ : nativeApp.Action) ∈ nativeMenu.actions who
       ((nativeActivate execution who).recall who)
       ((nativeActivate execution who).observe nativeApp who)) :
     nativeArena.Trace (some ⟨remaining, none, nativeWindow execution who submission⟩) := by
   let activated := nativeActivate execution who
-  let responded := activated.respond nativeApp who ⟨some (.submit ⟨submission, .none⟩)⟩
+  let responded := activated.respond nativeApp who ⟨some ⟨submission, .none⟩⟩
   have activeTrace : nativeArena.Trace (some ⟨remaining + 1, some who, activated⟩) :=
     nativeEnvironmentTrace _ _ _ trace (.activate who)
       (native_schedule execution _ activate) (native_activate_law execution who)
@@ -185,7 +184,7 @@ def nativeFirstTrace (bit : Bool) : nativeArena.Trace (some ⟨50, none, nativeF
   refine ⟨⟨⟨by change 0 < 56; decide, ?_⟩, trivial⟩, ?_⟩
   · change (⟨.bool, false⟩ : Raw simpleExpr) ∈ nativeBounds.values
     simp [nativeBounds]
-  change (⟨some (.submit ⟨dummySubmission.normalizeReactive false _, .none⟩)⟩ :
+  change (⟨some ⟨dummySubmission.normalizeReactive false _, .none⟩⟩ :
     nativeApp.Action) = _
   rw [Submission.normalizeReactive_effective]
   exact ⟨rfl, rfl⟩
@@ -225,7 +224,7 @@ def nativeBobHistory (bit : Bool) : nativeArena.History := ⟨_, nativeBobTrace 
 
 def nativeBobSite (bit : Bool) : nativeModel.InformationSite true :=
   nativeModel.informationSite true (nativeBobHistory bit)
-    ⟨some (.submit ⟨⟨.withhold guessEvent, none⟩, .none⟩)⟩
+    ⟨some ⟨⟨.withhold guessEvent, none⟩, .none⟩⟩
     (by change ¬ (45 = 0 ∧ _); omega) (by
       change some _ ∈ (nativeMenu.information nativeInitialLaw 52 nativeScheduler).menu true
         ((nativeMenu.signals nativeInitialLaw 52 nativeScheduler).infoOf true

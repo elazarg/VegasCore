@@ -5,9 +5,7 @@ import Vegas.Pending.ReactiveService
 /-! # Reserved inclusion ignores already published envelopes
 
 The event-addressed selector depends only on the ordered list of unpublished
-pending envelopes. This includes rebroadcasts of published identifiers and does
-not require changing the raw response menu. The result concerns this selector;
-an arbitrary network scheduler can still inspect replay inputs and pending order.
+pending envelopes and the public ledger.
 -/
 
 noncomputable section
@@ -55,34 +53,5 @@ theorem reactiveLatest_eq_of_unpublished_pending_eq (runtime : EventGraphRuntime
   simp only [ReactiveApplication.EnvironmentView.Unpublished]
   rw [pending]
   simp only [ledger]
-
-/-- Replaying an already published identifier cannot alter reserved selection,
-including when the original envelope was authored by a different player. -/
-theorem reactiveLatest_replay_published (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (event : graph.EventId) (owner who : Player)
-    (execution : (runtime.reactiveApplication leaks).Execution) (id : MessageId Player)
-    (published : id ∈ execution.network.ledger.map Message.id) :
-    runtime.reactiveLatest leaks event owner
-        ((execution.respond (runtime.reactiveApplication leaks) who
-          ⟨some (.replay id)⟩).observeEnvironment (runtime.reactiveApplication leaks)) =
-      runtime.reactiveLatest leaks event owner
-        (execution.observeEnvironment (runtime.reactiveApplication leaks)) := by
-  apply runtime.reactiveLatest_eq_of_unpublished_pending_eq
-  · cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
-      simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found,
-        ReactiveApplication.Execution.observeEnvironment, MessageNetwork.publicView]
-  · cases found : (execution.network.known who).find? (fun message => message.id = id) with
-    | none =>
-        simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found,
-          ReactiveApplication.Execution.observeEnvironment, MessageNetwork.publicView]
-    | some message =>
-        have same : message.id = id := by
-          have selected := List.find?_some found
-          exact of_decide_eq_true selected
-        simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found,
-          ReactiveApplication.Execution.observeEnvironment, MessageNetwork.publicView,
-          List.filter_append, List.filter_cons, List.filter_nil, same, published,
-          not_true_eq_false, decide_false, Bool.false_eq_true, ↓reduceIte, List.append_nil]
 
 end Vegas.EventGraphRuntime

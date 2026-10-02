@@ -48,14 +48,10 @@ private theorem response_other_playerView
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material =>
-          exact (submitStep_playerView_other (material.call.register execution.application actor)
-            actor observer different material.call.packet).trans
-              (material.call.register_other execution.application actor observer different)
-      | replay id =>
-          cases (execution.network.known actor).find? (fun packet => packet.id = id) <;> rfl
+  | some material =>
+      exact (submitStep_playerView_other (material.call.register execution.application actor)
+        actor observer different material.call.packet).trans
+          (material.call.register_other execution.application actor observer different)
 
 private theorem response_actor_playerView
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
@@ -67,12 +63,7 @@ private theorem response_actor_playerView
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact views
-  | some transmission =>
-      cases transmission with
-      | submit material => exact submit_playerView_congr runtime leaks _ _ who material views
-      | replay id =>
-          cases (left.network.known who).find? (fun packet => packet.id = id) <;>
-            cases (right.network.known who).find? (fun packet => packet.id = id) <;> exact views
+  | some material => exact submit_playerView_congr runtime leaks _ _ who material views
 
 private theorem submission_packet_congr
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
@@ -121,20 +112,15 @@ theorem reactive_respond_hidden_congr
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => exact network
-    | some transmission =>
-        cases transmission with
-        | replay id =>
-            change (left.network.replay actor id).2 = (right.network.replay actor id).2
-            rw [network]
-        | submit material =>
-            have packet := submission_packet_congr runtime leaks left right actor network
-              (views actor foreign) material
-            change (left.network.submit actor (material.emit
-              (app.submit left.application actor material) actor (left.network.known actor))).2 =
-              (right.network.submit actor (material.emit
-                (app.submit right.application actor material) actor
-                  (right.network.known actor))).2
-            rw [packet, network]
+    | some material =>
+        have packet := submission_packet_congr runtime leaks left right actor network
+          (views actor foreign) material
+        change (left.network.submit actor (material.emit
+          (app.submit left.application actor material) actor (left.network.known actor))).2 =
+          (right.network.submit actor (material.emit
+            (app.submit right.application actor material) actor
+              (right.network.known actor))).2
+        rw [packet, network]
   refine ⟨networks, receipts, ?_, ?_⟩
   · intro who ordinary
     by_cases same : who = actor
@@ -151,22 +137,17 @@ theorem reactive_respond_hidden_congr
       | none =>
           simp only [ReactiveApplication.Execution.respond, ↓reduceIte,
             actingView, actingRecall]
-      | some transmission =>
-          cases transmission with
-          | replay id =>
-              simp only [ReactiveApplication.Execution.respond, network,
-                MessageNetwork.replay, ↓reduceIte, actingView, actingRecall]
-          | submit material =>
-              have packet := submission_packet_congr runtime leaks left right actor network
-                (views actor foreign) material
-              simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
-                ↓reduceIte]
-              change left.recall actor ++ [⟨left.observe app actor, _,
-                some ⟨(actor, left.network.nextSerial actor), material.emit
-                  (app.submit left.application actor material) actor
-                  (left.network.known actor)⟩⟩] = _
-              rw [actingRecall, actingView, packet, network]
-              rfl
+      | some material =>
+          have packet := submission_packet_congr runtime leaks left right actor network
+            (views actor foreign) material
+          simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
+            ↓reduceIte]
+          change left.recall actor ++ [⟨left.observe app actor, _,
+            some ⟨(actor, left.network.nextSerial actor), material.emit
+              (app.submit left.application actor material) actor
+              (left.network.known actor)⟩⟩] = _
+          rw [actingRecall, actingView, packet, network]
+          rfl
     · rw [app.respond_recall_other left actor who same response,
         app.respond_recall_other right actor who same response]
       exact recall who ordinary

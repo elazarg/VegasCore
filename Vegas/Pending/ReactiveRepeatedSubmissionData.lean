@@ -30,7 +30,7 @@ private theorem response_owner_data
     (foreign : ∀ message, message.sender ≠ owner → safe message)
     (packets : execution.network.Satisfies safe)
     (response : (runtime.reactiveApplication leaks).Action)
-    (transport : actor = owner → ∀ material, response.transmission ≠ some (.submit material)) :
+    (transport : actor = owner → ∀ material, response.transmission ≠ some material) :
     let next := execution.respond (runtime.reactiveApplication leaks) actor response
     next.application.playerView owner = execution.application.playerView owner ∧
       next.network.ledger = execution.network.ledger ∧ next.receipts = execution.receipts ∧
@@ -39,30 +39,15 @@ private theorem response_owner_data
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨rfl, rfl, rfl, packets, List.Subset.refl _, rfl⟩
-  | some transmission =>
-      cases transmission with
-      | submit material =>
-          have different : actor ≠ owner := fun same => transport same material rfl
-          refine ⟨?_, rfl, rfl, packets.submit actor _ (foreign _ different), ?_, ?_⟩
-          · exact (submitStep_playerView_other (material.call.register execution.application actor)
-              actor owner different.symm material.call.packet).trans
-                (material.call.register_other execution.application actor owner different.symm)
-          · exact fun _ member => List.mem_append_left _ member
-          · simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
-              Ne.symm different, ↓reduceIte]
-      | replay id =>
-          refine ⟨rfl, ?_, rfl, packets.replay actor id, ?_, ?_⟩
-          · change (execution.network.replay actor id).2.ledger = execution.network.ledger
-            unfold MessageNetwork.replay
-            split <;> rfl
-          · change execution.network.pending ⊆ (execution.network.replay actor id).2.pending
-            unfold MessageNetwork.replay
-            split
-            · exact List.Subset.refl _
-            · exact fun _ member => List.mem_append_left _ member
-          · change (execution.network.replay actor id).2.nextSerial owner = _
-            unfold MessageNetwork.replay
-            split <;> rfl
+  | some material =>
+      have different : actor ≠ owner := fun same => transport same material rfl
+      refine ⟨?_, rfl, rfl, packets.submit actor _ (foreign _ different), ?_, ?_⟩
+      · exact (submitStep_playerView_other (material.call.register execution.application actor)
+          actor owner different.symm material.call.packet).trans
+            (material.call.register_other execution.application actor owner different.symm)
+      · exact fun _ member => List.mem_append_left _ member
+      · simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
+          Ne.symm different, ↓reduceIte]
 
 private theorem activation_clean_data
     (bounds : MessageBounds graph)
@@ -80,9 +65,9 @@ private theorem activation_clean_data
     (reached : next ∈ ((runtime.reactiveApplication leaks).dispatch players (.activate actor)
       execution).support)
     (clean : ∀ record ∈ (runtime.reactiveApplication leaks).executionTraffic next,
-      record.input.envelope.sender = owner →
+      record.envelope.sender = owner →
         runtime.permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = true) :
+          record.envelope = true) :
     next.application.playerView owner = execution.application.playerView owner ∧
       next.network.ledger = execution.network.ledger ∧ next.receipts = execution.receipts ∧
       next.network.Satisfies safe ∧ execution.network.pending ⊆ next.network.pending ∧
@@ -98,13 +83,14 @@ private theorem activation_clean_data
   have middleRecall : middle.InputRecall app := recalled
   have middleSerials : middle.network.SerialsBeforeNext := serials.learn actor selected
   have transport : actor = owner → ∀ material,
-      response.transmission ≠ some (.submit material) := by
+      response.transmission ≠ some material := by
     intro same
     subst actor
     rcases runtime.repeated_submission_response_cases leaks bounds middle owner 0 middleRecall
         middleSerials repeated response (available _ _ response chosen) with replay | bad
     · intro material
-      rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
+      rcases app.silentPolicy_cases _ _ response replay with rfl
+      simp
     · obtain ⟨record, step, authored, rejected⟩ := bad
       have present : record ∈ app.executionTraffic (middle.respond app owner response) := by
         rw [app.executionTraffic_activated_response execution middle owner response 0 moved]
@@ -144,9 +130,9 @@ theorem repeated_window_clean_data
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support)
     (clean : ∀ record ∈ (runtime.reactiveApplication leaks).executionTraffic final,
-      record.input.envelope.sender = owner →
+      record.envelope.sender = owner →
         runtime.permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = true) :
+          record.envelope = true) :
     final.application.playerView owner = initial.application.playerView owner ∧
       final.network.ledger = initial.network.ledger ∧ final.receipts = initial.receipts ∧
       final.network.Satisfies safe ∧ initial.network.pending ⊆ final.network.pending ∧
@@ -161,9 +147,9 @@ theorem repeated_window_clean_data
         PMF.pure_bind] at reached
       obtain ⟨next, moved, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       have nextClean : ∀ record ∈ app.executionTraffic next,
-          record.input.envelope.sender = owner →
+          record.envelope.sender = owner →
             runtime.permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = true := by
+              record.envelope = true := by
         intro record present authored
         exact clean record ((runtime.executionTraffic_runInteractionPlan leaks players network
           (rest.map ServiceInstruction.player) next final tail).subset present) authored
@@ -203,9 +189,9 @@ theorem repeated_window_clean_selection
     (reached : final ∈ (runtime.runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) initial).support)
     (clean : ∀ record ∈ (runtime.reactiveApplication leaks).executionTraffic final,
-      record.input.envelope.sender = owner →
+      record.envelope.sender = owner →
         runtime.permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = true) :
+          record.envelope = true) :
     runtime.reactiveLatest leaks event owner
         (final.observeEnvironment (runtime.reactiveApplication leaks)) = .include message.id ∧
       final.network.lookup message.id = some message := by

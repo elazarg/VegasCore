@@ -129,9 +129,9 @@ theorem binding_phase_stopped_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
           next.1.application.publicView.missedBinding event = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
@@ -174,9 +174,9 @@ theorem binding_phase_stopped_coupling
             (rosterPlan setup rosters).length scheduler).Trace
               (some ⟨rank - (rest.length + 1 + (runtime setup).deadline event + 1),
                 none, final.2.1⟩)) ∧
-          ((∃ record ∈ app.executionTraffic final.1, record.input.envelope.sender = owner ∧
+          ((∃ record ∈ app.executionTraffic final.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = false) ∨
+              record.envelope = false) ∨
             final.1.application.publicView.missedBinding event = true ∨
             BindingMemory.Frame (runtime setup) leaks final.2.2 owner final.1 final.2.1) := by
     obtain ⟨paired, sameMemory, nextTrace, prior, priorSupport, sampled⟩ := related next member

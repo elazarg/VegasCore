@@ -96,14 +96,14 @@ theorem roster_owner_mixture_limit
     PMFConvergesPointwise (fun n =>
       ((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
         app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-          (fun _ _ => PMF.pure opening) app.replayPolicy)).policy past view))
+          (fun _ _ => PMF.pure opening) app.silentPolicy)).policy past view))
       (if ∃ entry ∈ past.drop (rosterOffset setup rosters owner event), entry.action = opening then
-        app.replayPolicy past view
+        app.silentPolicy past view
       else if past.length + 1 = rosterOffset setup rosters owner event +
           (rosters event).count owner then
         limit.bind (fun disclose => if disclose then PMF.pure opening
-          else app.replayPolicy past view)
-      else app.replayPolicy past view) := by
+          else app.silentPolicy past view)
+      else app.silentPolicy past view) := by
   classical
   dsimp only
   let app := application setup leaks
@@ -114,14 +114,14 @@ theorem roster_owner_mixture_limit
   change PMFConvergesPointwise (fun n =>
     ((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
       app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => PMF.pure packet) app.replayPolicy)).policy past view))
+        (fun _ _ => PMF.pure packet) app.silentPolicy)).policy past view))
     (if ∃ entry ∈ past.drop (rosterOffset setup rosters owner event), entry.action = packet then
-      app.replayPolicy past view
+      app.silentPolicy past view
     else if past.length + 1 = rosterOffset setup rosters owner event +
         (rosters event).count owner then
       limit.bind (fun disclose => if disclose then PMF.pure packet
-        else app.replayPolicy past view)
-    else app.replayPolicy past view)
+        else app.silentPolicy past view)
+    else app.silentPolicy past view)
   obtain ⟨selected, frame, earlier, recorded, posterior⟩ :=
     roster_window_posterior setup leaks bounds rosters initial event owner sole ownedEvent
       candidate raw opening owned valid offset serials published players covered network visits
@@ -142,11 +142,11 @@ theorem roster_owner_mixture_limit
       have stopped n :
           ((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
             app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-              (fun _ _ => PMF.pure packet) app.replayPolicy)).policy past view) =
-                app.replayPolicy past view := by
+              (fun _ _ => PMF.pure packet) app.silentPolicy)).policy past view) =
+                app.silentPolicy past view := by
         have fixed : ((app.policyMixture (rosterSelection (choice n) (timing n))
             (fun selected => app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-              (fun _ _ => PMF.pure packet) app.replayPolicy)).posterior past) =
+              (fun _ _ => PMF.pure packet) app.silentPolicy)).posterior past) =
                 PMF.pure (some slot) := posterior _ (full n)
         rw [app.policyMixture_policy, fixed, PMF.pure_bind]
         unfold ReactiveApplication.scheduledPolicy
@@ -169,11 +169,11 @@ theorem roster_owner_mixture_limit
       have probabilities n action :
           ((((app.policyMixture (rosterSelection (choice n) (timing n)) (fun selected =>
             app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-              (fun _ _ => PMF.pure packet) app.replayPolicy)).policy past view)) action).toReal =
+              (fun _ _ => PMF.pure packet) app.silentPolicy)).policy past view)) action).toReal =
             PMF.deferredHazard (((choice n) true).toReal) (timing n) slot.val *
                 ((PMF.pure packet) action).toReal +
               (1 - PMF.deferredHazard (((choice n) true).toReal) (timing n) slot.val) *
-                ((app.replayPolicy past view) action).toReal := by
+                ((app.silentPolicy past view) action).toReal := by
         have representation :=
           PMF.bind_bool_mix (choice n) ((timing n).map some) (PMF.pure none)
         change rosterSelection (choice n) (timing n) = _ at representation
@@ -181,7 +181,7 @@ theorem roster_owner_mixture_limit
         simp only [representation] at exactPost ⊢
         exact app.scheduledMixture_probability_of_posterior (((choice n) true).toReal)
           (ENNReal.toReal_nonneg) (small n) (timing n)
-          (rosterOffset setup rosters owner event) packet app.replayPolicy past slot atSlot
+          (rosterOffset setup rosters owner event) packet app.silentPolicy past slot atSlot
           exactPost view action
       have lastIff : slot = last ↔ past.length + 1 =
           rosterOffset setup rosters owner event + (rosters event).count owner := by
@@ -199,7 +199,7 @@ theorem roster_owner_mixture_limit
       have one : Filter.Tendsto (fun _ : Nat => (1 : ℝ)) Filter.atTop (nhds 1) :=
         tendsto_const_nhds
       have combined := (hazard.mul_const (((PMF.pure packet) action).toReal)).add
-        ((one.sub hazard).mul_const (((app.replayPolicy past view) action).toReal))
+        ((one.sub hazard).mul_const (((app.silentPolicy past view) action).toReal))
       have actual := combined.congr' (Filter.Eventually.of_forall
         (fun n => (probabilities n action).symm))
       by_cases finalSlot : slot = last
@@ -226,12 +226,12 @@ theorem rosterLimitPolicy_at_phase
     let packet := (runtime setup).windowOpening leaks event candidate raw
     rosterLimitPolicy setup leaks rosters profile owner past view =
       if ∃ entry ∈ past.drop (rosterOffset setup rosters owner event), entry.action = packet then
-        app.replayPolicy past view
+        app.silentPolicy past view
       else if past.length + 1 = rosterOffset setup rosters owner event +
           (rosters event).count owner then
         (sourceChoiceLaw setup leaks profile owner (initial.observe app owner)).bind
-          (fun disclose => if disclose then PMF.pure packet else app.replayPolicy past view)
-      else app.replayPolicy past view := by
+          (fun disclose => if disclose then PMF.pure packet else app.silentPolicy past view)
+      else app.silentPolicy past view := by
   have turn :
       (current.observe (application setup leaks) owner).application.publicView.ownTurn? owner =
         some event := by

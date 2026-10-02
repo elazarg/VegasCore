@@ -73,7 +73,7 @@ theorem reactive_decision_submission_permitted (runtime : EventGraphRuntime grap
     (who : Player) (event : graph.EventId) (action : graph.Action event)
     (view : ReactivePlayerView graph) (submission : WitnessedSubmission graph)
     (sent : (runtime.reactiveDecision leaks who event action view).transmission =
-      some (.submit submission)) (state : State graph)
+      some submission) (state : State graph)
     (known : List (Message Player (WitnessedPacket graph))) :
     unsupportedEvidence (submission.emit state who known) = false := by
   unfold reactiveDecision at sent

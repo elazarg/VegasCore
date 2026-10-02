@@ -1,15 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.MonitoredGuessing.NativeResponses
+import Vegas.Examples.MonitoredGuessing.NativeLiability
 import Vegas.Pending.ReactiveServiceEvaluation
 import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Ordinary passive observation detects every ambient submission
 
-The selected packet is replayed by a player using only their leaked view. The
-fixed wire step checks the resulting public rebroadcast, and the actual handler
-rejects the premature call. No privately sampled identifier is supplied to the
-scheduler. The debit is determined by the resulting persistent public receipt.
+Watcher samples actual pending packets and retains them privately. Its response
+and the wire slot are silent. The resulting evidence mark is not a collection
+decision; terminal settlement verifies the signed evidence against the record.
 -/
 
 noncomputable section
@@ -18,36 +18,17 @@ namespace Vegas.Examples.MonitoredGuessing
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
-def reportCommand (execution : nativeApp.Execution) : nativeApp.Command :=
-  nativeApp.atMostOnceCommand (execution.observeEnvironment nativeApp) <|
-    match execution.network.inputs.getLast? with
-    | none => .wait
-    | some input =>
-        if input.broadcaster = watcher ∧ input.envelope.sender = alice then
-          .include input.envelope.id
-        else .wait
+def reportCommand (_execution : nativeApp.Execution) : nativeApp.Command := .wait
 
 def reported (execution : nativeApp.Execution) : nativeApp.Execution :=
-  let command := reportCommand execution
-  let next := match command with
-    | .include id => execution.includePending nativeApp id
-    | _ => execution
-  { next with environmentRecall := execution.environmentRecall ++
-      [⟨execution.observeEnvironment nativeApp, command⟩] }
+  { execution with environmentRecall := execution.environmentRecall ++
+      [⟨execution.observeEnvironment nativeApp, .wait⟩] }
 
 theorem report_command_law (execution : nativeApp.Execution) :
     nativeRuntime.interactionInstruction nativeLeaks nativeNetwork execution.environmentRecall
       (execution.observeEnvironment nativeApp) .wire = PMF.pure (reportCommand execution) := by
-  simp only [EventGraphRuntime.interactionInstruction, nativeNetwork, PMF.pure_map]
-  unfold reportCommand
-  change PMF.pure (nativeApp.atMostOnceCommand _
-    (NetworkChoice.command _ _ (match execution.network.inputs.getLast? with
-      | none => .wait
-      | some input => if input.broadcaster = watcher ∧ input.envelope.sender = alice then
-          .include input.envelope.id else .wait))) = _
-  cases execution.network.inputs.getLast? with
-  | none => rfl
-  | some input => dsimp only; split_ifs <;> rfl
+  simp only [interactionInstruction, nativeNetwork, PMF.pure_map]
+  rfl
 
 def monitoredPrefix (bit : Bool) (action : nativeApp.Action)
     (selected : Finset (MessageId Player)) : nativeApp.Execution :=
@@ -60,53 +41,45 @@ def monitoredPrefixLaw (bit : Bool) (action : nativeApp.Action) : PMF nativeApp.
     (monitoredPrefix bit action)
 
 def submissionAction (submission : WitnessedSubmission nativeGraph) : nativeApp.Action :=
-  ⟨some (.submit submission)⟩
+  ⟨some submission⟩
 
 theorem ambient_submission_pending (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
     (ambientRespond bit (submissionAction submission)).network.pending =
       [⟨(alice, 0), nativeApp.packet
         (nativeApp.submit (nativeInitial bit) alice submission) alice [] submission⟩] := rfl
 
-theorem sampled_submission_report (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
-    (monitoredPrefix bit (submissionAction submission) {(alice, 0)}).receipts =
-      [((alice, 0), false)] := by
-  let before := watcherRespond bit (submissionAction submission) {(alice, 0)}
-    ⟨some (.replay (alice, 0))⟩
-  have received : nativeWatcherResponse
-      ((watcherActivated bit (submissionAction submission) {(alice, 0)}).observe
-        nativeApp watcher) = ⟨some (.replay (alice, 0))⟩ := rfl
-  have command : reportCommand before = .include (alice, 0) := by
-    rfl
-  unfold monitoredPrefix
-  dsimp only
-  rw [received]
-  change (reported before).receipts = _
-  unfold reported
-  rw [command]
-  change (before.includePending nativeApp (alice, 0)).receipts = _
-  let message : Message Player (WitnessedPacket nativeGraph) :=
-    ⟨(alice, 0), nativeApp.packet
-      (nativeApp.submit (nativeInitial bit) alice submission) alice [] submission⟩
-  have found : before.network.lookup (alice, 0) = some message := rfl
-  have rejected : nativeApp.handle before.application message = none :=
-    reactiveHandle_none (prelude_rejects bit before.application
-      (watcher_config bit (submissionAction submission) {(alice, 0)} _)
-      ⟨message.id, message.payload.call⟩ (by change alice ≠ bob; decide))
-  unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-  rw [found]
-  change before.receipts ++ [((alice, 0), (nativeApp.handle before.application message).isSome)] = _
-  rw [rejected]
-  rfl
+theorem ambient_submission_premature (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
+    let packet := nativeApp.packet (nativeApp.submit (nativeInitial bit) alice submission)
+      alice [] submission
+    prematureAlicePacket packet = true := by
+  cases submission with
+  | mk call evidence =>
+      cases call with
+      | mk packet opening =>
+          cases packet with
+          | opening event candidate raw | withhold event =>
+              fin_cases event <;> cases evidence <;> cases bit <;> rfl
+          | commitment event candidate | malformed raw => cases evidence <;> rfl
 
-theorem unsampled_submission_no_report (bit : Bool)
+theorem sampled_submission_liability (bit : Bool)
     (submission : WitnessedSubmission nativeGraph) :
-    (monitoredPrefix bit (submissionAction submission) ∅).receipts = [] := by
+    aliceLiability (monitoredPrefix bit (submissionAction submission) {(alice, 0)}) = true := by
+  change (false || ([(⟨(alice, 0), nativeApp.packet
+    (nativeApp.submit (nativeInitial bit) alice submission) alice [] submission⟩ :
+      Message Player (WitnessedPacket nativeGraph))].any
+        fun message => message.sender == alice && prematureAlicePacket message.payload)) = true
+  simp only [List.any_cons, List.any_nil, Message.sender, beq_self_eq_true, Bool.true_and,
+    ambient_submission_premature, Bool.true_or, Bool.false_or]
+
+theorem unsampled_submission_no_liability (bit : Bool)
+    (submission : WitnessedSubmission nativeGraph) :
+    aliceLiability (monitoredPrefix bit (submissionAction submission) ∅) = false := by
   simp only [monitoredPrefix, watcherActivated, MessageNetwork.learn_empty]
   rfl
 
 theorem submission_monitoring_law (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
     (monitoredPrefixLaw bit (submissionAction submission)).map
-      (fun execution => rejectedAlice execution.receipts) =
+      (fun execution => aliceLiability execution) =
         mix (1 / 2) (by norm_num) (by norm_num)
           (PMF.pure true) (PMF.pure false) := by
   unfold monitoredPrefixLaw nativeLeaks
@@ -116,12 +89,12 @@ theorem submission_monitoring_law (bit : Bool) (submission : WitnessedSubmission
     rw [ambient_submission_pending]
     rfl
   rw [identifiers]
-  simp [sampled_submission_report, unsampled_submission_no_report, rejectedAlice]
+  simp [sampled_submission_liability, unsampled_submission_no_liability]
 
 theorem submission_detection_probability (bit : Bool)
     (submission : WitnessedSubmission nativeGraph) :
     (((monitoredPrefixLaw bit (submissionAction submission)).map
-      (fun execution => rejectedAlice execution.receipts)) true).toReal = 1 / 2 := by
+      (fun execution => aliceLiability execution)) true).toReal = 1 / 2 := by
   rw [submission_monitoring_law]
   simp
 
@@ -129,23 +102,10 @@ theorem report_step (players : Player → nativeApp.Policy) (execution : nativeA
     nativeRuntime.interactionStep nativeLeaks players nativeNetwork .wire execution =
       PMF.pure (reported execution) := by
   rw [interactionStep, report_command_law, PMF.pure_bind]
-  unfold reported reportCommand
-  cases found : execution.network.inputs.getLast? with
-  | none =>
-      simp only [ReactiveApplication.atMostOnceCommand, ReactiveApplication.dispatch,
-        ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-        ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
-  | some input =>
-      dsimp only
-      split
-      · simp only [ReactiveApplication.atMostOnceCommand]
-        split <;>
-          simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
-            ReactiveApplication.resume, ReactiveApplication.Execution.environmentStep,
-            PMF.pure_map, PMF.pure_bind]
-      · simp only [ReactiveApplication.atMostOnceCommand, ReactiveApplication.dispatch,
-          ReactiveApplication.Command.actor?, ReactiveApplication.resume,
-          ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
+  simp only [reportCommand, ReactiveApplication.dispatch, ReactiveApplication.Command.actor?,
+    ReactiveApplication.resume, ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+    PMF.pure_bind]
+  rfl
 
 theorem watcher_step (players : Player → nativeApp.Policy)
     (reports : players watcher = nativeWatcherPolicy) (bit : Bool) (action : nativeApp.Action) :
@@ -181,17 +141,7 @@ theorem initial_response_cases (bit : Bool) (action : nativeApp.Action)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact Or.inl rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact Or.inr ⟨submission, rfl⟩
-      | replay id =>
-          change (⟨some (.replay id)⟩ : nativeApp.Action) ∈
-            (nativeBounds.rawMenu nativeRuntime nativeLeaks).actions alice _ _ at available
-          rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
-            at available
-          obtain ⟨message, member, _⟩ := available
-          change message ∈ ([] : List (Message Player (WitnessedPacket nativeGraph))) at member
-          cases member
+  | some submission => exact Or.inr ⟨submission, rfl⟩
 
 theorem silent_monitoring_law (bit : Bool) :
     monitoredPrefixLaw bit nativeSilent = PMF.pure (monitoredPrefix bit nativeSilent ∅) := by
@@ -200,7 +150,7 @@ theorem silent_monitoring_law (bit : Bool) :
   change (mix (1 / 2) _ _ (PMF.pure ∅) (PMF.pure ∅)).map _ = _
   rw [mix_self, PMF.pure_map]
 
-theorem silent_monitoring_no_report (bit : Bool) :
-    (monitoredPrefix bit nativeSilent ∅).receipts = [] := rfl
+theorem silent_monitoring_no_liability (bit : Bool) :
+    aliceLiability (monitoredPrefix bit nativeSilent ∅) = false := rfl
 
 end Vegas.Examples.MonitoredGuessing

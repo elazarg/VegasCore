@@ -95,7 +95,7 @@ theorem roster_remaining_settlement
   let family := fun mode : Option (Fin ((rosters event).count owner)) =>
     app.scheduledPolicy (rosterOffset setup rosters owner event) mode
       (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-        app.replayPolicy
+        app.silentPolicy
   let posterior := (app.policyMixture choices family).posterior (current.recall owner)
   have frames (mode : Option (Fin ((rosters event).count owner)))
       (possible : mode ∈ posterior.support) :

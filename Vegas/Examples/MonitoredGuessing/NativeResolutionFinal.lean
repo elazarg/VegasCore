@@ -16,26 +16,26 @@ open GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
 /-- Once Bob's guess has settled, no later raw response can improve on a
 truthful final opening or remove an earlier sanction. -/
-theorem resolution_plan_alice_upper (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+theorem resolution_plan_alice_upper (charge : ℝ) (nonnegative : 0 ≤ charge)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph))
     (execution : nativeApp.Execution) (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit execution.application)
     (stored : bobPublicationRef.get? execution.application.config.store = some guess) :
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
-      (nativeExecutionUtility deposit alice) ≤ correctness (.success bit) guess -
-        if rejectedAlice execution.receipts then deposit else 0 := by
+      (nativeComparisonExecutionUtility charge alice) ≤ correctness (.success bit) guess -
+        if aliceLiability execution then charge else 0 := by
   refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _
-    (nativeExecutionUtility_abs_le deposit alice)) _ fun final supported => ?_
+    (nativeComparisonExecutionUtility_abs_le charge alice)) _ fun final supported => ?_
   have fixed := resolution_plan_invariant players _ (native_fixed_invariant bit) plan
     execution final valid supported
   have bound := resolution_plan_invariant players _
     (nativeRuntime.reactiveStoreInvariant nativeLeaks (.inr bobPublication) guess) plan
     execution final stored supported
-  have retained := native_plan_receipts_prefix players plan execution final supported
-  exact resolution_execution_payoff_upper deposit nonnegative bit execution final fixed guess
+  have retained := native_plan_liability players plan execution final supported
+  exact resolution_execution_payoff_upper charge nonnegative bit execution final fixed guess
     bound retained
 
-theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+theorem resolution_history_finish_dominates (charge : ℝ) (nonnegative : 0 ≤ charge)
     (profile : Profile nativeModel.behavioralSignature)
     (prescribed : profile alice = nativeAliceBehavior)
     (alternative : nativeModel.BehavioralPolicy alice)
@@ -50,10 +50,10 @@ theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
         (Profile.update (sig := nativeModel.behavioralSignature) profile alice alternative))
-      (some control)) (nativeUtility deposit alice) ≤
+      (some control)) (nativeComparisonUtility charge alice) ≤
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-      (some control)) (nativeUtility deposit alice) := by
+      (some control)) (nativeComparisonUtility charge alice) := by
   obtain ⟨bit, fixed⟩ := native_history_fixed control trace
   have serials := nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw
     nativeHorizon (nativeMenu.toRawTrace nativeInitialLaw nativeHorizon nativeScheduler trace)
@@ -65,7 +65,7 @@ theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤
     rw [prescribed, decode_native_alice]
     change PMF.pure (nativeAliceResponse (control.execution.observe nativeApp alice)) = _
     rw [native_alice_response_eq bit control.execution fixed ready]
-  have bounded := resolution_finish_alice_dominates deposit nonnegative
+  have bounded := resolution_finish_alice_dominates charge nonnegative
     (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
     (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
       (Profile.update (sig := nativeModel.behavioralSignature) profile alice alternative))
@@ -75,7 +75,7 @@ theorem resolution_history_finish_dominates (deposit : ℝ) (nonnegative : 0 ≤
     simp_all only
   simpa only [← representation] using bounded
 
-theorem resolution_final_site_dominates (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+theorem resolution_final_site_dominates (charge : ℝ) (nonnegative : 0 ≤ charge)
     (assessment : nativeModel.BehavioralAssessment)
     (prescribed : assessment.strategy alice = nativeAliceBehavior)
     (site : nativeModel.InformationSite alice)
@@ -84,10 +84,10 @@ theorem resolution_final_site_dominates (deposit : ℝ) (nonnegative : 0 ≤ dep
     (responded : past.length = 1)
     (alternative : nativeModel.BehavioralPolicy alice) :
     (assessment.truncatedContinuationContext site
-      (fun history => nativeUtility deposit alice history.state)
+      (fun history => nativeComparisonUtility charge alice history.state)
         (2 * nativeHorizon + 1)).value alternative ≤
     (assessment.truncatedContinuationContext site
-      (fun history => nativeUtility deposit alice history.state)
+      (fun history => nativeComparisonUtility charge alice history.state)
         (2 * nativeHorizon + 1)).value (assessment.strategy alice) := by
   rw [nativeMenu.context_value_finish nativeInitialLaw nativeHorizon nativeScheduler,
     nativeMenu.context_value_finish nativeInitialLaw nativeHorizon nativeScheduler,
@@ -111,7 +111,7 @@ theorem resolution_final_site_dominates (deposit : ℝ) (nonnegative : 0 ≤ dep
     exact Option.isSome_iff_exists.mp available
   obtain ⟨guess, stored⟩ := existsResult
   rw [stateEq]
-  exact resolution_history_finish_dominates deposit nonnegative assessment.strategy prescribed
+  exact resolution_history_finish_dominates charge nonnegative assessment.strategy prescribed
     alternative control trace active position.1 position.2 ready timely guess stored
 
 end Vegas.Examples.MonitoredGuessing

@@ -52,7 +52,7 @@ theorem visitInput_visit {Claim : Type} (event : Event)
 def selectedDisclosure {Claim : Type} (event : Event)
     (response : (application Claim).Action) : Bool :=
   match response.transmission with
-  | some (.submit submission) =>
+  | some submission =>
       submission.address = some event ∧ submission.kind = .open
   | _ => false
 
@@ -71,20 +71,16 @@ theorem opening_response_core {Claim : Type} (event : Event)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => simpa only [selectedDisclosure, stage, ↓reduceIte] using advances .failure false
-  | some transmission =>
-      cases transmission with
-      | replay =>
-          simpa only [selectedDisclosure, stage, ↓reduceIte] using advances .failure false
-      | submit submission =>
-          cases address : submission.address with
-          | none => simp [submit, visited, address, selectedDisclosure, stage, advances]
-          | some target =>
-              by_cases same : target = event
-              · subst target
-                cases kind : submission.kind <;>
-                  simp [submit, visited, address, kind, selectedDisclosure, stage,
-                    Nat.not_lt.mpr opening, opening, advances, nextStage]
-              · simp [submit, visited, address, same, selectedDisclosure, stage, advances]
+  | some submission =>
+      cases address : submission.address with
+      | none => simp [submit, visited, address, selectedDisclosure, stage, advances]
+      | some target =>
+          by_cases same : target = event
+          · subst target
+            cases kind : submission.kind <;>
+              simp [submit, visited, address, kind, selectedDisclosure, stage,
+                Nat.not_lt.mpr opening, opening, advances, nextStage]
+          · simp [submit, visited, address, same, selectedDisclosure, stage, advances]
 
 theorem alice_opening_response {Claim : Type}
     (execution : (application Claim).Execution) (response : (application Claim).Action)

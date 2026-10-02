@@ -38,8 +38,8 @@ def activatedInitial : app.Execution :=
   { initial with environmentRecall := [⟨initial.observeEnvironment app, .activate 0⟩] }
 
 def first (bit : Bool) : app.Execution :=
-  activatedInitial.respond app 0 ⟨some (.submit
-    ⟨⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩, .owned (opening bit)⟩)⟩
+  activatedInitial.respond app 0
+    ⟨some ⟨⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩, .owned (opening bit)⟩⟩
 
 def observed (bit : Bool) : app.Execution :=
   { first bit with
@@ -53,7 +53,7 @@ def beforeOffer (execution : app.Execution) : app.Execution :=
 
 def offered (bit : Bool) : app.Execution :=
   (beforeOffer (observed bit)).respond app 0
-    ⟨some (.submit ⟨⟨.commitment 0 candidate, none⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment 0 candidate, none⟩, .none⟩⟩
 
 def included (bit : Bool) : app.Execution :=
   { (offered bit).includePending app (0, 1) with
@@ -178,13 +178,13 @@ theorem carol_cannot_distinguish :
     · rfl
 
 /-- Bob's response may prepare candidates, forge claims, forward a possessed
-certificate, replay Alice's envelope, or remain silent. No case is excluded. -/
+certificate, reuse a candidate, or remain silent. No case is excluded. -/
 def reacted (bit : Bool) (response : app.Action) : app.Execution :=
   (observed bit).respond app 1 response
 
 def offeredAfter (bit : Bool) (response : app.Action) : app.Execution :=
   (beforeOffer (reacted bit response)).respond app 0
-    ⟨some (.submit ⟨⟨.commitment 0 candidate, none⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment 0 candidate, none⟩, .none⟩⟩
 
 def includedAfter (bit : Bool) (response : app.Action) : app.Execution :=
   { (offeredAfter bit response).includePending app (0, 1) with
@@ -223,28 +223,14 @@ private theorem reacted_alice_serial (bit : Bool) (response : app.Action) :
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material => rfl
-      | replay id =>
-          cases found : ((observed bit).network.known 1).find?
-              (fun envelope => envelope.id = id) <;>
-            simp only [reacted, ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
-          all_goals rfl
+  | some material => rfl
 
 private theorem reacted_ledger (bit : Bool) (response : app.Action) :
     (reacted bit response).network.ledger = [] := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material => rfl
-      | replay id =>
-          cases found : ((observed bit).network.known 1).find?
-              (fun envelope => envelope.id = id) <;>
-            simp only [reacted, ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
-          all_goals rfl
+  | some material => rfl
 
 private theorem offeredAfter_application (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).application = (reacted bit response).application := by
@@ -327,18 +313,7 @@ private theorem reacted_missing (bit : Bool) (response : app.Action) :
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => cases bit <;> rfl
-  | some transmission =>
-      cases transmission with
-      | submit material => cases bit <;> rfl
-      | replay id =>
-          simp only [reacted, ReactiveApplication.Execution.respond, MessageNetwork.replay,
-            bobKnown]
-          by_cases same : (0, 0) = id
-          · subst id
-            simp only [List.find?_cons, decide_true]
-            cases bit <;> rfl
-          · simp only [List.find?_cons, same, decide_false, List.find?_nil]
-            cases bit <;> rfl
+  | some material => cases bit <;> rfl
 
 private theorem lookupAfter (bit : Bool) (response : app.Action) :
     (offeredAfter bit response).network.lookup (0, 1) =
@@ -362,8 +337,8 @@ private theorem includedAfter_application (bit : Bool) (response : app.Action) :
   rw [acceptsAfter]
   rfl
 
-/-- The reserved selector chooses Alice's later envelope even if Bob replayed
-the first certified one or submitted a competing application call. -/
+/-- The reserved selector chooses Alice's later envelope even if Bob forwarded
+the first certificate or submitted a competing application call. -/
 theorem later_envelope_selected (bit : Bool) (response : app.Action) :
     runtime.reactiveLatest leaks 0 0 ((offeredAfter bit response).observeEnvironment app) =
       .include (0, 1) := by
@@ -480,14 +455,7 @@ private theorem reacted_leaked (bit : Bool) (response : app.Action) (who : Fin 3
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material => rfl
-      | replay id =>
-          cases found : ((observed bit).network.known 1).find?
-              (fun envelope => envelope.id = id) <;>
-            simp only [reacted, ReactiveApplication.Execution.respond, MessageNetwork.replay,
-              found]
+  | some material => rfl
 
 /-- Arbitrary intervening responses cannot erase Bob's old certificate. The
 later accepted envelope carries no certificate of its own. -/

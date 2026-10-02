@@ -27,12 +27,7 @@ theorem respond_receipts (execution : app.Execution) (who : Principal)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material => rfl
-      | replay id =>
-          cases found : (execution.network.known who).find? (fun envelope => envelope.id = id) <;>
-            simp only [Execution.respond, MessageNetwork.replay, found]
+  | some material => rfl
 
 theorem includePending_receipts_prefix (execution : app.Execution)
     (id : MessageId Principal) :
@@ -127,13 +122,7 @@ theorem receiptsSound_respond (predicate : app.Payload → Prop)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact sound
-  | some transmission =>
-      cases transmission with
-      | submit material => exact sound
-      | replay id =>
-          cases found : (execution.network.known who).find? (fun envelope => envelope.id = id) <;>
-            simpa only [Execution.respond, MessageNetwork.replay, found,
-              Execution.ReceiptsSound] using sound
+  | some material => exact sound
 
 theorem receiptsSound_includePending (predicate : app.Payload → Prop)
     (execution : app.Execution) (id : MessageId Principal)

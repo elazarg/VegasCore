@@ -41,7 +41,7 @@ theorem sourceService_sample_window_conformance
       message.id ∈ execution.network.ledger.map Message.id)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (visits : List Player) (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) execution).support) :
@@ -49,7 +49,7 @@ theorem sourceService_sample_window_conformance
       current.application.publicView current.network.ledger message = true) ∧
     (∀ record ∈ (application setup leaks).executionTraffic current,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true) := by
+        record.envelope = true) := by
   let app := application setup leaks
   induction visits using List.reverseRecOn generalizing current with
   | nil =>
@@ -81,7 +81,7 @@ theorem sourceService_sample_window_conformance
           change before.application.publicView.Idle actor
           rw [same]
           exact sole.idle (by rw [chance]; simp))
-        (sampled.known actor) response member
+        response member
       refine ⟨(runtime setup).service_response_conformance leaks activated 0 actor response
         sampled issued, ?_⟩
       intro record included
@@ -107,13 +107,13 @@ theorem ServiceBoundary.binding_block_conformance
     (owned : (graph setup).actor? event = some owner)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
       (rosterBlock setup rosters event) execution).support) :
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   rw [rosterBlock_of_owner setup rosters event owner owned] at reached
   simp only [List.append_assoc] at reached
   rw [(runtime setup).runInteractionPlan_append] at reached
@@ -144,13 +144,13 @@ theorem ServiceBoundary.sample_block_conformance
     (chance : (graph setup).actor? event = none)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
       (rosterBlock setup rosters event) execution).support) :
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   simp only [rosterBlock, chance, List.append_assoc] at reached
   rw [(runtime setup).runInteractionPlan_append] at reached
   obtain ⟨visited, window, tail⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
@@ -180,13 +180,13 @@ theorem ServiceBoundary.roster_block_conformance
     (event : (graph setup).EventId) (atRank : event.val = rank)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
       (rosterBlock setup rosters event) execution).support) :
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   cases node : nodeView (graph setup) event with
   | sample payload law outputEq codeEq =>
       have chance : (graph setup).actor? event = none := by
@@ -228,7 +228,7 @@ theorem initialized_sourceService_prefix_conformance
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support) :
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   induction count generalizing final with
   | zero =>
       simp only [rosterPlanPrefix, List.take_zero, List.flatMap_nil, runInteractionPlan] at reached
@@ -265,7 +265,7 @@ theorem initialized_sourceService_conformance
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support) :
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   apply initialized_sourceService_prefix_conformance bounds values capacity opportunities players
     lawful network (eventCount setup.program) le_rfl final
   have complete : rosterPlanPrefix setup rosters (eventCount setup.program) =

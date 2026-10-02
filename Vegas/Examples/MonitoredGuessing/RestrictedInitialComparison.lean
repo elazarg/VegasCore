@@ -7,7 +7,7 @@ import Vegas.Examples.MonitoredGuessing.NativeInitialRationality
 /-! # Early sender comparison for every paired continuation profile
 
 The restricted sender is initially silent. Every additional effective response
-submits a packet, whose fixed deposit bounds its entire continuation below the
+submits a packet, whose fixed charge bounds its entire continuation below the
 whole-outcome minimum. Every restricted continuation attains at least that
 minimum, including continuations that withhold the final opening. Reporting is
 forced by this edge's watched menu; no arbitrary watcher cooperation is assumed.
@@ -51,12 +51,12 @@ theorem initial_finish_le_lower (table : PayoffTable)
       PMF.pure (submissionAction submission)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
       (some (initialAliceControl bit)))
-        (fun state => Enforcement.stateUtility table state alice) ≤
+        (fun state => Enforcement.comparisonStateUtility table state alice) ≤
       Enforcement.payoffLower table alice := by
   rw [initial_alice_finish, submits, PMF.pure_bind, expect_map]
   change expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan.tail
     (ambientRespond bit (submissionAction submission)))
-      (fun execution => Enforcement.executionUtility table execution alice) ≤ _
+      (fun execution => Enforcement.comparisonExecutionUtility table execution alice) ≤ _
   rw [show nativePlan.tail = [.player watcher, .wire] ++ nativePlan.drop 3 from rfl,
     runInteractionPlan_append, monitoring_plan players reports]
   exact Enforcement.initial_submission_le_lower table bit submission players _
@@ -67,14 +67,14 @@ theorem initial_clean_finish_lower (table : PayoffTable)
       expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
         (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
         (some (initialAliceControl bit)))
-          (fun state => Enforcement.stateUtility table state who) := by
+          (fun state => Enforcement.comparisonStateUtility table state who) := by
   have silence : restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
       profile alice [] ((aliceActivated bit).observe nativeApp alice) =
         PMF.pure nativeSilent := decoded_early_alice profile bit
   rw [initial_alice_finish, silence, PMF.pure_bind, expect_map]
   change _ ≤ expect (nativeRuntime.runInteractionPlan nativeLeaks _ nativeNetwork nativePlan.tail
     (ambientRespond bit nativeSilent))
-      (fun execution => Enforcement.executionUtility table execution who)
+      (fun execution => Enforcement.comparisonExecutionUtility table execution who)
   rw [show nativePlan.tail = [.player watcher, .wire, .player bob] ++
     nativePlan.drop 4 from rfl, runInteractionPlan_append,
     quiet_silent_to_bob _ (restricted_watcher_policy profile)]
@@ -83,7 +83,8 @@ theorem initial_clean_finish_lower (table : PayoffTable)
         (targetGuesses profile).map (choiceAction bobPublication bobHandle true) :=
     decoded_bob_response profile bit
   rw [guessing, PMF.bind_map,
-    expect_bind_tower _ _ _ (Enforcement.executionUtility_integrable table who _), expect_map]
+    expect_bind_tower _ _ _ (Enforcement.comparisonExecutionUtility_integrable table who _),
+      expect_map]
   rw [← expect_constant (targetGuesses profile) (Enforcement.payoffLower table who : ℝ)]
   refine expect_mono (fun guess _ => ?_) (payoffIntegrable_of_finite (α := Bool) _ _)
     (payoffIntegrable_of_finite (α := Bool) _ _)
@@ -92,7 +93,7 @@ theorem initial_clean_finish_lower (table : PayoffTable)
       resolutionTail)
     ((quietBob bit).respond nativeApp bob
       (choiceAction bobPublication bobHandle true guess)))
-        (fun execution => Enforcement.executionUtility table execution who)
+        (fun execution => Enforcement.comparisonExecutionUtility table execution who)
   rw [bob_choice_value]
   rw [← expect_constant (targetDisclosures profile bit guess)
     (Enforcement.payoffLower table who : ℝ)]
@@ -119,12 +120,12 @@ theorem initial_continuation_comparison (table : PayoffTable)
       (Profile.update (sig := watchedModel.behavioralSignature) targetProfile alice
         ((targetProfile alice).commit (ordinaryRestriction.site alice site).1 action))
       fuel (ordinaryRestriction.history history.1))
-        (fun final => Enforcement.stateUtility table final.state alice) ≤
+        (fun final => Enforcement.comparisonStateUtility table final.state alice) ≤
     expect (restrictedModel.runBehavioralFrom
       (Profile.update (sig := restrictedModel.behavioralSignature) sourceProfile alice
         ((sourceProfile alice).withLaw site.1 (ordinaryComparator alice site action)))
       fuel history.1)
-        (fun final => Enforcement.stateUtility table final.state alice) := by
+        (fun final => Enforcement.comparisonStateUtility table final.state alice) := by
   classical
   rcases site with ⟨information, occurs⟩
   dsimp only at observed
@@ -178,9 +179,9 @@ theorem initial_continuation_comparison (table : PayoffTable)
   have legalLaw := restrictedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
     legalProfile fuel history.1 (by rw [known]; exact enough)
   have rawValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
-    expect law (fun state => Enforcement.stateUtility table state alice)) rawLaw
+    expect law (fun state => Enforcement.comparisonStateUtility table state alice)) rawLaw
   have legalValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
-    expect law (fun state => Enforcement.stateUtility table state alice)) legalLaw
+    expect law (fun state => Enforcement.comparisonStateUtility table state alice)) legalLaw
   simp only [expect_map, Function.comp_def] at rawValue legalValue
   change expect (watchedModel.runBehavioralFrom rawProfile fuel
     (ordinaryRestriction.history history.1)) _ ≤

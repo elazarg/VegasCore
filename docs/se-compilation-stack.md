@@ -17,9 +17,9 @@ and actual net-payoff law of **every source SE**.
 The [general-roster revelation theorem](../Vegas/Game/RevealServiceRosterCompilation.lean)
 preserves every source SE for reveal-only programs with openable initial
 bindings. Each actor has at least one visit at its event; arbitrary additional
-finite roster visits, passive partial observations, replay and source
-withholding remain available. Authentic signed phase evidence, positive
-conditional monitoring coverage and collectible deposits are explicit service
+finite roster visits, passive partial observations, fresh submissions and source
+withholding remain available. Authentic signed packet evidence, positive
+conditional collection coverage and collectible deposits are explicit service
 assumptions. The conclusion is existence of a bounded raw-runtime SE with the
 same joint typed source outcome and actual settlement law.
 
@@ -49,8 +49,8 @@ reasonable and what it leaves outside the claim.
 | Finite response interface (`SourceServiceSpec.values`, `SourceServiceSpec.initialValues`, `SourceServiceSpec.capacity`) | Every source binding value and supported initial binding table has a native message form and a candidate slot, so the native game is finite and implements every source choice. | Declared once for the service. Every commitment payload type must be finite, so a program committing integers is outside this theorem; the Nash-level theorems do not need this. |
 | Bounded interaction (`SourceServiceSpec.rosters`, `SourceServiceSpec.opportunities`) | Finite activation rosters give a bounded native horizon; each actor has an activation at its own event. | Rosters may add arbitrary finite extra visits and passive observation. Unbounded interaction and PMF-valued traffic are separate refinements. |
 | Protected service | The modeled runtime includes each submission at most once and completes events at their deadlines; public binding omissions are attributable. The delivery and ordering environment is not a player. | A property of the service being modeled, not a hypothesis of the theorem. No ledger provides it outright: a block producer paid to delay an opening past its deadline turns a prescribed action into a failure, and payoffs that reward an opponent's failure make such bribes worthwhile. Censorship and a strategic sequencer are outside the claim. |
-| Authentic partial audit (`authentic`) | Sampled evidence is a subset of actual traffic, so the audit charges no permitted history. | Missing records are never evidence. Authenticating phase and prior-ledger context remains an oracle obligation beyond signatures. A record carries the phase at which a message was transmitted, including a third party's replay, and is attributed to its author, so a late replay of a pending envelope is charged to that author; the protected service keeps prescribed traffic clear of this. |
-| Positive conditional coverage (`positive`, `coverage`) | Each forbidden record of a player is sampled with at least a fixed positive probability, so a fixed deposit deters every first departure. | The rate is a property of the audit backend; independent per-record sampling achieves it, and a complete audit gives rate one (`SourceServiceSpec.completeAudit_raw_sequentialEquilibrium_preserved`). It covers messages that are never included, which no mempool observer guarantees, and it presupposes closed communication: an opening handed to an opponent through an unaudited channel or an unregistered account is verifiable and invisible to the audit. |
+| Authentic partial audit (`authentic`) | Collected evidence is a subset of actual signed traffic, so permitted histories are uncharged. | A watcher reports only envelopes it observed or read from the ledger. The verdict reads their immutable readiness tokens and the contract record; it needs no transmission-time or prior-ledger oracle. Missing reports are never evidence. |
+| Positive conditional coverage (`positive`, `coverage`) | Each forbidden signed packet has a fixed positive probability of actual collection, so the deposit covers a first departure. | Observation and timely report delivery are separate backend assumptions. `EvidenceReportService.sample_coverage` combines their conditional bounds without independence. The bound also covers unincluded packets; unaudited communication remains outside the claim. A complete audit is an explicit mathematical instance. |
 | Collectible fixed deposits (`rosterAuditDeposit`) | Settlement subtracts a deposit fixed from the finite payoff range before an equilibrium is chosen. The range is taken over all native histories, where an unfinished history counts as zero. | Collectibility is an interpretation of the settlement utility: utilities are quasi-linear in money, forfeited deposits are burned, and one charge covers all of a player's violations. No escrow implementation is proved. The deposit scales as range/p. |
 | Utility of initial parameters and public outcome | The source utility is the raw utility evaluated on the typed source readout, invariant under private response normalization. | Utilities that read repaired private future values are outside the claim. |
 | Public chance | A sample draws exactly from its kernel, conditional on the preceding execution, and players cannot withhold or replace the draw. | A realization needs a randomness beacon that players cannot predict or bias, read after the draw's inputs are final; players' own commit–reveal and block hashes do not qualify. With bounded randomness only dyadic weights are exact. |
@@ -93,7 +93,7 @@ The required finite choices follow from existing binding-value coverage;
 normalization then supports every effective source choice. This supplies a
 source support fact. The
 [actual decision support theorem](../Vegas/Game/SourceServiceLocalSupport.lean)
-then proves that every permitted physical response is a replay alias or is
+then proves that every permitted physical response is silent or is
 supported by the actual source policy. The
 [native full-mixing theorem](../Vegas/Game/SourceServiceTimedMixing.lean) and
 the [supported source sequence](../Vegas/Game/SourceServiceChoiceSupport.lean)
@@ -152,7 +152,7 @@ has a permitted trace. Each original endpoint either contains attributed
 forbidden traffic, certifies a missed binding, or preserves the required
 observation relation. The
 [off-turn roster coupling](../Vegas/Game/SourceServiceOffTurnWindow.lean)
-retains known pending replays and classifies fresh focal transmissions while
+retains silence and classifies fresh focal transmissions while
 another actor holds the roster turn. Complete stopped couplings also cover
 [public sampling](../Vegas/Game/SourceServiceSampleRepair.lean),
 [guarded disclosure](../Vegas/Game/SourceServiceResolutionBlock.lean), and
@@ -221,10 +221,10 @@ legal opening/withholding choices remain unchanged.
 
 The compiler theorem uses a terminal audit service with four explicit duties:
 
-1. Report authentic signed envelopes with their public phase and prior ledger.
-   The signed-audit checker permits public replay by every player and attributes
-   forbidden fresh traffic to its signing account. Authenticating phase and
-   prior-ledger evidence remains an oracle obligation beyond the signature.
+1. Report authentic signed envelopes actually observed or read from the ledger.
+   The checker judges each envelope against the contract record and its
+   immutable readiness token, attributing forbidden traffic to its signing
+   account. It does not authenticate or reconstruct transmission time.
 2. Charge no permitted source behavior, including off-equilibrium choices.
    Missing audit records alone are not evidence of an omitted action.
 3. At every retained opportunity for a first departure, provide a conditional
@@ -251,14 +251,16 @@ source classes need those operational proofs, not another enforcement tower.
 
 [ReactiveTrafficAudit](../Interaction/ReactiveTrafficAudit.lean) reads traffic
 from successive public service views of the existing runtime. It retains the
-broadcaster, envelope, observation phase and preceding ledger, including for replays. Its
+sender, envelope, observation phase and preceding ledger. Its
 persistence and partial-observation soundness proofs allow arbitrary schedulers
 and raw responses; no reserved reporting slot or one-message pending pool is
 assumed. The complete readout is an ideal service specification, not a claim
 that an ordinary passive client sees all traffic or authenticates every sender.
-Coverage, accurate phase reports, attribution and collectible collateral are
-implementation obligations. A client/oracle realization may provide a partial
-record and a conditional collection bound instead of a complete log.
+The public before-state context is a proof readout, not watcher evidence. The
+settlement checker projects it to signed envelopes and the contract record.
+Observation and report-delivery coverage, attribution and collectible collateral
+remain implementation obligations; a client supplies only its actual partial
+record.
 [ReactiveAuditCollection](../Interaction/ReactiveAuditCollection.lean) derives
 that continuation bound from per-record sampling coverage and actual first-step
 evidence, against arbitrary later strategies. It also proves zero charges for
@@ -274,15 +276,15 @@ contract's settled record, once the service horizon ends
 ([settled audit](../Vegas/Game/ServiceSettledAudit.lean)). No verdict reads the
 transmission phase or the ledger at transmission. Every retained terminal
 history is clean ([clean settlement](../Vegas/Game/RevealServiceClean.lean)),
-and [signed departure evidence](../Vegas/Game/RevealServiceSignedDeparture.lean)
-shows that every extra effective response breaks the send-time rule, a proof
-device whose breach leaves its author with a forbidden packet at settlement. The
-[signed capstone](../Vegas/Game/RevealServiceSignedCompilation.lean) needs no
+and [settled signed evidence](../Vegas/Game/ServiceSettledEvidence.lean)
+judges author-attributed packets against the final record. The
+[full-source capstone](../Vegas/Game/SourceServiceCompilation.lean) needs no
 strategic reporting, zero-utility player or broadcaster attribution. The
 projection to signed evidence occurs before partial sampling. Account liability
 is not a theorem about physical senders or cryptographic key sharing. Soundness
-is proved for every retained history and each actor's first departure; a general
-non-framing property after arbitrary other departures is not established.
+is checked at every retained service history, including intermediate and
+off-path histories, in
+[SourceServiceSettledSound](../Vegas/Game/SourceServiceSettledSound.lean).
 
 The source-to-permitted-runtime proof must establish observations,
 conditional laws and consistent beliefs. Single-trace membership does not
@@ -290,6 +292,12 @@ establish those facts. These gates are checked for the revelation calendar and,
 through the full-language roster service, for every source constructor: fresh
 bindings, public chance and guarded disclosure are classified site by site
 (`Vegas.DecisionSiteKind`), not excluded.
+
+[TerminalPayoffCongruence](../GameTheoryExtensions/Analysis/Protocol/TerminalPayoffCongruence.lean)
+shows that payoffs equal at terminal histories induce the same sequential
+equilibria, including the domains where expectations exist. A terminal-only
+proof clamp can therefore be discharged before exposing the common settlement
+interface; it need not be a second runtime observation API.
 
 ## Checked service instance
 
@@ -332,13 +340,13 @@ The following obligations establish its arbitrary-length theorem:
 | Finite alphabet covering every supported initial value | Checked; extending the alphabet retains every previously admitted raw response. |
 | C actions project to opening/withholding with fully supported split perturbations | Checked at all actual native decision sites; source fully mixed perturbations compile to fully mixed native profiles and converge to the compiler profile. |
 | Native decision view determines the source decision view | Checked from typed store and completion-history agreement. |
-| Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes, including public service fields; the focal selector also reconstructs the sender's replay recall. |
+| Source view reconstructs native semantic observation and initial candidate catalogue | Checked at reachable ranked prefixes, including public service fields; the focal selector also reconstructs the sender's submission recall. |
 | Common decision depths for C/W/N/raw menus | Checked at all legal histories using the existing public clock and actor observations. |
 | Bounded settlement under arbitrary responses | Checked for every finite response menu and every legal terminal history, including zero-probability histories. Remaining suffixes settle whenever preceding events have completed. |
-| Full monitored block agrees with its source reveal | Checked for every ordinary response, including published-replay aliases of withholding; typed source store and action history agree afterward. |
+| Full monitored block agrees with its source reveal | Checked for every ordinary response, including silent withholding; typed source store and action history agree afterward. |
 | Initialized compiler execution law for arbitrary reveal sequences | Checked for all source policies and all alias-splitting weights, with correlated valid initial bindings. |
 | Source information prerequisites | Checked common decision depths and a fully mixed reference policy; finite legal histories require no finite ambient secret type. |
-| Reverse information correspondence and checkpoint prefix laws | Checked at actual native boundary and owner-decision depths; includes correlated initialization and replay selectors. |
+| Reverse information correspondence and checkpoint prefix laws | Checked at actual native boundary and owner-decision depths; includes correlated initialization and submission selectors. |
 | Consistent native beliefs | Checked: one common perturbation sequence preserves the source-state posterior at every owner information site, including aliases with zero limiting probability. |
 | Source-to-C sequential rationality | Checked against arbitrary whole continuation policies through conditional local comparisons and the posterior one-shot principle. |
 | Conditional monitoring, packet classification and persistent evidence | Checked in actual behavioral continuations at every hidden history satisfying the operational checkpoint invariant. |
@@ -347,15 +355,15 @@ The following obligations establish its arbitrary-length theorem:
 | C → W extension | Checked for every retained SE, preserving retained strategies, beliefs and the full history/net-payoff law. |
 | W → N → raw equilibrium extension | Checked for arbitrary reveal sequences, normalization-invariant observations/utilities, and zero watcher utility at every history. |
 | Terminal-audit enforcement | Checked: the settled record permits every packet of every retained terminal history, and every extra effective response leaves its author with a packet the settled record forbids. Authentic partial sampling plus fixed all-player deposits gives the full raw SE and actual joint randomized settlement law. |
-| End-to-end SE for arbitrary reveal sequences | Checked under either terminal auditing or the separate indifferent-reporter service assumptions. Both preserve every original source SE and the exact joint typed terminal-state/net-payoff law. |
+| End-to-end SE for arbitrary reveal sequences | Terminal auditing preserves every original source SE and the exact joint typed terminal-state/net-payoff law. The separate monitored fixture additionally instantiates a passive reporter and conditional delivery lottery. |
 
 The source-to-C belief proof compares distributions over the existing
 source protocol state. That state retains initial private values and source
 action memory. Standard source continuation values can therefore be evaluated
 from this marginal, while retaining the original history-based SE assessment.
 This avoids reconstructing a source execution history from every native history.
-The checked native selector accounts for recorded replay aliases, including at
-zero-probability information sets of the limiting strategy.
+The checked native selector accounts for recorded submissions and silent
+responses, including at zero-probability information sets of the limiting strategy.
 
 For the full-language boundary,
 [hidden-binding analysis](research/se-hidden-binding.md) separates a public
@@ -402,7 +410,7 @@ S  Ordinary source game
    |  Compile through EventGraph; expand decisions into service blocks
    v
 C  Native service with all source-representable choices;
-   prescribed watcher silence; harmless published replays represent silence
+   prescribed watcher silence; ordinary withholding is silent until expiry
    |  Restore ordinary players' other effective responses
    v
 W  Full effective ordinary-player menus; prescribed watcher silence
@@ -428,12 +436,10 @@ meaningful binding choice and disclosure capability. Deposits and the liability
 rule are identical throughout the native stack. Source-representable play
 incurs zero additional charge.
 
-For the reusable reveal class, C also includes rebroadcasts of already published
-envelopes as alternative implementations of silence. The source correspondence
-must account for the sender remembering that choice. These replays are not
-globally erased from the full target: with unpublished off-path traffic present,
-a sampler may react to the changed pending list. The final alias edge remains
-limited to the exact-effect private submission normalization.
+For the reusable reveal class, C contains silence and a fresh supported opening.
+The full target permits additional fresh submissions and certificate forwarding.
+The final alias edge concerns private submission annotations whose normalization
+preserves the exact packet and application effect.
 
 All games use the same player carrier for the restriction edges. The initial
 fixtures already contain an inactive, zero-payoff source watcher. Supporting a
@@ -539,9 +545,9 @@ successful owned opening and a forwarded certificate can emit the same packet
 while leaving different private response recall. A later decision makes this
 relevant to the universal comparator premise. The proved alias
 normalization handles such requests before the ordinary-response extension;
-invisible private distinctions cannot be audited. Replays of old envelopes also
-need a service-insensitivity argument, since old public content can still change
-the service's input history.
+invisible private distinctions cannot be audited. Fresh packets carrying old
+public certificates still need classification, since their public content can
+change the service's input history.
 
 The [successful-evidence regression](../Vegas/Examples/SuccessfulEvidenceAliases.lean)
 checks two available raw requests with identical external effects and different
@@ -574,24 +580,15 @@ service. Rejection alone is not a general misconduct test:
 the source correspondence must still prove canonical calls accepted and
 classify all additional responses.
 
-[MessageReplayObservation](../Interaction/MessageReplayObservation.lean) proves
-that pending traffic already published in the ledger cannot provide new private
-observations, under any sampling rule. Replaying a published identifier preserves
-that property. This does not erase the network input or sender's action recall;
-the [reserved inclusion selector](../Vegas/Pending/ReactiveReplaySelection.lean)
-also ignores spent pending copies. The source correspondence still needs the
-strategic proof that these C responses duplicate silence, including consistency
-at the additional private information sites.
-
-The intended projection is confined to C histories. Canonical openings settle
-before the watcher, and the watcher is silent; every other permitted pending
-envelope is already published. Erase those pending copies, retain each envelope's
-original input, and map each remembered spent replay and its emission to a silent
-response. The proof should lift one common source perturbation sequence using
-the existing action-splitting machinery, transport conditional beliefs, and
-derive local incentive equality. The existing local-to-whole-policy theorem can
-then establish sequential rationality. This argument remains to be completed;
-no full-target replay quotient is asserted.
+[MessagePublishedObservation](../Interaction/MessagePublishedObservation.lean)
+proves that pending traffic already published in the ledger cannot provide new
+private observations under any sampling rule.
+[ReactiveQuiescent](../Interaction/ReactiveQuiescent.lean) preserves application
+and player views through quiescent windows while retaining actual scheduler
+and action recall. The ordinary revelation menu contains silence and a fresh
+supported opening. Every submission receives a fresh sender-owned identifier;
+there is no operation that resubmits a known envelope with its old identifier.
+Forwarding a known opening certificate remains a distinct evidence capability.
 
 The general source correspondence needs induction over the existing reveal
 program and its service blocks. The fixture's explicit history classification
@@ -606,7 +603,7 @@ the owner's view and the binding invariant.
 the exact source decision view from store and completion-history agreement.
 [Action splitting](../Vegas/Game/RevealServiceActions.lean) projects C actions
 to the source Boolean choice and lifts fully supported distributions; silence
-and spent replay share the withholding fiber. These facts still need the
+is the withholding response. These facts still need the
 whole-history induction and reverse information correspondence.
 The [reverse observation lemmas](../Vegas/Game/ServiceObservation.lean)
 recover the native graph observation and candidate catalogue from the source
@@ -626,8 +623,8 @@ does not assume a belief-preserving target assessment. The compiler must still
 discharge those premises along the source assessment's common perturbation
 sequence, including source sites with zero limiting probability.
 Its focal-selector corollary cancels the focal player's own reach probability
-using decision recall, so private replay distinctions need not become source
-observations. The selected-prefix projection and fiber premises remain to prove.
+using decision recall. The selected-prefix projection and fiber premises remain
+obligations for the general asynchronous service.
 
 ### Calendar requirements to prove
 
@@ -791,7 +788,7 @@ Rejecting calls alone, checking only evidence shape, or filtering unauthorized
 inclusion does not establish this contract.
 
 **Exit:** an exhaustive response classification for the fixture, including
-accepted extra evidence, wrong addresses, early openings, replay, malformed
+accepted extra evidence, wrong addresses, early openings, malformed
 packets and silence. A real undetectable profitable class is an obstruction to
 this certificate/backend; do not hide it by reducing the final menu.
 
@@ -804,8 +801,8 @@ classes. Two operational comparison gates are checked:
   result and weakly increases her utility for arbitrary declared result tables
   and nonnegative rejection charges. No future player response is needed.
 - At the quiet Bob checkpoint, [unselected Bob submissions](../Vegas/Examples/MonitoredGuessing/BobContinuation.lean)
-  leave Alice's entire next input equal to the C silent branch. Known replay is
-  unavailable there. The proof uses Alice's empty passive sample; a service that
+  leave Alice's entire next input equal to the C silent branch. The proof uses
+  Alice's empty passive sample; a service that
   allows her to read this pending traffic needs a different comparison or
   additional monitoring.
 
@@ -837,8 +834,8 @@ silence/expiry clean. The
 use Alice's deposit twice her payoff range and Bob's deposit equal to his range.
 These bounds and the actual response coverage discharge the fixture's
 conditional inequalities. Monetary collectibility remains an assumption of the
-utility interpretation. Attribution uses the original author; it does not
-automatically identify who causes a replay.
+utility interpretation. Attribution uses the fresh envelope's signing account;
+forwarded certificate content does not transfer that attribution.
 
 Prototype two complementary evidence paths in the existing runtime:
 
@@ -857,13 +854,12 @@ or a timely attributable pending report. Do not condition the sampling rate on
 eventual non-inclusion; later inclusion can depend on the report itself. Count
 the actual collectible loss, without charging twice for the same liability.
 
-Prefer liability computed from existing public evidence and receipt/history
-data. Phase-dependent violations need an immediate monitor window or
-authenticated historical context. Test source-wide soundness, including delayed
-lawful packets. A replay can expose the original sender's identity without
-proving who caused the new broadcast; charge attribution must follow the
-evidence actually available. Never inspect the ideal private commitment catalog
-to supply an ordinary monitor's evidence.
+Prefer liability computed from public records, signed packets and immutable
+readiness tokens. Test source-wide soundness, including delayed lawful packets.
+A forwarded certificate identifies its issuer, while the fresh signed envelope
+identifies the transmitting account; charge attribution must follow the evidence
+actually available. Never inspect the ideal private commitment catalog to supply
+an ordinary monitor's evidence.
 
 **Exit:** no false positives for C, adequate additional collectible loss for
 each harmful departure, and persistence under arbitrary later W play. Restore
@@ -881,9 +877,9 @@ never the GameTheory submodule.
 | --- | --- | --- | --- |
 | A | Decision-site recall and capstone refactor in GameTheoryExtensions; native instance in Interaction. **Checked.** | G1 audit | Closed for the existing information model. |
 | B | Menu-to-menu action restriction in Interaction; all-history fixture clocks. **Checked.** | Existing ResponseMenu; A for SE use | Generic roster inference remains outside the fixture result. |
-| C | Private submission/packet normalization and compiler compatibility, including successful-request aliases. **Checked.** | G2 | Published replay is handled separately in the source-representable menu. |
+| C | Private submission/packet normalization and compiler compatibility, including successful-request aliases. **Checked.** | G2 | The alias edge must preserve raw-action recall through its proved projection. |
 | D | Concrete C/W/N menus, service checkpoints, all-history decision classification and source assessment correspondence. **Checked for arbitrary finite reveal sequences.** | B, C, G3 | Broader rosters require a new conditional information proof. |
-| E | Persistent evidence, exhaustive response comparisons and fixed deposit bounds. **Checked for the revelation service, including terminal auditing.** | B, G4, G5 | Signed-author attribution without rebroadcaster evidence remains open. |
+| E | Persistent evidence, exhaustive response comparisons and fixed deposit bounds. **Checked for the revelation service, including terminal auditing.** | B, G4, G5 | Actual conditional collection and authentic signed evidence remain backend premises. |
 | F | Source-to-C SE and all-profile joint typed state/payoff law. **Checked for arbitrary finite reveal sequences.** | A, D | Fresh binds and guarded programs remain outside this correspondence. |
 | G | Original source → C → W → N → T composition with the same fixed deposits and utility. **Checked for arbitrary finite reveal sequences.** | A–F | Collectibility remains a backend assumption. |
 | H | General activation rosters, native unusable-binding continuation repair and weaker audit attribution. | G | The direct terminal-audit instance is checked; resolve the remaining strategic gaps before optimizing deposits. |

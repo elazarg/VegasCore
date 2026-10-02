@@ -113,11 +113,13 @@ fresh sender labels from the invoked principal; the reachable `Authorship`
 invariant in
 [MessageApplicationAuthorship.lean](../Interaction/MessageApplicationAuthorship.lean)
 connects retained envelopes to that principal's submitted payload history.
-The reactive counterparts are `MessageNetwork.submit`, `MessageNetwork.replay`
+The reactive counterparts are `MessageNetwork.submit`
 in [MessageNetwork.lean](../Interaction/MessageNetwork.lean), and
 `Execution.respond` in
-[ReactiveApplication.lean](../Interaction/ReactiveApplication.lean). Replays
-preserve the original author and record the current broadcaster separately.
+[ReactiveApplication.lean](../Interaction/ReactiveApplication.lean). A response
+either stays silent or submits a fresh envelope attributed to the invoked
+principal. Forwarding a known opening certificate is an evidence operation;
+it does not copy the envelope or impersonate its author.
 
 Fresh submission still identifies the strategic actor with the authenticated
 author. After receiving Alice's secret signing key, Bob cannot create an

@@ -42,7 +42,7 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
     let app := runtime.reactiveApplication leaks
     let view := right.observe app who
     let original : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
     let repaired := memory.repairResponse runtime leaks who view original
     let remembered : BindingMemory runtime leaks :=
       ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩
@@ -61,8 +61,8 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
     | some _ => opening
   let repairedCall : Submission graph :=
     ⟨.commitment event (who, .prepared serial), replacementOpening⟩
-  let original : app.Action := ⟨some (.submit ⟨originalCall, .none⟩)⟩
-  let repaired : app.Action := ⟨some (.submit ⟨repairedCall, .none⟩)⟩
+  let original : app.Action := ⟨some ⟨originalCall, .none⟩⟩
+  let repaired : app.Action := ⟨some ⟨repairedCall, .none⟩⟩
   let catalog := memory.shadow.rememberCandidate (.prepared serial)
     (originalCall.candidateAfter who
       (memory.shadow.inputView runtime leaks beforeView).application.candidates (.prepared serial))

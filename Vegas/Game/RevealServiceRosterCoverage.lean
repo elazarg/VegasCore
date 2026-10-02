@@ -73,7 +73,7 @@ theorem roster_owner_coverage
     (supported : action ∈ (((application setup leaks).policyMixture choices (fun selected =>
       (application setup leaks).scheduledPolicy (rosterOffset setup rosters owner event) selected
         (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-        (application setup leaks).replayPolicy)).policy (current.recall owner)
+        (application setup leaks).silentPolicy)).policy (current.recall owner)
       ((current.sampledActivation (application setup leaks) owner sample).observe
         (application setup leaks) owner)).support) :
     action ∈ rosterActions setup leaks bounds rosters owner (current.recall owner)
@@ -92,7 +92,7 @@ theorem roster_owner_coverage
   obtain ⟨mode, modeSupported, selectedSupport⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   change action ∈ (app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-    (fun _ _ => PMF.pure packet) app.replayPolicy (current.recall owner) view).support
+    (fun _ _ => PMF.pure packet) app.silentPolicy (current.recall owner) view).support
       at selectedSupport
   unfold ReactiveApplication.scheduledPolicy at selectedSupport
   split at selectedSupport
@@ -144,6 +144,6 @@ theorem roster_owner_coverage
       (rosterFresh? setup leaks rosters owner (current.recall owner) view).toList.toFinset
     rw [fresh]
     simp
-  · exact replay_roster setup leaks bounds rosters owner _ _ action selectedSupport
+  · exact silent_roster setup leaks bounds rosters owner _ _ action selectedSupport
 
 end Vegas

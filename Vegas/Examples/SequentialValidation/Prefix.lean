@@ -39,7 +39,7 @@ theorem native_include_law (execution : nativeApp.Execution) (id : MessageId Boo
 def nativeWindow (execution : nativeApp.Execution) (who : Bool)
     (submission : Submission nativeGraph) : nativeApp.Execution :=
   nativeInclude ((nativeActivate execution who).respond nativeApp who
-    ⟨some (.submit ⟨submission, .none⟩)⟩) (who, execution.network.nextSerial who)
+    ⟨some ⟨submission, .none⟩⟩) (who, execution.network.nextSerial who)
 
 theorem native_window_application (execution : nativeApp.Execution)
     (who : Bool) (submission : Submission nativeGraph)
@@ -125,7 +125,7 @@ theorem native_window_length (execution : nativeApp.Execution)
     (nativeWindow execution who submission).environmentRecall.length =
       execution.environmentRecall.length + 2 := by
   change (((nativeActivate execution who).respond nativeApp who
-    ⟨some (.submit ⟨submission, .none⟩)⟩).environmentRecall ++ [_]).length = _
+    ⟨some ⟨submission, .none⟩⟩).environmentRecall ++ [_]).length = _
   rw [nativeApp.respond_environmentRecall]
   simp [nativeActivate, nativeRecord]
 

@@ -19,28 +19,16 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
 def bobSubmission (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
     nativeApp.Execution :=
-  (quietBob bit).respond nativeApp bob ⟨some (.submit submission)⟩
+  (quietBob bit).respond nativeApp bob ⟨some submission⟩
 
 theorem quiet_bob_response_cases (bit : Bool) (response : nativeApp.Action)
     (available : response ∈ nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob)) :
     response = nativeSilent ∨
-      ∃ submission, response = ⟨some (.submit submission)⟩ := by
+      ∃ submission, response = ⟨some submission⟩ := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact Or.inl rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact Or.inr ⟨submission, rfl⟩
-      | replay id =>
-          change (⟨some (.replay id)⟩ : nativeApp.Action) ∈
-            (nativeBounds.rawMenu nativeRuntime nativeLeaks).actions bob [] _ at available
-          rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
-            at available
-          obtain ⟨message, member, _⟩ := available
-          change message ∈ (quietBob bit).network.leaked bob ++
-            (quietBob bit).network.ledger at member
-          rw [quiet_bob_network] at member
-          cases member
+  | some submission => exact Or.inr ⟨submission, rfl⟩
 
 theorem wrong_address_selection (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication) :
@@ -80,7 +68,7 @@ private theorem same_alice_submission (bit : Bool) (submission : WitnessedSubmis
       submission.call.packet).trans
         (submission.call.register_other (quietBob bit).application bob alice (by decide))
   have observed := nativeRuntime.reactive_response_other_input nativeLeaks (quietBob bit)
-    bob alice (by decide) (⟨some (.submit submission)⟩ : nativeApp.Action)
+    bob alice (by decide) (⟨some submission⟩ : nativeApp.Action)
   exact ⟨framed, congrArg Prod.fst observed, congrArg Prod.snd observed⟩
 
 private theorem same_alice_maintenance (left right nextLeft nextRight : nativeApp.Execution)

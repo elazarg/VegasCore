@@ -9,7 +9,7 @@ import Interaction.ReactiveCalendar
 Each of the four events has one owner response and an authorized uniform
 inclusion opportunity. All four windows precede clock advancement.
 A final sequence of ten ticks and expiry for each event supplies timeouts.
-The wire bounds retain every packet form, wrong-typed data and known replays.
+The wire bounds retain every packet form, wrong-typed data and authentic certificate forwarding.
 -/
 
 noncomputable section

@@ -58,7 +58,7 @@ theorem roster_audited_source_sequential_equilibrium_preserved
     let base := baseUtility setup leaks utility
     let deposit := rosterAuditDeposit setup leaks extended rosters network base probability
     let audit := sourceServiceAudit setup leaks sample
-    let observe := (runtime setup).settlementObservation leaks
+    let observe := (runtime setup).serviceAuditObservation leaks
     let net := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     let horizon := (rosterPlan setup rosters).length

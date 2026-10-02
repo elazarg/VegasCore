@@ -104,9 +104,9 @@ theorem binding_window_stopped_coupling
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining - (visits.length + 1 + (runtime setup).deadline event + 1),
               none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         next.1.application.publicView.missedBinding event = true ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1) := by
   classical
@@ -122,9 +122,9 @@ theorem binding_window_stopped_coupling
             strategy.runJoint owner players (rosterScheduler setup leaks rosters network)
               (visits.length + 1 + (runtime setup).deadline event + 1) next.1 next.2) ∧
         ∀ next ∈ coupling.support,
-          (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+          (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
             (runtime setup).permittedServiceEnvelope record.observation record.ledger
-              record.input.envelope = false) ∨
+              record.envelope = false) ∨
           next.1.application.publicView.missedBinding event = true ∨
           BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 by
     obtain ⟨coupling, first, second, related⟩ := result
@@ -257,9 +257,9 @@ theorem binding_window_stopped_coupling
       let rightRun (response : app.Action) := strategy.runJoint owner players scheduler plan.length
         (repaired.respond app owner (adjusted response).1) (adjusted response).2
       let good (next : app.Execution × app.Execution × BindingMemory (runtime setup) leaks) :=
-        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         next.1.application.publicView.missedBinding event = true ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1
       have responseLaw : strategy.respond memory (repaired.recall owner,
@@ -283,17 +283,15 @@ theorem binding_window_stopped_coupling
               response (covered _ _ response member) with replay | canonical | departure
         · have unchanged : memory.repairResponse (runtime setup) leaks owner
               (repaired.observe app owner) response = (response, memory.shadow) := by
-            rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
+            rcases app.silentPolicy_cases _ _ response replay with rfl; rfl
           have legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
               (repaired.observe app owner) := by
             dsimp only [proposed]
             rw [unchanged]
             change response ∈ sourceServiceActions setup leaks bounds rosters owner _ _
             rw [sourceServiceActions, ite_eq_right optional]
-            apply bounds.replay_compiled
-            rw [← app.replayPolicy_eq_of_network_eq original repaired owner recalled rightRecall
-              frame.network]
-            exact replay
+            apply bounds.silent_compiled
+            exact app.mem_silentPolicy_support.mpr (app.silentPolicy_cases _ _ response replay)
           have adjustedEq : adjusted response = proposed response := by
             dsimp only [adjusted]
             rw [ite_eq_left legal]
@@ -448,9 +446,9 @@ theorem binding_window_stopped_coupling
               Set.mem_iUnion₂.mp (PMF.support_bindOnSupport .. ▸ supported)
             exact (existsTail next chosen).choose_spec.2.2 final reached
         · obtain ⟨opening, bounded, countedSerial, rfl⟩ := canonical
-          let action : app.Action := ⟨some (.submit ⟨⟨.commitment event
+          let action : app.Action := ⟨some ⟨⟨.commitment event
             (owner, .prepared (original.application.publicView.bindingCount owner)), opening⟩,
-              .none⟩)⟩
+              .none⟩⟩
           have legal : (proposed action).1 ∈ menu.actions owner (repaired.recall owner)
               (repaired.observe app owner) := by
             apply required_binding_sourceService

@@ -27,7 +27,7 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- A lottery over private binding results is independent of the actual
 foreign traffic readout after replay visits and protected inclusion. -/
-theorem binding_replay_joint_law (runtime : EventGraphRuntime graph)
+theorem binding_silent_joint_law (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -40,7 +40,7 @@ theorem binding_replay_joint_law (runtime : EventGraphRuntime graph)
     let app := runtime.reactiveApplication leaks
     let phase := roster.map ServiceInstruction.player ++ [.includeLatest event owner]
     let run := fun result => runtime.runInteractionPlan leaks
-      (fun _ => app.replayPolicy) network phase
+      (fun _ => app.silentPolicy) network phase
         (execution.respond app owner (runtime.reactiveBinding leaks owner event payload
           result serial))
     prior.bind (fun result => (run result).map fun final =>
@@ -50,7 +50,7 @@ theorem binding_replay_joint_law (runtime : EventGraphRuntime graph)
   have same (result : PublicationResult (L.Val payload)) :
       (run result).map (runtime.bindingTraffic leaks focal) =
         (run .failure).map (runtime.bindingTraffic leaks focal) :=
-    runtime.binding_replay_inclusion_coupling leaks network roster execution execution
+    runtime.binding_silent_inclusion_coupling leaks network roster execution execution
       recalled recalled owner focal event payload result .failure
         (fun equal => False.elim (different equal)) serial rfl published serials
   calc
@@ -68,7 +68,7 @@ theorem binding_replay_joint_law (runtime : EventGraphRuntime graph)
 
 /-- Conditioning the actual joint phase law on any foreign readout preserves
 the private-result lottery. The finite-law fallback also covers absent inputs. -/
-theorem binding_replay_posterior (runtime : EventGraphRuntime graph)
+theorem binding_silent_posterior (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player)
     (execution : (runtime.reactiveApplication leaks).Execution)
@@ -82,14 +82,14 @@ theorem binding_replay_posterior (runtime : EventGraphRuntime graph)
     let app := runtime.reactiveApplication leaks
     let phase := roster.map ServiceInstruction.player ++ [.includeLatest event owner]
     let joint := prior.bind fun result =>
-      (runtime.runInteractionPlan leaks (fun _ => app.replayPolicy) network phase
+      (runtime.runInteractionPlan leaks (fun _ => app.silentPolicy) network phase
         (execution.respond app owner
           (runtime.reactiveBinding leaks owner event payload result serial))).map fun final =>
             (runtime.bindingTraffic leaks focal final, result)
     (fiberPosterior joint Prod.fst (runtime.bindingTraffic leaks focal observed)).map Prod.snd =
       prior := by
   intro app phase joint
-  have product := runtime.binding_replay_joint_law leaks network roster execution recalled
+  have product := runtime.binding_silent_joint_law leaks network roster execution recalled
     owner focal different event payload prior serial published serials
   dsimp only at product
   change (fiberPosterior joint _ _).map _ = _
@@ -99,7 +99,7 @@ theorem binding_replay_posterior (runtime : EventGraphRuntime graph)
 /-- For arbitrarily correlated hidden seeds and initial executions, the actual
 phase preserves the seed posterior conditional on the initial traffic readout.
 The likelihood equality is proved from the runtime, not supplied as a premise. -/
-theorem binding_replay_conditional_seed {Seed : Type*}
+theorem binding_silent_conditional_seed {Seed : Type*}
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (network : runtime.NetworkPolicy leaks) (roster : List Player)
@@ -117,7 +117,7 @@ theorem binding_replay_conditional_seed {Seed : Type*}
     let observe := fun seed => runtime.bindingTraffic leaks focal (execution seed)
     let phase := roster.map ServiceInstruction.player ++ [.includeLatest event owner]
     let kernel := fun seed => (runtime.runInteractionPlan leaks
-      (fun _ => app.replayPolicy) network phase ((execution seed).respond app owner
+      (fun _ => app.silentPolicy) network phase ((execution seed).respond app owner
         (runtime.reactiveBinding leaks owner event payload (result seed) serial))).map
           (runtime.bindingTraffic leaks focal)
     let joint := prior.bind fun seed => (kernel seed).map fun traffic => (seed, traffic)
@@ -129,7 +129,7 @@ theorem binding_replay_conditional_seed {Seed : Type*}
   intro app observe phase kernel joint present
   apply conditional_kernel_of_fiber prior observe kernel
     (fun left leftSupport right rightSupport same => ?_) _ _ present
-  exact runtime.binding_replay_inclusion_coupling leaks network roster
+  exact runtime.binding_silent_inclusion_coupling leaks network roster
     (execution left) (execution right) (recalled left leftSupport) (recalled right rightSupport)
       owner focal event payload (result left) (result right)
         (fun equal => False.elim (different equal)) serial same

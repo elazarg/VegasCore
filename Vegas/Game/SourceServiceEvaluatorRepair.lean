@@ -72,9 +72,9 @@ theorem active_evaluator_stopped_coupling
         Nonempty ((menu.protocol (initialLaw setup) horizon scheduler).Trace (some pair.2.1)) ∧
         pair.2.2.shadow.OwnBindings owner ∧
         ((∃ record ∈ app.executionTraffic pair.1.execution,
-          record.input.envelope.sender = owner ∧
+          record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
           pair.1.execution.application.publicView.missedBindingBy owner = true ∨
           BindingMemory.Frame (runtime setup) leaks pair.2.2 owner pair.1.execution
             pair.2.1.execution) := by

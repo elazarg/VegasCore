@@ -119,7 +119,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
       (rosterOffset setup rosters owner event) (some slot)
         (fun _ _ => PMF.pure
           ((runtime setup).reactiveBinding leaks owner event payload choice serial))
-        app.replayPolicy
+        app.silentPolicy
     let tags := (commitKernel profile (source.view owner)).bind fun choice =>
       posterior.bind fun slot =>
         (branch choice slot (execution.recall owner) (execution.observe app owner)).map
@@ -139,7 +139,7 @@ theorem sourceServiceTimedPolicy_binding_response_continuation
     published
     app players phase later split position response allowed posterior branch tags
   let menu := sourceServiceMenu setup leaks bounds rosters
-  let scheduled := fun choice slot => Function.update (fun _ => app.replayPolicy) owner
+  let scheduled := fun choice slot => Function.update (fun _ => app.silentPolicy) owner
     (branch choice slot)
   let kernel := fun tag : PublicationResult (L.Val payload) ×
       Fin ((rosters event).count owner) × app.Action =>

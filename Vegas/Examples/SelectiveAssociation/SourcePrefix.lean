@@ -85,11 +85,7 @@ theorem respond_visit {Claim : Type} (execution : (application Claim).Execution)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact submit_visit execution.application who submission
-      | replay id =>
-          cases (execution.network.known who).find? (fun message => message.id = id) <;> rfl
+  | some submission => exact submit_visit execution.application who submission
 
 theorem respond_early_core {Claim : Type} (execution : (application Claim).Execution)
     (who : Player) (action : (application Claim).Action)
@@ -99,11 +95,7 @@ theorem respond_early_core {Claim : Type} (execution : (application Claim).Execu
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact early_claim_core execution.application who submission early
-      | replay id =>
-          cases (execution.network.known who).find? (fun message => message.id = id) <;> rfl
+  | some submission => exact early_claim_core execution.application who submission early
 
 def firstResponse {Claim : Type} (first : (application Claim).Action) :
     (application Claim).Execution :=
@@ -166,7 +158,7 @@ def bobInput {Claim : Type} (first second binding guess : (application Claim).Ac
 def selectedBinding {Claim : Type} (event : Event) (action : (application Claim).Action) :
     PublicationResult Bool :=
   match action.transmission with
-  | some (.submit submission) =>
+  | some submission =>
       if submission.address = some event ∧ submission.kind = .bind then submission.binding
       else .failure
   | _ => .failure
@@ -203,16 +195,12 @@ theorem respond_application {Claim : Type} (execution : (application Claim).Exec
     (who : Player) (action : (application Claim).Action) :
     (execution.respond (application Claim) who action).application =
       match action.transmission with
-      | some (.submit submission) => submit execution.application who submission
+      | some submission => submit execution.application who submission
       | _ => execution.application := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit => rfl
-      | replay id =>
-          cases (execution.network.known who).find? (fun message => message.id = id) <;> rfl
+  | some submission => rfl
 
 theorem carolInput_core {Claim : Type} (first second binding : (application Claim).Action) :
     (carolInput first second binding).application.core =
@@ -227,28 +215,22 @@ theorem carolInput_core {Claim : Type} (first second binding : (application Clai
   | none =>
       simpa only [selectedBinding, aliceInput_core, initial_stage, Fin.val_zero, ↓reduceIte] using
         CorePath.initial_advance .failure false
-  | some transmission =>
-      cases transmission with
-      | replay =>
-          simpa only [selectedBinding, aliceInput_core, initial_stage, Fin.val_zero,
-            ↓reduceIte] using
-            CorePath.initial_advance .failure false
-      | submit submission =>
-          simp only [submit, aliceInput_visit, selectedBinding]
-          cases address : submission.address with
-          | none =>
-              simpa only [aliceInput_core, initial_stage, Fin.val_zero, reduceCtorEq, false_and,
-                ↓reduceIte] using CorePath.initial_advance .failure false
-          | some event =>
-              by_cases same : event = 0
-              · subst event
-                by_cases kind : submission.kind = .bind
-                · simp [kind, aliceInput_core, initial_stage, eventOwner, bindingOwner,
-                    CorePath.initial_advance, alice_stage]
-                · simp [kind, aliceInput_core, initial_stage, eventOwner, bindingOwner,
-                    CorePath.initial_advance]
-              · simp [same, aliceInput_core, initial_stage, eventOwner, bindingOwner,
-                  CorePath.initial_advance]
+  | some submission =>
+      simp only [submit, aliceInput_visit, selectedBinding]
+      cases address : submission.address with
+      | none =>
+          simpa only [aliceInput_core, initial_stage, Fin.val_zero, reduceCtorEq, false_and,
+            ↓reduceIte] using CorePath.initial_advance .failure false
+      | some event =>
+          by_cases same : event = 0
+          · subst event
+            by_cases kind : submission.kind = .bind
+            · simp [kind, aliceInput_core, initial_stage, eventOwner, bindingOwner,
+                CorePath.initial_advance, alice_stage]
+            · simp [kind, aliceInput_core, initial_stage, eventOwner, bindingOwner,
+                CorePath.initial_advance]
+          · simp [same, aliceInput_core, initial_stage, eventOwner, bindingOwner,
+              CorePath.initial_advance]
 
 theorem carolInput_visit {Claim : Type} (first second binding : (application Claim).Action) :
     (carolInput first second binding).application.visit = some 1 := rfl
@@ -269,33 +251,27 @@ theorem bobInput_core {Claim : Type} (first second binding guess : (application 
   | none =>
       simpa only [selectedBinding, carolInput_core, alice_stage, Fin.val_one, ↓reduceIte] using
         CorePath.alice_advance (selectedBinding 0 binding) .failure false
-  | some transmission =>
-      cases transmission with
-      | replay =>
+  | some submission =>
+      simp only [submit, carolInput_visit, selectedBinding]
+      cases address : submission.address with
+      | none =>
           simpa only [selectedBinding, carolInput_core, alice_stage, Fin.val_one,
+            reduceCtorEq, false_and,
             ↓reduceIte] using
             CorePath.alice_advance (selectedBinding 0 binding) .failure false
-      | submit submission =>
-          simp only [submit, carolInput_visit, selectedBinding]
-          cases address : submission.address with
-          | none =>
-              simpa only [selectedBinding, carolInput_core, alice_stage, Fin.val_one,
-                reduceCtorEq, false_and,
-                ↓reduceIte] using
-                CorePath.alice_advance (selectedBinding 0 binding) .failure false
-          | some event =>
-              by_cases same : event = 1
-              · subst event
-                by_cases kind : submission.kind = .bind
-                · simp [kind, carolInput_core, alice_stage, eventOwner, bindingOwner,
-                    CorePath.alice_advance, carol_stage]
-                  rfl
-                · simp [kind, carolInput_core, alice_stage, eventOwner, bindingOwner,
-                    CorePath.alice_advance]
-                  rfl
-              · simp [same, carolInput_core, alice_stage, eventOwner, bindingOwner,
-                  CorePath.alice_advance]
-                rfl
+      | some event =>
+          by_cases same : event = 1
+          · subst event
+            by_cases kind : submission.kind = .bind
+            · simp [kind, carolInput_core, alice_stage, eventOwner, bindingOwner,
+                CorePath.alice_advance, carol_stage]
+              rfl
+            · simp [kind, carolInput_core, alice_stage, eventOwner, bindingOwner,
+                CorePath.alice_advance]
+              rfl
+          · simp [same, carolInput_core, alice_stage, eventOwner, bindingOwner,
+              CorePath.alice_advance]
+            rfl
 
 theorem effect_sound {Claim : Type} (execution : (application Claim).Execution)
     (cmd : (application Claim).Command) (sound : (packetEvidence Claim).Sound execution) :
@@ -347,10 +323,7 @@ theorem respond_clock {Claim : Type} (execution : (application Claim).Execution)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact submit_clock execution.application who submission
-      | replay => rfl
+  | some submission => exact submit_clock execution.application who submission
 
 theorem ticks_clock {Claim : Type} (execution : (application Claim).Execution) (count : Nat) :
     ((List.replicate count ()).foldl

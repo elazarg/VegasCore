@@ -254,7 +254,7 @@ theorem ServiceBoundary.binding_prefix_conformance
     (owned : (graph setup).actor? event = some owner)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (visits : List Player) (current : (application setup leaks).Execution)
     (reached : current ∈ ((runtime setup).runInteractionPlan leaks players network
       (visits.map ServiceInstruction.player) execution).support) :
@@ -262,7 +262,7 @@ theorem ServiceBoundary.binding_prefix_conformance
       current.application.publicView current.network.ledger message = true) ∧
     (∀ record ∈ (application setup leaks).executionTraffic current,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true) := by
+        record.envelope = true) := by
   let app := application setup leaks
   induction visits using List.reverseRecOn generalizing current with
   | nil =>
@@ -294,17 +294,17 @@ theorem ServiceBoundary.binding_prefix_conformance
       have issued : ∀ record ∈ app.trafficStep (some ⟨0, some actor, activated⟩)
           (some ⟨0, none, activated.respond app actor response⟩),
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = true := by
+            record.envelope = true := by
         by_cases acting : actor = owner
         · subst actor
           exact bounds.compiled_binding_traffic (runtime setup) leaks activated binding 0
             owner event payload outputEq codeEq node (sole.ownTurn owned) ready timely
             (fun absent => (unsent absent).2.1)
             (fun absent => (unsent absent).2.2.1 owner)
-            (sampled.known owner) response member
+            response member
         · exact bounds.compiled_foreign_traffic (runtime setup) leaks activated 0 actor
             (sole.idle (by rw [owned]; exact fun equal => acting (Option.some.inj equal).symm))
-            (sampled.known actor) response member
+            response member
       refine ⟨(runtime setup).service_response_conformance leaks activated 0 actor response
         sampled issued, ?_⟩
       intro record included

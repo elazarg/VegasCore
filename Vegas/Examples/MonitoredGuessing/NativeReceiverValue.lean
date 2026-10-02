@@ -56,14 +56,14 @@ theorem quiet_raw_guess_stored (bit : Bool) (response : nativeApp.Action)
   rw [stored, Option.getD_some] at classified
   rwa [← classified]
 
-theorem resolution_plan_bob_upper (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem resolution_plan_bob_upper (charge : ℝ) (players : Player → nativeApp.Policy)
     (plan : List (ServiceInstruction nativeGraph)) (execution : nativeApp.Execution)
     (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit execution.application)
     (stored : bobPublicationRef.get? execution.application.config.store = some guess) :
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
-      (nativeExecutionUtility deposit bob) ≤ correctness (.success bit) guess := by
-  refine expect_le_const _ _ (nativeExecutionUtility_integrable deposit bob _) _
+      (nativeComparisonExecutionUtility charge bob) ≤ correctness (.success bit) guess := by
+  refine expect_le_const _ _ (nativeComparisonExecutionUtility_integrable charge bob _) _
     fun final supported => ?_
   have fixed := resolution_plan_invariant players _ (native_fixed_invariant bit) plan
     execution final valid supported
@@ -74,7 +74,7 @@ theorem resolution_plan_bob_upper (deposit : ℝ) (players : Player → nativeAp
   have bobResult : (nativeResults final.application.config).bob = guess := by
     simp only [nativeResults, bound, Option.getD_some]
   change utility (nativeResults final.application.config) bob -
-      (if bob = alice ∧ rejectedAlice final.receipts then deposit else 0) ≤ _
+      (if bob = alice ∧ aliceLiability final then charge else 0) ≤ _
   rw [ite_eq_right (fun condition => (show bob ≠ alice by decide) condition.1), sub_zero,
     utility_bob, bobResult]
   rcases fixed.alice_results with failed | opened
@@ -82,25 +82,25 @@ theorem resolution_plan_bob_upper (deposit : ℝ) (players : Player → nativeAp
     cases bit <;> cases guess <;> norm_num [correctness, PublicationResult.isSuccess]
   · rw [opened]
 
-theorem quiet_response_bob_value_le (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem quiet_response_bob_value_le (charge : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) :
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       (nativePlan.drop 4)
       ((quietBob bit).respond nativeApp bob response))
-        (nativeExecutionUtility deposit bob) ≤
+        (nativeComparisonExecutionUtility charge bob) ≤
       correctness (.success bit) (quietGuess response players) := by
   change expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
     (quietGuessPlan ++ [.player alice] ++ resolutionTail)
       ((quietBob bit).respond nativeApp bob response)) _ ≤ _
   rw [List.append_assoc, runInteractionPlan_append,
-    expect_bind_tower _ _ _ (nativeExecutionUtility_integrable deposit bob _)]
-  refine expect_le_const _ _ (nativeExecutionValue_integrable deposit bob _ _) _
+    expect_bind_tower _ _ _ (nativeComparisonExecutionUtility_integrable charge bob _)]
+  refine expect_le_const _ _ (nativeExecutionValue_integrable charge bob _ _) _
     fun next supported => ?_
   have fixed := resolution_plan_invariant players _ (native_fixed_invariant bit) quietGuessPlan
     ((quietBob bit).respond nativeApp bob response) next
     ((native_fixed_invariant bit).respond (quietBob bit) bob response (quiet_bob_fixed bit))
     supported
-  exact resolution_plan_bob_upper deposit players _ next bit (quietGuess response players) fixed
+  exact resolution_plan_bob_upper charge players _ next bit (quietGuess response players) fixed
     (quiet_raw_guess_stored bit response players next supported)
 
 end Vegas.Examples.MonitoredGuessing

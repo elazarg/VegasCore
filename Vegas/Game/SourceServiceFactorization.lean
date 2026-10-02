@@ -170,7 +170,7 @@ theorem source_replay_factorization
     ∃ nextNoise : DecisionView focal Γ → PMF _,
       (prior.bind fun seed =>
         ((runtime setup).runInteractionPlan leaks
-          (fun _ => (application setup leaks).replayPolicy) network
+          (fun _ => (application setup leaks).silentPolicy) network
           (roster.map ServiceInstruction.player) (execution seed)).map fun final =>
             (source seed, (runtime setup).bindingTraffic leaks focal final)) =
       (prior.map source).bind fun config =>
@@ -180,12 +180,12 @@ theorem source_replay_factorization
     (fun config => config.view focal) noise factor (fun _ => PMF.pure Unit.unit)
     (fun config _ => config) (fun config => config.view focal)
     (fun seed _ => ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).replayPolicy) network
+      (fun _ => (application setup leaks).silentPolicy) network
       (roster.map ServiceInstruction.player) (execution seed)).map
         ((runtime setup).bindingTraffic leaks focal))
     (fun _ _ _ _ _ _ _ _ same => same)
     (fun left leftSupport _ _ right rightSupport _ _ _ same =>
-      (runtime setup).replay_window_focal_law leaks network roster focal
+      (runtime setup).silent_window_focal_law leaks network roster focal
         (execution left) (execution right) (recalled left leftSupport)
         (recalled right rightSupport) same)
   exact ⟨nextNoise, by simpa only [PMF.pure_bind, PMF.pure_map,
@@ -296,8 +296,8 @@ def bindingPhaseTranscript
   let serial := execution.application.publicView.bindingCount owner
   let family := fun selected => app.scheduledPolicy offset selected
     (fun _ _ => PMF.pure
-      ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.replayPolicy
-  let players := Function.update (fun _ => app.replayPolicy) owner
+      ((runtime setup).reactiveBinding leaks owner event payload result serial)) app.silentPolicy
+  let players := Function.update (fun _ => app.silentPolicy) owner
     (app.policyMixture timing family).policy
   ((runtime setup).runInteractionPlan leaks players network
     ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
@@ -369,7 +369,7 @@ theorem binding_successor_memory_factorization
     conv_rhs => rw [runInteractionPlan_append, PMF.map_bind]
     apply bind_eq_of_map_eq _ _ _ _ (by simpa only [serialEq] using coupled)
     intro before _ after _ equal
-    let replay := fun _ : Player => (application setup leaks).replayPolicy
+    let replay := fun _ : Player => (application setup leaks).silentPolicy
     calc
       _ = ((runtime setup).runInteractionPlan leaks replay network
           (List.replicate ticks .tick ++ [.expire event]) before).map

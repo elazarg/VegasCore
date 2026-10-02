@@ -93,28 +93,9 @@ theorem native_instruction_actor_eq (history : List nativeApp.EnvironmentEntry)
       unfold reactiveLatest
       split <;> rfl
   | wire =>
-      change command ∈ ((PMF.pure (match view.network.inputs.getLast? with
-        | none => NetworkChoice.wait
-        | some input => if input.broadcaster = watcher ∧ input.envelope.sender = alice then
-            NetworkChoice.include input.envelope.id else NetworkChoice.wait)).map
-              (fun choice => nativeApp.atMostOnceCommand view
-                (choice.command nativeRuntime nativeLeaks))).support at supported
-      rw [PMF.pure_map, PMF.mem_support_pure_iff _ _] at supported
-      subst command
-      cases last : view.network.inputs.getLast? with
-      | none =>
-          simp only [NetworkChoice.command, ReactiveApplication.atMostOnceCommand]
-          rfl
-      | some input =>
-          by_cases report : input.broadcaster = watcher ∧ input.envelope.sender = alice
-          · simp only [ite_eq_left report, NetworkChoice.command]
-            change (if view.Unpublished nativeApp input.envelope.id then
-              ReactiveApplication.Command.include input.envelope.id else
-                ReactiveApplication.Command.wait).actor? nativeApp = none
-            split <;> rfl
-          · simp only [ite_eq_right report, NetworkChoice.command,
-              ReactiveApplication.atMostOnceCommand]
-            rfl
+      simp only [interactionInstruction, nativeNetwork, PMF.pure_map] at supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
+      rfl
 
 theorem native_alice_activation_positions (history : List nativeApp.EnvironmentEntry)
     (view : nativeApp.EnvironmentView) (command : nativeApp.Command)
@@ -250,54 +231,54 @@ theorem initial_alice_finish (players : Player → nativeApp.Policy) (bit : Bool
           (ambientRespond bit response)).map nativeApp.finished) :=
   native_finish_response players [] nativePlan.tail alice rfl (aliceActivated bit) rfl
 
-def initialResponseValue (deposit : ℝ) (players : Player → nativeApp.Policy)
+def initialResponseValue (charge : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) (response : nativeApp.Action) : ℝ :=
   expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork nativePlan.tail
-    (ambientRespond bit response)) (nativeExecutionUtility deposit alice)
+    (ambientRespond bit response)) (nativeComparisonExecutionUtility charge alice)
 
-theorem initial_alice_finish_value (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem initial_alice_finish_value (charge : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-      (some (initialAliceControl bit))) (nativeUtility deposit alice) =
+      (some (initialAliceControl bit))) (nativeComparisonUtility charge alice) =
       expect (players alice [] ((aliceActivated bit).observe nativeApp alice))
-        (initialResponseValue deposit players bit) := by
+        (initialResponseValue charge players bit) := by
   rw [initial_alice_finish, expect_bind_tower _ _ _
-    (payoffIntegrable_of_bounded _ _ (nativeUtility_abs_le deposit alice))]
+    (payoffIntegrable_of_bounded _ _ (nativeComparisonUtility_abs_le charge alice))]
   apply expect_congr_on_support
   intro response _
   rw [expect_map]
   rfl
 
-theorem initial_alice_context_value (deposit : ℝ)
+theorem initial_alice_context_value (charge : ℝ)
     (assessment : nativeModel.BehavioralAssessment) (bit : Bool)
     (alternative : nativeModel.BehavioralPolicy alice) :
     (assessment.truncatedContinuationContext (initialAliceSite bit)
-      (fun history => nativeUtility deposit alice history.state)
+      (fun history => nativeComparisonUtility charge alice history.state)
         (2 * nativeHorizon + 1)).value alternative =
       let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
         (Profile.update (sig := nativeModel.behavioralSignature)
           assessment.strategy alice alternative)
       expect (players alice [] ((aliceActivated bit).observe nativeApp alice))
-        (initialResponseValue deposit players bit) := by
+        (initialResponseValue charge players bit) := by
   rw [nativeMenu.context_value_of_known_state nativeInitialLaw nativeHorizon nativeScheduler
-    assessment alice (initialAliceSite bit) (nativeUtility deposit alice) alternative
+    assessment alice (initialAliceSite bit) (nativeComparisonUtility charge alice) alternative
       (some (initialAliceControl bit)) (initial_alice_information_control bit)]
-  exact initial_alice_finish_value deposit _ bit
+  exact initial_alice_finish_value charge _ bit
 
-theorem initial_submission_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+theorem initial_submission_value_le (charge : ℝ) (nonnegative : 0 ≤ charge)
     (players : Player → nativeApp.Policy) (reports : players watcher = nativeWatcherPolicy)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
-    initialResponseValue deposit players bit (submissionAction submission) ≤ 1 - deposit / 2 := by
+    initialResponseValue charge players bit (submissionAction submission) ≤ 1 - charge / 2 := by
   unfold initialResponseValue
   rw [show nativePlan.tail = [.player watcher, .wire] ++ nativePlan.drop 3 from rfl,
     runInteractionPlan_append, monitoring_plan players reports]
-  exact submitted_continuation_utility_le bit submission deposit nonnegative players _
+  exact submitted_continuation_utility_le bit submission charge nonnegative players _
 
-theorem initial_submission_value_nonpositive (deposit : ℝ) (sufficient : 2 ≤ deposit)
+theorem initial_submission_value_nonpositive (charge : ℝ) (sufficient : 2 ≤ charge)
     (players : Player → nativeApp.Policy) (reports : players watcher = nativeWatcherPolicy)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph) :
-    initialResponseValue deposit players bit (submissionAction submission) ≤ 0 := by
-  have bound := initial_submission_value_le deposit (by linarith) players reports bit submission
+    initialResponseValue charge players bit (submissionAction submission) ≤ 0 := by
+  have bound := initial_submission_value_le charge (by linarith) players reports bit submission
   linarith
 
 theorem native_site_observation (who : Player) (site : nativeModel.InformationSite who) :

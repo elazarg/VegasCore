@@ -10,7 +10,8 @@ import GameTheoryExtensions.Math.Probability.Uniform
 /-! # A sequential equilibrium of the named-evidence source interface
 
 The source interface admits every finite claim, every currently available
-named certificate, and every known replay. Sequential rationality compares
+named certificate, and every authentic certificate forwarding action. Sequential rationality
+  compares
 whole behavioral continuation policies at all eight response opportunities.
 One common fully mixed sequence supplies the consistent beliefs.
 -/

@@ -448,7 +448,7 @@ theorem applicationStep_completed_subset (runtime : EventGraphRuntime graph)
       simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact privateStep_completed_subset state.application who command
-  | submit who payload | replay who id | deliver who id =>
+  | submit who payload | deliver who id =>
       simp only [MessageApplication.step, PMF.mem_support_pure_iff _ _] at member
       subst next
       exact Finset.Subset.rfl

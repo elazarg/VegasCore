@@ -49,10 +49,10 @@ theorem compiled_alice_optimal (table : PayoffTable)
     (siteEq : site.1 = aliceInput bit guess)
     (alternative : restrictedModel.BehavioralPolicy alice) :
     (target.truncatedContinuationContext site
-      (fun history => Enforcement.stateUtility table history.state alice)
+      (fun history => Enforcement.comparisonStateUtility table history.state alice)
         (2 * nativeHorizon + 1)).value alternative ≤
       (target.truncatedContinuationContext site
-        (fun history => Enforcement.stateUtility table history.state alice)
+        (fun history => Enforcement.comparisonStateUtility table history.state alice)
           (2 * nativeHorizon + 1)).value (target.strategy alice) := by
   rw [alice_context_value table target site bit guess siteEq,
     alice_context_value table target site bit guess siteEq, Profile.update_eq_self]
@@ -73,10 +73,10 @@ theorem compiled_bob_optimal (table : PayoffTable)
     (site : restrictedModel.InformationSite bob)
     (alternative : restrictedModel.BehavioralPolicy bob) :
     (target.truncatedContinuationContext site
-      (fun history => Enforcement.stateUtility table history.state bob)
+      (fun history => Enforcement.comparisonStateUtility table history.state bob)
         (2 * nativeHorizon + 1)).value alternative ≤
       (target.truncatedContinuationContext site
-        (fun history => Enforcement.stateUtility table history.state bob)
+        (fun history => Enforcement.comparisonStateUtility table history.state bob)
           (2 * nativeHorizon + 1)).value (target.strategy bob) := by
   rw [receiver_context_value table target consistent site,
     receiver_context_value table target consistent site, Profile.update_eq_self]
@@ -99,20 +99,20 @@ theorem compiled_local_optimal (table : PayoffTable)
     (who : Player) (site : restrictedModel.InformationSite who)
     (law : PMF (restrictedModel.Choice who site.1)) :
     (target.truncatedContinuationContext site
-      (fun history => Enforcement.stateUtility table history.state who)
+      (fun history => Enforcement.comparisonStateUtility table history.state who)
         (2 * nativeHorizon + 1)).value ((target.strategy who).withLaw site.1 law) ≤
       (target.truncatedContinuationContext site
-        (fun history => Enforcement.stateUtility table history.state who)
+        (fun history => Enforcement.comparisonStateUtility table history.state who)
           (2 * nativeHorizon + 1)).value (target.strategy who) := by
   classical
   fin_cases who
   · change restrictedModel.InformationSite alice at site
     change PMF (restrictedModel.Choice alice site.1) at law
     change (target.truncatedContinuationContext site
-      (fun history => Enforcement.stateUtility table history.state alice)
+      (fun history => Enforcement.comparisonStateUtility table history.state alice)
         (2 * nativeHorizon + 1)).value ((target.strategy alice).withLaw site.1 law) ≤
       (target.truncatedContinuationContext site
-        (fun history => Enforcement.stateUtility table history.state alice)
+        (fun history => Enforcement.comparisonStateUtility table history.state alice)
           (2 * nativeHorizon + 1)).value (target.strategy alice)
     rcases alice_site_cases site with ⟨bit, early⟩ | ⟨bit, guess, final⟩
     · let : Subsingleton (restrictedModel.Choice alice site.1) := by
@@ -129,13 +129,13 @@ theorem compiled_local_optimal (table : PayoffTable)
   · change restrictedModel.InformationSite watcher at site
     change PMF (restrictedModel.Choice watcher site.1) at law
     change (target.truncatedContinuationContext site
-      (fun history => Enforcement.stateUtility table history.state watcher)
+      (fun history => Enforcement.comparisonStateUtility table history.state watcher)
         (2 * nativeHorizon + 1)).value ((target.strategy watcher).withLaw site.1 law) ≤
       (target.truncatedContinuationContext site
-        (fun history => Enforcement.stateUtility table history.state watcher)
+        (fun history => Enforcement.comparisonStateUtility table history.state watcher)
           (2 * nativeHorizon + 1)).value (target.strategy watcher)
     simp only [InformationModel.BehavioralAssessment.truncatedContinuationContext_value,
-      Enforcement.stateUtility_watcher table watcherZero, expect_constant, le_refl]
+      Enforcement.comparisonStateUtility_watcher table watcherZero, expect_constant, le_refl]
 
 /-- Every source SE, with arbitrary declared result incentives, has a consistent
 SE at its fixed translated policy in the restricted native game. -/
@@ -149,7 +149,7 @@ theorem source_equilibrium_compiles (table : PayoffTable)
       target.IsSequentialEquilibriumFor restricted_decisionRecall.decisionInformationAntichain
           (fun who site =>
         target.truncatedContinuationContext site
-          (fun history => Enforcement.stateUtility table history.state who)
+          (fun history => Enforcement.comparisonStateUtility table history.state who)
           (2 * nativeHorizon + 1 - restrictedDepth who site)) := by
   classical
   obtain ⟨target, strategy, consistent⟩ := restrictedMenu.exists_consistent_assessment

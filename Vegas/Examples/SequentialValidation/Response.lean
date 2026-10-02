@@ -16,7 +16,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 def nativeChosenState (execution : nativeApp.Execution) (action : nativeApp.Action) :
     EventGraphRuntime.State nativeGraph :=
   match action.transmission with
-  | some (.submit submission) =>
+  | some submission =>
       let submitted := nativeApp.submit execution.application true submission
       if submission.call.packet.event? nativeGraph = some guessEvent then
         (handle nativeRuntime submitted
@@ -31,21 +31,18 @@ theorem native_chosen_views (left right : nativeApp.Execution) (action : nativeA
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact views
-  | some transmission =>
-      cases transmission with
-      | replay id => exact views
-      | submit submission =>
-          have submitted := submit_playerView_congr nativeRuntime nativeLeaks
-            left.application right.application true submission views
-          simp only [nativeChosenState]
-          split
-          · exact handle_result_playerView_congr nativeRuntime _ _ true _ _ _ submitted
-          · exact submitted
+  | some submission =>
+      have submitted := submit_playerView_congr nativeRuntime nativeLeaks
+        left.application right.application true submission views
+      simp only [nativeChosenState]
+      split
+      · exact handle_result_playerView_congr nativeRuntime _ _ true _ _ _ submitted
+      · exact submitted
 
 theorem native_bob_fresh_lookup (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (empty : control.execution.recall true = [])
     (submission : WitnessedSubmission nativeGraph) :
-    (control.execution.respond nativeApp true ⟨some (.submit submission)⟩).network.lookup
+    (control.execution.respond nativeApp true ⟨some submission⟩).network.lookup
       (true, control.execution.network.nextSerial true) =
         some ⟨(true, control.execution.network.nextSerial true),
           submission.emit (nativeApp.submit control.execution.application true submission)
@@ -79,28 +76,21 @@ theorem native_bob_round (bit : Bool) (control : nativeApp.Control)
         ReactiveApplication.Execution.environmentStep, PMF.pure_map,
         ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
       rfl
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          simp only [nativeFinalCommand, ReactiveApplication.dispatch,
-            ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-            ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
-          rfl
-      | submit submission =>
-          by_cases address : submission.call.packet.event? nativeGraph = some guessEvent
-          · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,
-              ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-              ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
-            simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
-              native_bob_fresh_lookup control trace empty submission]
-            rw [reactiveApplication_handle_of_current_token nativeRuntime nativeLeaks _ _ rfl]
-            simp only [nativeChosenState, address, ↓reduceIte]
-            rfl
-          · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,
-              ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-              ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind,
-              nativeChosenState]
-            rfl
+  | some submission =>
+      by_cases address : submission.call.packet.event? nativeGraph = some guessEvent
+      · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,
+          ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+          ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind]
+        simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+          native_bob_fresh_lookup control trace empty submission]
+        rw [reactiveApplication_handle_of_current_token nativeRuntime nativeLeaks _ _ rfl]
+        simp only [nativeChosenState, address, ↓reduceIte]
+        rfl
+      · simp only [nativeFinalCommand, address, ↓reduceIte, ReactiveApplication.dispatch,
+          ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+          ReactiveApplication.Command.actor?, ReactiveApplication.resume, PMF.pure_bind,
+          nativeChosenState]
+        rfl
 
 theorem native_round_length (players : Bool → nativeApp.Policy)
     (execution next : nativeApp.Execution)
@@ -136,7 +126,7 @@ theorem native_bob_response_tail (bit : Bool) (control : nativeApp.Control)
       rw [native_bob_round bit control trace active empty views, PMF.pure_bind]
 
 theorem native_chosen_guess (bit guess : Bool) :
-    nativeChosenState (nativeBobExecution bit) ⟨some (.submit (nativeGuessSubmission guess))⟩ =
+    nativeChosenState (nativeBobExecution bit) ⟨some (nativeGuessSubmission guess)⟩ =
       nativeGuessState bit guess := by
   have addressed :
       (nativeGuessSubmission guess).call.packet.event? nativeGraph = some guessEvent :=
@@ -157,24 +147,21 @@ theorem native_chosen_store (execution : nativeApp.Execution) (action : nativeAp
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact stored
-  | some transmission =>
-      cases transmission with
-      | replay id => exact stored
-      | submit submission =>
-          have submitted := invariant.submit execution.application true submission stored
-          simp only [nativeChosenState]
-          split
-          · cases accepted : handle nativeRuntime (nativeApp.submit execution.application true
-                submission) ⟨(true, execution.network.nextSerial true), submission.call.packet⟩ with
-            | none => exact submitted
-            | some next =>
-                exact handle_store_of_some nativeRuntime _ next _ accepted field value submitted
-          · exact submitted
+  | some submission =>
+      have submitted := invariant.submit execution.application true submission stored
+      simp only [nativeChosenState]
+      split
+      · cases accepted : handle nativeRuntime (nativeApp.submit execution.application true
+            submission) ⟨(true, execution.network.nextSerial true), submission.call.packet⟩ with
+        | none => exact submitted
+        | some next =>
+            exact handle_store_of_some nativeRuntime _ next _ accepted field value submitted
+      · exact submitted
 
 theorem native_tail_guess (bit guess : Bool) :
     (nativeTail 8 44
       (nativeChosenState (nativeBobExecution bit)
-        ⟨some (.submit (nativeGuessSubmission guess))⟩)).map nativeGuess = PMF.pure guess := by
+        ⟨some (nativeGuessSubmission guess)⟩)).map nativeGuess = PMF.pure guess := by
   rw [native_chosen_guess]
   calc
     _ = (nativeTail 8 44 (nativeGuessState bit guess)).map (fun _ => guess) := by

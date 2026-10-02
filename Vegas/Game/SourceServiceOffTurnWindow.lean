@@ -31,7 +31,7 @@ theorem off_turn_replay_sourceService
     (view : (application setup leaks).PlayerView)
     (idle : view.application.publicView.Idle who)
     (response : (application setup leaks).Action)
-    (replay : response ∈ ((application setup leaks).replayPolicy past view).support) :
+    (replay : response ∈ ((application setup leaks).silentPolicy past view).support) :
     response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
   classical
   have optional : ¬ bindingRequired setup leaks rosters who past view := by
@@ -39,7 +39,7 @@ theorem off_turn_replay_sourceService
     exact idle event ready owned
   change response ∈ sourceServiceActions setup leaks bounds rosters who past view
   rw [sourceServiceActions, ite_eq_right optional]
-  exact bounds.replay_compiled (runtime setup) leaks who past view response replay
+  exact bounds.silent_compiled (runtime setup) leaks who past view response replay
 
 /-- No source-owner roster restriction is imposed. Every focal visit is
 classified by the focal player's idleness, while all repaired endpoints remain
@@ -92,9 +92,9 @@ theorem off_turn_roster_stopped_coupling
         Nonempty (((sourceServiceMenu setup leaks bounds rosters).protocol (initialLaw setup)
           (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
             (some ⟨remaining, none, next.2.1⟩)) ∧
-        ((∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        ((∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow = memory.shadow ∧
           next.2.1.application.playerView owner = repaired.application.playerView owner) := by

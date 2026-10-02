@@ -68,8 +68,8 @@ theorem outsideAlice_respond_submit {Claim : Type}
         (execution.network.known alice) first =
       packet (submit execution.application alice second) alice
         (execution.network.known alice) second) :
-    outsideAlice (execution.respond (application Claim) alice ⟨some (.submit first)⟩) =
-      outsideAlice (execution.respond (application Claim) alice ⟨some (.submit second)⟩) := by
+    outsideAlice (execution.respond (application Claim) alice ⟨some first⟩) =
+      outsideAlice (execution.respond (application Claim) alice ⟨some second⟩) := by
   simp only [outsideAlice, ReactiveApplication.Execution.respond, application]
   change (⟨_, execution.receipts,
     if bob = alice then _ else execution.recall bob,
@@ -111,7 +111,7 @@ theorem outsideAlice_remainingVisit {Claim : Type} (first second : (application 
 def bindingCertificates {Claim : Type} (first second binding : (application Claim).Action) :
     Finset NamedFact :=
   match binding.transmission with
-  | some (.submit submission) =>
+  | some submission =>
       certificates (submit (aliceInput first second).application alice submission)
         alice ((aliceInput first second).network.known alice) submission
   | _ => ∅
@@ -125,16 +125,13 @@ theorem outsideAlice_binding_flip {Claim : Type}
   rcases binding with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay => rfl
-      | submit submission =>
-          apply outsideAlice_respond_submit
-          change certificates (submit (aliceInput first second).application alice submission)
-            alice ((aliceInput first second).network.known alice) submission = ∅ at uncertified
-          rw [aliceInput_application] at uncertified ⊢
-          exact packet_post_flip_of_uncertified 0 _
-            (aliceInput_known_empty first second alice) submission uncertified
+  | some submission =>
+      apply outsideAlice_respond_submit
+      change certificates (submit (aliceInput first second).application alice submission)
+        alice ((aliceInput first second).network.known alice) submission = ∅ at uncertified
+      rw [aliceInput_application] at uncertified ⊢
+      exact packet_post_flip_of_uncertified 0 _
+        (aliceInput_known_empty first second alice) submission uncertified
 
 theorem outsideAlice_carol_flip {Claim : Type}
     (first second binding : (application Claim).Action)
@@ -186,18 +183,15 @@ theorem selectedBinding_flip {Claim : Type} (event : Event) (action : (applicati
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay => rfl
-      | submit submission =>
-          simp only [selectedBinding, flipResponse, flipSubmission]
-          split <;> rfl
+  | some submission =>
+      simp only [selectedBinding, flipResponse, flipSubmission]
+      split <;> rfl
 
 theorem outsideAlice_respond_carol {Claim : Type}
     (first second : (application Claim).Execution) (action : (application Claim).Action)
     (same : outsideAlice first = outsideAlice second)
     (viewed : first.observe (application Claim) carol = second.observe (application Claim) carol)
-    (packets : ∀ submission, action.transmission = some (.submit submission) →
+    (packets : ∀ submission, action.transmission = some submission →
       packet (submit first.application carol submission) carol (first.network.known carol)
         submission =
       packet (submit second.application carol submission) carol (second.network.known carol)
@@ -220,23 +214,15 @@ theorem outsideAlice_respond_carol {Claim : Type}
       simp only [outsideAlice, ReactiveApplication.Execution.respond,
         show bob ≠ carol by decide, ↓reduceIte]
       rw [network, receipts, bobRecall, carolRecall, viewed, environmentCount]
-  | some transmission =>
-      cases transmission with
-      | submit submission =>
-          have packetSame := packets submission rfl
-          change (application Claim).packet ((application Claim).submit first.application
-            carol submission) carol (first.network.known carol) submission =
-              (application Claim).packet ((application Claim).submit second.application
-                carol submission) carol (second.network.known carol) submission at packetSame
-          simp only [outsideAlice, ReactiveApplication.Execution.respond,
-            show bob ≠ carol by decide, ↓reduceIte]
-          rw [packetSame, network, receipts, bobRecall, carolRecall, viewed, environmentCount]
-      | replay id =>
-          simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay]
-          rw [network]
-          cases (second.network.known carol).find? (fun message => message.id = id) <;>
-            simp only [outsideAlice, show bob ≠ carol by decide, ↓reduceIte,
-              receipts, bobRecall, carolRecall, viewed, environmentCount]
+  | some submission =>
+      have packetSame := packets submission rfl
+      change (application Claim).packet ((application Claim).submit first.application
+        carol submission) carol (first.network.known carol) submission =
+          (application Claim).packet ((application Claim).submit second.application
+            carol submission) carol (second.network.known carol) submission at packetSame
+      simp only [outsideAlice, ReactiveApplication.Execution.respond,
+        show bob ≠ carol by decide, ↓reduceIte]
+      rw [packetSame, network, receipts, bobRecall, carolRecall, viewed, environmentCount]
 
 theorem carolInput_application {Claim : Type} (first second binding : (application Claim).Action) :
     (carolInput first second binding).application =
@@ -308,19 +294,16 @@ theorem bindingCertificates_flip_empty {Claim : Type}
   rcases binding with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay => rfl
-      | submit submission =>
-          change certificates (submit (aliceInput first second).application alice submission)
-            alice ((aliceInput first second).network.known alice) submission = ∅ at uncertified
-          change certificates (submit (aliceInput first second).application alice
-            (flipSubmission submission)) alice ((aliceInput first second).network.known alice)
-              (flipSubmission submission) = ∅
-          rw [aliceInput_application] at uncertified ⊢
-          have same := packet_post_flip_of_uncertified 0 _
-            (aliceInput_known_empty first second alice) submission uncertified
-          exact (congrArg Packet.evidence same).trans uncertified
+  | some submission =>
+      change certificates (submit (aliceInput first second).application alice submission)
+        alice ((aliceInput first second).network.known alice) submission = ∅ at uncertified
+      change certificates (submit (aliceInput first second).application alice
+        (flipSubmission submission)) alice ((aliceInput first second).network.known alice)
+          (flipSubmission submission) = ∅
+      rw [aliceInput_application] at uncertified ⊢
+      have same := packet_post_flip_of_uncertified 0 _
+        (aliceInput_known_empty first second alice) submission uncertified
+      exact (congrArg Packet.evidence same).trans uncertified
 
 theorem bindingCertificates_flip_empty_iff {Claim : Type}
     (first second binding : (application Claim).Action) :

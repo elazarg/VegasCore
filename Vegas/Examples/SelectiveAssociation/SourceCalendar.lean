@@ -109,8 +109,8 @@ def publicGuess {Claim : Type} (view : (application Claim).PlayerView) : Bool :=
 
 def playing (Claim : Type) (defaultClaim : Claim) (event : Event)
     (binding : PublicationResult Bool) : (application Claim).Action :=
-  ⟨some (.submit ⟨some event, if event.val < 3 then .bind else .open,
-    defaultClaim, binding, none⟩)⟩
+  ⟨some ⟨some event, if event.val < 3 then .bind else .open,
+    defaultClaim, binding, none⟩⟩
 
 def policy (Claim : Type) (defaultClaim : Claim) (who : Player) :
     (application Claim).Policy := fun _ view =>
@@ -134,7 +134,6 @@ theorem silence_available (Claim : Type) [Fintype Claim] (who : Player)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView) :
     (⟨none⟩ : (application Claim).Action) ∈ (menu Claim).actions who past view := by
   classical
-  apply (baseMenu Claim).base_available
   exact Finset.mem_union_left _ (Finset.mem_singleton_self _)
 
 theorem policy_covered (Claim : Type) [Fintype Claim] (defaultClaim : Claim) (who : Player)

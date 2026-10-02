@@ -88,7 +88,7 @@ theorem inferredCharge_deters (table : PayoffTable) {charge : ℚ}
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
     expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
-        (monitoredSettlement (fun result => table result alice) charge) ≤ senderLower table := by
+        (comparisonSettlement (fun result => table result alice) charge) ≤ senderLower table := by
   obtain ⟨nonnegative, sufficient⟩ := inferredCharge_bounds table inferred
   apply submission_deterred_by_range (fun result => table result alice)
     (senderLower table) (senderUpper table) charge _ nonnegative sufficient
@@ -103,7 +103,7 @@ theorem inferredCharge_deters_against_opening (table : PayoffTable) {charge : �
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
     expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
-        (monitoredSettlement (fun result => table result alice) charge) ≤
+        (comparisonSettlement (fun result => table result alice) charge) ≤
       expect guesses (fun guess =>
         (table ⟨.success bit, if guess then .success true else .failure⟩ alice : ℝ)) := by
   apply (inferredCharge_deters table inferred bit submission players plan).trans
@@ -112,7 +112,7 @@ theorem inferredCharge_deters_against_opening (table : PayoffTable) {charge : �
     (payoffIntegrable_of_finite _ _)
   exact_mod_cast senderLower_le table bit guess
 
-/-- The original correctness table recovers the native pilot's deposit two. -/
+/-- The original correctness table recovers the native pilot's charge two. -/
 example : inferredCharge (fun result who =>
     if who = alice then match result.alice with
       | .failure => -4

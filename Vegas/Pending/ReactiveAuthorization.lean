@@ -81,7 +81,7 @@ theorem ready_submission_authorized (runtime : EventGraphRuntime graph)
     (fresh : execution.submissionOrigin? (runtime.reactiveApplication leaks)
       (who, execution.network.nextSerial who) = none) :
     (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some (.submit material)⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
+      ⟨some material⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
         (runtime.submissionDependencyCondition leaks)
         ⟨(who, execution.network.nextSerial who),
           material.emit ((runtime.reactiveApplication leaks).submit
@@ -106,7 +106,7 @@ theorem ready_submission_authorized_history (runtime : EventGraphRuntime graph)
     (address : material.call.packet.event? graph = some event)
     (ready : control.execution.application.publicView.EventReady event) :
     (control.execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some (.submit material)⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
+      ⟨some material⟩).AuthorizedAtSubmission (runtime.reactiveApplication leaks)
         (runtime.submissionDependencyCondition leaks)
         ⟨(who, control.execution.network.nextSerial who),
           material.emit ((runtime.reactiveApplication leaks).submit

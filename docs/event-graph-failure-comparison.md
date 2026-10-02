@@ -116,7 +116,7 @@ every supported information state reached during normalization, not merely the
 states reached by the original policy.
 
 This is the compiler-specific use of
-`FinDist.selective_stopping_le` (or its margin form). That lemma removes one
+`GameTheory.Math.Probability.selective_stopping_le` (or its margin form). That lemma removes one
 informed randomized Boolean stop once branchwise continuation superiority is
 provided. It does not construct repairs, prove their measurability, or justify
 the backward runtime coupling. After normalization supplies a unilateral

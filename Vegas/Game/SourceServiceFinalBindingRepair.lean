@@ -74,9 +74,9 @@ theorem final_binding_history_coupling
           strategy.runJoint owner players (rosterScheduler setup leaks rosters network)
             plan.length next.1 next.2) ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           (runtime setup).permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         next.1.application.publicView.missedBinding event = true ∨
         BindingMemory.Frame (runtime setup) leaks next.2.2 owner next.1 next.2.1 := by
   classical

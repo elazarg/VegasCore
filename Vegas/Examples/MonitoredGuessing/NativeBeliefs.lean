@@ -70,15 +70,17 @@ theorem quiet_native_context (assessment : nativeModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent nativeAntichain)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
-    (deposit : ℝ) (alternative : nativeModel.BehavioralPolicy bob) :
+    (charge : ℝ) (alternative : nativeModel.BehavioralPolicy bob) :
     (assessment.truncatedContinuationContext quietBobSite
-      (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
+      (fun history => nativeComparisonUtility charge bob history.state) (2 * nativeHorizon +
+        1)).value
         alternative =
       expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
           (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
             (Profile.update (sig := nativeModel.behavioralSignature) assessment.strategy bob
-              alternative)) (quietBobHistory bit).state) (nativeUtility deposit bob)) := by
+              alternative)) (quietBobHistory bit).state) (nativeComparisonUtility charge bob))
+                := by
   rw [native_context_value, quiet_native_state_belief_of_prescribed assessment consistent
     alicePolicy watcherPolicy, expect_map]
   rfl

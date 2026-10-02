@@ -37,40 +37,40 @@ theorem quiet_silent_to_bob (players : Player → nativeApp.Policy)
     ReactiveApplication.invoke, PMF.bind_pure]
   rfl
 
-theorem initial_silent_value (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem initial_silent_value (charge : ℝ) (players : Player → nativeApp.Policy)
     (reports : players watcher = nativeWatcherPolicy) (guesses : PMF Bool) (bit : Bool)
     (guessing : players bob [] ((quietBob bit).observe nativeApp bob) =
       guesses.map nativeGuessAction) :
-    initialResponseValue deposit players bit nativeSilent =
+    initialResponseValue charge players bit nativeSilent =
       expect guesses (fun guess =>
         expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
           (nativePlan.drop 4) (quietGuessRespond bit guess))
-            (nativeExecutionUtility deposit alice)) := by
+            (nativeComparisonExecutionUtility charge alice)) := by
   unfold initialResponseValue
   rw [show nativePlan.tail = [.player watcher, .wire, .player bob] ++
     nativePlan.drop 4 from rfl, runInteractionPlan_append, quiet_silent_to_bob players reports,
-    guessing, expect_bind_tower _ _ _ (nativeExecutionUtility_integrable deposit alice _),
+    guessing, expect_bind_tower _ _ _ (nativeComparisonExecutionUtility_integrable charge alice _),
     expect_map, expect_map]
   rfl
 
-theorem initial_silent_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+theorem initial_silent_value_le (charge : ℝ) (nonnegative : 0 ≤ charge)
     (players : Player → nativeApp.Policy) (reports : players watcher = nativeWatcherPolicy)
     (guesses : PMF Bool) (bit : Bool)
     (guessing : players bob [] ((quietBob bit).observe nativeApp bob) =
       guesses.map nativeGuessAction) :
-    initialResponseValue deposit players bit nativeSilent ≤ (guesses bit).toReal := by
-  rw [initial_silent_value deposit players reports guesses bit guessing]
+    initialResponseValue charge players bit nativeSilent ≤ (guesses bit).toReal := by
+  rw [initial_silent_value charge players reports guesses bit guessing]
   have bound : ∀ guess : Bool,
       expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 4)
-        (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice) ≤
+        (quietGuessRespond bit guess)) (nativeComparisonExecutionUtility charge alice) ≤
           if bit = guess then 1 else 0 := by
     intro guess
     rw [show nativePlan.drop 4 = .includeLatest bobPublication bob :: nativePlan.drop 5 from rfl,
       runInteractionPlan, quiet_guess_included, PMF.pure_bind]
-    have result := resolution_plan_alice_upper deposit nonnegative players (nativePlan.drop 5)
+    have result := resolution_plan_alice_upper charge nonnegative players (nativePlan.drop 5)
       (quietGuessIncluded bit guess) bit (guessResult guess) (quiet_guess_fixed bit guess)
         (quiet_guess_results bit guess).1
-    rw [(quiet_guess_results bit guess).2] at result
+    rw [quiet_guess_no_liability bit guess] at result
     convert result using 1
     cases bit <;> cases guess <;> norm_num [correctness, guessResult, rejectedAlice, alice, bob,
       PublicationResult.isSuccess]
@@ -78,43 +78,43 @@ theorem initial_silent_value_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
     (payoffIntegrable_of_finite _ _)).trans_eq
   simpa only [mul_one] using expect_ite_eq guesses bit 1
 
-theorem initial_silent_value_eq (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem initial_silent_value_eq (charge : ℝ) (players : Player → nativeApp.Policy)
     (opens : players alice = nativeAlicePolicy) (reports : players watcher = nativeWatcherPolicy)
     (guesses : PMF Bool) (bit : Bool)
     (guessing : players bob [] ((quietBob bit).observe nativeApp bob) =
       guesses.map nativeGuessAction) :
-    initialResponseValue deposit players bit nativeSilent = (guesses bit).toReal := by
-  rw [initial_silent_value deposit players reports guesses bit guessing]
+    initialResponseValue charge players bit nativeSilent = (guesses bit).toReal := by
+  rw [initial_silent_value charge players reports guesses bit guessing]
   have exactValue : ∀ guess : Bool,
       expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork (nativePlan.drop 4)
-        (quietGuessRespond bit guess)) (nativeExecutionUtility deposit alice) =
+        (quietGuessRespond bit guess)) (nativeComparisonExecutionUtility charge alice) =
           if bit = guess then 1 else 0 := by
     intro guess
     have summarized := quiet_guess_suffix_summary players opens bit guess
     have value := congrArg (fun law => expect law (fun result : Results × Bool =>
-      utility result.1 alice - if result.2 then deposit else 0)) summarized
+      utility result.1 alice - if result.2 then charge else 0)) summarized
     rw [expect_map, expect_pure] at value
     simp only [Function.comp_def] at value
     convert value using 1
     · apply expect_congr_on_support
       intro execution _
-      simp only [nativeExecutionUtility, true_and]
+      simp only [nativeComparisonExecutionUtility, true_and]
     · cases bit <;> cases guess <;> norm_num [utility, correctness, openingPenalty,
         guessResult, alice, PublicationResult.isSuccess]
   simp_rw [exactValue]
   simpa only [mul_one] using expect_ite_eq guesses bit 1
 
-theorem initial_alice_site_dominates (deposit : ℝ) (sufficient : 2 ≤ deposit)
+theorem initial_alice_site_dominates (charge : ℝ) (sufficient : 2 ≤ charge)
     (assessment : nativeModel.BehavioralAssessment) (guesses : PMF Bool)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (atQuiet : assessment.strategy bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1)
     (bit : Bool) (alternative : nativeModel.BehavioralPolicy alice) :
     (assessment.truncatedContinuationContext (initialAliceSite bit)
-      (fun history => nativeUtility deposit alice history.state)
+      (fun history => nativeComparisonUtility charge alice history.state)
         (2 * nativeHorizon + 1)).value alternative ≤
     (assessment.truncatedContinuationContext (initialAliceSite bit)
-      (fun history => nativeUtility deposit alice history.state)
+      (fun history => nativeComparisonUtility charge alice history.state)
         (2 * nativeHorizon + 1)).value (assessment.strategy alice) := by
   let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
     assessment.strategy
@@ -147,19 +147,19 @@ theorem initial_alice_site_dominates (deposit : ℝ) (sufficient : 2 ≤ deposit
   change expect (changed alice [] ((aliceActivated bit).observe nativeApp alice)) _ ≤
     expect (players alice [] ((aliceActivated bit).observe nativeApp alice)) _
   rw [opens]
-  change _ ≤ expect (PMF.pure nativeSilent) (initialResponseValue deposit players bit)
+  change _ ≤ expect (PMF.pure nativeSilent) (initialResponseValue charge players bit)
   rw [expect_pure,
-    initial_silent_value_eq deposit players opens reports guesses bit guessing]
-  refine expect_le_const _ _ (nativeExecutionValue_integrable deposit alice _ _) _
+    initial_silent_value_eq charge players opens reports guesses bit guessing]
+  refine expect_le_const _ _ (nativeExecutionValue_integrable charge alice _ _) _
     fun action supported => ?_
   have covered := nativeMenu.decode_embedPolicy_covered nativeInitialLaw nativeHorizon
     nativeScheduler alice ((Profile.update (sig := nativeModel.behavioralSignature)
       assessment.strategy alice alternative) alice) []
       ((aliceActivated bit).observe nativeApp alice) action supported
   rcases initial_response_cases bit action covered with rfl | ⟨submission, rfl⟩
-  · exact initial_silent_value_le deposit (by linarith) changed changedReports guesses bit
+  · exact initial_silent_value_le charge (by linarith) changed changedReports guesses bit
       changedGuessing
-  · exact (initial_submission_value_nonpositive deposit sufficient changed changedReports bit
+  · exact (initial_submission_value_nonpositive charge sufficient changed changedReports bit
       submission).trans (ENNReal.toReal_nonneg)
 
 end Vegas.Examples.MonitoredGuessing

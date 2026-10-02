@@ -66,9 +66,9 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
     (onlyBindings : ∀ pair ∈ coupled.support, pair.2.2.shadow.OwnBindings who)
     (related : ∀ pair ∈ coupled.support,
       (∃ record ∈ (application setup leaks).executionTraffic pair.1.execution,
-        record.input.envelope.sender = who ∧
+        record.envelope.sender = who ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false) ∨
+          record.envelope = false) ∨
       pair.1.execution.application.publicView.missedBindingBy who = true ∨
       pair.2.2.Frame (runtime setup) leaks who pair.1.execution pair.2.1.execution)
     (bounded : ∀ pair ∈ coupled.support,
@@ -112,7 +112,7 @@ theorem sourceService_repair_settlement_le {Parameter : Type}
           (finished pair supported) record present breach
       have lowerCharge : rate ≤ TerminalAudit.charge observe audit (some pair.1) who :=
         (runtime setup).serviceAudit_charge_from_record leaks
-          (fun settled traffic => (settled, traffic.input.envelope))
+          (fun settled traffic => (settled, traffic.envelope))
           (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2)
           sample who rate coverage pair.1 other otherPresent (sameAuthor.trans author) forbidden
       exact (min_le_left _ _).trans lowerCharge
@@ -192,9 +192,9 @@ theorem sourceService_repair_range_settlement_le {Parameter : Type}
     (onlyBindings : ∀ pair ∈ coupled.support, pair.2.2.shadow.OwnBindings who)
     (related : ∀ pair ∈ coupled.support,
       (∃ record ∈ (application setup leaks).executionTraffic pair.1.execution,
-        record.input.envelope.sender = who ∧
+        record.envelope.sender = who ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false) ∨
+          record.envelope = false) ∨
       pair.1.execution.application.publicView.missedBindingBy who = true ∨
       pair.2.2.Frame (runtime setup) leaks who pair.1.execution pair.2.1.execution) :
     let base := baseUtility setup leaks

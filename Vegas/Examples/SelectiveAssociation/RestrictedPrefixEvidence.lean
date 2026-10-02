@@ -117,12 +117,7 @@ theorem respond_ledger (execution : app.Execution) (who : Player) (action : app.
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit => rfl
-      | replay id =>
-          cases found : (execution.network.known who).find? (fun sent => sent.id = id) <;>
-            simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
+  | some submission => rfl
 
 theorem environmentResult_ledger_subset (execution : app.Execution) (command : app.Command) :
     execution.network.ledger ⊆ (environmentResult execution command).network.ledger := by

@@ -59,7 +59,7 @@ private theorem unopened_mixture_probability
     let packet := (runtime setup).windowOpening leaks event candidate raw
     ((((app.policyMixture (rosterSelection choice timing) (fun selected =>
       app.scheduledPolicy (rosterOffset setup rosters owner event) selected
-        (fun _ _ => PMF.pure packet) app.replayPolicy)).policy
+        (fun _ _ => PMF.pure packet) app.silentPolicy)).policy
           (activated.recall owner) (activated.observe app owner))) packet).toReal =
       PMF.deferredHazard ((choice true).toReal) timing
         ((activated.recall owner).length - rosterOffset setup rosters owner event) := by
@@ -90,14 +90,14 @@ private theorem unopened_mixture_probability
   simp only [representation] at exactPost ⊢
   have probability := app.scheduledMixture_probability_of_posterior ((choice true).toReal)
     (ENNReal.toReal_nonneg) small timing (rosterOffset setup rosters owner event) packet
-    app.replayPolicy (activated.recall owner) slot atSlot exactPost
+    app.silentPolicy (activated.recall owner) slot atSlot exactPost
       (activated.observe app owner) packet
-  have replayZero : ((app.replayPolicy (activated.recall owner)
+  have replayZero : ((app.silentPolicy (activated.recall owner)
       (activated.observe app owner)) packet).toReal = 0 := by
     apply pmf_toReal_eq_zero_iff.mpr
     intro member
-    rcases app.replayPolicy_cases _ _ _ member with
-      impossible | ⟨id, impossible⟩
+    rcases app.silentPolicy_cases _ _ _ member with
+      impossible
     all_goals
       dsimp only [packet, EventGraphRuntime.windowOpening] at impossible
       cases impossible

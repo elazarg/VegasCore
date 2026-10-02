@@ -89,12 +89,12 @@ theorem before_alice_false_local (bit : Bool) : FinalResponseLocal (beforeAlice 
 
 theorem wrong_address_alice_local (players : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph)
-    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
+    (available : (⟨some submission⟩ : nativeApp.Action) ∈
       nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication)
     (next : nativeApp.Execution) (supported : next ∈ (bobToAlice players bit submission).support) :
     FinalResponseLocal next := by
-  obtain ⟨trace⟩ := bob_response_to_alice_trace players bit ⟨some (.submit submission)⟩ available
+  obtain ⟨trace⟩ := bob_response_to_alice_trace players bit ⟨some submission⟩ available
     next supported
   have input := wrong_address_alice_input players bit submission wrong next supported
   apply final_history_local ⟨4, some alice, next⟩ trace rfl

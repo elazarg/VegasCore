@@ -6,8 +6,8 @@ import Vegas.Game.RevealServiceRosterEvidence
 /-! # A send-time rule for revelation rosters
 
 One fresh certified opening per phase is admitted. The envelope serial is
-checked against its author's entries in the prior ledger. A second fresh opening
-changes the serial; replaying an existing envelope does not. No audit verdict
+checked against its author's entries in the prior ledger. Each fresh opening
+allocates a new serial. No audit verdict
 uses this rule: it is a proof device, and on a ledger without repeated
 identifiers its breach breaches the service rule
 (`Vegas.permittedRosterEnvelope_of_permittedService`), which dooms the author at
@@ -28,26 +28,22 @@ variable {Player : Type} [DecidableEq Player]
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 open Classical in
-/-- The rule reads the phase, preceding ledger and signed envelope. It does
-not identify the rebroadcaster or inspect any player's private state. -/
+/-- The rule reads the phase, preceding ledger and signed envelope without
+inspecting any player's private state. -/
 def permittedRosterEnvelope (evidence : EnvelopeEvidence setup leaks) : Bool :=
   decide (evidence.2.2.id ∈ evidence.2.1.map Message.id ∨
     (evidence.2.2.id.2 =
       evidence.2.1.countP (fun message => message.sender = evidence.2.2.sender) ∧
-    openingTraffic setup leaks ⟨evidence.1, evidence.2.1,
-      ⟨evidence.2.2.sender, evidence.2.2⟩⟩))
+    openingTraffic setup leaks ⟨evidence.1, evidence.2.1, evidence.2.2⟩))
 
 theorem permittedRosterEnvelope_iff (record : (application setup leaks).TrafficRecord)
-    (authored : record.input.broadcaster = record.input.envelope.sender) :
+    (_authored : record.envelope.sender = record.envelope.sender) :
     permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = true ↔
-      record.input.envelope.id ∈ record.ledger.map Message.id ∨
-        (record.input.envelope.id.2 =
-          record.ledger.countP (fun message => message.sender = record.input.envelope.sender) ∧
+      record.envelope.id ∈ record.ledger.map Message.id ∨
+        (record.envelope.id.2 =
+          record.ledger.countP (fun message => message.sender = record.envelope.sender) ∧
           openingTraffic setup leaks record) := by
   classical
-  rcases record with ⟨observation, ledger, broadcaster, envelope⟩
-  change broadcaster = envelope.sender at authored
-  subst broadcaster
   simp only [permittedRosterEnvelope, envelopeEvidence, decide_eq_true_eq]
 
 /-- At a completed source prefix all allocated fresh envelopes have been
@@ -84,33 +80,20 @@ theorem permittedRosterEnvelope_of_permittedService (reveals : setup.program.Rev
 
 variable [Fintype Player]
 
-/-- Silence and every effective known replay already belong to the roster
-menu. Thus every additional effective response allocates a fresh envelope. -/
+/-- Silence belongs to the roster menu. Every additional effective response
+therefore allocates a fresh envelope. -/
 theorem roster_extra_submission (bounds : MessageBounds (graph setup))
     (rosters : (graph setup).EventId → List Player) (who : Player)
     (past : List (application setup leaks).PlayerEntry)
     (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
     (effective : response ∈ (bounds.menu (runtime setup) leaks).actions who past view)
     (excluded : response ∉ (rosterMenu setup leaks bounds rosters).actions who past view) :
-    ∃ submission, response = ⟨some (.submit submission)⟩ := by
+    ∃ submission, response = ⟨some submission⟩ := by
   classical
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact (excluded (silence_roster setup leaks bounds rosters who past view)).elim
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact ⟨submission, rfl⟩
-      | replay id =>
-          apply False.elim
-          apply excluded
-          apply replay_roster setup leaks bounds rosters who past view
-          apply (application setup leaks).replayPolicy_support past view (some id)
-          have known := ((bounds.menu_mem (runtime setup) leaks who past view _).mp effective).1
-          change ReactiveApplication.SubmissionNormalization.ReplayKnown past view id at known
-          obtain ⟨message, member, identified⟩ := known
-          apply Finset.mem_insert_of_mem
-          exact Finset.mem_image.mpr
-            ⟨id, List.mem_toFinset.mpr (List.mem_map.mpr ⟨message, member, identified⟩), rfl⟩
+  | some submission => exact ⟨submission, rfl⟩
 
 /-- On every legal retained owner history, the public serial test is exactly
 the private recall test for whether the phase still permits a fresh opening. -/

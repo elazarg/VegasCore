@@ -34,7 +34,7 @@ private theorem opening_shape (owner : Player)
     (response : (application setup leaks).Action)
     (selected : opening? setup leaks owner past view = some response) :
     ∃ candidate raw evidence,
-      response = ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩ := by
+      response = ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩ := by
   unfold opening? at selected
   rw [serving] at selected
   simp only [bind, Option.bind_some] at selected
@@ -69,7 +69,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
       message.id ∈ execution.network.ledger.map Message.id)
     (leaked : execution.network.leaked = fun _ => [])
     (inputs : ∀ input ∈ execution.network.inputs,
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
+      input.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (response : (application setup leaks).Action)
     (allowed : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
@@ -82,10 +82,10 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
       message.id ∈ next.network.ledger.map Message.id) ∧
       next.network.leaked = (fun _ => []) ∧
       (∀ input ∈ next.network.inputs,
-        input.envelope.id ∈ next.network.ledger.map Message.id) := by
+        input.id ∈ next.network.ledger.map Message.id) := by
   let app := application setup leaks
   rcases ordinary_response_cases setup leaks bounds owner _ _ response allowed with
-    silent | opening | replay
+    silent | opening
   · subst response
     have quietPending : ∀ message ∈ (execution.respond app owner ⟨none⟩).network.pending,
         message.id ∈ (execution.respond app owner ⟨none⟩).network.ledger.map Message.id := pending
@@ -98,7 +98,7 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
   · obtain ⟨candidate, raw, evidence, rfl⟩ := opening_shape setup leaks owner _ _ event
       serving response opening
     let submitted := execution.respond app owner
-      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
     let id := (owner, execution.network.nextSerial owner)
     let packet := app.packet execution.application owner (execution.network.known owner)
       ⟨⟨.opening event candidate raw, none⟩, evidence⟩
@@ -122,27 +122,13 @@ private theorem ordinary_inclusion_published (bounds : MessageBounds (graph setu
       message.id ∈ (submitted.includePending app id).network.ledger.map Message.id) ∧
       (submitted.includePending app id).network.leaked = (fun _ => []) ∧
       (∀ input ∈ (submitted.includePending app id).network.inputs,
-        input.envelope.id ∈ (submitted.includePending app id).network.ledger.map Message.id)
+        input.id ∈ (submitted.includePending app id).network.ledger.map Message.id)
     rw [app.includePending_network]
     refine ⟨submitted.network.include_pending_published_or_selected id _ found oldOrNew, ?_, ?_⟩
     · change (submitted.network.includePending id).2.leaked = fun _ => []
       rw [MessageNetwork.includePending, found]
       exact leaked
     · exact (execution.network.submit_include_published owner packet pending inputs serials).2.1
-  · obtain ⟨message, published, rfl⟩ := replay
-    have spent : message.id ∈ execution.network.ledger.map Message.id :=
-      List.mem_map.mpr ⟨message, published, rfl⟩
-    rw [(runtime setup).published_replay_inclusion leaks players
-      ((runtime setup).idleNetwork leaks) execution owner event message.id
-      pending spent] at reached
-    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
-      PMF.mem_support_pure_iff _ _] at reached
-    subst next
-    refine ⟨execution.network.replay_pending_published owner message.id pending spent, ?_,
-      execution.network.replay_inputs_published owner message.id inputs spent⟩
-    change (execution.network.replay owner message.id).2.leaked = fun _ => []
-    unfold MessageNetwork.replay
-    split <;> exact leaked
 
 omit [Fintype Player] in
 private theorem include_control_step
@@ -185,7 +171,7 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
       message.id ∈ execution.network.ledger.map Message.id)
     (leaked : execution.network.leaked = fun _ => [])
     (inputs : ∀ input ∈ execution.network.inputs,
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
+      input.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (ordinary : ∀ response ∈ (players owner (execution.recall owner)
       (execution.observe (application setup leaks) owner)).support,
@@ -200,7 +186,7 @@ private theorem owner_to_watcher_clean (bounds : MessageBounds (graph setup))
       (∀ message ∈ next.network.pending,
         message.id ∈ next.network.ledger.map Message.id) ∧
       (∀ input ∈ next.network.inputs,
-        input.envelope.id ∈ next.network.ledger.map Message.id) := by
+        input.id ∈ next.network.ledger.map Message.id) := by
   let app := application setup leaks
   have first : app.controlStep (initialLaw setup) (horizon setup watcher)
       (scheduler setup leaks watcher) players (some ⟨remaining + 2, some owner, execution⟩) =
@@ -260,7 +246,7 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
       (∀ message ∈ control.execution.network.pending,
         message.id ∈ control.execution.network.ledger.map Message.id) ∧
       (∀ input ∈ control.execution.network.inputs,
-        input.envelope.id ∈ control.execution.network.ledger.map Message.id) := by
+        input.id ∈ control.execution.network.ledger.map Message.id) := by
   let responses := menu setup leaks bounds watcher
   let model := information setup leaks bounds watcher
   let players := responses.decodeProfile (initialLaw setup) (horizon setup watcher)
@@ -284,9 +270,9 @@ theorem watcher_supported_clean (bounds : MessageBounds (graph setup))
     PrefixCheckpoint.runtime_fact (fun next => next.network.leaked = fun _ => [])
       (fun _ _ _ _ checkpoint => checkpoint.leaked) _ _ _ _ _ _ _ _ related
   have inputs : ∀ input ∈ execution.network.inputs,
-      input.envelope.id ∈ execution.network.ledger.map Message.id :=
+      input.id ∈ execution.network.ledger.map Message.id :=
     PrefixCheckpoint.runtime_fact (fun next => ∀ input ∈ next.network.inputs,
-      input.envelope.id ∈ next.network.ledger.map Message.id)
+      input.id ∈ next.network.ledger.map Message.id)
       (fun _ _ _ _ checkpoint => checkpoint.inputs) _ _ _ _ _ _ _ _ related
   have serials : execution.network.SerialsBeforeNext :=
     PrefixCheckpoint.runtime_fact (fun next => next.network.SerialsBeforeNext)
@@ -354,7 +340,7 @@ theorem watcher_history_clean (bounds : MessageBounds (graph setup))
       (∀ message ∈ control.execution.network.pending,
         message.id ∈ control.execution.network.ledger.map Message.id) ∧
       (∀ input ∈ control.execution.network.inputs,
-        input.envelope.id ∈ control.execution.network.ledger.map Message.id) := by
+        input.id ∈ control.execution.network.ledger.map Message.id) := by
   let responses := menu setup leaks bounds watcher
   let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)
     (scheduler setup leaks watcher)

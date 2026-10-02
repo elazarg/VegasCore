@@ -13,7 +13,7 @@ does not supply that record.
 These are observation and attribution experiments on the actual native prefix.
 They implement neither a watcher, a proof-of-transmission service, nor slashing.
 The alarms recognize explicit carried certificates only, not every information
-channel. Recording the network's broadcaster is an ideal-model fact, not a
+channel. Recording the network's author is an ideal-model fact, not a
 cryptographic proof that a particular strategic principal authorized a message.
 -/
 
@@ -28,9 +28,9 @@ open Vegas.Examples.SelectiveAssociation Vegas.Examples.ReactiveAssociationEvide
 def ledgerAlarm (ledger : List (Message Player (WitnessedPacket nativeGraph))) : Bool :=
   ledger.any fun message => message.sender == alice && message.payload.evidence.isSome
 
-/-- Access to the network input record supplies a separate broadcaster identity. -/
-def inputAlarm (inputs : List (NetworkInput Player (WitnessedPacket nativeGraph))) : Bool :=
-  inputs.any fun input => input.broadcaster == alice && input.envelope.payload.evidence.isSome
+/-- The input record identifies the author of each submitted envelope. -/
+def inputAlarm (inputs : List (Message Player (WitnessedPacket nativeGraph))) : Bool :=
+  inputs.any fun input => input.sender == alice && input.payload.evidence.isSome
 
 theorem pending_certificate_detected (bit : Bool) :
     inputAlarm (first bit).network.publicView.inputs = true ∧
@@ -52,7 +52,7 @@ theorem input_alarm_ignores_readers (network : MessageNetwork Player
 
 def uncertifiedFirst (bit : Bool) : nativeApp.Execution :=
   activatedInitial.respond nativeApp alice
-    ⟨some (.submit ⟨⟨.commitment aliceBinding candidate, some ⟨.bool, bit⟩⟩, .none⟩)⟩
+    ⟨some ⟨⟨.commitment aliceBinding candidate, some ⟨.bool, bit⟩⟩, .none⟩⟩
 
 theorem no_alarm_for_uncertified_submission (bit : Bool) :
     inputAlarm (uncertifiedFirst bit).network.publicView.inputs = false := by

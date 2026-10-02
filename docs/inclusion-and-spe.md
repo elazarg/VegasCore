@@ -133,12 +133,9 @@ equality of distributions before decoding commitment meanings. The runtime's
 binding invariant is needed to justify retaining the same decoding of old
 identifiers across later operations.
 
-[`uniformPending_replay`](../Interaction/PendingSelection.lean) proves that
-the actual `MessageNetwork.replay` operation leaves this selector's law
-unchanged when the replayed envelope is already pending. Packets remain
-available for observation and rebroadcast; transport multiplicity does not
-give them more inclusion weight. Reintroducing an absent envelope is a
-different case. Passive learning also leaves the selector's law unchanged.
+[`uniformPending_learn`](../Interaction/PendingSelection.lean) proves that
+passive learning leaves this selector's law unchanged. Learning retains the
+observed signed envelopes privately without inserting new pending candidates.
 
 [`PendingWeighted.lean`](../Interaction/PendingWeighted.lean) implements
 weighted selection satisfying the same equation: retain each old candidate's
@@ -152,7 +149,7 @@ selection using a finite distribution over stable total priority orders.
 Insertion either preserves a ranking's previous winner or selects the new
 candidate; `priorityPending_append_regular` proves regularity of the resulting
 law. The distribution over rankings is held fixed across compared responses.
-Already pending replay and passive learning leave the selector law unchanged.
+Passive learning leaves the selector law unchanged.
 
 Randomized stable priorities need not preserve relative old odds. The two
 rankings A/C/B and C/B/A, equally likely, select A/B before inserting C and
@@ -168,8 +165,8 @@ premises across the compared responses.
 stable-priority selection to the actual atomic response operation. With a
 fixed eligibility predicate and priority distribution, each raw response has
 one of two effects on the eligible menu: leave it unchanged, or insert the
-sender's next identifier. This includes silence, all replays, private memory,
-and ineligible submissions.
+sender's next identifier. Silence and ineligible submissions leave the menu
+unchanged; an eligible fresh submission inserts one candidate.
 
 `prioritySelection_response_eq` proves the exact law.
 `prioritySelection_responses_factor` then factors every randomized native
@@ -185,43 +182,29 @@ invariant of the actual protocol, rather than a restriction on deviations.
 
 The Vegas instantiation uses the public acceptance test for a commitment to
 one event. `bindingEligible_accepts` proves that passing this test permits
-application acceptance. `bindingSelection_history_regular` covers every
-native response at every initialized legal history, and
+application acceptance. `bindingSelection_response_regular` covers every
+native response at a fixed state, and
 `bindingSelection_value_independent` proves independence from the hidden
 binding value at a fixed handle and fixed transport attributes.
 These proofs are in
 [`Vegas/Pending/ReactiveSelection.lean`](../Vegas/Pending/ReactiveSelection.lean).
 They do not yet identify decoded identifiers with complete source continuations.
 
-### Covering every replay requires candidate retention
+### Fresh identifiers and consumed envelopes
 
-[`MessageNetwork.RetainsEligible`](../Interaction/PendingSelection.lean)
-states that every eligible envelope any player knows how to rebroadcast
-already has a pending candidate identifier. Its `replay_ids` theorem proves
-that **every** raw replay preserves the eligible menu, including unknown
-identifiers and ineligible envelopes. The `*_replay_of_retained` theorems in
-the three selector modules then prove equality of selection laws.
-
-This is an explicit service obligation. The primitive network does not
-guarantee it: included envelopes are removed from pending but remain known.
-[`PendingPriority.lean`](../InteractionTests/PendingPriority.lean) checks the
-following sequence with fixed priorities ordered by increasing identifier:
-
-1. Submit envelope 0 and include it, removing it from pending.
-2. Submit envelope 1; it is now the only pending candidate and wins selection.
-3. A fresh envelope 2 still loses to envelope 1, whatever its payload.
-4. Replaying envelope 0 restores its priority and changes the winner to 0.
-
-`not_retained`, `old_selection`, `fresh_selection`, and `replay_selection`
-prove these facts using actual network operations. The priority rule satisfies
-regularity throughout; the replay has transport attributes unavailable to the
-fresh submission. This is a network selection example, not an application
-execution or native SPE counterexample.
+Each submission receives a fresh sender-owned identifier. Inclusion consumes
+the pending envelope, while retaining it on the public ledger. Learning or
+forwarding a known certificate does not reinsert that envelope into pending.
+[`PendingPriority.lean`](../InteractionTests/PendingPriority.lean) checks that
+after envelope 0 is included and envelope 1 is submitted, selection chooses
+1. A fresh envelope 2 loses to 1 under increasing-identifier priorities.
+`old_selection` and `fresh_selection` prove these facts using actual network
+operations.
 
 The active reactive service uses **at-most-once inclusion**, including for
 rejected application calls. A second request to include a published identifier
-becomes a wait; reserved selection skips such identifiers. Rebroadcasting
-remains legal, and a retry may submit the same payload in a fresh envelope.
+becomes a wait; reserved selection skips such identifiers. A retry may submit
+the same payload in a fresh envelope.
 
 [`interaction_history_publishedOnce`](../Vegas/Pending/ReactiveServicePublication.lean)
 proves that published identifiers are distinct at every legal initialized
@@ -230,17 +213,18 @@ including histories outside prescribed play. No acceptance test is needed
 before consuming an identifier; premature calls can be rejected immediately.
 
 The general carrier separately preserves the fact that every known envelope
-is pending or published.
-[`replay_unpublished_history`](../Interaction/ReactivePublication.lean)
-therefore proves that every raw replay leaves the eligible menu unchanged
-when eligibility excludes published identifiers. The removed-envelope
-regression above uses an eligibility predicate that does not exclude them.
-Equality of menus does not make the broadcast unobservable or settle the
-effect of later responses. The active service's latest-pending selection and
-arbitrary intervening network policy still need stronger selection premises
+is pending or published, through
+[`pendingOrPublished_history`](../Interaction/ReactivePublication.lean).
+Selection neutrality does not make fresh submissions unobservable or settle
+the effect of later responses. The active service's latest-pending selection
+and arbitrary intervening network policy still need stronger selection premises
 for the regularity argument.
 
 ## Why a memoryless scheduler is not enough
+
+The following mathematical comparison studies a hypothetical extension with
+transport-copy actions. The current carrier permits fresh submissions and
+silence, so it does not instantiate that extension.
 
 Consider old identifiers binding values `1` and `2`, with weight five each.
 The next fresh identifier has weight one, independently of its value. For

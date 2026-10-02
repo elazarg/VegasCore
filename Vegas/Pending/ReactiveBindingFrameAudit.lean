@@ -43,10 +43,10 @@ repair. The record itself may be tested against any subsequent transcript. -/
 theorem forbidden_record_new (frame : Frame runtime leaks memory owner original repaired)
     (clean : ∀ record ∈ (runtime.reactiveApplication leaks).executionTraffic repaired,
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (record : (runtime.reactiveApplication leaks).TrafficRecord)
     (forbidden : runtime.permittedServiceEnvelope record.observation record.ledger
-      record.input.envelope = false) :
+      record.envelope = false) :
     record ∉ (runtime.reactiveApplication leaks).executionTraffic original := by
   intro present
   rw [frame.traffic] at present

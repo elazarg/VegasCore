@@ -10,7 +10,7 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 These equations connect the concrete service suffixes to the continuation
 contexts used by the action-restriction theorem. The utilities include the
-fixed deposits and actual receipt/ledger liabilities.
+fixed comparison charges and actual receipt/ledger liabilities.
 -/
 
 noncomputable section
@@ -30,10 +30,10 @@ theorem final_finish_comparison (table : PayoffTable)
         PMF.pure (finalComparator (aliceInput bit guess) response)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
       (some ⟨4, some alice, beforeAlice bit guess⟩))
-        (fun state => Enforcement.stateUtility table state alice) ≤
+        (fun state => Enforcement.comparisonStateUtility table state alice) ≤
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
       (some ⟨4, some alice, beforeAlice bit guess⟩))
-        (fun state => Enforcement.stateUtility table state alice) := by
+        (fun state => Enforcement.comparisonStateUtility table state alice) := by
   have rawFinish := native_finish_response rawPlayers (nativePlan.take 7) resolutionTail alice
     rfl (beforeAlice bit guess) (before_alice_position bit guess)
   have legalFinish := native_finish_response legalPlayers (nativePlan.take 7) resolutionTail alice
@@ -44,11 +44,11 @@ theorem final_finish_comparison (table : PayoffTable)
     (some ⟨4, some alice, beforeAlice bit guess⟩) = _ at legalFinish
   rw [rawFinish, legalFinish, rawChoice, legalChoice, PMF.pure_bind,
     PMF.pure_bind, expect_map, expect_map]
-  simpa only [Enforcement.stateUtility, ReactiveApplication.finished, Option.elim_some,
-    Function.comp_def, Enforcement.executionUtility,
+  simpa only [Enforcement.comparisonStateUtility, ReactiveApplication.finished, Option.elim_some,
+    Function.comp_def, Enforcement.comparisonExecutionUtility,
     Enforcement.liability, ↓reduceIte, mul_ite, mul_one, mul_zero] using
-    final_comparator_declared_payoff_le table (Enforcement.deposit table alice)
-      (by exact_mod_cast Enforcement.deposit_nonnegative table alice)
+    final_comparator_declared_payoff_le table (Enforcement.charge table alice)
+      (by exact_mod_cast Enforcement.charge_nonnegative table alice)
       rawPlayers legalPlayers bit guess response
 
 open Classical in
@@ -66,12 +66,12 @@ theorem final_continuation_comparison (table : PayoffTable)
       (Profile.update (sig := watchedModel.behavioralSignature) targetProfile alice
         ((targetProfile alice).commit (ordinaryRestriction.site alice site).1 action))
       fuel (ordinaryRestriction.history history.1))
-        (fun final => Enforcement.stateUtility table final.state alice) ≤
+        (fun final => Enforcement.comparisonStateUtility table final.state alice) ≤
     expect (restrictedModel.runBehavioralFrom
       (Profile.update (sig := restrictedModel.behavioralSignature) sourceProfile alice
         ((sourceProfile alice).withLaw site.1 (ordinaryComparator alice site action)))
       fuel history.1)
-        (fun final => Enforcement.stateUtility table final.state alice) := by
+        (fun final => Enforcement.comparisonStateUtility table final.state alice) := by
   classical
   rcases site with ⟨information, occurs⟩
   dsimp only at observed
@@ -119,9 +119,9 @@ theorem final_continuation_comparison (table : PayoffTable)
   have legalLaw := restrictedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
     legalProfile fuel history.1 (by rw [known]; exact enough)
   have rawValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
-    expect law (fun state => Enforcement.stateUtility table state alice)) rawLaw
+    expect law (fun state => Enforcement.comparisonStateUtility table state alice)) rawLaw
   have legalValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
-    expect law (fun state => Enforcement.stateUtility table state alice)) legalLaw
+    expect law (fun state => Enforcement.comparisonStateUtility table state alice)) legalLaw
   simp only [expect_map, Function.comp_def] at rawValue legalValue
   change expect (watchedModel.runBehavioralFrom rawProfile fuel
     (ordinaryRestriction.history history.1)) _ ≤

@@ -50,16 +50,6 @@ theorem native_plan_receipts_prefix (players : Player → nativeApp.Policy)
       exact (native_dispatch_receipts_prefix players command before middle executed).trans
         (ih middle moved)
 
-theorem rejected_alice_persists {before after : List (MessageId Player × Bool)}
-    (retained : before <+: after) (rejected : rejectedAlice before = true) :
-    rejectedAlice after = true := by
-  obtain ⟨tail, rfl⟩ := retained
-  change (before ++ tail).any _ = true
-  rw [List.any_append]
-  change (rejectedAlice before || rejectedAlice tail) = true
-  rw [rejected]
-  rfl
-
 theorem source_alice_utility_le_one (result : Results) : utility result alice ≤ 1 := by
   rw [utility_alice]
   cases result with
@@ -68,50 +58,50 @@ theorem source_alice_utility_le_one (result : Results) : utility result alice �
       · norm_num
       · split_ifs <;> norm_num
 
-theorem native_alice_utility_le (deposit : ℝ) (execution : nativeApp.Execution) :
-    nativeExecutionUtility deposit alice execution ≤
-      1 - if rejectedAlice execution.receipts then deposit else 0 := by
-  unfold nativeExecutionUtility
+theorem native_alice_utility_le (charge : ℝ) (execution : nativeApp.Execution) :
+    nativeComparisonExecutionUtility charge alice execution ≤
+      1 - if aliceLiability execution then charge else 0 := by
+  unfold nativeComparisonExecutionUtility
   simpa only [true_and] using
     sub_le_sub_right (source_alice_utility_le_one (nativeResults execution.application.config))
-      (if rejectedAlice execution.receipts then deposit else 0)
+      (if aliceLiability execution then charge else 0)
 
-theorem native_alice_continuation_le (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+theorem native_alice_continuation_le (charge : ℝ) (nonnegative : 0 ≤ charge)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph))
     (execution : nativeApp.Execution) :
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan execution)
-      (nativeExecutionUtility deposit alice) ≤
-        1 - if rejectedAlice execution.receipts then deposit else 0 := by
+      (nativeComparisonExecutionUtility charge alice) ≤
+        1 - if aliceLiability execution then charge else 0 := by
   refine expect_le_const _ _ (payoffIntegrable_of_bounded _ _
-    (nativeExecutionUtility_abs_le deposit alice)) _ fun after supported => ?_
-  apply (native_alice_utility_le deposit after).trans
-  have retained := native_plan_receipts_prefix players plan execution after supported
-  cases alarm : rejectedAlice execution.receipts with
+    (nativeComparisonExecutionUtility_abs_le charge alice)) _ fun after supported => ?_
+  apply (native_alice_utility_le charge after).trans
+  have retained := native_plan_liability players plan execution after supported
+  cases alarm : aliceLiability execution with
   | false =>
-      cases rejectedAlice after.receipts <;> simp [nonnegative]
-  | true => rw [rejected_alice_persists retained alarm]
+      cases aliceLiability after <;> simp [nonnegative]
+  | true => rw [retained alarm]
 
 /-- The charge bounds arbitrary complete response policies after the report,
 including deliberate final withholding or further malformed calls. -/
 theorem submitted_continuation_utility_le (bit : Bool)
-    (submission : WitnessedSubmission nativeGraph) (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+    (submission : WitnessedSubmission nativeGraph) (charge : ℝ) (nonnegative : 0 ≤ charge)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
     expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
-        (nativeExecutionUtility deposit alice) ≤ 1 - deposit / 2 := by
+        (nativeComparisonExecutionUtility charge alice) ≤ 1 - charge / 2 := by
   have prefixFinite : (monitoredPrefixLaw bit (submissionAction submission)).support.Finite := by
     rw [monitoredPrefixLaw, PMF.support_map]
     exact (MessageNetwork.ObservationRule.FiniteSupport.support_finite (leaks := nativeLeaks)
       _ _).image _
   rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _
-    (nativeExecutionUtility_abs_le deposit alice))]
+    (nativeComparisonExecutionUtility_abs_le charge alice))]
   apply le_trans (expect_mono (fun execution _ =>
-    native_alice_continuation_le deposit nonnegative players plan execution)
+    native_alice_continuation_le charge nonnegative players plan execution)
     (payoffIntegrable_of_finite_support _ _ prefixFinite)
     (payoffIntegrable_of_finite_support _ _ prefixFinite))
   have alarms := expect_map (fun execution : nativeApp.Execution =>
-    rejectedAlice execution.receipts) (monitoredPrefixLaw bit (submissionAction submission))
-      (fun alarm : Bool => 1 - if alarm then deposit else 0)
+    aliceLiability execution) (monitoredPrefixLaw bit (submissionAction submission))
+      (fun alarm : Bool => 1 - if alarm then charge else 0)
   simp only [Function.comp_def] at alarms
   rw [← alarms, submission_monitoring_law, expect_mix _ _ _ _ _ _ (payoffIntegrable_pure _ _)
     (payoffIntegrable_pure _ _)]

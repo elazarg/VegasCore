@@ -30,25 +30,9 @@ private theorem native_instruction_actor (history : List nativeApp.EnvironmentEn
       simpa only [ReactiveApplication.Command.actor?, Option.some.injEq] using
         congrArg ServiceInstruction.player (Option.some.inj active)
   | wire =>
-      simp only [interactionInstruction, nativeNetwork, PMF.pure_map,
-        PMF.mem_support_pure_iff _ _] at supported
-      subst command
-      cases last : view.network.inputs.getLast? with
-      | none =>
-          simp only [last, NetworkChoice.command, ReactiveApplication.atMostOnceCommand,
-            ReactiveApplication.Command.actor?, reduceCtorEq] at active
-      | some input =>
-          by_cases report : input.broadcaster = watcher ∧ input.envelope.sender = alice
-          · simp only [last, ite_eq_left report, NetworkChoice.command] at active
-            change (if view.Unpublished nativeApp input.envelope.id then
-              ReactiveApplication.Command.include input.envelope.id else
-                ReactiveApplication.Command.wait).actor? nativeApp = some bob at active
-            by_cases fresh : view.Unpublished nativeApp input.envelope.id
-            · rw [ite_eq_left fresh] at active; cases active
-            · rw [ite_eq_right fresh] at active; cases active
-          · simp only [last, report, ↓reduceIte, NetworkChoice.command,
-              ReactiveApplication.atMostOnceCommand, ReactiveApplication.Command.actor?,
-              reduceCtorEq] at active
+      simp only [interactionInstruction, nativeNetwork, PMF.pure_map] at supported
+      cases (PMF.mem_support_pure_iff _ _).mp supported
+      cases active
   | includeLatest event owner =>
       simp only [interactionInstruction, PMF.mem_support_pure_iff _ _] at supported
       subst command

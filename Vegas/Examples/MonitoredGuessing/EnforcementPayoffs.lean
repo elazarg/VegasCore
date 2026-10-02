@@ -5,14 +5,15 @@ import Vegas.Examples.MonitoredGuessing.Conformance
 import Vegas.Examples.MonitoredGuessing.RestrictedExecution
 import Interaction.ReactiveNormalHistory
 
-/-! # Fixed settlement and deposits for the restricted native stack
+/-! # Fixed comparison charges for the restricted native stack
 
-The declared integer return table determines the deposits once, before any
+The declared integer return table determines expected charges before any
 strategy is chosen. Bounds include every publication result, including two
-failures. Alice's receipt liability is sampled with probability one half;
+failures. Alice's authentic private observation is sampled with probability one half;
 Bob's liability audits included packets against the certified opening format.
-These utility deductions specify collection; evidence alone does not implement
-escrow. Watcher indifference requires its declared return to be zero.
+These quantities support continuation comparisons. Actual report delivery and
+escrow collection are separate kernels in `TableSettlement`. Watcher
+indifference requires its declared return to be zero.
 -/
 
 namespace Vegas.Examples.MonitoredGuessing.Enforcement
@@ -50,14 +51,14 @@ theorem payoffRange_nonnegative (table : PayoffTable) (who : Player) :
   exact sub_nonneg.mpr ((payoffLower_le table who ⟨.failure, .failure⟩).trans
     (le_payoffUpper table who ⟨.failure, .failure⟩))
 
-/-- An executable integer deposit, uniform over source profiles and continuations. -/
-def deposit (table : PayoffTable) (who : Player) : Int :=
+/-- An executable integer charge, uniform over source profiles and continuations. -/
+def charge (table : PayoffTable) (who : Player) : Int :=
   if who = alice then 2 * payoffRange table who
   else if who = bob then payoffRange table who else 0
 
-theorem deposit_nonnegative (table : PayoffTable) (who : Player) :
-    0 ≤ deposit table who := by
-  unfold deposit
+theorem charge_nonnegative (table : PayoffTable) (who : Player) :
+    0 ≤ charge table who := by
+  unfold charge
   split_ifs
   · exact mul_nonneg (by omega) (payoffRange_nonnegative table who)
   · exact payoffRange_nonnegative table who
@@ -65,49 +66,50 @@ theorem deposit_nonnegative (table : PayoffTable) (who : Player) :
 
 noncomputable section
 
-theorem alice_deposit (table : PayoffTable) :
-    (deposit table alice : ℝ) =
+theorem alice_charge (table : PayoffTable) :
+    (charge table alice : ℝ) =
       2 * ((payoffUpper table alice : ℝ) - payoffLower table alice) := by
-  simp only [deposit, ↓reduceIte, payoffRange, Int.cast_mul, Int.cast_ofNat, Int.cast_sub]
+  simp only [charge, ↓reduceIte, payoffRange, Int.cast_mul, Int.cast_ofNat, Int.cast_sub]
 
-theorem bob_deposit (table : PayoffTable) :
-    (deposit table bob : ℝ) =
+theorem bob_charge (table : PayoffTable) :
+    (charge table bob : ℝ) =
       (payoffUpper table bob : ℝ) - payoffLower table bob := by
-  simp [deposit, bob, alice, payoffRange]
+  simp [charge, bob, alice, payoffRange]
 
 def liability (execution : nativeApp.Execution) (who : Player) : ℝ :=
-  if who = alice then if rejectedAlice execution.receipts then 1 else 0
+  if who = alice then if aliceLiability execution then 1 else 0
   else if who = bob then Conformance.bobLedgerLiability execution else 0
 
-def executionUtility (table : PayoffTable) (execution : nativeApp.Execution)
+def comparisonExecutionUtility (table : PayoffTable) (execution : nativeApp.Execution)
     (who : Player) : ℝ :=
   (table (nativeResults execution.application.config) who : ℝ) -
-    (deposit table who : ℝ) * liability execution who
+    (charge table who : ℝ) * liability execution who
 
-/-- The finitely many facts a settled utility reads: results, Alice's rejected
-receipt, and Bob's ledger violation. -/
+/-- The finite summary read by comparison utilities: results, Alice's authentic
+evidence mark, and Bob's ledger format violation. -/
 private def settlementSummary (execution : nativeApp.Execution) : Results × Bool × Bool :=
-  (nativeResults execution.application.config, rejectedAlice execution.receipts,
+  (nativeResults execution.application.config, aliceLiability execution,
     Conformance.bobLedgerViolation execution)
 
 private def summaryUtility (table : PayoffTable) (who : Player)
     (summary : Results × Bool × Bool) : ℝ :=
-  (table summary.1 who : ℝ) - (deposit table who : ℝ) *
+  (table summary.1 who : ℝ) - (charge table who : ℝ) *
     (if who = alice then (if summary.2.1 then 1 else 0)
       else if who = bob then (if summary.2.2 then 1 else 0) else 0)
 
-theorem executionUtility_integrable (table : PayoffTable) (who : Player)
+theorem comparisonExecutionUtility_integrable (table : PayoffTable) (who : Player)
     (law : PMF nativeApp.Execution) :
-    PayoffIntegrable law (fun execution => executionUtility table execution who) :=
+    PayoffIntegrable law (fun execution => comparisonExecutionUtility table execution who) :=
   payoffIntegrable_of_finite_summary law settlementSummary (summaryUtility table who)
 
-def stateUtility (table : PayoffTable) (state : nativeApp.ProtocolState) : Player → ℝ :=
-  state.elim (fun _ => 0) (fun control => executionUtility table control.execution)
+def comparisonStateUtility (table : PayoffTable) (state : nativeApp.ProtocolState) : Player → ℝ :=
+  state.elim (fun _ => 0) (fun control => comparisonExecutionUtility table control.execution)
 
-theorem stateUtility_integrable (table : PayoffTable) (who : Player)
+theorem comparisonStateUtility_integrable (table : PayoffTable) (who : Player)
     (law : PMF nativeApp.ProtocolState) :
-    PayoffIntegrable law (fun state => stateUtility table state who) := by
-  have summarized : (fun state : nativeApp.ProtocolState => stateUtility table state who) =
+    PayoffIntegrable law (fun state => comparisonStateUtility table state who) := by
+  have summarized : (fun state : nativeApp.ProtocolState => comparisonStateUtility table state
+    who) =
       fun state => ((state.map fun control => settlementSummary control.execution).elim 0
         (summaryUtility table who)) := by
     funext state
@@ -121,59 +123,62 @@ theorem liability_nonnegative (execution : nativeApp.Execution) (who : Player) :
   simp only [liability, Conformance.bobLedgerLiability]
   split_ifs <;> norm_num
 
-theorem executionUtility_le (table : PayoffTable) (execution : nativeApp.Execution)
+theorem comparisonExecutionUtility_le (table : PayoffTable) (execution : nativeApp.Execution)
     (who : Player) :
-    executionUtility table execution who ≤ payoffUpper table who := by
-  have charge : (0 : ℝ) ≤ deposit table who := by
-    exact_mod_cast deposit_nonnegative table who
+    comparisonExecutionUtility table execution who ≤ payoffUpper table who := by
+  have charge : (0 : ℝ) ≤ charge table who := by
+    exact_mod_cast charge_nonnegative table who
   apply (sub_le_self _ (mul_nonneg charge (liability_nonnegative execution who))).trans
   exact_mod_cast le_payoffUpper table who (nativeResults execution.application.config)
 
-theorem executionUtility_clean (table : PayoffTable) (execution : nativeApp.Execution)
-    (aliceClear : rejectedAlice execution.receipts = false)
+theorem comparisonExecutionUtility_clean (table : PayoffTable) (execution : nativeApp.Execution)
+    (aliceClear : aliceLiability execution = false)
     (bobClear : Conformance.bobLedgerViolation execution = false) (who : Player) :
-    executionUtility table execution who =
+    comparisonExecutionUtility table execution who =
       (table (nativeResults execution.application.config) who : ℝ) := by
-  simp only [executionUtility, liability, aliceClear, Conformance.bobLedgerLiability,
+  simp only [comparisonExecutionUtility, liability, aliceClear, Conformance.bobLedgerLiability,
     bobClear, Bool.false_eq_true, ↓reduceIte, ite_self, mul_zero, sub_zero]
 
-theorem executionUtility_normalization (table : PayoffTable) (execution : nativeApp.Execution) :
-    executionUtility table (Restricted.normalization.execution execution) =
-      executionUtility table execution := rfl
+theorem comparisonExecutionUtility_normalization (table : PayoffTable) (execution :
+  nativeApp.Execution) :
+    comparisonExecutionUtility table (Restricted.normalization.execution execution) =
+      comparisonExecutionUtility table execution := rfl
 
-theorem stateUtility_normalization (table : PayoffTable) (state : nativeApp.ProtocolState) :
-    stateUtility table (Restricted.normalization.state state) = stateUtility table state := by
+theorem comparisonStateUtility_normalization (table : PayoffTable) (state :
+  nativeApp.ProtocolState) :
+    comparisonStateUtility table (Restricted.normalization.state state) =
+      comparisonStateUtility table state := by
   cases state <;> rfl
 
-theorem executionUtility_watcher (table : PayoffTable)
+theorem comparisonExecutionUtility_watcher (table : PayoffTable)
     (zero : ∀ result, table result watcher = 0) (execution : nativeApp.Execution) :
-    executionUtility table execution watcher = 0 := by
-  simp [executionUtility, liability, watcher, alice, bob, zero]
+    comparisonExecutionUtility table execution watcher = 0 := by
+  simp [comparisonExecutionUtility, liability, watcher, alice, bob, zero]
 
-theorem stateUtility_watcher (table : PayoffTable)
+theorem comparisonStateUtility_watcher (table : PayoffTable)
     (zero : ∀ result, table result watcher = 0) (state : nativeApp.ProtocolState) :
-    stateUtility table state watcher = 0 := by
+    comparisonStateUtility table state watcher = 0 := by
   cases state with
   | none => rfl
-  | some control => exact executionUtility_watcher table zero control.execution
+  | some control => exact comparisonExecutionUtility_watcher table zero control.execution
 
 theorem alice_utility (table : PayoffTable) (execution : nativeApp.Execution) :
-    executionUtility table execution alice =
-      monitoredSettlement (fun result => table result alice) (deposit table alice) execution := by
-  simp only [executionUtility, liability, ↓reduceIte, monitoredSettlement]
-  cases rejectedAlice execution.receipts <;> simp
+    comparisonExecutionUtility table execution alice =
+      comparisonSettlement (fun result => table result alice) (charge table alice) execution := by
+  simp only [comparisonExecutionUtility, liability, ↓reduceIte, comparisonSettlement]
+  cases aliceLiability execution <;> simp
 
 theorem bob_utility (table : PayoffTable) (execution : nativeApp.Execution) :
-    executionUtility table execution bob =
+    comparisonExecutionUtility table execution bob =
       (table (nativeResults execution.application.config) bob : ℝ) -
-        (deposit table bob : ℝ) * Conformance.bobLedgerLiability execution := by
-  simp [executionUtility, liability, alice, bob]
+        (charge table bob : ℝ) * Conformance.bobLedgerLiability execution := by
+  simp [comparisonExecutionUtility, liability, alice, bob]
 
 theorem detected_bob_utility_le (table : PayoffTable) (execution : nativeApp.Execution)
     (detected : Conformance.bobLedgerViolation execution = true) :
-    executionUtility table execution bob ≤ payoffLower table bob := by
+    comparisonExecutionUtility table execution bob ≤ payoffLower table bob := by
   simp only [bob_utility, Conformance.bobLedgerLiability, detected, ↓reduceIte, mul_one]
-  rw [bob_deposit]
+  rw [bob_charge]
   have upper : (table (nativeResults execution.application.config) bob : ℝ) ≤
       payoffUpper table bob := by
     exact_mod_cast le_payoffUpper table bob _
@@ -194,21 +199,22 @@ theorem initial_submission_le_lower (table : PayoffTable)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
     expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
-        (fun execution => executionUtility table execution alice) ≤ payoffLower table alice := by
+        (fun execution => comparisonExecutionUtility table execution alice) ≤ payoffLower table
+          alice := by
   simp only [alice_utility]
   apply submission_deterred_by_range (fun result => table result alice)
-    (payoffLower table alice) (payoffUpper table alice) (deposit table alice)
+    (payoffLower table alice) (payoffUpper table alice) (charge table alice)
   · intro result
     exact_mod_cast le_payoffUpper table alice result
-  · exact_mod_cast deposit_nonnegative table alice
-  · exact le_of_eq (alice_deposit table).symm
+  · exact_mod_cast charge_nonnegative table alice
+  · exact le_of_eq (alice_charge table).symm
 
 theorem initial_submission_le_clean_outcomes (table : PayoffTable) (outcomes : PMF Results)
     (bit : Bool) (submission : WitnessedSubmission nativeGraph)
     (players : Player → nativeApp.Policy) (plan : List (ServiceInstruction nativeGraph)) :
     expect ((monitoredPrefixLaw bit (submissionAction submission)).bind
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork plan))
-        (fun execution => executionUtility table execution alice) ≤
+        (fun execution => comparisonExecutionUtility table execution alice) ≤
       expect outcomes (fun result => (table result alice : ℝ)) :=
   (initial_submission_le_lower table bit submission players plan).trans
     (lower_le_expect table alice outcomes)
@@ -224,9 +230,9 @@ theorem before_alice_bob_clear (bit guess : Bool) :
   | true => exact Conformance.canonical_opening_clear bit
 
 theorem before_alice_utility (table : PayoffTable) (bit guess : Bool) (who : Player) :
-    executionUtility table (Restricted.beforeAlice bit guess) who =
+    comparisonExecutionUtility table (Restricted.beforeAlice bit guess) who =
       (table (nativeResults (Restricted.beforeAlice bit guess).application.config) who : ℝ) :=
-  executionUtility_clean table _ (Restricted.before_alice_no_charge bit guess)
+  comparisonExecutionUtility_clean table _ (Restricted.before_alice_no_charge bit guess)
     (before_alice_bob_clear bit guess) who
 
 private theorem maintenance_bob_audit (players : Player → nativeApp.Policy)
@@ -288,7 +294,21 @@ private theorem alice_opening_bob_audit (players : Player → nativeApp.Policy)
   simp only [MessageNetwork.includePending, lookup]
   change ledgerViolation bob Conformance.bobPacketPermitted
     (execution.network.ledger ++ [⟨(alice, execution.network.nextSerial alice), _⟩]) = _
-  simp [ledgerViolation, bob, alice, Message.sender, Conformance.bobLedgerViolation]
+  let material : nativeApp.Submission :=
+    ⟨⟨.opening alicePublication aliceHandle ⟨.bool, bit⟩, none⟩,
+      .owned ⟨aliceHandle, ⟨.bool, bit⟩⟩⟩
+  let emitted : Message Player nativeApp.Payload :=
+    ⟨(alice, execution.network.nextSerial alice),
+      nativeApp.packet (nativeApp.submit execution.application alice material) alice
+        (execution.network.known alice) material⟩
+  change (execution.network.ledger ++ [emitted]).any
+    (fun message : Message Player nativeApp.Payload =>
+      decide (message.sender = bob) && !Conformance.bobPacketPermitted message.payload) =
+    execution.network.ledger.any (fun message : Message Player nativeApp.Payload =>
+      decide (message.sender = bob) && !Conformance.bobPacketPermitted message.payload)
+  have authored : emitted.sender ≠ bob := by change (0 : Fin 3) ≠ 1; decide
+  rw [List.any_append, List.any_cons, List.any_nil, Bool.or_false]
+  simp only [decide_eq_false authored, Bool.false_and, Bool.or_false]
 
 theorem alice_service_bob_clear (players : Player → nativeApp.Policy)
     (bit guess disclose : Bool) (final : nativeApp.Execution)
@@ -312,30 +332,31 @@ theorem alice_service_bob_clear (players : Player → nativeApp.Policy)
             (before_alice_bob_clear bit guess))
 
 /-- Every source choice retains its results and its entire declared payoff
-vector after the actual final native service, with no deposit deductions. -/
+vector after the actual final native service, with no charge deductions. -/
 theorem alice_service_payoff_law (table : PayoffTable) (players : Player → nativeApp.Policy)
     (bit guess disclose : Bool) :
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       ((Restricted.beforeAlice bit guess).respond nativeApp alice
         (Restricted.choiceAction alicePublication aliceHandle bit disclose))).map
-          (fun final => (nativeResults final.application.config, executionUtility table final)) =
+          (fun final => (nativeResults final.application.config, comparisonExecutionUtility
+            table final)) =
       PMF.pure (sourceResults (finalConfig bit guess disclose).state,
         fun who => (table (sourceResults (finalConfig bit guess disclose).state) who : ℝ)) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
   obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
-  have summary : (nativeResults final.application.config, rejectedAlice final.receipts) =
+  have summary : (nativeResults final.application.config, aliceLiability final) =
       (sourceResults (finalConfig bit guess disclose).state, false) := by
     apply (PMF.mem_support_pure_iff _ _).mp
     rw [Restricted.source_results, ← Restricted.alice_service_summary players bit guess disclose,
       PMF.support_map]
     exact ⟨final, reached, rfl⟩
-  change (nativeResults final.application.config, executionUtility table final) = _
+  change (nativeResults final.application.config, comparisonExecutionUtility table final) = _
   apply Prod.ext
   · exact congrArg (fun pair : Results × Bool => pair.1) summary
   funext who
-  change executionUtility table final who = _
-  rw [executionUtility_clean table final (congrArg Prod.snd summary)
+  change comparisonExecutionUtility table final who = _
+  rw [comparisonExecutionUtility_clean table final (congrArg Prod.snd summary)
     (alice_service_bob_clear players bit guess disclose final reached)]
   exact congrArg (fun pair : Results × Bool => (table pair.1 who : ℝ)) summary
 
@@ -344,7 +365,7 @@ theorem alice_service_value (table : PayoffTable) (players : Player → nativeAp
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       ((Restricted.beforeAlice bit guess).respond nativeApp alice
         (Restricted.choiceAction alicePublication aliceHandle bit disclose)))
-          (fun final => executionUtility table final who) =
+          (fun final => comparisonExecutionUtility table final who) =
       (table (sourceResults (finalConfig bit guess disclose).state) who : ℝ) := by
   have law := congrArg (fun law : PMF (Results × (Player → ℝ)) =>
     expect law (fun outcome => outcome.2 who)) (alice_service_payoff_law table players bit guess

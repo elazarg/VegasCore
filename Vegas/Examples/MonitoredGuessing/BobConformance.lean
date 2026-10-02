@@ -131,7 +131,7 @@ comparison; the remaining non-source responses carry visible liability. -/
 theorem effective_bob_response_cases (bit : Bool) (response : nativeApp.Action)
     (available : response ∈ effectiveMenu.actions bob [] ((quietBob bit).observe nativeApp bob)) :
     response ∈ restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob) ∨
-      ∃ submission, response = ⟨some (.submit submission)⟩ ∧
+      ∃ submission, response = ⟨some submission⟩ ∧
         (submission.call.packet.event? nativeGraph ≠ some bobPublication ∨
           (submission.call.packet.event? nativeGraph = some bobPublication ∧
             bobPacketPermitted (bobEmittedPacket bit submission) = false)) := by
@@ -151,13 +151,13 @@ theorem effective_bob_response_cases (bit : Bool) (response : nativeApp.Action)
           rw [quiet_bob_network]
           rfl
         have equality := congrArg ReactiveApplication.Action.transmission normal
-        change some (ReactiveApplication.Transmission.submit (app := nativeApp)
+        change some
           (submission.normalizeReactive bob ((quietBob bit).observe nativeApp bob).application
             (ReactiveApplication.ResponseMenu.knownPackets []
-              ((quietBob bit).observe nativeApp bob)))) = some (.submit submission) at equality
+              ((quietBob bit).observe nativeApp bob))) = some submission at equality
         rw [known] at equality
         have same := bob_permitted_normal_submission bit submission
-          (ReactiveApplication.Transmission.submit.inj (Option.some.inj equality)) permitted
+          (Option.some.inj equality) permitted
         subst submission
         exact Or.inl (bob_choice_available bit true)
       · exact Or.inr ⟨submission, rfl, Or.inr ⟨addressed, Bool.eq_false_iff.mpr permitted⟩⟩
@@ -165,20 +165,20 @@ theorem effective_bob_response_cases (bit : Bool) (response : nativeApp.Action)
 
 /-- An actual extra addressed effective response is always publicly detected. -/
 theorem extra_addressed_bob_detected (bit : Bool) (submission : WitnessedSubmission nativeGraph)
-    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
+    (available : (⟨some submission⟩ : nativeApp.Action) ∈
       effectiveMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
-    (extra : (⟨some (.submit submission)⟩ : nativeApp.Action) ∉
+    (extra : (⟨some submission⟩ : nativeApp.Action) ∉
       restrictedMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (addressed : submission.call.packet.event? nativeGraph = some bobPublication) :
     bobLedgerViolation (bobIncluded bit submission) = true := by
-  rcases effective_bob_response_cases bit ⟨some (.submit submission)⟩ available with legal |
+  rcases effective_bob_response_cases bit ⟨some submission⟩ available with legal |
       ⟨other, same, wrong | ⟨_, nonconforming⟩⟩
   · exact (extra legal).elim
   · have identical := congrArg ReactiveApplication.Action.transmission same
-    cases ReactiveApplication.Transmission.submit.inj (Option.some.inj identical)
+    cases Option.some.inj identical
     exact (wrong addressed).elim
   · have identical := congrArg ReactiveApplication.Action.transmission same
-    cases ReactiveApplication.Transmission.submit.inj (Option.some.inj identical)
+    cases Option.some.inj identical
     exact bob_nonconforming_detected bit submission nonconforming
 
 /-- Neither subsequent player actions nor scheduling can erase the charge's

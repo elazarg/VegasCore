@@ -13,10 +13,10 @@ namespace Vegas.Examples.MonitoredGuessing
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
-theorem quiet_raw_finish_value_le (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem quiet_raw_finish_value_le (charge : ℝ) (players : Player → nativeApp.Policy)
     (bit : Bool) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-      (quietBobHistory bit).state) (nativeUtility deposit bob) ≤
+      (quietBobHistory bit).state) (nativeComparisonUtility charge bob) ≤
       expect (players bob [] ((quietBob false).observe nativeApp bob))
         (fun response => correctness (.success bit) (quietGuess response players)) := by
   have finishLaw := native_finish_response players
@@ -25,22 +25,24 @@ theorem quiet_raw_finish_value_le (deposit : ℝ) (players : Player → nativeAp
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
     (quietBobHistory bit).state = _ at finishLaw
   rw [finishLaw, expect_bind_tower _ _ _
-      (payoffIntegrable_of_bounded _ _ (nativeUtility_abs_le deposit bob)),
+      (payoffIntegrable_of_bounded _ _ (nativeComparisonUtility_abs_le charge bob)),
     quiet_bob_recall, quiet_bob_observation]
   refine expect_mono (fun response _ => ?_)
-    (payoffIntegrable_expect_of_bounded _ _ _ (by positivity) (nativeUtility_abs_le deposit bob))
+    (payoffIntegrable_expect_of_bounded _ _ _ (by positivity) (nativeComparisonUtility_abs_le
+      charge bob))
     (payoffIntegrable_of_finite_summary _ (fun response => quietGuess response players)
       (correctness (.success bit)))
   rw [expect_map]
-  exact quiet_response_bob_value_le deposit players bit response
+  exact quiet_response_bob_value_le charge players bit response
 
 theorem quiet_receiver_context_le (assessment : nativeModel.BehavioralAssessment)
-    (consistent : assessment.IsSequentiallyConsistent nativeAntichain) (deposit : ℝ)
+    (consistent : assessment.IsSequentiallyConsistent nativeAntichain) (charge : ℝ)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (alternative : nativeModel.BehavioralPolicy bob) :
     (assessment.truncatedContinuationContext quietBobSite
-      (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
+      (fun history => nativeComparisonUtility charge bob history.state) (2 * nativeHorizon +
+        1)).value
         alternative ≤ (1 / 2 : ℝ) := by
   rw [quiet_native_context assessment consistent alicePolicy watcherPolicy]
   let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
@@ -49,7 +51,7 @@ theorem quiet_receiver_context_le (assessment : nativeModel.BehavioralAssessment
     _ ≤ expect (PMF.uniformOfFintype Bool) (fun bit =>
         expect (players bob [] ((quietBob false).observe nativeApp bob))
           (fun response => correctness (.success bit) (quietGuess response players))) :=
-      expect_mono (fun bit _ => quiet_raw_finish_value_le deposit players bit)
+      expect_mono (fun bit _ => quiet_raw_finish_value_le charge players bit)
           (payoffIntegrable_of_finite _ _)
         (payoffIntegrable_of_finite _ _)
     _ = _ := by
@@ -60,21 +62,23 @@ theorem quiet_receiver_context_le (assessment : nativeModel.BehavioralAssessment
 
 theorem quiet_receiver_site_dominates (assessment : nativeModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent nativeAntichain)
-    (guesses : PMF Bool) (deposit : ℝ)
+    (guesses : PMF Bool) (charge : ℝ)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (atQuiet : assessment.strategy bob quietBobSite.1 =
       nativeGuessBehavior guesses quietBobSite.1)
     (alternative : nativeModel.BehavioralPolicy bob) :
     (assessment.truncatedContinuationContext quietBobSite
-      (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
+      (fun history => nativeComparisonUtility charge bob history.state) (2 * nativeHorizon +
+        1)).value
         alternative ≤
     (assessment.truncatedContinuationContext quietBobSite
-      (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
+      (fun history => nativeComparisonUtility charge bob history.state) (2 * nativeHorizon +
+        1)).value
         (assessment.strategy bob) := by
-  rw [quiet_prescribed_context_value assessment consistent guesses deposit
+  rw [quiet_prescribed_context_value assessment consistent guesses charge
     alicePolicy watcherPolicy atQuiet]
-  exact quiet_receiver_context_le assessment consistent deposit alicePolicy watcherPolicy
+  exact quiet_receiver_context_le assessment consistent charge alicePolicy watcherPolicy
     alternative
 
 end Vegas.Examples.MonitoredGuessing

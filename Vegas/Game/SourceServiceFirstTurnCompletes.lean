@@ -321,13 +321,13 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
   cases owned : (graph setup).actor? event with
   | none =>
       have profileEq : firstTurnProfile setup leaks bound turns profile event =
-          fun _ => app.replayPolicy := by
+          fun _ => app.silentPolicy := by
         unfold firstTurnProfile
         simp only [owned]
         rfl
       rw [profileEq]
       have samples (action : (graph setup).Action event) :
-          (app.runUntilHorizon scheduler (fun _ => app.replayPolicy)
+          (app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
             (fun final => event ∈ final.application.config.cut.completed) horizon start).map
               (fun stopped => stopped.application.config) =
             start.application.config.step event ready action :=
@@ -335,13 +335,13 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
           boundary.ordered ready action _ start rfl
           (fun stopped reached => runUntilHorizon_completes contract.completes bounded startTrace
             stopped reached)
-      calc _ = ((app.runUntilHorizon scheduler (fun _ => app.replayPolicy)
+      calc _ = ((app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
             (fun final => event ∈ final.application.config.cut.completed) horizon start).map
               (fun stopped => stopped.application.config)).bind
             (sourceContinuation setup profile (event.val + 1)) := by
             rw [PMF.bind_map]
             rfl
-        _ = law.bind (fun _ => ((app.runUntilHorizon scheduler (fun _ => app.replayPolicy)
+        _ = law.bind (fun _ => ((app.runUntilHorizon scheduler (fun _ => app.silentPolicy)
             (fun final => event ∈ final.application.config.cut.completed) horizon start).map
               (fun stopped => stopped.application.config)).bind
             (sourceContinuation setup profile (event.val + 1))) := (PMF.bind_const _ _).symm
@@ -358,7 +358,7 @@ theorem sourceServiceTurnPolicy_firstTurnCompletes [Finite Player]
         completedConfig member
       rw [pure, PMF.pure_bind]
       calc _ = (app.runUntil scheduler
-            (Function.update (fun _ => app.replayPolicy) owner
+            (Function.update (fun _ => app.silentPolicy) owner
               (decidedTurnPolicy setup leaks bound owner event action))
             (fun final => event ∈ final.application.config.cut.completed)
             (horizon - start.environmentRecall.length) start).bind

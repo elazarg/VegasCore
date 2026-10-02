@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Examples.SelectiveAssociation.SourceCore
-import Interaction.ReactiveReplayMenu
+import Interaction.ReactiveResponseMenu
 
 /-! # Pending named evidence around the stage-local source game
 
@@ -12,7 +12,7 @@ capability. The eventual separation concerns this complete source interface;
 it is not a necessity theorem for every possible pending-request language.
 
 Claims range over any declared finite nonempty alphabet. Every response permits
-silence, transmission, and replay of every known envelope. Certificates name
+silence and transmission. Certificates name
 already accepted source bindings; owned and received facts can be forwarded.
 The first Alice envelope can be noticed by Bob while pending. Recording occurs
 separately, and records rejected request-shaped traffic too. Core transitions
@@ -182,24 +182,20 @@ def application (Claim : Type) : ReactiveApplication Player where
   observePending := leaks Claim
 
 open Classical in
-def baseMenu (Claim : Type) [Fintype Claim] : (application Claim).ResponseMenu where
+def menu (Claim : Type) [Fintype Claim] : (application Claim).ResponseMenu where
   actions _ _ _ := {⟨none⟩} ∪
     (Finset.univ : Finset (Submission Claim)).image fun submission =>
-      (⟨some (.submit submission)⟩ : (application Claim).Action)
+      (⟨some submission⟩ : (application Claim).Action)
   nonempty _ _ _ := ⟨⟨none⟩, by simp⟩
-
-def menu (Claim : Type) [Fintype Claim] : (application Claim).ResponseMenu :=
-  (baseMenu Claim).withKnownReplays
 
 theorem every_submission (Claim : Type) [Fintype Claim] (who : Player)
     (past : List (application Claim).PlayerEntry) (view : (application Claim).PlayerView)
     (submission : Submission Claim) :
-    (⟨some (.submit submission)⟩ : (application Claim).Action) ∈
+    (⟨some submission⟩ : (application Claim).Action) ∈
       (menu Claim).actions who past view := by
   classical
-  apply (baseMenu Claim).base_available
   change _ ∈ ({⟨none⟩} ∪ (Finset.univ : Finset (Submission Claim)).image
-    (fun submission => (⟨some (.submit submission)⟩ : (application Claim).Action)))
+    (fun submission => (⟨some submission⟩ : (application Claim).Action)))
   apply Finset.mem_union_right
   exact Finset.mem_image.mpr
     ⟨submission, Finset.mem_univ (α := Submission Claim) submission, rfl⟩

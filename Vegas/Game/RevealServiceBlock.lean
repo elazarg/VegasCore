@@ -82,15 +82,10 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
   | false =>
       obtain refuses := (ordinary_false_iff setup leaks bounds owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) response member).mp chosen
-      have physical : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ ∧
-          id ∈ execution.network.ledger.map Message.id := by
-        rcases refuses with silent | ⟨message, published, replay⟩
-        · exact Or.inl silent
-        · exact Or.inr ⟨message.id, replay, List.mem_map.mpr ⟨message, published, rfl⟩⟩
       obtain ⟨next, law, applicationEq, networkEq, receiptsEq, recallEq⟩ :=
         (runtime setup).refusing_response_settlement leaks players watcher policy execution
           pending owner event payload (refs.get selected) [] outputEq codeEq
-          node ready entered ticks activated due response physical
+          node ready entered ticks activated due response refuses
       refine ⟨next, law, ?_, ?_, ?_, ?_⟩
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using applicationEq
       · simpa only [chosen, Bool.false_eq_true, ↓reduceIte] using networkEq

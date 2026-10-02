@@ -27,9 +27,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 private def departed (owner : Player)
     (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
   ∃ record ∈ (runtime.reactiveApplication leaks).executionTraffic execution,
-    record.input.envelope.sender = owner ∧
+    record.envelope.sender = owner ∧
       runtime.permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = false
+        record.envelope = false
 
 omit [Fintype Player] in
 private theorem activation_resources
@@ -103,12 +103,8 @@ private theorem activation_repeated_of_clean
         serials ((PMF.mem_support_pure_iff _ _).mpr rfl) moved
     rcases runtime.repeated_submission_response_cases leaks bounds middle owner 0 middleRecall
         middleSerials middleRepeated response (available _ _ response chosen) with replay | bad
-    · rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩
-      · exact middleRepeated
-      · change (middle.network.replay owner id).2.nextSerial owner ≠
-          Message.distinctAuthoredCount (middle.network.replay owner id).2.ledger owner
-        unfold MessageNetwork.replay
-        split <;> exact middleRepeated
+    · rcases app.silentPolicy_cases _ _ response replay with rfl
+      exact middleRepeated
     · obtain ⟨record, step, authored, rejected⟩ := bad
       exfalso
       apply clean
@@ -130,17 +126,10 @@ private theorem activation_repeated_of_clean
   · rcases response with ⟨transmission⟩
     cases transmission with
     | none => exact middleRepeated
-    | some transmission =>
-        cases transmission with
-        | replay id =>
-            change (middle.network.replay actor id).2.nextSerial owner ≠
-              Message.distinctAuthoredCount (middle.network.replay actor id).2.ledger owner
-            unfold MessageNetwork.replay
-            split <;> exact middleRepeated
-        | submit material =>
-            simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit]
-            rw [ite_eq_right (Ne.symm own)]
-            exact middleRepeated
+    | some material =>
+        simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit]
+        rw [ite_eq_right (Ne.symm own)]
+        exact middleRepeated
 
 omit [Fintype Player] in
 private theorem activation_step_evidence
@@ -199,13 +188,10 @@ private theorem foreign_activation_view
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id => rfl
-      | submit material =>
-          exact (submitStep_playerView_other (material.call.register execution.application actor)
-            actor owner different.symm material.call.packet).trans
-              (material.call.register_other execution.application actor owner different.symm)
+  | some material =>
+      exact (submitStep_playerView_other (material.call.register execution.application actor)
+        actor owner different.symm material.call.packet).trans
+          (material.call.register_other execution.application actor owner different.symm)
 
 namespace BindingMemory.Frame
 
@@ -219,7 +205,6 @@ private theorem repeated_activation_coupling
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
       Message.distinctAuthoredCount original.network.ledger owner)
@@ -252,7 +237,7 @@ private theorem repeated_activation_coupling
       exact serving
     obtain ⟨coupling, first, second, related⟩ :=
       frame.repeated_submission_stopped_activation_coupling bounds menu players reference started
-        leftRecall rightRecall 0 serials repeated (fun _ _ => coverage _ _ turnRight recorded)
+        leftRecall 0 serials repeated (fun _ _ => coverage _ _ turnRight recorded)
         (fun _ _ => available _ _)
     refine ⟨coupling, first, second, ?_⟩
     intro next supported
@@ -330,9 +315,9 @@ theorem run_repeated_stopped_coupling
       coupling.map Prod.fst = app.runRounds scheduler players count original ∧
       coupling.map Prod.snd = strategy.runJoint owner players scheduler count repaired memory ∧
       ∀ next ∈ coupling.support,
-        (∃ record ∈ app.executionTraffic next.1, record.input.envelope.sender = owner ∧
+        (∃ record ∈ app.executionTraffic next.1, record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           next.2.2.shadow = memory.shadow ∧
           next.2.1.application.playerView owner = repaired.application.playerView owner := by
@@ -361,7 +346,7 @@ theorem run_repeated_stopped_coupling
                 next.2.1.application.playerView owner = repaired.application.playerView owner := by
         obtain ⟨actor, rfl⟩ := commands original (by omega) (by omega) command chosen
         obtain ⟨step, first, second, related⟩ := frame.repeated_activation_coupling
-          bounds menu players reference started leftRecall rightRecall serials repeated event
+          bounds menu players reference started leftRecall serials repeated event
             serving recorded coverage available actor
         have existsTail (next) (member : next ∈ step.support) :
             ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),

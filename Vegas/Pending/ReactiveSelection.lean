@@ -52,8 +52,7 @@ test unchanged; the comparison uses the actual state after the response. -/
 theorem bindingSelection_response_regular (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (priorities : PMF (LinearOrder (MessageId Player))) (event : graph.EventId)
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (retained : execution.network.PendingOrPublished) (who : Player)
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (action : (runtime.reactiveApplication leaks).Action) :
     (runtime.bindingSelection leaks priorities event execution).RegularAt
       (runtime.bindingSelection leaks priorities event
@@ -62,24 +61,7 @@ theorem bindingSelection_response_regular (runtime : EventGraphRuntime graph)
   unfold bindingSelection
   rw [(runtime.reactive_respond_application leaks execution who action).2]
   exact (runtime.reactiveApplication leaks).prioritySelection_response_regular
-    priorities _ execution retained who action
-
-theorem bindingSelection_history_regular (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (initial : PMF (State graph)) (horizon : Nat)
-    (control : (runtime.reactiveApplication leaks).Control)
-    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some control))
-    (priorities : PMF (LinearOrder (MessageId Player))) (event : graph.EventId)
-    (who : Player) (action : (runtime.reactiveApplication leaks).Action) :
-    (runtime.bindingSelection leaks priorities event control.execution).RegularAt
-      (runtime.bindingSelection leaks priorities event
-        (control.execution.respond (runtime.reactiveApplication leaks) who action))
-      (some (who, control.execution.network.nextSerial who)) :=
-  runtime.bindingSelection_response_regular leaks priorities event control.execution
-    ((runtime.reactiveApplication leaks).pendingOrPublished_history
-      scheduler initial horizon trace) who action
+    priorities _ execution who action
 
 /-- Selection is independent of the private binding value at a fixed handle
 and fixed transport attributes, including when that binding is unopenable. -/

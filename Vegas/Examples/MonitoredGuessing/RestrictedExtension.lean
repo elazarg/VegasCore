@@ -8,7 +8,7 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Restoring every ordinary-player response
 
-The actual service and fixed whole-outcome deposits discharge every local
+The actual service and fixed comparison charges discharge every local
 comparison in the generic extension theorem. Initial extra sender traffic is
 monitored, receiver traffic is either harmless or audited, and final sender
 responses have a legal result-preserving comparator. No rationality assumption
@@ -59,12 +59,12 @@ theorem ordinary_equilibrium_extends (table : PayoffTable)
     (equilibrium : source.IsSequentialEquilibriumFor
         restricted_decisionRecall.decisionInformationAntichain
       (fun who site => source.truncatedContinuationContext site
-        (fun history => Enforcement.stateUtility table history.state who)
+        (fun history => Enforcement.comparisonStateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :
     ∃ target : watchedModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor watched_decisionRecall.decisionInformationAntichain
         (fun who site => target.truncatedContinuationContext site
-          (fun history => Enforcement.stateUtility table history.state who)
+          (fun history => Enforcement.comparisonStateUtility table history.state who)
           (2 * nativeHorizon + 1 - watchedDepth who site)) ∧
       ordinaryRestriction.ExtendsProfile source.strategy target.strategy ∧
       (∀ who site, target.belief who (ordinaryRestriction.site who site) =
@@ -74,9 +74,9 @@ theorem ordinary_equilibrium_extends (table : PayoffTable)
         watchedModel.runBehavioral target.strategy (2 * nativeHorizon + 1) ∧
       (restrictedModel.runBehavioral source.strategy (2 * nativeHorizon + 1)).map
           (fun history => (ordinaryRestriction.history history,
-            Enforcement.stateUtility table history.state)) =
+            Enforcement.comparisonStateUtility table history.state)) =
         (watchedModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
-          (fun history => (history, Enforcement.stateUtility table history.state)) ∧
+          (fun history => (history, Enforcement.comparisonStateUtility table history.state)) ∧
       ∀ history ∈ (watchedModel.runBehavioral target.strategy
         (2 * nativeHorizon + 1)).support, watchedArena.terminal history.state := by
   classical
@@ -94,8 +94,8 @@ theorem ordinary_equilibrium_extends (table : PayoffTable)
       (watchedMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon nativeScheduler)
       watched_decisionRecall (fun who site => watchedDepth who (ordinaryRestriction.site who site))
       (fun who site => watched_common_depth who (ordinaryRestriction.site who site))
-      (fun who history => Enforcement.stateUtility table history.state who)
-      (fun who history => Enforcement.stateUtility table history.state who)
+      (fun who history => Enforcement.comparisonStateUtility table history.state who)
+      (fun who history => Enforcement.comparisonStateUtility table history.state who)
       (fun _ _ => rfl) ordinaryComparator (fun sourceProfile targetProfile paired who site action
         extra history => by
         rw [ordinaryRestriction.runBehavioralTerminalFrom_history_eq_remaining targetCertificate
@@ -140,25 +140,27 @@ theorem restricted_raw_equilibrium_extends (table : PayoffTable)
     (equilibrium : source.IsSequentialEquilibriumFor
         restricted_decisionRecall.decisionInformationAntichain
       (fun who site => source.truncatedContinuationContext site
-        (fun history => Enforcement.stateUtility table history.state who)
+        (fun history => Enforcement.comparisonStateUtility table history.state who)
         (2 * nativeHorizon + 1 - restrictedDepth who site))) :
     ∃ target : nativeModel.BehavioralAssessment,
       target.IsSequentialEquilibriumFor
         (nativeMenu.decisionInformationAntichain nativeInitialLaw nativeHorizon nativeScheduler)
         (fun who site => target.truncatedContinuationContext site
-          (fun history => Enforcement.stateUtility table history.state who)
+          (fun history => Enforcement.comparisonStateUtility table history.state who)
           (2 * nativeHorizon + 1)) ∧
       (nativeModel.runBehavioral target.strategy (2 * nativeHorizon + 1)).map
-          (fun history => (observe history.state, Enforcement.stateUtility table history.state)) =
+          (fun history => (observe history.state, Enforcement.comparisonStateUtility table
+            history.state)) =
         (restrictedModel.runBehavioral source.strategy (2 * nativeHorizon + 1)).map
           (fun history => (observe history.state,
-            Enforcement.stateUtility table history.state)) := by
+            Enforcement.comparisonStateUtility table history.state)) := by
   classical
   obtain ⟨watched, watchedSE, _, _, executionLaw, _, _⟩ :=
     ordinary_equilibrium_extends table source equilibrium
   obtain ⟨raw, rawSE, jointLaw⟩ := watcher_raw_equilibrium_extends observe observationInvariant
-    (Enforcement.stateUtility table) (Enforcement.stateUtility_normalization table)
-    (Enforcement.stateUtility_watcher table watcherZero) watched watchedSE
+    (Enforcement.comparisonStateUtility table)
+      (Enforcement.comparisonStateUtility_normalization table)
+    (Enforcement.comparisonStateUtility_watcher table watcherZero) watched watchedSE
   refine ⟨raw, rawSE, ?_⟩
   rw [jointLaw, ← executionLaw, PMF.map_comp]
   rfl

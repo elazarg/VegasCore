@@ -117,7 +117,7 @@ Bob-addressed traffic. Both bounds cover irrational source continuations and
 zero-range tables. They give weak deterrence, sufficient for an equilibrium
 extension, not strict compliance or equality of all equilibrium sets.
 
-Every native edge uses the same `Enforcement.stateUtility`: declared return
+Every native edge uses the same `Enforcement.comparisonStateUtility`: declared return
 minus the specified collectible liability. Legal C play has zero liability and
 returns the literal source table. Raw normalization preserves this utility and
 the joint type/result/net-payoff observation. The result does not supply an

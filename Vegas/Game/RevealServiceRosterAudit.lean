@@ -64,8 +64,7 @@ theorem roster_traffic_ledger_nodup :
         joint _ reached] at member
       rcases List.mem_append.mp member with old | fresh
       · exact roster_traffic_ledger_nodup prior record old
-      · have valid := (application setup leaks).publishedOnce_history _
-          (rosterScheduler_atMostOnce setup leaks rosters network) (initialLaw setup) _ prior
+      · have valid := (application setup leaks).publishedOnce_history _ (initialLaw setup) _ prior
         cases before with
         | none => simp [ReactiveApplication.trafficStep] at fresh
         | some previous =>
@@ -86,7 +85,7 @@ theorem roster_terminal_published (reveals : setup.program.RevealOnly)
     (∀ message ∈ control.execution.network.ledger,
       ((runtime setup).settledRecord leaks control.execution).permits message = true) ∧
     ∀ input ∈ control.execution.network.inputs,
-      input.envelope.id ∈ control.execution.network.ledger.map Message.id := by
+      input.id ∈ control.execution.network.ledger.map Message.id := by
   let menu := rosterMenu setup leaks bounds rosters
   have supported := menu.roundSupported_uniform (initialLaw setup)
     (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) history.trace
@@ -148,7 +147,7 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
         (2 * (rosterPlan setup rosters).length + 1))) :
     let deposit := rosterAuditDeposit setup leaks bounds rosters network base probability
     let audit := sourceServiceAudit setup leaks sample
-    let observeAudit := (runtime setup).settlementObservation leaks
+    let observeAudit := (runtime setup).serviceAuditObservation leaks
     let utility := TerminalAudit.utility base observeAudit audit deposit
     let settle := TerminalAudit.settlement base observeAudit audit deposit
     ∃ target : ((bounds.rawMenu (runtime setup) leaks).information (initialLaw setup)
@@ -203,7 +202,7 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
       (∀ who, control.execution.application.publicView.missedBindingBy who = false) ∧
       ∀ record ∈ (application setup leaks).executionTraffic control.execution,
         ((runtime setup).settledRecord leaks control.execution).permits
-          record.input.envelope = true := by
+          record.envelope = true := by
     refine ⟨control.execution.application.publicView.missedBindingBy_of_publications
       (reveal_publications setup reveals), ?_⟩
     obtain ⟨ledgerPermitted, published⟩ := roster_terminal_published setup leaks bounds rosters
@@ -214,15 +213,15 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
     have facts := settledFacts_history initial count scheduler rawTrace
     have inputs := (application setup leaks).stateTraffic_inputs initial count scheduler rawTrace
     change ((application setup leaks).executionTraffic control.execution).map
-      ReactiveApplication.TrafficRecord.input = control.execution.network.inputs at inputs
+      ReactiveApplication.TrafficRecord.envelope = control.execution.network.inputs at inputs
     intro record member
-    have inputMember : record.input ∈ control.execution.network.inputs := by
+    have inputMember : record.envelope ∈ control.execution.network.inputs := by
       rw [← inputs]
       exact List.mem_map.mpr ⟨record, member, rfl⟩
     obtain ⟨message, inLedger, sameId⟩ :=
-      List.mem_map.mp (published record.input inputMember)
-    have equal : message = record.input.envelope :=
-      (facts.unique.inputs record.input inputMember).ledger message inLedger sameId
+      List.mem_map.mp (published record.envelope inputMember)
+    have equal : message = record.envelope :=
+      (facts.unique.inputs record.envelope inputMember).ledger message inLedger sameId
     rw [← equal]
     exact ledgerPermitted message inLedger
   exact settled_audited_raw_sequential_equilibrium setup leaks bounds count scheduler
@@ -235,7 +234,7 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
         rosters network reveals openable profile who site action extra history next supported
       refine ⟨record, present, author, ?_⟩
       cases verdict : (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope with
+          record.envelope with
       | false => rfl
       | true =>
           have nodup := roster_traffic_ledger_nodup setup leaks rosters network
@@ -243,7 +242,7 @@ theorem roster_audited_sequential_equilibrium [setup.FiniteInitialLaw] [leaks.Fi
           have allowed := permittedRosterEnvelope_of_permittedService setup leaks reveals _ _ _
             nodup verdict
           change permittedRosterEnvelope setup leaks
-            (record.observation, record.ledger, record.input.envelope) = false at breach
+            (record.observation, record.ledger, record.envelope) = false at breach
           rw [allowed] at breach
           cases breach)
     base baseInvariant lower upper probability deposit nonnegative

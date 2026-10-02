@@ -38,11 +38,11 @@ abbrev candidate : Handle nativeGraph := (alice, .prepared 0)
 def opening (bit : Bool) : OpeningFact nativeGraph := ⟨candidate, ⟨.bool, bit⟩⟩
 
 def certifiedOffer (bit : Bool) : app.Action :=
-  ⟨some (.submit ⟨⟨.commitment aliceBinding candidate, some ⟨.bool, bit⟩⟩,
-    .owned (opening bit)⟩)⟩
+  ⟨some ⟨⟨.commitment aliceBinding candidate, some ⟨.bool, bit⟩⟩,
+    .owned (opening bit)⟩⟩
 
 def associate : app.Action :=
-  ⟨some (.submit ⟨⟨.commitment aliceBinding candidate, none⟩, .none⟩)⟩
+  ⟨some ⟨⟨.commitment aliceBinding candidate, none⟩, .none⟩⟩
 
 theorem certifiedOffer_available (bit : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) : certifiedOffer bit ∈ menu.actions alice past view := by

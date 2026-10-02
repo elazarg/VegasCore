@@ -27,7 +27,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 open Classical in
 /-- Settlement samples projected authenticated evidence. Attribution is derived
-from that evidence, rather than assumed to be the broadcaster of the raw input.
+from the signed evidence.
 The same sampled record determines all charges. -/
 def sampledTrafficAudit {Evidence : Type} (project : app.TrafficRecord → Evidence)
     (attribution : Evidence → Principal) (permitted : Evidence → Bool)
@@ -52,8 +52,7 @@ theorem sampledTrafficAudit_collection {Evidence : Type}
   simp only [Set.mem_preimage, Set.mem_singleton_iff, Function.comp_apply, decide_eq_true_eq,
     Set.mem_ofPred_eq]
 
-/-- Authenticity is required only after projection. For signed-author evidence,
-this does not require authentication of the original rebroadcaster field. -/
+/-- Authenticity is required after projection to the evidence used by the audit. -/
 theorem sampledTrafficAudit_sound {Evidence : Type}
     (project : app.TrafficRecord → Evidence) (attribution : Evidence → Principal)
     (permitted : Evidence → Bool) (sample : List Evidence → PMF (List Evidence))

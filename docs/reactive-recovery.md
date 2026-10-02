@@ -81,7 +81,6 @@ invariants; these reconstruction rules alone are not that theorem.
 | Recovery is locally optimal under the fixed inclusion-mixture and downstream-law premises | [`reactiveRecoveryLaw_optimal_response`](../Vegas/Pending/ReactivePolicyFacts.lean) |
 | Recovery is locally optimal under the weaker regularity and fixed downstream-law premises | [`reactiveRecoveryLaw_regular_optimal`](../Vegas/Pending/ReactiveRegularity.lean) |
 | The actual service never includes an identifier twice, including after rejection | [`interaction_history_publishedOnce`](../Vegas/Pending/ReactiveServicePublication.lean) |
-| Every rebroadcast preserves the unpublished eligible menu at every legal initialized history | [`replay_unpublished_history`](../Interaction/ReactivePublication.lean) |
 
 The state-law equality includes application state, network contents, private
 recall, receipts, and scheduler recall. It is not merely a public marginal.

@@ -6,11 +6,10 @@ Authors: VegasCore contributors
 
 import Interaction.MessageApplicationPolicies
 import Interaction.MessageApplicationPending
-import Interaction.MessageReplay
 
 /-! # Observation locality of player-only polling
 
-Submission and rebroadcast change the sender's local view and the pending
+Submission changes the sender's local view and the pending
 pool. Other players learn of that traffic through later delivery or inclusion,
 not through the polling invocation itself. If private application commands also
 preserve another player's view, a sequence of other-player polls preserves
@@ -33,7 +32,7 @@ variable (app : MessageApplication Principal)
 
 /-- A raw command by another principal preserves the observer's actual
 history and current view, provided the application's private transition does.
-No restriction is imposed on submission or replay payloads. -/
+No restriction is imposed on submission payloads. -/
 theorem playerStep_other_input (actor observer : Principal) (hne : observer ≠ actor)
     (hprivate : ∀ state command,
       app.observePlayer (app.privateStep state actor command) observer =
@@ -64,10 +63,6 @@ theorem playerStep_other_input (actor observer : Principal) (hne : observer ≠ 
         rw [hnative]
         simp only [State.observe, MessagePool.submit, MessagePool.observe,
           ite_eq_right hne, hsubmit]
-    | replay id =>
-        simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
-        rw [hnative]
-        simp only [State.observe, MessagePool.replay_other_observe _ _ _ _ hne]
     | wait =>
         simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at hnative
         rw [hnative]
@@ -117,7 +112,7 @@ theorem runPolicies_other_input (observer : Principal)
 
 /-- Other-player commands preserve any application projection left unchanged
 by their private commands, the observer's allocation counter, and every
-already-pending lookup result. Submission and replay may add unrelated traffic;
+already-pending lookup result. Submission may add unrelated traffic;
 no equality of complete pools is asserted. The projection is proof-facing and
 need not be part of the player's observation. -/
 private theorem playerStep_other_frame {Projection : Type uProjection}
@@ -150,14 +145,6 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
       refine ⟨hsubmit _ _, by simp only [MessagePool.submit, ite_eq_right hne], ?_⟩
       intro id message hlookup
       exact execution.native.pool.lookup_submit_of_some id message hlookup actor payload
-  | replay id =>
-      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
-      rw [hnative]
-      refine ⟨rfl, ?_, ?_⟩
-      · unfold MessagePool.replay
-        split <;> rfl
-      · intro selected message hlookup
-        exact execution.native.pool.lookup_replay_of_some selected message hlookup actor id
   | wait =>
       simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
@@ -165,7 +152,7 @@ private theorem playerStep_other_frame {Projection : Type uProjection}
 
 /-- A player-only schedule excluding the observer preserves its private
 application projection and allocation counter. Existing pending envelopes
-remain selectable, including when another player rebroadcasts them. All
+remain selectable. All
 policies may randomize and submit arbitrary payloads. -/
 theorem runPolicies_other_frame {Projection : Type uProjection}
     (observer : Principal) (project : app.Application → Projection)

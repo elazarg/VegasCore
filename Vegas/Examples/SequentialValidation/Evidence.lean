@@ -100,7 +100,7 @@ def nativeStoredType : (nativeRuntime.reactiveApplication leaks).ProtocolState â
   | some control => control.execution.application.config.store (.inl typeInput)
 
 /-- Every history in this information fiber has the disclosed original type.
-The finite menu may contain arbitrary malformed and replay responses. -/
+The finite menu may contain arbitrary malformed responses and certificate forwarding. -/
 theorem native_information_type
     (menu : (nativeRuntime.reactiveApplication leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (nativeRuntime.reactiveApplication leaks).Scheduler)

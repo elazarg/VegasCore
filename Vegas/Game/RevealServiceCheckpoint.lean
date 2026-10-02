@@ -86,7 +86,7 @@ structure Checkpoint (setup : Setup (Player := Player) (L := L))
     message.id ∈ execution.network.ledger.map Message.id
   leaked : execution.network.leaked = fun _ => []
   inputs : ∀ input ∈ execution.network.inputs,
-    input.envelope.id ∈ execution.network.ledger.map Message.id
+    input.id ∈ execution.network.ledger.map Message.id
   serials : execution.network.SerialsBeforeNext
   recall : execution.InputRecall (application setup leaks)
 
@@ -283,7 +283,7 @@ private theorem ordinary_network_checkpoint [Fintype Player]
     (pending : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (inputs : ∀ input ∈ execution.network.inputs,
-      input.envelope.id ∈ execution.network.ledger.map Message.id)
+      input.id ∈ execution.network.ledger.map Message.id)
     (serials : execution.network.SerialsBeforeNext)
     (response : (application setup leaks).Action)
     (member : response ∈ ordinaryActions setup leaks bounds owner (execution.recall owner)
@@ -293,32 +293,21 @@ private theorem ordinary_network_checkpoint [Fintype Player]
       (submitted.network.includePending (owner, execution.network.nextSerial owner)).2
       else submitted.network
     (∀ message ∈ after.pending, message.id ∈ after.ledger.map Message.id) ∧
-      (∀ input ∈ after.inputs, input.envelope.id ∈ after.ledger.map Message.id) ∧
+      (∀ input ∈ after.inputs, input.id ∈ after.ledger.map Message.id) ∧
       after.leaked = execution.network.leaked ∧ after.SerialsBeforeNext := by
   cases chosen : sourceChoice setup leaks response with
   | false =>
       simp only [Bool.false_eq_true, ↓reduceIte]
       obtain refuses := (ordinary_false_iff setup leaks bounds owner (execution.recall owner)
         (execution.observe (application setup leaks) owner) response member).mp chosen
-      rcases refuses with rfl | ⟨message, published, rfl⟩
-      · exact ⟨pending, inputs, rfl, serials⟩
-      · have spent : message.id ∈ execution.network.ledger.map Message.id :=
-          List.mem_map.mpr ⟨message, published, rfl⟩
-        refine ⟨execution.network.replay_pending_published owner message.id pending spent,
-          execution.network.replay_inputs_published owner message.id inputs spent, ?_,
-          serials.replay owner message.id⟩
-        funext observer
-        exact congrArg MessageNetwork.PlayerView.leaked
-          (execution.network.replay_observe owner observer message.id)
+      subst response
+      exact ⟨pending, inputs, rfl, serials⟩
   | true =>
       rcases response with ⟨transmission⟩
       cases transmission with
       | none => cases chosen
-      | some transmission =>
-          cases transmission with
-          | replay id => cases chosen
-          | submit submission =>
-              exact execution.network.submit_include_published owner _ pending inputs serials
+      | some submission =>
+          exact execution.network.submit_include_published owner _ pending inputs serials
 
 /-- Every ordinary response advances the full operational relation. Policies
 after the response are unrestricted except for the fixed watcher, which is

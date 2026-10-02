@@ -140,7 +140,7 @@ theorem BindingMemory.repairResponse_protected_input
     let app := runtime.reactiveApplication leaks
     let view := right.observe app who
     let original : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
     let repaired := memory.repairResponse runtime leaks who view original
     let remembered : BindingMemory runtime leaks :=
       ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩
@@ -156,7 +156,7 @@ theorem BindingMemory.repairResponse_protected_input
   let view := right.observe app who
   let material : WitnessedSubmission graph :=
     ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩
-  let original : app.Action := ⟨some (.submit material)⟩
+  let original : app.Action := ⟨some material⟩
   let repaired := memory.repairResponse runtime leaks who view original
   let remembered : BindingMemory runtime leaks :=
     ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩

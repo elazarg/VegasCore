@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player]
 
 def PlayerAction.authors (action : PlayerAction graph) : Bool :=
   match action.transmission with
-  | some (.submit _) => true
+  | some _ => true
   | _ => false
 
 def authoredCount (history : List (NativeEntry graph)) : Nat :=
@@ -48,20 +48,13 @@ theorem takeAction_counters (runtime : EventGraphRuntime graph) (who : Player)
     simp only [authoredCount, List.countP_append, List.countP_cons, List.countP_nil]
     cases chosen : action.transmission with
     | none => simpa [transmit, authoredCount, PlayerAction.authors, chosen] using counters who
-    | some transmission =>
-        cases transmission with
-        | submit submission => simp [transmit, MessagePool.submit, PlayerAction.authors,
-            chosen, counters who, authoredCount]
-        | replay id =>
-            simpa [transmit, authoredCount, PlayerAction.authors, chosen] using counters who
+    | some submission => simp [transmit, MessagePool.submit, PlayerAction.authors,
+        chosen, counters who, authoredCount]
   · change (runtime.transmit who execution.native action.transmission).pool.nextSerial observer = _
     simp only [takeAction, ite_eq_right same]
     cases action.transmission with
     | none => exact counters observer
-    | some transmission =>
-        cases transmission with
-        | submit submission => simpa [transmit, MessagePool.submit, same] using counters observer
-        | replay id => simpa [transmit] using counters observer
+    | some submission => simpa [transmit, MessagePool.submit, same] using counters observer
 
 theorem nativeInstructionStep_counters (runtime : EventGraphRuntime graph)
     (wire : runtime.application.WirePolicy) (instruction : ServiceInstruction graph)

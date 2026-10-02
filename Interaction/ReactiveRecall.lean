@@ -4,9 +4,10 @@ import Interaction.ReactiveProtocol
 
 /-! # Player output recall and network input history agree
 
-The network's record of broadcasts by a principal is exactly the output
-remembered by that principal. Replay eligibility can therefore be computed
-from own recall, leaked messages, and ledger, without a separate sent list.
+The network's record of submissions by a principal is exactly the output
+remembered by that principal. The envelopes a player possesses can therefore be
+computed from own recall, leaked messages, and ledger, without a separate sent
+list.
 -/
 
 namespace Interaction.ReactiveApplication
@@ -19,9 +20,8 @@ def outputs (history : List app.PlayerEntry) : List (Message Principal app.Paylo
   history.filterMap PlayerEntry.emitted
 
 def Execution.InputRecall (execution : app.Execution) : Prop := ∀ who,
-  (execution.network.inputs.filterMap fun input =>
-    if input.broadcaster = who then some input.envelope else none) =
-      app.outputs (execution.recall who)
+  execution.network.inputs.filter (fun input => input.sender = who) =
+    app.outputs (execution.recall who)
 
 theorem respond_recall_mono (execution : app.Execution) (who observer : Principal)
     (action : app.Action) :
@@ -35,7 +35,7 @@ theorem respond_recall_mono (execution : app.Execution) (who observer : Principa
         exact List.subset_append_left _ _
       · simpa only [Execution.respond, ite_eq_right same] using List.Subset.refl _
   | some transmission =>
-      cases transmission <;> by_cases same : observer = who
+      by_cases same : observer = who
       all_goals first
         | subst observer
           simp only [Execution.respond, ↓reduceIte]
@@ -71,7 +71,7 @@ theorem respond_recall_other (execution : app.Execution) (who observer : Princip
   cases transmission with
   | none => simp only [Execution.respond, ite_eq_right different]
   | some transmission =>
-      cases transmission <;> simp only [Execution.respond, ite_eq_right different]
+      simp only [Execution.respond, ite_eq_right different]
 
 theorem initial_inputRecall (state : app.State) : (Execution.initial app state).InputRecall app :=
   fun _ => rfl
@@ -88,28 +88,15 @@ theorem respond_inputRecall (execution : app.Execution) (who : Principal) (actio
         simpa only [Execution.respond, ↓reduceIte, outputs, List.filterMap_append,
           List.filterMap_cons, List.filterMap_nil, List.append_nil] using earlier
       · simpa only [Execution.respond, ite_eq_right same] using earlier
-  | some transmission =>
-      cases transmission with
-      | submit submission =>
-          by_cases same : observer = who
-          · subst observer
-            simpa only [Execution.respond, MessageNetwork.submit, ↓reduceIte, outputs,
-              List.filterMap_append, List.filterMap_cons, List.filterMap_nil, Option.map_some]
-              using congrArg (· ++ [⟨(who, execution.network.nextSerial who),
-                app.packet (app.submit execution.application who submission) who
-                  (execution.network.known who) submission⟩]) earlier
-          · simpa only [Execution.respond, MessageNetwork.submit, ite_eq_right same,
-              ite_eq_right (Ne.symm same), List.filterMap_append, List.filterMap_cons,
-              List.filterMap_nil, List.append_nil] using earlier
-      | replay id =>
-          cases knownEq : (execution.network.known who).find? (fun envelope => envelope.id = id)
-          all_goals by_cases same : observer = who
-          all_goals first
-            | subst observer
-              simpa [Execution.respond, MessageNetwork.replay, knownEq, outputs]
-                using earlier
-            | simpa [Execution.respond, MessageNetwork.replay, knownEq, same, Ne.symm same]
-                using earlier
+  | some submission =>
+      by_cases same : observer = who
+      · subst observer
+        simpa [Execution.respond, MessageNetwork.submit, outputs, Message.sender,
+          List.filter_append] using congrArg (· ++ [⟨(who, execution.network.nextSerial who),
+            app.packet (app.submit execution.application who submission) who
+              (execution.network.known who) submission⟩]) earlier
+      · simpa [Execution.respond, MessageNetwork.submit, ite_eq_right same,
+          Message.sender, List.filter_append, Ne.symm same] using earlier
 
 theorem environment_inputRecall (execution next : app.Execution) (command : app.Command)
     (valid : execution.InputRecall app)
@@ -134,8 +121,8 @@ theorem environment_inputRecall (execution next : app.Execution) (command : app.
         simpa [Execution.InputRecall, Execution.includePending,
           MessageNetwork.includePending, found] using valid
 
-/-- An initialized player can reconstruct every message eligible for replay
-from its own input/output recall and the two message lists it observes. -/
+/-- An initialized player can reconstruct every envelope it possesses from its
+own input/output recall and the two message lists it observes. -/
 theorem known_from_recall (execution : app.Execution) (who : Principal)
     (valid : execution.InputRecall app) :
     execution.network.known who = app.outputs (execution.recall who) ++

@@ -51,21 +51,18 @@ theorem reactiveCommitmentsFixed_respond (runtime : EventGraphRuntime graph)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some transmission =>
-      cases transmission with
-      | replay id => exact prior.replay who id
-      | submit material =>
-          apply prior.submit who (material.emit _ who (execution.network.known who))
-          intro event candidate addressed owned
-          change material.call.packet = .commitment event candidate at addressed
-          change candidate.1 = who at owned
-          change (submitStep (material.call.register execution.application who) who
-            material.call.packet).candidates.lookup candidate ≠ .fresh
-          rw [addressed]
-          obtain ⟨owner, slot⟩ := candidate
-          change owner = who at owned
-          subst owner
-          exact submitStep_commitment_fixed _ who event slot
+  | some material =>
+      apply prior.submit who (material.emit _ who (execution.network.known who))
+      intro event candidate addressed owned
+      change material.call.packet = .commitment event candidate at addressed
+      change candidate.1 = who at owned
+      change (submitStep (material.call.register execution.application who) who
+        material.call.packet).candidates.lookup candidate ≠ .fresh
+      rw [addressed]
+      obtain ⟨owner, slot⟩ := candidate
+      change owner = who at owned
+      subst owner
+      exact submitStep_commitment_fixed _ who event slot
 
 theorem reactiveCommitmentsFixed_environment (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -128,7 +125,7 @@ theorem reactiveDecision_commitment_fresh (runtime : EventGraphRuntime graph)
     (who : Player) (event : graph.EventId) (choice : graph.Action event)
     (view : ReactivePlayerView graph) (material : WitnessedSubmission graph)
     (emits : (runtime.reactiveDecision leaks who event choice view).transmission =
-      some (.submit material)) (target : graph.EventId) (candidate : Handle graph)
+      some material) (target : graph.EventId) (candidate : Handle graph)
     (packet : material.call.packet = .commitment target candidate) :
     ∃ serial, candidate = (who, .prepared serial) ∧
       view.candidates (.prepared serial) = .fresh := by
@@ -138,13 +135,12 @@ theorem reactiveDecision_commitment_fresh (runtime : EventGraphRuntime graph)
   · cases allocated : reactiveFreshSlot view with
     | none => simp only [allocated, Option.map_none] at emits; cases emits
     | some serial =>
-        simp only [allocated, Option.map_some, Option.some.injEq,
-          ReactiveApplication.Transmission.submit.injEq] at emits
+        simp only [allocated, Option.map_some, Option.some.injEq] at emits
         subst material
         have same := Payload.commitment.inj packet
         exact ⟨serial, same.2.symm, reactiveFreshSlot_spec view serial allocated⟩
   · rename_i owner payload binding checks outputEq codeEq nodeEq
-    simp only [Option.some.injEq, ReactiveApplication.Transmission.submit.injEq] at emits
+    simp only [Option.some.injEq] at emits
     subst material
     change reactiveResolutionPacket who event payload binding checks outputEq choice view =
       .commitment target candidate at packet
@@ -165,7 +161,7 @@ theorem prescribedReactivePolicy_commitment_fresh (runtime : EventGraphRuntime g
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (action : (runtime.reactiveApplication leaks).Action)
     (supported : action ∈ (runtime.prescribedReactivePolicy leaks who policy history view).support)
-    (material : WitnessedSubmission graph) (sent : action.transmission = some (.submit material))
+    (material : WitnessedSubmission graph) (sent : action.transmission = some material)
     (target : graph.EventId) (candidate : Handle graph)
     (packet : material.call.packet = .commitment target candidate) :
     ∃ serial, candidate = (who, .prepared serial) ∧
@@ -290,20 +286,17 @@ theorem reactiveCandidateProtection_respond (runtime : EventGraphRuntime graph)
   · rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact protection.packets
-    | some transmission =>
-        cases transmission with
-        | replay id => exact protection.packets.replay actor id
-        | submit material =>
-            apply protection.packets.submit actor _
-            intro target authored addressed
-            change actor = who at authored
-            subst actor
-            have fresh := runtime.prescribedReactivePolicy_commitment_fresh leaks who policy
-              _ _ _ (prescribed rfl) material rfl target candidate addressed
-            obtain ⟨serial, same, fresh⟩ := fresh
-            change execution.application.candidates.lookup (who, .prepared serial) = .fresh
-              at fresh
-            exact False.elim (protection.fixed (by rw [same]; exact fresh))
+    | some material =>
+        apply protection.packets.submit actor _
+        intro target authored addressed
+        change actor = who at authored
+        subst actor
+        have fresh := runtime.prescribedReactivePolicy_commitment_fresh leaks who policy
+          _ _ _ (prescribed rfl) material rfl target candidate addressed
+        obtain ⟨serial, same, fresh⟩ := fresh
+        change execution.application.candidates.lookup (who, .prepared serial) = .fresh
+          at fresh
+        exact False.elim (protection.fixed (by rw [same]; exact fresh))
   · intro unfinished field associated
     have oldUnfinished : event ∉ execution.application.config.cut.completed := by
       rwa [(runtime.reactive_respond_application leaks execution actor action).1] at unfinished

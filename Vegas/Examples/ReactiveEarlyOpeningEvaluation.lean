@@ -19,10 +19,10 @@ def third {α : Type*} (first rest : PMF α) : PMF α :=
   mix (1 / 3) (by norm_num) (by norm_num) first rest
 
 def bindingAction : app.Action :=
-  ⟨some (.submit ⟨⟨.commitment 0 ((), .prepared 1), some ⟨.int, 0⟩⟩, .none⟩)⟩
+  ⟨some ⟨⟨.commitment 0 ((), .prepared 1), some ⟨.int, 0⟩⟩, .none⟩⟩
 
 def earlyOpening : app.Action :=
-  ⟨some (.submit (disclosureSubmission (.opening 1 ((), .prepared 0) ⟨.int, 1⟩)))⟩
+  ⟨some (disclosureSubmission (.opening 1 ((), .prepared 0) ⟨.int, 1⟩))⟩
 
 def firstResponse (repair : Bool) : app.Action := if repair then bindingAction else earlyOpening
 
@@ -38,9 +38,8 @@ def included (repair fresh : Bool) : app.Execution :=
       [⟨before.observeEnvironment app, .include (selectedId fresh)⟩] }
 
 def finalOpening (fresh : Bool) : app.Action :=
-  ⟨some (.submit
-    (disclosureSubmission
-      (.opening 1 ((), .prepared (if fresh then 1 else 0)) ⟨.int, if fresh then 0 else 1⟩)))⟩
+  ⟨some (disclosureSubmission
+      (.opening 1 ((), .prepared (if fresh then 1 else 0)) ⟨.int, if fresh then 0 else 1⟩))⟩
 
 def disclosed (repair fresh : Bool) : app.Execution :=
   (activated (included repair fresh)).respond app () (finalOpening fresh)

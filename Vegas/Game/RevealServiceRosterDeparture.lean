@@ -26,9 +26,9 @@ private theorem openingTraffic_sole_actor
     (record : (application setup leaks).TrafficRecord) (event : (graph setup).EventId)
     (sole : record.observation.SoleReady event)
     (conforming : openingTraffic setup leaks record) :
-    (graph setup).actor? event = some record.input.broadcaster := by
+    (graph setup).actor? event = some record.envelope.sender := by
   unfold openingTraffic at conforming
-  cases call : record.input.envelope.payload.call with
+  cases call : record.envelope.payload.call with
   | commitment | withhold | malformed => simp only [call] at conforming
   | opening actual candidate raw =>
       rw [call] at conforming
@@ -58,9 +58,9 @@ theorem openingTraffic_roster_normalization
     (submission : WitnessedSubmission (graph setup))
     (conforming : openingTraffic setup leaks
       ⟨execution.application.publicView, execution.network.ledger,
-        ⟨who, ⟨(who, execution.network.nextSerial who), submission.emit
+        ⟨(who, execution.network.nextSerial who), submission.emit
           ((application setup leaks).submit execution.application who submission) who
-            (execution.network.known who)⟩⟩⟩) :
+            (execution.network.known who)⟩⟩) :
     submission.normalizeReactive who
         ((application setup leaks).observePlayer execution.application who)
         (execution.network.known who) =
@@ -133,7 +133,7 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
     ∃ record, (application setup leaks).trafficStep (some control)
       (some ⟨control.remaining, none,
         control.execution.respond (application setup leaks) who response⟩) = [record] ∧
-      record.input.envelope.sender = who ∧
+      record.envelope.sender = who ∧
       permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = false := by
   classical
   let app := application setup leaks
@@ -142,12 +142,12 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
     response effective excluded
   let record : app.TrafficRecord :=
     ⟨control.execution.application.publicView, control.execution.network.ledger,
-      ⟨who, ⟨(who, control.execution.network.nextSerial who), submission.emit
+      ⟨(who, control.execution.network.nextSerial who), submission.emit
         (app.submit control.execution.application who submission) who
-          (control.execution.network.known who)⟩⟩⟩
+          (control.execution.network.known who)⟩⟩
   have actual : app.trafficStep (some control)
       (some ⟨control.remaining, none, control.execution.respond app who
-        ⟨some (.submit submission)⟩⟩) = [record] := by
+        ⟨some submission⟩⟩) = [record] := by
     have step := app.trafficStep_submit control.execution control.remaining who submission
     convert step using 1 <;> rfl
   refine ⟨record, actual, rfl, ?_⟩
@@ -214,14 +214,14 @@ theorem roster_extra_traffic [setup.FiniteInitialLaw]
         have normal := (bounds.menu_mem (runtime setup) leaks who _ _ _).mp effective |>.2
         have actionEq : ((runtime setup).reactiveNormalization leaks).action who
             (control.execution.recall who) (control.execution.observe app who)
-              ⟨some (.submit submission)⟩ =
+              ⟨some submission⟩ =
             ((runtime setup).reactiveNormalization leaks).action who
               (control.execution.recall who) (control.execution.observe app who)
               ((runtime setup).windowOpening leaks event candidate raw) := by
           simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
             windowOpening]
           rw [known]
-          exact congrArg (fun value => (⟨some (.submit value)⟩ : app.Action)) same
+          exact congrArg (fun value => (⟨some value⟩ : app.Action)) same
         rw [normal, canonical] at actionEq
         apply False.elim
         apply excluded

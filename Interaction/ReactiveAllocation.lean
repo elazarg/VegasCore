@@ -19,13 +19,10 @@ theorem serialsBeforeNextInvariant (scheduler : app.Scheduler) :
     rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact valid
-    | some transmission =>
-        cases transmission with
-        | submit submission =>
-            exact valid.submit who
-              (app.packet (app.submit execution.application who submission) who
-                (execution.network.known who) submission)
-        | replay id => exact valid.replay who id
+    | some submission =>
+        exact valid.submit who
+          (app.packet (app.submit execution.application who submission) who
+            (execution.network.known who) submission)
   environment execution next command valid _ reached := by
     cases command with
     | wait =>

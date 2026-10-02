@@ -34,8 +34,7 @@ theorem respond_entry_origin (execution : app.Execution) (who observer : Princip
         · exact Or.inl prior
         · exact Or.inr ⟨rfl, rfl⟩
     | some transmission =>
-        cases transmission <;>
-          simp only [Execution.respond, ↓reduceIte, List.mem_append, List.mem_singleton] at member
+        simp only [Execution.respond, ↓reduceIte, List.mem_append, List.mem_singleton] at member
         all_goals rcases member with prior | rfl
         all_goals first | exact Or.inl prior | exact Or.inr ⟨rfl, rfl⟩
   · exact Or.inl (app.respond_recall_other execution who observer same action ▸ member)

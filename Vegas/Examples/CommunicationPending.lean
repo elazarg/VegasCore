@@ -52,7 +52,7 @@ private theorem initial_bob_eq :
 def submittedClaim (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   (ReactiveApplication.Execution.initial (nativeRuntime.reactiveApplication leaks)
     (nativeStart bit)).respond (nativeRuntime.reactiveApplication leaks) false
-      ⟨some (.submit ⟨secretOpening true, .none⟩)⟩
+      ⟨some ⟨secretOpening true, .none⟩⟩
 
 def leakedClaim (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   { submittedClaim bit with network := (submittedClaim bit).network.learn true {(false, 0)} }

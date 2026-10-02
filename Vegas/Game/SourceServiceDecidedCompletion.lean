@@ -296,9 +296,9 @@ theorem initialLaw_eq_inputs :
 /-- The entry a fresh submission appends to its author's recall. -/
 theorem respond_submit_recall (execution : (application setup leaks).Execution) (who : Player)
     (material : (application setup leaks).Submission) :
-    (execution.respond (application setup leaks) who ⟨some (.submit material)⟩).recall who =
+    (execution.respond (application setup leaks) who ⟨some material⟩).recall who =
       execution.recall who ++ [⟨execution.observe (application setup leaks) who,
-        ⟨some (.submit material)⟩,
+        ⟨some material⟩,
         some ⟨(who, execution.network.nextSerial who), (application setup leaks).packet
           ((application setup leaks).submit execution.application who material) who
           (execution.network.known who) material⟩⟩] := by
@@ -325,7 +325,7 @@ theorem firstTurn_freshCall {horizon : Nat} {scheduler : (application setup leak
     let app := application setup leaks
     let response := (runtime setup).canonicalServiceDecision leaks owner (middle.recall owner)
       (middle.observe app owner) event action
-    ∃ material, response = ⟨some (.submit material)⟩ ∧
+    ∃ material, response = ⟨some material⟩ ∧
       let entry : app.PlayerEntry := ⟨middle.observe app owner, response,
         some ⟨(owner, middle.network.nextSerial owner), app.packet
           (app.submit middle.application owner material) owner
@@ -588,12 +588,11 @@ theorem decidedTurnPolicy_submission {bound : (graph setup).EventId → Nat} {ow
     sourceServiceTurn setup leaks owner event past view = some 0 ∧
       (runtime setup).eventRecorded leaks past event = false ∧
       response = (runtime setup).canonicalServiceDecision leaks owner past view event action := by
-  have replayed : ∀ response ∈ ((application setup leaks).replayPolicy past view).support,
+  have replayed : ∀ response ∈ ((application setup leaks).silentPolicy past view).support,
       (runtime setup).submittedEvent? leaks response = none := by
     intro response member
-    rw [ReactiveApplication.replayPolicy, PMF.support_map] at member
-    obtain ⟨selected, _, rfl⟩ := member
-    cases selected <;> rfl
+    obtain rfl := (application setup leaks).silentPolicy_cases past view response member
+    rfl
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy at chosen
   dsimp only at chosen
   split at chosen
@@ -662,7 +661,7 @@ replays. -/
 def decidedProfile (bound : (graph setup).EventId → Nat) (owner : Player)
     (event : (graph setup).EventId) (action : (graph setup).Action event) :
     Player → (application setup leaks).Policy :=
-  Function.update (fun _ => (application setup leaks).replayPolicy) owner
+  Function.update (fun _ => (application setup leaks).silentPolicy) owner
     (decidedTurnPolicy setup leaks bound owner event action)
 
 variable (leaks) in
@@ -675,7 +674,7 @@ theorem decidedProfile_submitsAtTurn (bound : (graph setup).EventId → Nat) (ow
     simp only [decidedProfile, Function.update_self]
     exact decidedTurnPolicy_submitsAtTurn setup leaks bound _ event action
   · simp only [decidedProfile, Function.update_of_ne same]
-    exact replayPolicy_submitsAtTurn setup leaks who
+    exact silentPolicy_submitsAtTurn setup leaks who
 
 /-- **The decided phase.** Facts of play on the support of the decided profile
 since the completion boundary `start`: the owner's new responses are in the
@@ -806,7 +805,7 @@ private theorem first_turn_early {horizon : Nat} {scheduler : (application setup
 
 /-- A response that names the owner's own fresh submission. -/
 private theorem submittedEvent_submit (material : (application setup leaks).Submission) :
-    (runtime setup).submittedEvent? leaks ⟨some (.submit material)⟩ =
+    (runtime setup).submittedEvent? leaks ⟨some material⟩ =
       material.call.packet.event? (graph setup) := rfl
 
 /-- **The decided phase is preserved** by every round before completion. -/
@@ -939,7 +938,7 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
         cases submitted
       obtain ⟨material, decision, call, realized⟩ := firstDecision first loud
       rw [recallEq] at decision call realized
-      have responseEq : response = ⟨some (.submit material)⟩ := decided.trans decision
+      have responseEq : response = ⟨some material⟩ := decided.trans decision
       subst responseEq
       have submitRecall := respond_submit_recall middle who material
       rw [recallEq, recalled] at submitRecall
@@ -962,7 +961,7 @@ theorem DecidedPhase.round {horizon : Nat} {scheduler : (application setup leaks
       have opening := (application setup leaks).turnScheduledPolicy_selected
         (sourceServiceTurn setup leaks who event) (0 : Fin 1)
         (decidedOpportunity setup leaks bound who event action)
-        (application setup leaks).replayPolicy
+        (application setup leaks).silentPolicy
         (execution.recall who) (middle.observe app who) first
       change decidedTurnPolicy setup leaks bound who event action (execution.recall who)
         (middle.observe app who) = _ at opening
@@ -1003,7 +1002,7 @@ private theorem silent_expiry {event : (graph setup).EventId} {action : (graph s
 /-- A fresh submission's packet carries the submission's event. -/
 private theorem issued_submittedEvent {entry : (application setup leaks).PlayerEntry}
     {material : (application setup leaks).Submission}
-    (transmission : entry.action.transmission = some (.submit material))
+    (transmission : entry.action.transmission = some material)
     {state : EventGraphRuntime.State (graph setup)} {who : Player}
     {known : List (Message Player (WitnessedPacket (graph setup)))}
     {message : Message Player (WitnessedPacket (graph setup))}
@@ -1206,32 +1205,29 @@ theorem DecidedPhase.complete_round {horizon : Nat}
                 have output : replayed ∈ app.outputs (execution.recall owner) :=
                   List.mem_filterMap.mpr ⟨other', otherRecall, emittedOther⟩
                 rw [← facts.inputs owner] at output
-                obtain ⟨input, inputMember, inputEq⟩ := List.mem_filterMap.mp output
-                split at inputEq
-                · cases Option.some.inj inputEq
-                  obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _,
-                    issuerPacket⟩ := facts.provenance.inputs input inputMember
-                  have issuerSubmitted : (runtime setup).submittedEvent? leaks issuer.action =
-                      some other := by
-                    rw [issued_submittedEvent transmission issuerPacket]
-                    exact addressed
-                  have issuerTurn := submissions _ issuer issuerMember other issuerSubmitted
-                  have issuerOwner : input.envelope.sender = owner :=
-                    Option.some.inj ((PublicView.ownTurn?_spec _ _ other issuerTurn).2.symm.trans
-                      owned)
-                  rw [issuerOwner] at issuerMember
-                  obtain ⟨issuerBefore, issuerAfter, issuerSplit⟩ :=
-                    List.mem_iff_append.mp issuerMember
-                  have lengths := phase.fresh_unique submissions untouched issuerSplit split
-                    issuerSubmitted submittedFirst
-                  obtain ⟨_, _, issuerAt⟩ := split_take issuerSplit
-                  obtain ⟨_, _, firstAt⟩ := split_take split
-                  have sameEntry : issuer = first := by
-                    rw [← issuerAt, ← firstAt]
-                    simp only [lengths]
-                  rw [sameEntry, emittedFirst] at issuerEmitted
-                  exact different (by rw [Option.some.inj issuerEmitted])
-                · cases inputEq
+                have inputMember := (List.mem_filter.mp output).1
+                obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _,
+                  issuerPacket⟩ := facts.provenance.inputs replayed inputMember
+                have issuerSubmitted : (runtime setup).submittedEvent? leaks issuer.action =
+                    some other := by
+                  rw [issued_submittedEvent transmission issuerPacket]
+                  exact addressed
+                have issuerTurn := submissions _ issuer issuerMember other issuerSubmitted
+                have issuerOwner : replayed.sender = owner :=
+                  Option.some.inj ((PublicView.ownTurn?_spec _ _ other issuerTurn).2.symm.trans
+                    owned)
+                rw [issuerOwner] at issuerMember
+                obtain ⟨issuerBefore, issuerAfter, issuerSplit⟩ :=
+                  List.mem_iff_append.mp issuerMember
+                have lengths := phase.fresh_unique submissions untouched issuerSplit split
+                  issuerSubmitted submittedFirst
+                obtain ⟨_, _, issuerAt⟩ := split_take issuerSplit
+                obtain ⟨_, _, firstAt⟩ := split_take split
+                have sameEntry : issuer = first := by
+                  rw [← issuerAt, ← firstAt]
+                  simp only [lengths]
+                rw [sameEntry, emittedFirst] at issuerEmitted
+                exact different (by rw [Option.some.inj issuerEmitted])
               have settled := settlesFreshCalls_history setup leaks contract.inclusion owner other
                 owned trace before first after packet split call sole
               obtain ⟨enteredThen, activatedThen, early⟩ := call.fits.exists

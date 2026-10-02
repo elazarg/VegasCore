@@ -33,7 +33,7 @@ private theorem owner_view_results (left right : nativeApp.Execution)
 
 theorem wrong_address_final_results (players : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph)
-    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
+    (available : (⟨some submission⟩ : nativeApp.Action) ∈
       nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication)
     (next : nativeApp.Execution) (supported : next ∈ (bobToAlice players bit submission).support)
@@ -54,12 +54,7 @@ private theorem response_bob_audit (execution : nativeApp.Execution) (who : Play
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => rfl
-      | replay id =>
-          simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay]
-          split <;> rfl
+  | some submission => rfl
 
 theorem final_reserved_bob_audit (players : Player → nativeApp.Policy)
     (execution next : nativeApp.Execution)
@@ -125,7 +120,7 @@ theorem wrong_address_final_bob_clear (players : Player → nativeApp.Policy) (b
 theorem wrong_address_final_payoff_law (table : PayoffTable)
     (players : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph)
-    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
+    (available : (⟨some submission⟩ : nativeApp.Action) ∈
       nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication)
     (next : nativeApp.Execution) (supported : next ∈ (bobToAlice players bit submission).support)
@@ -133,7 +128,7 @@ theorem wrong_address_final_payoff_law (table : PayoffTable)
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       (next.respond nativeApp alice (choiceAction alicePublication aliceHandle bit disclose))).map
         (fun final => (nativeResults final.application.config,
-          Enforcement.executionUtility table final bob)) =
+          Enforcement.comparisonExecutionUtility table final bob)) =
       PMF.pure (sourceResults (finalConfig bit false disclose).state,
         (table (sourceResults (finalConfig bit false disclose).state) bob : ℝ)) := by
   let response := choiceAction alicePublication aliceHandle bit disclose
@@ -150,7 +145,7 @@ theorem wrong_address_final_payoff_law (table : PayoffTable)
   apply Prod.ext result
   rw [Enforcement.bob_utility]
   change (table (nativeResults (finalResponseExecution next response).application.config) bob : ℝ) -
-    (Enforcement.deposit table bob : ℝ) *
+    (Enforcement.charge table bob : ℝ) *
       Conformance.bobLedgerLiability (finalResponseExecution next response) = _
   rw [Conformance.bobLedgerLiability, clear, ite_eq_right Bool.false_ne_true, mul_zero, sub_zero,
     result]
@@ -190,7 +185,7 @@ results and receiver payoff for every mixed legal Alice response. -/
 theorem wrong_address_continuation_payoff_law (table : PayoffTable)
     (players : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph)
-    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
+    (available : (⟨some submission⟩ : nativeApp.Action) ∈
       nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication)
     (choices : PMF Bool)
@@ -202,7 +197,7 @@ theorem wrong_address_continuation_payoff_law (table : PayoffTable)
         resolutionTail)
       (bobSubmission bit submission)).map
         (fun final => (nativeResults final.application.config,
-          Enforcement.executionUtility table final bob)) =
+          Enforcement.comparisonExecutionUtility table final bob)) =
       choices.map (fun disclose => (sourceResults (finalConfig bit false disclose).state,
         (table (sourceResults (finalConfig bit false disclose).state) bob : ℝ))) := by
   rw [bob_continuation_evaluation, PMF.map_bind]
@@ -234,7 +229,7 @@ theorem silence_continuation_payoff_law (table : PayoffTable)
         resolutionTail)
       ((quietBob bit).respond nativeApp bob nativeSilent)).map
         (fun final => (nativeResults final.application.config,
-          Enforcement.executionUtility table final bob)) =
+          Enforcement.comparisonExecutionUtility table final bob)) =
       choices.map (fun disclose => (sourceResults (finalConfig bit false disclose).state,
         (table (sourceResults (finalConfig bit false disclose).state) bob : ℝ))) := by
   change (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork _
@@ -255,7 +250,7 @@ Alice's matched information, as required by the retained-profile relation. -/
 theorem wrong_address_compared_with_silence (table : PayoffTable)
     (rawPlayers legalPlayers : Player → nativeApp.Policy) (bit : Bool)
     (submission : WitnessedSubmission nativeGraph)
-    (available : (⟨some (.submit submission)⟩ : nativeApp.Action) ∈
+    (available : (⟨some submission⟩ : nativeApp.Action) ∈
       nativeMenu.actions bob [] ((quietBob bit).observe nativeApp bob))
     (wrong : submission.call.packet.event? nativeGraph ≠ some bobPublication)
     (choices : PMF Bool)
@@ -270,13 +265,13 @@ theorem wrong_address_compared_with_silence (table : PayoffTable)
         resolutionTail)
       (bobSubmission bit submission)).map
         (fun final => (nativeResults final.application.config,
-          Enforcement.executionUtility table final bob)) =
+          Enforcement.comparisonExecutionUtility table final bob)) =
     (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork
       ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
         resolutionTail)
       ((quietBob bit).respond nativeApp bob nativeSilent)).map
         (fun final => (nativeResults final.application.config,
-          Enforcement.executionUtility table final bob)) := by
+          Enforcement.comparisonExecutionUtility table final bob)) := by
   rw [wrong_address_continuation_payoff_law table rawPlayers bit submission available wrong
     choices rawChoice, silence_continuation_payoff_law table legalPlayers bit choices legalChoice]
 

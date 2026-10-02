@@ -22,11 +22,11 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open ReactiveAssociationEvidence
 
 def aliceCertifiedOffer (bit : Bool) : nativeApp.Action :=
-  ⟨some (.submit ⟨⟨.commitment aliceBinding candidate, some ⟨.bool, bit⟩⟩,
-    .owned (opening bit)⟩)⟩
+  ⟨some ⟨⟨.commitment aliceBinding candidate, some ⟨.bool, bit⟩⟩,
+    .owned (opening bit)⟩⟩
 
 def aliceAssociate : nativeApp.Action :=
-  ⟨some (.submit ⟨⟨.commitment aliceBinding candidate, none⟩, .none⟩)⟩
+  ⟨some ⟨⟨.commitment aliceBinding candidate, none⟩, .none⟩⟩
 
 theorem alice_certified_offer_available (bit : Bool)
     (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) :

@@ -215,7 +215,7 @@ theorem repairResponse_required [Fintype Player] (bounds : MessageBounds graph)
       (.prepared serial) = .fresh)
     (unusable : opening.bind (fun raw => raw.as? payload) = none) :
     (memory.repairResponse runtime leaks who view
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩).1 ∈
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩).1 ∈
       bounds.requiredBindingActions runtime leaks who past view := by
   have turnSome := view.application.publicView.ownTurn?_of_ownTurn who event turn
   have actualFresh := reactiveFreshSlot_spec view.application serial fresh

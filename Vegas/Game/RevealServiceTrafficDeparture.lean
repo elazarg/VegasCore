@@ -46,7 +46,7 @@ theorem owner_extra_traffic (who : Player) (ordinary : who ≠ watcher)
     ∃ record, (application setup leaks).trafficStep
         (some ⟨remaining, some who, execution⟩)
         (some ⟨remaining, none, execution.respond (application setup leaks) who response⟩) =
-          [record] ∧ record.input.broadcaster = who ∧
+          [record] ∧ record.envelope.sender = who ∧
       permittedTraffic setup leaks watcher record = false := by
   let responses := menu setup leaks bounds watcher
   let reference := responses.uniformPolicy (initialLaw setup) (horizon setup watcher)

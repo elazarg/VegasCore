@@ -43,13 +43,7 @@ theorem opening_effective (who : Player) (past : List nativeApp.PlayerEntry)
 
 theorem watcher_effective (past : List nativeApp.PlayerEntry) (view : nativeApp.PlayerView) :
     nativeWatcherResponse view ∈ effectiveMenu.actions watcher past view := by
-  unfold nativeWatcherResponse
-  split
-  · exact silent_effective watcher past view
-  · rename_i message found
-    apply nativeBounds.known_replay_available nativeRuntime nativeLeaks watcher past view
-    refine ⟨message, ?_, rfl⟩
-    exact List.mem_append_left _ (List.mem_append_right _ (List.mem_of_find?_eq_some found))
+  exact silent_effective watcher past view
 
 open Classical in
 def ordinaryActions (who : Player) (past : List nativeApp.PlayerEntry)

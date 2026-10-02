@@ -4,17 +4,16 @@ import Interaction.ReactiveQuiescent
 import Interaction.ReactiveRounds
 import GameTheoryExtensions.Math.Probability.Support
 
-/-! # Arbitrary response windows containing only published replays
+/-! # Silent response windows at a published checkpoint
 
 This uses the existing round evaluator. At a checkpoint with no unpublished
 pending envelope, any finite window of activations and waits preserves the
-application and every player's current observation when responses are silence
-or replay of a published identifier. The observation rule is unrestricted.
+application and every player's current observation when every response is
+silence. The observation rule is unrestricted.
 
-The conclusion retains no equality of private action recall, pending copies,
-network inputs or scheduler history. Those records really do change. It is an
-operational lemma for inserting communication opportunities, not an equilibrium
-quotient or a claim that arbitrary schedulers ignore rebroadcasts.
+The conclusion retains no equality of private action recall or scheduler
+history. Those records really do change. It is an operational lemma for
+inserting communication opportunities, not an equilibrium quotient.
 -/
 
 noncomputable section
@@ -25,36 +24,9 @@ open GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
 
-/-- Silence and replay of already published traffic have the same immediate
-application effect and current player observations, while preserving cleanliness. -/
-theorem respond_published (execution : app.Execution) (who : Principal) (action : app.Action)
-    (published : ∀ message ∈ execution.network.pending,
-      message.id ∈ execution.network.ledger.map Message.id)
-    (permitted : action = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
-      action = ⟨some (.replay id)⟩) :
-    (execution.respond app who action).application = execution.application ∧
-      (execution.respond app who action).receipts = execution.receipts ∧
-      (∀ observer, (execution.respond app who action).observe app observer =
-        execution.observe app observer) ∧
-      (∀ message ∈ (execution.respond app who action).network.pending,
-        message.id ∈ (execution.respond app who action).network.ledger.map Message.id) := by
-  rcases permitted with rfl | ⟨id, spent, rfl⟩
-  · exact ⟨rfl, rfl, fun _ => rfl, published⟩
-  · have clean := execution.network.replay_pending_published who id published spent
-    refine ⟨?_, ?_, ?_, clean⟩
-    · cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
-        simp only [Execution.respond, MessageNetwork.replay, found]
-    · cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
-        simp only [Execution.respond, MessageNetwork.replay, found]
-    · intro observer
-      cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
-        simp only [Execution.respond, MessageNetwork.replay, found, Execution.observe,
-          MessageNetwork.observe]
-
 private theorem dispatch_published (players : Principal → app.Policy)
     (responses : ∀ who past view action, action ∈ (players who past view).support →
-      action = ⟨none⟩ ∨ ∃ id ∈ view.messages.ledger.map Message.id,
-        action = ⟨some (.replay id)⟩)
+      action = ⟨none⟩)
     (execution next : app.Execution) (command : app.Command)
     (published : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
@@ -71,17 +43,17 @@ private theorem dispatch_published (players : Principal → app.Policy)
   · rw [dispatch, execution.activate_of_pending_published app who published] at reached
     simp only [PMF.pure_bind, Command.actor?, resume, invoke] at reached
     obtain ⟨action, supported, rfl⟩ := PMF.support_map .. ▸ reached
-    exact app.respond_published _ who action published (responses who _ _ action supported)
+    obtain rfl := responses who _ _ action supported
+    exact ⟨rfl, rfl, fun _ => rfl, published⟩
 
 /-- An arbitrary finite sequence of activation/wait choices preserves clean
 application state and all current player views. The scheduler may adapt to the
-actual replay input history, and every activation uses the original leak rule. -/
+public history, and every activation uses the original leak rule. -/
 theorem runRounds_published (scheduler : app.Scheduler) (players : Principal → app.Policy)
     (commands : ∀ past view command, command ∈ (scheduler past view).support →
       command = .wait ∨ ∃ who, command = .activate who)
     (responses : ∀ who past view action, action ∈ (players who past view).support →
-      action = ⟨none⟩ ∨ ∃ id ∈ view.messages.ledger.map Message.id,
-        action = ⟨some (.replay id)⟩)
+      action = ⟨none⟩)
     (count : Nat) (execution next : app.Execution)
     (published : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
@@ -113,8 +85,7 @@ theorem runRounds_published_application (scheduler : app.Scheduler)
     (commands : ∀ past view command, command ∈ (scheduler past view).support →
       command = .wait ∨ ∃ who, command = .activate who)
     (responses : ∀ who past view action, action ∈ (players who past view).support →
-      action = ⟨none⟩ ∨ ∃ id ∈ view.messages.ledger.map Message.id,
-        action = ⟨some (.replay id)⟩)
+      action = ⟨none⟩)
     (count : Nat) (execution : app.Execution)
     (published : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id) :

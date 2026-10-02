@@ -70,36 +70,11 @@ theorem weightedPending_append_regular
   rw [weightedPending_append_fresh weight positive eligible pending packet accepted nonempty fresh]
   apply PMF.regularAt_mix
 
-theorem weightedPending_replay
-    (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)
-    (eligible : Message Principal Payload → Bool)
-    (network next : MessageNetwork Principal Payload) (who : Principal)
-    (id : MessageId Principal) (packet : Message Principal Payload)
-    (replayed : network.replay who id = (some packet, next))
-    (pending : packet ∈ network.pending) :
-    weightedPending weight positive eligible next.pending =
-      weightedPending weight positive eligible network.pending := by
-  unfold replay at replayed
-  split at replayed
-  · cases replayed
-  · cases replayed
-    unfold weightedPending
-    rw [eligibleIds_append_existing eligible network.pending packet pending]
-
 theorem weightedPending_learn
     (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)
     (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
     (who : Principal) (selected : Finset (MessageId Principal)) :
     weightedPending weight positive eligible (network.learn who selected).pending =
       weightedPending weight positive eligible network.pending := rfl
-
-theorem weightedPending_replay_of_retained
-    (weight : MessageId Principal → ℝ) (positive : ∀ id, 0 < weight id)
-    (eligible : Message Principal Payload → Bool) (network : MessageNetwork Principal Payload)
-    (retained : network.RetainsEligible eligible) (who : Principal) (id : MessageId Principal) :
-    weightedPending weight positive eligible (network.replay who id).2.pending =
-      weightedPending weight positive eligible network.pending := by
-  unfold weightedPending
-  rw [retained.replay_ids]
 
 end Interaction.MessageNetwork

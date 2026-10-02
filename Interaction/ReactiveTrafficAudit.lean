@@ -6,15 +6,15 @@ import GameTheory.Protocol.StateKernel
 
 /-! # Settlement evidence from the public traffic history
 
-An audit record contains a network input, the public application observation,
-and the ledger before that input. It distinguishes the broadcaster from the
-envelope author and retains the phase and prior publication evidence even when
-the envelope later becomes acceptable or appears on the ledger.
+An audit record contains a submitted envelope, the public application
+observation, and the ledger before that submission. It retains the phase and
+prior publication evidence even when the envelope later becomes acceptable or
+appears on the ledger.
 
 The readout uses only successive public environment views. It is not added to
 player observations. An implementation supplying this readout must authenticate
 its traffic and phase records; ordinary envelope signatures alone do not
-authenticate rebroadcasters or observation times. Partial observation and
+authenticate observation times. Partial observation and
 collection are separate probabilistic contracts.
 
 All results allow arbitrary raw responses and arbitrary schedulers. They do not
@@ -32,10 +32,10 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 structure TrafficRecord where
   observation : app.PublicObservation
   ledger : List (Message Principal app.Payload)
-  input : NetworkInput Principal app.Payload
+  envelope : Message Principal app.Payload
 
-/-- Append-only network inputs identify successful transmissions, including
-replays. The record carries the public phase preceding the transmission. -/
+/-- Append-only network inputs identify successful transmissions. The record
+carries the public phase preceding the transmission. -/
 def trafficStep (before after : app.ProtocolState) : List app.TrafficRecord :=
   match before, after with
   | some previous, some next =>
@@ -84,47 +84,12 @@ theorem trafficStep_silent (execution : app.Execution) (remaining : Nat) (who : 
 theorem trafficStep_submit (execution : app.Execution) (remaining : Nat) (who : Principal)
     (submission : app.Submission) :
     app.trafficStep (some ⟨remaining, some who, execution⟩)
-      (some ⟨remaining, none, execution.respond app who ⟨some (.submit submission)⟩⟩) =
+      (some ⟨remaining, none, execution.respond app who ⟨some submission⟩⟩) =
         [⟨app.observePublic execution.application, execution.network.ledger,
-          ⟨who, ⟨(who, execution.network.nextSerial who),
+          ⟨(who, execution.network.nextSerial who),
             app.packet (app.submit execution.application who submission) who
-              (execution.network.known who) submission⟩⟩⟩] := by
+              (execution.network.known who) submission⟩⟩] := by
   simp [trafficStep, Execution.respond, MessageNetwork.submit]
-
-/-- Rebroadcast evidence identifies this transmission's broadcaster even when
-the original envelope was authored by a different player. -/
-theorem trafficStep_replay (execution : app.Execution) (remaining : Nat) (who : Principal)
-    (id : MessageId Principal) (message : Message Principal app.Payload)
-    (known : (execution.network.known who).find? (fun packet => packet.id = id) = some message) :
-    app.trafficStep (some ⟨remaining, some who, execution⟩)
-      (some ⟨remaining, none, execution.respond app who ⟨some (.replay id)⟩⟩) =
-        [⟨app.observePublic execution.application, execution.network.ledger, ⟨who, message⟩⟩] := by
-  simp [trafficStep, Execution.respond, MessageNetwork.replay, known]
-
-/-- A transport-only response emits a previously known envelope, with the
-actual public observation and ledger at transmission. An unknown replay id
-emits nothing. This does not require a legal-menu or recall hypothesis. -/
-theorem trafficStep_transport (execution : app.Execution) (remaining : Nat)
-    (who : Principal) (response : app.Action)
-    (transport : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩)
-    (record : app.TrafficRecord)
-    (member : record ∈ app.trafficStep (some ⟨remaining, some who, execution⟩)
-      (some ⟨remaining, none, execution.respond app who response⟩)) :
-    record.observation = app.observePublic execution.application ∧
-      record.ledger = execution.network.ledger ∧
-      record.input.envelope ∈ execution.network.known who := by
-  rcases transport with rfl | ⟨id, rfl⟩
-  · rw [app.trafficStep_silent] at member
-    cases member
-  · cases found : (execution.network.known who).find? (fun packet => packet.id = id) with
-    | none =>
-        simp only [trafficStep, Execution.respond, MessageNetwork.replay, found,
-          List.drop_length, List.map_nil, List.not_mem_nil] at member
-    | some message =>
-        rw [app.trafficStep_replay execution remaining who id message found,
-          List.mem_singleton] at member
-        subst record
-        exact ⟨rfl, rfl, List.mem_of_find?_eq_some found⟩
 
 /-- Checking the actual emitted traffic extends any envelope invariant to the
 post-response network, including all private pending-message observations. -/
@@ -133,18 +98,15 @@ theorem trafficStep_network (execution : app.Execution) (remaining : Nat)
     (safe : Message Principal app.Payload → Prop)
     (prior : execution.network.Satisfies safe)
     (issued : ∀ record ∈ app.trafficStep (some ⟨remaining, some who, execution⟩)
-      (some ⟨remaining, none, execution.respond app who response⟩), safe record.input.envelope) :
+      (some ⟨remaining, none, execution.respond app who response⟩), safe record.envelope) :
     (execution.respond app who response).network.Satisfies safe := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some transmission =>
-      cases transmission with
-      | replay id => exact prior.replay who id
-      | submit submission =>
-          apply prior.submit who
-          rw [app.trafficStep_submit] at issued
-          exact issued _ (List.mem_singleton_self _)
+  | some submission =>
+      apply prior.submit who
+      rw [app.trafficStep_submit] at issued
+      exact issued _ (List.mem_singleton_self _)
 
 /-- Environment operations never invent a transmission record. -/
 theorem trafficStep_environment (execution next : app.Execution) (command : app.Command)
@@ -170,21 +132,21 @@ theorem trafficStep_environment (execution next : app.Execution) (command : app.
       obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ supported
       simp [trafficStep]
 
-/-- A per-transmission check can use the observation phase, packet and
-broadcaster. The checker itself must be proved sound for the compiler. -/
+/-- A per-transmission check can use the observation phase and the packet,
+whose sender is its author. The checker itself must be proved sound for the compiler. -/
 def trafficViolation (permitted : app.TrafficRecord → Bool) (who : Principal)
     (records : List app.TrafficRecord) : Bool :=
-  records.any fun record => decide (record.input.broadcaster = who) && !permitted record
+  records.any fun record => decide (record.envelope.sender = who) && !permitted record
 
 theorem trafficViolation_iff (permitted : app.TrafficRecord → Bool) (who : Principal)
     (records : List app.TrafficRecord) :
     app.trafficViolation permitted who records = true ↔
-      ∃ record ∈ records, record.input.broadcaster = who ∧ permitted record = false := by
+      ∃ record ∈ records, record.envelope.sender = who ∧ permitted record = false := by
   simp [trafficViolation, List.any_eq_true]
 
 theorem trafficViolation_clear (permitted : app.TrafficRecord → Bool) (who : Principal)
     (records : List app.TrafficRecord)
-    (compliant : ∀ record ∈ records, record.input.broadcaster = who → permitted record = true) :
+    (compliant : ∀ record ∈ records, record.envelope.sender = who → permitted record = true) :
     app.trafficViolation permitted who records = false := by
   cases alarm : app.trafficViolation permitted who records with
   | false => rfl
@@ -261,7 +223,7 @@ theorem trafficViolation_partial_sound (permitted : app.TrafficRecord → Bool)
     (who : Principal) (actual observed : List app.TrafficRecord)
     (authentic : observed ⊆ actual)
     (compliant : ∀ record ∈ actual,
-      record.input.broadcaster = who → permitted record = true) :
+      record.envelope.sender = who → permitted record = true) :
     app.trafficViolation permitted who observed = false :=
   app.trafficViolation_clear permitted who observed
     (fun record member => compliant record (authentic member))
@@ -270,7 +232,7 @@ theorem trafficViolation_partial_sound (permitted : app.TrafficRecord → Bool)
 The audit may sample correlated subsets and need not observe every message. -/
 theorem trafficViolation_sampling_lower (permitted : app.TrafficRecord → Bool)
     (who : Principal) (observations : PMF (List app.TrafficRecord))
-    (record : app.TrafficRecord) (owner : record.input.broadcaster = who)
+    (record : app.TrafficRecord) (owner : record.envelope.sender = who)
     (forbidden : permitted record = false) :
     (observations.toOuterMeasure {observed | record ∈ observed}).toReal ≤
       (observations.toOuterMeasure

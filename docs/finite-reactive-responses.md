@@ -23,7 +23,6 @@ the construction includes every packet constructor over these domains.
 | Withholding packet | Every event, including premature or redundant calls |
 | Malformed packet | Every raw value in the declared alphabet |
 | Effective private opening | No opening, or any raw value in the alphabet, regardless of the event's expected type |
-| Replay | Every locally known envelope, without a separate identifier cutoff |
 | Silence | Always available |
 
 The exact membership theorem is `MessageBounds.menu_mem`: an action is legal
@@ -49,8 +48,8 @@ timeouts alone do not imply it. See the
 provides an application-independent certificate. Submission normalization
 depends only on the sender and its application view; it is idempotent and must
 preserve both the exact public packet and the entire application effect.
-Unavailable replays normalize to silence. Replay availability is reconstructed
-from own emitted packets, passive foreign leaks and the ledger.
+Each submission creates a fresh sender-owned envelope. Known packets supply
+authentic evidence for certificate forwarding without copying their identifiers.
 
 The Vegas instance in
 [ReactiveNormalization.lean](../Vegas/Pending/ReactiveNormalization.lean)
@@ -70,16 +69,15 @@ Fresh opening material remains unchanged, including a value of the wrong type
 for the addressed event. A fresh submission with no material remains an
 irrevocably unopenable commitment. The exact packet remains unchanged, even when
 the application will reject it. Malformed and rejected packets can still be
-observed in flight, replayed, included and used as public signals under the
+observed in flight, included and used as public signals under the
 chosen observation rule and scheduler. No leak or scheduling rule is altered.
 
 `SubmissionNormalization.effects` proves that a single original response and
 its normal form produce the same application state, network state, receipts,
-scheduler recall and other players' recall. It assumes the native input-recall
-invariant, which connects replay knowledge to the network's actual inputs.
+scheduler recall and other players' recall.
 
 **The sender's raw-action recall is deliberately outside that equality.** A raw
-game can record an unavailable identifier or an ignored annotation. The finite
+game can record an ignored annotation. The finite
 semantic game permits only normal forms in its legal histories. The checked
 one-step theorem is not a whole-policy quotient theorem or an equilibrium
 equivalence between those two presentations. Private implementation realization
@@ -125,7 +123,7 @@ The capacity certificate follows from checked accounting:
   active decision. Large previously chosen identifiers do not change this bound.
 - [ReactiveBoundedHandles.lean](../Vegas/Pending/ReactiveBoundedHandles.lean):
   accepted handles remain within the packet domain at every legal finite-menu
-  history. Replays and passive leaks preserve packet bounds, and inclusion can
+  history. Passive leaks preserve packet bounds, and inclusion can
   install only the handle carried by a submitted packet.
 
 The proofs allow arbitrary earlier responses, malformed traffic, repeated

@@ -51,7 +51,7 @@ private def initial (bit : Bool) : app.Execution :=
   ReactiveApplication.Execution.initial app (State.initial (fun _ => .success bit))
 
 private def submitted (bit : Bool) : app.Execution :=
-  (initial bit).respond app false ⟨some (.submit ⟨call, .owned (fact true)⟩)⟩
+  (initial bit).respond app false ⟨some ⟨call, .owned (fact true)⟩⟩
 
 private def leaked (bit : Bool) : app.Execution :=
   { submitted bit with network := (submitted bit).network.learn true {(false, 0)} }
@@ -75,13 +75,13 @@ theorem false_claim_uncertified :
 /-- There is no verification oracle for another player's unopened commitment. -/
 theorem foreign_query_fails (bit : Bool) :
     ((initial bit).respond app true
-      ⟨some (.submit ⟨call, .owned (fact true)⟩)⟩).network.pending =
+      ⟨some ⟨call, .owned (fact true)⟩⟩).network.pending =
         [⟨(true, 0), ⟨call.packet, none,
             (initial bit).application.publicView.tokenFor call.packet⟩⟩] := by
   rfl
 
 private def forwarded : app.Execution :=
-  (leaked true).respond app true ⟨some (.submit ⟨call, .forward (false, 0)⟩)⟩
+  (leaked true).respond app true ⟨some ⟨call, .forward (false, 0)⟩⟩
 
 /-- Forwarding creates Bob's own envelope and retains Alice's candidate evidence. -/
 theorem forwarding_preserves_certificate :

@@ -19,6 +19,7 @@ compatibility. When renaming or refactoring, update all callers and docs.
 
 # Notes
 
+* Commit and push each stable, verified checkpoint.
 * Configure required Lean options centrally in lakefile.toml, not with local set_option directives.
 * Do not encode history into code or documentation
 * Never report work as "completed" when it'd not done - e.g., when there are sorry's left that should not be there.

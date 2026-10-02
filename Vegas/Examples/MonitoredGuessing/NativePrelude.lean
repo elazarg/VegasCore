@@ -125,10 +125,7 @@ private theorem respond_not_bob (execution : nativeApp.Execution)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact prior.submit who _ different
-      | replay id => exact prior.replay who id
+  | some submission => exact prior.submit who _ different
 
 theorem watcher_no_bob_packet (bit : Bool) (action : nativeApp.Action)
     (selected : Finset (MessageId Player)) (reply : nativeApp.Action) :
@@ -139,7 +136,7 @@ theorem watcher_no_bob_packet (bit : Bool) (action : nativeApp.Action)
   exact respond_not_bob _ alice (by decide) action MessageNetwork.Satisfies.empty
 
 /-- All possible inclusions at the report stage leave the application unchanged;
-this includes Watcher's own raw deviations, not just the prescribed replay. -/
+this includes Watcher's own raw deviations and prescribed silent responses. -/
 theorem prelude_include_application (bit : Bool) (action : nativeApp.Action)
     (selected : Finset (MessageId Player)) (reply : nativeApp.Action)
     (id : MessageId Player) :

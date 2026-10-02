@@ -22,7 +22,7 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 def certifiedWithholding : WitnessedSubmission nativeGraph :=
   ⟨⟨.withhold bobPublication, none⟩, .owned ⟨bobHandle, ⟨.bool, true⟩⟩⟩
 
-def certifiedWithholdAction : nativeApp.Action := ⟨some (.submit certifiedWithholding)⟩
+def certifiedWithholdAction : nativeApp.Action := ⟨some certifiedWithholding⟩
 
 def certifiedWithholdRespond (bit : Bool) : nativeApp.Execution :=
   (quietBob bit).respond nativeApp bob certifiedWithholdAction
@@ -147,15 +147,15 @@ theorem accepted_packet_is_nonconforming (bit : Bool) :
   rfl
 
 theorem accepted_packet_creates_no_pilot_liability (bit : Bool) :
-    rejectedAlice (certifiedWithholdIncluded bit).receipts = false := by
-  rw [(certified_withholding_application bit).2]
-  rfl
+    aliceLiability (certifiedWithholdIncluded bit) = false := by
+  rw [aliceLiability, (certified_withholding_application bit).2]
+  cases bit <;> rfl
 
 /-- The pilot has no receiver charge, even at histories with other receipts. -/
-theorem bob_uncharged (deposit : ℝ) (execution : nativeApp.Execution) :
-    nativeExecutionUtility deposit bob execution =
+theorem bob_uncharged (charge : ℝ) (execution : nativeApp.Execution) :
+    nativeComparisonExecutionUtility charge bob execution =
       utility (nativeResults execution.application.config) bob := by
-  simp [nativeExecutionUtility, bob, alice]
+  simp [nativeComparisonExecutionUtility, bob, alice]
 
 /-- Successful opening keeps the matching certificate used by the actual pilot
 and the generic compiler. The candidate withholding implementation is silence
@@ -210,7 +210,7 @@ def plainOpening : WitnessedSubmission nativeGraph :=
   ⟨⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩, .none⟩
 
 def plainOpeningRespond (bit : Bool) : nativeApp.Execution :=
-  (quietBob bit).respond nativeApp bob ⟨some (.submit plainOpening)⟩
+  (quietBob bit).respond nativeApp bob ⟨some plainOpening⟩
 
 def plainOpeningIncluded (bit : Bool) : nativeApp.Execution :=
   let before := plainOpeningRespond bit
@@ -220,8 +220,8 @@ def plainOpeningIncluded (bit : Bool) : nativeApp.Execution :=
 
 theorem plain_opening_available (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) :
-    (⟨some (.submit plainOpening)⟩ : nativeApp.Action) ∈ nativeMenu.actions bob past view := by
-  change (⟨some (.submit plainOpening)⟩ : nativeApp.Action) ∈
+    (⟨some plainOpening⟩ : nativeApp.Action) ∈ nativeMenu.actions bob past view := by
+  change (⟨some plainOpening⟩ : nativeApp.Action) ∈
     (nativeBounds.rawMenu nativeRuntime nativeLeaks).actions bob past view
   rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   change plainOpening ∈ _

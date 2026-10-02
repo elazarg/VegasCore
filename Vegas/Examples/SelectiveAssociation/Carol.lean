@@ -276,15 +276,8 @@ theorem native_carol_guess_stored (players : Player → nativeApp.Policy)
       rcases response with ⟨transmission⟩
       cases transmission with
       | none => rfl
-      | some transmission =>
-          cases transmission with
-          | submit material =>
-              exact (submitStep_config _ _ _).trans (material.call.register_facts _ _).1
-          | replay id =>
-              cases found : ((carolSite bit prior).network.known carol).find?
-                  (fun message => message.id = id) <;>
-                simp only [execution, ReactiveApplication.Execution.respond,
-                  MessageNetwork.replay, found]
+      | some material =>
+          exact (submitStep_config _ _ _).trans (material.call.register_facts _ _).1
     rw [configEq]
     exact native_carol_prefix_ready bit prior
   have strategic : (nativeGraph.actor? carolBinding).isSome = true := by decide

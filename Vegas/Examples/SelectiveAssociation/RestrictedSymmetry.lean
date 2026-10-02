@@ -122,7 +122,7 @@ theorem submission_involutive (selected : Handle nativeGraph) :
 
 def action (selected : Handle nativeGraph) (response : app.Action) : app.Action :=
   match response.transmission with
-  | some (.submit submitted) => ⟨some (.submit (submission selected submitted))⟩
+  | some submitted => ⟨some (submission selected submitted)⟩
   | _ => response
 
 theorem action_involutive (selected : Handle nativeGraph) :
@@ -130,13 +130,10 @@ theorem action_involutive (selected : Handle nativeGraph) :
   rintro ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay => rfl
-      | submit submitted =>
-          change (⟨some (.submit (submission selected (submission selected submitted)))⟩ :
-            app.Action) = _
-          rw [submission_involutive]
+  | some submitted =>
+      change (⟨some (submission selected (submission selected submitted))⟩ :
+        app.Action) = _
+      rw [submission_involutive]
 
 def packet (selected : Handle nativeGraph) (sent : WitnessedPacket nativeGraph) :
     WitnessedPacket nativeGraph :=
@@ -523,10 +520,7 @@ theorem action_available (selected : Handle nativeGraph) (who : Player)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => trivial
-  | some transmission =>
-      cases transmission with
-      | replay => exact allowed
-      | submit submitted => exact submission_available selected _ submitted allowed
+  | some submitted => exact submission_available selected _ submitted allowed
 
 def responseEquiv (selected : Handle nativeGraph) (who : Player)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
@@ -539,7 +533,7 @@ def responseEquiv (selected : Handle nativeGraph) (who : Player)
   right_inv response := Subtype.ext (action_involutive selected response.1)
 
 /-- The permutation covers the full raw response menu, including ineffective
-private material, failed certificate requests, silence, and known replays. -/
+private material, failed certificate requests, silence, and authentic evidence forwarding. -/
 theorem uniform (selected : Handle nativeGraph) (who : Player)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
     (menu.uniformResponses who past view).map (action selected) =
@@ -583,7 +577,7 @@ theorem requests_eq_of_known_ids
 
 /-- Private recall and certificate contents may change. The full raw menu
 depends on possessed message identifiers, so those changes do not change the
-available submissions, replays, or uniform response weights. -/
+available submissions or uniform response weights. -/
 theorem menus_eq_of_known_ids (who : Player)
     (firstPast secondPast : List app.PlayerEntry) (firstView secondView : app.PlayerView)
     (same : (ReactiveApplication.ResponseMenu.knownPackets firstPast firstView).map Message.id =
@@ -602,13 +596,7 @@ theorem menus_eq_of_known_ids (who : Player)
   simp only [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   cases response.transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit submitted => rw [submissions]
-      | replay id =>
-          unfold ReactiveApplication.SubmissionNormalization.ReplayKnown
-          simpa only [List.mem_map] using
-            Iff.of_eq (congrArg (fun ids => id ∈ ids) same)
+  | some submitted => rw [submissions]
 
 theorem uniform_eq_of_known_ids (who : Player)
     (firstPast secondPast : List app.PlayerEntry) (firstView secondView : app.PlayerView)

@@ -4,9 +4,9 @@ import Vegas.Examples.MonitoredGuessing.NativeLaw
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform
 
-/-! # Joint preservation of the private bit, public results, and actual utilities
+/-! # Joint preservation of the private bit, public results, and comparison payoffs
 
-The native vector below uses `nativeUtility`, including the rejection charge.
+The native vector below uses `nativeComparisonUtility`, including the evidence charge.
 The source vector uses the payoff function of the checked source equilibrium;
 `source_settlement_eq_utility` connects it to the program's integer returns.
 -/
@@ -18,30 +18,30 @@ namespace Vegas.Examples.MonitoredGuessing
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
-def nativePayoffObservation (deposit : ℝ) (state : nativeApp.ProtocolState) :
+def nativePayoffObservation (charge : ℝ) (state : nativeApp.ProtocolState) :
     Bool × Results × (Player → ℝ) :=
   ((nativeObservation state).1, (nativeObservation state).2.1,
-    fun who => nativeUtility deposit who state)
+    fun who => nativeComparisonUtility charge who state)
 
 def sourcePayoffObservation (state : sourceArena.State) :
     Bool × Results × (Player → ℝ) :=
   ((sourceObservation state).1, (sourceObservation state).2.1, sourceUtility state)
 
-def observationPayoffs (deposit : ℝ) (observation : Bool × Results × Bool) :
+def observationPayoffs (charge : ℝ) (observation : Bool × Results × Bool) :
     Bool × Results × (Player → ℝ) :=
   (observation.1, observation.2.1, fun who => utility observation.2.1 who -
-    if who = alice ∧ observation.2.2 then deposit else 0)
+    if who = alice ∧ observation.2.2 then charge else 0)
 
 def guessingPayoffs (bit guess : Bool) : Bool × Results × (Player → ℝ) :=
   (bit, ⟨.success bit, guessResult guess⟩,
     utility ⟨.success bit, guessResult guess⟩)
 
-theorem native_some_payoffs (deposit : ℝ) (control : nativeApp.Control) :
-    nativePayoffObservation deposit (some control) =
-      observationPayoffs deposit (nativeObservation (some control)) := rfl
+theorem native_some_payoffs (charge : ℝ) (control : nativeApp.Control) :
+    nativePayoffObservation charge (some control) =
+      observationPayoffs charge (nativeObservation (some control)) := rfl
 
-theorem observation_guessing_payoffs (deposit : ℝ) (bit guess : Bool) :
-    observationPayoffs deposit (guessingObservation bit guess) = guessingPayoffs bit guess := by
+theorem observation_guessing_payoffs (charge : ℝ) (bit guess : Bool) :
+    observationPayoffs charge (guessingObservation bit guess) = guessingPayoffs bit guess := by
   simp only [observationPayoffs, guessingObservation, guessingPayoffs, Bool.false_eq_true,
     and_false, ↓reduceIte, sub_zero]
 
@@ -62,24 +62,24 @@ theorem native_initialized_some (profile : Profile nativeModel.behavioralSignatu
   obtain ⟨final, _, rfl⟩ := PMF.support_map .. ▸ reached
   exact ⟨_, rfl⟩
 
-theorem native_initialized_payoffs (deposit : ℝ)
+theorem native_initialized_payoffs (charge : ℝ)
     (profile : Profile nativeModel.behavioralSignature) (guesses : PMF Bool)
     (alicePolicy : profile alice = nativeAliceBehavior)
     (watcherPolicy : profile watcher = nativeWatcherBehavior)
     (atQuiet : profile bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1) :
     ((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
-      (nativePayoffObservation deposit) = (PMF.uniformOfFintype Bool).bind (fun bit =>
+      (nativePayoffObservation charge) = (PMF.uniformOfFintype Bool).bind (fun bit =>
         guesses.map (guessingPayoffs bit)) := by
   have observationLaw := native_initialized_observation profile guesses alicePolicy watcherPolicy
     atQuiet
   calc
     _ = (((nativeModel.runBehavioral profile (2 * nativeHorizon + 1)).map History.state).map
-        nativeObservation).map (observationPayoffs deposit) := by
+        nativeObservation).map (observationPayoffs charge) := by
       conv_rhs => rw [PMF.map_comp]
       apply map_congr_on_support _
       intro state supported
       obtain ⟨control, rfl⟩ := native_initialized_some profile state supported
-      exact native_some_payoffs deposit control
+      exact native_some_payoffs charge control
     _ = _ := by
       rw [observationLaw]
       simp only [PMF.map_bind, PMF.map_comp, Function.comp_def,
@@ -94,10 +94,9 @@ theorem source_equilibrium_payoffs (assessment : sourceModel.BehavioralAssessmen
   rw [source_equilibrium_states assessment equilibrium]
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, source_done_payoffs]
 
-/-- This equality includes actual source and native payoff vectors, not only
-an interpretation of the public outcome. In particular, no sanction is paid
-on the initialized compiled law. -/
-theorem native_source_joint_payoffs (deposit : ℝ)
+/-- The source payoff vector equals the native comparison vector on initialized
+compiled play. Physical collection adequacy is established in `NativeSettlement`. -/
+theorem native_source_joint_payoffs (charge : ℝ)
     (source : sourceModel.BehavioralAssessment)
     (equilibrium : source.IsSequentialEquilibriumFor sourceAntichain (fun who site =>
       source.truncatedContinuationContext site (sourcePayoff who) 3))
@@ -109,11 +108,11 @@ theorem native_source_joint_payoffs (deposit : ℝ)
     (nativeModel.runBehavioral target (2 * nativeHorizon + 1)).map
       (fun history => ((nativeObservation history.state).1,
         (nativeObservation history.state).2.1,
-          fun who => nativeUtility deposit who history.state)) =
+          fun who => nativeComparisonUtility charge who history.state)) =
     (sourceModel.runBehavioral source.strategy 3).map
       (fun history => ((sourceObservation history.state).1,
         (sourceObservation history.state).2.1, fun who => sourcePayoff who history)) := by
-  have native := native_initialized_payoffs deposit target
+  have native := native_initialized_payoffs charge target
     (sourceDecisionLaw source.strategy bob sourceBobSite.1) alicePolicy watcherPolicy atQuiet
   have original := source_equilibrium_payoffs source equilibrium
   have same := native.trans original.symm

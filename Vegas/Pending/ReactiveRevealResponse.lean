@@ -28,7 +28,7 @@ theorem normalized_reveal_response (runtime : EventGraphRuntime graph)
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) :
     ∃ evidence, (runtime.reactiveNormalization leaks).action owner past view
         (runtime.canonicalRevealResponse leaks event candidate raw true) =
-      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩ := by
+      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩ := by
   simp only [ReactiveApplication.SubmissionNormalization.action, canonicalRevealResponse,
     ↓reduceIte, disclosureSubmission, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none]
@@ -57,8 +57,7 @@ theorem player_instruction_published (runtime : EventGraphRuntime graph)
     PMF.pure_bind]
   rfl
 
-/-- Every physical name for source withholding executes the complete monitored
-failure branch. The resulting network still contains the actual replay input. -/
+/-- Source withholding executes the complete monitored failure branch. -/
 theorem refusing_response_settlement (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (players : Player → (runtime.reactiveApplication leaks).Policy) (watcher : Player)
@@ -77,8 +76,7 @@ theorem refusing_response_settlement (runtime : EventGraphRuntime graph)
     (entered ticks : Nat) (activated : execution.application.activatedAt event = some entered)
     (due : runtime.deadline event ≤ execution.application.clock + ticks - entered)
     (response : (runtime.reactiveApplication leaks).Action)
-    (refuses : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ ∧
-      id ∈ execution.network.ledger.map Message.id) :
+    (refuses : response = ⟨none⟩) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner response
     ∃ next, runtime.runInteractionPlan leaks players (runtime.idleNetwork leaks)
@@ -96,9 +94,8 @@ theorem refusing_response_settlement (runtime : EventGraphRuntime graph)
   have quiet : submitted.application = execution.application ∧
       (∀ message ∈ submitted.network.pending,
         message.id ∈ submitted.network.ledger.map Message.id) := by
-    rcases refuses with rfl | ⟨id, rfl, spent⟩
-    · exact ⟨rfl, pending⟩
-    · exact ⟨rfl, execution.network.replay_pending_published owner id pending spent⟩
+    rcases refuses with rfl
+    exact ⟨rfl, pending⟩
   let waited : app.Execution := { submitted with
     environmentRecall := submitted.environmentRecall ++
       [⟨submitted.observeEnvironment app, .wait⟩] }
@@ -149,7 +146,7 @@ theorem opening_response_settlement (runtime : EventGraphRuntime graph)
     (settled : ¬after.config.cut.Ready event) (ticks : Nat) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner
-      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
     ∃ next, runtime.runInteractionPlan leaks players (runtime.idleNetwork leaks)
         ([.includeLatest event owner, .player watcher, .wire] ++
           List.replicate ticks .tick ++ [.expire event]) submitted = PMF.pure next ∧
@@ -161,7 +158,7 @@ theorem opening_response_settlement (runtime : EventGraphRuntime graph)
       ∀ observer, observer ≠ watcher → next.recall observer = submitted.recall observer := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
-    ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+    ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
   obtain ⟨included, inclusion, applicationEq, pendingEq, receiptsEq, recallEq, networkEq⟩ :=
     runtime.opening_published_checkpoint leaks players (runtime.idleNetwork leaks)
       execution owner event candidate raw evidence after pending

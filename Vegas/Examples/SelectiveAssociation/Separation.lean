@@ -7,7 +7,7 @@ import GameTheoryExtensions.Math.Probability.Uniform
 /-! # Sequential-equilibrium separation for accepted named evidence
 
 The actual source program, equipped with stage-local source actions, arbitrary
-finite claims, current named evidence and known replays, has a sequential
+finite claims, current named evidence and authentic certificate forwarding, has a sequential
 equilibrium giving Alice payoff zero. In the corresponding bounded native
 game, every sequentially rational assessment gives Alice at least one half.
 Thus no native sequential equilibrium has this source equilibrium's initialized

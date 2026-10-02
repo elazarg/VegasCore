@@ -25,7 +25,7 @@ theorem submitted_bindingResult (execution : (runtime.reactiveApplication leaks)
     (opening : Option (Raw L))
     (fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh) :
     let response : (runtime.reactiveApplication leaks).Action :=
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
     (execution.respond (runtime.reactiveApplication leaks) who response).application.bindingResult
       (who, .prepared serial) payload =
       (opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success := by
@@ -62,7 +62,7 @@ theorem rawBinding_reserved_config
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (scheduler : runtime.NetworkPolicy leaks) :
     let response : (runtime.reactiveApplication leaks).Action :=
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
     let result := (opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success
     (runtime.interactionStep leaks players scheduler (.includeLatest event who)
       (execution.respond (runtime.reactiveApplication leaks) who response)).map
@@ -74,7 +74,7 @@ theorem rawBinding_reserved_config
   let app := runtime.reactiveApplication leaks
   let call : Submission graph := ⟨.commitment event (who, .prepared serial), opening⟩
   let submission : WitnessedSubmission graph := ⟨call, .none⟩
-  let response : app.Action := ⟨some (.submit submission)⟩
+  let response : app.Action := ⟨some submission⟩
   let submitted := execution.respond app who response
   let id : MessageId Player := (who, execution.network.nextSerial who)
   have selected : runtime.reactiveLatest leaks event who (submitted.observeEnvironment app) =

@@ -6,8 +6,8 @@ import Vegas.Pending.ReactiveMonitoring
 /-! # Observed revelation settlement in the existing service
 
 After reserved inclusion, the same watcher, tick, and expiry suffix settles
-either source choice. Published replay copies may remain pending. The watcher
-has no fresh information on these paths and performs its silent response; the
+either source choice. The watcher has no fresh information on these paths and
+performs its silent response; the
 equations retain that private recall and the complete network state.
 
 Timely acceptance of an opening and the elapsed deadline on withholding are

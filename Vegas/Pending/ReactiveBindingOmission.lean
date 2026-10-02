@@ -91,7 +91,7 @@ theorem reactiveMissedBindingInvariant [DecidableEq Player] (runtime : EventGrap
       (fun state => state.publicView.missedBinding event = true) where
   submit state who material missed := by
     have same := (runtime.reactive_respond_application leaks
-      (.initial (runtime.reactiveApplication leaks) state) who ⟨some (.submit material)⟩).2
+      (.initial (runtime.reactiveApplication leaks) state) who ⟨some material⟩).2
     exact (congrArg (fun view : PublicView graph => view.missedBinding event) same).trans missed
   handle state message next missed handled := by
     obtain ⟨completed, absent⟩ :=

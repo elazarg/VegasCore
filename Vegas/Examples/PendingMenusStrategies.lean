@@ -25,7 +25,7 @@ def openingPacket (preferOne : Bool) : Payload graph :=
   .opening 1 ((), .prepared (preferredSlot preferOne)) ⟨.int, preferredValue preferOne⟩
 
 def openingAction (preferOne : Bool) : PlayerAction graph :=
-  ⟨[], some (.submit ⟨openingPacket preferOne, none⟩)⟩
+  ⟨[], some ⟨openingPacket preferOne, none⟩⟩
 
 /-- Only public acceptance of the binding is consulted: it marks the
 disclosure event's readiness. No hidden state is read. -/

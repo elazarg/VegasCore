@@ -10,7 +10,7 @@ import GameTheoryExtensions.Math.Probability.Uniform
 /-! # Receiver comparisons for the generic action-restriction theorem
 
 Every extra effective receiver response is compared with source silence.
-Addressed extra traffic incurs the fixed deposit; ignored traffic preserves the
+Addressed extra traffic incurs the fixed charge; ignored traffic preserves the
 actual terminal result and receiver payoff under every paired continuation.
 -/
 
@@ -80,10 +80,10 @@ theorem bob_finish_comparison (table : PayoffTable)
         choices.map (choiceAction alicePublication aliceHandle bit)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler rawPlayers
       (some ⟨8, some bob, quietBob bit⟩))
-        (fun state => Enforcement.stateUtility table state bob) ≤
+        (fun state => Enforcement.comparisonStateUtility table state bob) ≤
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler legalPlayers
       (some ⟨8, some bob, quietBob bit⟩))
-        (fun state => Enforcement.stateUtility table state bob) := by
+        (fun state => Enforcement.comparisonStateUtility table state bob) := by
   have rawFinish := native_finish_response rawPlayers (nativePlan.take 3)
     ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
       resolutionTail) bob rfl (quietBob bit) rfl
@@ -98,10 +98,10 @@ theorem bob_finish_comparison (table : PayoffTable)
     PMF.pure_bind, expect_map, expect_map]
   change expect (nativeRuntime.runInteractionPlan nativeLeaks rawPlayers nativeNetwork _
       ((quietBob bit).respond nativeApp bob response))
-        (fun execution => Enforcement.executionUtility table execution bob) ≤
+        (fun execution => Enforcement.comparisonExecutionUtility table execution bob) ≤
     expect (nativeRuntime.runInteractionPlan nativeLeaks legalPlayers nativeNetwork _
       ((quietBob bit).respond nativeApp bob nativeSilent))
-        (fun execution => Enforcement.executionUtility table execution bob)
+        (fun execution => Enforcement.comparisonExecutionUtility table execution bob)
   rcases effective_bob_response_cases bit response available with legal |
       ⟨submission, rfl, wrong | ⟨addressed, _⟩⟩
   · exact (extra legal).elim
@@ -147,12 +147,12 @@ theorem bob_continuation_comparison (table : PayoffTable)
       (Profile.update (sig := watchedModel.behavioralSignature) targetProfile bob
         ((targetProfile bob).commit (ordinaryRestriction.site bob site).1 action))
       fuel (ordinaryRestriction.history history.1))
-        (fun final => Enforcement.stateUtility table final.state bob) ≤
+        (fun final => Enforcement.comparisonStateUtility table final.state bob) ≤
     expect (restrictedModel.runBehavioralFrom
       (Profile.update (sig := restrictedModel.behavioralSignature) sourceProfile bob
         ((sourceProfile bob).withLaw site.1 (ordinaryComparator bob site action)))
       fuel history.1)
-        (fun final => Enforcement.stateUtility table final.state bob) := by
+        (fun final => Enforcement.comparisonStateUtility table final.state bob) := by
   classical
   obtain ⟨bit, known⟩ := bob_history_state site history
   have observed := bob_site_input site
@@ -234,9 +234,9 @@ theorem bob_continuation_comparison (table : PayoffTable)
   have legalLaw := restrictedMenu.run_eq_finish nativeInitialLaw nativeHorizon nativeScheduler
     legalProfile fuel history.1 (by rw [known]; exact enough)
   have rawValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
-    expect law (fun state => Enforcement.stateUtility table state bob)) rawLaw
+    expect law (fun state => Enforcement.comparisonStateUtility table state bob)) rawLaw
   have legalValue := congrArg (fun law : PMF nativeApp.ProtocolState =>
-    expect law (fun state => Enforcement.stateUtility table state bob)) legalLaw
+    expect law (fun state => Enforcement.comparisonStateUtility table state bob)) legalLaw
   simp only [expect_map, Function.comp_def] at rawValue legalValue
   change expect (watchedModel.runBehavioralFrom rawProfile fuel
     (ordinaryRestriction.history history.1)) _ ≤

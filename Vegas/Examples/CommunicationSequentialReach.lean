@@ -8,7 +8,7 @@ import GameTheoryExtensions.Analysis.Protocol.LastDecision
 For the actual finite native calendar, every player's decision precedes Bob's
 only response. Therefore all decision-history reach probabilities, and hence
 all Bayes beliefs, are independent of Bob's policy. Alice's responses and all
-native rejected, malformed, and replay packets remain unrestricted by this
+native rejected and malformed packets remain unrestricted by this
 argument.
 -/
 

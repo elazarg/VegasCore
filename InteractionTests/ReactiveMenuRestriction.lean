@@ -36,7 +36,7 @@ private abbrev app : ReactiveApplication Bool where
     if observed then (pending.map Message.id).toFinset else ∅
 
 private def silent : app.Action := ⟨none⟩
-private def send (value : Bool) : app.Action := ⟨some (.submit value)⟩
+private def send (value : Bool) : app.Action := ⟨some value⟩
 
 open Classical in
 private def smaller : app.ResponseMenu where

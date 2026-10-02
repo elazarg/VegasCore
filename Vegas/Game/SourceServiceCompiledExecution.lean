@@ -187,12 +187,12 @@ theorem sourceServiceLastPolicy_admissible
   let app := application setup leaks
   let past := control.execution.recall who
   let view := control.execution.observe app who
-  have replay_covered (replay : response ∈ (app.replayPolicy past view).support)
+  have replay_covered (replay : response ∈ (app.silentPolicy past view).support)
       (optional : ¬ bindingRequired setup leaks rosters who past view) :
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view
     rw [sourceServiceActions, ite_eq_right optional]
-    exact bounds.replay_compiled (runtime setup) leaks who past view response replay
+    exact bounds.silent_compiled (runtime setup) leaks who past view response replay
   change response ∈ (sourceServiceLastPolicy setup leaks rosters profile who past view).support
     at supported
   cases serving : view.application.publicView.ownTurn? who with

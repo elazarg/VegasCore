@@ -1,5 +1,6 @@
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 import GameTheoryExtensions.Analysis.Protocol.TerminalAuditCoupling
+import GameTheoryExtensions.Analysis.Protocol.TerminalPayoffCongruence
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.DeferredChoice

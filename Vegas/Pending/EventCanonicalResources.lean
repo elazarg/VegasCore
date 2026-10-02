@@ -85,7 +85,7 @@ theorem playerStep_canonicalResources (runtime : EventGraphRuntime graph)
         PMF.mem_support_pure_iff _ _] at native
       rw [native]
       exact privateStep_canonicalResources state.native.application owner who command resources
-  | submit packet | replay id | wait =>
+  | submit packet | wait =>
       simp only [MessageApplication.PlayerCommand.toAction, MessageApplication.step,
         PMF.mem_support_pure_iff _ _] at native
       rw [native]

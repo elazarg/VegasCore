@@ -29,7 +29,7 @@ theorem alice_finish_value (table : PayoffTable)
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
       (some ⟨4, some alice, beforeAlice bit guess⟩))
-        (fun state => Enforcement.stateUtility table state who) =
+        (fun state => Enforcement.comparisonStateUtility table state who) =
       expect (targetDisclosures profile bit guess) fun disclose =>
         tableReward table (sourceResults (finalConfig bit guess disclose).state) who := by
   have finish := native_finish_response
@@ -39,7 +39,7 @@ theorem alice_finish_value (table : PayoffTable)
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _
     (some ⟨4, some alice, beforeAlice bit guess⟩) = _ at finish
   rw [finish, decoded_alice_response, PMF.bind_map,
-    expect_bind_tower _ _ _ (Enforcement.stateUtility_integrable table who _)]
+    expect_bind_tower _ _ _ (Enforcement.comparisonStateUtility_integrable table who _)]
   apply expect_congr_on_support
   intro disclose _
   rw [Function.comp_apply, expect_map]
@@ -54,11 +54,12 @@ theorem bob_choice_value (table : PayoffTable)
         resolutionTail)
       ((quietBob bit).respond nativeApp bob
         (choiceAction bobPublication bobHandle true guess)))
-        (fun final => Enforcement.executionUtility table final who) =
+        (fun final => Enforcement.comparisonExecutionUtility table final who) =
       expect (targetDisclosures profile bit guess) fun disclose =>
         tableReward table (sourceResults (finalConfig bit guess disclose).state) who := by
   rw [runInteractionPlan_append, bob_to_alice, decoded_alice_response, PMF.map_comp,
-    PMF.bind_map, expect_bind_tower _ _ _ (Enforcement.executionUtility_integrable table who _)]
+    PMF.bind_map, expect_bind_tower _ _ _ (Enforcement.comparisonExecutionUtility_integrable
+      table who _)]
   apply expect_congr_on_support
   intro disclose _
   exact Enforcement.alice_service_value table _ bit guess disclose who
@@ -68,7 +69,7 @@ theorem bob_finish_value (table : PayoffTable)
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (restrictedMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
       (some ⟨8, some bob, quietBob bit⟩))
-        (fun state => Enforcement.stateUtility table state who) =
+        (fun state => Enforcement.comparisonStateUtility table state who) =
       expect (targetGuesses profile) fun guess =>
         expect (targetDisclosures profile bit guess) fun disclose =>
           tableReward table (sourceResults (finalConfig bit guess disclose).state) who := by
@@ -80,7 +81,7 @@ theorem bob_finish_value (table : PayoffTable)
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler _
     (some ⟨8, some bob, quietBob bit⟩) = _ at finish
   rw [finish, decoded_bob_response, PMF.bind_map,
-    expect_bind_tower _ _ _ (Enforcement.stateUtility_integrable table who _)]
+    expect_bind_tower _ _ _ (Enforcement.comparisonStateUtility_integrable table who _)]
   apply expect_congr_on_support
   intro guess _
   rw [Function.comp_apply, expect_map]
@@ -99,13 +100,14 @@ theorem alice_context_value (table : PayoffTable)
     (siteEq : site.1 = aliceInput bit guess)
     (alternative : restrictedModel.BehavioralPolicy alice) :
     (assessment.truncatedContinuationContext site
-      (fun history => Enforcement.stateUtility table history.state alice)
+      (fun history => Enforcement.comparisonStateUtility table history.state alice)
         (2 * nativeHorizon + 1)).value alternative =
       expect (targetDisclosures (Profile.update assessment.strategy alice alternative) bit guess)
         fun disclose => tableReward table (sourceResults (finalConfig bit guess disclose).state)
           alice := by
   rw [restrictedMenu.context_value_of_known_state nativeInitialLaw nativeHorizon nativeScheduler
-    assessment alice site (fun state => Enforcement.stateUtility table state alice) alternative
+    assessment alice site (fun state => Enforcement.comparisonStateUtility table state alice)
+      alternative
       (some ⟨4, some alice, beforeAlice bit guess⟩) (fun history =>
         final_alice_known_state bit guess ⟨history.1, history.2.trans siteEq⟩)]
   exact alice_finish_value table _ bit guess alice
@@ -117,14 +119,14 @@ theorem receiver_context_value (table : PayoffTable)
     (site : restrictedModel.InformationSite bob)
     (alternative : restrictedModel.BehavioralPolicy bob) :
     (assessment.truncatedContinuationContext site
-      (fun history => Enforcement.stateUtility table history.state bob)
+      (fun history => Enforcement.comparisonStateUtility table history.state bob)
         (2 * nativeHorizon + 1)).value alternative =
       expect (PMF.uniformOfFintype Bool) fun bit =>
         expect (targetGuesses (Profile.update assessment.strategy bob alternative)) fun guess =>
           expect (targetDisclosures assessment.strategy bit guess) fun disclose =>
             tableReward table (sourceResults (finalConfig bit guess disclose).state) bob := by
   rw [bob_context_value assessment consistent site
-    (fun state => Enforcement.stateUtility table state bob) alternative]
+    (fun state => Enforcement.comparisonStateUtility table state bob) alternative]
   apply expect_congr_on_support
   intro bit _
   rw [bob_finish_value]

@@ -188,7 +188,7 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (control : (application setup leaks).Control) (state : history.1.state = some control)
     (submission : WitnessedSubmission (graph setup))
     (action : (watchedInformation setup leaks bounds watcher).Choice owner site.1)
-    (chosen : action.1 = some ⟨some (.submit submission)⟩)
+    (chosen : action.1 = some ⟨some submission⟩)
     (serials : control.execution.network.SerialsBeforeNext)
     (pendingPublished : ∀ message ∈ control.execution.network.pending,
       message.id ∈ control.execution.network.ledger.map Message.id)
@@ -204,7 +204,7 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (fuel : Nat)
     (enough : 2 * horizon setup watcher + 1 - history.1.trace.length ≤ fuel) :
     let submitted := control.execution.respond (application setup leaks) owner
-      ⟨some (.submit submission)⟩
+      ⟨some submission⟩
     ((leaks watcher submitted.network.pending).toOuterMeasure
         {selected | (owner, control.execution.network.nextSerial owner) ∈ selected}).toReal ≤
       (((watchedInformation setup leaks bounds watcher).runBehavioralFrom
@@ -239,7 +239,7 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
           (scheduler setup leaks watcher) owner history.1.trace
       _ = _ := by rw [state]; simp only [ReactiveApplication.observe, active, ↓reduceIte]
   have response : players owner (control.execution.recall owner)
-      (control.execution.observe app owner) = PMF.pure ⟨some (.submit submission)⟩ := by
+      (control.execution.observe app owner) = PMF.pure ⟨some submission⟩ := by
     simp only [players, changed, ReactiveApplication.ResponseMenu.decodeProfile,
       ReactiveApplication.decodePolicy, ReactiveApplication.ResponseMenu.embedPolicy,
       Profile.update_same, PMF.map_comp, ReactiveApplication.ResponseMenu.rawChoice,
@@ -275,7 +275,7 @@ theorem watched_commit_collection (bounds : MessageBounds (graph setup))
     (scheduler setup leaks watcher) rest.length
   let final := (((runtime setup).interactionStep leaks players ((runtime setup).idleNetwork leaks)
     (.includeLatest event owner)
-    (control.execution.respond app owner ⟨some (.submit submission)⟩)).bind
+    (control.execution.respond app owner ⟨some submission⟩)).bind
       (app.observationRound players watcher)).bind
         (app.runRounds (scheduler setup leaks watcher) players rest.length)
   have settled : ∀ execution ∈ final.support,

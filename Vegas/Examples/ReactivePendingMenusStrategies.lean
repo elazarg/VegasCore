@@ -143,9 +143,9 @@ theorem native_value_sum_le (policy : app.Policy) :
 def preferredValue (preferOne : Bool) : Int := if preferOne then 1 else 2
 def preferredSlot (preferOne : Bool) : Nat := if preferOne then 0 else 1
 
-def opening (preferOne : Bool) : app.Action := ⟨some (.submit
-  ⟨⟨.opening 1 ((), .prepared (preferredSlot preferOne))
-    ⟨.int, preferredValue preferOne⟩, none⟩, .none⟩)⟩
+def opening (preferOne : Bool) : app.Action :=
+  ⟨some ⟨⟨.opening 1 ((), .prepared (preferredSlot preferOne))
+    ⟨.int, preferredValue preferOne⟩, none⟩, .none⟩⟩
 
 /-- Only public acceptance of the binding is inspected: it marks the
 disclosure event's readiness. Private scheduler control is absent. -/

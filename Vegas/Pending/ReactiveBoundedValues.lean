@@ -108,19 +108,16 @@ theorem candidateValues_respond (runtime : EventGraphRuntime graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
     (valid : bounds.CandidateValues execution.application)
-    (allowed : ∀ material, response.transmission = some (.submit material) →
+    (allowed : ∀ material, response.transmission = some material →
       bounds.AllowsOpening material.call.opening) :
     bounds.CandidateValues
       (execution.respond (runtime.reactiveApplication leaks) who response).application := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact valid
-  | some transmission =>
-      cases transmission with
-      | replay id => exact valid
-      | submit material =>
-          exact bounds.candidateValues_submit execution.application who
-            material.call valid (allowed material rfl)
+  | some material =>
+      exact bounds.candidateValues_submit execution.application who
+        material.call valid (allowed material rfl)
 
 theorem candidateValues_environment (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

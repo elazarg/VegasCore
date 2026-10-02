@@ -6,7 +6,7 @@ import Vegas.Pending.ReactiveService
 import Vegas.Pending.ReactiveSafety
 import Vegas.Pending.ReactiveBinding
 import Interaction.ReactiveFiniteAssessment
-import Interaction.ReactiveReplayMenu
+import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveResponseEmbedding
 
 /-! # Binding and private recall in the one-message protocol -/
@@ -57,12 +57,12 @@ private def submitted (bit : Bool) : app.Execution :=
   initial.respond app false (runtime.reactiveBinding leaks false 0 .bool (.success bit) 0)
 
 /-- An explicit finite instance for this binding experiment. It includes
-silence, either Boolean meaning, unopenable candidates, compiled decisions,
-and every known replay. Other raw responses remain
+silence, either Boolean meaning, unopenable candidates, and compiled decisions.
+Other raw responses remain
 outside this test instance; no equivalence to the full response space is claimed. -/
 private def bindingMenu : app.ResponseMenu := by
   classical
-  exact ReactiveApplication.ResponseMenu.withKnownReplays {
+  exact {
     actions := fun who _ view =>
       {⟨none⟩, runtime.reactiveBinding leaks who 0 .bool (.success false) 0,
         runtime.reactiveBinding leaks who 0 .bool (.success true) 0,
@@ -83,30 +83,18 @@ theorem binding_menu_all_meanings (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (result : PublicationResult Bool) :
     runtime.reactiveBinding leaks who 0 .bool result 0 ∈ bindingMenu.actions who past view := by
   classical
-  apply ReactiveApplication.ResponseMenu.base_available
   cases result with
-  | failure => simp
-  | success bit => cases bit <;> simp
+  | failure => simp [bindingMenu]
+  | success bit => cases bit <;> simp [bindingMenu]
 
 theorem binding_menu_compiled_decision (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (result : PublicationResult Bool) :
     runtime.reactiveDecision leaks who 0 result view.application ∈
       bindingMenu.actions who past view := by
   classical
-  apply ReactiveApplication.ResponseMenu.base_available
   cases result with
-  | failure => simp
-  | success bit => cases bit <;> simp
-
-/-- An existing replay is available even after earlier submissions and leaks;
-there is no extra numeric envelope-identifier bound. -/
-theorem binding_menu_known_replay (execution : app.Execution) (who : Bool)
-    (valid : execution.InputRecall app) (message : Message Bool app.Payload)
-    (known : message ∈ execution.network.known who) :
-    (⟨some (.replay message.id)⟩ : app.Action) ∈
-      bindingMenu.actions who (execution.recall who) (execution.observe app who) := by
-  classical
-  exact ReactiveApplication.ResponseMenu.native_replay_available _ execution who valid message known
+  | failure => simp [bindingMenu]
+  | success bit => cases bit <;> simp [bindingMenu]
 
 /-- The actual commitment adapter admits the canonical finite assessment.
 This asserts consistency; no source compilation or nonzero-utility optimality
@@ -171,11 +159,17 @@ theorem compiler_samples_on_activation (law : PMF Bool) :
   have turn := turn_while_unfinished (initial.observe app false).application.publicView rfl
   rw [prescribedReactivePolicy_apply]
   simp only [prescribedReactiveResponse, turn]
-  simp [reactiveAlreadySubmitted, initial,
-    ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
-    app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
-    EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit,
-    PMF.map_comp, Function.comp_def, actor]
+  simp only [reactiveApplication, State.publicView, reactiveAlreadySubmitted, Fin.isValue,
+    List.any_nil, Bool.false_eq_true, ↓reduceIte, ReactiveApplication.Execution.observe, app,
+    initial, ReactiveApplication.Execution.initial, State.initial, EventGraph.Config.initial,
+    ↓reduceDIte, PublicView.EventReady, EventGraph.publicObserve_completionOrder, List.map_nil,
+    List.not_mem_nil, not_false_eq_true, Finset.notMem_empty, imp_self, implies_true, and_self,
+    actor, EventGraph.normalizePolicy, chooseBit, PMF.bind_const]
+  exact (PMF.map_comp (fun result : PublicationResult Bool =>
+    (runtime.reactiveDecision leaks false 0 result (initial.observe app false).application,
+      some (⟨0, result⟩ : graph.Completion))) (law.map PublicationResult.success) Prod.fst).trans
+        (PMF.map_comp PublicationResult.success law (fun result : PublicationResult Bool =>
+          runtime.reactiveDecision leaks false 0 result (initial.observe app false).application))
 
 /-- The finite instance admits every possible compiled first response, for
 every source distribution on Boolean values. -/
@@ -203,7 +197,7 @@ private def firstResponse (bit : Bool) : app.Execution :=
   initial.respond app false (firstAction bit)
 
 private theorem first_action (bit : Bool) : firstAction bit =
-    ⟨some (.submit ⟨⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩, .none⟩)⟩ := by
+    ⟨some ⟨⟨.commitment 0 candidate, some ⟨.bool, bit⟩⟩, .none⟩⟩ := by
   change ReactiveApplication.Action.mk (app := app)
     ((reactiveFreshSlot (initial.observe app false).application).map _) = _
   rw [first_slot]
@@ -278,7 +272,7 @@ private theorem wrong_response_inconsistent :
     simpa only [law, PMF.pure_map, PMF.mem_support_pure_iff _ _, firstAction] using chosen.2
   rw [first_action, first_action] at same
   have sent := congrArg ReactiveApplication.Action.transmission same
-  have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
+  have material := Option.some.inj sent
   have opening := congrArg
     (fun submission : WitnessedSubmission graph => submission.call.opening) material
   have raw := Option.some.inj opening
@@ -303,12 +297,21 @@ theorem compiler_recovers_wrong_choice :
     rfl
   rw [recoverReactivePolicy_apply]
   simp only [recoverReactiveResponse, turn]
-  simp [firstResponse, first_action, reactiveRecoveryLaw_pure,
-    initial, ReactiveApplication.Execution.respond,
-    ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
-    app, reactiveApplication, State.publicView, PublicView.EventReady, State.initial,
-    EventGraph.Config.initial, EventGraph.normalizePolicy, chooseBit, actor,
-    submitStep, Submission.register, PMF.pure_map]
+  have recovery (intentions : List (Option graph.Completion)) :
+      reactiveRecoveryLaw intentions (0 : graph.EventId)
+        ((PMF.pure true).map PublicationResult.success) = PMF.pure (.success true) :=
+    (congrArg (reactiveRecoveryLaw intentions (0 : graph.EventId))
+      (PMF.pure_map PublicationResult.success true)).trans
+        (reactiveRecoveryLaw_pure intentions 0 (.success true))
+  simp only [reactiveApplication, Submission.register, submitStep, State.publicView, app,
+    firstResponse, ReactiveApplication.Execution.respond, first_action, Fin.isValue, initial,
+    ReactiveApplication.Execution.initial, State.initial, EventGraph.Config.initial, ↓reduceIte,
+    ReactiveApplication.Execution.observe, List.nil_append, ↓reduceDIte, PublicView.EventReady,
+    EventGraph.publicObserve_completionOrder, List.map_nil, List.not_mem_nil, not_false_eq_true,
+    Finset.notMem_empty, imp_self, implies_true, and_self, actor, EventGraph.normalizePolicy,
+    chooseBit, recovery, PMF.bind_const]
+  apply (PMF.map_comp _ _ Prod.fst).trans
+  exact PMF.pure_map _ _
 
 /-- Binding recall follows the actual completion, even when an earlier
 submitted candidate remembered the opposite intention. -/
@@ -381,22 +384,11 @@ theorem binding_after_passive_reaction
     rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact observedPending
-    | some transmission =>
-        cases transmission with
-        | submit material =>
-            change (_ ++ [_]).find? _ = _
-            rw [List.find?_append]
-            change (observed.network.lookup (false, 0)).or _ = _
-            rw [observedPending, Option.some_or]
-        | replay id =>
-            simp only [ReactiveApplication.Execution.respond]
-            unfold MessageNetwork.replay
-            split
-            · exact observedPending
-            · change (_ ++ [_]).find? _ = _
-              rw [List.find?_append]
-              change (observed.network.lookup (false, 0)).or _ = _
-              rw [observedPending, Option.some_or]
+    | some material =>
+        change (_ ++ [_]).find? _ = _
+        rw [List.find?_append]
+        change (observed.network.lookup (false, 0)).or _ = _
+        rw [observedPending, Option.some_or]
   have ready : start.application.config.cut.Ready 0 := by
     change initial.application.config.cut.Ready 0
     decide

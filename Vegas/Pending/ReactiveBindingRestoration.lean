@@ -219,7 +219,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     let app := runtime.reactiveApplication leaks
     let view := right.observe app who
     let original : app.Action :=
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
     let repaired := memory.repairResponse runtime leaks who view original
     let remembered : BindingMemory runtime leaks :=
       ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩
@@ -238,7 +238,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     | some _ => opening
   let repairedCall : Submission graph :=
     ⟨.commitment event (who, .prepared serial), replacementOpening⟩
-  let original : app.Action := ⟨some (.submit ⟨originalCall, .none⟩)⟩
+  let original : app.Action := ⟨some ⟨originalCall, .none⟩⟩
   let repaired := memory.repairResponse runtime leaks who view original
   let remembered : BindingMemory runtime leaks :=
     ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩
@@ -261,7 +261,7 @@ theorem repairResponse_include_input (who : Player) (memory : BindingMemory runt
     rw [observed]
     exact originalFresh
   have localFresh : view.application.candidates (.prepared serial) = .fresh := actualFresh
-  have afterAction : repaired.1 = ⟨some (.submit ⟨repairedCall, .none⟩)⟩ := by
+  have afterAction : repaired.1 = ⟨some ⟨repairedCall, .none⟩⟩ := by
     cases decoded : opening.bind (fun raw => raw.as? payload) with
     | none =>
         rw [memory.repairResponse_unusable runtime leaks who view event payload outputEq codeEq

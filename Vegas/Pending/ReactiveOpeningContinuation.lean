@@ -49,7 +49,7 @@ theorem openingWindowMixture_continuation (runtime : EventGraphRuntime graph)
     (current : (runtime.reactiveApplication leaks).Execution) :
     let app := runtime.reactiveApplication leaks
     let family := fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
+      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.silentPolicy
     (runtime.runInteractionPlan leaks
       (runtime.openingWindowMixturePlayers leaks owner event candidate raw offset choices)
         network plan current) =
@@ -59,11 +59,11 @@ theorem openingWindowMixture_continuation (runtime : EventGraphRuntime graph)
             network plan current := by
   intro app family
   have actual := runtime.runInteractionPlan_policyMixture leaks choices family owner
-    (fun _ => app.replayPolicy) network plan current
+    (fun _ => app.silentPolicy) network plan current
   refine actual.symm.trans ?_
   apply bind_congr_on_support _
   intro selected _
-  have players : Function.update (fun _ => app.replayPolicy) owner (family selected) =
+  have players : Function.update (fun _ => app.silentPolicy) owner (family selected) =
       runtime.openingWindowPlayers leaks owner event candidate raw offset selected := by
     funext who past view
     by_cases active : who = owner
@@ -88,7 +88,7 @@ theorem openingWindowMixture_continuation_settlement (runtime : EventGraphRuntim
     (network : runtime.NetworkPolicy leaks) :
     let app := runtime.reactiveApplication leaks
     let family := fun selected => app.scheduledPolicy offset selected
-      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.replayPolicy
+      (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.silentPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ selected ∈ posterior.support,
       runtime.OpeningWindowFrame leaks owner event candidate raw offset selected visits

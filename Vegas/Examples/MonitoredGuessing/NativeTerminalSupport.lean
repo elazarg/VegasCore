@@ -1,0 +1,77 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Examples.MonitoredGuessing.NativeChronology
+import Interaction.ReactiveFiniteAssessment
+import Interaction.ReactiveResponseEvaluation
+import GameTheoryExtensions.Analysis.Protocol.Bayes
+
+/-! # Complete contract records at every legal native terminal history
+
+Uniform play supports every legal history of the bounded raw menu. Its exact
+native execution law therefore witnesses each terminal history as a complete
+service-plan run. The calendar completes both publication events under
+arbitrary player policies, so the resulting contract record is complete even
+after deviations. No equilibrium-support assumption is needed.
+-/
+
+noncomputable section
+
+namespace Vegas.Examples.MonitoredGuessing
+
+open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
+open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
+
+/-- Every legal terminal history is the final state of an actual supported
+service-plan run under a fully supported raw-menu profile. -/
+theorem native_terminal_history_execution (history : nativeArena.History)
+    (terminal : nativeArena.terminal history.state) :
+    ∃ bit execution,
+      execution ∈ (nativeRuntime.runInteractionPlan nativeLeaks
+        (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler
+          (nativeMenu.uniformPolicy nativeInitialLaw nativeHorizon nativeScheduler))
+        nativeNetwork nativePlan (nativeStart bit)).support ∧
+      history.state = nativeApp.finished execution := by
+  let profile := nativeMenu.uniformPolicy nativeInitialLaw nativeHorizon nativeScheduler
+  have length := nativeApp.trace_bound nativeInitialLaw nativeHorizon nativeScheduler
+    (nativeMenu.toRawTrace nativeInitialLaw nativeHorizon nativeScheduler history.trace)
+  rw [nativeMenu.toRawTrace_length nativeInitialLaw nativeHorizon nativeScheduler history.trace]
+    at length
+  have supported := (nativeMenu.uniform_fullyMixed nativeInitialLaw nativeHorizon
+    nativeScheduler).terminal_supported history terminal (2 * nativeHorizon + 1) (by omega)
+  have stateSupport : history.state ∈ ((nativeModel.runBehavioral profile
+      (2 * nativeHorizon + 1)).map History.state).support := by
+    rw [PMF.support_map]
+    exact ⟨history, supported, rfl⟩
+  rw [InformationModel.runBehavioral, nativeMenu.run_eq_finish nativeInitialLaw nativeHorizon
+    nativeScheduler profile (2 * nativeHorizon + 1) nativeArena.initHistory (by rfl)]
+    at stateSupport
+  change history.state ∈ (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
+    (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile) none).support
+    at stateSupport
+  rw [native_finish_initial, PMF.support_bind] at stateSupport
+  obtain ⟨bit, _, reached⟩ := Set.mem_iUnion₂.mp stateSupport
+  rw [PMF.support_map] at reached
+  obtain ⟨execution, actual, same⟩ := reached
+  exact ⟨bit, execution, actual, same.symm⟩
+
+/-- Every legal terminal history has a complete final contract record. -/
+theorem native_terminal_history_complete (history : nativeArena.History)
+    (terminal : nativeArena.terminal history.state) :
+    ∃ execution, history.state = nativeApp.finished execution ∧
+      execution.application.config.cut.Terminal := by
+  obtain ⟨bit, execution, reached, same⟩ := native_terminal_history_execution history terminal
+  exact ⟨execution, same, native_plan_complete bit _ execution reached⟩
+
+/-- A terminal control reached through the bounded raw menu completes every
+event, independently of the profile that reaches it. -/
+theorem native_terminal_control_complete (control : nativeApp.Control)
+    (trace : nativeArena.Trace (some control))
+    (terminal : nativeArena.terminal (some control)) :
+    control.execution.application.config.cut.Terminal := by
+  obtain ⟨execution, same, complete⟩ := native_terminal_history_complete ⟨some control, trace⟩
+    terminal
+  have equal : control = ⟨0, none, execution⟩ := Option.some.inj same
+  cases equal
+  exact complete
+
+end Vegas.Examples.MonitoredGuessing

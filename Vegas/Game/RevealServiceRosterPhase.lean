@@ -134,7 +134,7 @@ theorem roster_reveal_continuation_law [Finite Player]
     let app := application setup leaks
     let family := fun mode => app.scheduledPolicy responseOffset mode
       (fun _ _ => PMF.pure
-        ((runtime setup).windowOpening leaks event candidate ⟨payload, value⟩)) app.replayPolicy
+        ((runtime setup).windowOpening leaks event candidate ⟨payload, value⟩)) app.silentPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ mode ∈ posterior.support,
       (runtime setup).OpeningWindowFrame leaks owner event candidate ⟨payload, value⟩
@@ -310,7 +310,7 @@ theorem prefix_roster_window_continuation_law [Finite Player]
       let app := application setup leaks
       let family := fun mode => app.scheduledPolicy responseOffset mode
         (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-          app.replayPolicy
+          app.silentPolicy
       let posterior := (app.policyMixture choices family).posterior (current.recall owner)
       (∀ mode ∈ posterior.support,
         (runtime setup).OpeningWindowFrame leaks owner event candidate raw
@@ -461,7 +461,7 @@ theorem roster_window_source_step_law [Finite Player]
     let app := application setup leaks
     let family := fun mode => app.scheduledPolicy responseOffset mode
       (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-        app.replayPolicy
+        app.silentPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ mode ∈ posterior.support,
       (runtime setup).OpeningWindowFrame leaks owner event candidate raw

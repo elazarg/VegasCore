@@ -32,7 +32,7 @@ def initialState : EventGraphRuntime.State graph :=
 def initial : app.Execution := .initial app initialState
 
 def first : app.Action := runtime.reactiveBinding leaks () 0 .int (.success 1) 0
-def second : app.Action := ⟨some (.submit ⟨⟨.withhold 1, none⟩, .none⟩)⟩
+def second : app.Action := ⟨some ⟨⟨.withhold 1, none⟩, .none⟩⟩
 
 /-- Uniform choice among distinct, unpublished identifiers for this event. -/
 def select (event : graph.EventId) (view : app.EnvironmentView) : PMF app.Command :=

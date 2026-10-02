@@ -35,7 +35,7 @@ theorem roster_response_frames
     let app := application setup leaks
     let family := fun mode => app.scheduledPolicy (rosterOffset setup rosters owner event) mode
       (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-        app.replayPolicy
+        app.silentPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     posterior = (match selected with
       | none => choices.filter (ReactiveApplication.remainingOpeningSlots visits)
@@ -140,7 +140,7 @@ theorem roster_global_window_source_step_law [Finite Player]
       (execution.observe app owner)) (timing event owner owned)
     let family := fun mode => app.scheduledPolicy (rosterOffset setup rosters owner event) mode
       (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-        app.replayPolicy
+        app.silentPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ mode ∈ posterior.support,
       (runtime setup).OpeningWindowFrame leaks owner event candidate raw
@@ -258,7 +258,7 @@ theorem roster_owner_response_source_value [Fintype Player]
   let family := fun mode : Option (Fin ((rosters event).count owner)) =>
     app.scheduledPolicy (rosterOffset setup rosters owner event) mode
     (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-      app.replayPolicy
+      app.silentPolicy
   let posterior := (app.policyMixture choices family).posterior (after.recall owner)
   obtain ⟨selected, frame, _recorded, _same, exactModes⟩ :=
     roster_response_posterior setup leaks bounds rosters boundary event owner sole ownedEvent

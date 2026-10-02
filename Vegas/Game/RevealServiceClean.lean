@@ -114,7 +114,7 @@ theorem terminal_history_published
       (∀ message ∈ execution.network.ledger,
         ((runtime setup).settledRecord leaks execution).permits message = true) ∧
       ∀ input ∈ execution.network.inputs,
-        input.envelope.id ∈ execution.network.ledger.map Message.id :=
+        input.id ∈ execution.network.ledger.map Message.id :=
   terminal_history_fact setup leaks bounds watcher reveals observer openable _
     (fun _ _ _ _ _ current checkpoint =>
       ⟨publicationLedger_permitted setup leaks current _ checkpoint.invariant.reachable _

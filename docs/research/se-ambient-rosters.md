@@ -183,31 +183,27 @@ submission timing requires a separate source-belief argument. This is a
 possible signaling channel, not by itself an equilibrium-preservation
 impossibility: independent timing may still support a forward refinement.
 
-## What is now proved about public replays
+## Quiescent windows at published checkpoints
 
 `Interaction.ReactiveApplication.runRounds_published` applies to the actual
 round evaluator, arbitrary finite activation/wait windows, adaptive schedulers,
 and every passive sampling rule. If all pending identifiers are already
-published, and every supported response is silence or replay of a published
-identifier, then application state, receipts, and every current player view
+published, and every supported response is silence, then application state,
+receipts, and every current player view
 remain unchanged, and all pending identifiers remain published.
 
 `runRounds_published_application` gives the exact resulting configuration law.
-`EventGraphRuntime.reactiveLatest_replay_published` separately proves that such a
-replay cannot change reserved current-event inclusion, even when another player
-authored the envelope.
-
-These results do **not** erase own action recall, pending copies, network input
+These results preserve own action recall, network input
 history, audit records, or scheduler recall. Arbitrary schedulers can react to
-those records. If unpublished packets coexist, an arbitrary sampling rule can
-also react to the changed pending list; the clean-checkpoint premise matters.
+those records. The clean-checkpoint premise matters because unpublished
+packets can supply additional private information.
 
 `Interaction/DeferredObservation.lean` handles two parts of a delayed-inclusion
 phase: an owner's activation adds no passive information when every foreign
 pending envelope is already known or published; and including the selected
-identifier makes remaining copies of that envelope published. Other players
-can still read the owner's unpublished envelope. This does not assert identical
-sampler laws for pools with different replay multiplicities.
+identifier publishes that envelope. Other players can still read the owner's
+unpublished envelope. The result does not assert identical sampler laws for
+different pending pools.
 
 ## Audit evidence and attribution
 

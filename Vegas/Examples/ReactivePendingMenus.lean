@@ -83,9 +83,7 @@ def afterAction (action : app.Action) : app.Execution :=
 fixture. The command-service projection uses empty auxiliary memory. -/
 def projectedAction (action : app.Action) : PlayerAction graph where
   memory := []
-  transmission := action.transmission.map fun transmission => match transmission with
-    | .submit material => .submit material.call
-    | .replay id => .replay id
+  transmission := action.transmission.map fun material => material.call
 
 private theorem afterAction_application (action : app.Action) :
     (afterAction action).application =
@@ -93,7 +91,7 @@ private theorem afterAction_application (action : app.Action) :
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission => cases transmission <;> rfl
+  | some transmission => rfl
 
 private def plainMessage (message : Message Unit (WitnessedPacket graph)) :
     Message Unit (Payload graph) := ⟨message.id, message.payload.call⟩
@@ -104,33 +102,7 @@ private theorem afterAction_pending (action : app.Action) :
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit material => rfl
-      | replay id =>
-          have compare (network : MessageNetwork Unit (WitnessedPacket graph))
-              (pool : MessagePool Unit (Payload graph))
-              (pending : network.pending.map plainMessage = pool.pending)
-              (known : ((network.known ()).find? (fun envelope => envelope.id = id)).map
-                plainMessage = (pool.observe ()).known? id) :
-              (network.replay () id).2.pending.map plainMessage =
-                (pool.replay () id).state.pending := by
-            unfold MessageNetwork.replay MessagePool.replay
-            cases found : (network.known ()).find? (fun envelope => envelope.id = id) with
-            | none =>
-                rw [found] at known
-                rw [← known]
-                exact pending
-            | some message =>
-                rw [found] at known
-                rw [← known]
-                simp only [Option.map_some, List.map_append, List.map_cons, List.map_nil, pending]
-          apply compare (activated contested).network PendingMenus.contested.native.pool rfl
-          change Option.map plainMessage
-              (List.find? ((fun message : Message Unit (Payload graph) =>
-                decide (message.id = id)) ∘ plainMessage) _) = _
-          rw [← List.find?_map]
-          rfl
+  | some material => rfl
 
 private theorem afterAction_lookup (action : app.Action) (id : MessageId Unit) :
     ((afterAction action).network.lookup id).map plainMessage =
@@ -164,15 +136,7 @@ private theorem afterAction_pending_prefix (action : app.Action) :
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact ⟨[], (List.append_nil _).symm⟩
-  | some transmission =>
-      cases transmission with
-      | submit material => exact ⟨_, rfl⟩
-      | replay id =>
-          change ∃ rest, ((activated contested).network.replay () id).2.pending = _
-          unfold MessageNetwork.replay
-          split
-          · exact ⟨[], (List.append_nil _).symm⟩
-          · exact ⟨_, rfl⟩
+  | some material => exact ⟨_, rfl⟩
 
 /-- Both contested commitments were emitted while their event was ready, so
 the selected one carries a valid token. -/
@@ -224,7 +188,7 @@ theorem included_application (action : app.Action) : (included action).applicati
           (PendingMenus.afterAction (projectedAction action)).native.application
           (plainMessage message) <;> rfl
 
-/-- Every raw response, including arbitrary evidence requests, replay, and malformed
+/-- Every raw response, including arbitrary evidence requests and malformed
 traffic, leaves one of the two earlier commitments as the accepted binding. -/
 theorem selected_binding (action : app.Action) :
     (included action).application.config.outputs 0 = some (.success

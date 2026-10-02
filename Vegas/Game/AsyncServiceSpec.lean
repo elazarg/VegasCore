@@ -118,3 +118,13 @@ def toAsync : AsyncServiceSpec Player L where
 end SourceServiceSpec
 
 end Vegas
+
+-- OPEN OBLIGATION: Asynchronous sequential-equilibrium preservation
+-- Prove every source sequential equilibrium has a bounded raw-runtime
+-- equilibrium under any AsyncServiceSpec, preserving the joint source outcome
+-- and realized settlement law. Retained slot invariants, prescribed policy
+-- admission after misses and prescribed continuation bounds are checked.
+-- The source extension supplying play after misses and unprotected attempts,
+-- joint beliefs with traffic observations, local incentives and general
+-- continuation repair remain to be proved.
+-- The fixed-calendar SourceServiceSpec capstone does not discharge this edge.

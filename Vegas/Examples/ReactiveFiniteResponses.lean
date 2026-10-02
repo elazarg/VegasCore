@@ -59,7 +59,7 @@ private theorem initial_known (who : Bool) :
 /-- Malformed traffic remains a choice, even at an off-path information state. -/
 theorem malformed_available (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (bit : Bool) :
-    (⟨some (.submit ⟨⟨.malformed ⟨.bool, bit⟩, none⟩, .none⟩)⟩ : app.Action) ∈
+    (⟨some ⟨⟨.malformed ⟨.bool, bit⟩, none⟩, .none⟩⟩ : app.Action) ∈
       menu.actions who past view := by
   classical
   rw [MessageBounds.menu_mem]
@@ -73,7 +73,7 @@ theorem malformed_available (who : Bool) (past : List app.PlayerEntry)
 /-- Neither the wrong method nor the foreign handle nor the wrong type erases
 a bounded packet from the response menu. -/
 theorem invalid_opening_available (past : List app.PlayerEntry) (view : app.PlayerView) :
-    (⟨some (.submit ⟨⟨.opening 0 (true, .prepared 1) ⟨.int, 1⟩, none⟩, .none⟩)⟩ : app.Action) ∈
+    (⟨some ⟨⟨.opening 0 (true, .prepared 1) ⟨.int, 1⟩, none⟩, .none⟩⟩ : app.Action) ∈
       menu.actions false past view := by
   classical
   rw [MessageBounds.menu_mem]
@@ -89,8 +89,8 @@ effect. Its representation does not need to fit the public value alphabet. -/
 theorem irrelevant_material_erased (raw : Raw simpleExpr) (who : Bool)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
     (runtime.reactiveNormalization leaks).action who past view
-        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, some raw⟩, .none⟩)⟩ =
-      ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
+        ⟨some ⟨⟨.malformed ⟨.bool, true⟩, some raw⟩, .none⟩⟩ =
+      ⟨some ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩⟩ := by
   simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive,
     EvidenceRequest.normalize_none, openingEffective]
@@ -98,7 +98,7 @@ theorem irrelevant_material_erased (raw : Raw simpleExpr) (who : Bool)
 theorem arbitrary_irrelevant_material_admitted (raw : Raw simpleExpr) (who : Bool)
     (past : List app.PlayerEntry) (view : app.PlayerView) :
     (runtime.reactiveNormalization leaks).action who past view
-        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, some raw⟩, .none⟩)⟩ ∈
+        ⟨some ⟨⟨.malformed ⟨.bool, true⟩, some raw⟩, .none⟩⟩ ∈
       menu.actions who past view := by
   rw [irrelevant_material_erased]
   exact malformed_available who past view true
@@ -149,9 +149,9 @@ theorem unopenable_available_and_binding :
 /-- Different malformed messages are not collapsed into one public signal. -/
 theorem malformed_packets_distinct :
     (initial.respond app false
-      ⟨some (.submit ⟨⟨.malformed ⟨.bool, false⟩, none⟩, .none⟩)⟩).network.pending ≠
+      ⟨some ⟨⟨.malformed ⟨.bool, false⟩, none⟩, .none⟩⟩).network.pending ≠
       (initial.respond app false
-        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩).network.pending := by
+        ⟨some ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩⟩).network.pending := by
   intro same
   change [Message.mk (false, 0)
       (WitnessedPacket.mk (Payload.malformed (graph := graph) ⟨.bool, false⟩) none none)] =
@@ -163,31 +163,12 @@ theorem malformed_packets_distinct :
   have := congrArg (fun value : Raw simpleExpr => value.as? .bool) raw
   simp [Raw.as?_mk] at this
 
-theorem unknown_replay_excluded (id : MessageId Bool) :
-    (⟨some (.replay id)⟩ : app.Action) ∉ menu.actions false [] (initial.observe app false) := by
-  rw [MessageBounds.menu_mem]
-  simp [ReactiveApplication.SubmissionNormalization.ReplayKnown,
-    ReactiveApplication.ResponseMenu.knownPackets, initial,
-    ReactiveApplication.Execution.initial, ReactiveApplication.Execution.observe,
-    ReactiveApplication.outputs, MessageNetwork.observe, MessageNetwork.empty]
-
-/-- Real replay eligibility uses remembered emissions; no numeric bound on
-the envelope identifier is introduced by the finite syntax bounds. -/
-theorem known_replay_retained (execution : app.Execution) (who : Bool)
-    (valid : execution.InputRecall app) (message : Message Bool app.Payload)
-    (known : message ∈ execution.network.known who) :
-    (⟨some (.replay message.id)⟩ : app.Action) ∈
-      menu.actions who (execution.recall who) (execution.observe app who) := by
-  apply bounds.known_replay_available
-  exact (ReactiveApplication.SubmissionNormalization.replayKnown_iff
-    execution who valid message.id).mpr ⟨message, known, rfl⟩
-
 /-- Evidence can accompany a call with no successful game effect. The request
 is raw-available independently of whether the owner actually has the certificate. -/
 theorem owned_evidence_with_malformed_call (who : Bool) (past : List app.PlayerEntry)
     (view : app.PlayerView) (bit : Bool) :
-    (⟨some (.submit ⟨⟨.malformed ⟨.bool, bit⟩, none⟩,
-      .owned ⟨(who, .prepared 1), ⟨.bool, bit⟩⟩⟩)⟩ : app.Action) ∈
+    (⟨some ⟨⟨.malformed ⟨.bool, bit⟩, none⟩,
+      .owned ⟨(who, .prepared 1), ⟨.bool, bit⟩⟩⟩⟩ : app.Action) ∈
         (bounds.rawMenu runtime leaks).actions who past view := by
   classical
   rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
@@ -206,7 +187,7 @@ theorem known_forward_normalized_available (who : Bool) (past : List app.PlayerE
     (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view,
       message.id = id) :
     (runtime.reactiveNormalization leaks).action who past view
-      (⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩)⟩ : app.Action) ∈
+      (⟨some ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩⟩ : app.Action) ∈
       menu.actions who past view := by
   classical
   apply (ReactiveApplication.SubmissionNormalization.menu_mem _ _ _ _ _ _).mpr
@@ -220,9 +201,9 @@ theorem known_forward_normalized_available (who : Bool) (past : List app.PlayerE
 It supplies no extra action in the normalized game; the raw action remains legal. -/
 theorem failed_owned_request_erased :
     (runtime.reactiveNormalization leaks).action false [] (initial.observe app false)
-        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩,
-          .owned ⟨(false, .prepared 1), ⟨.bool, true⟩⟩⟩)⟩ =
-      ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
+        ⟨some ⟨⟨.malformed ⟨.bool, true⟩, none⟩,
+          .owned ⟨(false, .prepared 1), ⟨.bool, true⟩⟩⟩⟩ =
+      ⟨some ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩⟩ := by
   have fresh : (initial.observe app false).application.candidates (.prepared 1) = .fresh := rfl
   simp [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
@@ -232,9 +213,8 @@ theorem failed_owned_request_erased :
 /-- A response can register fresh material and disclose its certificate at once.
 Normalization must test the candidate after the call, not its prior fresh status. -/
 theorem fresh_certificate_retained :
-    let response : app.Action := ⟨some (.submit
-      ⟨⟨.commitment 0 (false, .prepared 0), some ⟨.bool, true⟩⟩,
-        .owned ⟨(false, .prepared 0), ⟨.bool, true⟩⟩⟩)⟩
+    let response : app.Action := ⟨some ⟨⟨.commitment 0 (false, .prepared 0), some ⟨.bool, true⟩⟩,
+        .owned ⟨(false, .prepared 0), ⟨.bool, true⟩⟩⟩⟩
     (runtime.reactiveNormalization leaks).action false []
       (initial.observe app false) response = response := by
   have fresh : (initial.observe app false).application.candidates (.prepared 0) = .fresh := rfl
@@ -247,8 +227,8 @@ theorem fresh_certificate_retained :
 The normal form still permits the original malformed public claim. -/
 theorem unknown_forward_retains_call (id : MessageId Bool) :
     (runtime.reactiveNormalization leaks).action false [] (initial.observe app false)
-        ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩)⟩ =
-      ⟨some (.submit ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩)⟩ := by
+        ⟨some ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .forward id⟩⟩ =
+      ⟨some ⟨⟨.malformed ⟨.bool, true⟩, none⟩, .none⟩⟩ := by
   have unknown : ¬ ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets
       ([] : List app.PlayerEntry) (initial.observe app false), message.id = id := by
     simp [ReactiveApplication.ResponseMenu.knownPackets, initial,
@@ -326,10 +306,11 @@ private def usedZero : app.Execution :=
 
 /-- Reusing one submitted handle consumes no additional candidate. A
 foreign handle reference cannot reserve that owner's candidate either. -/
-theorem replay_and_foreign_submission_leave_fresh :
-    ((usedZero.respond app false ⟨some (.replay (false, 0))⟩).respond app true
-      ⟨some (.submit ⟨⟨.commitment 0 (false, .prepared 1),
-        some ⟨.bool, false⟩⟩, .none⟩)⟩).application.candidates.lookup
+theorem reused_and_foreign_submission_leave_fresh :
+    ((usedZero.respond app false
+      (runtime.reactiveBinding leaks false 0 .bool (.success false) 0)).respond app true
+      ⟨some ⟨⟨.commitment 0 (false, .prepared 1),
+        some ⟨.bool, false⟩⟩, .none⟩⟩).application.candidates.lookup
       (false, .prepared 1) = .fresh := rfl
 
 /-- Exhaustion is possible after all allotted responses; the supply theorem

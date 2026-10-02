@@ -247,7 +247,7 @@ theorem sourceServiceTimedMixture_binding_future
     apply posterior_prefix app timing family _ (entry :: after) witness
     simpa only [recalled, split, List.append_assoc] using witnessSupported
   have waiting : family witness (past ++ before) entry.beforeView =
-      app.replayPolicy (past ++ before) entry.beforeView := by
+      app.silentPolicy (past ++ before) entry.beforeView := by
     have unused : some (offset + witness.val) ≠ some (past ++ before).length := by
       rw [pastLength]
       intro equal
@@ -362,12 +362,12 @@ theorem sourceServiceTimedPolicy_admissible
   let app := application setup leaks
   let past := control.execution.recall who
   let view := control.execution.observe app who
-  have replay_covered (replay : response ∈ (app.replayPolicy past view).support)
+  have replay_covered (replay : response ∈ (app.silentPolicy past view).support)
       (optional : ¬ bindingRequired setup leaks rosters who past view) :
       response ∈ (sourceServiceMenu setup leaks bounds rosters).actions who past view := by
     change response ∈ sourceServiceActions setup leaks bounds rosters who past view
     rw [sourceServiceActions, ite_eq_right optional]
-    exact bounds.replay_compiled (runtime setup) leaks who past view response replay
+    exact bounds.silent_compiled (runtime setup) leaks who past view response replay
   change response ∈ (sourceServiceTimedPolicy setup leaks rosters timing profile who
     past view).support at supported
   cases serving : view.application.publicView.ownTurn? who with
@@ -411,7 +411,7 @@ theorem sourceServiceTimedPolicy_admissible
               (PMF.support_bind .. ▸ supported)
             change response ∈ (app.scheduledPolicy (rosterOffset setup rosters who event)
               (some slot) (sourceServiceOpportunity setup leaks profile who event)
-                app.replayPolicy past view).support at produced
+                app.silentPolicy past view).support at produced
             unfold ReactiveApplication.scheduledPolicy at produced
             split at produced
             · exact (sourceServiceOpportunity_at_history setup leaks bounds values initialValues

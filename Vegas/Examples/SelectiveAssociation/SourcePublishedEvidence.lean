@@ -8,7 +8,7 @@ import Interaction.ReactiveAllocation
 No certificate exists during the ambient prelude. A certificate issued at
 Alice's binding response therefore describes the newly accepted source name.
 Its addressed fresh envelope is recorded before either guess, and remains on
-the ledger. Arbitrary earlier responses and replay traffic are retained.
+the ledger. Arbitrary earlier responses and certificate forwarding are retained.
 -/
 
 noncomputable section
@@ -41,12 +41,7 @@ theorem respond_ledger {Claim : Type} (execution : (application Claim).Execution
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit => rfl
-      | replay id =>
-          cases found : (execution.network.known who).find? (fun message => message.id = id) <;>
-            simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, found]
+  | some submission => rfl
 
 theorem aliceInput_ledger {Claim : Type} (first second : (application Claim).Action) :
     (aliceInput first second).network.ledger = [] := by
@@ -96,7 +91,7 @@ theorem latest_alice_submission {Claim : Type} (execution : (application Claim).
     (submission : Submission Claim) (address : submission.address = some 0)
     (empty : execution.network.ledger = []) :
     latest (ReactiveApplication.Execution.observeEnvironment (application Claim)
-        (execution.respond (application Claim) alice ⟨some (.submit submission)⟩)) 0 =
+        (execution.respond (application Claim) alice ⟨some submission⟩)) 0 =
       .include (alice, execution.network.nextSerial alice) := by
   simp [latest, ReactiveApplication.Execution.respond,
     ReactiveApplication.Execution.observeEnvironment, application, MessageNetwork.submit,
@@ -105,7 +100,7 @@ theorem latest_alice_submission {Claim : Type} (execution : (application Claim).
 
 theorem binding_certificate_spec {Claim : Type} (first second : (application Claim).Action)
     (submission : Submission Claim) (fact : NamedFact)
-    (certified : fact ∈ bindingCertificates first second ⟨some (.submit submission)⟩) :
+    (certified : fact ∈ bindingCertificates first second ⟨some submission⟩) :
     submission.address = some 0 ∧ submission.kind = .bind ∧ fact.1 = 0 ∧
       submission.binding = .success fact.2 := by
   change fact ∈ certificates (submit (aliceInput first second).application alice submission)
@@ -132,13 +127,13 @@ def bindingEnvelope {Claim : Type} (execution : (application Claim).Execution)
 theorem record_alice_submission {Claim : Type} (execution : (application Claim).Execution)
     (submission : Submission Claim) (address : submission.address = some 0)
     (empty : execution.network.ledger = []) (serials : execution.network.SerialsBeforeNext) :
-    let sent := execution.respond (application Claim) alice ⟨some (.submit submission)⟩
+    let sent := execution.respond (application Claim) alice ⟨some submission⟩
     bindingEnvelope execution submission ∈
       (effect sent (latest (sent.observeEnvironment (application Claim)) 0)).network.ledger := by
   dsimp only
   rw [latest_alice_submission execution submission address empty]
   have found : (execution.respond (application Claim) alice
-      ⟨some (.submit submission)⟩).network.lookup
+      ⟨some submission⟩).network.lookup
       (alice, execution.network.nextSerial alice) =
         some (bindingEnvelope execution submission) :=
     serials.lookup_submit alice _
@@ -155,18 +150,15 @@ theorem carol_ledger_binding_certificate {Claim : Type}
   rcases binding with ⟨transmission⟩
   cases transmission with
   | none => exact False.elim (Finset.notMem_empty fact certified)
-  | some transmission =>
-      cases transmission with
-      | replay => exact False.elim (Finset.notMem_empty fact certified)
-      | submit submission =>
-          have specification := binding_certificate_spec first second submission fact certified
-          refine ⟨bindingEnvelope (aliceInput first second) submission, ?_, certified,
-            specification.2.2.1⟩
-          have recorded := record_alice_submission (aliceInput first second) submission
-            specification.1 (aliceInput_ledger first second) (aliceInput_serials first second)
-          have settled := remainingVisit_recorded_ledger _ 0 recorded
-          exact effect_ledger_mono _ (.activate carol)
-            (effect_ledger_mono _ (.application (.grant 1)) settled)
+  | some submission =>
+      have specification := binding_certificate_spec first second submission fact certified
+      refine ⟨bindingEnvelope (aliceInput first second) submission, ?_, certified,
+        specification.2.2.1⟩
+      have recorded := record_alice_submission (aliceInput first second) submission
+        specification.1 (aliceInput_ledger first second) (aliceInput_serials first second)
+      have settled := remainingVisit_recorded_ledger _ 0 recorded
+      exact effect_ledger_mono _ (.activate carol)
+        (effect_ledger_mono _ (.application (.grant 1)) settled)
 
 theorem bob_ledger_contains_carol {Claim : Type}
     (first second binding guess : (application Claim).Action) :

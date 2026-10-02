@@ -74,8 +74,8 @@ theorem resolution_tail_summary (players : Player → nativeApp.Policy)
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       (execution.respond nativeApp alice
         (nativeOpeningAction alicePublication aliceHandle bit))).map
-          (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
-      PMF.pure (Results.mk (.success bit) guess, rejectedAlice execution.receipts) := by
+          (fun final => (nativeResults final.application.config, aliceLiability final)) =
+      PMF.pure (Results.mk (.success bit) guess, aliceLiability execution) := by
   obtain ⟨opened, accepted, published⟩ := resolution_opening_accepted bit execution.application
     valid alicePublication ready timely (execution.network.nextSerial alice)
   have accepted' : handle nativeRuntime execution.application
@@ -117,10 +117,16 @@ theorem resolution_tail_summary (players : Player → nativeApp.Policy)
   change bobPublicationRef.get? final.application.config.store = some guess at bobStored
   have receiptEq := (resolution_clock_tail_receipts players middle final tailMem).trans
     (congrArg Prod.snd paired)
-  simp only [nativeResults, aliceStored, bobStored, Option.getD_some, receiptEq,
-    rejectedAlice_accepted]
+  have middleLeaked := native_plan_watcher_leaked players
+    [.includeLatest alicePublication alice] _ middle (by simp)
+    (by simpa only [runInteractionPlan, PMF.bind_pure] using middleMem)
+  have finalLeaked := native_plan_watcher_leaked players
+    [.tick, .tick, .expire alicePublication] middle final (by simp) tailMem
+  rw [nativeApp.respond_leaked] at middleLeaked
+  simp only [nativeResults, aliceStored, bobStored, Option.getD_some, aliceLiability, receiptEq,
+    rejectedAlice_accepted, finalLeaked, middleLeaked]
 
-theorem resolution_tail_alice_value (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem resolution_tail_alice_value (charge : ℝ) (players : Player → nativeApp.Policy)
     (execution : nativeApp.Execution) (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit execution.application)
     (stored : bobPublicationRef.get? execution.application.config.store = some guess)
@@ -130,21 +136,21 @@ theorem resolution_tail_alice_value (deposit : ℝ) (players : Player → native
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       (execution.respond nativeApp alice
         (nativeOpeningAction alicePublication aliceHandle bit)))
-          (nativeExecutionUtility deposit alice) =
+          (nativeComparisonExecutionUtility charge alice) =
       correctness (.success bit) guess -
-        if rejectedAlice execution.receipts then deposit else 0 := by
+        if aliceLiability execution then charge else 0 := by
   have summary := resolution_tail_summary players execution bit guess valid stored ready
     timely serials
   have expected := congrArg (fun law : PMF (Results × Bool) =>
-    expect law (fun outcome => utility outcome.1 alice - if outcome.2 then deposit else 0)) summary
+    expect law (fun outcome => utility outcome.1 alice - if outcome.2 then charge else 0)) summary
   rw [expect_map, expect_pure] at expected
-  change expect _ (fun final => nativeExecutionUtility deposit alice final) = _
-  simpa only [nativeExecutionUtility, utility_alice, openingPenalty, sub_zero, true_and,
+  change expect _ (fun final => nativeComparisonExecutionUtility charge alice final) = _
+  simpa only [nativeComparisonExecutionUtility, utility_alice, openingPenalty, sub_zero, true_and,
     Function.comp_def,
     eq_self_iff_true]
     using expected
 
-theorem resolution_finish_alice_value (deposit : ℝ) (players : Player → nativeApp.Policy)
+theorem resolution_finish_alice_value (charge : ℝ) (players : Player → nativeApp.Policy)
     (execution : nativeApp.Execution) (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit execution.application)
     (stored : bobPublicationRef.get? execution.application.config.store = some guess)
@@ -155,19 +161,19 @@ theorem resolution_finish_alice_value (deposit : ℝ) (players : Player → nati
     (opens : players alice (execution.recall alice) (execution.observe nativeApp alice) =
       PMF.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
-      (some ⟨4, some alice, execution⟩)) (nativeUtility deposit alice) =
+      (some ⟨4, some alice, execution⟩)) (nativeComparisonUtility charge alice) =
       correctness (.success bit) guess -
-        if rejectedAlice execution.receipts then deposit else 0 := by
+        if aliceLiability execution then charge else 0 := by
   have finish := native_finish_response players (nativePlan.take 7) resolutionTail alice
     rfl execution position
   change nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler players
       (some ⟨4, some alice, execution⟩) = _ at finish
   rw [finish, opens, PMF.pure_bind, expect_map]
-  exact resolution_tail_alice_value deposit players execution bit guess valid stored ready
+  exact resolution_tail_alice_value charge players execution bit guess valid stored ready
     timely serials
 
 /-- All raw policies are compared with the same previously incurred liability. -/
-theorem resolution_finish_alice_dominates (deposit : ℝ) (nonnegative : 0 ≤ deposit)
+theorem resolution_finish_alice_dominates (charge : ℝ) (nonnegative : 0 ≤ charge)
     (prescribed alternative : Player → nativeApp.Policy)
     (execution : nativeApp.Execution) (bit : Bool) (guess : PublicationResult Bool)
     (valid : NativeFixed bit execution.application)
@@ -179,11 +185,11 @@ theorem resolution_finish_alice_dominates (deposit : ℝ) (nonnegative : 0 ≤ d
     (opens : prescribed alice (execution.recall alice) (execution.observe nativeApp alice) =
       PMF.pure (nativeOpeningAction alicePublication aliceHandle bit)) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler alternative
-      (some ⟨4, some alice, execution⟩)) (nativeUtility deposit alice) ≤
+      (some ⟨4, some alice, execution⟩)) (nativeComparisonUtility charge alice) ≤
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler prescribed
-      (some ⟨4, some alice, execution⟩)) (nativeUtility deposit alice) := by
-  rw [resolution_finish_alice_value deposit prescribed execution bit guess valid stored ready
+      (some ⟨4, some alice, execution⟩)) (nativeComparisonUtility charge alice) := by
+  rw [resolution_finish_alice_value charge prescribed execution bit guess valid stored ready
     timely serials position opens]
-  exact resolution_finish_payoff_upper deposit nonnegative alternative _ bit guess valid stored
+  exact resolution_finish_payoff_upper charge nonnegative alternative _ bit guess valid stored
 
 end Vegas.Examples.MonitoredGuessing

@@ -65,27 +65,24 @@ theorem executionHandles_respond (runtime : EventGraphRuntime graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
     (valid : bounds.ExecutionHandles runtime leaks execution)
-    (allowed : ∀ material, response.transmission = some (.submit material) →
+    (allowed : ∀ material, response.transmission = some material →
       bounds.AllowsPacket material.call.packet) :
     bounds.ExecutionHandles runtime leaks
       (execution.respond (runtime.reactiveApplication leaks) who response) := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact valid
-  | some transmission =>
-      cases transmission with
-      | replay id => exact ⟨valid.1, valid.2.replay who id⟩
-      | submit material =>
-          refine ⟨?_, valid.2.submit who
-            (material.emit ((runtime.reactiveApplication leaks).submit execution.application who
-              material) who (execution.network.known who)) (allowed material rfl)⟩
-          change bounds.AcceptedHandles
-            (submitStep (material.call.register execution.application who) who material.call.packet)
-          have same := congrArg PublicView.accepted
-            (material.call.register_facts who execution.application).2.2
-          change (material.call.register execution.application who).accepted =
-            execution.application.accepted at same
-          simpa only [AcceptedHandles, submitStep_accepted, same] using valid.1
+  | some material =>
+      refine ⟨?_, valid.2.submit who
+        (material.emit ((runtime.reactiveApplication leaks).submit execution.application who
+          material) who (execution.network.known who)) (allowed material rfl)⟩
+      change bounds.AcceptedHandles
+        (submitStep (material.call.register execution.application who) who material.call.packet)
+      have same := congrArg PublicView.accepted
+        (material.call.register_facts who execution.application).2.2
+      change (material.call.register execution.application who).accepted =
+        execution.application.accepted at same
+      simpa only [AcceptedHandles, submitStep_accepted, same] using valid.1
 
 theorem executionHandles_environment (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

@@ -30,20 +30,16 @@ theorem binding_response_core {Claim : Type} (event : Event)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => simpa only [selectedBinding, stage, ↓reduceIte] using advances .failure false
-  | some transmission =>
-      cases transmission with
-      | replay =>
-          simpa only [selectedBinding, stage, ↓reduceIte] using advances .failure false
-      | submit submission =>
-          cases address : submission.address with
-          | none => simp [submit, visited, address, selectedBinding, stage, advances]
-          | some target =>
-              by_cases same : target = event
-              · subst target
-                cases kind : submission.kind <;>
-                  simp [submit, visited, address, kind, selectedBinding, stage,
-                    Nat.not_le.mpr binding, binding, advances, nextStage]
-              · simp [submit, visited, address, same, selectedBinding, stage, advances]
+  | some submission =>
+      cases address : submission.address with
+      | none => simp [submit, visited, address, selectedBinding, stage, advances]
+      | some target =>
+          by_cases same : target = event
+          · subst target
+            cases kind : submission.kind <;>
+              simp [submit, visited, address, kind, selectedBinding, stage,
+                Nat.not_le.mpr binding, binding, advances, nextStage]
+          · simp [submit, visited, address, same, selectedBinding, stage, advances]
 
 theorem alice_binding_response {Claim : Type}
     (execution : (application Claim).Execution) (response : (application Claim).Action)

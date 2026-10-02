@@ -81,7 +81,7 @@ theorem owner_extra_collection
     watcher who different site _ _ observed action extra
   obtain ⟨submission, same, departure⟩ := prefix_extra_submission setup leaks bounds who reveals
     initial event owned source execution related response effective excluded
-  have chosenSubmission : action.1 = some ⟨some (.submit submission)⟩ := by rw [chosen, same]
+  have chosenSubmission : action.1 = some ⟨some submission⟩ := by rw [chosen, same]
   have serials : execution.network.SerialsBeforeNext :=
     PrefixCheckpoint.runtime_fact (fun current => current.network.SerialsBeforeNext)
       (fun _ _ _ _ checkpoint => checkpoint.serials) _ _ _ _ _ _ _ _ related
@@ -107,7 +107,7 @@ theorem owner_extra_collection
   let packet := submission.emit state who (execution.network.known who)
   let message : Message Player (application setup leaks).Payload :=
     ⟨(who, execution.network.nextSerial who), packet⟩
-  let submitted := execution.respond (application setup leaks) who ⟨some (.submit submission)⟩
+  let submitted := execution.respond (application setup leaks) who ⟨some submission⟩
   have present : message ∈ submitted.network.pending := by
     change message ∈ execution.network.pending ++ [message]
     simp only [List.mem_append, List.mem_singleton, or_true]

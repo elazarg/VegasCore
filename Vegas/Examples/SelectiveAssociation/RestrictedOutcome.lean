@@ -139,7 +139,7 @@ theorem publication_from_earlier_binding (players : Profile model.behavioralSign
 
 /-- A successful final binding was already fixed at its owner's opening site.
 Prescribed opening therefore publishes it. The binding response before that
-site is unrestricted, including malformed or replayed envelopes. -/
+site is unrestricted, including malformed envelopes. -/
 theorem final_binding_published (players : Profile model.behavioralSignature)
     (event : nativeGraph.EventId) (who : Player)
     (ordered : event.val ≤ (nativePublicationEvent who).val)

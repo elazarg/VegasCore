@@ -13,7 +13,7 @@ open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
 def nativeExecutionObservation (execution : nativeApp.Execution) : Bool × Results × Bool :=
   (observedAliceBit (execution.observe nativeApp alice),
-    nativeResults execution.application.config, rejectedAlice execution.receipts)
+    nativeResults execution.application.config, aliceLiability execution)
 
 def nativeObservation (state : nativeApp.ProtocolState) : Bool × Results × Bool :=
   state.elim (false, ⟨.failure, .failure⟩, false)
@@ -42,7 +42,7 @@ theorem quiet_guess_suffix_observation (players : Player → nativeApp.Policy)
   apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
   obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
-  have summarized : (nativeResults final.application.config, rejectedAlice final.receipts) =
+  have summarized : (nativeResults final.application.config, aliceLiability final) =
       (Results.mk (.success bit) (guessResult guess), false) := by
     apply (PMF.mem_support_pure_iff _ _).mp
     rw [← quiet_guess_suffix_summary players prescribed bit guess, PMF.support_map]

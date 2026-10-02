@@ -68,13 +68,7 @@ theorem publicGuess_respond (execution : app.Execution) (actor observer : Player
   · rcases action with ⟨transmission⟩
     cases transmission with
     | none => rfl
-    | some transmission =>
-        cases transmission with
-        | submit => rfl
-        | replay id =>
-            dsimp only [ReactiveApplication.Execution.respond]
-            unfold MessageNetwork.replay
-            split <;> rfl
+    | some submission => rfl
 
 theorem publicGuess_activate (execution : app.Execution) (actor observer : Player) :
     publicGuess ((activate execution actor).observe app observer) =

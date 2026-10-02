@@ -296,19 +296,24 @@ theorem final_response_payoff_le (payoff : Results → ℝ) (charge : ℝ)
     expect (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       (execution.respond nativeApp alice response))
         (fun final => payoff (nativeResults final.application.config) -
-          if rejectedAlice final.receipts then charge else 0) ≤
+          if aliceLiability final then charge else 0) ≤
       payoff ⟨if finalChoiceAt (execution.recall alice) (execution.observe nativeApp alice) response
         then .success bit else .failure, guess⟩ -
-          if rejectedAlice execution.receipts then charge else 0 := by
+          if aliceLiability execution then charge else 0 := by
   have supported : finalResponseExecution execution response ∈
       (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
         (execution.respond nativeApp alice response)).support := by
     rw [final_response_law]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
-  have receipts := native_plan_receipts_prefix players resolutionTail _ _ supported
-  rw [nativeApp.respond_receipts] at receipts
+  have retained := native_plan_liability players resolutionTail _ _ supported
+  have liability : aliceLiability execution = true →
+      aliceLiability (finalResponseExecution execution response) = true := by
+    intro liable
+    apply retained
+    rcases response with ⟨transmission⟩
+    cases transmission <;> exact liable
   have penalty := resolution_charge_mono charge nonnegative execution
-    (finalResponseExecution execution response) receipts
+    (finalResponseExecution execution response) liability
   rw [final_response_law, expect_pure,
     final_response_result_at execution response transport bit guess valid stored]
   exact sub_le_sub_left penalty _

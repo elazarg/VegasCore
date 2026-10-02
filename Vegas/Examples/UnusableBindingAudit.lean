@@ -112,7 +112,7 @@ theorem bound_observation (first second : PublicationResult Int) :
   congr 1
 
 def withholding : app.Action :=
-  ⟨some (.submit ⟨⟨.withhold 1, none⟩, .none⟩)⟩
+  ⟨some ⟨⟨.withhold 1, none⟩, .none⟩⟩
 
 def revealState (choice : PublicationResult Int) : EventGraphRuntime.State graph :=
   boundState choice

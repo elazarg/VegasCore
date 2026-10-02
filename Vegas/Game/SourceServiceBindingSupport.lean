@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingReplay
+import Vegas.Pending.ReactiveBindingWaiting
 import Vegas.Game.SourceServiceMenu
 import Vegas.Pending.ReactivePlayerWindow
 
@@ -89,7 +89,7 @@ theorem sourceService_binding_roster_support
       obtain ⟨sample, _, step⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ step)
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ step
       let activated := initial.sampledActivation app actor sample
-      have casesResponse : response ∈ (app.replayPolicy (activated.recall actor)
+      have casesResponse : response ∈ (app.silentPolicy (activated.recall actor)
           (activated.observe app actor)).support ∨
           actor = owner ∧ ∃ value ∈ bounds.typedValues payload,
             response = (runtime setup).reactiveBinding leaks owner event payload
@@ -112,7 +112,7 @@ theorem sourceService_binding_roster_support
               (fun equal => acting (Option.some.inj (owned.symm.trans equal)).symm))
               response (ordinary actor _ _ response chosen))
       rcases casesResponse with transport | ⟨acting, value, admitted, physical⟩
-      · have shape := app.replayPolicy_cases _ _ response transport
+      · have shape := app.silentPolicy_cases _ _ response transport
         have restOpportunity : owner ∈ rest := by
           by_contra absent
           have acting : actor = owner := (List.mem_cons.mp opportunity).resolve_right absent |>.symm
@@ -131,14 +131,17 @@ theorem sourceService_binding_roster_support
                 selected capacity response (lawful owner _ _ response chosen)
           rw [(runtime setup).reactiveBinding_normal_of_fresh leaks owner _ _ event payload
             (.success value) serial candidate] at physical
-          rcases shape with rfl | ⟨id, rfl⟩ <;> cases physical
-        have preserved := (runtime setup).replay_response_preserves leaks _ activated
+          rcases shape with rfl
+          cases physical
+        have preserved := (runtime setup).silent_response_preserves leaks _ activated
           (published.learn actor sample) actor response shape
         have nextUnsent : (runtime setup).eventRecorded leaks
             ((activated.respond app actor response).recall owner) event = false := by
           rw [(runtime setup).eventRecorded_respond_other leaks activated actor owner response
             event (fun _ => by
-              rcases shape with rfl | ⟨id, rfl⟩ <;> intro impossible <;> cases impossible)]
+              rcases shape with rfl
+              intro impossible
+              cases impossible)]
           exact unsent
         have nextSelected : reactiveFreshSlot
             ((activated.respond app actor response).observe app owner).application =

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceBinding
-import Vegas.Pending.ReactiveBindingReplay
+import Vegas.Pending.ReactiveBindingWaiting
 
 /-! # The original binding lottery through a delayed native roster
 

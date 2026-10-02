@@ -10,8 +10,8 @@ import Interaction.MessageNetworkCounters
 /-! # The event application under explicit network scheduling
 
 One activation optionally transmits one packet. Private strategy memory is
-absent from game actions. Fresh commitment material is fixed by submission. The scheduler
-receives the broadcaster and envelope, while the player retains its own output.
+absent from game actions. Fresh commitment material is fixed by submission. The
+scheduler receives the authored envelope, while the player retains its own output.
 No private staging command is a strategic action of this protocol.
 An independent observation rule supplies partial knowledge of foreign pending
 packets at activation; its samples are hidden from scheduling.
@@ -160,10 +160,9 @@ def reactiveBinding (runtime : EventGraphRuntime graph)
     (who : Player) (event : graph.EventId)
     (payload : L.Ty) (result : PublicationResult (L.Val payload)) (serial : Nat) :
     (runtime.reactiveApplication leaks).Action where
-  transmission := some (.submit
-    ⟨⟨.commitment event (who, .prepared serial), match result with
+  transmission := some ⟨⟨.commitment event (who, .prepared serial), match result with
       | .failure => none
-      | .success value => some ⟨payload, value⟩⟩, .none⟩)
+      | .success value => some ⟨payload, value⟩⟩, .none⟩
 
 /-- A call the contract accepts at a state is ready there, so a packet
 emitted from that public view carries a valid token. -/
@@ -200,7 +199,7 @@ theorem respond_submit_lookup (runtime : EventGraphRuntime graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (call : Submission graph) (serials : execution.network.SerialsBeforeNext) :
     (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some (.submit ⟨call, .none⟩)⟩).network.lookup (who, execution.network.nextSerial who) =
+      ⟨some ⟨call, .none⟩⟩).network.lookup (who, execution.network.nextSerial who) =
       some ⟨(who, execution.network.nextSerial who),
         ⟨call.packet, none, execution.application.publicView.tokenFor call.packet⟩⟩ := by
   simpa only [ReactiveApplication.Execution.respond, reactiveApplication_packet_none] using
@@ -216,7 +215,7 @@ theorem respond_submit_lookup_of_ready (runtime : EventGraphRuntime graph)
     (event : graph.EventId) (named : call.packet.event? graph = some event)
     (ready : execution.application.config.cut.Ready event) :
     (execution.respond (runtime.reactiveApplication leaks) who
-      ⟨some (.submit ⟨call, .none⟩)⟩).network.lookup (who, execution.network.nextSerial who) =
+      ⟨some ⟨call, .none⟩⟩).network.lookup (who, execution.network.nextSerial who) =
       some ⟨(who, execution.network.nextSerial who), ⟨call.packet, none, some ⟨event⟩⟩⟩ := by
   rw [← execution.application.publicView_tokenFor_of_ready call.packet event named ready]
   exact respond_submit_lookup runtime leaks execution who call serials

@@ -85,10 +85,6 @@ theorem playerStep_pool_satisfies [DecidableEq Principal]
       simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
       exact hsafe.submit who payload (hsubmit payload rfl)
-  | replay id =>
-      simp only [PlayerCommand.toAction, step, PMF.mem_support_pure_iff _ _] at hnative
-      rw [hnative]
-      exact hsafe.replay who id
   | wait =>
       simp only [PlayerCommand.toAction, PMF.mem_support_pure_iff _ _] at hnative
       rw [hnative]
@@ -151,7 +147,7 @@ theorem runPolicies_environment_pool_satisfies [DecidableEq Principal]
 
 /-- If every submitted payload selected by a player policy is safe at every
 possible serial, then all messages retained by the pool remain safe throughout
-the policy run. Delivery, replay, and inclusion require no extra premise. -/
+the policy run. Delivery and inclusion require no extra premise. -/
 theorem runPolicies_pool_satisfies [DecidableEq Principal]
     (safe : Message Principal app.Payload → Prop)
     (players : Principal → app.PlayerPolicy) (environment : app.EnvironmentPolicy)

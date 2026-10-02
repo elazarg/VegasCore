@@ -99,15 +99,15 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
   transmission := match nodeView graph event with
     | .sample .. => none
     | .bind _owner payload outputEq _codeEq =>
-        (reactiveFreshSlot view).map fun serial => .submit
+        (reactiveFreshSlot view).map fun serial =>
           ⟨⟨.commitment event (who, .prepared serial),
             match (cast (congrArg EventField.Action outputEq) action :
                 PublicationResult (L.Val payload)) with
             | .failure => none
             | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding checks outputEq _codeEq =>
-        some (.submit ((disclosureSubmission (reactiveResolutionPacket who event payload
-          binding checks outputEq action view)).normalizeReactive who view []))
+        some ((disclosureSubmission (reactiveResolutionPacket who event payload
+          binding checks outputEq action view)).normalizeReactive who view [])
 
 open Classical in
 /-- Binding recall uses the value that actually took effect. A failed

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceRosterPolicy
-import Vegas.Pending.ReactiveReplaySettlement
+import Vegas.Pending.ReactiveSilentSettlement
 
 /-! # Actual waiting before the final source opportunity
 
@@ -39,7 +39,7 @@ theorem sourceServiceLastPolicy_waiting_law
     (runtime setup).runInteractionPlan leaks
         (sourceServiceLastPolicy setup leaks rosters profile) network
         (visits.map ServiceInstruction.player) initial =
-      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
+      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
         network (visits.map ServiceInstruction.player) initial := by
   classical
   let app := application setup leaks
@@ -56,7 +56,7 @@ theorem sourceServiceLastPolicy_waiting_law
       let activated := initial.sampledActivation app who sample
       have law : sourceServiceLastPolicy setup leaks rosters profile who
           (activated.recall who) (activated.observe app who) =
-          app.replayPolicy (activated.recall who) (activated.observe app who) := by
+          app.silentPolicy (activated.recall who) (activated.observe app who) := by
         apply sourceServiceLastPolicy_wait setup leaks rosters profile who
           (activated.recall who) (activated.observe app who)
         intro selected serving
@@ -70,12 +70,12 @@ theorem sourceServiceLastPolicy_waiting_law
         omega
       change (sourceServiceLastPolicy setup leaks rosters profile who
         (activated.recall who) (activated.observe app who)).bind _ =
-        (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
+        (app.silentPolicy (activated.recall who) (activated.observe app who)).bind _
       rw [law]
       apply bind_congr_on_support _
       intro response supported
       have unchanged : (activated.respond app who response).application = initial.application := by
-        rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> rfl
+        rcases app.silentPolicy_cases _ _ response supported with rfl; rfl
       apply ih _ (by rw [unchanged]; exact sole)
       rw [app.respond_recall_length]
       change (initial.recall owner).length + (if who = owner then 1 else 0) + rest.count owner < _
@@ -111,9 +111,9 @@ theorem sourceServiceLastPolicy_waiting_data
       final.network.Satisfies safe ∧ initial.network.pending ⊆ final.network.pending := by
   rw [sourceServiceLastPolicy_waiting_law setup leaks rosters profile network event owner owned
     visits initial sole before] at reached
-  exact (runtime setup).replay_window_preserves leaks (fun _ =>
-    (application setup leaks).replayPolicy) network owner initial
-      (fun current who response _ _ supported => (application setup leaks).replayPolicy_cases
+  exact (runtime setup).silent_window_preserves leaks (fun _ =>
+    (application setup leaks).silentPolicy) network owner initial
+      (fun current who response _ _ supported => (application setup leaks).silentPolicy_cases
         (current.recall who) (current.observe (application setup leaks) who) response supported)
       safe packets visits final reached
 
@@ -150,7 +150,7 @@ theorem sourceServiceLastPolicy_foreign_tail
     (runtime setup).runInteractionPlan leaks
         (sourceServiceLastPolicy setup leaks rosters profile) network
         (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial =
-      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
+      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
         network (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial := by
   let app := application setup leaks
   induction visits generalizing initial with
@@ -176,20 +176,20 @@ theorem sourceServiceLastPolicy_foreign_tail
           exact absurd (Option.some.inj (facts.2.symm.trans owned)) foreign
       change (sourceServiceLastPolicy setup leaks rosters profile who
         (activated.recall who) (activated.observe app who)).bind _ =
-        (app.replayPolicy (activated.recall who) (activated.observe app who)).bind _
+        (app.silentPolicy (activated.recall who) (activated.observe app who)).bind _
       rw [law]
       apply bind_congr_on_support _
       intro response supported
       apply ih restAbsent
-      rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;> exact sole
+      rcases app.silentPolicy_cases _ _ response supported with rfl; exact sole
 
-theorem replay_window_eventRecorded
+theorem silent_window_eventRecorded
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (network : (runtime setup).NetworkPolicy leaks) (visits : List Player)
     (initial final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (fun _ => (application setup leaks).replayPolicy) network
+      (fun _ => (application setup leaks).silentPolicy) network
         (visits.map ServiceInstruction.player) initial).support)
     (owner : Player) (event : (graph setup).EventId) :
     (runtime setup).eventRecorded leaks (final.recall owner) event =
@@ -210,10 +210,11 @@ theorem replay_window_eventRecorded
       rw [ih _ reached]
       by_cases same : owner = who
       · subst who
-        rcases app.replayPolicy_cases _ _ response supported with rfl | ⟨id, rfl⟩ <;>
+        rcases app.silentPolicy_cases _ _ response supported with rfl;
           simp only [eventRecorded, ReactiveApplication.Execution.respond, ↓reduceIte,
             List.any_append, List.any_cons, List.any_nil, submittedEvent?, reduceCtorEq,
-            decide_false, Bool.or_false] <;> rfl
+            decide_false, Bool.or_false]
+        rfl
       · rw [app.respond_recall_other _ who owner same]
         rfl
 

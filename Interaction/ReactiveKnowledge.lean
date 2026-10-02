@@ -18,15 +18,7 @@ theorem respond_foreignLeaks (execution : app.Execution) (who : Principal) (acti
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact valid
-  | some transmission =>
-      cases transmission with
-      | submit material => exact valid
-      | replay id =>
-          change ({ execution with
-            network := (execution.network.replay who id).2
-            recall := _ } : app.Execution).ForeignLeaks app
-          unfold MessageNetwork.replay
-          split <;> exact valid
+  | some material => exact valid
 
 theorem environment_foreignLeaks (execution next : app.Execution) (command : app.Command)
     (valid : execution.ForeignLeaks app)

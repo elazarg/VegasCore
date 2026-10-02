@@ -28,7 +28,7 @@ def nativeOpeningSubmission (event : nativeGraph.EventId) (candidate : Handle na
 
 def nativeOpeningAction (event : nativeGraph.EventId) (candidate : Handle nativeGraph)
     (bit : Bool) : (serviceApp observation).Action :=
-  ⟨some (.submit (nativeOpeningSubmission event candidate bit))⟩
+  ⟨some (nativeOpeningSubmission event candidate bit)⟩
 
 theorem native_opening_available (who : Player) (event : nativeGraph.EventId)
     (candidate : Handle nativeGraph) (bit : Bool)

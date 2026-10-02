@@ -35,8 +35,8 @@ private def initial : app.Execution :=
 private def silent : app.Action := ⟨none⟩
 
 private def opening : app.Action :=
-  ⟨some (.submit ⟨⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩,
-    .owned ⟨bobHandle, ⟨.bool, true⟩⟩⟩)⟩
+  ⟨some ⟨⟨.opening bobPublication bobHandle ⟨.bool, true⟩, none⟩,
+    .owned ⟨bobHandle, ⟨.bool, true⟩⟩⟩⟩
 
 private def packet : Message Player app.Payload :=
   ⟨(bob, 0), ⟨.opening bobPublication bobHandle ⟨.bool, true⟩,
@@ -87,8 +87,8 @@ theorem both_openings_compiled :
       ((activated initial bob).observe app bob).application = opening := by
     unfold reactiveDecision
     rw [bob_node]
-    change (⟨some (.submit ((disclosureSubmission
-      (.opening bobPublication bobHandle ⟨.bool, true⟩)).normalizeReactive bob _ []))⟩ :
+    change (⟨some ((disclosureSubmission
+      (.opening bobPublication bobHandle ⟨.bool, true⟩)).normalizeReactive bob _ [])⟩ :
       app.Action) = opening
     rw [disclosureSubmission_normalize_opening bob _ bobPublication bobHandle
       ⟨.bool, true⟩ rfl (initial_bob_candidate false)]
@@ -158,7 +158,7 @@ private def records (early : Bool) : List app.TrafficRecord :=
     app.trafficStep (some ⟨1, some bob, activated (firstObserver early) bob⟩)
       (some ⟨1, none, secondOwner early⟩)
 
-/-- Phase, prior ledger, broadcaster and envelope all agree. The current
+/-- Phase, prior ledger, author and envelope all agree. The current
 terminal traffic readout does not record silent activation boundaries. -/
 theorem same_traffic_records : records true = records false := rfl
 

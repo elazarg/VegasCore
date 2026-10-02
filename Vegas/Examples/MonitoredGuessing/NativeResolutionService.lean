@@ -64,12 +64,12 @@ theorem resolution_submission_inclusion (players : Player → nativeApp.Policy)
     (submission : WitnessedSubmission nativeGraph) (next : EventGraphRuntime.State nativeGraph)
     (serials : execution.network.SerialsBeforeNext)
     (addressed : submission.call.packet.event? nativeGraph = some event)
-    (unchanged : (execution.respond nativeApp who ⟨some (.submit submission)⟩).application =
+    (unchanged : (execution.respond nativeApp who ⟨some submission⟩).application =
       execution.application)
     (accepted : handle nativeRuntime execution.application
       ⟨(who, execution.network.nextSerial who), submission.call.packet⟩ = some next) :
     (nativeRuntime.interactionStep nativeLeaks players nativeNetwork (.includeLatest event who)
-      (execution.respond nativeApp who ⟨some (.submit submission)⟩)).map
+      (execution.respond nativeApp who ⟨some submission⟩)).map
         (fun result => (result.application, result.receipts)) =
       PMF.pure
         (next, execution.receipts ++ [((who, execution.network.nextSerial who), true)]) :=
@@ -79,13 +79,13 @@ theorem resolution_submission_inclusion (players : Player → nativeApp.Policy)
   simp only [interactionStep, interactionInstruction, selected, PMF.pure_bind,
     ReactiveApplication.dispatch, ReactiveApplication.Execution.environmentStep,
     PMF.pure_map, ReactiveApplication.Command.actor?, ReactiveApplication.resume]
-  have lookup : (execution.respond nativeApp who ⟨some (.submit submission)⟩).network.lookup
+  have lookup : (execution.respond nativeApp who ⟨some submission⟩).network.lookup
       (who, execution.network.nextSerial who) =
       some ⟨(who, execution.network.nextSerial who),
-        submission.emit (execution.respond nativeApp who ⟨some (.submit submission)⟩).application
+        submission.emit (execution.respond nativeApp who ⟨some submission⟩).application
           who (execution.network.known who)⟩ := serials.lookup_submit who _
   have valid : (submission.emit (execution.respond nativeApp who
-      ⟨some (.submit submission)⟩).application who (execution.network.known who)).tokenValid =
+      ⟨some submission⟩).application who (execution.network.known who)).tokenValid =
         true := by
     rw [WitnessedSubmission.tokenValid_emit, unchanged]
     exact tokenFor_tokenValid_of_handle nativeRuntime _ next _ _ none accepted
@@ -93,16 +93,16 @@ theorem resolution_submission_inclusion (players : Player → nativeApp.Policy)
   rw [lookup]
   simp only [reactiveApplication_handle_of_tokenValid nativeRuntime nativeLeaks _
     ⟨(who, execution.network.nextSerial who), submission.emit
-      (execution.respond nativeApp who ⟨some (.submit submission)⟩).application who
+      (execution.respond nativeApp who ⟨some submission⟩).application who
         (execution.network.known who)⟩ valid]
   change PMF.pure
     (((handle nativeRuntime
-      (execution.respond nativeApp who ⟨some (.submit submission)⟩).application
+      (execution.respond nativeApp who ⟨some submission⟩).application
       ⟨(who, execution.network.nextSerial who), submission.call.packet⟩).getD
-        (execution.respond nativeApp who ⟨some (.submit submission)⟩).application),
-      (execution.respond nativeApp who ⟨some (.submit submission)⟩).receipts ++
+        (execution.respond nativeApp who ⟨some submission⟩).application),
+      (execution.respond nativeApp who ⟨some submission⟩).receipts ++
         [((who, execution.network.nextSerial who), (handle nativeRuntime
-          (execution.respond nativeApp who ⟨some (.submit submission)⟩).application
+          (execution.respond nativeApp who ⟨some submission⟩).application
           ⟨(who, execution.network.nextSerial who), submission.call.packet⟩).isSome)]) = _
   rw [unchanged, accepted, nativeApp.respond_receipts]
   rfl

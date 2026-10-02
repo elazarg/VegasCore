@@ -72,7 +72,7 @@ theorem submitted_binding_fresh_iff
     (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
     (query : CandidateSlot graph) :
     let response : (runtime.reactiveApplication leaks).Action :=
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
     let submitted := execution.respond (runtime.reactiveApplication leaks) who response
     submitted.application.candidates.lookup (who, query) = .fresh ↔
       query ≠ .prepared serial ∧
@@ -111,15 +111,15 @@ theorem rawBinding_reserved_preparedPrefix
     (reached : final ∈
       (runtime.interactionStep leaks players scheduler (.includeLatest event who)
         (execution.respond (runtime.reactiveApplication leaks) who
-          ⟨some (.submit ⟨⟨.commitment event
+          ⟨some ⟨⟨.commitment event
             (who, .prepared (execution.application.publicView.bindingCount who)), opening⟩,
-              .none⟩)⟩)).support) :
+              .none⟩⟩)).support) :
     final.application.PreparedPrefix who := by
   let app := runtime.reactiveApplication leaks
   let serial := execution.application.publicView.bindingCount who
   let material : WitnessedSubmission graph :=
     ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩
-  let submitted := execution.respond app who ⟨some (.submit material)⟩
+  let submitted := execution.respond app who ⟨some material⟩
   let id := (who, execution.network.nextSerial who)
   have fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh :=
     (prefixFresh serial).mpr (Nat.le_refl _)

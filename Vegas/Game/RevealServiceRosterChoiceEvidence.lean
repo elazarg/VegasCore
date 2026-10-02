@@ -71,7 +71,7 @@ theorem roster_extra_choice_traffic [setup.FiniteInitialLaw]
         (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).history
           history.1)).support) :
     ∃ record ∈ (application setup leaks).stateTraffic next.state,
-      record.input.envelope.sender = who ∧
+      record.envelope.sender = who ∧
       permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = false := by
   classical
   let sourceMenu := rosterMenu setup leaks bounds rosters
@@ -109,7 +109,7 @@ theorem roster_extra_choice_traffic [setup.FiniteInitialLaw]
           ∃ record, (application setup leaks).trafficStep
               (some ⟨remaining, some who, execution⟩)
               (some ⟨remaining, none, execution.respond (application setup leaks) who response⟩) =
-                [record] ∧ record.input.envelope.sender = who ∧
+                [record] ∧ record.envelope.sender = who ∧
             permittedRosterEnvelope setup leaks (envelopeEvidence setup leaks record) = false := by
         have actualTrace := history.1.trace
         rw [current] at actualTrace

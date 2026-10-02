@@ -81,7 +81,7 @@ theorem reactiveDecision_disclosure_public_law (runtime : EventGraphRuntime grap
           (cast (congrArg EventField.Action outputEq) action) state.config.store = some result ∧
       (runtime.reactiveDecision leaks owner event action
         ((runtime.reactiveApplication leaks).observePlayer state owner)).transmission =
-          some (.submit (disclosureSubmission packet)) ∧
+          some (disclosureSubmission packet) ∧
       handle runtime state ⟨id, packet⟩ = some next ∧
       next.config.store = (state.complete event ready action
         (cast (congrArg EventField.Value outputEq.symm) result)).config.store ∧

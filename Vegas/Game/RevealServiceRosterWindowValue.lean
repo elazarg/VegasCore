@@ -160,7 +160,7 @@ theorem roster_owner_response_value
     let app := application setup leaks
     let packet := (runtime setup).windowOpening leaks event candidate raw
     let policies := fun mode => app.scheduledPolicy (rosterOffset setup rosters owner event) mode
-      (fun _ _ => PMF.pure packet) app.replayPolicy
+      (fun _ _ => PMF.pure packet) app.silentPolicy
     let after := (current.sampledActivation app owner sample).respond app owner action
     expect ((app.policyMixture (rosterSelection choice timing) policies).posterior
       (after.recall owner))

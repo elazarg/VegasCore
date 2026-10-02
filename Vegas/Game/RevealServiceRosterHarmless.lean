@@ -70,7 +70,7 @@ theorem roster_harmless_response_disclosure
     let app := application setup leaks
     let family := fun mode => app.scheduledPolicy (rosterOffset setup rosters owner event) mode
       (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-        app.replayPolicy
+        app.silentPolicy
     let activated := current.sampledActivation app who sample
     (((app.policyMixture choices family).posterior
       ((activated.respond app who action).recall owner)).map Option.isSome) =
@@ -168,7 +168,7 @@ theorem roster_harmless_response_source_law
   let family := fun mode : Option (Fin ((rosters event).count owner)) =>
     app.scheduledPolicy (rosterOffset setup rosters owner event) mode
     (fun _ _ => PMF.pure ((runtime setup).windowOpening leaks event candidate raw))
-      app.replayPolicy
+      app.silentPolicy
   let after := fun response => (current.sampledActivation app who sample).respond app who response
   let posterior := fun response =>
     (app.policyMixture choices family).posterior ((after response).recall owner)

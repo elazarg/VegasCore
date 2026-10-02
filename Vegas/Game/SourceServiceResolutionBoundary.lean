@@ -259,13 +259,13 @@ theorem ServiceBoundary.reveal_block_conformance
     (owned : (graph setup).actor? event = some owner)
     (traffic : ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true)
+        record.envelope = true)
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks players network
       (rosterBlock setup rosters event) execution).support) :
     ∀ record ∈ (application setup leaks).executionTraffic final,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   have sole := soleReady_of_ready setup execution.application (boundary.ready event atRank)
   have phase := reached
   rw [rosterBlock_of_owner setup rosters event owner owned] at phase

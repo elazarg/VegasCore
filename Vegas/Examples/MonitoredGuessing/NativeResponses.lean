@@ -19,12 +19,12 @@ def nativeSilent : nativeApp.Action := ⟨none⟩
 
 def nativeOpeningAction (event : nativeGraph.EventId) (handle : Handle nativeGraph)
     (bit : Bool) : nativeApp.Action :=
-  ⟨some (.submit ⟨⟨.opening event handle ⟨.bool, bit⟩, none⟩,
-    .owned ⟨handle, ⟨.bool, bit⟩⟩⟩)⟩
+  ⟨some ⟨⟨.opening event handle ⟨.bool, bit⟩, none⟩,
+    .owned ⟨handle, ⟨.bool, bit⟩⟩⟩⟩
 
 def nativeGuessAction (guess : Bool) : nativeApp.Action :=
   if guess then nativeOpeningAction bobPublication bobHandle true
-  else ⟨some (.submit ⟨⟨.withhold bobPublication, none⟩, .none⟩)⟩
+  else ⟨some ⟨⟨.withhold bobPublication, none⟩, .none⟩⟩
 
 def observedAliceBit (view : nativeApp.PlayerView) : Bool :=
   match view.application.candidates (.initial aliceInput) with
@@ -51,10 +51,7 @@ def nativeAliceResponse (view : nativeApp.PlayerView) : nativeApp.Action :=
     nativeOpeningAction alicePublication aliceHandle (observedAliceBit view)
   else nativeSilent
 
-def nativeWatcherResponse (view : nativeApp.PlayerView) : nativeApp.Action :=
-  match view.messages.leaked.find? (fun message => message.sender = alice) with
-  | none => nativeSilent
-  | some message => ⟨some (.replay message.id)⟩
+def nativeWatcherResponse (_view : nativeApp.PlayerView) : nativeApp.Action := nativeSilent
 
 theorem native_silent_available (who : Player) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) : nativeSilent ∈ nativeMenu.actions who past view := by
@@ -99,15 +96,7 @@ theorem native_alice_available (past : List nativeApp.PlayerEntry)
 theorem native_watcher_available (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) :
     nativeWatcherResponse view ∈ nativeMenu.actions watcher past view := by
-  unfold nativeWatcherResponse
-  split
-  · exact native_silent_available watcher past view
-  · rename_i message found
-    change (⟨some (.replay message.id)⟩ : nativeApp.Action) ∈
-      (nativeBounds.rawMenu nativeRuntime nativeLeaks).actions watcher past view
-    rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
-    refine ⟨message, ?_, rfl⟩
-    exact List.mem_append_left _ (List.mem_append_right _ (List.mem_of_find?_eq_some found))
+  exact native_silent_available watcher past view
 
 def nativeAlicePolicy : nativeApp.Policy := fun _ view => PMF.pure (nativeAliceResponse view)
 def nativeWatcherPolicy : nativeApp.Policy :=

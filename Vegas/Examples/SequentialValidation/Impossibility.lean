@@ -24,7 +24,7 @@ def nativeGuessPolicy (guess : Bool) : nativeModel.BehavioralPolicy true := fun 
   match info with
   | none => PMF.pure ⟨none, rfl⟩
   | some (past, view) => PMF.pure
-      ⟨some ⟨some (.submit (nativeGuessSubmission guess))⟩,
+      ⟨some ⟨some (nativeGuessSubmission guess)⟩,
         ⟨_, native_guess_available guess past view, rfl⟩⟩
 
 theorem native_guess_deviation (profile : Profile nativeModel.behavioralSignature)

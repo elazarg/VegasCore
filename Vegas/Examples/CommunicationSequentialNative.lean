@@ -55,7 +55,7 @@ def evidencePolicy (answer : Bool → Bool) : nativeModel.BehavioralPolicy true 
   | none => PMF.pure ⟨none, rfl⟩
   | some (past, view) =>
       let guess := answer (disclosedBit view)
-      PMF.pure ⟨some ⟨some (.submit (nativeGuessSubmission guess))⟩,
+      PMF.pure ⟨some ⟨some (nativeGuessSubmission guess)⟩,
         ⟨_, native_guess_available guess past view, rfl⟩⟩
 
 theorem evidencePolicy_guess (profile : Profile nativeModel.behavioralSignature)

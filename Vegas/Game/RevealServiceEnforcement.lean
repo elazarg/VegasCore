@@ -32,33 +32,19 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- No unobservable silence or old replay is misclassified as a punishable
 departure. An excluded effective response necessarily allocates a fresh packet. -/
 theorem extra_response_submission (execution : (application setup leaks).Execution)
-    (owner : Player) (inputRecall : execution.InputRecall (application setup leaks))
-    (published : ∀ message ∈ execution.network.known owner,
+    (owner : Player) (_inputRecall : execution.InputRecall (application setup leaks))
+    (_published : ∀ message ∈ execution.network.known owner,
       message.id ∈ execution.network.ledger.map Message.id)
     (response : (application setup leaks).Action)
     (effective : response ∈ (bounds.menu (runtime setup) leaks).actions owner
       (execution.recall owner) (execution.observe (application setup leaks) owner))
     (extra : response ∉ ordinaryActions setup leaks bounds owner (execution.recall owner)
       (execution.observe (application setup leaks) owner)) :
-    ∃ submission, response = ⟨some (.submit submission)⟩ := by
+    ∃ submission, response = ⟨some submission⟩ := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact (extra (silence_ordinary setup leaks bounds owner _ _)).elim
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact ⟨submission, rfl⟩
-      | replay id =>
-          have known := ((bounds.menu_mem (runtime setup) leaks owner _ _ _).mp effective).1
-          have actual := (ReactiveApplication.SubmissionNormalization.replayKnown_iff
-            (app := application setup leaks) execution owner inputRecall id).mp known
-          obtain ⟨message, member, identified⟩ := actual
-          have onLedger := published message member
-          obtain ⟨recorded, recordedMem, same⟩ := List.mem_map.mp onLedger
-          have ordinary := published_replay_ordinary setup leaks bounds owner
-            (execution.recall owner) (execution.observe (application setup leaks) owner)
-            recorded recordedMem
-          rw [same, identified] at ordinary
-          exact (extra ordinary).elim
+  | some submission => exact ⟨submission, rfl⟩
 
 /-- Exhaustive packet classification at an actual ordinary checkpoint. The
 canonical opening is identified by the existing local decoder; all remaining
@@ -89,7 +75,7 @@ theorem extra_response_packet_cases (execution : (application setup leaks).Execu
       (execution.recall owner) (execution.observe (application setup leaks) owner))
     (extra : response ∉ ordinaryActions setup leaks bounds owner (execution.recall owner)
       (execution.observe (application setup leaks) owner)) :
-    ∃ submission, response = ⟨some (.submit submission)⟩ ∧
+    ∃ submission, response = ⟨some submission⟩ ∧
       let state := (application setup leaks).submit execution.application owner submission
       let packet := submission.emit state owner (execution.network.known owner)
       (application setup leaks).handle state
@@ -111,30 +97,30 @@ theorem extra_response_packet_cases (execution : (application setup leaks).Execu
       have normal := ((bounds.menu_mem (runtime setup) leaks owner _ _ _).mp effective).2
       have equivalent : ((runtime setup).reactiveNormalization leaks).action owner
           (execution.recall owner) (execution.observe (application setup leaks) owner)
-          ⟨some (.submit submission)⟩ =
+          ⟨some submission⟩ =
         ((runtime setup).reactiveNormalization leaks).action owner
           (execution.recall owner) (execution.observe (application setup leaks) owner)
           ((runtime setup).canonicalRevealResponse leaks event candidate raw true) := by
-        change (⟨some (.submit (submission.normalizeReactive owner _ _))⟩ :
-            (application setup leaks).Action) = ⟨some (.submit _)⟩
+        change (⟨some (submission.normalizeReactive owner _ _)⟩ :
+            (application setup leaks).Action) = ⟨some _⟩
         rw [known]
         exact congrArg (fun material : WitnessedSubmission (graph setup) =>
-          (⟨some (.submit material)⟩ : (application setup leaks).Action)) canonical
+          (⟨some material⟩ : (application setup leaks).Action)) canonical
       have isOpening : opening? setup leaks owner (execution.recall owner)
           (execution.observe (application setup leaks) owner) =
-          some ⟨some (.submit submission)⟩ := by
+          some ⟨some submission⟩ := by
         rw [selected, ← equivalent, normal]
       exact (extra (opening_ordinary setup leaks bounds owner _ _ _ isOpening effective)).elim
     · exact Or.inl rejected
     · exact Or.inr malformed
   · refine Or.inl ?_
     have preserved := (runtime setup).reactive_respond_application leaks execution owner
-      ⟨some (.submit submission)⟩ |>.1
+      ⟨some submission⟩ |>.1
     have stillReady :
         ((application setup leaks).submit execution.application owner submission).config.cut.Ready
           event := by
       change (execution.respond (application setup leaks) owner
-        ⟨some (.submit submission)⟩).application.config.cut.Ready event
+        ⟨some submission⟩).application.config.cut.Ready event
       rw [preserved]
       exact ready
     exact reactiveHandle_none ((runtime setup).handle_eq_none_of_other_event_ready_public
@@ -222,8 +208,8 @@ private theorem nonmatching_submission_wait (owner : Player)
     (different : submission.call.packet.event? (graph setup) ≠ some event) :
     (runtime setup).reactiveLatest leaks event owner
       ((execution.respond (application setup leaks) owner
-        ⟨some (.submit submission)⟩).observeEnvironment (application setup leaks)) = .wait := by
-  let submitted := execution.respond (application setup leaks) owner ⟨some (.submit submission)⟩
+        ⟨some submission⟩).observeEnvironment (application setup leaks)) = .wait := by
+  let submitted := execution.respond (application setup leaks) owner ⟨some submission⟩
   have absent : submitted.network.pending.reverse.find? (fun message =>
       message.sender = owner ∧ message.payload.call.event? (graph setup) = some event ∧
         message.id ∉ submitted.network.ledger.map Message.id) = none := by
@@ -273,7 +259,7 @@ theorem reserved_observation_departure_lower (owner watcher : Player) (different
           ⟨(owner, before.network.nextSerial owner), packet⟩ = none ∨
         certifiedOpening packet = false)
     (continuation : (application setup leaks).Scheduler) (count : Nat) :
-    let submitted := before.respond (application setup leaks) owner ⟨some (.submit submission)⟩
+    let submitted := before.respond (application setup leaks) owner ⟨some submission⟩
     ((leaks watcher submitted.network.pending).toOuterMeasure
         {selected | (owner, before.network.nextSerial owner) ∈ selected}).toReal ≤
       (((((runtime setup).interactionStep leaks players
@@ -284,15 +270,14 @@ theorem reserved_observation_departure_lower (owner watcher : Player) (different
               {final | markedDeparture setup leaks watcher owner final}).toReal := by
   classical
   let app := application setup leaks
-  let submitted := before.respond app owner ⟨some (.submit submission)⟩
+  let submitted := before.respond app owner ⟨some submission⟩
   let id := (owner, before.network.nextSerial owner)
   let packet := submission.emit submitted.application owner (before.network.known owner)
   let message : Message Player (WitnessedPacket (graph setup)) := ⟨id, packet⟩
   have serials := facts.serials
   have condemned : CondemnedFacts setup leaks message submitted :=
     ⟨settledFacts_respond before facts owner _,
-      List.mem_map.mpr ⟨⟨owner, message⟩, List.mem_append_right _
-        (List.mem_singleton_self _), rfl⟩,
+      List.mem_append_right _ (List.mem_singleton_self _),
       condemned_of_unacceptable before facts sound binding publications owner submission
         departure⟩
   have persistent := markedDeparture_persistent setup leaks watcher owner players
@@ -365,8 +350,7 @@ theorem reserved_observation_departure_lower (owner watcher : Player) (different
       exact serials.next_unpublished owner
     have known : waited.network.known watcher = before.network.known watcher := by
       change (before.network.submit owner packet).2.known watcher = _
-      simp only [MessageNetwork.known, MessageNetwork.submit, List.filterMap_append,
-        List.filterMap_cons, List.filterMap_nil, different, ↓reduceIte, List.append_nil]
+      simp [MessageNetwork.known, MessageNetwork.submit, Message.sender, different]
     have unknown : (waited.network.known watcher).any (fun message => message.id = id) =
         false := by
       rw [known]

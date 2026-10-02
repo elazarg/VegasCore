@@ -36,44 +36,29 @@ theorem repeated_submission_response_cases (bounds : MessageBounds graph)
     (available : response ∈ (bounds.menu runtime leaks).actions owner (execution.recall owner)
       (execution.observe (runtime.reactiveApplication leaks) owner)) :
     let app := runtime.reactiveApplication leaks
-    response ∈ (app.replayPolicy (execution.recall owner) (execution.observe app owner)).support ∨
+    response ∈ (app.silentPolicy (execution.recall owner) (execution.observe app owner)).support ∨
       ∃ record, app.trafficStep (some ⟨remaining, some owner, execution⟩)
           (some ⟨remaining, none, execution.respond app owner response⟩) = [record] ∧
-        record.input.envelope.sender = owner ∧
+        record.envelope.sender = owner ∧
         runtime.permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false := by
+          record.envelope = false := by
   classical
   let app := runtime.reactiveApplication leaks
   have member := (bounds.menu_mem runtime leaks owner _ _ response).mp available
   have known := app.known_from_recall execution owner recalled
   rcases response with ⟨transmission⟩
   cases transmission with
-  | none => exact Or.inl (app.replayPolicy_support _ _ none (Finset.mem_insert_self _ _))
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          obtain ⟨message, present, same⟩ :=
-            (ReactiveApplication.SubmissionNormalization.replayKnown_iff execution owner
-              recalled id).mp member.1
-          apply Or.inl
-          apply app.replayPolicy_support _ _ (some id)
-          apply Finset.mem_insert_of_mem
-          apply Finset.mem_image.mpr
-          refine ⟨id, ?_, rfl⟩
-          apply List.mem_toFinset.mpr
-          apply List.mem_map.mpr
-          rw [known] at present
-          exact ⟨message, present, same⟩
-      | submit submission =>
-          let record : app.TrafficRecord :=
-            ⟨execution.application.publicView, execution.network.ledger,
-              ⟨owner, ⟨(owner, execution.network.nextSerial owner), submission.emit
-                (app.submit execution.application owner submission) owner
-                  (execution.network.known owner)⟩⟩⟩
-          refine Or.inr ⟨record, app.trafficStep_submit execution remaining owner submission,
-            rfl, ?_⟩
-          exact runtime.permittedServiceEnvelope_wrong_serial record.observation record.ledger
-            record.input.envelope (serials.next_unpublished owner) repeated
+  | none => exact Or.inl (app.silentPolicy_support _ _)
+  | some submission =>
+      let record : app.TrafficRecord :=
+        ⟨execution.application.publicView, execution.network.ledger,
+          ⟨(owner, execution.network.nextSerial owner), submission.emit
+            (app.submit execution.application owner submission) owner
+              (execution.network.known owner)⟩⟩
+      refine Or.inr ⟨record, app.trafficStep_submit execution remaining owner submission,
+        rfl, ?_⟩
+      exact runtime.permittedServiceEnvelope_wrong_serial record.observation record.ledger
+        record.envelope (serials.next_unpublished owner) repeated
 
 namespace BindingMemory.Frame
 
@@ -91,7 +76,6 @@ theorem repeated_submission_stopped_response_coupling
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (remaining : Nat)
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
@@ -112,9 +96,9 @@ theorem repeated_submission_stopped_response_coupling
       ∀ next ∈ coupling.support,
         (∃ record, app.trafficStep (some ⟨remaining, some owner, original⟩)
             (some ⟨remaining, none, next.1⟩) = [record] ∧
-          record.input.envelope.sender = owner ∧
+          record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.2.2.shadow = memory.shadow ∧
@@ -144,8 +128,9 @@ theorem repeated_submission_stopped_response_coupling
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed,
         PMF.map_comp]
     simp only [law, adjusted, proposed, frame.observed, app, Function.comp_def]
-  have replayLaw := app.replayPolicy_eq_of_network_eq original repaired owner leftRecall
-    rightRecall frame.network
+  have replayLaw :
+      app.silentPolicy (original.recall owner) (original.observe app owner) =
+        app.silentPolicy (repaired.recall owner) (repaired.observe app owner) := rfl
   refine ⟨coupling, ?_, ?_, ?_⟩
   · simp only [coupling, PMF.map_comp]
     rfl
@@ -161,14 +146,15 @@ theorem repeated_submission_stopped_response_coupling
         leftRecall serials repeated response (available response selected) with replay | departure
     · have unchanged : memory.repairResponse runtime leaks owner
           (repaired.observe app owner) response = (response, memory.shadow) := by
-        rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        rfl
       have legal : (proposed response).1 ∈ menu.actions owner (repaired.recall owner)
           (repaired.observe app owner) := by
         apply coverage
         dsimp only [proposed]
         rw [unchanged]
         rw [replayLaw] at replay
-        exact bounds.replay_compiled runtime leaks owner _ _ response replay
+        exact bounds.silent_compiled runtime leaks owner _ _ response replay
       right
       dsimp only [adjusted]
       rw [ite_eq_left legal]
@@ -176,10 +162,12 @@ theorem repeated_submission_stopped_response_coupling
       rw [unchanged]
       refine ⟨frame.transport_response response ?_, ?_, rfl, ?_⟩
       · intro material
-        rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        simp
       · rw [app.respond_recall_length]
         omega
-      · rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
+      · rcases app.silentPolicy_cases _ _ response replay with rfl
+        rfl
     · exact Or.inl departure
 
 /-- The repeated-submission split includes the real passive pending sample at
@@ -192,7 +180,6 @@ theorem repeated_submission_stopped_activation_coupling
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
     (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (remaining : Nat)
     (serials : original.network.SerialsBeforeNext)
     (repeated : original.network.nextSerial owner ≠
@@ -220,9 +207,9 @@ theorem repeated_submission_stopped_activation_coupling
       ∀ next ∈ coupling.support,
         (∃ record, app.trafficStep (some ⟨remaining + 1, none, original⟩)
             (some ⟨remaining, none, next.1⟩) = [record] ∧
-          record.input.envelope.sender = owner ∧
+          record.envelope.sender = owner ∧
           runtime.permittedServiceEnvelope record.observation record.ledger
-            record.input.envelope = false) ∨
+            record.envelope = false) ∨
         (Frame runtime leaks next.2.2 owner next.1 next.2.1 ∧
           reference.length ≤ (next.2.1.recall owner).length ∧
           next.2.2.shadow = memory.shadow ∧
@@ -234,7 +221,7 @@ theorem repeated_submission_stopped_activation_coupling
   have existsStep (selected) (supported : selected ∈ sample.support) :=
     (frame.activate owner selected).repeated_submission_stopped_response_coupling
       bounds menu players
-      reference started leftRecall rightRecall remaining (serials.learn owner selected) repeated
+      reference started leftRecall remaining (serials.learn owner selected) repeated
       (coverage selected supported) (available selected supported)
   let step := fun selected supported => (existsStep selected supported).choose
   refine ⟨sample.bindOnSupport step, ?_, ?_, ?_⟩

@@ -39,7 +39,7 @@ The implementation separates three responsibilities:
 |---|---|
 | `GameTheoryExtensions/Math/Probability` | Regularity, its expectation characterization, exact displaced-mass coupling, and weighted and priority choice laws |
 | `GameTheoryExtensions/Core` | Optimal optional submissions, supported recovery, and exact response-law factorization under regular selection |
-| `Interaction` | Pending-or-published invariant, at-most-once service contract, all-replay invariance for unpublished menus, and concrete selection laws |
+| `Interaction` | Fresh identifier allocation, pending-or-published invariant, at-most-once inclusion, and concrete selection laws |
 | `Vegas/Pending` | The recovery lottery instantiates the local incentive theorem; the active reserved service includes each identifier at most once at every legal history |
 
 The mathematical statements developed here have the following proof anchors:
@@ -54,13 +54,11 @@ The mathematical statements developed here have the following proof anchors:
   the distribution of displaced old probability mass on the fresh branch.
 - [`interaction_history_publishedOnce`](../Vegas/Pending/ReactiveServicePublication.lean)
   proves at-most-once inclusion in the actual service, including rejected calls.
-- [`replay_unpublished_history`](../Interaction/ReactivePublication.lean)
-  proves all-replay menu invariance at arbitrary legal initialized histories.
 - [`prioritySelection_responses_factor`](../Interaction/ReactiveSelection.lean)
   factors the decoded selection law after arbitrary randomized native responses
   through a fixed branch law, with an explicit decoder and fresh-candidate value.
-- [`bindingSelection_history_regular` and `bindingSelection_value_independent`](../Vegas/Pending/ReactiveSelection.lean)
-  prove all-response regularity and independence from hidden commitment meanings
+- [`bindingSelection_response_regular` and `bindingSelection_value_independent`](../Vegas/Pending/ReactiveSelection.lean)
+  prove all-response regularity at a fixed state and independence from hidden commitment meanings
   for the public binding-acceptance selector. These concern immediate selection;
   future scheduling and the decoded continuation remain separate obligations.
 - [`weightedSet_insert` and `weightedSet_one`](../GameTheoryExtensions/Math/Probability/WeightedSet.lean)
@@ -71,11 +69,11 @@ The mathematical statements developed here have the following proof anchors:
   prove the strict separation example below.
 - [`PendingPriority.lean`](../Interaction/PendingPriority.lean) and
   [`PendingWeighted.lean`](../Interaction/PendingWeighted.lean) lift the choice
-  rules to network packets, including replay and passive learning.
-- [`RetainsEligible.replay_ids`](../Interaction/PendingSelection.lean) covers
-  all raw replays under an explicit candidate-retention premise. The
-  [removed-envelope example](../InteractionTests/PendingPriority.lean) proves
-  why already-pending replay invariance alone does not discharge that premise.
+  rules to network packets, including passive learning.
+- [`serialsBeforeNext_history`](../Interaction/ReactiveAllocation.lean)
+  proves fresh identifier allocation at every legal initialized history. The
+  [priority example](../InteractionTests/PendingPriority.lean) checks selection
+  after consuming an old envelope and submitting a fresh candidate.
 - [`reactiveRecoveryLaw_regular_optimal`](../Vegas/Pending/ReactiveRegularity.lean)
   applies the local theorem to the compiler's recovery policy.
 
@@ -254,16 +252,14 @@ than conclusions of the checked probability and incentive results:
 | Priorities and weights | The same ranking distribution or weight function is used for the responses compared. It may describe delivery or fee attributes; the model does not derive those attributes from propagation or fees. |
 | Encoded values | Holding transport attributes fixed must also hold the selection law fixed across fresh source values. Opaque commitment meaning alone does not establish this for every packet field. |
 | Fees | There is no endogenous fee bid or fee charge in these results. Any future fee deviations require their own delivery and utility analysis. |
-| Replays | Distinct-identifier selectors exclude published identifiers. Rebroadcasts remain observable and legal. No propagation effect is derived from a physical network model. |
+| Retries | Repeating a payload creates a fresh sender-owned identifier. Certificate forwarding retains the authentic fact without reinserting the original envelope. No propagation effect is derived from a physical network model. |
 | At-most-once inclusion | A published envelope is spent even if its call fails. A fresh envelope can retry the same payload. Ethereum nonces motivate this abstraction; nonce ordering, replacements, fees, and reorgs are not modeled. |
 | Service composition | Every relevant inclusion and continuation must satisfy the proof premises. A regular selector installed only at the last step is insufficient to establish those premises. |
 
-The concrete selectors deduplicate identifiers, rather than removing duplicate
-broadcasts from the network. `*_replay` proves equality of selection laws for
-an already pending envelope. `*_learn` proves that passive observation does
-not alter those laws. Neither says that the player forgets what was read, or
-that the player's later reactions are irrelevant. The active reserved service
-has not been changed to use these selectors.
+The concrete selectors operate on distinct identifiers. Their passive-learning
+lemmas prove that observation does not alter selection laws. They do not imply
+that the player forgets what was read or that later reactions are irrelevant.
+The active reserved service has not been changed to use these selectors.
 
 The useful behavioral premise is stronger than the statement that miners do
 not collude. Even a miner maximizing only fees may face dependencies between
@@ -280,17 +276,12 @@ The implementation and proof must address:
 1. **Eligibility.** Identify the competing messages for one event. Account for
    invalid packets, nonce dependencies, receipt order, and expiry. Hidden source
    values must not change the relevant selection attributes.
-2. **Replay and replacement.** Repeating an existing broadcast remains a legal
-   operation. Deduplication may make it inert; improved propagation may make
-   it useful. Any useful effect needs to be simulated or bounded. Neither
-   regularity for fresh candidates nor the mixture equation alone covers all
-   replay behaviors. The checked weighted-copy example isolates this gap.
-   `RetainsEligible` is a checked sufficient invariant for replay to preserve
-   each selector's eligible menu. The carrier's pending-or-published invariant
-   establishes it at every legal history when eligibility excludes published
-   identifiers. The active reactive service enforces at-most-once inclusion
-   independently of application acceptance. The removed-envelope example shows
-   why the exclusion matters for replay of a previously included identifier.
+2. **Retries and replacement.** Repeating a payload creates a fresh envelope.
+   Any backend replacement or propagation effect beyond fresh insertion needs
+   its own correspondence proof. The active reactive service consumes each
+   identifier independently of application acceptance. A weighted-copy selector
+   would change incentives, as the separate mathematical example demonstrates;
+   packet copying is not an action of the current carrier.
 3. **Player capabilities.** The source-optimal value must be encodable with the
    transport attributes needed by the proof. A fresh packet cannot simply
    inherit an old packet's authentic timestamp or erase already distributed

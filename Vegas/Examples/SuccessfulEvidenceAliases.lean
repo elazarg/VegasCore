@@ -31,9 +31,9 @@ def owned : WitnessedSubmission nativeGraph := ⟨call, .owned certificate⟩
 
 def forwarded : WitnessedSubmission nativeGraph := ⟨call, .forward (alice, 0)⟩
 
-def ownedAction : nativeApp.Action := ⟨some (.submit owned)⟩
+def ownedAction : nativeApp.Action := ⟨some owned⟩
 
-def forwardedAction : nativeApp.Action := ⟨some (.submit forwarded)⟩
+def forwardedAction : nativeApp.Action := ⟨some forwarded⟩
 
 /-- Possession comes from an actual earlier output by this same owner. -/
 def afterFirst : nativeApp.Execution :=
@@ -64,7 +64,7 @@ theorem requests_distinct : owned ≠ forwarded := by
 theorem actions_distinct : ownedAction ≠ forwardedAction := by
   intro same
   have impossible := congrArg ReactiveApplication.Action.transmission same
-  exact requests_distinct (ReactiveApplication.Transmission.submit.inj (Option.some.inj impossible))
+  exact requests_distinct (Option.some.inj impossible)
 
 theorem known_packets : ReactiveApplication.ResponseMenu.knownPackets
     (afterFirst.recall alice) (afterFirst.observe nativeApp alice) =
@@ -94,7 +94,7 @@ theorem owned_normalizes_to_forwarded :
     WitnessedSubmission.normalizeReactive, ownedAction, forwardedAction, owned, forwarded,
     call, Submission.normalizeReactive_none, Submission.candidateAfter_opening] using
       congrArg (fun request : EvidenceRequest nativeGraph =>
-        (⟨some (.submit ⟨call, request⟩)⟩ : nativeApp.Action)) normal
+        (⟨some ⟨call, request⟩⟩ : nativeApp.Action)) normal
 
 theorem forwarded_is_normal :
     (nativeRuntime.reactiveNormalization nativeLeaks).action alice
@@ -113,7 +113,7 @@ theorem forwarded_is_normal :
     WitnessedSubmission.normalizeReactive, forwardedAction, forwarded,
     call, Submission.normalizeReactive_none, Submission.candidateAfter_opening] using
       congrArg (fun request : EvidenceRequest nativeGraph =>
-        (⟨some (.submit ⟨call, request⟩)⟩ : nativeApp.Action)) normal
+        (⟨some ⟨call, request⟩⟩ : nativeApp.Action)) normal
 
 theorem same_normal_form :
     (nativeRuntime.reactiveNormalization nativeLeaks).action alice

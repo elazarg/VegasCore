@@ -78,7 +78,7 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
     ⟨(owner, execution.network.nextSerial owner),
       app.packet (app.submit execution.application owner material) owner
         (execution.network.known owner) material⟩
-  have sent : response.transmission = some (.submit material) := by
+  have sent : response.transmission = some material := by
     simp only [response, reactiveDecision, node, material, packet, app,
       reactiveResolutionSubmission_normal runtime leaks execution.application associated]
   let fields := insert binding.field (GuardCheck.listReadFields checks)
@@ -192,7 +192,7 @@ theorem reactiveDecision_disclosure_service (runtime : EventGraphRuntime graph)
   subst currentResult
   have samePacket : packet = selected := by
     simp only [reactiveDecision, node] at transmission
-    have equal := ReactiveApplication.Transmission.submit.inj (Option.some.inj transmission)
+    have equal := Option.some.inj transmission
     exact packetEq.symm.trans
       (congrArg (fun submission : WitnessedSubmission graph => submission.call.packet) equal)
   subst selected

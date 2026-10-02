@@ -2,14 +2,15 @@
 
 import Vegas.Game.SourceServiceAudit
 import Vegas.Pending.ReactiveAuditEquilibrium
+import GameTheoryExtensions.Analysis.Protocol.TerminalPayoffCongruence
 
 /-! # Settled terminal audits in the bounded native runtime
 
 The contract settles once every event has completed. Settlement samples
 authentic signed packets, judges each against the settled record
 (`Vegas.EventGraphRuntime.SettledRecord.Permits`), and charges the packet's
-author. Before settlement nothing is observed and nothing is collected
-(`Vegas.EventGraphRuntime.settlementObservation`).
+author. The audit uses `Vegas.EventGraphRuntime.serviceAuditObservation` at
+every history; settlement pays out only after complete play.
 
 Any retained response menu whose settled executions are clean, and whose every
 additional response transmits a packet breaking the send-time conformance rule,
@@ -54,12 +55,12 @@ theorem settledAudit_collection_after_step (count : Nat)
     (evidence : ∀ next ∈ ((menu.information (initialLaw setup) count scheduler).runBehavioralFrom
       profile 1 history).support,
       ∃ record ∈ (application setup leaks).stateTraffic next.state,
-        record.input.envelope.sender = who ∧
+        record.envelope.sender = who ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false) :
+          record.envelope = false) :
     rate ≤ ((((((menu.information (initialLaw setup) count scheduler).runBehavioralFrom profile
       (1 + fuel) history).map (fun final =>
-        (runtime setup).settlementObservation leaks final.state)).bind
+        (runtime setup).serviceAuditObservation leaks final.state)).bind
           (sourceServiceAudit setup leaks sample)).map (fun verdict => verdict who))
             true).toReal := by
   let app := application setup leaks
@@ -121,11 +122,10 @@ theorem settledAudit_collection_after_step (count : Nat)
               obtain ⟨other, otherPresent, sameAuthor, forbidden⟩ :=
                 settled_breach_of_sendTime_breach (initialLaw setup) count scheduler rawTrace
                   settled record kept breach
-              change rate ≤ TerminalAudit.charge ((runtime setup).settlementObservation leaks)
+              change rate ≤ TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
                 ((runtime setup).serviceAudit leaks _) (some control) who
-              rw [(runtime setup).settlementAudit_charge_settled leaks _ (some control) stopped]
               exact (runtime setup).serviceAudit_charge_from_record leaks
-                (fun settled traffic => (settled, traffic.input.envelope))
+                (fun settled traffic => (settled, traffic.envelope))
                 (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2)
                 sample who rate coverage control other otherPresent (sameAuthor.trans author)
                 forbidden
@@ -160,7 +160,7 @@ theorem settled_audited_raw_sequential_equilibrium
         (∀ who, control.execution.application.publicView.missedBindingBy who = false) ∧
         ∀ record ∈ (application setup leaks).executionTraffic control.execution,
           ((runtime setup).settledRecord leaks control.execution).permits
-            record.input.envelope = true)
+            record.envelope = true)
     (evidence : ∀ (profile : Profile ((bounds.menu (runtime setup) leaks).information
         (initialLaw setup) count scheduler).behavioralSignature) who
       (site : (retained.information (initialLaw setup) count scheduler).InformationSite who)
@@ -179,9 +179,9 @@ theorem settled_audited_raw_sequential_equilibrium
         1 ((included.actionRestriction (initialLaw setup) count scheduler).history
           history.1)).support,
       ∃ record ∈ (application setup leaks).stateTraffic next.state,
-        record.input.envelope.sender = who ∧
+        record.envelope.sender = who ∧
         (runtime setup).permittedServiceEnvelope record.observation record.ledger
-          record.input.envelope = false)
+          record.envelope = false)
     (base : (application setup leaks).ProtocolState → Player → ℝ)
     (baseInvariant : ∀ state,
       base (((runtime setup).reactiveNormalization leaks).state state) = base state)
@@ -206,7 +206,7 @@ theorem settled_audited_raw_sequential_equilibrium
       (fun who site => source.truncatedContinuationContext site (fun final => base final.state who)
         (2 * count + 1))) :
     let audit := sourceServiceAudit setup leaks sample
-    let observeAudit := (runtime setup).settlementObservation leaks
+    let observeAudit := (runtime setup).serviceAuditObservation leaks
     let utility := TerminalAudit.utility base observeAudit audit deposit
     let settle := TerminalAudit.settlement base observeAudit audit deposit
     ∃ target : ((bounds.rawMenu (runtime setup) leaks).information (initialLaw setup) count
@@ -232,30 +232,54 @@ theorem settled_audited_raw_sequential_equilibrium
   have sourceCertificate := sourceBounded.wellFoundedHistories
   have targetBounded := effective.bounded initial count scheduler
   have targetCertificate := targetBounded.wellFoundedHistories
+  -- The extension lemma needs zero charge at every retained history. This
+  -- internal observation agrees with the actual audit on complete continuations.
+  let proofObserve (state : app.ProtocolState) :=
+    if app.terminal state then observeAudit state else ([], none)
+  have proofObserve_terminal (state : app.ProtocolState) (stopped : app.terminal state) :
+      proofObserve state = observeAudit state := ite_eq_left stopped
+  have terminalObservation
+      (profile : ∀ who, (effective.information initial count scheduler).BehavioralPolicy who)
+      (history : (effective.protocol initial count scheduler).History) :
+      ((effective.information initial count scheduler).runBehavioralTerminalFrom
+        targetCertificate profile history).map (fun final => proofObserve final.state) =
+      ((effective.information initial count scheduler).runBehavioralTerminalFrom
+        targetCertificate profile history).map (fun final => observeAudit final.state) := by
+    apply map_congr_on_support _
+    intro final supported
+    exact proofObserve_terminal final.state
+      ((effective.information initial count scheduler).runBehavioralTerminalFrom_support_terminal
+        targetCertificate profile history final supported)
   have sourceTerminal := (source.isSequentialEquilibrium_iff_truncated_of_bounded
     (retained.information initial count scheduler)
     (retained.decisionInformationAntichain initial count scheduler) sourceCertificate
     sourceBounded (fun who final => base final.state who)).mpr equilibrium
   have sound (history : (retained.protocol initial count scheduler).History) (who : Player) :
-      TerminalAudit.charge (fun final => observeAudit final.state) audit
+      TerminalAudit.charge (fun final => proofObserve final.state) audit
         (restriction.history history) who = 0 := by
-    change TerminalAudit.charge observeAudit audit history.state who = 0
+    change TerminalAudit.charge proofObserve audit history.state who = 0
     by_cases settled : app.terminal history.state
-    · obtain ⟨state, trace⟩ := history
+    · rw [show TerminalAudit.charge proofObserve audit history.state who =
+          TerminalAudit.charge observeAudit audit history.state who by
+        unfold TerminalAudit.charge
+        rw [proofObserve_terminal _ settled]]
+      obtain ⟨state, trace⟩ := history
       cases state with
       | none => exact settled.elim
       | some control =>
       obtain ⟨complete, permitted⟩ := conforming ⟨_, trace⟩ control rfl settled
-      change TerminalAudit.charge ((runtime setup).settlementObservation leaks)
+      change TerminalAudit.charge ((runtime setup).serviceAuditObservation leaks)
         ((runtime setup).serviceAudit leaks _) (some control) who = 0
-      rw [(runtime setup).settlementAudit_charge_settled leaks _ (some control) settled,
-        (runtime setup).serviceAudit_charge, complete who]
+      rw [(runtime setup).serviceAudit_charge, complete who]
       simp only [Bool.false_eq_true, ↓reduceIte]
       apply app.sampledTrafficAudit_sound
       · exact authentic _
       · intro record member _
         exact permitted record member
-    · exact (runtime setup).settlementAudit_charge_unsettled leaks _ history.state settled who
+    · unfold TerminalAudit.charge
+      rw [show proofObserve history.state = ([], none) from ite_eq_right settled]
+      change (((PMF.pure fun _ : Player => false).map (fun verdict => verdict who)) true).toReal = 0
+      rw [PMF.pure_map, PMF.pure_apply_of_ne _ _ Bool.noConfusion, ENNReal.toReal_zero]
   have collection (profile : Profile
       (effective.information initial count scheduler).behavioralSignature) who
       (site : (retained.information initial count scheduler).InformationSite who)
@@ -267,8 +291,9 @@ theorem settled_audited_raw_sequential_equilibrium
         (((((InformationModel.runBehavioralTerminalFrom
         (effective.information initial count scheduler) targetCertificate
         (Profile.update profile who ((profile who).commit (restriction.site who site).1 action))
-        (restriction.history history.1)).map (fun final => observeAudit final.state)).bind
+        (restriction.history history.1)).map (fun final => proofObserve final.state)).bind
           audit).map (fun verdict => verdict who)) true).toReal := by
+    rw [terminalObservation]
     have length : (restriction.history history.1).trace.length = depth who site := by
       have same := clock who site (restriction.informationHistory who site history)
       simpa only [InformationModel.ActionRestriction.informationHistory_val] using same
@@ -300,24 +325,50 @@ theorem settled_audited_raw_sequential_equilibrium
       (effective.decisionRecall initial count scheduler)
       depth clock
       (fun final who => base final.state who) (fun final who => base final.state who)
-      (fun final => observeAudit final.state) audit (fun _ _ => rfl) sound
+      (fun final => proofObserve final.state) audit (fun _ _ => rfl) sound
       lower upper probability deposit nonnegative below above sufficient collection source
       sourceTerminal
+  have actualTerminal :=
+    (effectiveTarget.isSequentialEquilibrium_iff_of_terminal_payoff_eq
+      (effective.decisionRecall initial count scheduler).decisionInformationAntichain
+      targetCertificate
+      (fun who final => TerminalAudit.utility (fun history who => base history.state who)
+        (fun history => proofObserve history.state) audit deposit final who)
+      (fun who final => utility final.state who) (fun who final stopped => by
+        simp only [TerminalAudit.utility, TerminalAudit.charge,
+          proofObserve_terminal final.state stopped, utility])).mp targetTerminal
+  have actualJoint :
+      ((retained.information initial count scheduler).runBehavioralTerminalFrom
+        sourceCertificate source.strategy
+          (retained.protocol initial count scheduler).initHistory).map
+          (fun history => (restriction.history history, base history.state)) =
+      ((effective.information initial count scheduler).runBehavioralTerminalFrom
+        targetCertificate effectiveTarget.strategy
+          (effective.protocol initial count scheduler).initHistory).bind
+          (fun history => (settle history.state).map (fun payoffs => (history, payoffs))) := by
+    refine joint.trans ?_
+    apply bind_congr_on_support _
+    intro final supported
+    have stopped :=
+      (effective.information initial count scheduler).runBehavioralTerminalFrom_support_terminal
+        targetCertificate effectiveTarget.strategy
+        (effective.protocol initial count scheduler).initHistory final supported
+    simp only [TerminalAudit.settlement, proofObserve_terminal final.state stopped, settle]
   rw [InformationModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded _
       sourceCertificate sourceBounded,
     InformationModel.runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded _
-      targetCertificate targetBounded] at joint
+      targetCertificate targetBounded] at actualJoint
   have targetFull := (effectiveTarget.isSequentialEquilibrium_iff_truncated_of_bounded
     (effective.information initial count scheduler)
     (effective.decisionRecall initial count scheduler).decisionInformationAntichain
-    targetCertificate targetBounded (fun who final => utility final.state who)).mp targetTerminal
+    targetCertificate targetBounded (fun who final => utility final.state who)).mp actualTerminal
   obtain ⟨target, _strategy, targetSE, _beliefs, stateLaw⟩ :=
     bounds.exists_canonicalRaw_sequentialEquilibrium (runtime setup) leaks initial count
       scheduler effectiveTarget (fun who state => utility state who) targetFull
   have observationAudit (state : app.ProtocolState) :
       observeAudit (((runtime setup).reactiveNormalization leaks).state state) =
         observeAudit state :=
-    (runtime setup).settlementObservation_normalization leaks _ state
+    (runtime setup).serviceAuditObservation_normalization leaks _ state
   have utilityInvariant (state : app.ProtocolState) :
       utility (((runtime setup).reactiveNormalization leaks).state state) = utility state := by
     funext who
@@ -334,7 +385,7 @@ theorem settled_audited_raw_sequential_equilibrium
       at rawJoint
     rw [rawJoint]
     have projected := congrArg (fun law => law.map fun result =>
-      (observe result.1.state, result.2)) joint
+      (observe result.1.state, result.2)) actualJoint
     have sameState (history : (retained.protocol initial count scheduler).History) :
         (restriction.history history).state = history.state := rfl
     simpa only [PMF.map_comp, PMF.map_bind, Function.comp_def, sameState,

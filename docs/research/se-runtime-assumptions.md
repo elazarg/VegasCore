@@ -240,7 +240,7 @@ objective. The remaining proof obligations are:
    [prefix decoder](../../Vegas/Game/SourceServicePrefix.lean) retain the
    evolving accepted bindings, source configuration and deferred guard registry;
    their constructor proofs do not by themselves establish the complete run.
-   [Delayed binding inclusion](../../Vegas/Pending/ReactiveBindingReplay.lean)
+   [Delayed binding inclusion](../../Vegas/Pending/ReactiveBindingWaiting.lean)
    permits arbitrary intervening retained responses after submission and proves
    the same application, ledger and receipt result as immediate inclusion.
    The [complete binding phase](../../Vegas/Game/SourceServiceBindingPhase.lean)

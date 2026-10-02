@@ -14,13 +14,13 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 open GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
 theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralSignature)
-    (guesses : PMF Bool) (deposit : ℝ)
+    (guesses : PMF Bool) (charge : ℝ)
     (alicePolicy : profile alice = nativeAliceBehavior)
     (atQuiet : profile bob quietBobSite.1 = nativeGuessBehavior guesses quietBobSite.1)
     (bit : Bool) :
     expect (nativeApp.finish nativeInitialLaw nativeHorizon nativeScheduler
       (nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile)
-        (quietBobHistory bit).state) (nativeUtility deposit bob) =
+        (quietBobHistory bit).state) (nativeComparisonUtility charge bob) =
       expect guesses (fun guess => correctness (.success bit) (guessResult guess)) := by
   let players := nativeMenu.decodeProfile nativeInitialLaw nativeHorizon nativeScheduler profile
   have aliceEq : players alice = nativeAlicePolicy := by
@@ -40,7 +40,8 @@ theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralS
     quiet_guess_policy profile guesses atQuiet bit
   rw [finishLaw, decision]
   simp only [PMF.bind_map, Function.comp_def]
-  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _ (nativeUtility_abs_le deposit bob))]
+  rw [expect_bind_tower _ _ _ (payoffIntegrable_of_bounded _ _ (nativeComparisonUtility_abs_le
+    charge bob))]
   simp only [expect_map, Function.comp_def]
   apply expect_congr_on_support
   intro guess _
@@ -48,8 +49,8 @@ theorem quiet_prescribed_finish_value (profile : Profile nativeModel.behavioralS
     expect law (fun result => utility result.1 bob))
       (quiet_guess_suffix_summary players aliceEq bit guess)
   simp only [expect_map, expect_pure, utility_bob] at value
-  change expect _ (fun final => nativeExecutionUtility deposit bob final) = _
-  simp only [nativeExecutionUtility, show bob ≠ alice by decide, false_and,
+  change expect _ (fun final => nativeComparisonExecutionUtility charge bob final) = _
+  simp only [nativeComparisonExecutionUtility, show bob ≠ alice by decide, false_and,
     ↓reduceIte, sub_zero, utility_bob]
   exact value
 
@@ -62,17 +63,18 @@ theorem fair_correctness (guess : PublicationResult Bool) :
 
 theorem quiet_prescribed_context_value (assessment : nativeModel.BehavioralAssessment)
     (consistent : assessment.IsSequentiallyConsistent nativeAntichain)
-    (guesses : PMF Bool) (deposit : ℝ)
+    (guesses : PMF Bool) (charge : ℝ)
     (alicePolicy : assessment.strategy alice = nativeAliceBehavior)
     (watcherPolicy : assessment.strategy watcher = nativeWatcherBehavior)
     (atQuiet : assessment.strategy bob quietBobSite.1 =
       nativeGuessBehavior guesses quietBobSite.1) :
     (assessment.truncatedContinuationContext quietBobSite
-      (fun history => nativeUtility deposit bob history.state) (2 * nativeHorizon + 1)).value
+      (fun history => nativeComparisonUtility charge bob history.state) (2 * nativeHorizon +
+        1)).value
         (assessment.strategy bob) = (1 / 2 : ℝ) := by
   rw [quiet_native_context assessment consistent alicePolicy watcherPolicy]
   simp only [Profile.update_eq_self]
-  simp_rw [quiet_prescribed_finish_value assessment.strategy guesses deposit alicePolicy atQuiet]
+  simp_rw [quiet_prescribed_finish_value assessment.strategy guesses charge alicePolicy atQuiet]
   rw [expect_comm_of_support_finite _ _ (Set.toFinite _) (Set.toFinite _)]
   simp only [fair_correctness, expect_constant]
 

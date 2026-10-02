@@ -43,7 +43,7 @@ theorem initialized_sourceService_partial_conformance
         (ReactiveApplication.Execution.initial (application setup leaks) state)).support) :
     ∀ record ∈ (application setup leaks).executionTraffic execution,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   obtain ⟨initial, supported, reachedPrefix⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨final, continued⟩ := ((runtime setup).runInteractionPlan leaks players network
@@ -73,7 +73,7 @@ theorem sourceService_history_traffic
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).History) :
     ∀ record ∈ (application setup leaks).stateTraffic history.state,
       (runtime setup).permittedServiceEnvelope record.observation record.ledger
-        record.input.envelope = true := by
+        record.envelope = true := by
   let app := application setup leaks
   let menu := sourceServiceMenu setup leaks bounds rosters
   have lawful : ∀ who past view response, response ∈ (menu.uniformResponses who past view).support →

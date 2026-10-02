@@ -96,7 +96,7 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
             change middle.application.publicView.SoleReady event
             rw [application]
             exact sole
-          have shape : response ∈ (app.replayPolicy (activated.recall actor)
+          have shape : response ∈ (app.silentPolicy (activated.recall actor)
               (activated.observe app actor)).support ∨
               actor = owner ∧ ∃ value ∈ bounds.typedValues payload,
                 response = runtime.reactiveBinding leaks owner event payload (.success value)
@@ -132,8 +132,9 @@ theorem compiled_binding_first_submission (runtime : EventGraphRuntime graph)
           rcases shape with replay | ⟨own, value, admitted, physical⟩
           · have unchanged := runtime.eventRecorded_respond_other leaks activated actor owner
               response event (fun _ => by
-                rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;>
-                  intro impossible <;> cases impossible)
+                rcases app.silentPolicy_cases _ _ response replay with rfl
+                intro impossible
+                cases impossible)
             rw [unchanged] at recorded
             change runtime.eventRecorded leaks (middle.recall owner) event = true at recorded
             rw [priorRecorded] at recorded

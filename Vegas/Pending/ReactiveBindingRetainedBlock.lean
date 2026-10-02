@@ -24,7 +24,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
-/-- Before the required final visit, waiting and every known replay coexist
+/-- Before the required final visit, waiting coexists
 with typed binding repair in the actual retained implementation. This is the
 joint response law before inclusion, so intervening passive reads remain real. -/
 theorem binding_window_retained_coupling
@@ -34,8 +34,6 @@ theorem binding_window_retained_coupling
     (players : Player → (runtime.reactiveApplication leaks).Policy)
     (reference : List (runtime.reactiveApplication leaks).PlayerEntry)
     (started : reference.length ≤ (repaired.recall owner).length)
-    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -56,10 +54,10 @@ theorem binding_window_retained_coupling
           (repaired.observe (runtime.reactiveApplication leaks) owner))
     (clean : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
-      response ∈ ((runtime.reactiveApplication leaks).replayPolicy (original.recall owner)
+      response ∈ ((runtime.reactiveApplication leaks).silentPolicy (original.recall owner)
         (original.observe (runtime.reactiveApplication leaks) owner)).support ∨
       ∃ opening, bounds.AllowsOpening opening ∧ response =
-        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
@@ -81,8 +79,9 @@ theorem binding_window_retained_coupling
       (repaired.observe app owner)).application.candidates (.prepared serial) = .fresh := by
     rw [frame.observed]
     exact fresh
-  have replayLaw := app.replayPolicy_eq_of_network_eq original repaired owner leftRecall
-    rightRecall frame.network
+  have replayLaw :
+      app.silentPolicy (original.recall owner) (original.observe app owner) =
+        app.silentPolicy (repaired.recall owner) (repaired.observe app owner) := rfl
   have responseEq :
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
         (repaired.recall owner, repaired.observe app owner) =
@@ -99,11 +98,12 @@ theorem binding_window_retained_coupling
     rcases clean response selected with replay | ⟨opening, bounded, rfl⟩
     · have unchanged : memory.repairResponse runtime leaks owner
           (repaired.observe app owner) response = (response, memory.shadow) := by
-        rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        rfl
       change (memory.repairResponse runtime leaks owner (repaired.observe app owner) response).1 ∈ _
       rw [unchanged]
       rw [replayLaw] at replay
-      exact bounds.replay_compiled runtime leaks owner _ _ response replay
+      exact bounds.silent_compiled runtime leaks owner _ _ response replay
     · apply bounds.requiredBindingActions_subset_compiled runtime leaks owner
       exact repairResponse_binding_available runtime leaks bounds owner memory
         (repaired.recall owner) (repaired.observe app owner) event payload outputEq codeEq node
@@ -121,7 +121,8 @@ theorem binding_window_retained_coupling
       rcases clean response selected with replay | ⟨opening, _, equal⟩
       · left
         intro material
-        rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        simp
       · exact Or.inr ⟨serial, opening, fresh, equal⟩)
   refine ⟨coupling, first, ?_, related⟩
   rw [resumeEq]
@@ -163,7 +164,7 @@ theorem binding_retained_coupling
     (canonical : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
       ∃ opening, bounds.AllowsOpening opening ∧ response =
-        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩) :
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩) :
     let app := runtime.reactiveApplication leaks
     let strategy := retainedImplementation runtime leaks menu owner reference (players owner)
     ∃ coupling : PMF (app.Execution × app.Execution × BindingMemory runtime leaks),
@@ -192,7 +193,7 @@ theorem binding_retained_coupling
       (memory.restoreRecall runtime leaks (repaired.recall owner))
       (memory.shadow.inputView runtime leaks (repaired.observe app owner))).support,
       ∃ opening, bounds.AllowsOpening opening ∧ response =
-        ⟨some (.submit ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩)⟩ := by
+        ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩ := by
     rw [frame.past, frame.observed]
     exact canonical
   have responseEq := retainedImplementation_binding_response runtime leaks bounds menu owner

@@ -54,7 +54,7 @@ theorem reactiveCandidateInvariant (runtime : EventGraphRuntime graph)
   submit state who material fixed := by
     have stable := runtime.reactive_respond_candidate_fixed leaks
       (.initial (runtime.reactiveApplication leaks) state) who
-      ⟨some (.submit material)⟩ candidate (by
+      ⟨some material⟩ candidate (by
         change state.candidates.lookup candidate ≠ .fresh
         rw [fixed]
         simp)

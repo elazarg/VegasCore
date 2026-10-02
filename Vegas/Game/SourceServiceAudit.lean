@@ -43,7 +43,7 @@ def sourceServiceAudit
     (sample : List (SettledEvidence setup) → PMF (List (SettledEvidence setup))) :=
   (runtime setup).serviceAudit leaks fun record =>
     (application setup leaks).sampledTrafficAudit
-      (fun traffic => (record, traffic.input.envelope))
+      (fun traffic => (record, traffic.envelope))
       (fun evidence => evidence.2.sender) (fun evidence => evidence.1.permits evidence.2) sample
 
 /-- Soundness is over all retained histories, independently of the compiled

@@ -4,8 +4,7 @@ import Vegas.Game.RevealServiceTraffic
 
 /-! # A send-time rule attributed to the signed envelope author
 
-The rule omits the broadcaster. Published envelopes may be replayed by anyone
-without accusing their author. Fresh openings are checked against their
+Fresh openings are attributed to their signed author and checked against their
 transmission phase and prior ledger. No audit verdict uses this rule: it is a
 proof device, and in a reveal-only graph its breach breaches the service rule
 (`Vegas.permittedEnvelope_of_permittedService`), which dooms the author at
@@ -33,30 +32,27 @@ abbrev EnvelopeEvidence :=
 
 def envelopeEvidence (record : (application setup leaks).TrafficRecord) :
     EnvelopeEvidence setup leaks :=
-  (record.observation, record.ledger, record.input.envelope)
+  (record.observation, record.ledger, record.envelope)
 
 open Classical in
 def permittedEnvelope (evidence : EnvelopeEvidence setup leaks) : Bool :=
   decide (evidence.2.2.id ∈ evidence.2.1.map Message.id ∨
-    openingTraffic setup leaks ⟨evidence.1, evidence.2.1,
-      ⟨evidence.2.2.sender, evidence.2.2⟩⟩)
+    openingTraffic setup leaks ⟨evidence.1, evidence.2.1, evidence.2.2⟩)
 
 theorem permittedEnvelope_iff (record : (application setup leaks).TrafficRecord)
-    (authored : record.input.broadcaster = record.input.envelope.sender) :
+    (_authored : record.envelope.sender = record.envelope.sender) :
     permittedEnvelope setup leaks (envelopeEvidence setup leaks record) = true ↔
-      record.input.envelope.id ∈ record.ledger.map Message.id ∨
+      record.envelope.id ∈ record.ledger.map Message.id ∨
         openingTraffic setup leaks record := by
   classical
-  change decide (_ ∨ openingTraffic setup leaks
-    { record with input := ⟨record.input.envelope.sender, record.input.envelope⟩ }) = true ↔ _
+  change decide (_ ∨ openingTraffic setup leaks record) = true ↔ _
   simp only [decide_eq_true_eq]
-  rw [← authored]
   rfl
 
 theorem permittedEnvelope_forbidden (watcher : Player)
     (record : (application setup leaks).TrafficRecord)
-    (ordinary : record.input.broadcaster ≠ watcher)
-    (authored : record.input.broadcaster = record.input.envelope.sender)
+    (ordinary : record.envelope.sender ≠ watcher)
+    (authored : record.envelope.sender = record.envelope.sender)
     (forbidden : permittedTraffic setup leaks watcher record = false) :
     permittedEnvelope setup leaks (envelopeEvidence setup leaks record) = false := by
   cases verdict : permittedEnvelope setup leaks (envelopeEvidence setup leaks record) with

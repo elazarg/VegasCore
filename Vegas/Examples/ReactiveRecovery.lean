@@ -95,26 +95,26 @@ accepted withholding packet: the claimed intention would have generated an openi
 theorem mismatched_intention :
     let forged : app.PlayerEntry :=
       ⟨openable.observe app (),
-        ⟨some (.submit ⟨⟨.withhold 0, none⟩, .none⟩)⟩,
+        ⟨some ⟨⟨.withhold 0, none⟩, .none⟩⟩,
         some ⟨((), 0), ⟨.withhold 0, none, some ⟨0⟩⟩⟩⟩
     runtime.reactiveOriginal leaks () [forged] [some ⟨0, true⟩] [(((), 0), true)] ⟨0, false⟩ =
       ⟨0, false⟩ := by
   have expected : runtime.reactiveDecision leaks () 0 true
       (openable.observe app ()).application = ReactiveApplication.Action.mk (app := app)
-        (some (.submit (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩)))) := by
+        (some (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩))) := by
     change ReactiveApplication.Action.mk (app := app)
-      (some (.submit (WitnessedSubmission.normalizeReactive ()
+      (some (WitnessedSubmission.normalizeReactive ()
         (openable.observe app ()).application []
-          (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩))))) = _
+          (disclosureSubmission (.opening 0 ((), .initial 0) ⟨.bool, true⟩)))) = _
     rw [disclosureSubmission_normalize_opening (graph := graph) () _ 0
       ((), .initial 0) ⟨.bool, true⟩ rfl rfl]
   have different : (ReactiveApplication.Action.mk (app := app)
-      (some (.submit ⟨⟨.withhold 0, none⟩, .none⟩))) ≠
+      (some ⟨⟨.withhold 0, none⟩, .none⟩)) ≠
         runtime.reactiveDecision leaks () 0 true (openable.observe app ()).application := by
     rw [expected]
     intro same
     have sent := congrArg (fun action : app.Action => action.transmission) same
-    have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
+    have material := Option.some.inj sent
     have packet := congrArg
       (fun submission : WitnessedSubmission graph => submission.call.packet) material
     cases packet

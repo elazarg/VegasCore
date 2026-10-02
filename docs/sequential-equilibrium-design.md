@@ -170,9 +170,9 @@ comparison are checked below:
   changing its strategies. One common subsequence of fully mixed Bayes
   assessments converges at all decision sites. No compatibility with prescribed
   source beliefs or continuation incentives follows from this existence theorem.
-- [ReactiveReplayMenu.lean](../Interaction/ReactiveReplayMenu.lean): closing a
-  finite menu under all known-envelope replays retains every base response and
-  needs no numeric identifier cutoff. The
+- [ReactiveResponseNormalization.lean](../Interaction/ReactiveResponseNormalization.lean):
+  finite submission menus include silence and allocate a fresh envelope for
+  each submission. The
   [Vegas binding fixture](../Vegas/Examples/ReactiveRuntime.lean) admits both Boolean
   bindings, unopenable submissions and actual compiled first responses, and has
   a consistent finite assessment.
@@ -568,22 +568,18 @@ vanishes. Each approximant gets its actual Bayes beliefs. The construction
 does not establish that those beliefs converge to beliefs that preserve source
 incentives; this is precisely the remaining off-path analysis.
 
-`withKnownReplays` adds every replayable envelope to a base menu.
-The known envelopes are reconstructed from own
-output recall, passive leaks and the ledger. The native `InputRecall` invariant
-proves this is the network's replay-eligibility list. The extended menu remains
-finite even with unbounded numeric identifiers, and every base response remains
-legal. The general helper permits a base menu to contain unsuccessful replay
-attempts; the semantic menu normalizes those attempts to silence using a proved
-one-step effect equality.
+Known packets are reconstructed from own output recall, passive leaks and the
+ledger. They supply evidence for decoding and certificate forwarding. Each
+response is silence or a fresh sender-authored submission; forwarding a
+certificate retains its authentic fact without copying the original envelope
+or its identifier.
 
 The [complete bounded construction](finite-reactive-responses.md) specifies a
 finite raw-value alphabet and prepared-handle range before choosing any profile
 or utilities. It enumerates all packet forms over those domains: wrong events,
 foreign handles, incorrect openings, malformed traffic and unopenable
-commitments remain choices. It retains every known replay without an envelope
-identifier cutoff. Only ineffective private opening annotations and unavailable
-replays are normalized; the exact public packet and fresh hidden meanings are
+commitments remain choices. Only ineffective private opening annotations are
+normalized; the exact public packet and fresh hidden meanings are
 preserved. Its exact membership theorem characterizes all bounded normal
 responses. The [fixture](../Vegas/Examples/ReactiveFiniteResponses.lean) supplies
 finite histories and a consistent assessment for this complete menu.

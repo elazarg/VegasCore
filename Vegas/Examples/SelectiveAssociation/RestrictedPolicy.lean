@@ -160,7 +160,7 @@ def openingResponse (who : Player) (view : app.PlayerView) : app.Action := by
       view.application.publicView.accepted (nativeBindingRef who).field with
     | some (.success bit), some accepted =>
         if nativeBounds.AllowsHandle accepted then
-          ⟨some (.submit (nativeOpeningSubmission (nativePublicationEvent who) accepted bit))⟩
+          ⟨some (nativeOpeningSubmission (nativePublicationEvent who) accepted bit)⟩
         else ⟨none⟩
     | _, _ => ⟨none⟩
 
@@ -171,7 +171,7 @@ theorem openingResponse_available (who : Player) (past : List app.PlayerEntry)
   · rename_i bit accepted _ _
     split
     · rename_i allowed
-      change (⟨some (.submit _)⟩ : app.Action) ∈
+      change (⟨some _⟩ : app.Action) ∈
         (nativeBounds.rawMenu nativeRuntime leaks).actions who past view
       rw [MessageBounds.rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]
       change nativeOpeningSubmission (nativePublicationEvent who) accepted bit ∈

@@ -70,7 +70,7 @@ from the source side of the whole tower at no cost.
 
 The certificate is two steps. `exists_pureMixture_publicRun` makes a behavioral
 deviation a finite mixture of pure policies, drawn before the private setup law:
-the induction carries a list of configurations, and `FinDist.runDependent`
+the induction carries a list of configurations, and `drawAtSites`
 draws a decision point's actions in advance over the views those configurations
 present, which suffices because a run visits a decision point once and so reads
 one of them. `PurePolicy.bindValues` then translates a pure policy into one that binds
@@ -137,7 +137,7 @@ reveal publish different things. What holds is conditional:
 opening from then on, given that opening is at least as good at every decision
 it could face, and `exists_disclosing_expect_le` reads that as "some disclosing
 policy is at least as good". A reveal is an informed stop-or-continue decision,
-so this is `FinDist.selective_stopping_le` instantiated at the source reveal,
+so this is `GameTheory.Math.Probability.selective_stopping_le` instantiated at the source reveal,
 and `selective_stopping_le_iff` says the premise is also necessary once
 quantified over every configuration.
 

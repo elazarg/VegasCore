@@ -6,7 +6,7 @@ import Vegas.Examples.SelectiveAssociation.RestrictedPrefix
 /-! # Paired native prefixes before the guessing decisions
 
 The proofs map certificates on the existing network while preserving envelope
-identifiers, call bodies, broadcaster identities, and scheduling operations.
+identifiers, call bodies, authors, and scheduling operations.
 Alice's hidden candidate and binding are changed together. Other players'
 literal responses are retained; a statement about their unchanged inputs must
 also account for certificates they have actually observed.
@@ -18,35 +18,21 @@ namespace Vegas.Examples.SelectiveAssociation.Restricted.PrefixSymmetry
 
 open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 
-def input (selected : Handle nativeGraph)
-    (before : NetworkInput Player (WitnessedPacket nativeGraph)) :
-    NetworkInput Player (WitnessedPacket nativeGraph) :=
-  { before with envelope := CandidateFlip.message selected before.envelope }
-
 def network (selected : Handle nativeGraph)
     (before : MessageNetwork Player (WitnessedPacket nativeGraph)) :
     MessageNetwork Player (WitnessedPacket nativeGraph) where
   pending := before.pending.map (CandidateFlip.message selected)
   ledger := before.ledger.map (CandidateFlip.message selected)
   leaked who := (before.leaked who).map (CandidateFlip.message selected)
-  inputs := before.inputs.map (input selected)
+  inputs := before.inputs.map (CandidateFlip.message selected)
   nextSerial := before.nextSerial
 
 theorem network_known (selected : Handle nativeGraph)
     (before : MessageNetwork Player (WitnessedPacket nativeGraph)) (who : Player) :
     (network selected before).known who =
       (before.known who).map (CandidateFlip.message selected) := by
-  have own : ((before.inputs.map (input selected)).filterMap fun sent =>
-      if sent.broadcaster = who then some sent.envelope else none) =
-    (before.inputs.filterMap fun sent =>
-      if sent.broadcaster = who then some sent.envelope else none).map
-        (CandidateFlip.message selected) := by
-    induction before.inputs with
-    | nil => rfl
-    | cons head tail ih =>
-        by_cases authored : head.broadcaster = who <;>
-          simp [input, authored, ih]
-  simp only [MessageNetwork.known, network, own, List.map_append]
+  simp only [MessageNetwork.known, network, List.filter_map, List.map_append]
+  rfl
 
 theorem network_lookup (selected : Handle nativeGraph)
     (before : MessageNetwork Player (WitnessedPacket nativeGraph)) (id : MessageId Player) :
@@ -61,17 +47,7 @@ theorem network_submit (selected : Handle nativeGraph)
       (CandidateFlip.message selected (before.submit who sent).1,
         network selected (before.submit who sent).2) := by
   simp only [MessageNetwork.submit, network, List.map_append, List.map_cons, List.map_nil,
-    input, CandidateFlip.message]
-
-theorem network_replay (selected : Handle nativeGraph)
-    (before : MessageNetwork Player (WitnessedPacket nativeGraph)) (who : Player)
-    (id : MessageId Player) :
-    (network selected before).replay who id =
-      ((before.replay who id).1.map (CandidateFlip.message selected),
-        network selected (before.replay who id).2) := by
-  simp only [MessageNetwork.replay, network_known, CandidateFlip.find_message]
-  cases (before.known who).find? (fun sent => sent.id = id) <;>
-    simp [network, input]
+    CandidateFlip.message]
 
 theorem removeFirst (selected : Handle nativeGraph) (id : MessageId Player)
     (sent : List (Message Player (WitnessedPacket nativeGraph))) :
@@ -164,13 +140,10 @@ theorem respond_application (selected : Handle nativeGraph) (first second : app.
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact same
-  | some transmission =>
-      cases transmission with
-      | replay => exact same
-      | submit submitted =>
-          change app.submit second.application who (CandidateFlip.submission selected submitted) = _
-          rw [same, submission_application]
-          rfl
+  | some submitted =>
+      change app.submit second.application who (CandidateFlip.submission selected submitted) = _
+      rw [same, submission_application]
+      rfl
 
 theorem respond_network (selected : Handle nativeGraph) (first second : app.Execution)
     (sameApplication : second.application = StoreFlip.state selected first.application)
@@ -181,21 +154,16 @@ theorem respond_network (selected : Handle nativeGraph) (first second : app.Exec
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact sameNetwork
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          change (second.network.replay who id).2 = network selected (first.network.replay who id).2
-          rw [sameNetwork, network_replay]
-      | submit submitted =>
-          change (second.network.submit who
-            ((CandidateFlip.submission selected submitted).emit
-              (app.submit second.application who (CandidateFlip.submission selected submitted))
-              who (second.network.known who))).2 =
-            network selected (first.network.submit who
-              (submitted.emit (app.submit first.application who submitted)
-                who (first.network.known who))).2
-          rw [sameApplication, submission_application, sameNetwork, network_known, StoreFlip.emit,
-            network_submit]
+  | some submitted =>
+      change (second.network.submit who
+        ((CandidateFlip.submission selected submitted).emit
+          (app.submit second.application who (CandidateFlip.submission selected submitted))
+          who (second.network.known who))).2 =
+        network selected (first.network.submit who
+          (submitted.emit (app.submit first.application who submitted)
+            who (first.network.known who))).2
+      rw [sameApplication, submission_application, sameNetwork, network_known, StoreFlip.emit,
+        network_submit]
 
 private theorem respond_receipts (execution : app.Execution) (who : Player)
     (response : app.Action) :
@@ -203,7 +171,7 @@ private theorem respond_receipts (execution : app.Execution) (who : Player)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission => cases transmission <;> rfl
+  | some transmission => rfl
 
 theorem related_respond_alice (selected : Handle nativeGraph) (first second : app.Execution)
     (related : Related selected first second) (response : app.Action) :
@@ -345,17 +313,11 @@ theorem respond_other_recall (selected : Handle nativeGraph)
     rcases response with ⟨transmission⟩
     cases transmission with
     | none => simp only [ReactiveApplication.Execution.respond, ↓reduceIte, sameRecall, sameView]
-    | some transmission =>
-        cases transmission with
-        | replay id =>
-            simp only [ReactiveApplication.Execution.respond, MessageNetwork.replay, known,
-              ↓reduceIte, sameRecall, sameView]
-            cases (first.network.known who).find? (fun sent => sent.id = id) <;> rfl
-        | submit submitted =>
-            simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
-              ↓reduceIte, related.application,
-              submission_other_packet selected first.application who different,
-              known, serial, sameRecall, sameView]
+    | some submitted =>
+        simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
+          ↓reduceIte, related.application,
+          submission_other_packet selected first.application who different,
+          known, serial, sameRecall, sameView]
   · rw [app.respond_recall_other second who observer self,
       app.respond_recall_other first who observer self, sameRecall]
 
@@ -369,21 +331,15 @@ theorem respond_other_network (selected : Handle nativeGraph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact related.network
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          change (second.network.replay who id).2 = _
-          rw [related.network, network_replay]
-          rfl
-      | submit submitted =>
-          change (second.network.submit who
-            (app.packet (app.submit second.application who submitted) who
-              (second.network.known who) submitted)).2 = _
-          rw [related.application, submission_other_packet selected first.application who different,
-            known]
-          rw [← submission_packet_fixed selected first.application who different _ hidden submitted,
-            related.network, network_submit]
-          rfl
+  | some submitted =>
+      change (second.network.submit who
+        (app.packet (app.submit second.application who submitted) who
+          (second.network.known who) submitted)).2 = _
+      rw [related.application, submission_other_packet selected first.application who different,
+        known]
+      rw [← submission_packet_fixed selected first.application who different _ hidden submitted,
+        related.network, network_submit]
+      rfl
 
 theorem related_respond_other (selected : Handle nativeGraph)
     (owner : selected.1 = alice) (first second : app.Execution)
@@ -401,13 +357,10 @@ theorem related_respond_other (selected : Handle nativeGraph)
   · rcases response with ⟨transmission⟩
     cases transmission with
     | none => exact related.application
-    | some transmission =>
-        cases transmission with
-        | replay => exact related.application
-        | submit submitted =>
-            change app.submit second.application who submitted = _
-            rw [related.application, submission_other_application selected _ who foreign]
-            rfl
+    | some submitted =>
+        change app.submit second.application who submitted = _
+        rw [related.application, submission_other_application selected _ who foreign]
+        rfl
   · rw [respond_receipts, respond_receipts, related.receipts]
   · rw [app.respond_environmentRecall, app.respond_environmentRecall, related.environmentCount]
 
@@ -619,29 +572,14 @@ theorem bobPrelude_known (response : app.Action) :
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          simp only [Prefix.bobPreludeInput, activate, ReactiveApplication.Execution.respond,
-            initial, ReactiveApplication.Execution.initial, MessageNetwork.replay,
-            MessageNetwork.known, MessageNetwork.empty, List.filterMap_nil,
-            List.nil_append, List.find?_nil]
-      | submit submitted => rfl
+  | some submitted => rfl
 
 theorem bobPrelude_unobserved (selected : Handle nativeGraph) (response : app.Action) :
     NoObservedCertificate selected (Prefix.bobPreludeInput response) bob := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact fun _ member => nomatch member
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          simp only [NoObservedCertificate, Prefix.bobPreludeInput, activate,
-            ReactiveApplication.Execution.respond, initial, ReactiveApplication.Execution.initial,
-            MessageNetwork.replay, MessageNetwork.known, MessageNetwork.empty,
-            List.filterMap_nil, List.nil_append, List.find?_nil, List.not_mem_nil, false_implies]
-          exact fun _ => True.intro
-      | submit => exact fun _ member => nomatch member
+  | some submission => exact fun _ member => nomatch member
 
 theorem related_aliceInput (selected : Handle nativeGraph) (owner : selected.1 = alice)
     (first second : app.Action) :

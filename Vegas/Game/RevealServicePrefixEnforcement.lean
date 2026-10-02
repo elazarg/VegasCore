@@ -47,7 +47,7 @@ private theorem suffix_extra_submission
         (execution.recall who) (execution.observe (application setup leaks) who) →
       response ∉ ordinaryActions setup leaks bounds who (execution.recall who)
         (execution.observe (application setup leaks) who) →
-      ∃ submission, response = ⟨some (.submit submission)⟩ ∧
+      ∃ submission, response = ⟨some submission⟩ ∧
         let state := (application setup leaks).submit execution.application who submission
         let packet := submission.emit state who (execution.network.known who)
         (application setup leaks).handle state
@@ -144,7 +144,7 @@ theorem prefix_extra_submission
       (execution.recall who) (execution.observe (application setup leaks) who))
     (extra : response ∉ ordinaryActions setup leaks bounds who (execution.recall who)
       (execution.observe (application setup leaks) who)) :
-    ∃ submission, response = ⟨some (.submit submission)⟩ ∧
+    ∃ submission, response = ⟨some submission⟩ ∧
       let state := (application setup leaks).submit execution.application who submission
       let packet := submission.emit state who (execution.network.known who)
       (application setup leaks).handle state

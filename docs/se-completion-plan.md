@@ -83,7 +83,7 @@ foreign information law is needed. The gate holds:
 
 Foreign legal responses are transport-only (`foreign_response_transport`).
 They preserve the application and the owner's current recall
-(`replay_response_preserves`, `respond_recall_other`), so the owner's slot
+(`silent_response_preserves`, `respond_recall_other`), so the owner's slot
 posterior under `runInteractionPlan_policyMixture` is the same after every
 foreign response. Each fixed slot then has an application-only law: a slot the
 owner still reaches completes the event with the source lottery

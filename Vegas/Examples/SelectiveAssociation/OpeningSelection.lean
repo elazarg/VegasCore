@@ -46,7 +46,7 @@ theorem native_accepted_recall (control : nativeApp.Control)
     nativeHorizon nativeScheduler (by rw [PMF.pure_map]; exact raw)
 
 /-- Every compatible legal history has at most one older publication envelope.
-The conclusion even allows foreign envelopes recalled from earlier replays. -/
+The conclusion even allows foreign evidence recalled from earlier messages. -/
 theorem native_old_publication_unique (control : nativeApp.Control)
     (trace : nativeArena.Trace (some control)) (who : Player)
     (active : control.actor = some who)

@@ -147,11 +147,11 @@ theorem compiled_response :
         exact (Nat.find_eq_zero _).mpr rfl
       · rename_i impossible
         exact False.elim (impossible ⟨0, rfl⟩)
-    change some (ReactiveApplication.Transmission.submit (app := app)
-        ⟨⟨.commitment 0 ((), .prepared 0), some ⟨.int, 1⟩⟩, .none⟩) =
+    change some (⟨⟨.commitment 0 ((), .prepared 0), some ⟨.int, 1⟩⟩, .none⟩ :
+        WitnessedSubmission graph) =
       (reactiveFreshSlot ((activated root).observe app ()).application).map _ at sent
     rw [slot] at sent
-    have material := ReactiveApplication.Transmission.submit.inj (Option.some.inj sent)
+    have material := Option.some.inj sent
     have opening := congrArg
       (fun submission : WitnessedSubmission graph => submission.call.opening) material
     have raw := Option.some.inj opening

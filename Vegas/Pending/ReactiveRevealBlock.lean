@@ -28,7 +28,7 @@ def canonicalRevealResponse (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) (disclose : Bool) :
     (runtime.reactiveApplication leaks).Action :=
-  ⟨if disclose then some (.submit (disclosureSubmission (.opening event candidate raw)))
+  ⟨if disclose then some (disclosureSubmission (.opening event candidate raw))
     else none⟩
 
 theorem canonicalRevealResponse_application (runtime : EventGraphRuntime graph)
@@ -40,8 +40,7 @@ theorem canonicalRevealResponse_application (runtime : EventGraphRuntime graph)
         execution.application := by
   cases disclose <;> rfl
 
-/-- Reserved inclusion never reprocesses an already published identifier,
-including one that a player has deliberately rebroadcast. -/
+/-- Reserved inclusion never reprocesses an already published identifier. -/
 theorem reactiveLatest_wait_of_pending_published (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (owner : Player)
@@ -75,24 +74,6 @@ theorem interaction_includeLatest_of_pending_published (runtime : EventGraphRunt
     PMF.pure_bind]
   simp only [ReactiveApplication.dispatch, ReactiveApplication.Command.actor?]
   exact PMF.bind_pure _
-
-/-- A published replay follows the same application wait as silence, while
-retaining its actual broadcast and private response recall. -/
-theorem published_replay_inclusion (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (network : runtime.NetworkPolicy leaks)
-    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
-    (event : graph.EventId) (id : MessageId Player)
-    (published : ∀ message ∈ execution.network.pending,
-      message.id ∈ execution.network.ledger.map Message.id)
-    (spent : id ∈ execution.network.ledger.map Message.id) :
-    let app := runtime.reactiveApplication leaks
-    let submitted := execution.respond app owner ⟨some (.replay id)⟩
-    runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
-      submitted.environmentStep app .wait := by
-  apply runtime.interaction_includeLatest_of_pending_published
-  exact execution.network.replay_pending_published owner id published spent
 
 /-- Empty-pool silence produces the actual service wait, including its command
 recall. Neither player nor network policy is consulted at this instruction. -/
@@ -131,12 +112,12 @@ theorem opening_inclusion (runtime : EventGraphRuntime graph)
       execution.network.ledger.map Message.id) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner
-      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
     runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
       submitted.environmentStep app (.include (owner, execution.network.nextSerial owner)) := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
-    ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+    ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
   change runtime.interactionStep leaks players network (.includeLatest event owner) submitted =
     submitted.environmentStep app (.include (owner, execution.network.nextSerial owner))
   let packet := app.packet execution.application owner (execution.network.known owner)
@@ -169,7 +150,7 @@ theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
       ⟨(owner, execution.network.nextSerial owner), .opening event candidate raw⟩ = some after) :
     let app := runtime.reactiveApplication leaks
     let submitted := execution.respond app owner
-      ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+      ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
     ∃ next, runtime.interactionStep leaks players network (.includeLatest event owner)
         submitted = PMF.pure next ∧
       next.application = after ∧
@@ -181,7 +162,7 @@ theorem opening_published_checkpoint (runtime : EventGraphRuntime graph)
         (submitted.network.includePending (owner, execution.network.nextSerial owner)).2 := by
   let app := runtime.reactiveApplication leaks
   let submitted := execution.respond app owner
-    ⟨some (.submit ⟨⟨.opening event candidate raw, none⟩, evidence⟩)⟩
+    ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
   let packet := app.packet execution.application owner (execution.network.known owner)
     ⟨⟨.opening event candidate raw, none⟩, evidence⟩
   let envelope : Message Player app.Payload :=

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceTimedBinding
-import Vegas.Pending.ReactiveBindingReplay
+import Vegas.Pending.ReactiveBindingWaiting
 import Vegas.Pending.ReactiveBindingBlock
 import Vegas.Pending.ReactiveServiceRecall
 import Vegas.Pending.ReactiveRevealSettlement
@@ -52,11 +52,11 @@ theorem scheduledBindingWindow_config
     (choice : PublicationResult (L.Val payload))
     (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+      (Function.update (fun _ => (application setup leaks).silentPolicy) owner
         ((application setup leaks).scheduledPolicy offset (some slot)
           (fun _ _ => PMF.pure
             ((runtime setup).reactiveBinding leaks owner event payload choice serial))
-          (application setup leaks).replayPolicy)) network
+          (application setup leaks).silentPolicy)) network
       (roster.map ServiceInstruction.player ++ [.includeLatest event owner]) execution).support) :
     final.application.config = execution.application.config.complete event ready
       (cast (congrArg EventField.Action outputEq.symm) choice)
@@ -64,9 +64,9 @@ theorem scheduledBindingWindow_config
   let : Fintype Player := Fintype.ofFinite Player
   let app := application setup leaks
   let response := (runtime setup).reactiveBinding leaks owner event payload choice serial
-  let transport : Player → app.Policy := fun _ => app.replayPolicy
+  let transport : Player → app.Policy := fun _ => app.silentPolicy
   let players := Function.update transport owner
-    (app.scheduledPolicy offset (some slot) (fun _ _ => PMF.pure response) app.replayPolicy)
+    (app.scheduledPolicy offset (some slot) (fun _ _ => PMF.pure response) app.silentPolicy)
   obtain ⟨visited, remaining, split, selected⟩ := split_owner_visit owner roster
     (offset + slot.val - (execution.recall owner).length) (by omega)
   have before : (execution.recall owner).length + visited.count owner ≤ offset + slot.val := by
@@ -80,8 +80,8 @@ theorem scheduledBindingWindow_config
     (runtime setup).runInteractionPlan_append] at reached
   rw [waiting] at reached
   obtain ⟨current, earlier, continued⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  have preserved := (runtime setup).replay_window_preserves leaks transport network owner execution
-    (fun current who action _ _ member => app.replayPolicy_cases _ _ action member)
+  have preserved := (runtime setup).silent_window_preserves leaks transport network owner execution
+    (fun current who action _ _ member => app.silentPolicy_cases _ _ action member)
     _ published visited current earlier
   have same := preserved.1
   have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
@@ -131,7 +131,7 @@ theorem scheduledBindingWindow_config
     at continued
   have delayed (opening : Option (Raw L)) := (runtime setup).rawBinding_delayed_inclusion leaks
     bounds transport (fun who past view action supported =>
-      bounds.replay_compiled (runtime setup) leaks who past view action supported)
+      bounds.silent_compiled (runtime setup) leaks who past view action supported)
     network activated owner event payload outputEq codeEq node
     (soleReady_of_ready setup current.application currentReady) owned currentReady
       (currentPublished.learn owner sample) (currentSerials.learn owner sample) serial opening
@@ -200,21 +200,21 @@ theorem scheduledBindingPhase_config
     (choice : PublicationResult (L.Val payload))
     (ticks : Nat) (final : (application setup leaks).Execution)
     (reached : final ∈ ((runtime setup).runInteractionPlan leaks
-      (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+      (Function.update (fun _ => (application setup leaks).silentPolicy) owner
         ((application setup leaks).scheduledPolicy offset (some slot)
           (fun _ _ => PMF.pure
             ((runtime setup).reactiveBinding leaks owner event payload choice serial))
-          (application setup leaks).replayPolicy)) network
+          (application setup leaks).silentPolicy)) network
       ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         List.replicate ticks .tick ++ [.expire event]) execution).support) :
     final.application.config = execution.application.config.complete event ready
       (cast (congrArg EventField.Action outputEq.symm) choice)
       (cast (congrArg EventField.Value outputEq.symm) choice) := by
   let app := application setup leaks
-  let players := Function.update (fun _ => app.replayPolicy) owner
+  let players := Function.update (fun _ => app.silentPolicy) owner
     (app.scheduledPolicy offset (some slot)
       (fun _ _ => PMF.pure
-        ((runtime setup).reactiveBinding leaks owner event payload choice serial)) app.replayPolicy)
+        ((runtime setup).reactiveBinding leaks owner event payload choice serial)) app.silentPolicy)
   change final ∈ ((runtime setup).runInteractionPlan leaks players network
     ((roster.map ServiceInstruction.player ++ [.includeLatest event owner]) ++
       List.replicate ticks .tick ++ [.expire event]) execution).support at reached

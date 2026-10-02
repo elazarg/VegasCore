@@ -39,7 +39,7 @@ theorem latest_submission {Claim : Type} (event : Event)
     (serials : execution.network.SerialsBeforeNext) :
     latest (ReactiveApplication.Execution.observeEnvironment (application Claim)
         (execution.respond (application Claim) (eventOwner event)
-          ⟨some (.submit submission)⟩)) event =
+          ⟨some submission⟩)) event =
       .include (eventOwner event, execution.network.nextSerial (eventOwner event)) := by
   have unpublished : ∀ message ∈ execution.network.ledger,
       message.id ≠ (eventOwner event, execution.network.nextSerial (eventOwner event)) := by
@@ -60,7 +60,7 @@ theorem remainingVisit_submission_ledger {Claim : Type} (event : Event)
     (address : submission.address = some event)
     (serials : execution.network.SerialsBeforeNext) :
     (remainingVisit event (execution.respond (application Claim) (eventOwner event)
-      ⟨some (.submit submission)⟩)).network.ledger = execution.network.ledger ++
+      ⟨some submission⟩)).network.ledger = execution.network.ledger ++
         [⟨(eventOwner event, execution.network.nextSerial (eventOwner event)),
           packet (submit execution.application (eventOwner event) submission) (eventOwner event)
             (execution.network.known (eventOwner event)) submission⟩] := by
@@ -69,7 +69,7 @@ theorem remainingVisit_submission_ledger {Claim : Type} (event : Event)
     (packet (submit execution.application (eventOwner event) submission) (eventOwner event)
       (execution.network.known (eventOwner event)) submission)
   change (execution.respond (application Claim) (eventOwner event)
-    ⟨some (.submit submission)⟩).network.lookup
+    ⟨some submission⟩).network.lookup
       (eventOwner event, execution.network.nextSerial (eventOwner event)) = _ at found
   simp only [effect, recordEnvironment, ReactiveApplication.Execution.includePending,
     MessageNetwork.includePending, found]
@@ -85,7 +85,7 @@ theorem playing_binding_publicGuess {Claim : Type} (defaultClaim : Claim) (event
   have recorded := remainingVisit_submission_ledger event execution
     ⟨some event, .bind, defaultClaim, binding, none⟩ rfl serials
   have playingEq : playing Claim defaultClaim event binding =
-      ⟨some (.submit ⟨some event, .bind, defaultClaim, binding, none⟩)⟩ := by
+      ⟨some ⟨some event, .bind, defaultClaim, binding, none⟩⟩ := by
     simp only [playing, early, ↓reduceIte]
   rw [playingEq]
   simp only [publicGuess, ReactiveApplication.Execution.observe, MessageNetwork.observe]

@@ -128,6 +128,11 @@ theorem quiet_guess_results (bit guess : Bool) :
   obtain ⟨_, _, published, applicationEq, receipts⟩ := quiet_guess_application bit guess
   exact ⟨by rw [applicationEq]; exact published, receipts⟩
 
+theorem quiet_guess_no_liability (bit guess : Bool) :
+    aliceLiability (quietGuessIncluded bit guess) = false := by
+  rw [aliceLiability, (quiet_guess_results bit guess).2]
+  cases bit <;> cases guess <;> rfl
+
 theorem quiet_guess_cut (bit guess : Bool) :
     (quietGuessIncluded bit guess).application.config.cut =
       (nativeInitial bit).config.cut.complete bobPublication (initial_bob_ready bit) := by
@@ -262,7 +267,7 @@ theorem quiet_guess_suffix_summary (players : Player → nativeApp.Policy)
       ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
         resolutionTail)
       (quietGuessRespond bit guess)).map
-        (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
+        (fun final => (nativeResults final.application.config, aliceLiability final)) =
       PMF.pure (Results.mk (.success bit) (guessResult guess), false) := by
   have prefixLaw : nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork
       [.includeLatest bobPublication bob, .tick, .expire bobPublication,
@@ -276,8 +281,8 @@ theorem quiet_guess_suffix_summary (players : Player → nativeApp.Policy)
     (quiet_alice_fixed bit guess) (quiet_guess_results bit guess).1
     (quiet_alice_ready bit guess) (quiet_alice_timely bit guess (quiet_alice_fixed bit guess))
     (quiet_alice_serials bit guess)]
-  change PMF.pure (_, rejectedAlice (quietGuessIncluded bit guess).receipts) = _
-  rw [(quiet_guess_results bit guess).2]
-  rfl
+  change PMF.pure (_, aliceLiability (quietGuessIncluded bit guess)) = _
+  rw [aliceLiability, (quiet_guess_results bit guess).2]
+  cases bit <;> cases guess <;> rfl
 
 end Vegas.Examples.MonitoredGuessing

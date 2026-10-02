@@ -38,7 +38,7 @@ theorem opening_eq (execution : nativeApp.Execution) (who : Player)
     WitnessedSubmission.normalizeReactive, Submission.normalizeReactive_none,
     Submission.candidateAfter_opening] using
       congrArg (fun request : EvidenceRequest nativeGraph =>
-        (⟨some (.submit ⟨⟨.opening event handle ⟨.bool, value⟩, none⟩, request⟩)⟩ :
+        (⟨some ⟨⟨.opening event handle ⟨.bool, value⟩, none⟩, request⟩⟩ :
           nativeApp.Action)) normal
 
 def choiceAction (event : nativeGraph.EventId) (handle : Handle nativeGraph)
@@ -264,13 +264,13 @@ theorem before_alice_serials (bit guess : Bool) :
   | true => exact quiet_alice_serials bit true
 
 theorem before_alice_no_charge (bit guess : Bool) :
-    rejectedAlice (beforeAlice bit guess).receipts = false := by
+    aliceLiability (beforeAlice bit guess) = false := by
   cases guess with
   | false => rfl
   | true =>
-      change rejectedAlice (quietGuessIncluded bit true).receipts = false
-      rw [(quiet_guess_results bit true).2]
-      rfl
+      change aliceLiability (quietGuessIncluded bit true) = false
+      rw [aliceLiability, (quiet_guess_results bit true).2]
+      cases bit <;> rfl
 
 def waitExecution (execution : nativeApp.Execution) : nativeApp.Execution :=
   { execution with environmentRecall := execution.environmentRecall ++
@@ -358,14 +358,14 @@ theorem alice_service_summary (players : Player → nativeApp.Policy)
     (nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
       ((beforeAlice bit guess).respond nativeApp alice
         (choiceAction alicePublication aliceHandle bit disclose))).map
-          (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
+          (fun final => (nativeResults final.application.config, aliceLiability final)) =
       PMF.pure (Results.mk (if disclose then .success bit else .failure) (guessResult guess),
         false) := by
   cases disclose with
   | false =>
       simp only [choiceAction, Bool.false_eq_true, ↓reduceIte, silent_alice_service,
         PMF.pure_map, silent_alice_result]
-      change PMF.pure (_, rejectedAlice (beforeAlice bit guess).receipts) = _
+      change PMF.pure (_, aliceLiability (beforeAlice bit guess)) = _
       rw [before_alice_no_charge]
   | true =>
       simpa only [choiceAction, ↓reduceIte, before_alice_no_charge] using
@@ -405,7 +405,7 @@ theorem branch_summary (players : Player → nativeApp.Policy) (bit guess disclo
       ([.includeLatest bobPublication bob, .tick, .expire bobPublication, .player alice] ++
         resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
-        (fun final => (nativeResults final.application.config, rejectedAlice final.receipts)) =
+        (fun final => (nativeResults final.application.config, aliceLiability final)) =
       PMF.pure (sourceResults (finalConfig bit guess disclose).state, false) := by
   rw [runInteractionPlan_append, bob_to_alice, aliceChoice, PMF.pure_map,
     PMF.pure_bind, alice_service_summary, source_results]
@@ -420,12 +420,12 @@ theorem branch_initial_type_results (players : Player → nativeApp.Policy)
         resolutionTail)
       ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess))).map
         (fun final => (observedAliceBit (final.observe nativeApp alice),
-          nativeResults final.application.config, rejectedAlice final.receipts)) =
+          nativeResults final.application.config, aliceLiability final)) =
       PMF.pure (bit, sourceResults (finalConfig bit guess disclose).state, false) := by
   apply pmf_eq_pure_of_support_subset_singleton
   intro result supported
   obtain ⟨final, reached, rfl⟩ := PMF.support_map .. ▸ supported
-  have summarized : (nativeResults final.application.config, rejectedAlice final.receipts) =
+  have summarized : (nativeResults final.application.config, aliceLiability final) =
       (sourceResults (finalConfig bit guess disclose).state, false) := by
     apply (PMF.mem_support_pure_iff _ _).mp
     rw [← branch_summary players bit guess disclose aliceChoice, PMF.support_map]
@@ -434,7 +434,7 @@ theorem branch_initial_type_results (players : Player → nativeApp.Policy)
     ((quietBob bit).respond nativeApp bob (choiceAction bobPublication bobHandle true guess)) final
     ((native_fixed_invariant bit).respond (quietBob bit) bob _ (quiet_bob_fixed bit)) reached
   change (observedAliceBit (final.observe nativeApp alice), nativeResults final.application.config,
-    rejectedAlice final.receipts) = _
+    aliceLiability final) = _
   rw [native_observed_alice_bit bit final fixed]
   exact congrArg (Prod.mk bit) summarized
 

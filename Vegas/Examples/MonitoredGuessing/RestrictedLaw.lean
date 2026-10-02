@@ -4,7 +4,7 @@ import Vegas.Examples.MonitoredGuessing.RestrictedValues
 import Vegas.Examples.MonitoredGuessing.RestrictedSourceValues
 import GameTheoryExtensions.Math.Probability.Uniform
 
-/-! # Joint initial-type, result and net-payoff preservation
+/-! # Joint initial-type, result and comparison payoff preservation
 
 The equality holds for every source profile. Both runtime liabilities vanish on
 its restricted compilation, so the recorded payoff vector is the declared one.
@@ -22,7 +22,7 @@ def nativePayoffObservation (table : PayoffTable) (state : nativeApp.ProtocolSta
   state.elim (false, ⟨.failure, .failure⟩, fun _ => 0) (fun control =>
     (observedAliceBit (control.execution.observe nativeApp alice),
       nativeResults control.execution.application.config,
-      Enforcement.executionUtility table control.execution))
+      Enforcement.comparisonExecutionUtility table control.execution))
 
 theorem nativePayoffObservation_normalization (table : PayoffTable)
     (state : nativeApp.ProtocolState) :
@@ -59,17 +59,17 @@ theorem alice_service_observation (table : PayoffTable) (players : Player → na
   have payoffLaw := Enforcement.alice_service_payoff_law table players bit guess disclose
   rw [source_results] at payoffLaw
   have paired : (nativeResults final.application.config,
-      Enforcement.executionUtility table final) =
+      Enforcement.comparisonExecutionUtility table final) =
         (decisionResult bit guess disclose,
           tableReward table (decisionResult bit guess disclose)) := by
     apply (PMF.mem_support_pure_iff _ _).mp
     have mapped : (nativeResults final.application.config,
-        Enforcement.executionUtility table final) ∈
+        Enforcement.comparisonExecutionUtility table final) ∈
         ((nativeRuntime.runInteractionPlan nativeLeaks players nativeNetwork resolutionTail
           ((beforeAlice bit guess).respond nativeApp alice
             (choiceAction alicePublication aliceHandle bit disclose))).map
               (fun final => (nativeResults final.application.config,
-                Enforcement.executionUtility table final))).support := by
+                Enforcement.comparisonExecutionUtility table final))).support := by
       rw [PMF.support_map]
       exact ⟨final, reached, rfl⟩
     exact payoffLaw ▸ mapped
@@ -77,7 +77,7 @@ theorem alice_service_observation (table : PayoffTable) (players : Player → na
     ((native_fixed_invariant bit).respond (beforeAlice bit guess) alice _
       (before_alice_fixed bit guess)) reached
   change (observedAliceBit (final.observe nativeApp alice), nativeResults final.application.config,
-    Enforcement.executionUtility table final) = _
+    Enforcement.comparisonExecutionUtility table final) = _
   rw [native_observed_alice_bit bit final fixed]
   exact congrArg (Prod.mk bit) paired
 
@@ -153,7 +153,7 @@ theorem initialized_observation (table : PayoffTable)
   exact bob_finish_observation table profile bit
 
 /-- The fixed playerwise policy translation preserves the initial type jointly
-with public results and the entire actually charged payoff vector. -/
+with public results and the entire comparison payoff vector. -/
 theorem compile_joint_law (table : PayoffTable)
     (profile : Profile sourceModel.behavioralSignature) :
     ((sourceModel.runBehavioral profile 3).map History.state).map

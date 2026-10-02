@@ -50,7 +50,7 @@ theorem openingWindowMixture_continuation_expiry (runtime : EventGraphRuntime gr
     let app := runtime.reactiveApplication leaks
     let family := fun selected => app.scheduledPolicy offset selected
       (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate ⟨payload, value⟩))
-        app.replayPolicy
+        app.silentPolicy
     let posterior := (app.policyMixture choices family).posterior (current.recall owner)
     (∀ selected ∈ posterior.support,
       runtime.OpeningWindowFrame leaks owner event candidate ⟨payload, value⟩

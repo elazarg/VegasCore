@@ -103,7 +103,7 @@ theorem roster_policy_converges
         (when : TimingLaw setup rosters) :
         rosterPolicy setup leaks rosters when profile who (control.execution.recall who)
           (control.execution.observe app who) =
-          app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
+          app.silentPolicy (control.execution.recall who) (control.execution.observe app who) := by
       have idle := PublicView.ownTurn?_eq_none _ who (soleNow.idle ownedEvent)
       generalize input : control.execution.observe app who = view at idle ⊢
       unfold rosterPolicy
@@ -111,7 +111,7 @@ theorem roster_policy_converges
     have limitWaiting : rosterLimitPolicy setup leaks rosters
         (setup.decodeBehavioralProfile admission source) who (control.execution.recall who)
         (control.execution.observe app who) =
-          app.replayPolicy (control.execution.recall who) (control.execution.observe app who) := by
+          app.silentPolicy (control.execution.recall who) (control.execution.observe app who) := by
       have idle := PublicView.ownTurn?_eq_none _ who (soleNow.idle ownedEvent)
       generalize input : control.execution.observe app who = view at idle ⊢
       unfold rosterLimitPolicy

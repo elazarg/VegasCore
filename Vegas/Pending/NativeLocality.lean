@@ -20,47 +20,35 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 def NativeView.afterTransmission (view : NativeView graph) (nonce : Nat) :
-    Option (Transmission graph) → NativeView graph
+    Option (Submission graph) → NativeView graph
   | none => view
-  | some (.replay id) =>
-      match view.messages.known? id with
-      | none => view
-      | some message =>
-          { view with messages := { view.messages with sent := view.messages.sent ++ [message] } }
-  | some (.submit submission) =>
+  | some submission =>
       { view with
         messages := { view.messages with
           sent := view.messages.sent ++ [⟨(view.who, nonce), submission.packet⟩] }
         candidates := submission.candidateAfter view.who view.candidates }
 
 theorem nativeView_transmit (runtime : EventGraphRuntime graph) (who : Player)
-    (state : runtime.application.State) (transmission : Option (Transmission graph)) :
+    (state : runtime.application.State) (transmission : Option (Submission graph)) :
     runtime.nativeView (runtime.transmit who state transmission) who =
       (runtime.nativeView state who).afterTransmission
         (state.pool.nextSerial who) transmission := by
   cases transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          simp only [transmit, MessagePool.replay]
-          split <;> simp_all [nativeView, NativeView.ofApplication,
-            MessageApplication.State.observe, NativeView.afterTransmission,
-            MessagePool.observe, MessagePool.Result.invalid]
-      | submit submission =>
-          have candidates : (fun slot =>
-              (submitStep (submission.register state.application who) who
-                submission.packet).candidates.lookup (who, slot)) =
-              submission.candidateAfter who
-                (fun slot => state.application.candidates.lookup (who, slot)) := by
-            funext slot
-            exact submission.candidateAfter_eq who state.application slot
-          have facts := submission.register_facts who state.application
-          simp only [transmit, nativeView, NativeView.ofApplication,
-            MessageApplication.State.observe, application, State.playerView,
-            submitStep_config, submitStep_publicView, facts.1, facts.2.2,
-            NativeView.afterTransmission, MessagePool.submit, MessagePool.observe,
-            ↓reduceIte, candidates]
+  | some submission =>
+      have candidates : (fun slot =>
+          (submitStep (submission.register state.application who) who
+            submission.packet).candidates.lookup (who, slot)) =
+          submission.candidateAfter who
+            (fun slot => state.application.candidates.lookup (who, slot)) := by
+        funext slot
+        exact submission.candidateAfter_eq who state.application slot
+      have facts := submission.register_facts who state.application
+      simp only [transmit, nativeView, NativeView.ofApplication,
+        MessageApplication.State.observe, application, State.playerView,
+        submitStep_config, submitStep_publicView, facts.1, facts.2.2,
+        NativeView.afterTransmission, MessagePool.submit, MessagePool.observe,
+        ↓reduceIte, candidates]
 
 abbrev NativeInput (graph : Vegas.EventGraph Player L) :=
   List (NativeEntry graph) × NativeView graph

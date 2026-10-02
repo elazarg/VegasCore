@@ -71,7 +71,7 @@ values. See [the stack document](se-compilation-stack.md) for exact scope.
 - `Vegas/Pending/ReactiveResponseConditioning.lean` recovers the actual selected
   current-response continuation by conditioning the full execution law on its
   persistent recall entry. It does not sample the activation twice.
-- `Vegas/Pending/ReactiveReplayApplication.lean` preserves application laws
+- `Vegas/Pending/ReactiveSilentApplication.lean` preserves application laws
   through transport-only windows; it claims no equality of network or recall.
 - `Vegas/Pending/ReactiveActiveOpening.lean` proves exact application settlement
   from an already sampled owner response, an unpassed optional opening slot,

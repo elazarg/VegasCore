@@ -29,13 +29,14 @@ theorem native_bob_ready (bit : Bool) (execution : nativeApp.Execution)
   have publicEq : execution.application.publicView =
       (nativeBobExecution bit).application.publicView :=
     congrArg PlayerView.publicView views
-  rw [publicEq, State.publicView_eventReady, native_bob_application]
-  exact native_secret_ready bit
+  exact publicEq.symm ▸ ((State.publicView_eventReady
+    (nativeBobExecution bit).application guessEvent).mpr
+      ((native_bob_application bit).symm ▸ native_secret_ready bit))
 
 def nativeFinalCommand (execution : nativeApp.Execution) (action : nativeApp.Action) :
     nativeApp.Command :=
   match action.transmission with
-  | some (.submit submission) =>
+  | some submission =>
       if submission.call.packet.event? nativeGraph = some guessEvent then
         .include (true, execution.network.nextSerial true) else .wait
   | _ => .wait
@@ -51,37 +52,40 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
         PMF.pure (nativeFinalCommand control.execution action) := by
   classical
   let execution := control.execution
+  let condition : nativeApp.PublicObservation → Message Bool nativeApp.Payload → Prop :=
+    dependencyCondition
+  let proposal : Message Bool nativeApp.Payload → Bool := eventProposal guessEvent true
   have rawTrace := nativeMenu.toRawTrace nativeInitialLaw 52 nativeScheduler trace
   have position := (native_bob_remaining control trace active).1
   have serials := nativeApp.serialsBeforeNext_history nativeScheduler nativeInitialLaw 52 rawTrace
-  have retained := nativeApp.pendingOrPublished_history nativeScheduler nativeInitialLaw 52 rawTrace
   have noOld : MessageNetwork.eligibleIds
-      (execution.network.unpublished (nativeApp.authorizedEligibility dependencyCondition
-        execution.environmentRecall (eventProposal guessEvent true))) execution.network.pending =
+      (execution.network.unpublished (nativeApp.authorizedEligibility condition
+        execution.environmentRecall proposal)) execution.network.pending =
           ∅ := by
     apply Finset.eq_empty_iff_forall_notMem.mpr
     intro id member
     obtain ⟨message, filtered, _⟩ := List.mem_map.mp (List.mem_toFinset.mp member)
     have selected := (List.mem_filter.mp filtered).2
-    simp only [MessageNetwork.unpublished, ReactiveApplication.authorizedEligibility,
+    simp only [MessageNetwork.unpublished, ReactiveApplication.authorizedEligibility, proposal,
       eventProposal, Bool.and_eq_true, decide_eq_true_eq] at selected
     exact native_no_bob_pending control trace empty message
       (List.mem_filter.mp filtered).1 selected.1.1.1
-  have old : nativeApp.authorizedUniform dependencyCondition execution.environmentRecall
-      (execution.observeEnvironment nativeApp) (eventProposal guessEvent true) =
+  have old : nativeApp.authorizedUniform condition execution.environmentRecall
+      (execution.observeEnvironment nativeApp) proposal =
         PMF.pure none := by
     change MessageNetwork.chooseUniform (MessageNetwork.eligibleIds
-      (execution.network.unpublished (nativeApp.authorizedEligibility dependencyCondition
-        execution.environmentRecall (eventProposal guessEvent true))) execution.network.pending) = _
+      (execution.network.unpublished (nativeApp.authorizedEligibility condition
+        execution.environmentRecall proposal)) execution.network.pending) = _
     rw [noOld]
     simp [MessageNetwork.chooseUniform]
-  have submitted (submission : WitnessedSubmission nativeGraph) :
-      nativeApp.submitsEligible (nativeApp.authorizedEligibility dependencyCondition
-        execution.environmentRecall (eventProposal guessEvent true)) execution true
-        ⟨some (.submit submission)⟩ =
+  have submitted (submission : nativeApp.Submission) :
+      nativeApp.submitsEligible (nativeApp.authorizedEligibility condition
+        execution.environmentRecall proposal) execution true
+        ⟨some submission⟩ =
           decide (submission.call.packet.event? nativeGraph = some guessEvent) := by
-    let packet := submission.emit (nativeApp.submit execution.application true submission)
-      true (execution.network.known true)
+    let packet : nativeApp.Payload := nativeApp.packet
+      (nativeApp.submit execution.application true submission) true
+      (execution.network.known true) submission
     have unpublished := serials.next_unpublished true
     have absent : (execution.network.ledger.any fun prior =>
         decide (prior.id = (true, execution.network.nextSerial true))) = false := by
@@ -90,18 +94,22 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
       obtain ⟨message, member, same⟩ := List.any_eq_true.mp seen
       exact unpublished (List.mem_map.mpr ⟨message, member, of_decide_eq_true same⟩)
     have permitted := nativeApp.submissionPermitted_fresh_history ReactivePlayerView.publicView
-      (fun _ _ => rfl) dependencyCondition nativeInitialLaw 52 nativeScheduler control rawTrace
+      (fun _ _ => rfl) condition nativeInitialLaw 52 nativeScheduler control rawTrace
       true active packet
-    simp only [ReactiveApplication.submitsEligible, MessageNetwork.submit,
-      MessageNetwork.unpublished, ReactiveApplication.authorizedEligibility]
+    change (proposal ⟨(true, execution.network.nextSerial true), packet⟩ &&
+      decide (nativeApp.SubmissionPermitted condition execution.environmentRecall
+        ⟨(true, execution.network.nextSerial true), packet⟩) &&
+      !execution.network.ledger.any (fun prior =>
+        decide (prior.id = (true, execution.network.nextSerial true)))) =
+          decide (submission.call.packet.event? nativeGraph = some guessEvent)
     rw [absent]
-    simp only [Bool.not_false, Bool.and_true, eventProposal, Message.sender, true_and]
+    simp only [Bool.not_false, Bool.and_true, proposal, eventProposal, Message.sender, true_and]
     change (decide (submission.call.packet.event? nativeGraph = some guessEvent) &&
-      decide (nativeApp.SubmissionPermitted dependencyCondition execution.environmentRecall
+      decide (nativeApp.SubmissionPermitted condition execution.environmentRecall
         ⟨(true, execution.network.nextSerial true), packet⟩)) =
           decide (submission.call.packet.event? nativeGraph = some guessEvent)
     by_cases address : submission.call.packet.event? nativeGraph = some guessEvent
-    · have allowed : dependencyCondition (nativeApp.observePublic execution.application)
+    · have allowed : condition (nativeApp.observePublic execution.application)
           ⟨(true, execution.network.nextSerial true), packet⟩ := by
         intro target same predecessor member
         have identified : guessEvent = target := Option.some.inj (address.symm.trans same)
@@ -112,22 +120,20 @@ theorem native_bob_selection (bit : Bool) (control : nativeApp.Control)
     · simp only [address, decide_false, Bool.false_and]
   rw [native_schedule _ _ (by
     rw [nativeApp.respond_environmentRecall, position])]
-  change (nativeApp.authorizedUniform dependencyCondition _ _
-    (eventProposal guessEvent true)).map _ = _
-  rw [nativeApp.authorizedUniform_response_eq dependencyCondition _ _ retained,
+  change (nativeApp.authorizedUniform condition _ _
+    proposal).map _ = _
+  rw [nativeApp.authorizedUniform_response_eq condition
+    proposal execution true action,
     noOld, old, Finset.insert_empty, MessageNetwork.chooseUniform_singleton]
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => simp only [ReactiveApplication.submitsEligible, Bool.false_eq_true,
       ↓reduceIte, PMF.pure_map, Option.elim_none, nativeFinalCommand]
-  | some transmission =>
-      cases transmission with
-      | replay id => simp only [ReactiveApplication.submitsEligible, Bool.false_eq_true,
-          ↓reduceIte, PMF.pure_map, Option.elim_none, nativeFinalCommand]
-      | submit submission =>
-          rw [submitted]
-          by_cases address : submission.call.packet.event? nativeGraph = some guessEvent <;>
-            simp only [nativeFinalCommand, address, decide_true, decide_false, ↓reduceIte,
-              Bool.false_eq_true, PMF.pure_map, Option.elim_some, Option.elim_none]
+  | some submission =>
+      rw [submitted]
+      by_cases address : submission.call.packet.event? nativeGraph = some guessEvent <;>
+        simp only [nativeFinalCommand, address, decide_true, decide_false, ↓reduceIte,
+          Bool.false_eq_true, PMF.pure_map, Option.elim_some, Option.elim_none]
+      all_goals rfl
 
 end Vegas.Examples.SequentialValidation

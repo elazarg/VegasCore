@@ -21,7 +21,7 @@ def nativeWithholdSubmission (who : Player) : WitnessedSubmission nativeGraph :=
   disclosureSubmission (.withhold (nativePublicationEvent who))
 
 def nativeWithholdAction (who : Player) : nativeApp.Action :=
-  ⟨some (.submit (nativeWithholdSubmission who))⟩
+  ⟨some (nativeWithholdSubmission who)⟩
 
 theorem native_withhold_available (who : Player) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) :

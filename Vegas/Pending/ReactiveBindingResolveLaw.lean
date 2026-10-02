@@ -6,7 +6,7 @@ import GameTheoryExtensions.Math.Probability.Support
 
 /-! # The actual mixed disclosure response under binding repair
 
-Silence, all known-envelope replays, and first successful guarded openings use
+Silence and first successful guarded openings use
 the unchanged response on the repaired execution. This identifies the real
 legal implementation transition, including private-memory update and the
 complete joint observations. Inclusion may still occur later.
@@ -125,7 +125,7 @@ theorem resolve_response_coupling
           (original.observe (runtime.reactiveApplication leaks) owner))
     (clean : ∀ response ∈ (players owner (original.recall owner)
       (original.observe (runtime.reactiveApplication leaks) owner)).support,
-        response ∈ ((runtime.reactiveApplication leaks).replayPolicy (original.recall owner)
+        response ∈ ((runtime.reactiveApplication leaks).silentPolicy (original.recall owner)
           (original.observe (runtime.reactiveApplication leaks) owner)).support ∨
         ∃ value, binding.get? original.application.config.store = some (.success value) ∧
           EventCode.resolveOutput? binding checks true original.application.config.store =
@@ -148,13 +148,15 @@ theorem resolve_response_coupling
   let law := players owner (original.recall owner) (original.observe app owner)
   let updated (response : app.Action) := memory.record runtime leaks
     (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response
-  have replayLaw := app.replayPolicy_eq_of_network_eq original repaired owner leftRecall
-    rightRecall frame.network
+  have replayLaw :
+      app.silentPolicy (original.recall owner) (original.observe app owner) =
+        app.silentPolicy (repaired.recall owner) (repaired.observe app owner) := rfl
   have unchanged (response : app.Action) (supported : response ∈ law.support) :
       memory.repairResponse runtime leaks owner (repaired.observe app owner) response =
         (response, memory.shadow) := by
     rcases clean response supported with replay | ⟨value, stored, resolved, same, _⟩
-    · rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> rfl
+    · rcases app.silentPolicy_cases _ _ response replay with rfl
+      rfl
     · obtain ⟨_, candidate, associated, _, owned, fixed, _⟩ :=
         frame.successful_opening leftBinding rightBinding binding value stored
       have actual := runtime.serviceDecision_successful_opening leaks original leftRecall owner
@@ -168,7 +170,7 @@ theorem resolve_response_coupling
         (repaired.observe app owner) := by
     rcases clean response supported with replay | ⟨value, stored, resolved, same, first⟩
     · rw [replayLaw] at replay
-      exact bounds.replay_compiled runtime leaks owner _ _ response replay
+      exact bounds.silent_compiled runtime leaks owner _ _ response replay
     · exact frame.successful_serviceDecision_retained bounds leftRecall rightRecall leftBinding
         rightBinding event payload binding checks outputEq codeEq node turn actor ready timely
           value stored resolved response same (available response supported) first
@@ -212,7 +214,8 @@ theorem resolve_response_coupling
     · rcases clean response member with replay | ⟨value, stored, resolved, same, _⟩
       · apply frame.transport_response response
         intro material
-        rcases app.replayPolicy_cases _ _ response replay with rfl | ⟨id, rfl⟩ <;> simp
+        rcases app.silentPolicy_cases _ _ response replay with rfl
+        simp
       · rw [same]
         exact frame.successful_response_frame leftRecall leftBinding rightBinding event payload
           binding checks outputEq codeEq node value stored resolved

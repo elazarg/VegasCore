@@ -8,12 +8,11 @@ import Interaction.ReactiveAuditCollection
 
 /-! # Send-time traffic rules for the revelation service
 
-These rules read the transmission phase, broadcaster and prior ledger. No audit
+These rules read the transmission phase, signed author and prior ledger. No audit
 verdict uses them: settlement judges packets against the settled record. They
 are proof devices for classifying additional responses. A fresh ordinary
 transmission conforms when it is a certified opening of a ready, timely
-resolution; previously published packets may be replayed. The watcher transmits
-nothing on compliant executions.
+resolution. The watcher transmits nothing on compliant executions.
 
 A packet that conforms to the service rule is a conforming opening here
 (`Vegas.openingTraffic_of_fresh`), so a breach of these rules breaches the
@@ -36,16 +35,16 @@ variable {Player : Type} [DecidableEq Player]
 /-- The public part of a new opening. It does not inspect candidate meanings,
 private source cells or a player's intended strategy. -/
 def openingTraffic (record : (application setup leaks).TrafficRecord) : Prop :=
-  match record.input.envelope.payload.call with
+  match record.envelope.payload.call with
   | .opening event candidate raw =>
       record.observation.EventReady event ∧
       (match record.observation.activatedAt event with
         | none => False
         | some entered => record.observation.clock - entered < (runtime setup).deadline event) ∧
-      record.input.envelope.payload.evidence = some ⟨candidate, raw⟩ ∧
+      record.envelope.payload.evidence = some ⟨candidate, raw⟩ ∧
       (match nodeView (graph setup) event with
         | .resolve owner payload binding _ _ _ =>
-            record.input.broadcaster = owner ∧ record.input.envelope.sender = owner ∧
+            record.envelope.sender = owner ∧ record.envelope.sender = owner ∧
             candidate.1 = owner ∧ record.observation.accepted binding.field = some candidate ∧
             raw.ty = payload
         | .bind .. | .sample .. => False)
@@ -58,7 +57,7 @@ theorem openingTraffic_of_fresh (reveals : setup.program.RevealOnly)
     (ledger : List (Message Player (application setup leaks).Payload))
     (message : Message Player (application setup leaks).Payload)
     (fresh : (runtime setup).freshServiceEnvelope view message) :
-    openingTraffic setup leaks ⟨view, ledger, ⟨message.sender, message⟩⟩ := by
+    openingTraffic setup leaks ⟨view, ledger, message⟩ := by
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | commitment event candidate =>
@@ -87,18 +86,17 @@ theorem openingTraffic_of_fresh (reveals : setup.program.RevealOnly)
   | malformed => exact fresh.elim
 
 open Classical in
-/-- The verdict uses the broadcaster, so rebroadcasting does not assign a new
-violation to the original envelope author. -/
+/-- The send-time rule attributes every fresh packet to its signed author. -/
 def permittedTraffic (watcher : Player)
     (record : (application setup leaks).TrafficRecord) : Bool :=
-  decide (record.input.broadcaster ≠ watcher ∧
-    (record.input.envelope.id ∈ record.ledger.map Message.id ∨ openingTraffic setup leaks record))
+  decide (record.envelope.sender ≠ watcher ∧
+    (record.envelope.id ∈ record.ledger.map Message.id ∨ openingTraffic setup leaks record))
 
 theorem permittedTraffic_iff (watcher : Player)
     (record : (application setup leaks).TrafficRecord) :
     permittedTraffic setup leaks watcher record = true ↔
-      record.input.broadcaster ≠ watcher ∧
-        (record.input.envelope.id ∈ record.ledger.map Message.id ∨
+      record.envelope.sender ≠ watcher ∧
+        (record.envelope.id ∈ record.ledger.map Message.id ∨
           openingTraffic setup leaks record) := by
   classical
   simp only [permittedTraffic, decide_eq_true_eq]
@@ -113,9 +111,9 @@ theorem openingTraffic_accepted
     (submission : WitnessedSubmission (graph setup))
     (conforming : openingTraffic setup leaks
       ⟨execution.application.publicView, execution.network.ledger,
-        ⟨who, ⟨(who, execution.network.nextSerial who), submission.emit
+        ⟨(who, execution.network.nextSerial who), submission.emit
           ((application setup leaks).submit execution.application who submission) who
-            (execution.network.known who)⟩⟩⟩) :
+            (execution.network.known who)⟩⟩) :
     let state := (application setup leaks).submit execution.application who submission
     let packet := submission.emit state who (execution.network.known who)
     (∃ next, (application setup leaks).handle state
@@ -189,7 +187,7 @@ theorem openingTraffic_accepted
             owned associated value valid stored result resolved⟩
 
 /-- Every rejected or uncertified fresh submission fails the public checker.
-Freshness prevents presenting the new envelope as an already published replay. -/
+Freshness separates the allocated envelope from all previously published packets. -/
 theorem departureTraffic_forbidden
     (execution : (application setup leaks).Execution) (watcher who : Player)
     (sound : ((runtime setup).packetEvidence leaks).Sound execution)
@@ -203,9 +201,9 @@ theorem departureTraffic_forbidden
         certifiedOpening packet = false) :
     permittedTraffic setup leaks watcher
       ⟨execution.application.publicView, execution.network.ledger,
-        ⟨who, ⟨(who, execution.network.nextSerial who), submission.emit
+        ⟨(who, execution.network.nextSerial who), submission.emit
           ((application setup leaks).submit execution.application who submission) who
-            (execution.network.known who)⟩⟩⟩ = false := by
+            (execution.network.known who)⟩⟩ = false := by
   cases verdict : permittedTraffic setup leaks watcher _ with
   | false => rfl
   | true =>

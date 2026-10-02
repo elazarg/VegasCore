@@ -89,7 +89,7 @@ private theorem transition_traffic_inputs
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
     (reached : after ∈ (app.transition initial horizon scheduler before joint).support) :
     before.elim [] (fun control => control.execution.network.inputs) ++
-        (app.trafficStep before after).map TrafficRecord.input =
+        (app.trafficStep before after).map TrafficRecord.envelope =
       after.elim [] (fun control => control.execution.network.inputs) := by
   cases before with
   | none =>
@@ -104,12 +104,7 @@ private theorem transition_traffic_inputs
           rcases (joint who).getD ⟨none⟩ with ⟨transmission⟩
           cases transmission with
           | none => simp [trafficStep, Execution.respond]
-          | some transmission =>
-              cases transmission with
-              | submit submission => simp [trafficStep, Execution.respond, MessageNetwork.submit]
-              | replay id =>
-                  simp only [trafficStep, Execution.respond, MessageNetwork.replay]
-                  split <;> simp
+          | some submission => simp [trafficStep, Execution.respond, MessageNetwork.submit]
       | none =>
           cases remaining with
           | zero =>
@@ -125,7 +120,7 @@ private theorem transition_traffic_inputs
 private theorem trafficAudit_inputs
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler) :
     ∀ {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state),
-      (app.trafficAudit initial horizon scheduler trace).map TrafficRecord.input =
+      (app.trafficAudit initial horizon scheduler trace).map TrafficRecord.envelope =
         state.elim [] (fun control => control.execution.network.inputs)
   | _, .start => rfl
   | _, .extend prior joint _legal reached => by
@@ -217,11 +212,11 @@ theorem trafficAudit_eq_stateTraffic
   (app.traffic_invariant initial horizon scheduler trace).1
 
 /-- Every input of an actual execution has exactly its corresponding audit
-record. This includes rebroadcasts, with their original multiplicity and order. -/
+record, in order. -/
 theorem stateTraffic_inputs
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     {state : app.ProtocolState} (trace : (app.protocol initial horizon scheduler).Trace state) :
-    (app.stateTraffic state).map TrafficRecord.input =
+    (app.stateTraffic state).map TrafficRecord.envelope =
       state.elim [] (fun control => control.execution.network.inputs) := by
   rw [← app.trafficAudit_eq_stateTraffic initial horizon scheduler trace]
   exact app.trafficAudit_inputs initial horizon scheduler trace

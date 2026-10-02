@@ -30,7 +30,7 @@ theorem compiled_packet (bit : Bool) :
     (nativeRuntime.reactiveDecision leaks false secretEvent true
       ((nativeRuntime.reactiveApplication leaks).observePlayer
         (nativeDummyPublished bit) false)).transmission =
-      some (.submit (disclosureSubmission (.withhold secretEvent))) := by
+      some (disclosureSubmission (.withhold secretEvent)) := by
   have resolved : EventGraph.EventCode.resolveOutput? nativeSecretBinding nativeSecretChecks true
       (nativeGraph.playerStore false (nativeDummyPublished bit).config.store) =
         some .failure := by
@@ -49,7 +49,7 @@ theorem decoded_fact (bit : Bool) :
 def submitted (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   (ReactiveApplication.Execution.initial (nativeRuntime.reactiveApplication leaks)
     (nativeDummyPublished bit)).respond (nativeRuntime.reactiveApplication leaks) false
-      ⟨some (.submit (disclosureSubmission (secretOpening bit).packet))⟩
+      ⟨some (disclosureSubmission (secretOpening bit).packet)⟩
 
 def included (bit : Bool) : (nativeRuntime.reactiveApplication leaks).Execution :=
   (submitted leaks bit).includePending (nativeRuntime.reactiveApplication leaks) (false, 0)

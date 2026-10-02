@@ -5,12 +5,9 @@ import Vegas.Game.EventCompilation
 import Vegas.Game.EventMessages
 import Vegas.Game.EventMessageStrategic
 import Vegas.Game.RevealServiceCompilation
-import Vegas.Game.RevealServiceAuditCompilation
 import Vegas.Game.RevealServiceRosterCompilation
 import Vegas.Game.SourceServiceRawExtension
 import Vegas.Game.SourceServiceCompilation
-import Vegas.Game.RevealServiceSignedCompilation
-import Vegas.Game.RevealServiceReplayExtension
 import Vegas.Game.BindingRepairBlock
 import Vegas.Pending.ReactiveOpeningSettlement
 import Interaction.ScheduledOpeningPosterior
@@ -62,6 +59,7 @@ import Vegas.Examples.MonitoredGuessing.RestrictedFinalComparison
 import Vegas.Examples.MonitoredGuessing.DeclaredCompilation
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import Interaction.MessageMonitoringProbability
+import Interaction.ChallengeWindow
 import Vegas.Pending.ReactiveConformance
 import GameTheory.Analysis.Protocol.Incentives
 import GameTheoryExtensions.Analysis.Protocol.Bayes
@@ -1376,12 +1374,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 open Vegas in
 #print axioms source_raw_sequential_equilibrium_preserved
 
-/-- info: 'Vegas.audited_source_sequential_equilibrium_preserved'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open Vegas in
-#print axioms audited_source_sequential_equilibrium_preserved
-
 /-- info: 'Vegas.roster_audited_source_sequential_equilibrium_preserved'
 depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -1412,12 +1404,6 @@ depends on axioms: [propext, Classical.choice, Quot.sound] -/
 open Vegas in
 #print axioms settled_audited_raw_sequential_equilibrium
 
-/-- info: 'Vegas.replay_equilibrium_extends' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open Vegas in
-#print axioms replay_equilibrium_extends
-
 /-- info: 'Vegas.EventGraphRuntime.openingWindow_settlement' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -1436,10 +1422,9 @@ open Interaction.ReactiveApplication in
 open Vegas in
 #print axioms reactive_commit_repair
 
-/-- info: 'Vegas.signed_audit_source_sequential_equilibrium_preserved'
-depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'Interaction.EvidenceReportService.sample_coverage' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas in
-#print axioms signed_audit_source_sequential_equilibrium_preserved
+#print axioms Interaction.EvidenceReportService.sample_coverage
 
 end Vegas.Paper

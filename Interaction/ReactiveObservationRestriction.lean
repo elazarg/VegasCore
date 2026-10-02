@@ -23,12 +23,7 @@ theorem respond_leaked (execution : app.Execution) (actor who : Principal)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
-  | some transmission =>
-    cases transmission with
-    | submit material => rfl
-    | replay id =>
-      cases found : (execution.network.known actor).find? (fun message => message.id = id) <;>
-        simp only [Execution.respond, MessageNetwork.replay, found]
+  | some material => rfl
 
 theorem environment_leaked_of_empty_observation
     (emptyObservation : ∀ who pending, app.observePending who pending = PMF.pure ∅)

@@ -96,7 +96,7 @@ theorem native_guess_law (bit guess : Bool) (serial : Nat) :
 
 theorem native_guess_available (guess : Bool) (past : List nativeApp.PlayerEntry)
     (view : nativeApp.PlayerView) :
-    (⟨some (.submit (nativeGuessSubmission guess))⟩ : nativeApp.Action) ∈
+    (⟨some (nativeGuessSubmission guess)⟩ : nativeApp.Action) ∈
       nativeMenu.actions true past view := by
   cases guess
   · exact native_withhold_available _ _ _ _

@@ -8,8 +8,8 @@ import Interaction.ReactiveObservationRestriction
 Only the designated owner can issue a fresh fact; other senders may copy facts
 from packets they already possess. At every initialized history, possession
 of a foreign certificate therefore requires a certificate in the recipient's
-leaked packets or in the public ledger. Own output memory, forwarding and
-replay cannot create a third acquisition channel.
+leaked packets or in the public ledger. Own output memory and forwarding
+cannot create a third acquisition channel.
 
 This is a provenance statement about carried certificates. It does not claim
 that every inference about a hidden value requires a certificate.
@@ -29,12 +29,12 @@ def OwnerIssued : Prop :=
   ∀ state who known material fact, fact ∈ evidence.decode (app.packet state who known material) →
     owner fact = who ∨ ∃ message ∈ known, fact ∈ evidence.decode message.payload
 
-/-- Every input carrying a foreign fact is backed by the broadcaster's
-observable evidence. The input may be a replay rather than an original issue. -/
+/-- Every input carrying a foreign fact is backed by its sender's observable
+evidence. The sender may have copied the fact rather than issued it. -/
 def InputOrigin (execution : app.Execution) : Prop :=
-  ∀ input ∈ execution.network.inputs, ∀ fact ∈ evidence.decode input.envelope.payload,
-    owner fact = input.broadcaster ∨
-      fact ∈ evidence.observe (execution.observe app input.broadcaster)
+  ∀ input ∈ execution.network.inputs, ∀ fact ∈ evidence.decode input.payload,
+    owner fact = input.sender ∨
+      fact ∈ evidence.observe (execution.observe app input.sender)
 
 theorem known_origin (execution : app.Execution)
     (origin : evidence.InputOrigin owner execution) (who : Principal)
@@ -43,12 +43,9 @@ theorem known_origin (execution : app.Execution)
     owner fact = who ∨ fact ∈ evidence.observe (execution.observe app who) := by
   simp only [MessageNetwork.known, List.mem_append] at known
   rcases known with (input | leaked) | published
-  · obtain ⟨record, retained, selected⟩ := List.mem_filterMap.mp input
-    split at selected
-    · rename_i same
-      cases Option.some.inj selected
-      simpa only [same] using origin record retained fact carried
-    · cases selected
+  · have retained := List.mem_filter.mp input
+    have same : message.sender = who := of_decide_eq_true retained.2
+    simpa only [same] using origin message retained.1 fact carried
   · exact Or.inr (List.mem_flatMap.mpr
       ⟨message, List.mem_append_left _ leaked, carried⟩)
   · exact Or.inr (List.mem_flatMap.mpr
@@ -64,43 +61,27 @@ theorem inputOrigin_respond (issued : evidence.OwnerIssued owner)
     (execution : app.Execution) (actor : Principal) (action : app.Action)
     (origin : evidence.InputOrigin owner execution) :
     evidence.InputOrigin owner (execution.respond app actor action) := by
-  have prior (input : NetworkInput Principal app.Payload)
+  have prior (input : Message Principal app.Payload)
       (retained : input ∈ execution.network.inputs) (fact : evidence.Fact)
-      (carried : fact ∈ evidence.decode input.envelope.payload) :
-      owner fact = input.broadcaster ∨ fact ∈ evidence.observe
-        ((execution.respond app actor action).observe app input.broadcaster) :=
+      (carried : fact ∈ evidence.decode input.payload) :
+      owner fact = input.sender ∨ fact ∈ evidence.observe
+        ((execution.respond app actor action).observe app input.sender) :=
     (origin input retained fact carried).imp id
-      (evidence.observed_respond execution input.broadcaster actor action fact)
+      (evidence.observed_respond execution input.sender actor action fact)
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => exact prior
-  | some transmission =>
-    cases transmission with
-    | submit material =>
-      intro input retained fact carried
-      rcases List.mem_append.mp retained with retained | fresh
-      · exact prior input retained fact carried
-      · cases List.mem_singleton.mp fresh
-        rcases issued (app.submit execution.application actor material) actor
-          (execution.network.known actor) material fact carried with owned | copied
-        · exact Or.inl owned
-        · obtain ⟨message, known, carried⟩ := copied
-          exact (evidence.known_origin owner execution origin actor message known fact carried).imp
-            id (evidence.observed_respond execution actor actor _ fact)
-    | replay id =>
-      cases found : (execution.network.known actor).find? (fun message => message.id = id) with
-      | none =>
-        simpa only [InputOrigin, Execution.respond, MessageNetwork.replay, found] using prior
-      | some message =>
-        intro input retained fact carried
-        change input ∈ (execution.network.replay actor id).2.inputs at retained
-        rw [MessageNetwork.replay, found] at retained
-        rcases List.mem_append.mp retained with retained | fresh
-        · exact prior input retained fact carried
-        · cases List.mem_singleton.mp fresh
-          exact (evidence.known_origin owner execution origin actor message
-            (List.mem_of_find?_eq_some found) fact carried).imp
-              (fun same => same) (evidence.observed_respond execution actor actor _ fact)
+  | some material =>
+    intro input retained fact carried
+    rcases List.mem_append.mp retained with retained | fresh
+    · exact prior input retained fact carried
+    · cases List.mem_singleton.mp fresh
+      rcases issued (app.submit execution.application actor material) actor
+        (execution.network.known actor) material fact carried with owned | copied
+      · exact Or.inl owned
+      · obtain ⟨message, known, carried⟩ := copied
+        exact (evidence.known_origin owner execution origin actor message known fact carried).imp
+          id (evidence.observed_respond execution actor actor _ fact)
 
 theorem inputOrigin_environment (execution next : app.Execution) (command : app.Command)
     (origin : evidence.InputOrigin owner execution)
@@ -128,7 +109,7 @@ theorem inputOrigin_environment (execution next : app.Execution) (command : app.
   intro input retained fact carried
   rw [inputs] at retained
   exact (origin input retained fact carried).imp id
-    (fun seen => evidence.observed_environment execution next input.broadcaster command fact
+    (fun seen => evidence.observed_environment execution next input.sender command fact
       seen reached)
 
 theorem inputOrigin_serviceInvariant (issued : evidence.OwnerIssued owner)

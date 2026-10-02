@@ -33,11 +33,11 @@ theorem scheduled_window_waiting
     (separated : (initial.recall owner).length + visits.count owner ≤ offset + slot.val ∨
       offset + slot.val < (initial.recall owner).length) :
     (runtime setup).runInteractionPlan leaks
-      (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+      (Function.update (fun _ => (application setup leaks).silentPolicy) owner
         ((application setup leaks).scheduledPolicy offset (some slot) opening
-          (application setup leaks).replayPolicy)) network
+          (application setup leaks).silentPolicy)) network
       (visits.map ServiceInstruction.player) initial =
-      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
+      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
         network (visits.map ServiceInstruction.player) initial := by
   classical
   let app := application setup leaks
@@ -52,10 +52,10 @@ theorem scheduled_window_waiting
       apply bind_congr_on_support _
       intro sample _
       let activated := initial.sampledActivation app actor sample
-      have same : (Function.update (fun _ => app.replayPolicy) owner
-          (app.scheduledPolicy offset (some slot) opening app.replayPolicy)) actor
+      have same : (Function.update (fun _ => app.silentPolicy) owner
+          (app.scheduledPolicy offset (some slot) opening app.silentPolicy)) actor
           (activated.recall actor) (activated.observe app actor) =
-            app.replayPolicy (activated.recall actor) (activated.observe app actor) := by
+            app.silentPolicy (activated.recall actor) (activated.observe app actor) := by
         by_cases equal : actor = owner
         · subst actor
           rw [Function.update_self]
@@ -66,8 +66,8 @@ theorem scheduled_window_waiting
           simp only [List.count_cons_self] at separated
           omega
         · rw [Function.update_of_ne equal]
-      change ((Function.update (fun _ => app.replayPolicy) owner
-        (app.scheduledPolicy offset (some slot) opening app.replayPolicy)) actor
+      change ((Function.update (fun _ => app.silentPolicy) owner
+        (app.scheduledPolicy offset (some slot) opening app.silentPolicy)) actor
         (activated.recall actor) (activated.observe app actor)).bind _ = _
       rw [same]
       apply bind_congr_on_support _
@@ -94,11 +94,11 @@ theorem scheduled_tail_waiting
     (visits : List Player) (initial : (application setup leaks).Execution)
     (after : offset + slot.val < (initial.recall owner).length) :
     (runtime setup).runInteractionPlan leaks
-      (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+      (Function.update (fun _ => (application setup leaks).silentPolicy) owner
         ((application setup leaks).scheduledPolicy offset (some slot) opening
-          (application setup leaks).replayPolicy)) network
+          (application setup leaks).silentPolicy)) network
       (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial =
-      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).replayPolicy)
+      (runtime setup).runInteractionPlan leaks (fun _ => (application setup leaks).silentPolicy)
         network (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) initial := by
   rw [runInteractionPlan_append, runInteractionPlan_append,
     scheduled_window_waiting setup leaks network owner offset slot opening visits initial
@@ -150,29 +150,29 @@ theorem sourceServiceTimedFamily_binding_law
       (_ready : execution.application.config.cut.Ready event)
       (_unsent : (runtime setup).eventRecorded leaks (execution.recall owner) event = false),
     (runtime setup).runInteractionPlan leaks
-      (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+      (Function.update (fun _ => (application setup leaks).silentPolicy) owner
         (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event slot)) network
       (visits.map ServiceInstruction.player ++ [.includeLatest event owner]) execution =
       (commitKernel profile (source.view owner)).bind fun choice =>
         (runtime setup).runInteractionPlan leaks
-          (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+          (Function.update (fun _ => (application setup leaks).silentPolicy) owner
             ((application setup leaks).scheduledPolicy
               (rosterOffset setup rosters owner event) (some slot)
               (fun _ _ => PMF.pure
                 ((runtime setup).reactiveBinding leaks owner event payload choice serial))
-              (application setup leaks).replayPolicy)) network
+              (application setup leaks).silentPolicy)) network
           (visits.map ServiceInstruction.player ++ [.includeLatest event owner])
           execution := by
   intro index event slot position selected ready unsent
   let app := application setup leaks
   let offset := rosterOffset setup rosters owner event
   let opening := sourceServiceOpportunity setup leaks wholeProfile owner event
-  let sourcePlayers := Function.update (fun _ => app.replayPolicy) owner
-    (app.scheduledPolicy offset (some slot) opening app.replayPolicy)
+  let sourcePlayers := Function.update (fun _ => app.silentPolicy) owner
+    (app.scheduledPolicy offset (some slot) opening app.silentPolicy)
   let raw := fun choice => (runtime setup).reactiveBinding leaks owner event payload choice serial
-  let rawPlayers := fun choice => Function.update (fun _ => app.replayPolicy) owner
-    (app.scheduledPolicy offset (some slot) (fun _ _ => PMF.pure (raw choice)) app.replayPolicy)
-  let transport : Player → app.Policy := fun _ => app.replayPolicy
+  let rawPlayers := fun choice => Function.update (fun _ => app.silentPolicy) owner
+    (app.scheduledPolicy offset (some slot) (fun _ _ => PMF.pure (raw choice)) app.silentPolicy)
+  let transport : Player → app.Policy := fun _ => app.silentPolicy
   have before : (execution.recall owner).length + visited.count owner ≤ offset + slot.val := by
     exact selected.ge
   have sourcePrefix := scheduled_window_waiting setup leaks network owner offset slot opening
@@ -195,8 +195,8 @@ theorem sourceServiceTimedFamily_binding_law
   conv_rhs => rw [PMF.bind_comm]
   apply bind_congr_on_support _
   intro current reached
-  have preserved := (runtime setup).replay_window_preserves leaks transport network owner execution
-    (fun current who response _ _ member => app.replayPolicy_cases _ _ response member)
+  have preserved := (runtime setup).silent_window_preserves leaks transport network owner execution
+    (fun current who response _ _ member => app.silentPolicy_cases _ _ response member)
     (fun _ => True) ⟨by simp, by simp, by simp, by simp⟩ visited current reached
   have same := preserved.1
   have currentReady : current.application.config.cut.Ready event := by rw [same]; exact ready
@@ -211,7 +211,7 @@ theorem sourceServiceTimedFamily_binding_law
     exact freshSlot
   have currentCandidate : current.application.candidates.lookup (owner, .prepared serial) =
       .fresh := by rw [same]; exact candidate
-  have currentUnsent := (replay_window_eventRecorded setup leaks network visited execution current
+  have currentUnsent := (silent_window_eventRecorded setup leaks network visited execution current
     reached owner event).trans unsent
   have currentCount := fixed_plan_response_counts setup leaks network transport
     (visited.map ServiceInstruction.player) (by simp) execution current reached owner
@@ -270,7 +270,7 @@ theorem sourceServiceTimedFamily_binding_law
   intro choice _
   change _ = (if (some slot).map (fun selected => offset + selected.val) =
       some (activated.recall owner).length then PMF.pure (raw choice)
-    else app.replayPolicy (activated.recall owner) (activated.observe app owner)).bind _
+    else app.silentPolicy (activated.recall owner) (activated.observe app owner)).bind _
   rw [ite_eq_left scheduled, PMF.pure_bind]
   have after : offset + slot.val <
       ((activated.respond app owner (raw choice)).recall owner).length := by
@@ -355,12 +355,12 @@ theorem sourceServiceTimedPolicy_binding_phase_law
       (commitKernel profile (source.view owner)).bind fun choice =>
         (timing event owner owned).bind fun slot =>
           (runtime setup).runInteractionPlan leaks
-            (Function.update (fun _ => (application setup leaks).replayPolicy) owner
+            (Function.update (fun _ => (application setup leaks).silentPolicy) owner
               ((application setup leaks).scheduledPolicy
                 (rosterOffset setup rosters owner event) (some slot)
                 (fun _ _ => PMF.pure
                   ((runtime setup).reactiveBinding leaks owner event payload choice serial))
-                (application setup leaks).replayPolicy)) network phase execution := by
+                (application setup leaks).silentPolicy)) network phase execution := by
   intro index event owned ready unsent counted phase
   rw [sourceServiceTimedPolicy_phase_law setup leaks rosters timing wholeProfile event owner owned
     network ticks execution (soleReady_of_ready setup execution.application ready) counted.le]
@@ -377,15 +377,15 @@ theorem sourceServiceTimedPolicy_binding_phase_law
       ((rosters event).map ServiceInstruction.player ++ [.includeLatest event owner]) ++
         (List.replicate ticks .tick ++ [.expire event]) := by
     simp only [phase, List.append_assoc, List.cons_append, List.nil_append]
-  let leftPlayers := Function.update (fun _ => (application setup leaks).replayPolicy) owner
+  let leftPlayers := Function.update (fun _ => (application setup leaks).silentPolicy) owner
     (sourceServiceTimedFamily setup leaks rosters wholeProfile owner event slot)
   let rightPlayers := fun choice =>
-    Function.update (fun _ => (application setup leaks).replayPolicy) owner
+    Function.update (fun _ => (application setup leaks).silentPolicy) owner
       ((application setup leaks).scheduledPolicy (rosterOffset setup rosters owner event)
         (some slot)
         (fun _ _ => PMF.pure
           ((runtime setup).reactiveBinding leaks owner event payload choice serial))
-        (application setup leaks).replayPolicy)
+        (application setup leaks).silentPolicy)
   change (runtime setup).runInteractionPlan leaks leftPlayers network phase execution =
     (commitKernel profile (source.view owner)).bind fun choice =>
       (runtime setup).runInteractionPlan leaks (rightPlayers choice) network phase execution

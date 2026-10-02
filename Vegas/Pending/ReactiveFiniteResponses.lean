@@ -205,13 +205,7 @@ theorem rawMenu_closed (runtime : EventGraphRuntime graph)
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => trivial
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact bounds.normalize_submission_mem who view.application _ _ member
-      | replay id =>
-          change ReactiveApplication.SubmissionNormalization.ReplayKnown past view id at member
-          rw [ReactiveApplication.SubmissionNormalization.action, ite_eq_left member]
-          exact member
+  | some submission => exact bounds.normalize_submission_mem who view.application _ _ member
 
 /-- Exact completeness: every bounded normal response is admitted, including
 all packet errors; every admitted response is bounded and normal. -/
@@ -223,22 +217,18 @@ theorem menu_mem (runtime : EventGraphRuntime graph)
     response ∈ (bounds.menu runtime leaks).actions who past view ↔
       (match response.transmission with
       | none => True
-      | some (.submit submission) =>
+      | some submission =>
           (bounds.AllowsPacket submission.call.packet ∧
             bounds.AllowsOpening submission.call.opening) ∧
             bounds.AllowsEvidence (ReactiveApplication.ResponseMenu.knownPackets past view)
-              submission.evidence
-      | some (.replay id) => ReactiveApplication.SubmissionNormalization.ReplayKnown past view id) ∧
+              submission.evidence) ∧
       (runtime.reactiveNormalization leaks).action who past view response = response := by
   rw [menu, ReactiveApplication.SubmissionNormalization.menu_mem_iff_of_closed
     _ _ _ _ _ (bounds.rawMenu_closed runtime leaks who past view), rawMenu,
     ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   cases response.transmission with
   | none => rfl
-  | some transmission =>
-      cases transmission with
-      | submit submission => exact and_congr_left fun _ => bounds.submissions_mem _ submission
-      | replay id => rfl
+  | some submission => exact and_congr_left fun _ => bounds.submissions_mem _ submission
 
 /-- Ineffective private opening material need not satisfy a bound. Certificate
 requests are independently checked against the bounded facts and known messages. -/
@@ -254,21 +244,11 @@ theorem normalized_submission_available (runtime : EventGraphRuntime graph)
       (submission.evidence.normalize who
         (submission.call.candidateAfter who view.application.candidates)
         (ReactiveApplication.ResponseMenu.knownPackets past view))) :
-    (runtime.reactiveNormalization leaks).action who past view ⟨some (.submit submission)⟩ ∈
+    (runtime.reactiveNormalization leaks).action who past view ⟨some submission⟩ ∈
       (bounds.menu runtime leaks).actions who past view := by
   rw [bounds.menu_mem]
   exact ⟨⟨⟨packet, opening⟩, evidence⟩,
     (runtime.reactiveNormalization leaks).action_idempotent who past view _⟩
-
-theorem known_replay_available (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) (id : MessageId Player)
-    (known : ReactiveApplication.SubmissionNormalization.ReplayKnown past view id) :
-    (⟨some (.replay id)⟩ : (runtime.reactiveApplication leaks).Action) ∈
-      (bounds.menu runtime leaks).actions who past view := by
-  rw [bounds.menu_mem]
-  exact ⟨known, by simp [ReactiveApplication.SubmissionNormalization.action, known]⟩
 
 /-- Forwarding can refer to any actually known envelope. Its numeric identifier
 does not need to fit a static bound, and the call may be malformed or rejected. -/
@@ -281,7 +261,7 @@ theorem known_forward_available (runtime : EventGraphRuntime graph)
     (id : MessageId Player)
     (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view, message.id = id) :
     (runtime.reactiveNormalization leaks).action who past view
-        ⟨some (.submit ⟨call, .forward id⟩)⟩ ∈
+        ⟨some ⟨call, .forward id⟩⟩ ∈
       (bounds.menu runtime leaks).actions who past view := by
   apply bounds.normalized_submission_available runtime leaks who past view _ packet opening
   exact bounds.normalize_evidence_mem who _ _ _ known
@@ -297,8 +277,8 @@ theorem unknown_forward_normalizes (runtime : EventGraphRuntime graph)
     (unknown : ¬ ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view,
       message.id = id) :
     (runtime.reactiveNormalization leaks).action who past view
-        ⟨some (.submit ⟨call, .forward id⟩)⟩ =
-      ⟨some (.submit ⟨call.normalizeReactive who view.application, .none⟩)⟩ := by
+        ⟨some ⟨call, .forward id⟩⟩ =
+      ⟨some ⟨call.normalizeReactive who view.application, .none⟩⟩ := by
   simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
     WitnessedSubmission.normalizeReactive]
   rw [EvidenceRequest.normalize_unknown _ _ _ id unknown]

@@ -37,7 +37,7 @@ theorem native_binding_site_facts
 
 open Classical in
 /-- Every raw response has one eventual binding result throughout the owner's entire
-information fiber. This includes rejection, prior replays, and timeout. -/
+information fiber. This includes rejection, earlier traffic, and timeout. -/
 theorem native_committed_binding_local
     {observation : MessageNetwork.ObservationRule Player (WitnessedPacket nativeGraph)}
     (who : Player)

@@ -106,16 +106,12 @@ party that must be live, and possibly one that must not be strategic.
 | `.expire`, `.executeSample` | Anyone-can-call contract functions, applied lazily | Contract (effect), service (caller) |
 | The order policy and the service calendar | Not enforced by `handle`. Prescribed clients, response menus and the audit read readiness: clients act at `PublicView.ownTurn?`, the least ready event the player owns (`no_turn_no_transmission` in `Vegas/Pending/ReactiveConformance.lean`), and the audit's conformance check requires readiness and ownership (`freshServiceEnvelope` in `Vegas/Pending/ReactiveServiceConformance.lean`) | Service |
 | Reports of observed signed packets, judged at settlement | The watcher, in its own transaction | Service |
-| A report sent before the last deadline is included within `W` slots, and settlement waits `W` (the challenge window) | Inclusion of the watcher's transaction | Chain |
+| Settlement waits `W` slots after the report cutoff; the backend supplies positive conditional report-inclusion coverage | Inclusion of the watcher's transaction | Chain |
 
-The runtime used to carry a public service grant (a state field, set by a
-grant environment command) naming the current event. It was a coordination
-service the fixed-calendar proof depended on: prescribed owners transmitted only
-when granted and the audit classified a fresh packet as conforming only for the
-granted event. Since step 3 below, both use readiness instead, so a prescribed
-owner acts exactly when a deviator could, and the calendar proofs identify the
-event a decision belongs to by readiness or by the player's own response count.
-The field, the command and the service instruction are deleted.
+Readiness is the runtime gate. Prescribed owners and deviators can act when
+their event is ready; the calendar proofs identify the event at a decision by
+readiness or by the player's own response count. The runtime has no separate
+grant command or grant cursor.
 
 ### Modeling priorities
 
@@ -277,15 +273,16 @@ contract rule in D2, the keeper in D3 and D4.
 A and B commit concurrently in a coordination game: each commits a bit, and
 both receive one when the bits agree. At the source, B commits without learning
 A's bit, and uniform mixing by both is an equilibrium. Suppose an adaptive
-order serves B's event first exactly when the pool contains a replay broadcast
-by A. Replays of published messages are permitted, so the audit never charges
-them. A can replay when its bit is zero and stay quiet otherwise, and B can
-read A's bit from the order.
+order serves B's event first exactly when A's canonical commitment has already
+arrived. Its public envelope carries the same handle for either bit. A could
+send early when its bit is zero and defer otherwise, letting B infer the bit
+from the order.
 
-This does not break existence. Choose trembles for A's replay that do not
-depend on A's bit. B's beliefs after an off-path replay then stay at the source
-beliefs, B ignores the signal, and A gains nothing by sending it. This is the
-babbling equilibrium of cheap talk.
+This timing signal does not by itself break existence. Choose A's timing and
+its trembles independently of the bit. B's beliefs after an off-path timing
+choice can then remain the source beliefs, B ignores the signal, and A gains
+nothing by changing its timing. This is the babbling-equilibrium argument for
+cheap talk; verifiable content needs a separate analysis.
 
 ### What an adaptive order can and cannot read
 
@@ -491,12 +488,13 @@ is a design, not a checked result.
 | Finite probes | Done (above). Design evidence, not proofs. |
 | Library lemmas | Done: proportional Bayes transport and the depth-free restriction extension in `GameTheoryExtensions`. |
 | Readiness instead of announcements | Done. Prescribed clients, response menus and the audit read readiness (`PublicView.ownTurn?`, `freshServiceEnvelope`); the service grant is deleted from the runtime. The calendar menu's required binding at the owner's last visit (`bindingRequired`) still reads the roster. `Vegas.Paper.source_audited_raw_sequential_equilibrium` is proved against this, still under the fixed calendar. |
-| Asynchronous chain model | Milestone 1 done: the contract is `AsyncContract` with per-event bounds and `AsyncTimely` (`Vegas/Pending/ReactiveAsyncContract.lean`); `rosterScheduler_asyncContract` proves the fixed calendar an instance with reaction bounds `event.val` and inclusion bound 0 (`Vegas/Game/ServiceRosterAsync.lean`). The timeliness lemma for prescribed play waits for milestone 2's prescribed policy. |
+| Asynchronous chain model | The contract is `AsyncContract` with per-event bounds and `AsyncTimely` (`Vegas/Pending/ReactiveAsyncContract.lean`); `rosterScheduler_asyncContract` proves the fixed calendar an instance with reaction bounds `event.val` and inclusion bound 0 (`Vegas/Game/ServiceRosterAsync.lean`). `prescribed_packet_settles` proves timely acceptance for the turn-counted policy (`Vegas/Game/SourceServiceAsyncTimeliness.lean`). |
 | Phase from public history | Started: `sourceService_phase_boundary` identifies a phase start by plan position, and the watcher calendar reads decision depths from the public clock. `DecisionPhase.position` and the roster plan prefix and suffix still index the calendar. |
 | Completion-stopped phase law (milestone 2a) | Done. `Interaction/ReactiveStopping.lean` runs any scheduler until a stopping predicate and splits a full run there. `SourceServiceCompletion.lean` defines the completion law and completion boundaries and proves the bridge `TimedApproximant.response_completion_law` under a boundary-continuation hypothesis. Only `CompletionBoundary` and the continuation hypotheses are scheduler-generic: the bridge itself is still stated on `TimedApproximant`, `DecisionPhase`, the calendar menu and plan length, with an exact hypothesis, and needs a position-free `Within` restatement. `SourceServiceContinuationBridge.lean` proves that hypothesis for the fixed calendar and re-derives `response_continuation_law` from it. |
 | Turn-counted policy and approximate continuation (milestone 2b) | Done for every contract scheduler. `sourceServiceTurnPolicy_boundaryContinuationWithin` bounds the distance from the source continuation by the sum of the remaining events' deferral weights, and `sourceServiceTurnPolicy_firstTurnCompletes` discharges its hypothesis from `AsyncContract` and `AsyncTimely` alone (`Vegas/Game/SourceServiceFirstTurnCompletes.lean`). The calendar keeps its timed policy. |
-| Audit serial clause | Done. The audit's per-packet rule counts distinct identifiers per author (`Interaction.Message.distinctAuthoredCount`), so re-included copies do not shift serials, and the contract rejects a re-inclusion (`EventGraphRuntime.handle_eq_none_after_accepted_run`). Under `AsyncContract` alone, every fresh call of a player following the turn-counted policy, trembles included and whatever others do, carries the audit's serial and passes the full rule (`Vegas.sourceServiceTurnPolicy_serial`, `Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope` in `Vegas/Game/SourceServiceCanonicalSerial.lean`). |
-| General theorem | Not started. |
+| Audit serial clause | Done. The audit's per-packet rule counts distinct identifiers per author (`Interaction.Message.distinctAuthoredCount`), so repeated evidence of one envelope does not shift serials, and the contract rejects a re-inclusion (`EventGraphRuntime.handle_eq_none_after_accepted_run`). Under `AsyncContract` alone, every fresh call of a player following the turn-counted policy, trembles included and whatever others do, carries the audit's serial and passes the full rule (`Vegas.sourceServiceTurnPolicy_serial`, `Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope` in `Vegas/Game/SourceServiceCanonicalSerial.lean`). |
+| Canonical retained menu | `MessageBounds.canonicalMenu` retains silence and bounded first canonical decisions under `WithinDeadline`, with no roster obligation. Local source-choice coverage and no second submission are proved in `Vegas/Pending/ReactiveCanonicalMenu.lean`. Used-slot and own-submission invariants hold on every legal retained history (`retainedCanonicalSlots_history`), including after misses. The prescribed policy is admitted at every such history (`sourceServiceTurnPolicy_retained` in `Vegas/Game/SourceServiceRetainedPolicy.lean`), including arbitrary turn timing. Equilibrium after misses remains open. |
+| General theorem | `AsyncServiceSpec`, the scheduler-dependent deposit, geometric deferral bounds, and the local retained menu are present. The public-miss source extension, beliefs, local comparisons, and general repair remain open. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
 `EventPrescribed*.lean`) separately proves exact honest and deviation laws and
@@ -551,14 +549,11 @@ raw protocol, including off-path ones:
    `ServiceInstruction.includeLatest`, stated as a deadline instead of a
    calendar position. Only the sole identifier is protected, and only the
    owner's own other identifiers void the protection (`EmitsOtherFor` counts
-   only packets authored by the owner). Replays keep the original author and
-   identifier, so a third party can re-queue an owner's older packet behind a
-   newer one, and the calendar's latest-by-author selector then includes the
-   stale copy. Relaying another player's packet, even one addressed to the
-   owner's event, does not void protection: the builder tells authors apart
-   by signature, and the calendar's selector never picks a foreign packet. A
-   prescribed owner submits one packet of its own per event and may replay
-   it, and every copy carries its identifier. Packets with several identifiers
+   only packets authored by the owner). A fresh call by another player, even
+   one addressed to the owner's event, does not void protection: the builder
+   tells authors apart by signature, and the calendar's selector never picks
+   a foreign packet. A prescribed owner submits one packet of its own per
+   event. Packets with several identifiers
    from one owner for one event are deviations, whose law the scheduler may
    shape (milestone 5).
 3. **Complete play** (`CompletesPlay`). Every legal terminal state has
@@ -700,19 +695,14 @@ public events has completed.
   with small probability, matching the chain guarantee cited above.
 - **Joint transmission-and-ordering deviations.** A separate theorem in which
   the order is part of a player's deviation. Not part of this plan.
-- **Copies leave the model.** Replays (rebroadcasting a known envelope
-  under its original author and identifier) were meant to model replay
-  attacks, but they cannot: a copy stays the original author's message, and
-  a fresh submission of another player's handle is rejected because
-  `handle` requires the handle's owner to be the sender. That ownership check
-  is the model's counterpart of binding the committer into a commitment, and
-  an implementation that omits it cannot refine the model. With a builder
-  that sees the whole pool at once, copies have no legitimate role. Their only
-  uses were prescribed rebroadcasting (a full-support proof device),
-  duplicate inclusions, packets kept alive past their deadline, and builder
-  sensitivity to copies. Removing them makes off-turn sites single-action and
-  needs no deduplication clause. The distinct-identifier audit count stays: it
-  is what a contract keeps as a nonce if a chain does duplicate.
+- **Fresh envelope identifiers.** Responses are silence or fresh submissions.
+  A submission allocates a sender-owned identifier, and inclusion consumes it
+  whether the call succeeds or fails. Repeating a payload uses a fresh
+  identifier; forwarding a known certificate retains the authentic fact
+  without copying its envelope. The handle-owner check rejects a fresh call
+  that claims another player's handle. Backend propagation and replacement
+  behavior need a separate refinement; they are not packet-copy actions in
+  this model. The distinct-identifier audit count detects extra signed calls.
 - **Packets are judged against the settled record (decided).** The
   per-packet check (`EventGraphRuntime.permittedServiceEnvelope`) judges a
   packet against the public view at the moment it was sent, but an auditor
@@ -741,11 +731,16 @@ public events has completed.
   needs, and may be split into several watchers if that is easier to prove,
   since only the semantics matters. It reports with its own transaction
   carrying the signed offending packets, and the contract decides at
-  settlement. The builder enforces nothing: its report-inclusion duty is
-  deleted, and the only new chain assumption is a challenge window (a report
-  sent before the last deadline is included within `W` slots, and settlement
-  waits `W`), the standard fraud-proof assumption. Order: tokens and
-  settled-record verdicts with the watcher's reports; then removal of copies.
+  settlement. Observation continues after the gameplay deadlines, through a
+  monitoring phase before the report cutoff. The challenge-window hypothesis
+  sets a `W`-slot delivery window for reports submitted by that cutoff, and
+  settlement waits until that window ends. The backend supplies a positive
+  conditional probability of timely inclusion. This is
+  distinct from a gameplay packet's inclusion bound. The watcher need not see
+  every offense. Its conditional probability of actual collection, including
+  observation and report delivery, must have the positive lower bound used
+  to size the deposit. Deriving that bound from the pending-message runtime is
+  a backend obligation; `AsyncContract` alone does not supply it.
 - **Off-chain and covert-channel talk is a stated limitation**, verifiable or
   not. A withholding owner can always prove its value off-chain by showing
   the commitment's opening; no on-chain mechanism can catch that, so it is
@@ -781,7 +776,8 @@ and is committed separately.
      (`ActionRestriction.sequentialEquilibrium_extends_of_continuation`)
      quantifies over every target profile that extends the source, so a
      removed action must be dominated however opponents play off the retained
-     sites. Deferral is neither charged by the audit nor hidden: staying silent
+     sites. Silence itself is uncharged but can lead to a charged public miss.
+     Deferral is visible: staying silent
      at the first turn and acting at a later one is visible through leaks,
      inclusion timing and the scheduler's view of the pool. So deferral stays
      retained, and the fully mixed approximants must give it positive weight.
@@ -829,8 +825,8 @@ and is committed separately.
      payload values, catalogue capacity or admission, only effective
      disclosures of the source profile. Timeliness must prove acceptance and the
      absence of early expiry, not only a receipt. The step law's invariant
-     keeps the pool for the current event to one owner identifier and its
-     copies, and makes deferral the only error.
+     keeps the pool for the current event to one owner identifier and makes
+     deferral the only error.
 3. **Phase without position.** Dropped. The calendar chain is retired at
    milestone 6 rather than ported, and the position-free site datum (event,
    readiness, sole readiness) is a small definition inside the generic bridge
@@ -846,8 +842,8 @@ and is committed separately.
    charged histories, where the extension bound holds whatever the builder
    does. What remains is the lemma that every second own identifier is a
    forbidden record. The obligation that the original wording missed is
-   builder sensitivity to rebroadcasts (see "Waiting, misses and the
-   charge").
+   builder sensitivity to fresh traffic and waiting (see "Waiting, misses
+   and the charge").
 6. **General theorem, stage A.** Generalize the scheduler parameter of
    `SourceServiceSpec` to any contract scheduler, with the horizon as a field,
    re-derive the deposit, and pin the new capstone in `Paper.lean`. The
@@ -857,23 +853,29 @@ and is committed separately.
    1. `AsyncServiceSpec` (scheduler, horizon, delay, bound, contract, finite
       nature) and the calendar instance.
    2. The deposit over `(horizon, scheduler)` and its gain bound.
-   3. The bound-aware audit gate, equal to today's rule at bound 0.
+   3. The public deadline gate for prescribed calls and the final-record audit.
+      The audit cannot reconstruct send time or reject an accepted canonical
+      call solely because its guaranteed delivery bound would have been too late.
    4. Geometric deferral: a constant per-turn deferral probability that
       vanishes faster than the source's own trembles, so that beliefs after a
       withhold converge to the source's. The uniform split over later turns
       does not vanish at later turns.
-   5. The canonical gated menu and its lemma suite; `bindingRequired`, which
-      still reads the roster, is deleted.
+   5. The canonical retained menu and its lemma suite. Retain silence and
+      canonical calls that can still be accepted, including calls outside
+      the prescribed policy's protected-inclusion gate. Delete the roster
+      rule `bindingRequired` when its calendar callers are replaced.
    6. The generic bridge: `TimedApproximant.response_completion_law` and
       `TimedApproximant.completion_boundary` restated for any scheduler, with
       a `Within` version.
-   7. Zero charge on retained histories, lifting the canonical conformance
-      and serial results from "follows the policy" to "responds in the menu",
-      with the treatment of misses fixed in "Waiting, misses and the charge".
+   7. The retained audit and the source extension by penalized public misses.
+      Retained deferrals can miss and be charged; zero charge is required on
+      final equilibrium-supported play. Establish the builder's grant law
+      independence from hidden choices at a common public history.
    8. Milestone 4's beliefs.
-   9. Generic local comparisons for the seven site kinds, each bound with
+   9. Generic local comparisons for every site kind, each bound with
       `BoundaryContinuationWithin`. Large; not previously listed.
-   10. Generic source-to-compiled step through the `lawError` limit lemma.
+   10. Generic source-to-compiled step through
+       `exists_sequentialEquilibrium_limit_of_local_comparisons_of_lawError`.
    11. Generic repair coupling (same public state, different private
        catalogue, round by round), the second-identifier lemma, and the
        compiled-to-native step through the depth-free extension. Large; not
@@ -902,8 +904,8 @@ waiting expensive.
 
 What waiting buys depends on the graph. On the sequentialized graph nothing
 else in the game completes while an owner's event is ready, so waiting learns
-nothing the source game models: only inclusion timing, leaked packets and
-rebroadcasts, which are stated limitations. Against the source's information,
+nothing the source game models: only inclusion timing and leaked packets,
+which are stated limitations. Against the source's information,
 waiting is pure cost. Under the barrier order (stage B) waiting does learn
 who has committed, and the barrier order is what must keep that from mattering.
 
@@ -913,8 +915,9 @@ plays along with censorship. Protected inclusion is exactly the assumption
 that a timely sole packet is never censored, so a prescribed owner is charged
 only after waiting past its guarantee. A miss differs from a source forfeit:
 the forfeit stays hidden until the reveal (it compiles to a handle with no
-opening), while a miss is public at the deadline. The source therefore stays
-as it is, and the miss is a charged outcome of the target.
+opening), while a miss is public at the deadline. The proposed proof introduces
+a penalized public-miss extension of the source to supply rational continuation
+play there, then recovers the original source on equilibrium-supported play.
 
 Open obligations this creates:
 
@@ -930,9 +933,11 @@ Open obligations this creates:
   removed actions, the extension argument supplies the continuation as it
   does for charged evidence today.
 - **Late sends.** The policy stops fresh calls once protected inclusion can
-  no longer land before the deadline, but an auditor cannot see send time,
-  so later sends are not charged. They are retained deferral: they land or
-  end in a charged miss.
+  no longer land before the deadline. A fast actual inclusion may still
+  accept a canonical call sent before expiry; the final record permits that
+  call and the audit cannot charge it merely for missing the protection gate.
+  Retain these attempts and compare their acceptance/miss lottery with the
+  extended source. Packets forbidden by the final record remain auditable.
 - **Play after a miss (proposed route).** The proof would pass through an
   extended source with a penalized "public miss" move at each binding. The
   restriction extension supplies play after a miss there, because the penalty
@@ -942,6 +947,105 @@ Open obligations this creates:
   included: acceptance timing is public, so a grant probability that varies
   with the owner's value lets a late acceptance reveal it. Probe C6
   supports the route under that condition.
+
+### Monitoring and punishment
+
+The design must admit a concrete watcher and contract implementation. A
+watcher reports signed packets it actually observed or read from the ledger;
+it has no access to the complete network input history. Its observation is
+private and probabilistic. Reports use the pending-message mechanism, and
+punishment is decided after gameplay and the monitoring and report-delivery
+phases. The observation period, report cutoff, delivery bound `W`, and
+settlement time must be specified together. Evidence acquired after a
+gameplay deadline remains reportable before the cutoff. Reports accepted only
+at final settlement cannot change gameplay that has already occurred.
+
+[ChallengeWindow](../Interaction/ChallengeWindow.lean) makes this backend
+boundary explicit. `EvidenceReportService` separates authentic partial
+observations from reports carrying actual inclusion times. Its audit sample
+uses only evidence included by settlement. `EvidenceReportService.sample_coverage`
+proves that observation coverage times conditional timely-delivery coverage
+lower-bounds actual collection; the delivery bound is conditional on the
+whole observed record, so independence is unnecessary. This sample supplies
+the authenticity and coverage premises of the terminal-audit theorem. A
+concrete pending-message reporting implementation must establish these
+premises; the owner service contract alone does not.
+
+The monitored guessing fixture instantiates this boundary with its actual
+private observation record and the final public ledger. `nativeCollectionLaw`
+has a fixed conditional delivery rate, including genuine delivery failure;
+`compiled_source_equilibrium` proves SE and the realized joint payoff law for
+that physical settlement, with `2 ≤ rate * deposit`. Challenge time starts
+after gameplay, and terminal payoff equality transfers incentives at every
+legal information site. This is a checked fixture with a narrow packet audit,
+not the general asynchronous theorem or a concrete pending-message reporter.
+
+Retain one deposit per player as the starting enforcement design. The goal
+is preservation of the source equilibrium with rational continuations after
+every departure; continued compliance after a sunk penalty is not required.
+The penalty scheme may change if the proof needs it, but complexity must earn
+its place through a concrete missing incentive comparison.
+
+Public binding misses and packet evidence are separate cases. A public miss
+currently causes certain collection. Packet collection may remain uncertain
+to the author because the watcher's sample is private. After an earlier
+packet offense, a further offense is deterred only by its additional
+conditional collection probability. Positive coverage for each packet does
+not establish that increase: observation and delivery may be correlated.
+No independence premise or uniform increase is assumed.
+
+A common delivery coin can deliver all observed reports together, so a
+second observed offense need not increase expected collection even when the
+collection rate is below one. After a public binding miss, the current OR audit
+collects with certainty at every continuation; its payoff is the base payoff
+minus a constant deposit. A complete extension must either admit rational raw
+continuation there or supply fresh reserves. Additive charges also need control
+of changes to collection of earlier offenses; per-new-packet coverage alone
+does not provide that control.
+
+The proposed source miss extension has several distinct cases. A silent
+binding miss fails the binding and announces its owner and source name. A
+late binding attempt additionally leaves the attempted choice in private
+recall. A late opening can fail while leaving probabilistically collected
+signed evidence. A binding-only public `.miss` move does not yet represent
+those latter continuations. These are part of the open extension and incentive
+obligations, not consequences of the local retained-menu proofs.
+
+[PublicMiss](../Vegas/Source/PublicMiss.lean) supplies the silent-binding
+successor component: it stores a failed typed binding, retains source guard
+obligations, and makes the appended owner/name announcement visible to every
+player. This differs from hidden forfeiture. The full execution protocol,
+no-miss embedding, SE extension, attempted-choice memory, and opening-evidence
+lotteries are not yet supplied.
+
+The smallest model change currently under consideration keeps one escrow and
+admits actual raw continuation after a public miss or an owner's unprotected
+attempt. The private trigger must use that owner's own recall; another player's
+hidden attempt cannot change the local response menu. Honest first-turn play
+never triggers either branch. The auxiliary game would carry the actual native
+pending state and beliefs after risk, with source projection promised on the
+safe branch. Its embedding, consistency and earlier incentive comparisons
+remain unproved; finite-game equilibrium existence alone does not discharge
+them. Fresh reserves remain an alternative if that hybrid proof fails.
+
+Disqualification with default future actions is not the planned simplification.
+An implementable trigger would require a public contract verdict, whose timing
+depends on observation and report delivery. Disabling contract actions would
+still leave the player able to send verifiable information through pending
+packets or off-chain. Once collection is certain, the one-time deposit gives
+no additional deterrence for that communication. Quitting therefore does not
+remove the need for rational continuation play or solve the communication
+obligation. The proof must account for permitted communication in those
+continuations, with off-chain channels outside the model remaining an
+explicit limitation.
+
+Before proving the new retained menu's equilibrium, discharge the miss
+continuation and enforcement obligations with the chosen scheme. In
+particular, the calendar's zero-charge theorem cannot be generalized to every
+retained history while retained deferral can reach a charged miss. Carry
+those penalties in the retained utility, or supply a justified restriction
+and extension that handles the miss histories. Zero charge is required on
+the final equilibrium's supported play.
 
 ### Risks and open questions
 
@@ -956,12 +1060,14 @@ Open obligations this creates:
   completed bindings) diverge, so the audit would treat that owner's later
   prescribed commitments as nonconforming. This happens only on
   tremble-reached histories, but sequential rationality must hold there too.
-  It is being resolved by giving the turn-counted policy its own decision at
-  the audit's canonical slot, with a gate: no fresh call unless protected
-  inclusion still lands before the deadline, so neither a late call nor a
-  call overtaken by expiry desynchronizes the audit's checks. The retained
-  menu is still built from the calendar decision and needs a canonical
-  variant before milestones 4 and 6.
+  The turn-counted policy selects the audit's canonical slot and uses the
+  protected inclusion gate. The retained menu now uses that slot too, with
+  the weaker actual deadline gate so that late but accepted calls remain
+  retained. The used-slot and recall invariants hold on every legal retained
+  history (`retainedCanonicalSlots_history`), including after silent expiry.
+  `retainedCanonicalSlot_resources` supplies capacity and freshness, and
+  `sourceServiceTurnPolicy_retained` proves policy admission there. Rational
+  continuation after a miss remains an open equilibrium obligation.
 - **Removed actions must be framed or charged.** Every action outside the
   retained menu must be dominated under every extension of the source, which
   the repair argument achieves only by keeping play on retained histories or

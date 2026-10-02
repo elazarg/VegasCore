@@ -76,12 +76,9 @@ theorem ordinary_response_transcript (setup : Setup (Player := Player) (L := L))
   cases chosen : sourceChoice setup leaks response with
   | false =>
       simp only [chosen, Bool.false_eq_true, ↓reduceIte] at completed network recorded
-      have refuses : response = ⟨none⟩ ∨ ∃ id, response = ⟨some (.replay id)⟩ := by
-        rcases (ordinary_false_iff setup leaks bounds owner (execution.recall owner)
-          (execution.observe (application setup leaks) owner) response member).mp chosen with
-          silent | ⟨message, _published, replay⟩
-        · exact Or.inl silent
-        · exact Or.inr ⟨message.id, replay⟩
+      have refuses : response = ⟨none⟩ :=
+        (ordinary_false_iff setup leaks bounds owner (execution.recall owner)
+          (execution.observe (application setup leaks) owner) response member).mp chosen
       have unpublished :
           publicationPacket? accepted next.application.config.store event = none := by
         rw [completed]

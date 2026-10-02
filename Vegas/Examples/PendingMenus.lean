@@ -145,7 +145,7 @@ private theorem include_value (action : PlayerAction graph) (serial : Nat) (valu
   rfl
 
 /-- Every final player action loses the ability to select any third binding
-value. This quantifies over all native actions, including arbitrary replay,
+value. This quantifies over all native actions, including arbitrary candidate reuse,
 opening data, packet kinds, and private memory. -/
 theorem selected_binding (action : PlayerAction graph) :
     (app.includePending (afterAction action).native
@@ -460,7 +460,7 @@ private theorem included_invariant (action : PlayerAction graph) :
     (afterAction_invariant action) ((PMF.mem_support_pure_iff _ _).mpr rfl)
 
 /-- Every later native trace can publish only the selected earlier value or
-failure. Pending, replayed, fresh, and malformed packets cannot recover zero.
+failure. Pending, resubmitted, fresh, and malformed packets cannot recover zero.
 The result also allows an unfinished publication at an intermediate endpoint. -/
 theorem public_results_restricted (action : PlayerAction graph)
     (actions : List app.Action) (final : app.State)

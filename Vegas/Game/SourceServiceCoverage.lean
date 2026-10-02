@@ -79,9 +79,9 @@ theorem sourceService_opening_covered
     have known := app.known_from_recall execution owner recalled
     change execution.network.known owner = ReactiveApplication.ResponseMenu.knownPackets
       (execution.recall owner) (execution.observe app owner) at known
-    change (⟨some (.submit
-      ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
-        owner _ (execution.network.known owner)))⟩ : app.Action) = _
+    change (⟨some ((disclosureSubmission (.opening event candidate
+        ⟨payload, value⟩)).normalizeReactive
+        owner _ (execution.network.known owner))⟩ : app.Action) = _
     rw [known]
     rfl
   have optional : ¬ bindingRequired setup leaks rosters owner (execution.recall owner)
@@ -286,7 +286,7 @@ theorem sourceServiceOpportunity_reveal_covered
       change response ∈ sourceServiceActions setup leaks bounds rosters owner
         (execution.recall owner) (execution.observe app owner)
       rw [sourceServiceActions, ite_eq_right optional]
-      exact bounds.replay_compiled (runtime setup) leaks owner _ _ response supported
+      exact bounds.silent_compiled (runtime setup) leaks owner _ _ response supported
   | true =>
       rw [effective] at supported
       by_cases silent : ((runtime setup).serviceDecision leaks owner (execution.recall owner)
@@ -296,7 +296,7 @@ theorem sourceServiceOpportunity_reveal_covered
         change response ∈ sourceServiceActions setup leaks bounds rosters owner
           (execution.recall owner) (execution.observe app owner)
         rw [sourceServiceActions, ite_eq_right optional]
-        exact bounds.replay_compiled (runtime setup) leaks owner _ _ response supported
+        exact bounds.silent_compiled (runtime setup) leaks owner _ _ response supported
       · rw [ite_eq_right silent] at supported
         cases (PMF.mem_support_pure_iff _ _).mp supported
         obtain ⟨value, success⟩ : ∃ value,

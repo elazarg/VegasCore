@@ -14,13 +14,13 @@ import GameTheoryExtensions.Math.Probability.Support
 
 Alice has one ambient response before the ordinary two-event service. Watcher
 independently receives all pending envelopes or none, each with probability one
-half. A subsequent wire turn includes only an Alice envelope actually replayed
-by Watcher. Bob sees pending envelopes before guessing. The source publications
+half. Watcher transmits nothing, and the wire turn waits. Bob sees pending
+envelopes before guessing. The source publications
 then receive the usual response, inclusion, and expiry service.
 
-The liability below is an explicit extra utility charge on rejected Alice
-receipts. Receipt persistence is implemented; collection of the charge is an
-assumed utility interpretation, not an escrow implementation.
+The comparison payoff subtracts an expected liability from authentic observed
+evidence. This is a proof quantity at prefixes. Actual collection is a terminal
+settlement law with an explicit conditional report-delivery assumption.
 -/
 
 noncomputable section
@@ -54,7 +54,7 @@ def nativeInitialLaw : PMF (EventGraphRuntime.State nativeGraph) :=
   (PMF.uniformOfFintype Bool).map nativeInitial
 
 /-- The complete bounded raw menu includes arbitrary event addresses, wrong
-values and types, independently attached evidence, and replay. -/
+values and types, and independently attached evidence. -/
 def nativeBounds : MessageBounds nativeGraph where
   candidateCount := 1
   values := {⟨.bool, false⟩, ⟨.bool, true⟩, ⟨.int, 0⟩}
@@ -76,15 +76,8 @@ def nativePlan : List (ServiceInstruction nativeGraph) :=
   [.player alice, .player watcher, .wire] ++
     [bobPublication, alicePublication].flatMap nativeVisit
 
-/-- The scheduler checks a public rebroadcast. It never sees which packets
-Watcher privately sampled, and a fresh Watcher-authored packet is not a report. -/
-def nativeNetwork : nativeRuntime.NetworkPolicy nativeLeaks := fun _ view =>
-  PMF.pure <| match view.network.inputs.getLast? with
-  | none => .wait
-  | some input =>
-      if input.broadcaster = watcher ∧ input.envelope.sender = alice then
-        .include input.envelope.id
-      else .wait
+/-- The wire slot does not consult Watcher's private sample. -/
+def nativeNetwork : nativeRuntime.NetworkPolicy nativeLeaks := fun _ _ => PMF.pure .wait
 
 def nativeScheduler : nativeApp.Scheduler := fun history view =>
   match nativePlan[history.length]? with
@@ -139,19 +132,35 @@ def nativeResults (config : nativeGraph.Config) : Results where
 def rejectedAlice (receipts : List (MessageId Player × Bool)) : Bool :=
   receipts.any (fun receipt => receipt.1.1 = alice && !receipt.2)
 
-def nativeExecutionUtility (deposit : ℝ) (who : Player)
+/-- Authentic observed packets without readiness tokens cannot be accepted,
+including after the event becomes ready. This marks eventual liability. -/
+def prematureAlicePacket (packet : WitnessedPacket nativeGraph) : Bool :=
+  match packet.call with
+  | .opening event _ _ | .withhold event =>
+      event != alicePublication || !packet.tokenValid
+  | .commitment _ _ | .malformed _ => true
+
+def prematureAlice (messages : List (Message Player (WitnessedPacket nativeGraph))) : Bool :=
+  messages.any fun message => message.sender == alice && prematureAlicePacket message.payload
+
+/-- A derived evidence mark, not an additional runtime field or a collection
+decision. Settlement checks the completed record separately. -/
+def aliceLiability (execution : nativeApp.Execution) : Bool :=
+  rejectedAlice execution.receipts || prematureAlice (execution.network.leaked watcher)
+
+def nativeComparisonExecutionUtility (charge : ℝ) (who : Player)
     (execution : nativeApp.Execution) : ℝ :=
   utility (nativeResults execution.application.config) who -
-    if who = alice ∧ rejectedAlice execution.receipts then deposit else 0
+    if who = alice ∧ aliceLiability execution then charge else 0
 
-def nativeUtility (deposit : ℝ) (who : Player) (state : nativeApp.ProtocolState) : ℝ :=
-  state.elim 0 (fun control => nativeExecutionUtility deposit who control.execution)
+def nativeComparisonUtility (charge : ℝ) (who : Player) (state : nativeApp.ProtocolState) : ℝ :=
+  state.elim 0 (fun control => nativeComparisonExecutionUtility charge who control.execution)
 
-/-- Native payoffs are bounded by the source payoffs plus the deposit, so every
+/-- Native payoffs are bounded by the source payoffs plus the charge, so every
 continuation law has an integrable payoff. -/
-theorem nativeExecutionUtility_abs_le (deposit : ℝ) (who : Player)
+theorem nativeComparisonExecutionUtility_abs_le (charge : ℝ) (who : Player)
     (execution : nativeApp.Execution) :
-    |nativeExecutionUtility deposit who execution| ≤ 5 + |deposit| := by
+    |nativeComparisonExecutionUtility charge who execution| ≤ 5 + |charge| := by
   have correct (a b : PublicationResult Bool) : 0 ≤ correctness a b ∧ correctness a b ≤ 1 := by
     cases a <;> simp only [correctness] <;> (try split_ifs) <;> norm_num
   have penalty (a : PublicationResult Bool) : 0 ≤ openingPenalty a ∧ openingPenalty a ≤ 4 := by
@@ -161,30 +170,32 @@ theorem nativeExecutionUtility_abs_le (deposit : ℝ) (who : Player)
     have := correct result.alice result.bob
     have := penalty result.alice
     split_ifs <;> rw [abs_le] <;> constructor <;> linarith
-  unfold nativeExecutionUtility
+  unfold nativeComparisonExecutionUtility
   refine (abs_sub _ _).trans (add_le_add (base _) ?_)
   split_ifs <;> simp
 
-theorem nativeUtility_abs_le (deposit : ℝ) (who : Player) (state : nativeApp.ProtocolState) :
-    |nativeUtility deposit who state| ≤ 5 + |deposit| := by
+theorem nativeComparisonUtility_abs_le (charge : ℝ) (who : Player) (state :
+  nativeApp.ProtocolState) :
+    |nativeComparisonUtility charge who state| ≤ 5 + |charge| := by
   cases state with
-  | none => simp only [nativeUtility, Option.elim_none, abs_zero]; positivity
-  | some control => exact nativeExecutionUtility_abs_le deposit who control.execution
+  | none => simp only [nativeComparisonUtility, Option.elim_none, abs_zero]; positivity
+  | some control => exact nativeComparisonExecutionUtility_abs_le charge who control.execution
 
-theorem nativeExecutionUtility_integrable (deposit : ℝ) (who : Player)
-    (law : PMF nativeApp.Execution) : PayoffIntegrable law (nativeExecutionUtility deposit who) :=
-  payoffIntegrable_of_bounded _ _ (nativeExecutionUtility_abs_le deposit who)
+theorem nativeComparisonExecutionUtility_integrable (charge : ℝ) (who : Player)
+    (law : PMF nativeApp.Execution) : PayoffIntegrable law (nativeComparisonExecutionUtility
+      charge who) :=
+  payoffIntegrable_of_bounded _ _ (nativeComparisonExecutionUtility_abs_le charge who)
 
-theorem nativeExecutionValue_integrable {α : Type*} (deposit : ℝ) (who : Player) (μ : PMF α)
+theorem nativeExecutionValue_integrable {α : Type*} (charge : ℝ) (who : Player) (μ : PMF α)
     (law : α → PMF nativeApp.Execution) :
-    PayoffIntegrable μ (fun a => expect (law a) (nativeExecutionUtility deposit who)) :=
+    PayoffIntegrable μ (fun a => expect (law a) (nativeComparisonExecutionUtility charge who)) :=
   payoffIntegrable_expect_of_bounded _ _ _ (by positivity)
-    (nativeExecutionUtility_abs_le deposit who)
+    (nativeComparisonExecutionUtility_abs_le charge who)
 
-@[simp] theorem native_execution_utility_watcher (deposit : ℝ)
+@[simp] theorem native_execution_utility_watcher (charge : ℝ)
     (execution : nativeApp.Execution) :
-    nativeExecutionUtility deposit watcher execution = 0 := by
-  simp [nativeExecutionUtility, watcher, alice]
+    nativeComparisonExecutionUtility charge watcher execution = 0 := by
+  simp [nativeComparisonExecutionUtility, watcher, alice]
 
 theorem initial_alice_handle (bit : Bool) :
     (nativeInitial bit).accepted (.inl aliceInput) = some aliceHandle := rfl

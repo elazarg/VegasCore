@@ -38,8 +38,6 @@ theorem protected_binding_response_cases (bounds : MessageBounds graph)
     (absent : execution.application.accepted (.inr event) = none)
     (prefixFresh : execution.application.PreparedPrefix who)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
-    (knownPublished : ∀ message ∈ execution.network.known who,
-      message.id ∈ execution.network.ledger.map Message.id)
     (pendingPublished : ∀ message ∈ execution.network.pending,
       message.id ∈ execution.network.ledger.map Message.id)
     (entered ticks : Nat)
@@ -51,11 +49,11 @@ theorem protected_binding_response_cases (bounds : MessageBounds graph)
     let app := runtime.reactiveApplication leaks
     let serial := execution.application.publicView.bindingCount who
     (∃ opening, bounds.AllowsOpening opening ∧ response =
-      ⟨some (.submit ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩)⟩) ∨
+      ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩) ∨
     (∃ record, app.trafficStep (some ⟨remaining, some who, execution⟩)
         (some ⟨remaining, none, execution.respond app who response⟩) = [record] ∧
-      record.input.envelope.sender = who ∧
-      record.input.envelope.payload ≠
+      record.envelope.sender = who ∧
+      record.envelope.payload ≠
         ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩) ∨
     (∃ next, runtime.runInteractionPlan leaks players scheduler
         (.includeLatest event who :: List.replicate ticks .tick ++ [.expire event])
@@ -69,45 +67,35 @@ theorem protected_binding_response_cases (bounds : MessageBounds graph)
   change execution.network.known who = ReactiveApplication.ResponseMenu.knownPackets
     (execution.recall who) (execution.observe app who) at known
   have member := (bounds.menu_mem runtime leaks who _ _ response).mp available
-  have omitted (quiet : response = ⟨none⟩ ∨ ∃ id ∈ execution.network.ledger.map Message.id,
-      response = ⟨some (.replay id)⟩) :=
+  have omitted (quiet : response = ⟨none⟩) :=
     runtime.silent_or_spent_binding_omission leaks players scheduler execution who event payload
       outputEq codeEq node ready absent pendingPublished entered ticks activated due response quiet
   rcases response with ⟨transmission⟩
   cases transmission with
-  | none => exact Or.inr (Or.inr (omitted (Or.inl rfl)))
-  | some transmission =>
-      cases transmission with
-      | replay id =>
-          obtain ⟨message, inKnown, same⟩ :=
-            (ReactiveApplication.SubmissionNormalization.replayKnown_iff execution who
-              recalled id).mp member.1
-          exact Or.inr (Or.inr (omitted (Or.inr
-            ⟨id, same ▸ knownPublished message inKnown, rfl⟩)))
-      | submit submission =>
-          by_cases canonical : submission.emit (app.submit execution.application who submission)
-              who (execution.network.known who) =
-                ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩
-          · have normal : submission.normalizeReactive who
-                (app.observePlayer execution.application who)
-                  (execution.network.known who) = submission := by
-              have fixed := member.2
-              change (⟨some (.submit (submission.normalizeReactive who _ _))⟩ : app.Action) =
-                ⟨some (.submit submission)⟩ at fixed
-              have same := ReactiveApplication.Transmission.submit.inj
-                (Option.some.inj (congrArg ReactiveApplication.Action.transmission fixed))
-              rw [← known] at same
-              exact same
-            have shape := runtime.normal_binding_of_canonical_packet leaks execution.application
-              who (execution.network.known who) submission event serial fresh normal canonical
-            exact Or.inl ⟨submission.call.opening, member.1.1.2,
-              congrArg (fun material => (⟨some (.submit material)⟩ : app.Action)) shape⟩
-          · let record : app.TrafficRecord :=
-              ⟨execution.application.publicView, execution.network.ledger,
-                ⟨who, ⟨(who, execution.network.nextSerial who), submission.emit
-                  (app.submit execution.application who submission) who
-                    (execution.network.known who)⟩⟩⟩
-            refine Or.inr (Or.inl ⟨record, ?_, rfl, canonical⟩)
-            exact app.trafficStep_submit execution remaining who submission
+  | none => exact Or.inr (Or.inr (omitted rfl))
+  | some submission =>
+      by_cases canonical : submission.emit (app.submit execution.application who submission)
+          who (execution.network.known who) =
+            ⟨.commitment event (who, .prepared serial), none, some ⟨event⟩⟩
+      · have normal : submission.normalizeReactive who
+            (app.observePlayer execution.application who)
+              (execution.network.known who) = submission := by
+          have fixed := member.2
+          change (⟨some (submission.normalizeReactive who _ _)⟩ : app.Action) =
+            ⟨some submission⟩ at fixed
+          have same := (Option.some.inj (congrArg ReactiveApplication.Action.transmission fixed))
+          rw [← known] at same
+          exact same
+        have shape := runtime.normal_binding_of_canonical_packet leaks execution.application
+          who (execution.network.known who) submission event serial fresh normal canonical
+        exact Or.inl ⟨submission.call.opening, member.1.1.2,
+          congrArg (fun material => (⟨some material⟩ : app.Action)) shape⟩
+      · let record : app.TrafficRecord :=
+          ⟨execution.application.publicView, execution.network.ledger,
+            ⟨(who, execution.network.nextSerial who), submission.emit
+              (app.submit execution.application who submission) who
+                (execution.network.known who)⟩⟩
+        refine Or.inr (Or.inl ⟨record, ?_, rfl, canonical⟩)
+        exact app.trafficStep_submit execution remaining who submission
 
 end Vegas.EventGraphRuntime
