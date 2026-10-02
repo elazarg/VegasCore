@@ -58,6 +58,9 @@ import Vegas.Game.SourceServiceFirstTurnOpportunity
 import Vegas.Game.SourceServiceFirstTurnBinding
 import Vegas.Game.SourceServiceFirstTurnRisk
 import Vegas.Game.SourceServiceFirstTurnNoMiss
+import Vegas.Game.SourceServiceFirstTurnSafe
+import Vegas.Game.SourceServiceOwnerSettled
+import Vegas.Game.SourceServiceFirstTurnAudit
 import Vegas.Game.BindingSubmissionCoupling
 import Vegas.Game.BindingFrameSettlement
 import Vegas.Game.SourceServiceCanonicalConformance

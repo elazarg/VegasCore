@@ -127,10 +127,11 @@ end Vegas
 -- The candidate owner-local risk menu, actual post-miss rationality and a
 -- localized restriction-extension theorem are checked; their source embedding
 -- and runtime comparison premises remain open.
--- Exact first-turn play records protected binding calls, keeps opportunity recall
--- clear and excludes all owned public binding misses against arbitrary foreign
--- raw policies. These operational results do not establish zero traffic charge
--- or the strategic source embedding.
+-- Exact first-turn play keeps the owner's full service-risk flag clear against
+-- arbitrary foreign raw policies. Prescribed authored packets pass the actual
+-- settled record for any turn timing; authentic sampling and first-turn absence
+-- of public misses give zero owner charge. These results do not establish the
+-- strategic source embedding or the local clean-continuation comparisons.
 -- The source extension supplying play at first unprotected binding opportunities,
 -- after misses and after unprotected attempts,
 -- joint beliefs with traffic observations, local incentives and general
