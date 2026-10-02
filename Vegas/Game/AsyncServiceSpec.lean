@@ -127,6 +127,10 @@ end Vegas
 -- The candidate owner-local risk menu, actual post-miss rationality and a
 -- localized restriction-extension theorem are checked; their source embedding
 -- and runtime comparison premises remain open.
+-- Exact first-turn play records protected binding calls, keeps opportunity recall
+-- clear and excludes all owned public binding misses against arbitrary foreign
+-- raw policies. These operational results do not establish zero traffic charge
+-- or the strategic source embedding.
 -- The source extension supplying play at first unprotected binding opportunities,
 -- after misses and after unprotected attempts,
 -- joint beliefs with traffic observations, local incentives and general

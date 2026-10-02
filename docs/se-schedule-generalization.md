@@ -1037,17 +1037,34 @@ proves owner-local slot and freshness invariants for persistently clear
 owners, allowing foreign raw actions. Prescribed transmissions never add
 submission risk, for any turn timing, scheduler or chance steps. Silent
 deferral can reach a late binding and add opportunity risk; that broader
-no-risk conclusion is not claimed for approximants. Avoiding opportunity
-risk and public misses under exact first-turn play remains a separate
-embedding obligation.
+no-risk conclusion is not claimed for approximants.
+[SourceServiceFirstTurnOpportunity](../Vegas/Game/SourceServiceFirstTurnOpportunity.lean)
+proves that the owner's actual first ready turn has a protected inclusion
+window, using answered activations and the reaction budget.
+[SourceServiceFirstTurnBinding](../Vegas/Game/SourceServiceFirstTurnBinding.lean)
+then supplies the actual fresh canonical commitment and records its event,
+including when the source binding has no private opening material.
+[SourceServiceFirstTurnRisk](../Vegas/Game/SourceServiceFirstTurnRisk.lean)
+proves that exact first-turn play never recalls an unprotected binding
+opportunity and records every earlier own binding turn. These are owner-local
+results under `AsyncContract` and `AsyncTimely`, with arbitrary foreign raw
+policies and an explicit bound on rounds.
 [SourceServiceProtectedBinding](../Vegas/Game/SourceServiceProtectedBinding.lean)
 isolates the event-level part: a protected fresh commitment with a sole own
 identifier cannot become a public binding miss under arbitrary foreign raw
 play. Its accepting receipt fixes the public handle throughout every legal
 continuation (`bindingReceipts_history`), even for an unusable private binding.
 This needs protected inclusion and the actual call/sole-identifier premises;
-it needs no watcher hypothesis. The whole-policy embedding must still show
-that every completed owned binding has such a call.
+it needs no watcher hypothesis.
+[SourceServiceFirstTurnNoMiss](../Vegas/Game/SourceServiceFirstTurnNoMiss.lean)
+discharges the operational coverage obligation for exact first-turn play:
+every owned binding's public omission flag, and the owner's entire
+`missedBindingBy` detector, stays clear at every supported round and pending
+activation within the horizon. A new binding miss would require due expiry;
+the opportunity contract supplies an earlier answered owner turn, which has
+already recorded the protected call. Silent approximant deferrals remain
+outside this no-miss conclusion. Zero traffic charge and the strategic source
+embedding need separate arguments.
 The auxiliary game carries actual native pending
 state and attempted-choice recall. Its no-risk source embedding, consistency
 and earlier incentive comparisons remain unproved; finite-game equilibrium
@@ -1103,8 +1120,13 @@ material alone is not an auditable offense: the source's value-plus-withholding
 repair preserves the joint parameter and public-outcome law for arbitrary
 allowed payoffs and guards. [BindingSubmissionCoupling](../Vegas/Game/BindingSubmissionCoupling.lean)
 couples its actual mixed native transmission and implementation memory before
-inclusion, without a calendar assumption. Closure under subsequent service
-commands, retained admission and consistent beliefs remain open.
+inclusion, without a calendar assumption.
+[ReactiveBindingFrameCommands](../Vegas/Pending/ReactiveBindingFrameCommands.lean)
+couples the actual clock, sample and expiry commands when the shadow's
+remembered outcomes belong to completed events. The law includes service
+recall and audit data. It does not cover packet inclusion or expiry with a
+pending private override; generic continuation closure, retained admission
+and consistent beliefs remain open.
 
 [BindingFrameSettlement](../Vegas/Game/BindingFrameSettlement.lean) proves
 that every preserved frame gives exactly the same actual traffic, final
@@ -1115,6 +1137,13 @@ binding memory can overwrite an actual expiry failure, and multiple pending
 attempts require identifying the original candidate by the accepted handle.
 Mistyped but certifiable material also carries authentic communication
 capabilities that a typed repair does not automatically reproduce.
+Replacing that material can remove a certificate the original owner could
+send in a later raw continuation. This obstructs an exact coupling of every
+future raw action, even if the public result is initially unchanged. It does
+not by itself refute equilibrium preservation: comparison at an earlier
+clean protected history can still charge a later first offense. A stopping
+comparison must keep the original capabilities on charged raw branches and
+prove that its stopping packet is forbidden by the actual settled record.
 
 ### Deviation proof boundaries
 
@@ -1126,9 +1155,9 @@ their own rationality proof; an exclusion theorem cannot supply it.
 
 | Behavior | Separate proof obligation | Checked boundary and open edge |
 | --- | --- | --- |
-| Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | The event-level no-miss theorem holds against arbitrary foreign raw responses under protected inclusion and the explicit sole-own-identifier premise. Coverage of every owned binding by the prescribed policy remains an embedding obligation. |
+| Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | The event-level theorem holds under protected inclusion and a sole own identifier. Exact first-turn play supplies the actual protected call and keeps the owner's entire public omission detector clear against arbitrary foreign raw policies. Zero traffic charge and the strategic source embedding remain separate. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
-| Canonical binding with unusable private opening | Replace its private meaning by source value and withholding, preserving the joint parameter/public-result law and actual settlement. | The source repair, native transmission coupling and settlement along preserved frames are checked. Generic native command closure and retained admission remain open. |
+| Canonical binding with unusable private opening | Replace its private meaning by source value and withholding, preserving the joint parameter/public-result law and actual settlement. | The source repair, native transmission coupling, application commands at completed repair boundaries and settlement along preserved frames are checked. Packet inclusion, pending overrides and later authentic certificate capabilities remain open. |
 | Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Final-record audit and the generic enforcement theorem are checked. Concrete generic collection and clean-comparator premises remain to be discharged. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |
 | Public binding miss | Admit rational continuation with the deposit already certain. | Actual post-miss whole-policy rationality equals base-payoff rationality. Joint beliefs and equilibrium completion of the auxiliary game remain open. |
