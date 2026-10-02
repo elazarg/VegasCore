@@ -142,9 +142,15 @@ end Vegas
 -- risk-menu game has that actual continuation law. One fixed comparator has zero
 -- owner collection across every hidden history of a clear information site;
 -- terminal base bounds give its clean lower bound under any belief. The source
--- equilibrium embedding and excluded-action collection remain open.
--- The source extension supplying play at first unprotected binding opportunities,
--- after misses and after unprotected attempts,
--- joint beliefs with traffic observations, local incentives and general
--- continuation repair remain to be proved.
+-- equilibrium embedding remains open. Signed constructor breaches have actual
+-- terminal collection bounds from an authentic challenge-report backend. The
+-- risk-menu-to-raw SE extension derives the clean comparator, collection and
+-- fixed-deposit bound; other excluded-action comparisons remain hypotheses.
+-- Exact first-turn execution preserves the joint typed outcome and actual
+-- sampled payoff vector for every source profile after disclosure normalization.
+-- This physical law does not establish a behavioral equilibrium embedding.
+-- Silent sole-binding rounds preserve source-view traffic factorization under
+-- every public scheduler command. Decision and disclosure kernels, joint beliefs
+-- at every native information site, the auxiliary risk-menu source embedding,
+-- local incentives and general continuation repair remain to be proved.
 -- The fixed-calendar SourceServiceSpec capstone does not discharge this edge.
