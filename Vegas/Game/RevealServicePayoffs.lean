@@ -2,7 +2,7 @@
 
 import Vegas.Game.RevealServiceCollection
 import Vegas.Game.RevealServiceCompletion
-import Vegas.Compile.EventGraphReadout
+import Vegas.Game.SourceServiceReadout
 import Vegas.Pending.RevealTranscript
 import GameTheoryExtensions.Analysis.Enforcement
 
@@ -33,31 +33,6 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- Decode the existing typed terminal store, retaining initial private cells
-jointly with the public results. An unfinished execution has no readout. -/
-def sourceReadout (state : (application setup leaks).ProtocolState) :
-    Option (State L setup.program.terminalCtx) :=
-  state.bind fun control =>
-    let config := control.execution.application.config
-    if config.cut.Terminal then
-      Vegas.decodeState? (Vegas.terminalRefs setup.program) config.store
-    else none
-
-theorem sourceReadout_normalization (state : (application setup leaks).ProtocolState) :
-    sourceReadout setup leaks (((runtime setup).reactiveNormalization leaks).state state) =
-      sourceReadout setup leaks state := by
-  cases state <;> rfl
-
-theorem sourceReadout_eq_some (control : (application setup leaks).Control)
-    (terminal : control.execution.application.config.cut.Terminal)
-    (source : State L setup.program.terminalCtx)
-    (agree : (Vegas.terminalRefs setup.program).Agrees source
-      control.execution.application.config.store) :
-    sourceReadout setup leaks (some control) = some source := by
-  unfold sourceReadout
-  rw [Option.bind_some, ite_eq_left terminal]
-  exact Vegas.decodeState?_eq_some _ source _ agree
-
 /-- Every bounded raw play has a complete source-state readout. Decoding does
 not invent default payloads, even after arbitrary malformed responses. -/
 theorem sourceReadout_succeeds [Fintype Player]
@@ -80,27 +55,6 @@ theorem sourceReadout_succeeds [Fintype Player]
   rw [ite_eq_left terminal]
   exact Vegas.decodeState?_isSome_of_available _ _
     (fun field => execution.application.config.store_available_of_terminal terminal field)
-
-/-- Analysis utility of the actual terminal source readout, prior to a deposit
-deduction. Initial private types may affect this utility. -/
-def baseUtility (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (state : (application setup leaks).ProtocolState) (who : Player) : ℝ :=
-  (sourceReadout setup leaks state).elim 0 (fun source => utility source who)
-
-theorem baseUtility_normalization (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (state : (application setup leaks).ProtocolState) :
-    baseUtility setup leaks utility (((runtime setup).reactiveNormalization leaks).state state) =
-      baseUtility setup leaks utility state := by
-  unfold baseUtility
-  rw [sourceReadout_normalization]
-
-theorem baseUtility_watcher (utility : State L setup.program.terminalCtx → Player → ℝ)
-    (watcher : Player) (indifferent : ∀ source, utility source watcher = 0)
-    (state : (application setup leaks).ProtocolState) :
-    baseUtility setup leaks utility state watcher = 0 := by
-  unfold baseUtility
-  cases sourceReadout setup leaks state <;>
-    simp only [Option.elim_none, Option.elim_some, indifferent]
 
 open Classical in
 /-- An ordinary player's deposit is forfeited once on attributable evidence.

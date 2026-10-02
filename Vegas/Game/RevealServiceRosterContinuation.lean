@@ -214,26 +214,6 @@ theorem roster_prefix_continuation_option_law
               convert tailLaw using 1 <;> rfl
 
 omit [Fintype Player] in
-/-- The compiler's terminal context contains every event output. Consequently
-the explicit terminal-cut guard is redundant with successful typed decoding,
-even at an arbitrary structurally valid native control state. -/
-theorem sourceReadout_eq_decode (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (control : (application setup leaks).Control) :
-    sourceReadout setup leaks (some control) =
-      decodeState? (terminalRefs setup.program) control.execution.application.config.store := by
-  unfold sourceReadout
-  rw [Option.bind_some]
-  cases decoded : decodeState? (terminalRefs setup.program)
-      control.execution.application.config.store with
-  | none => simp only [decoded, ite_self]
-  | some source =>
-      have complete := terminal_decode_complete setup.program .sequential
-        control.execution.application.config (by rw [decoded]; rfl)
-      dsimp only
-      rw [ite_eq_left complete, decoded]
-
-omit [Fintype Player] in
 /-- The whole-program instance uses the actual guarded native readout and
 the original source protocol state after the completed phase prefix. -/
 theorem roster_continuation_sourceReadout_law [Finite Player]

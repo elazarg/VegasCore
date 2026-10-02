@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAsyncStep
+import Vegas.Game.SourceStateKernel
+import Vegas.Source.DisclosureSupport
 
 /-! # Decoding every reached configuration to a source checkpoint
 
