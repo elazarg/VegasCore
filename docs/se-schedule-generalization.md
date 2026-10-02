@@ -441,6 +441,7 @@ controls confirm the checker rejects non-equilibria. Results:
 | C4 | Order reads a permitted opening while the other binding is unserved (excluded by the barrier order) | No assessment with the source law is sequentially rational; an order blind to opening contents restores one. |
 | C5 | An unobserved wait before the other player's service step | The translated profile is an equilibrium although its information set spans two depths: the depth requirement is a proof requirement, not an obstruction. |
 | C6 | One guaranteed turn, deferral with weight ε, a late turn granted with probability p, a public charged miss (`deferral_miss_probe.py`) | The compiled image of the penalized-miss extended source is an equilibrium with the source law exactly when the deposit is at least Alice's gain from a miss (here 1/2), for p in {0, 1/2, 1}. A grant probability that depends on the owner's value breaks the route at the turn-2 acceptance, not only after a miss. |
+| C7 | One escrow, private attempted-choice recall, raw play after public misses and late canonical attempts (`raw_continuation_probe.py`) | Rational raw completion preserves protected source play in the checked coordination games. Fixed continuation can leave profitable retries even with sufficient first-offense escrow. Collection and private recall controls are checked separately. |
 
 C1 compares D4 without enlarged deadlines against D3's timers; D1, where owners
 do not wait, is not probed. Under the barrier order C4 cannot arise, so the
@@ -494,6 +495,7 @@ is a design, not a checked result.
 | Turn-counted policy and approximate continuation (milestone 2b) | Done for every contract scheduler. `sourceServiceTurnPolicy_boundaryContinuationWithin` bounds the distance from the source continuation by the sum of the remaining events' deferral weights, and `sourceServiceTurnPolicy_firstTurnCompletes` discharges its hypothesis from `AsyncContract` and `AsyncTimely` alone (`Vegas/Game/SourceServiceFirstTurnCompletes.lean`). The calendar keeps its timed policy. |
 | Audit serial clause | Done. The audit's per-packet rule counts distinct identifiers per author (`Interaction.Message.distinctAuthoredCount`), so repeated evidence of one envelope does not shift serials, and the contract rejects a re-inclusion (`EventGraphRuntime.handle_eq_none_after_accepted_run`). Under `AsyncContract` alone, every fresh call of a player following the turn-counted policy, trembles included and whatever others do, carries the audit's serial and passes the full rule (`Vegas.sourceServiceTurnPolicy_serial`, `Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope` in `Vegas/Game/SourceServiceCanonicalSerial.lean`). |
 | Canonical retained menu | `MessageBounds.canonicalMenu` retains silence and bounded first canonical decisions under `WithinDeadline`, with no roster obligation. Local source-choice coverage and no second submission are proved in `Vegas/Pending/ReactiveCanonicalMenu.lean`. Used-slot and own-submission invariants hold on every legal retained history (`retainedCanonicalSlots_history`), including after misses. The prescribed policy is admitted at every such history (`sourceServiceTurnPolicy_retained` in `Vegas/Game/SourceServiceRetainedPolicy.lean`), including arbitrary turn timing. Equilibrium after misses remains open. |
+| Continuation after risk | The candidate `MessageBounds.riskMenu` opens an owner's bounded raw menu after its public miss or own recalled unprotected attempt. Locality, private-risk persistence and protected-response stability are proved. Clear owners retain slot freshness even with foreign raw play (`riskCanonicalSlots_history`); prescribed responses keep private recall risk clear for any turn timing. The actual audit's post-miss rationality equals base-payoff rationality (`serviceAudit_rationalAt_iff_of_omission`). `LocalizedEnforcement` separates charged exclusions from private continuation comparisons, including retained charges. Source embedding, general command closure, beliefs and the concrete comparisons remain open. |
 | General theorem | `AsyncServiceSpec`, the scheduler-dependent deposit, geometric deferral bounds, and the local retained menu are present. The public-miss source extension, beliefs, local comparisons, and general repair remain open. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
@@ -1018,15 +1020,52 @@ player. This differs from hidden forfeiture. The full execution protocol,
 no-miss embedding, SE extension, attempted-choice memory, and opening-evidence
 lotteries are not yet supplied.
 
-The smallest model change currently under consideration keeps one escrow and
-admits actual raw continuation after a public miss or an owner's unprotected
-attempt. The private trigger must use that owner's own recall; another player's
-hidden attempt cannot change the local response menu. Honest first-turn play
-never triggers either branch. The auxiliary game would carry the actual native
-pending state and beliefs after risk, with source projection promised on the
-safe branch. Its embedding, consistency and earlier incentive comparisons
-remain unproved; finite-game equilibrium existence alone does not discharge
-them. Fresh reserves remain an alternative if that hybrid proof fails.
+The candidate one-escrow menu is implemented in
+[ReactiveRiskMenu](../Vegas/Pending/ReactiveRiskMenu.lean). An owner's public
+miss or its own recalled unprotected attempt opens every bounded raw response
+for that owner. The private trigger reads only the owner's identity, public
+before-view and submitted event. Another player's hidden attempt cannot change
+the local menu. Private risk persists in recall, and a protected response
+leaves the flag unchanged. [SourceServiceRiskSlots](../Vegas/Game/SourceServiceRiskSlots.lean)
+proves owner-local slot and freshness invariants whenever that owner's current
+flag is clear, allowing foreign raw actions. Prescribed responses never add
+private recall risk, for any turn timing, scheduler or chance steps. Avoiding
+the public-miss branch under first-turn play remains a separate obligation.
+The auxiliary game carries actual native pending
+state and attempted-choice recall. Its no-risk source embedding, consistency
+and earlier incentive comparisons remain unproved; finite-game equilibrium
+existence alone does not discharge them. Fresh reserves remain an alternative
+if that hybrid proof fails.
+
+[TerminalAuditContinuation](../GameTheoryExtensions/Analysis/Protocol/TerminalAuditContinuation.lean)
+proves the exact comparison: the increase in expected collection times the
+deposit must cover the increase in base payoff. Constant expected collection
+leaves all whole-policy rationality comparisons unchanged, even when collection
+is uncertain. [ReactiveServiceAuditContinuation](../Vegas/Pending/ReactiveServiceAuditContinuation.lean)
+derives the certain-collection case from a publicly observed binding miss under
+arbitrary future policies and scheduler commands. The candidate menu continues
+to admit every raw response of that owner after the miss.
+
+Probe C7 also checks a late canonical packet whose inclusion is still
+unobserved when the owner chooses whether to send a second certificate-bearing
+call. With acceptance probability `s = 1/4`, observation and conditional report
+delivery probabilities `p = q = 1/2`, and deposit `D = 2`, baseline collection is
+`3/4` and collection after the second call is `13/16`. The extra expected fine
+is only `1/8`; sending the certificate gains `1/2`, so fixed silence is worse
+by `3/8`. Rational raw continuation preserves the protected source law in this
+finite game. This is design evidence, not a proof for every builder.
+
+[LocalizedEnforcement](../GameTheoryExtensions/Analysis/Protocol/LocalizedEnforcement.lean)
+provides the depth-free restriction-extension step with retained charges in the
+source utility. Only excluded actions designated as auditable need a collection
+bound and a clean legal comparator; other exclusions need a direct continuation
+comparison. Those runtime premises remain to be proved. Unusable private opening
+material alone is not an auditable offense: the source's value-plus-withholding
+repair preserves the joint parameter and public-outcome law for arbitrary
+allowed payoffs and guards. [BindingSubmissionCoupling](../Vegas/Game/BindingSubmissionCoupling.lean)
+couples its actual mixed native transmission and implementation memory before
+inclusion, without a calendar assumption. Closure under subsequent service
+commands, retained admission and consistent beliefs remain open.
 
 Disqualification with default future actions is not the planned simplification.
 An implementable trigger would require a public contract verdict, whose timing

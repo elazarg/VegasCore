@@ -124,6 +124,9 @@ end Vegas
 -- equilibrium under any AsyncServiceSpec, preserving the joint source outcome
 -- and realized settlement law. Retained slot invariants, prescribed policy
 -- admission after misses and prescribed continuation bounds are checked.
+-- The candidate owner-local risk menu, actual post-miss rationality and a
+-- localized restriction-extension theorem are checked; their source embedding
+-- and runtime comparison premises remain open.
 -- The source extension supplying play after misses and unprotected attempts,
 -- joint beliefs with traffic observations, local incentives and general
 -- continuation repair remain to be proved.

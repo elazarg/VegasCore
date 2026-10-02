@@ -52,6 +52,8 @@ import Vegas.Game.SourceServiceFirstTurnCompletes
 import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Game.SourceServiceRetainedPolicy
+import Vegas.Game.SourceServiceRiskSlots
+import Vegas.Game.BindingSubmissionCoupling
 import Vegas.Game.SourceServiceCanonicalConformance
 import Vegas.Game.SourceServiceCanonicalSerial
 import Vegas.Game.SourceServiceSiteBridge
