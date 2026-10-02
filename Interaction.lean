@@ -1,4 +1,5 @@
 import Interaction.ReactiveRestrictedContinuation
+import Interaction.ReactiveSupportedMenuPolicy
 import Interaction.ReactiveSubmissionSerial
 import Interaction.ReactiveMenuContinuation
 import Interaction.ReactiveMenuImplementation

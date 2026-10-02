@@ -908,12 +908,13 @@ informed decision. Within one game the builder is fixed, so that price is a
 well-defined probability, and a builder that grants no second turn makes
 waiting expensive.
 
-What waiting buys depends on the graph. On the sequentialized graph nothing
-else in the game completes while an owner's event is ready, so waiting learns
-nothing the source game models: only inclusion timing and leaked packets,
-which are stated limitations. Against the source's information,
-waiting is pure cost. Under the barrier order (stage B) waiting does learn
-who has committed, and the barrier order is what must keep that from mattering.
+What waiting buys depends on the graph and the actual information history.
+On the sequentialized graph no other source event completes while an owner's
+event is ready. Passive packet observations can nevertheless reveal a
+certificate from another owner's risky response. Local comparisons must use
+these actual beliefs; the event order alone does not prove waiting uninformative.
+Under the barrier order (stage B), waiting also reveals who has committed,
+and the barrier order must keep that from changing source incentives.
 
 A missed binding is charged. The contract cannot distinguish an owner who
 chose not to send from one who was censored, so it charges both alike: it
@@ -921,38 +922,38 @@ plays along with censorship. Protected inclusion is exactly the assumption
 that a timely sole packet is never censored, so a prescribed owner is charged
 only after waiting past its guarantee. A miss differs from a source forfeit:
 the forfeit stays hidden until the reveal (it compiles to a handle with no
-opening), while a miss is public at the deadline. The proposed proof introduces
-a penalized public-miss extension of the source to supply rational continuation
-play there, then recovers the original source on equilibrium-supported play.
+opening), while a miss is public at the deadline. The auxiliary game is the
+actual audited risk-menu game, retaining native pending state and attempted
+choices. Its rational continuation must be supplied both after misses and at
+late unrecorded binding opportunities, before the acceptance/miss lottery.
 
 Open obligations this creates:
 
-- **Charges on retained histories.** Retained deferral reaches a miss with
-  probability of order the deferral weight, so zero charge cannot hold on
-  every retained history. Either the charge enters the compiled game's
-  payoff and vanishes in the limit, or deferral past the last turn whose
-  successor still fits the gate leaves the retained menu as a charged gamble.
-  The second is dominated only if waiting buys nothing source-relevant, which
-  holds on the sequentialized graph up to the stated limitations.
-- **Play after a miss.** Other players need rational play at sites where an
-  owner has publicly missed. If such histories are reached only through
-  removed actions, the extension argument supplies the continuation as it
-  does for charged evidence today.
+- **Charges on retained histories.** Retained deferral can miss and be charged,
+  so the auxiliary payoff includes actual retained charges. Zero charge is
+  required on final equilibrium-supported play. A comparison at a deferral
+  information set must account for both its conditional miss probability and
+  any information it can receive.
+- **Rational continuation.** Public misses and native certificate observations
+  create information absent from protected source execution. Simultaneous free
+  agent completion can supply consistent rational play there, once the
+  prescribed site set and its initialized support property are proved.
 - **Late sends.** The policy stops fresh calls once protected inclusion can
   no longer land before the deadline. A fast actual inclusion may still
   accept a canonical call sent before expiry; the final record permits that
   call and the audit cannot charge it merely for missing the protection gate.
-  Retain these attempts and compare their acceptance/miss lottery with the
-  extended source. Packets forbidden by the final record remain auditable.
-- **Play after a miss (proposed route).** The proof would pass through an
-  extended source with a penalized "public miss" move at each binding. The
-  restriction extension supplies play after a miss there, because the penalty
-  pays its comparison, and compiled deferral is the mixture of that miss and
-  deciding later. This requires the chance that a deferring owner gets no
-  further turn to be independent of every hidden value, the owner's own
-  included: acceptance timing is public, so a grant probability that varies
-  with the owner's value lets a late acceptance reveal it. Probe C6
-  supports the route under that condition.
+  Retain these attempts and admit rational continuation at that opportunity.
+  A builder may condition inclusion on public packet content, so the lottery
+  need not equal sending no packet and paying a public-miss charge. Packets
+  forbidden by the final record remain auditable.
+- **Source embedding and beliefs.** The prescribed site set must include benign
+  earlier deferrals. A clean-prefix law stops at the first risk; arbitrary
+  deferral timing is not closed through termination. The relative mass of
+  escaped branches at each information site must vanish, including at sites
+  whose own passage probability tends to zero. Global outcome error alone
+  does not prove this posterior statement. Probe C6's penalized public-miss
+  source is a useful finite abstraction, but omits native attempted-choice
+  recall and certificate observations needed for this embedding.
 
 ### Monitoring and punishment
 
@@ -988,6 +989,12 @@ an actual information site, including the remaining horizon budget. Its lower
 bound is observation coverage times delivery coverage conditional on the
 whole observed record. The backend hypotheses allow genuine observation and
 report failure.
+
+[SourceServiceSignedInformation](../Vegas/Game/SourceServiceSignedInformation.lean)
+proves that the owner's actual recall and view determine the whole emitted
+signed envelope. A breach witnessed at one hidden history therefore supplies
+the same classification at every history of that information site. Uniformity
+does not require an additional scheduler or observation hypothesis.
 
 The monitored guessing fixture instantiates this boundary with its actual
 private observation record and the final public ledger. `nativeCollectionLaw`
@@ -1123,6 +1130,22 @@ payoff vector; its parameter/public-outcome projection retains their original
 correlations. Disclosure normalization supplies this execution law for every
 source profile. Behavioral strategy embedding and sequential rationality are
 separate requirements.
+
+[AsyncServiceFirstTurnProfile](../Vegas/Game/AsyncServiceFirstTurnProfile.lean)
+represents exact first-turn play as a behavioral profile of the actual finite
+risk-menu game, for source profiles admitted by the value commitment interface.
+Its initialized control laws retain the application, network, receipts and
+private recall. The same joint source-outcome/settlement law holds there.
+Admission is required only along physically supported legal histories;
+the total policy's fallback at other inputs carries no rationality claim.
+
+The prescribed limit at an earlier-deferral site must come from the timing
+approximants. Pure first-turn policy itself is silent after its selected turn
+has passed. At a protected binding site reached after an earlier silent turn,
+geometric timing can instead have a limiting decision probability of one.
+At a resolution site, silence can also be an already drawn false source
+decision, so its conditional timing posterior needs a separate comparison.
+The initialized first-turn execution law does not settle these off-path laws.
 
 [SourceServiceAsyncFactorization](../Vegas/Game/SourceServiceAsyncFactorization.lean)
 preserves source-view traffic factorization through an actual silent round
@@ -1298,6 +1321,13 @@ observer. Information absent from every protected source execution needs free
 rational completion. The finite free-agent completion theorem supplies
 existence once the protected site set, prefix closure, source-relative trembles
 and local comparisons are established; it does not establish those premises.
+
+[PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
+proves that simultaneous consistent rational completion at free sites retains
+the specified strategy limit at prescribed sites. It preserves the complete
+initialized terminal history law if reference play only visits prescribed
+decisions. The site classification and convergence remain premises; prescribed
+site rationality and compatibility with the given source beliefs remain open.
 
 The comparator must start at an actual active owner site. A clear scheduler
 boundary can follow a silent protected turn that already fulfilled the

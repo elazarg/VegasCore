@@ -73,6 +73,7 @@ import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.SourceServiceSignedExclusion
 import Vegas.Game.SourceServiceSignedCollection
 import Vegas.Game.SourceServiceRiskExtension
+import Vegas.Game.SourceServiceSignedInformation
 import Vegas.Game.BindingSubmissionCoupling
 import Vegas.Game.BindingFrameSettlement
 import Vegas.Game.SourceServiceCanonicalConformance
@@ -83,6 +84,7 @@ import Vegas.Game.SourceServiceGeometricTiming
 import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.AsyncServiceFirstTurnLaw
+import Vegas.Game.AsyncServiceFirstTurnProfile
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
