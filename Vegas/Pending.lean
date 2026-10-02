@@ -10,6 +10,7 @@ import Vegas.Pending.ReactiveServiceTraffic
 import Vegas.Pending.ReactiveServiceAudit
 import Vegas.Pending.ReactiveServiceAuditContinuation
 import Vegas.Pending.ReactiveRiskMenu
+import Vegas.Pending.ReactiveRiskPersistence
 import Vegas.Pending.ReactiveSettledStability
 import Vegas.Pending.ReactiveSettledVerdict
 import Vegas.Pending.ReactiveResolutionEvidence

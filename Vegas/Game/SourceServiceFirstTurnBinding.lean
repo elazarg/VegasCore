@@ -59,11 +59,11 @@ theorem sourceServiceFirstTurn_unrecorded
   exact (sourceServiceTurn_first first).2 entry member
     (atTurn entry member event (of_decide_eq_true submitted))
 
-/-- Every supported first-turn binding response emits its actual protected call,
-including when its private opening material is absent. -/
-theorem sourceServiceFirstTurn_binding_call {horizon remaining : Nat}
+/-- Every protected unsent canonical binding opportunity emits its actual call,
+including after earlier silent turns or when private opening material is absent. -/
+theorem sourceServiceCanonicalOpportunity_binding_call {horizon remaining : Nat}
     {scheduler : (application setup leaks).Scheduler}
-    {bound : (graph setup).EventId → Nat} {turns : Nat}
+    {bound : (graph setup).EventId → Nat}
     {profile : BehavioralProfile setup.program} {who : Player}
     {middle : (application setup leaks).Execution}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
@@ -75,12 +75,12 @@ theorem sourceServiceFirstTurn_binding_call {horizon remaining : Nat}
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload)
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (first : sourceServiceTurn setup leaks who event (middle.recall who)
-      (middle.observe (application setup leaks) who) = some 0)
+    (turn : middle.application.publicView.ownTurn? who = some event)
+    (unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false)
     (fits : middle.application.publicView.InclusionFitsDeadline (runtime setup) bound event)
     (response : (application setup leaks).Action)
-    (chosen : response ∈ (sourceServiceTurnPolicy setup leaks bound turns
-      (firstTurnTiming setup turns) profile who (middle.recall who)
+    (chosen : response ∈ (sourceServiceCanonicalOpportunity setup leaks bound profile who event
+      (middle.recall who)
         (middle.observe (application setup leaks) who)).support) :
     ∃ material, response = ⟨some material⟩ ∧
       let app := application setup leaks
@@ -95,14 +95,10 @@ theorem sourceServiceFirstTurn_binding_call {horizon remaining : Nat}
           event = true := by
   let app := application setup leaks
   have owned := nodeView_bind_actor outputEq codeEq
-  have turn : middle.application.publicView.ownTurn? who = some event :=
-    (sourceServiceTurn_first first).1
   have fitsView : PublicView.InclusionFitsDeadline (runtime setup) bound
       (middle.observe (application setup leaks) who).application.publicView event := fits
-  have unrecorded := sourceServiceFirstTurn_unrecorded atTurn first
   have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
   have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application fresh
-  rw [sourceServiceTurnPolicy_firstTurn owned first] at chosen
   unfold sourceServiceCanonicalOpportunity at chosen
   simp only [unrecorded, Bool.false_eq_true, ↓reduceIte] at chosen
   rw [ite_eq_left fitsView] at chosen
@@ -160,5 +156,44 @@ theorem sourceServiceFirstTurn_binding_call {horizon remaining : Nat}
     have named : (runtime setup).submittedEvent? leaks ⟨some material⟩ = some event := rfl
     rw [named]
     simp only [decide_true, Bool.or_true]
+
+/-- Every supported first-turn binding response emits its actual protected call,
+including when its private opening material is absent. -/
+theorem sourceServiceFirstTurn_binding_call {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {bound : (graph setup).EventId → Nat} {turns : Nat}
+    {profile : BehavioralProfile setup.program} {who : Player}
+    {middle : (application setup leaks).Execution}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, middle⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (slots : CanonicalSlotsUsed setup leaks middle who)
+    (event : (graph setup).EventId) (payload : L.Ty)
+    (outputEq : (graph setup).outputLayout event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .bind who payload)
+    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
+    (first : sourceServiceTurn setup leaks who event (middle.recall who)
+      (middle.observe (application setup leaks) who) = some 0)
+    (fits : middle.application.publicView.InclusionFitsDeadline (runtime setup) bound event)
+    (response : (application setup leaks).Action)
+    (chosen : response ∈ (sourceServiceTurnPolicy setup leaks bound turns
+      (firstTurnTiming setup turns) profile who (middle.recall who)
+        (middle.observe (application setup leaks) who)).support) :
+    ∃ material, response = ⟨some material⟩ ∧
+      let app := application setup leaks
+      let message : Message Player (WitnessedPacket (graph setup)) :=
+        ⟨(who, middle.network.nextSerial who), app.packet
+          (app.submit middle.application who material) who (middle.network.known who) material⟩
+      let entry : app.PlayerEntry := ⟨middle.observe app who, response, some message⟩
+      FreshCall setup leaks who event bound entry message ∧
+        message.payload.call = .commitment event
+          (who, .prepared (middle.application.publicView.bindingCount who)) ∧
+        (runtime setup).eventRecorded leaks ((middle.respond app who response).recall who)
+          event = true := by
+  rw [sourceServiceTurnPolicy_firstTurn (nodeView_bind_actor outputEq codeEq) first] at chosen
+  exact sourceServiceCanonicalOpportunity_binding_call trace atTurn slots event payload outputEq
+    codeEq node (sourceServiceTurn_first first).1 (sourceServiceFirstTurn_unrecorded atTurn first)
+    fits response chosen
 
 end Vegas

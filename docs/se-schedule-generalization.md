@@ -1208,12 +1208,28 @@ cases without weakening the capstone or duplicating the proof machinery.
 
 The initialized-play audit theorem does not supply a clean comparator from
 every clear prefix. A false risk flag alone says nothing about an earlier
-packet's extra evidence. Even at a legal canonical prefix, an earlier silent
-binding turn can leave another protected opportunity at turn index `1`; the
-fixed turn-`0` policy then stays silent. A clean suffix must decide at the
-first remaining protected unrecorded binding, preserve recorded pending calls,
-and be proved uniformly across the local information set. Its earlier packet
-conformance and future zero charge are separate proof obligations.
+packet's extra evidence. At a legal risk-menu prefix, however,
+`riskPacketFacts_history` derives protected conforming unique owner calls and
+their good actual settled content from persistent clarity. Other players may
+have taken expanded raw actions. Earlier silent binding turns are allowed.
+
+`sourceServiceImmediatePolicy` uses actual local recall and decides at the
+current protected unrecorded opportunity, without an earlier turn-index test.
+It is admitted at every legal risk-menu history. At an active clear owner
+site, its response supplies `BindingTurnsRecorded` for every earlier binding
+turn: a completed binding has accepted-call provenance, and an unfinished
+earlier turn still names the current ready event. Recorded pending calls are
+preserved. These are checked in
+[SourceServiceRiskPrefix](../Vegas/Game/SourceServiceRiskPrefix.lean),
+[SourceServiceImmediatePolicy](../Vegas/Game/SourceServiceImmediatePolicy.lean)
+and [SourceServiceImmediateRecall](../Vegas/Game/SourceServiceImmediateRecall.lean).
+Future zero charge and the continuation comparison under local deviation
+beliefs remain separate obligations.
+
+The comparator must start at an actual active owner site. A clear scheduler
+boundary can follow a silent protected turn that already fulfilled the
+builder's opportunity obligation; the builder need not give another turn
+before expiry. Clarity at that boundary alone cannot guarantee a clean suffix.
 
 Disqualification with default future actions is not the planned simplification.
 An implementable trigger would require a public contract verdict, whose timing

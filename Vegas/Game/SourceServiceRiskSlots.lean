@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceRetainedSlots
-import Vegas.Pending.ReactiveRiskMenu
+import Vegas.Pending.ReactiveRiskPersistence
 
 /-! # Owner-local canonical slots at clear risk-menu histories
 
@@ -32,88 +32,6 @@ private def ownerPersistentRisk (bound : (graph setup).EventId → Nat)
     (execution : (application setup leaks).Execution) (who : Player) : Bool :=
   (runtime setup).persistentServiceRisk leaks bound who (execution.recall who)
     (execution.observe (application setup leaks) who)
-
-private theorem publicMiss_environment {execution next : (application setup leaks).Execution}
-    {command : (application setup leaks).Command} (who : Player)
-    (missed : execution.application.publicView.missedBindingBy who = true)
-    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
-    next.application.publicView.missedBindingBy who = true := by
-  obtain ⟨event, owned, omission⟩ := of_decide_eq_true missed
-  apply PublicView.missedBindingBy_of_event _ who event owned
-  cases kind : (graph setup).outputLayout event with
-  | binding actor payload =>
-      have invariant :=
-        (runtime setup).reactiveMissedBindingInvariant leaks event actor payload kind
-      exact invariant.environmentStep execution next command omission moved
-  | publicData payload | privateInput actor payload | publication payload =>
-      simp only [PublicView.missedBinding, kind, Bool.false_eq_true] at omission
-
-private theorem ownerPersistentRisk_environment_mono
-    (bound : (graph setup).EventId → Nat) (who : Player)
-    {execution next : (application setup leaks).Execution}
-    {command : (application setup leaks).Command}
-    (risky : ownerPersistentRisk bound execution who = true)
-    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
-    ownerPersistentRisk bound next who = true := by
-  rcases ((runtime setup).persistentServiceRisk_iff leaks bound who _ _).mp risky with
-    (publicMiss | recalled) | opportunity
-  · exact (runtime setup).persistentServiceRisk_of_public_miss leaks bound who _ _
-      (publicMiss_environment who publicMiss moved)
-  · apply (runtime setup).persistentServiceRisk_of_recalled leaks bound who _ _
-    have recallEq := (application setup leaks).environmentStep_recall execution next command moved
-    rw [recallEq]
-    exact recalled
-  · apply (runtime setup).persistentServiceRisk_of_opportunityRecall leaks bound who _ _
-    have recallEq := (application setup leaks).environmentStep_recall execution next command moved
-    rw [recallEq]
-    exact opportunity
-
-private theorem ownerPersistentRisk_respond_mono
-    (bound : (graph setup).EventId → Nat) (execution : (application setup leaks).Execution)
-    (actor who : Player) (response : (application setup leaks).Action)
-    (risky : ownerPersistentRisk bound execution who = true) :
-    ownerPersistentRisk bound (execution.respond (application setup leaks) actor response) who =
-      true := by
-  rcases ((runtime setup).persistentServiceRisk_iff leaks bound who _ _).mp risky with
-    (publicMiss | recalled) | opportunity
-  · apply (runtime setup).persistentServiceRisk_of_public_miss leaks bound who _ _
-    have publicEq := (runtime setup).reactive_respond_application leaks execution actor response
-    exact (congrArg (fun view : PublicView (graph setup) => view.missedBindingBy who)
-      publicEq.2).trans publicMiss
-  · apply (runtime setup).persistentServiceRisk_of_recalled leaks bound who _ _
-    obtain ⟨entry, present, identity, event, named, owned, unprotected⟩ :=
-      ((runtime setup).recalledSubmissionRisk_iff leaks bound who _).mp recalled
-    apply ((runtime setup).recalledSubmissionRisk_iff leaks bound who _).mpr
-    exact ⟨entry,
-      (application setup leaks).respond_recall_mono execution actor who response present,
-      identity, event, named, owned, unprotected⟩
-  · apply (runtime setup).persistentServiceRisk_of_opportunityRecall leaks bound who _ _
-    exact (runtime setup).recalledBindingOpportunityRisk_respond_mono leaks bound execution actor
-      who response opportunity
-
-private theorem ownerPersistentRisk_clear_before_environment
-    (bound : (graph setup).EventId → Nat) (who : Player)
-    {execution next : (application setup leaks).Execution}
-    {command : (application setup leaks).Command}
-    (clear : ownerPersistentRisk bound next who = false)
-    (moved : next ∈ (execution.environmentStep (application setup leaks) command).support) :
-    ownerPersistentRisk bound execution who = false := by
-  apply Bool.eq_false_of_not_eq_true
-  intro risky
-  have persists := ownerPersistentRisk_environment_mono bound who risky moved
-  rw [clear] at persists
-  cases persists
-
-private theorem ownerPersistentRisk_clear_before_respond
-    (bound : (graph setup).EventId → Nat) (execution : (application setup leaks).Execution)
-    (actor who : Player) (response : (application setup leaks).Action)
-    (clear : ownerPersistentRisk bound (execution.respond (application setup leaks) actor response)
-      who = false) : ownerPersistentRisk bound execution who = false := by
-  apply Bool.eq_false_of_not_eq_true
-  intro risky
-  have persists := ownerPersistentRisk_respond_mono bound execution actor who response risky
-  rw [clear] at persists
-  cases persists
 
 /-- Every named submission on the prescribed policy's support passes its
 protection gate, regardless of the selected turn index or source profile. -/
@@ -223,8 +141,8 @@ theorem sourceServiceTurnPolicy_recalledSubmissionRisk_roundSupported
     (profile : BehavioralProfile setup.program)
     (follows : players who = sourceServiceTurnPolicy setup leaks bound turns timing profile who)
     (horizon : Nat) (control : (application setup leaks).Control)
-    (reached : (application setup leaks).RoundSupported (initialLaw setup) horizon scheduler players
-      (some control)) :
+    (reached : (application setup leaks).RoundSupported (initialLaw setup) horizon scheduler
+      players (some control)) :
     (runtime setup).recalledSubmissionRisk leaks bound who
       (control.execution.recall who) = false := by
   obtain ⟨remaining, actor, execution⟩ := control
@@ -250,7 +168,8 @@ private theorem riskSlots_round {horizon remaining : Nat}
     (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
     (prior : ownerPersistentRisk bound execution who = false →
-      OwnSubmissionsAtTurn setup leaks execution who ∧ CanonicalSlotsUsed setup leaks execution who)
+      OwnSubmissionsAtTurn setup leaks execution who ∧
+        CanonicalSlotsUsed setup leaks execution who)
     (clear : ownerPersistentRisk bound next who = false)
     (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
     OwnSubmissionsAtTurn setup leaks next who ∧ CanonicalSlotsUsed setup leaks next who := by
@@ -260,9 +179,11 @@ private theorem riskSlots_round {horizon remaining : Nat}
   have clearMiddle : ownerPersistentRisk bound middle who = false := by
     rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, _, rfl⟩
     · exact clear
-    · exact ownerPersistentRisk_clear_before_respond bound middle responder who response clear
+    · exact (runtime setup).persistentServiceRisk_clear_before_respond leaks bound middle responder
+        who response clear
   obtain ⟨atTurn, valid⟩ :=
-    prior (ownerPersistentRisk_clear_before_environment bound who clearMiddle moved)
+    prior ((runtime setup).persistentServiceRisk_clear_before_environment leaks bound who
+      clearMiddle moved)
   have atMiddle : OwnSubmissionsAtTurn setup leaks middle who := by
     unfold OwnSubmissionsAtTurn
     rw [recallEq]
@@ -344,7 +265,8 @@ theorem riskCanonicalSlots_history {horizon : Nat}
       obtain ⟨_, count, prior, command, _, priorMem, _, _, moved⟩ := supported
       obtain ⟨atTurn, valid⟩ := riskCanonicalSlots_roundsFrom bounds bound scheduler
         menu.uniformResponses who covered count prior priorMem
-        (ownerPersistentRisk_clear_before_environment bound who clear moved)
+        ((runtime setup).persistentServiceRisk_clear_before_environment leaks bound who clear
+          moved)
       have recallEq := app.environmentStep_recall prior execution command moved
       refine ⟨?_, canonicalSlotsUsed_environment moved who valid⟩
       unfold OwnSubmissionsAtTurn

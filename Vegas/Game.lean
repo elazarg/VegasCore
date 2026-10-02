@@ -54,6 +54,7 @@ import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Game.SourceServiceRetainedPolicy
 import Vegas.Game.SourceServiceRiskSlots
 import Vegas.Game.SourceServiceProtectedBinding
+import Vegas.Game.SourceServiceBindingMiss
 import Vegas.Game.SourceServiceFirstTurnOpportunity
 import Vegas.Game.SourceServiceFirstTurnBinding
 import Vegas.Game.SourceServiceFirstTurnRisk
@@ -62,6 +63,9 @@ import Vegas.Game.SourceServiceFirstTurnSafe
 import Vegas.Game.SourceServiceOwnerSettled
 import Vegas.Game.SourceServiceFirstTurnAudit
 import Vegas.Game.SourceServiceRiskPolicy
+import Vegas.Game.SourceServiceRiskPrefix
+import Vegas.Game.SourceServiceImmediatePolicy
+import Vegas.Game.SourceServiceImmediateRecall
 import Vegas.Game.BindingSubmissionCoupling
 import Vegas.Game.BindingFrameSettlement
 import Vegas.Game.SourceServiceCanonicalConformance

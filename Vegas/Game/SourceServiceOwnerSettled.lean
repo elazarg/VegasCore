@@ -165,7 +165,9 @@ theorem SettledGood.owner_environment {horizon : Nat}
     exact settledContent_step step execution.receipts next.receipts message event named
       completed content
 
-private theorem owner_good_response {execution : (application setup leaks).Execution}
+/-- An arbitrary response preserves prior good packets of the selected owner;
+only a fresh response authored by that owner needs a conformance premise. -/
+theorem owner_good_response {execution : (application setup leaks).Execution}
     (facts : SettledFacts setup leaks execution) (who responder : Player)
     (response : (application setup leaks).Action)
     (prior : ∀ message, message.sender = who → Emitted setup leaks execution message →
