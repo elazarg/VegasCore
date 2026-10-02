@@ -1194,7 +1194,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 | Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | Exact first-turn play supplies the protected call and keeps the owner's omission detector and full risk flag clear against arbitrary foreign raw policies. Its packets pass the actual final-record verdict, so authentic sampling collects zero owner charge. The strategic source embedding and local continuation comparisons remain separate. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
 | Canonical binding with unusable private opening | Replace its private meaning by source value and withholding, preserving the joint parameter/public-result law and actual settlement. | The source repair, native transmission coupling, application commands at completed repair boundaries and settlement along preserved frames are checked. Packet inclusion, pending overrides and later authentic certificate capabilities remain open. |
-| Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Final-record audit and the generic enforcement theorem are checked. Concrete generic collection and clean-comparator premises remain to be discharged. |
+| Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Final-record audit, the generic enforcement theorem, immediate policy admission and its actual zero-charge suffix from every legal clear active owner prefix are checked. Transfer to behavioral continuation comparisons and concrete generic collection remain open. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |
 | Public binding miss | Admit rational continuation with the deposit already certain. | Actual post-miss whole-policy rationality equals base-payoff rationality. Joint beliefs and equilibrium completion of the auxiliary game remain open. |
 | Earlier packet offense with uncertain collection | Use the change in conditional expected collection, or admit rational raw continuation. | The exact incremental-charge identity is checked. Coverage of another packet alone supplies no positive increment; no independence premise is implicit. |
@@ -1223,8 +1223,19 @@ preserved. These are checked in
 [SourceServiceRiskPrefix](../Vegas/Game/SourceServiceRiskPrefix.lean),
 [SourceServiceImmediatePolicy](../Vegas/Game/SourceServiceImmediatePolicy.lean)
 and [SourceServiceImmediateRecall](../Vegas/Game/SourceServiceImmediateRecall.lean).
-Future zero charge and the continuation comparison under local deviation
-beliefs remain separate obligations.
+`sourceServiceImmediatePolicy_clean_continuation` derives those prefix
+resources and preserves full clear risk and good owner packets through every
+supported raw suffix within the remaining horizon. No foreign source policy
+is assumed. `sourceServiceImmediatePolicy_audit_clear_after_prefix_response`
+then proves zero actual owner charge for every authentic sampling kernel,
+including at the final remaining-round boundary. Positive observation or
+report coverage is unnecessary for this soundness direction. The suffix and
+audit are checked in
+[SourceServiceCleanContinuation](../Vegas/Game/SourceServiceCleanContinuation.lean)
+and [SourceServiceImmediateAudit](../Vegas/Game/SourceServiceImmediateAudit.lean).
+The same policy is a fixed function of the owner's actual recall and current
+view. Its transfer to behavioral continuation comparisons under local
+deviation beliefs remains a separate obligation.
 
 The comparator must start at an actual active owner site. A clear scheduler
 boundary can follow a silent protected turn that already fulfilled the

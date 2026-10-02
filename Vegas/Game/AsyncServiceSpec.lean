@@ -135,6 +135,11 @@ end Vegas
 -- Prescribed responses are locally admitted at clear risk-menu histories, even
 -- after foreign raw branches. Actual supported responses supply completion
 -- boundaries and the generic continuation-error bridge within the raw horizon.
+-- At every legal clear active owner prefix, one immediate policy preserves actual
+-- recall through earlier deferrals and has zero owner audit charge throughout its
+-- supported raw suffix within the horizon. The prefix packet and opportunity
+-- premises are derived from that legal history. Transfer to a uniform behavioral
+-- continuation comparator and the source equilibrium embedding remain open.
 -- The source extension supplying play at first unprotected binding opportunities,
 -- after misses and after unprotected attempts,
 -- joint beliefs with traffic observations, local incentives and general

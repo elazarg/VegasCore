@@ -1,0 +1,198 @@
+/- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
+
+import Vegas.Game.SourceServiceImmediatePolicy
+import Vegas.Game.SourceServiceBindingMiss
+import Vegas.Game.SourceServiceFirstTurnRisk
+
+/-! # Local risk preservation for immediate continuation
+
+An actual scheduler boundary with answered activations and recorded earlier
+binding turns has no unprotected unrecorded binding opportunity. Immediate
+responses preserve binding-turn records and clear private opportunity recall.
+A new public miss would require due expiry after an earlier answered own turn;
+that turn's recorded protected sole call rules the miss out.
+
+These local steps use actual prefix and packet invariants. They do not assume
+a source policy on earlier histories or establish an equilibrium comparison.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player]
+  {L : IExpr} [IExpr.ResultTypes L]
+  {setup : Setup (Player := Player) (L := L)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- Recorded earlier binding turns and answered activations protect every
+unrecorded binding opportunity at an actual scheduler boundary. -/
+theorem recordedBindings_currentOpportunity_clear {horizon : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    {remaining : Nat} {execution : (application setup leaks).Execution}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, none, execution⟩))
+    (answered : ActivationsAnswered setup leaks execution) (who : Player)
+    (turned : BindingTurnsRecorded setup leaks execution who) :
+    (runtime setup).firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+      (execution.observe (application setup leaks) who) = false := by
+  let app := application setup leaks
+  apply Bool.eq_false_of_not_eq_true
+  intro risky
+  obtain ⟨_, event, owner, payload, turn, binding, unrecorded, unprotected⟩ :=
+    ((runtime setup).firstUnprotectedBindingOpportunity_iff leaks bound who _ _).mp risky
+  have turnActual : execution.application.publicView.ownTurn? who = some event := turn
+  have first : sourceServiceTurn setup leaks who event (execution.recall who)
+      (execution.observe app who) = some 0 := by
+    change (if execution.application.publicView.ownTurn? who = some event then
+      some ((execution.recall who).countP fun entry =>
+        decide (entry.beforeView.application.publicView.ownTurn? who = some event))
+      else none) = some 0
+    simp only [turnActual, ↓reduceIte]
+    apply congrArg some
+    apply List.countP_eq_zero.mpr
+    intro entry member seen
+    have recorded := turned entry member event owner payload (of_decide_eq_true seen) binding
+    rw [unrecorded] at recorded
+    cases recorded
+  have ownTurn := PublicView.ownTurn?_spec execution.application.publicView who event turnActual
+  have fits := firstTurn_inclusionFits contract timely trace answered ownTurn.2
+    ((execution.application.publicView_eventReady event).mp ownTurn.1) first
+  exact unprotected fits
+
+/-- An immediate response at clear risk keeps prior binding turns recorded,
+records a fresh current binding turn, and adds no private opportunity risk. -/
+theorem immediatePolicy_recallFacts_respond {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {bound : (graph setup).EventId → Nat} {profile : BehavioralProfile setup.program}
+    {middle : (application setup leaks).Execution} {who : Player}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, middle⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
+    (slots : CanonicalSlotsUsed setup leaks middle who)
+    (turned : BindingTurnsRecorded setup leaks middle who)
+    (clear : (runtime setup).serviceRisk leaks bound who (middle.recall who)
+      (middle.observe (application setup leaks) who) = false)
+    (response : (application setup leaks).Action)
+    (chosen : response ∈ (sourceServiceImmediatePolicy setup leaks bound profile who
+      (middle.recall who) (middle.observe (application setup leaks) who)).support) :
+    BindingTurnsRecorded setup leaks (middle.respond (application setup leaks) who response) who ∧
+      (runtime setup).recalledBindingOpportunityRisk leaks bound who
+        ((middle.respond (application setup leaks) who response).recall who) = false := by
+  let app := application setup leaks
+  have components := ((runtime setup).serviceRisk_clear_iff leaks bound who _ _).mp clear
+  have recallClear := ((runtime setup).persistentServiceRisk_clear_iff leaks bound who _ _).mp
+    components.1 |>.2
+  have nextClear := ((runtime setup).recalledBindingOpportunityRisk_respond_clear leaks bound
+    middle who response components.2).trans recallClear
+  refine ⟨?_, nextClear⟩
+  obtain ⟨_, recalled, _⟩ := respond_recall_self setup leaks middle who response
+  intro entry member event owner payload turn binding
+  rw [recalled] at member
+  rcases List.mem_append.mp member with old | new
+  · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response event
+      (turned entry old event owner payload turn binding)
+  · cases List.mem_singleton.mp new
+    change middle.application.publicView.ownTurn? who = some event at turn
+    by_cases recorded : (runtime setup).eventRecorded leaks (middle.recall who) event = true
+    · exact (runtime setup).eventRecorded_respond_of_recorded leaks middle who who response event
+        recorded
+    · have unrecorded : (runtime setup).eventRecorded leaks (middle.recall who) event = false :=
+        Bool.eq_false_of_not_eq_true recorded
+      cases node : nodeView (graph setup) event with
+      | sample sampled law outputEq codeEq =>
+          rw [outputEq] at binding
+          cases binding
+      | resolve actor resolutionPayload bindingRef checks outputEq codeEq =>
+          rw [outputEq] at binding
+          cases binding
+      | bind actor bindingPayload outputEq codeEq =>
+          have actorEq : actor = who := Option.some.inj
+            ((nodeView_bind_actor outputEq codeEq).symm.trans
+              (PublicView.ownTurn?_spec _ who event turn).2)
+          subst actorEq
+          obtain ⟨_, _, _, _, recordedAfter⟩ := sourceServiceImmediatePolicy_binding_call trace
+            atTurn slots clear event bindingPayload outputEq codeEq node turn unrecorded response
+            chosen
+          exact recordedAfter
+
+/-- A scheduler round cannot create an owner miss from answered activations
+and recorded earlier binding turns when its actual resulting calls remain
+protected, conforming and unique. No response policy is assumed here. -/
+theorem recordedBindings_no_public_miss_round {horizon remaining : Nat}
+    {scheduler : (application setup leaks).Scheduler}
+    {delay bound : (graph setup).EventId → Nat}
+    (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
+      delay bound)
+    (timely : AsyncTimely (runtime setup) delay bound)
+    {players : Player → (application setup leaks).Policy}
+    {execution next : (application setup leaks).Execution}
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining + 1, none, execution⟩))
+    (answered : ActivationsAnswered setup leaks execution) (who : Player)
+    (turned : BindingTurnsRecorded setup leaks execution who)
+    (clear : execution.application.publicView.missedBindingBy who = false)
+    (reached : next ∈ ((application setup leaks).round scheduler players execution).support)
+    (nextTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, none, next⟩))
+    (calls : OwnFreshCalls setup leaks bound next who)
+    (conform : FreshCallsConform setup leaks next who)
+    (once : OneCallPerEvent setup leaks next who)
+    (atTurn : OwnSubmissionsAtTurn setup leaks next who) :
+    next.application.publicView.missedBindingBy who = false := by
+  let app := application setup leaks
+  classical
+  apply decide_eq_false
+  rintro ⟨event, owned, missing⟩
+  cases node : nodeView (graph setup) event with
+  | sample payload law outputEq codeEq =>
+      simp only [PublicView.missedBinding, outputEq, Bool.false_eq_true] at missing
+  | resolve actor payload binding checks outputEq codeEq =>
+      simp only [PublicView.missedBinding, outputEq, Bool.false_eq_true] at missing
+  | bind actor payload outputEq codeEq =>
+      have actorEq : actor = who :=
+        Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
+      subst actor
+      have clearEvent : execution.application.publicView.missedBinding event = false := by
+        apply Bool.eq_false_of_not_eq_true
+        intro missed
+        have flag := PublicView.missedBindingBy_of_event execution.application.publicView who
+          event owned missed
+        rw [clear] at flag
+        cases flag
+      obtain ⟨command, _, middle, dispatched, effect⟩ := round_cases setup leaks reached
+      have middleMissing : middle.application.publicView.missedBinding event = true := by
+        rcases effect with ⟨_, rfl⟩ | ⟨actor, _, response, _, rfl⟩
+        · exact missing
+        · have same := (runtime setup).reactive_respond_application leaks middle actor response
+          exact (congrArg (fun view : PublicView (graph setup) => view.missedBinding event)
+            same.2).symm.trans missing
+      have facts := legalFacts setup leaks horizon scheduler _ trace
+      obtain ⟨_, ready, entered, activated, due⟩ := new_binding_miss_expiry command facts.binding
+        dispatched event who payload outputEq codeEq node clearEvent middleMissing
+      change (runtime setup).deadline event ≤ execution.application.clock - entered at due
+      have delayFits := timely event (by rw [owned]; rfl)
+      obtain ⟨entry, recalled, turn⟩ := opportunity_turn contract trace answered owned ready
+        entered activated (by omega)
+      have recordedBefore := turned entry recalled event who payload turn outputEq
+      have grows : execution.recall who ⊆ next.recall who := by
+        have same := app.environmentStep_recall execution middle command dispatched
+        rcases effect with ⟨_, rfl⟩ | ⟨actor, _, response, _, rfl⟩
+        · rw [same]
+        · rw [← same]
+          exact app.respond_recall_mono middle actor who response
+      have recordedAfter : (runtime setup).eventRecorded leaks (next.recall who) event = true := by
+        obtain ⟨call, member, named⟩ := List.any_eq_true.mp recordedBefore
+        exact List.any_eq_true.mpr ⟨call, grows member, named⟩
+      have noMiss := owner_recorded_binding_no_miss contract.inclusion nextTrace who calls conform
+        once atTurn event payload outputEq codeEq node recordedAfter
+      rw [noMiss] at missing
+      cases missing
+
+end Vegas
