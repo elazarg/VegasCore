@@ -122,6 +122,7 @@ import Vegas.Game.SourceServiceCompilation
 import Vegas.Game.SourceServiceHarmlessContinuation
 import Vegas.Game.SourceServiceSampleComparison
 import Vegas.Game.SourceServiceRecordedContinuation
+import Vegas.Game.SourceServiceRecordedPlan
 import Vegas.Game.SourceServiceBindingContinuation
 import Vegas.Game.SourceServiceTimingPosterior
 import Vegas.Game.SourceServiceChoiceSupport
