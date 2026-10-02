@@ -1158,6 +1158,16 @@ that later turn. Multiple earlier waits and source-relative beliefs remain
 separate obligations.
 The initialized first-turn execution law does not settle these off-path laws.
 
+[SourceServiceSilentChoicePosterior](../Vegas/Game/SourceServiceSilentChoicePosterior.lean)
+handles a selected canonical decision that itself has positive probability of
+silence. After the actual first silent response, timing index zero retains
+that silent likelihood in the posterior. At the next counted turn, geometric
+timing differs from staying silent by at most `weight / silentLikelihood`.
+Deferral weights can be chosen to make this ratio vanish even while the source
+profile approaches a deterministic choice. This supplies a local limit after
+one earlier silence; identifying the likelihood with a source disclosure
+choice and transporting its beliefs remain separate requirements.
+
 [SourceServiceAsyncFactorization](../Vegas/Game/SourceServiceAsyncFactorization.lean)
 preserves source-view traffic factorization through an actual silent round
 while a binding is the only ready event. The arbitrary public scheduler may
@@ -1345,8 +1355,20 @@ history from the belief.
 risk-menu prefix with every owner's persistent flag clear has a canonical
 trace with identical state, actions and nature transitions. It may stop before
 a late opportunity's response records risk. The classifier's witness therefore
-supplies a legal canonical decision history. Stopped-prefix probability laws,
-source-relative posterior bounds and local comparisons remain open.
+supplies a legal canonical decision history. Source-relative posterior bounds
+and local comparisons remain open.
+
+[ReactiveCleanPrefixProbability](../Vegas/Pending/ReactiveCleanPrefixProbability.lean)
+proves equal probabilities for every clean realized history, and every event
+consisting of such histories, in the canonical and risk-menu representations
+of the same physical policy. The event keeps its original probability mass
+at each finite cutoff. A currently late endpoint is allowed before its
+response records risk. [SourceServiceCleanPrefixLaw](../Vegas/Game/SourceServiceCleanPrefixLaw.lean)
+derives canonical admission for every admitted source profile and arbitrary
+turn timing, then identifies these clean-prefix masses with the actual
+physical prescribed execution. Behavior after risk expansion is not
+identified. Conditional escaped-branch bounds, source-information projection
+and rationality still require their own proofs.
 
 [PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 proves that simultaneous consistent rational completion at free sites retains
@@ -1354,6 +1376,15 @@ the specified strategy limit at prescribed sites. It preserves the complete
 initialized terminal history law if reference play only visits prescribed
 decisions. The site classification and convergence remain premises; prescribed
 site rationality and compatibility with the given source beliefs remain open.
+
+[SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
+supplies the final normalization stage: an audited SE of the complete
+effective native menu lifts to its raw private-action aliases, with projected
+consistent beliefs and the exact joint typed source-readout and sampled-payoff
+law. Final traffic and the settled record are invariant, so correlated
+collection and prior charges are preserved. The current risk menu expands to
+raw actions; this separate stage does not itself discharge its alias-exclusion
+comparisons. A complete effective-menu equilibrium is its input.
 
 The comparator must start at an actual active owner site. A clear scheduler
 boundary can follow a silent protected turn that already fulfilled the

@@ -13,8 +13,8 @@ value, rather than on which hidden history currently realizes it.
 
 Every decision visited by exact first-turn initialized play is classified.
 The classifier does not fix off-path strategy laws: those must be limits of
-the timing approximants. Closure of clean-prefix laws and posterior comparison
-with escaped branches remain separate obligations. This is a proof classifier,
+the timing approximants. Posterior comparison with escaped branches and
+source-information transport remain separate obligations. This is a proof classifier,
 not a runtime gate or a sequential-equilibrium assertion.
 -/
 
