@@ -1129,6 +1129,75 @@ theorem handle_withhold_unremembered_eq
   simp [handle, ready, timely, view, Message.sender, sender, withholdingAction,
     remembered, acceptResolution, resolved]
 
+/-- A timely withholding call completes its resolution with failure. The
+recorded action may retain a remembered intention with the same output. -/
+theorem handle_withhold_failure_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : state.config.cut.Ready event) (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) :
+    ∃ disclose : Bool,
+      EventCode.resolveOutput? binding checks disclose state.config.store = some .failure ∧
+      handle runtime state ⟨id, .withhold event⟩ =
+        some (state.complete event ready
+          (cast (congrArg EventField.Action outputEq.symm) disclose)
+          (cast (congrArg EventField.Value outputEq.symm)
+            (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  have resolved : EventCode.resolveOutput? binding checks
+      (withholdingAction state event owner payload binding checks outputEq)
+      state.config.store = some .failure := by
+    rw [withholdingAction_output]
+    exact resolveOutput?_false_eq_failure_of_ready state event ready owner payload binding
+      checks outputEq codeEq
+  refine ⟨withholdingAction state event owner payload binding checks outputEq, resolved, ?_⟩
+  simp [handle, ready, timely, node, Message.sender, sender, acceptResolution, resolved]
+
+/-- Withholding records `false` when disclosure would succeed, irrespective of
+the application's remembered intention. -/
+theorem handle_withhold_of_success_eq
+    (runtime : EventGraphRuntime graph) (state : State graph)
+    (id : MessageId Player) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (ready : state.config.cut.Ready event) (timely : state.WithinDeadline runtime event)
+    (sender : id.1 = owner) (value : L.Val payload)
+    (resolvedTrue : EventCode.resolveOutput? binding checks true state.config.store =
+      some (.success value)) :
+    handle runtime state ⟨id, .withhold event⟩ =
+      some (state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm) false)
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
+  have resolvedFalse := resolveOutput?_false_eq_failure_of_ready state event ready
+    owner payload binding checks outputEq codeEq
+  have localTrue := EventCode.resolveOutput?_playerStore (graph := graph) binding checks
+    state.config.store true
+  have localFalse := EventCode.resolveOutput?_playerStore (graph := graph) binding checks
+    state.config.store false
+  have actionFalse : withholdingAction state event owner payload binding checks outputEq =
+      false := by
+    unfold withholdingAction
+    cases remembered : state.remembered event with
+    | none => rfl
+    | some action =>
+        cases actionEq : cast (congrArg EventField.Action outputEq) action with
+        | false => simp [actionEq]
+        | true => simp [actionEq, localTrue, localFalse, resolvedTrue, resolvedFalse]
+  simp [handle, ready, timely, node, Message.sender, sender, actionFalse,
+    acceptResolution, resolvedFalse]
+
 /-- Canonical failure traffic preserves the owner's original disclosure
 decision, even when that decision was `true` and local validation rejected it. -/
 theorem handle_withhold_eq
