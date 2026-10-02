@@ -6,11 +6,10 @@ import Interaction.ReactiveRecordedResponse
 
 /-! # Source-relative prescriptions at native information
 
-First turns and binding deferrals retain arbitrary-source compatibility
-witnesses. At a later unrecorded resolution turn, the owner's actual recall
-must instead give positive reference silence likelihood at its protected
-first turn. A silence caused only by a source tremble at a pure-opening
-reference input does not meet this condition.
+First turns, binding deferrals and protected resolution turns retain
+arbitrary-source compatibility witnesses. A later unprotected resolution
+requires positive reference silence likelihood at the protected first turn
+in the owner's actual recall.
 
 The condition is a property of recalled information, not a runtime gate.
 Its first-turn containment is structural; neither posterior transport nor
@@ -42,8 +41,8 @@ def protectedFirstSilence (reference : BehavioralProfile service.setup.program)
           (sourceServiceCanonicalOpportunity service.setup service.leaks service.bound reference
             who event before entry.beforeView).support
 
-/-- Source compatibility retains a later unrecorded resolution only when
-the fixed reference can produce its actual protected first silence. -/
+/-- Protected resolution opportunities remain prescribed. A later closed
+opportunity instead requires reference support for its first silence. -/
 def sourcePrescribedInfo (reference : BehavioralProfile service.setup.program) (who : Player)
     (info : (application service.setup service.leaks).Info) : Prop :=
   service.sourceCompatibleInfo who info ∧
@@ -52,6 +51,8 @@ def sourcePrescribedInfo (reference : BehavioralProfile service.setup.program) (
         (graph service.setup).outputLayout event = .publication payload →
         (runtime service.setup).eventRecorded service.leaks past event = false →
           sourceServiceTurn service.setup service.leaks who event past view = some 0 ∨
+            view.application.publicView.InclusionFitsDeadline (runtime service.setup)
+              service.bound event ∨
             service.protectedFirstSilence reference who event past
 
 /-- Every compatible first own turn remains prescribed, independently of
@@ -91,9 +92,28 @@ theorem sourcePrescribedInfo_of_binding
   rw [binding] at layout
   cases layout
 
-/-- A zero reference silence likelihood at an actual recalled first turn
-excludes a later unrecorded resolution information value. -/
-theorem sourcePrescribedInfo_excludes_zero_first_silence
+/-- Every compatible protected own opportunity remains prescribed, including
+later resolution opportunities following source trembles. -/
+theorem sourcePrescribedInfo_of_protected_turn
+    (reference : BehavioralProfile service.setup.program) (who : Player)
+    (past : List (application service.setup service.leaks).PlayerEntry)
+    (view : (application service.setup service.leaks).PlayerView)
+    (compatible : service.sourceCompatibleInfo who (some (past, view)))
+    (event : (graph service.setup).EventId)
+    (turn : view.application.publicView.ownTurn? who = some event)
+    (fits : view.application.publicView.InclusionFitsDeadline (runtime service.setup)
+      service.bound event) :
+    service.sourcePrescribedInfo reference who (some (past, view)) := by
+  refine ⟨compatible, ?_⟩
+  intro otherPast otherView same current _payload serving _layout _unrecorded
+  cases Option.some.inj same
+  have sameEvent : current = event := Option.some.inj (serving.symm.trans turn)
+  subst current
+  exact Or.inr (Or.inl fits)
+
+/-- A zero reference first-silence likelihood excludes a later unrecorded
+resolution only when its current inclusion opportunity is closed. -/
+theorem sourcePrescribedInfo_excludes_closed_zero_first_silence
     (reference : BehavioralProfile service.setup.program) (who : Player)
     (past : List (application service.setup service.leaks).PlayerEntry)
     (view : (application service.setup service.leaks).PlayerView)
@@ -102,6 +122,8 @@ theorem sourcePrescribedInfo_excludes_zero_first_silence
     (publication : (graph service.setup).outputLayout event = .publication payload)
     (unrecorded : (runtime service.setup).eventRecorded service.leaks past event = false)
     (later : sourceServiceTurn service.setup service.leaks who event past view ≠ some 0)
+    (closed : ¬ view.application.publicView.InclusionFitsDeadline (runtime service.setup)
+      service.bound event)
     (before : List (application service.setup service.leaks).PlayerEntry)
     (entry : (application service.setup service.leaks).PlayerEntry)
     (after : List (application service.setup service.leaks).PlayerEntry)
@@ -112,8 +134,10 @@ theorem sourcePrescribedInfo_excludes_zero_first_silence
       who event before entry.beforeView) ⟨none⟩ = 0) :
     ¬ service.sourcePrescribedInfo reference who (some (past, view)) := by
   intro prescribed
-  rcases prescribed.2 past view rfl event payload turn publication unrecorded with firstNow | kept
+  rcases prescribed.2 past view rfl event payload turn publication unrecorded with
+    firstNow | fits | kept
   · exact later firstNow
+  · exact closed fits
   · exact (PMF.mem_support_iff _ _).mp (kept before entry after recalled first).2.2.2 zero
 
 omit [Fintype Player] in
@@ -366,9 +390,9 @@ theorem firstTurnProfile_recalled_first_silence
       rw [selected, silent] at supported
       exact supported
 
-/-- The later-turn condition is not vacuous: prescribed unrecorded
-resolutions have an actual protected first-silence entry in own recall. -/
-theorem sourcePrescribedInfo_later_resolution_witness
+/-- At a later closed prescribed resolution, the reference-silence condition
+has an actual protected first-turn witness in own recall. -/
+theorem sourcePrescribedInfo_closed_resolution_witness
     (reference : BehavioralProfile service.setup.program) (who : Player)
     (past : List (application service.setup service.leaks).PlayerEntry)
     (view : (application service.setup service.leaks).PlayerView)
@@ -377,7 +401,9 @@ theorem sourcePrescribedInfo_later_resolution_witness
     (turn : view.application.publicView.ownTurn? who = some event)
     (publication : (graph service.setup).outputLayout event = .publication payload)
     (unrecorded : (runtime service.setup).eventRecorded service.leaks past event = false)
-    (later : sourceServiceTurn service.setup service.leaks who event past view ≠ some 0) :
+    (later : sourceServiceTurn service.setup service.leaks who event past view ≠ some 0)
+    (closed : ¬ view.application.publicView.InclusionFitsDeadline (runtime service.setup)
+      service.bound event) :
     ∃ before entry after, past = before ++ entry :: after ∧
       sourceServiceTurn service.setup service.leaks who event before entry.beforeView = some 0 ∧
       entry.action = ⟨none⟩ ∧
@@ -398,8 +424,9 @@ theorem sourcePrescribedInfo_later_resolution_witness
     intro entry member chosen
     exact absent ⟨entry, member, of_decide_eq_true chosen⟩
   obtain ⟨before, entry, after, recalled, first⟩ := exists_first_turn past seen
-  rcases prescribed.2 past view rfl event payload turn publication unrecorded with now | kept
+  rcases prescribed.2 past view rfl event payload turn publication unrecorded with now | fits | kept
   · exact (later now).elim
+  · exact (closed fits).elim
   · exact ⟨before, entry, after, recalled, first, kept before entry after recalled first⟩
 
 /-- Every decision visited by the fixed reference's exact first-turn profile
@@ -450,7 +477,7 @@ theorem firstTurnProfile_sourcePrescribedInfo
           (execution.recall who) (execution.observe (application service.setup service.leaks) who) =
             some 0
       · exact Or.inl first
-      · refine Or.inr ?_
+      · refine Or.inr (Or.inr ?_)
         intro before entry after recalled first
         exact service.firstTurnProfile_recalled_first_silence turns reference permitted fuel history
           reached who remaining execution current event unrecorded before entry after recalled first

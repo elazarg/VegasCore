@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAudit
-import Vegas.Pending.ReactiveSignedEvidence
+import Vegas.Pending.ReactiveSettledCollection
 import Interaction.ReactiveLocalContinuation
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
@@ -12,9 +12,10 @@ resulting signed packet is derived from that transition, then persists through
 every later policy. Bounded terminal play supplies the remaining continuation
 fuel and the complete-play contract supplies the final settled record.
 
-The report backend is authentic and has conditional observation and delivery
-coverage for signed constructor breaches. No send-time evidence, certain
-monitoring, caller-supplied traffic or continuation-fuel premise is used.
+The authentic backend covers signed packets forbidden by the final record,
+with observation and conditional report-delivery bounds. Complete play makes
+constructor breaches forbidden. No send-time evidence, certain monitoring,
+caller-supplied traffic or continuation-fuel premise is used.
 -/
 
 noncomputable section
@@ -56,16 +57,7 @@ theorem signedContentBreach_collection_committed
             Message Player (WitnessedPacket (graph setup))))
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ player, 0 ≤ deliveryRate player)
-    (observations : ∀ actual (evidence : SettledEvidence setup), evidence ∈ actual →
-      SignedContentBreach evidence.2 →
-      observationRate evidence.2.sender ≤
-        ((backend.observations actual).toOuterMeasure {seen | evidence ∈ seen}).toReal)
-    (reports : ∀ actual (evidence : SettledEvidence setup),
-      SignedContentBreach evidence.2 →
-      ∀ seen ∈ (backend.observations actual).support, evidence ∈ seen →
-      deliveryRate evidence.2.sender ≤ ((backend.reports seen).toOuterMeasure {delivered |
-        evidence ∈ EvidenceReport.deliveredEvidence
-          (backend.window.reportCutoff + backend.window.inclusionBound) delivered}).toReal) :
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate) :
     observationRate who * deliveryRate who ≤
       expect ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
         (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
@@ -152,13 +144,9 @@ theorem signedContentBreach_collection_committed
       have enough : 2 * horizon + 1 ≤ next.trace.length + fuel := by
         dsimp only [fuel]
         omega
-      have bound := (runtime setup).signedContentBreach_collection_continuation leaks menu
-        (initialLaw setup) horizon scheduler completes backend updated fuel next enough
-        record present breach (observationRate who) (deliveryRate who)
-        (delivery_nonnegative who)
-        (fun actual settled member => observations actual (settled, record.envelope) member breach)
-        (fun actual settled => reports actual (settled, record.envelope) breach)
-      rw [TerminalAudit.collection_probability] at bound
+      have bound := (runtime setup).signedContentBreach_collection_continuation_of_finalCoverage
+        leaks menu (initialLaw setup) horizon scheduler completes backend observationRate
+        deliveryRate delivery_nonnegative coverage updated fuel next enough record present breach
       exact bound
 
 end Vegas

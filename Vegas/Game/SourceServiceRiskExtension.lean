@@ -16,9 +16,10 @@ choice can occur only at a clear local information site. There the fixed
 immediate comparator supplies a clean whole-policy continuation.
 
 The asynchronous deposit uses extrema over this complete effective history space.
-Backend observation and report-delivery coverage and the comparison for other
-excluded responses remain separate runtime obligations. The result extends an audited
-risk-menu equilibrium; embedding a source-language equilibrium is separate.
+Authentic coverage of packets forbidden by the final record and the comparison
+for other excluded responses remain separate runtime obligations. The result
+extends an audited risk-menu equilibrium; embedding a source-language
+equilibrium is separate.
 -/
 
 noncomputable section
@@ -173,28 +174,19 @@ The source payoff includes actual retained charges. Structural embedding,
 finite histories, decision recall, payoff bounds, deposit sufficiency and the
 fixed clean comparator are derived for this service.
 
-Observation coverage concerns actual forbidden signed evidence. Report coverage
-is conditional on the full observed record and includes delivery before the
-challenge-window bound. These contracts imply collection after each excluded
-signed breach without independence or a continuation-fuel premise. The other
-comparison requires one legal continuation shared across the belief's hidden
-histories. The backend contracts and this comparison remain hypotheses. -/
+Coverage concerns actual signed evidence forbidden by the final settled
+record. Delivery is conditional on the full observation and includes delivery
+before the challenge-window bound. This contract implies collection after
+each excluded signed breach without independence or a continuation-fuel
+premise. The other comparison requires one legal continuation shared across
+the belief's hidden histories. Both remain hypotheses. -/
 theorem risk_sequentialEquilibrium_extends
     (utility : State L service.setup.program.terminalCtx → Player → ℝ)
     (backend : EvidenceReportService (SettledEvidence service.setup))
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (positive : ∀ who, 0 < observationRate who * deliveryRate who)
-    (observations : ∀ actual (evidence : SettledEvidence service.setup), evidence ∈ actual →
-      SignedContentBreach evidence.2 →
-      observationRate evidence.2.sender ≤
-        ((backend.observations actual).toOuterMeasure {seen | evidence ∈ seen}).toReal)
-    (reports : ∀ actual (evidence : SettledEvidence service.setup),
-      SignedContentBreach evidence.2 →
-      ∀ seen ∈ (backend.observations actual).support, evidence ∈ seen →
-      deliveryRate evidence.2.sender ≤ ((backend.reports seen).toOuterMeasure {delivered |
-        evidence ∈ EvidenceReport.deliveredEvidence
-          (backend.window.reportCutoff + backend.window.inclusionBound) delivered}).toReal)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate)
     (reference : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (reference who).Admitted service.setup.program
       (CommitmentInterface.values _)) :
@@ -279,8 +271,7 @@ theorem risk_sequentialEquilibrium_extends
         exact signedContentBreach_collection_committed service.setup service.leaks effective count
           scheduler service.completes backend targetProfile (restriction.history history.1) who
           remaining execution currentEffective (restriction.site who site).1 action observed
-          material selected forbidden observationRate deliveryRate delivery_nonnegative
-          observations reports)
+          material selected forbidden observationRate deliveryRate delivery_nonnegative coverage)
       (fun sourceProfile _ _ who site action extra _ belief => by
         obtain ⟨past, view, _response, observed, _, _, _, clear⟩ :=
           service.riskRestriction_extra_clear who site action extra

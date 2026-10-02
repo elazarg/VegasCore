@@ -1201,8 +1201,24 @@ test where transmitting earns one and silence earns zero, regret against
 sure transmission tends to one when `w / s` tends to zero. If both vanish and
 `s / w` tends to zero, that regret vanishes. The checked result keeps first
 and next silent likelihoods distinct until the numerical specialization.
-The actual terminal-payoff realization, multi-turn source-view stability,
-closed gates and a sufficient global prescription remain separate obligations.
+[SourceServiceResolutionTerminal](../Vegas/Game/SourceServiceResolutionTerminal.lean)
+realizes that comparison in the actual runtime. At a supplied protected
+activation, an authentic opening is accepted, while silence eventually
+expires to a false publication. Every packet in this suffix passes the final
+record, so authentic partial sampling leaves the actual payoff-vector law
+uncharged. The two-slot payoff and regret formulas therefore hold for this
+audited continuation. Initialization and information-set reachability,
+multi-turn source-view stability, closed gates and a sufficient global
+prescription remain separate obligations.
+
+[SourceServiceResolutionRecallPosterior](../Vegas/Game/SourceServiceResolutionRecallPosterior.lean)
+handles every earlier event turn in an actual clean legal history, including
+intervening actions at other events. If the first selected silence likelihood
+is positive, each current response differs from continued silence by at most
+`weight / firstSilentLikelihood`. A positive reference limit and vanishing
+weight therefore give continued silence, even if the current gate is closed.
+Likelihood transport to that reference and its incentive comparison remain
+explicit obligations.
 
 [SourceServiceAsyncFactorization](../Vegas/Game/SourceServiceAsyncFactorization.lean)
 preserves source-view traffic factorization through an actual silent round
@@ -1381,15 +1397,32 @@ every unclassified packet harmless. The predicate compares actual audited
 continuations and requires one legal policy across the hidden histories of
 the information site.
 
-The signed-constructor coverage hypothesis does not cover every auditable
-departure. A bare commitment using a noncanonical prepared handle has no
-constructor breach; a certified opening that fails its guards also lies
-outside that class. Either can fail the final settled verdict, yet the stated
-backend hypothesis supplies no probability of collecting it. A general
-enforcement proof needs observation and conditional report-delivery coverage
-for final-record violations as well. Correct canonical bindings with unusable
-private opening material can pass that verdict; their capability-repair
-obligation remains distinct even with broader packet coverage.
+The extension uses authentic observation and conditional report-delivery
+coverage for packets forbidden by the final record. This includes auditable
+departures beyond constructor breaches: a bare commitment using a
+noncanonical prepared handle, or a certified opening that fails its guards,
+can fail the final settled verdict. Collection for such a packet still needs
+a proof of its actual final forbiddenness. Correct canonical bindings with
+unusable private opening material can pass that verdict; their
+capability-repair obligation remains distinct even with broader coverage.
+
+[SourceServiceNoncanonicalBinding](../Vegas/Game/SourceServiceNoncanonicalBinding.lean)
+proves final forbiddenness for a wrong prepared handle under every actual
+complete continuation. Readiness fixes the binding ordinal until the event
+completes, and later completions preserve its count in the final record.
+Acceptance of the wrong handle does not change this verdict. Complete play
+and final-record coverage give the observation-times-delivery collection
+bound under arbitrary subsequent behavioral policies. This does not classify
+correct-handle private capability defects.
+
+[BindingCapabilityReadout](../Vegas/Game/BindingCapabilityReadout.lean)
+proves that a candidate-only repair frame with no typed value overrides
+preserves the entire graph store and the full typed terminal source readout.
+It consequently preserves arbitrary typed source utility and the joint
+readout/actual audited payoff-vector law, including prior charges and
+correlated sampling. Constructing and preserving that frame along an actual
+raw continuation up to a capability-exposing violation or public miss remains
+open.
 
 [ReactiveSettledCollection](../Vegas/Pending/ReactiveSettledCollection.lean)
 states that broader backend obligation as `FinalForbiddenEvidenceCoverage`.
@@ -1456,15 +1489,24 @@ prescription at resolution sites.
 [AsyncServicePrescribedSites](../Vegas/Game/AsyncServicePrescribedSites.lean)
 refines that structural classifier relative to a fixed source reference.
 First turns and binding deferrals keep arbitrary-source witnesses, including
-source off-path continuations. At a later unrecorded resolution, the actual
-recalled protected first silence must have positive likelihood under the
-reference. A false choice present only as a tremble at a pure-opening
-reference input therefore does not force continued silence. Exact reference
-first-turn play visits only these prescribed inputs; lawful false choices can
-still visit later turns whose inclusion gate has closed. Rationality and
-native full-support approximation remain open. Completion at the narrower
-set cannot use the broader clean-prefix equality without its original
-agreement premise.
+source off-path continuations. Later protected resolution turns also remain
+prescribed. At a later unrecorded resolution whose current inclusion gate
+has closed, the actual recalled protected first silence must have positive
+likelihood under the reference. A false choice present only as a tremble at
+a pure-opening reference input therefore does not force silence at that
+closed opportunity. Exact reference first-turn play visits only these
+prescribed inputs; lawful false choices can still visit later turns whose
+inclusion gate has closed. Rationality and native full-support approximation
+remain open. Completion at the narrower set cannot use the broader
+clean-prefix equality without its original agreement premise.
+
+[SourceServiceResidualSites](../Vegas/Game/SourceServiceResidualSites.lean)
+supplies aligned source residuals at every legal native history for every
+response menu and scheduler. Actual readiness identifies the residual rank;
+the event's output type then identifies an aligned source commitment or
+disclosure. Earlier arbitrary deviations require no source-strategy support
+premise. This is an effective source-configuration decoder, not a joint
+belief transport or a restoration of failed disclosure intentions.
 
 [PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 proves that simultaneous consistent rational completion at free sites retains

@@ -9,7 +9,8 @@ Signed-content enforcement and the explicit remaining effective-action
 comparisons extend the risk-menu equilibrium to the complete effective menu.
 Private-alias transport then supplies a raw-runtime equilibrium with the same
 joint typed source readout and actual sampled payoff vector. The stages use
-one backend and one fixed deposit, retaining prior charges and correlations.
+one authentic final-record coverage contract and one fixed deposit, retaining
+prior charges and correlations.
 
 The input is an audited risk-menu equilibrium. Embedding an original source
 equilibrium and discharging the other effective-action comparisons remain
@@ -35,16 +36,7 @@ theorem risk_raw_sequentialEquilibrium_extends
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (positive : ∀ who, 0 < observationRate who * deliveryRate who)
-    (observations : ∀ actual (evidence : SettledEvidence service.setup), evidence ∈ actual →
-      SignedContentBreach evidence.2 →
-      observationRate evidence.2.sender ≤
-        ((backend.observations actual).toOuterMeasure {seen | evidence ∈ seen}).toReal)
-    (reports : ∀ actual (evidence : SettledEvidence service.setup),
-      SignedContentBreach evidence.2 →
-      ∀ seen ∈ (backend.observations actual).support, evidence ∈ seen →
-      deliveryRate evidence.2.sender ≤ ((backend.reports seen).toOuterMeasure {delivered |
-        evidence ∈ EvidenceReport.deliveredEvidence
-          (backend.window.reportCutoff + backend.window.inclusionBound) delivered}).toReal)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate)
     (reference : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (reference who).Admitted service.setup.program
       (CommitmentInterface.values _)) :
@@ -81,10 +73,11 @@ theorem risk_raw_sequentialEquilibrium_extends
     deposit observe audit payoff settle otherComparisons source equilibrium
   obtain ⟨effective, effectiveSE, _agrees, _beliefs, _histories, joint⟩ :=
     service.risk_sequentialEquilibrium_extends utility backend observationRate deliveryRate
-      delivery_nonnegative positive observations reports reference permitted otherComparisons
+      delivery_nonnegative positive coverage reference permitted otherComparisons
         source equilibrium
   obtain ⟨target, _strategy, targetSE, _beliefs, _states, rawJoint⟩ :=
-    service.normalization_sequentialEquilibrium utility backend.sample deposit effective effectiveSE
+    service.normalization_sequentialEquilibrium utility backend.sample deposit effective
+      effectiveSE
   refine ⟨target, targetSE, ?_⟩
   have projected := congrArg (fun law => law.map (fun outcome =>
     (sourceReadout service.setup service.leaks outcome.1, outcome.2))) joint
