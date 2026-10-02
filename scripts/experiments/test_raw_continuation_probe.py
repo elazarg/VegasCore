@@ -6,9 +6,10 @@ import unittest
 from adaptive_schedules import HALF, Chance, End, Move, consistent_beliefs, law, pure
 from deferral_miss_probe import violations
 from raw_continuation_probe import (
-    BITS, ONE, ReportBackend, assert_perfect_recall, collection_mass,
+    BITS, ONE, OwnerOpportunity, ReportBackend, assert_perfect_recall, collection_mass,
+    first_late_content_profile, first_late_content_target,
     late_canonical_target, late_profile, protected_profile, protected_retry,
-    rationality, source, source_profile, target, target_profile, trembles,
+    rationality, risk_seen, source, source_profile, target, target_profile, trembles,
 )
 
 
@@ -133,6 +134,50 @@ class RawContinuationTests(unittest.TestCase):
         self.assertEqual(original, Fraction(3, 4))
         self.assertEqual(retry, Fraction(13, 16))
         self.assertEqual((retry - original) * self.deposit, Fraction(1, 8))
+
+    def test_first_late_content_favors_raw_before_any_attempt(self) -> None:
+        for deposit in (Fraction(2), Fraction(4)):
+            root = first_late_content_target(deposit, self.backend)
+            assert_perfect_recall(root)
+            fixed = first_late_content_profile(root, False)
+            raw = first_late_content_profile(root, True)
+            failures = rationality(root, fixed)
+            self.assertEqual(set(failures), {f"content_late:{v}" for v in BITS})
+            self.assertTrue(all(failure["gain"] == Fraction(3, 4) * deposit
+                                for failure in failures.values()))
+            self.assertEqual(rationality(root, raw), {})
+            self.assertEqual(law(root, raw), law(source(), source_profile()))
+
+    def test_certain_traffic_collection_removes_first_late_content_gap(self) -> None:
+        backend = ReportBackend(ONE, ONE)
+        root = first_late_content_target(HALF, backend)
+        for anticipatory in (False, True):
+            profile = first_late_content_profile(root, anticipatory)
+            self.assertEqual(rationality(root, profile), {})
+            self.assertEqual(law(root, profile), law(source(), source_profile()))
+
+    def test_first_late_content_still_needs_sufficient_initial_escrow(self) -> None:
+        root = first_late_content_target(ONE, self.backend)
+        failures = rationality(root, first_late_content_profile(root, True))
+        self.assertEqual(set(failures), {f"content_first:{v}" for v in BITS})
+        self.assertTrue(all(failure["gain"] == Fraction(1, 4)
+                            for failure in failures.values()))
+
+    def test_risk_is_observed_before_action_and_retained_in_private_recall(self) -> None:
+        late = OwnerOpportunity(True, True, True, False, False)
+        next_protected = OwnerOpportunity(True, True, True, True, False)
+        self.assertTrue(risk_seen((), late))
+        for response in ("wait", "foreign", "bare0", "cert0"):
+            self.assertTrue(risk_seen(((late, response),), next_protected))
+        # A protected packet already recorded in own recall remains protected;
+        # a subsequent activation alone does not introduce a first-attempt risk.
+        recorded_pending = OwnerOpportunity(True, True, True, False, True)
+        self.assertFalse(risk_seen((), recorded_pending))
+        foreign_turn = OwnerOpportunity(False, True, True, False, False)
+        self.assertFalse(risk_seen((), foreign_turn))
+        lawful_withholding = OwnerOpportunity(True, False, True, False, False)
+        self.assertFalse(risk_seen((), lawful_withholding))
+        self.assertFalse(risk_seen(((lawful_withholding, "wait"),), lawful_withholding))
 
 
 if __name__ == "__main__":

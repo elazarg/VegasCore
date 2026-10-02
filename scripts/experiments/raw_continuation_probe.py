@@ -39,6 +39,14 @@ probability s, otherwise the binding expires. Only the inclusion branch can
 increase collection after a retry. Its complete protected-start game retains
 Alice's chosen a and supplies rational raw play at every continuation site.
 
+The first-late-content control lets a public-content-dependent builder expire
+a bare first late packet while immediately including one with an authentic
+certificate. Both packets remain within the actual acceptance deadline, but
+the late turn has no protected inclusion window. A bare packet therefore pays
+the certain public-miss charge D; an accepted certificate-bearing packet pays
+only p*q*D. Raw play must open before this late opportunity, not after its first
+attempt. The protected initial turn still accepts every source binding packet.
+
 These finite games are design evidence, not a Vegas runtime adapter or a
 general theorem. In particular, an unprotected canonical attempt need not be
 forbidden: the private-attempt branch above is explicitly RAW. The current
@@ -76,6 +84,30 @@ class ReportBackend:
     @property
     def coverage(self) -> Fraction:
         return self.observation * self.delivery
+
+
+@dataclass(frozen=True)
+class OwnerOpportunity:
+    owned_ready: bool
+    binding: bool
+    within_deadline: bool
+    inclusion_fits: bool
+    event_recorded: bool
+
+    @property
+    def first_unprotected(self) -> bool:
+        return (self.owned_ready and self.binding and self.within_deadline and
+                not self.inclusion_fits and not self.event_recorded)
+
+
+def risk_seen(past: tuple[tuple[OwnerOpportunity, str], ...],
+              current: OwnerOpportunity) -> bool:
+    """Recall of a risky binding opportunity, independent of its response.
+
+    Lawful source withholding at a resolution is not a binding risk, even
+    though it leaves that event unrecorded in own submission recall.
+    """
+    return current.first_unprotected or any(view.first_unprotected for view, _ in past)
 
 
 def terminal(v: int, result: int | str, hidden: int, guess: int,
@@ -291,6 +323,53 @@ def late_profile(root: Node, deposit: Fraction, backend: ReportBackend,
     return profile
 
 
+def first_late_content_target(deposit: Fraction, backend: ReportBackend) -> Node:
+    """A content-dependent late builder, with a protected initial opportunity.
+
+    One concrete timing is deadline=3, delay=0, inclusionBound=1. The owner
+    defers at clock 0 and is activated again at clock 2. A certificate-bearing
+    packet is included at clock 2; a bare packet expires at clock 3. The latter
+    event completes before the clock ever exceeds its send time plus the bound,
+    so protected-inclusion receipt obligations do not require its inclusion.
+    The builder distinguishes evidence presence, never a private candidate bit.
+    """
+    def missed(v: int, response: str) -> Move:
+        return Move(ALICE, f"content_miss:{v}:{response}", (
+            ("quiet", bob("content_miss_bob:quiet", v, "miss", v,
+                          deposit, backend, True, True)),
+            ("certificate", bob(f"content_miss_bob:cert{v}", v, "miss", v,
+                                deposit, backend, True, True))))
+
+    def late(v: int) -> Move:
+        bare = tuple((f"bare{bit}", missed(v, f"bare{bit}")) for bit in BITS)
+        certified = tuple((f"cert{bit}", bob(f"content_accepted:cert{v}",
+            v, bit, bit, deposit, backend, True)) for bit in BITS)
+        return Move(ALICE, f"content_late:{v}", bare + certified + (
+            ("wait", missed(v, "wait")), ("foreign", missed(v, "foreign"))))
+
+    def first(v: int) -> Move:
+        protected = tuple((f"send{bit}", bob("content_protected", v, bit, bit,
+            deposit, backend, False)) for bit in BITS)
+        return Move(ALICE, f"content_first:{v}", protected + (("defer", late(v)),))
+
+    return Chance(tuple((HALF, first(v)) for v in BITS))
+
+
+def first_late_content_profile(root: Node, anticipatory: bool) -> Profile:
+    profile = trembles(root)
+    for v in BITS:
+        name = f"content_first:{v}"
+        profile[name] = pure(f"send{v}", *profile[name])
+        name = f"content_late:{v}"
+        profile[name] = pure(f"cert{v}" if anticipatory else f"bare{v}", *profile[name])
+    for name in profile:
+        if name.startswith("content_miss:"):
+            profile[name] = pure("certificate", *profile[name])
+        elif name.startswith(("content_miss_bob:cert", "content_accepted:cert")):
+            profile[name] = pure(name[-1], "0", "1")
+    return profile
+
+
 def collection_mass(root: Node, profile: Profile) -> Fraction:
     return sum(weight for outcome, weight in law(root, profile).items() if outcome[-1])
 
@@ -370,6 +449,21 @@ def report() -> dict[str, object]:
                 "protected_initial_law_is_source_law": True,
             }
 
+        content = first_late_content_target(deposit, backend)
+        assert_perfect_recall(content)
+        anticipatory = first_late_content_profile(content, True)
+        after_attempt = first_late_content_profile(content, False)
+        content_raw_failures = rationality(content, anticipatory)
+        content_fixed_failures = rationality(content, after_attempt)
+        content_gain = (1 - backend.coverage) * deposit
+        assert (not content_raw_failures) == (backend.coverage * deposit >= HALF)
+        assert law(content, anticipatory) == protected_law
+        for v in BITS:
+            name = f"content_late:{v}"
+            assert (name in content_fixed_failures) == (content_gain > ZERO)
+            if content_gain > ZERO:
+                assert content_fixed_failures[name]["gain"] == content_gain
+
         cases[f"p={observation} q={delivery} D={deposit}"] = {
             "coverage": str(backend.coverage),
             "raw_completion_is_sequentially_rational": not raw_failures,
@@ -381,6 +475,14 @@ def report() -> dict[str, object]:
             "sunk_escrow_fixed_continuation_gain": str(HALF),
             "sunk_escrow_raw_completion_is_sequentially_rational": True,
             "late_canonical_pending_packet": late_cases,
+            "first_late_public_content": {
+                "opening_raw_after_attempt_is_too_late": content_gain > ZERO,
+                "excluded_first_packet_gain": str(content_gain),
+                "anticipatory_raw_completion_is_sequentially_rational":
+                    not content_raw_failures,
+                "anticipatory_raw_completion_violations": content_raw_failures,
+                "protected_initial_law_is_source_law": True,
+            },
         }
     return cases
 

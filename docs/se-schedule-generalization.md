@@ -441,7 +441,7 @@ controls confirm the checker rejects non-equilibria. Results:
 | C4 | Order reads a permitted opening while the other binding is unserved (excluded by the barrier order) | No assessment with the source law is sequentially rational; an order blind to opening contents restores one. |
 | C5 | An unobserved wait before the other player's service step | The translated profile is an equilibrium although its information set spans two depths: the depth requirement is a proof requirement, not an obstruction. |
 | C6 | One guaranteed turn, deferral with weight ε, a late turn granted with probability p, a public charged miss (`deferral_miss_probe.py`) | The compiled image of the penalized-miss extended source is an equilibrium with the source law exactly when the deposit is at least Alice's gain from a miss (here 1/2), for p in {0, 1/2, 1}. A grant probability that depends on the owner's value breaks the route at the turn-2 acceptance, not only after a miss. |
-| C7 | One escrow, private attempted-choice recall, raw play after public misses and late canonical attempts (`raw_continuation_probe.py`) | Rational raw completion preserves protected source play in the checked coordination games. Fixed continuation can leave profitable retries even with sufficient first-offense escrow. Collection and private recall controls are checked separately. |
+| C7 | One escrow, private attempted-choice recall, raw play at late first binding opportunities and after public misses (`raw_continuation_probe.py`) | Rational raw completion preserves protected source play in the checked coordination games. Opening raw play only after an attempt is too late: a content-dependent builder can make an evidence-bearing first packet cheaper than a public miss. Collection and private recall controls are checked separately. |
 
 C1 compares D4 without enlarged deadlines against D3's timers; D1, where owners
 do not wait, is not probed. Under the barrier order C4 cannot arise, so the
@@ -837,15 +837,15 @@ and is committed separately.
    fixed-depth Bayes projections and restriction extensions, including the
    joint factorization with traffic noise; build beliefs at scheduler-created
    sites.
-5. **Deviation lottery.** Mostly discharged by the serial audit: a second own
-   identifier for an event is nonconforming whether or not the first was
-   published, and the compiled menu never makes a second fresh call. The
-   builder's choice among a deviator's packets therefore matters only on
-   charged histories, where the extension bound holds whatever the builder
-   does. What remains is the lemma that every second own identifier is a
-   forbidden record. The obligation that the original wording missed is
-   builder sensitivity to fresh traffic and waiting (see "Waiting, misses
-   and the charge").
+5. **Deviation lottery.** A second own identifier for an event is
+   nonconforming whether or not the first was published. At a clear,
+   protected history, collection coverage and a clean legal continuation can
+   deter it. A charged history needs a separate comparison: a one-time
+   deposit does not pay again for each nonconforming packet. The builder's
+   response to public packet contents also matters at a late first binding
+   opportunity, before any attempt or public miss. Probe C7 checks both
+   obstructions and rational raw continuations in finite games (see
+   "Monitoring and punishment").
 6. **General theorem, stage A.** Generalize the scheduler parameter of
    `SourceServiceSpec` to any contract scheduler, with the horizon as a field,
    re-derive the deposit, and pin the new capstone in `Paper.lean`. The
@@ -1055,6 +1055,20 @@ is only `1/8`; sending the certificate gains `1/2`, so fixed silence is worse
 by `3/8`. Rational raw continuation preserves the protected source law in this
 finite game. This is design evidence, not a proof for every builder.
 
+The probe also checks the first late binding opportunity, before any packet
+has been attempted. A builder can include a certificate-bearing first packet
+and expire a bare one, using only public packet contents. With deadline `3`,
+reaction delay `0`, inclusion bound `1`, and a late turn at clock `2`, expiry
+at clock `3` precedes any overdue protected-inclusion obligation. Bare play
+then pays the certain public-miss charge `D`, whereas the included evidence
+packet pays expected charge `rho * D`. Even with rational raw play after the
+miss, the extra packet gains `(1 - rho) * D`; increasing the deposit increases
+this gap. Opening raw play before that unrecorded binding opportunity supplies
+a rational completion in the checked game when `rho * D >= 1/2`, preserving
+the protected source law. This schedule is a contract blueprint, not a native
+Lean instance over all raw histories. A recorded protected packet and lawful
+resolution withholding must not trigger that expansion.
+
 [LocalizedEnforcement](../GameTheoryExtensions/Analysis/Protocol/LocalizedEnforcement.lean)
 provides the depth-free restriction-extension step with retained charges in the
 source utility. Only excluded actions designated as auditable need a collection
@@ -1066,6 +1080,40 @@ allowed payoffs and guards. [BindingSubmissionCoupling](../Vegas/Game/BindingSub
 couples its actual mixed native transmission and implementation memory before
 inclusion, without a calendar assumption. Closure under subsequent service
 commands, retained admission and consistent beliefs remain open.
+
+[BindingFrameSettlement](../Vegas/Game/BindingFrameSettlement.lean) proves
+that every preserved frame gives exactly the same actual traffic, final
+record, audit kernel, expected utility vector and realized payoff-vector law.
+Earlier charges and correlated partial collection are allowed. The open
+continuation proof must preserve that frame: the current per-event attempted
+binding memory can overwrite an actual expiry failure, and multiple pending
+attempts require identifying the original candidate by the accepted handle.
+Mistyped but certifiable material also carries authentic communication
+capabilities that a typed repair does not automatically reproduce.
+
+### Deviation proof boundaries
+
+Each excluded action needs one legal continuation comparison, shared across
+the hidden histories of its information set and valid against whole future
+policies. The comparisons can be proved separately and combined by
+`sequential_equilibrium_extends_of_local_collection`. Retained actions need
+their own rationality proof; an exclusion theorem cannot supply it.
+
+| Behavior | Separate proof obligation | Checked boundary and open edge |
+| --- | --- | --- |
+| Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
+| Canonical binding with unusable private opening | Replace its private meaning by source value and withholding, preserving the joint parameter/public-result law and actual settlement. | The source repair, native transmission coupling and settlement along preserved frames are checked. Generic native command closure and retained admission remain open. |
+| Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Final-record audit and the generic enforcement theorem are checked. Concrete generic collection and clean-comparator premises remain to be discharged. |
+| Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |
+| Public binding miss | Admit rational continuation with the deposit already certain. | Actual post-miss whole-policy rationality equals base-payoff rationality. Joint beliefs and equilibrium completion of the auxiliary game remain open. |
+| Earlier packet offense with uncertain collection | Use the change in conditional expected collection, or admit rational raw continuation. | The exact incremental-charge identity is checked. Coverage of another packet alone supplies no positive increment; no independence premise is implicit. |
+
+Monitoring assumptions belong to the collection branch: the challenge-window
+backend must prove authentic observation and timely report delivery. They are
+not needed for normalization or for equality of settlement along a preserved
+frame. Scheduler assumptions belong to protected source play and the generic
+continuation coupling. Keeping these premises explicit isolates unresolved
+cases without weakening the capstone or duplicating the proof machinery.
 
 Disqualification with default future actions is not the planned simplification.
 An implementable trigger would require a public contract verdict, whose timing
