@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveNormalization
 import Interaction.ReactiveFiniteAssessment
+import Interaction.ReactiveMenuRestriction
 
 /-! # Complete finite response syntax under explicit message bounds
 
@@ -9,7 +10,7 @@ Bounds specify a finite raw-value alphabet and a range of prepared handles.
 Every packet constructor is included, for every address and principal, including
 malformed packets and invalid calls. Every bounded certificate request and every
 known forwarding reference are available, independently of the call. Silent
-responses and all known replays are available. Only operationally ineffective
+responses are available. Only operationally ineffective
 private distinctions are normalized.
 These are explicit bounds on the modeled backend, not an EVM encoding theorem.
 -/
@@ -207,6 +208,17 @@ theorem rawMenu_closed (runtime : EventGraphRuntime graph)
   | none => trivial
   | some submission => exact bounds.normalize_submission_mem who view.application _ _ member
 
+/-- Every complete effective response is a bounded raw response. The normal
+form changes only private representations and remains within the same bounds. -/
+theorem menu_in_raw (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
+    (bounds.menu runtime leaks).IncludedIn (bounds.rawMenu runtime leaks) := by
+  intro who past view response member
+  obtain ⟨original, allowed, normal⟩ := (runtime.reactiveNormalization leaks).menu_mem
+    (bounds.rawMenu runtime leaks) who past view response |>.mp member
+  rw [← normal]
+  exact bounds.rawMenu_closed runtime leaks who past view original allowed
+
 /-- Exact completeness: every bounded normal response is admitted, including
 all packet errors; every admitted response is bounded and normal. -/
 theorem menu_mem (runtime : EventGraphRuntime graph)
@@ -259,7 +271,8 @@ theorem known_forward_available (runtime : EventGraphRuntime graph)
     (packet : bounds.AllowsPacket call.packet)
     (opening : bounds.AllowsOpening (call.normalizeReactive who view.application).opening)
     (id : MessageId Player)
-    (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view, message.id = id) :
+    (known : ∃ message ∈ ReactiveApplication.ResponseMenu.knownPackets past view,
+      message.id = id) :
     (runtime.reactiveNormalization leaks).action who past view
         ⟨some ⟨call, .forward id⟩⟩ ∈
       (bounds.menu runtime leaks).actions who past view := by

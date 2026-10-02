@@ -497,7 +497,7 @@ is a design, not a checked result.
 | Owner-local prescribed safety | Exact first-turn play keeps the owner's full `serviceRisk` flag clear at every supported control (`Vegas/Game/SourceServiceFirstTurnSafe.lean`). For any turn timing, every authored packet is permitted by the actual settled record (`Vegas/Game/SourceServiceOwnerSettled.lean`). Combining packet soundness with first-turn absence of public misses gives zero owner charge under authentic sampling, against arbitrary foreign raw policies. `AsyncServiceSpec.normalizedFirstTurn_joint_law` preserves the complete typed source outcome and actual sampled payoff vector jointly for every source profile, after disclosure normalization. Initial private parameters remain correlated with public outcomes. These execution laws do not prove sequential rationality. |
 | Canonical retained menu | `MessageBounds.canonicalMenu` retains silence and bounded first canonical decisions under `WithinDeadline`, with no roster obligation. Local source-choice coverage and no second submission are proved in `Vegas/Pending/ReactiveCanonicalMenu.lean`. Used-slot and own-submission invariants hold on every legal retained history (`retainedCanonicalSlots_history`), including after misses. The prescribed policy is admitted at every such history (`sourceServiceTurnPolicy_retained` in `Vegas/Game/SourceServiceRetainedPolicy.lean`), including arbitrary turn timing. Equilibrium after misses remains open. |
 | Continuation after risk | The candidate `MessageBounds.riskMenu` opens an owner's bounded raw menu at a ready, unrecorded binding opportunity outside protected inclusion, or after its public miss or own recalled unprotected attempt. Any own response recalls that binding opportunity, including silence; recorded packets and lawful resolution withholding do not trigger it. Slot invariants use persistent risk separately from the current opportunity. Prescribed transmissions add no submission risk for any turn timing; silently deferring into a late binding opportunity may add opportunity risk. Actual post-miss rationality equals base-payoff rationality (`serviceAudit_rationalAt_iff_of_omission`). `LocalizedEnforcement` separates charged exclusions from private continuation comparisons, including retained charges. Source embedding, general command closure, beliefs and concrete comparisons remain open. |
-| General theorem | `AsyncServiceSpec`, the fixed deposit, geometric deferral bounds, the local retained menu and a fixed clean comparator are present. The initialized joint execution/settlement law is checked. `AsyncServiceSpec.risk_sequentialEquilibrium_extends` extends an actual audited risk-menu SE to the bounded raw runtime under challenge-report coverage and a separate comparison for other exclusions. Source SE embedding into that auxiliary game, joint beliefs, the other comparisons and general repair remain open. |
+| General theorem | `AsyncServiceSpec`, the fixed deposit, geometric deferral bounds, the local retained menu and a fixed clean comparator are present. The initialized joint execution/settlement law is checked. Conditional signed-content enforcement extends an actual audited risk-menu SE to the complete effective menu; exact alias transport supplies the bounded raw-runtime stage. Source SE embedding into that auxiliary game, compatible resolution timing, joint beliefs, the other comparisons and general repair remain open. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
 `EventPrescribed*.lean`) separately proves exact honest and deviation laws and
@@ -859,10 +859,15 @@ and is committed separately.
    3. The public deadline gate for prescribed calls and the final-record audit.
       The audit cannot reconstruct send time or reject an accepted canonical
       call solely because its guaranteed delivery bound would have been too late.
-   4. Geometric deferral: a constant per-turn deferral probability that
-      vanishes faster than the source's own trembles, so that beliefs after a
-      withhold converge to the source's. The uniform split over later turns
-      does not vanish at later turns.
+   4. Geometric deferral and source trembles must have compatible relative
+      rates at every prescribed site. Binding silence excludes a selected
+      binding decision. Resolution silence can instead be a selected false
+      source decision: making deferral much rarer than a vanishing false
+      tremble can prescribe continued silence where opening is profitable.
+      Event-dependent rates may separate these cases, but their sufficiency
+      for source-relative beliefs and rationality remains open. Later
+      resolution turns outside the protected-inclusion gate need a separate
+      prescription or completion argument.
    5. The canonical retained menu and its lemma suite. Retain silence and
       canonical calls that can still be accepted, including calls outside
       the prescribed policy's protected-inclusion gate. Delete the roster
@@ -1154,9 +1159,18 @@ failure value. With geometric timing, the next counted turn decides with
 probability `1 - weight`, or surely at the final index. The response error is
 bounded by the actual posterior waiting probability. The lemma supplies the
 next view explicitly; it does not assume the scheduler provides or protects
-that later turn. Multiple earlier waits and source-relative beliefs remain
-separate obligations.
+that later turn. Source-relative beliefs remain a separate obligation.
 The initialized first-turn execution law does not settle these off-path laws.
+
+[SourceServiceBindingRecallPosterior](../Vegas/Game/SourceServiceBindingRecallPosterior.lean)
+extends the timing calculation to every earlier silent turn at the same
+binding in an actual clean legal prefix. Unrecordedness rules out earlier
+transmissions, and recalled opportunity protection supplies the likelihoods.
+The posterior is exactly the timing law restricted to indices at least the
+actual turn count. Geometric response error is at most the deferral weight,
+uniformly over varying admitted source profiles. The current response keeps
+its deadline gate; the proof supplies no later protected turn or source
+belief projection.
 
 [SourceServiceSilentChoicePosterior](../Vegas/Game/SourceServiceSilentChoicePosterior.lean)
 handles a selected canonical decision that itself has positive probability of
@@ -1164,9 +1178,31 @@ silence. After the actual first silent response, timing index zero retains
 that silent likelihood in the posterior. At the next counted turn, geometric
 timing differs from staying silent by at most `weight / silentLikelihood`.
 Deferral weights can be chosen to make this ratio vanish even while the source
-profile approaches a deterministic choice. This supplies a local limit after
-one earlier silence; identifying the likelihood with a source disclosure
-choice and transporting its beliefs remain separate requirements.
+profile approaches a deterministic choice. This is a response-limit fact,
+not a rationality theorem. When opening is uniquely optimal and false is only
+a source tremble, that limit can select silence instead of the profitable
+opening. A uniform requirement that deferral vanish faster than every source
+tremble therefore cannot supply the prescribed-site argument. Identifying
+the likelihood with a source disclosure choice, transporting its beliefs,
+and proving a compatible timing prescription remain separate requirements.
+
+[SourceServiceResolutionLikelihood](../Vegas/Game/SourceServiceResolutionLikelihood.lean)
+identifies selected silence with the source false mass at an actual aligned,
+effective, unrecorded resolution with a protected inclusion window. It derives
+the authentic opening for supported true choices from the binding invariant.
+A closed inclusion gate instead forces silence regardless of source choice;
+the binding-only opportunity risk scan does not exclude this resolution case.
+
+[SourceServiceResolutionSilenceRates](../Vegas/Game/SourceServiceResolutionSilenceRates.lean)
+derives the actual two-slot continuation law after one silence. If first and
+next protected opportunities have source false mass `s`, its probability of
+transmitting next is `(1 - s) * w / (s * (1 - w) + w)`. In the local payoff
+test where transmitting earns one and silence earns zero, regret against
+sure transmission tends to one when `w / s` tends to zero. If both vanish and
+`s / w` tends to zero, that regret vanishes. The checked result keeps first
+and next silent likelihoods distinct until the numerical specialization.
+The actual terminal-payoff realization, multi-turn source-view stability,
+closed gates and a sufficient global prescription remain separate obligations.
 
 [SourceServiceAsyncFactorization](../Vegas/Game/SourceServiceAsyncFactorization.lean)
 preserves source-view traffic factorization through an actual silent round
@@ -1189,7 +1225,8 @@ leaves all whole-policy rationality comparisons unchanged, even when collection
 is uncertain. [ReactiveServiceAuditContinuation](../Vegas/Pending/ReactiveServiceAuditContinuation.lean)
 derives the certain-collection case from a publicly observed binding miss under
 arbitrary future policies and scheduler commands. The candidate menu continues
-to admit every raw response of that owner after the miss.
+to admit every effective response of that owner after the miss. Private
+aliases are handled by the final normalization stage.
 
 Probe C7 also checks a late canonical packet whose inclusion is still
 unobserved when the owner chooses whether to send a second certificate-bearing
@@ -1286,7 +1323,7 @@ every clear prefix. A false risk flag alone says nothing about an earlier
 packet's extra evidence. At a legal risk-menu prefix, however,
 `riskPacketFacts_history` derives protected conforming unique owner calls and
 their good actual settled content from persistent clarity. Other players may
-have taken expanded raw actions. Earlier silent binding turns are allowed.
+have taken expanded effective actions. Earlier silent binding turns are allowed.
 
 `sourceServiceImmediatePolicy` uses actual local recall and decides at the
 current protected unrecorded opportunity, without an earlier turn-index test.
@@ -1322,17 +1359,36 @@ comparisons for uncharged exclusions, and the source equilibrium embedding
 remain separate obligations.
 
 [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
-constructs the actual risk-menu restriction of the bounded raw runtime.
+constructs the actual risk-menu restriction of the complete effective runtime.
 Every excluded choice lies at a locally clear site, since risky sites already
-admit all raw responses. Its SE extension theorem derives the signed-content
+admit all effective responses. Its SE extension theorem derives the signed-content
 collection bound from the challenge-report contract, uses the fixed clean
 comparator, and sizes the deposit with the existing payoff extrema.
-Normalization proves those extrema also bound raw source-readout payoffs.
 Retained payoffs are the actual net utility, including prior charges. The
 conclusion preserves retained beliefs, complete history laws and the joint
 realized settlement law. Other excluded responses require a separate shared
-continuation comparison; this includes private material and certificate
-capability, and does not declare every unclassified packet harmless.
+continuation comparison, isolated in `riskOtherExclusionComparisons`; this
+includes private material and certificate capability, and does not declare
+every unclassified packet harmless. The predicate compares actual audited
+continuations and requires one legal policy across the hidden histories of
+the information site.
+
+The signed-constructor coverage hypothesis does not cover every auditable
+departure. A bare commitment using a noncanonical prepared handle has no
+constructor breach; a certified opening that fails its guards also lies
+outside that class. Either can fail the final settled verdict, yet the stated
+backend hypothesis supplies no probability of collecting it. A general
+enforcement proof needs observation and conditional report-delivery coverage
+for final-record violations as well. Correct canonical bindings with unusable
+private opening material can pass that verdict; their capability-repair
+obligation remains distinct even with broader packet coverage.
+
+[SourceServiceRiskRawExtension](../Vegas/Game/SourceServiceRiskRawExtension.lean)
+composes that conditional effective-menu extension with private-alias
+transport. It uses the same backend and fixed deposit throughout, and
+preserves the exact joint typed terminal source readout and sampled payoff
+vector. Its input remains an audited risk-menu SE, with the explicit
+other-exclusion comparison predicate.
 
 The auxiliary equilibrium required there is an equilibrium of the actual
 audited risk-menu game. Embedding each given source SE into that game remains
@@ -1370,6 +1426,15 @@ physical prescribed execution. Behavior after risk expansion is not
 identified. Conditional escaped-branch bounds, source-information projection
 and rationality still require their own proofs.
 
+[AsyncServiceCleanCompletionLaw](../Vegas/Game/AsyncServiceCleanCompletionLaw.lean)
+allows any risk-menu continuation agreeing with prescribed turn-counted play
+at source-compatible information values. Its initialized probability for each
+clean prefix, and each clean event at any finite cutoff, is unchanged and
+matches the physical prescribed law. The proof handles zero-probability
+predecessors without an agreement assumption there. Agreement is an explicit
+premise; this does not construct a rational completion or establish a valid
+prescription at resolution sites.
+
 [PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 proves that simultaneous consistent rational completion at free sites retains
 the specified strategy limit at prescribed sites. It preserves the complete
@@ -1382,9 +1447,11 @@ supplies the final normalization stage: an audited SE of the complete
 effective native menu lifts to its raw private-action aliases, with projected
 consistent beliefs and the exact joint typed source-readout and sampled-payoff
 law. Final traffic and the settled record are invariant, so correlated
-collection and prior charges are preserved. The current risk menu expands to
-raw actions; this separate stage does not itself discharge its alias-exclusion
-comparisons. A complete effective-menu equilibrium is its input.
+collection and prior charges are preserved. The risk menu expands to all
+effective actions once risk appears; alias transport then lifts the resulting
+effective-menu equilibrium to the raw runtime. Harmless private aliases need
+no additional collection premise or exclusion comparison. The original source
+equilibrium embedding and the other effective-action comparisons remain open.
 
 The comparator must start at an actual active owner site. A clear scheduler
 boundary can follow a silent protected turn that already fulfilled the

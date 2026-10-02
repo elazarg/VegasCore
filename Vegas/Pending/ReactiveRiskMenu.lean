@@ -9,14 +9,14 @@ import Interaction.ReactiveMenuRestriction
 The public trigger is owner-specific: only `missedBindingBy who` affects
 `who`'s menu. Private recall remembers unprotected owned submissions and
 unprotected first binding opportunities. They include a ready binding already
-due for expiry and open the raw menu before the first attempt. Any response
+due for expiry and open the complete effective menu before the first attempt. Any response
 latches the opportunity, including silence or a packet for a foreign event.
 Each recorded before-view is tested against the recall prefix preceding it,
 so a protected pending submission stays clear.
 
 Persistent risk and the current opportunity are separate. Environment commands
 can change the current opportunity without changing own recall. The menu is
-canonical when both are clear and otherwise admits every bounded raw response.
+canonical when both are clear and otherwise admits every bounded effective response.
 Resolution withholding does not itself trigger expansion: it is represented
 by silence and is not a binding opportunity. No trigger reads hidden execution
 state, an unsampled packet, or a watcher verdict.
@@ -75,7 +75,8 @@ theorem submissionRisk_iff (who : Player)
 theorem submissionRisk_congr (who : Player)
     (left right : (runtime.reactiveApplication leaks).PlayerEntry)
     (same : runtime.submissionRiskRecord leaks left = runtime.submissionRiskRecord leaks right) :
-    runtime.submissionRisk leaks bound who left = runtime.submissionRisk leaks bound who right := by
+    runtime.submissionRisk leaks bound who left =
+      runtime.submissionRisk leaks bound who right := by
   have identity := congrArg (fun record : Player × PublicView graph × Option graph.EventId =>
     record.1) same
   have publicViewEq := congrArg (fun record : Player × PublicView graph × Option graph.EventId =>
@@ -427,13 +428,15 @@ theorem recalledBindingOpportunityRisk_respond_of_opportunity
     (risky : runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
       (execution.observe (runtime.reactiveApplication leaks) who) = true) :
     runtime.recalledBindingOpportunityRisk leaks bound who
-      ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) = true := by
+      ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
+        true := by
   rw [runtime.recalledBindingOpportunityRisk_respond, risky, Bool.or_true]
 
 theorem recalledBindingOpportunityRisk_respond_mono
     (execution : (runtime.reactiveApplication leaks).Execution) (actor who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (risky : runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who) = true) :
+    (risky : runtime.recalledBindingOpportunityRisk leaks bound who
+      (execution.recall who) = true) :
     runtime.recalledBindingOpportunityRisk leaks bound who
       ((execution.respond (runtime.reactiveApplication leaks) actor response).recall who) =
         true := by
@@ -537,7 +540,7 @@ theorem persistentServiceRisk_respond_protected
       runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who))
     (congrArg (fun view : PublicView graph => view.missedBindingBy who) publicEq)
 
-/-- Raw play opens at the first unprotected binding opportunity, before any
+/-- Effective play opens at the first unprotected binding opportunity, before any
 attempt, and remains open after that opportunity enters private recall. -/
 def serviceRisk (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) : Bool :=
@@ -647,27 +650,14 @@ namespace MessageBounds
 
 variable [Fintype Player] (bounds : MessageBounds graph)
 
-/-- Canonical responses remain bounded before expansion. -/
-theorem canonicalActions_raw (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    bounds.canonicalActions runtime leaks who past view ⊆
-      (bounds.rawMenu runtime leaks).actions who past view := by
-  intro response member
-  obtain ⟨original, allowed, normal⟩ := (runtime.reactiveNormalization leaks).menu_mem
-    (bounds.rawMenu runtime leaks) who past view response |>.mp
-      (bounds.canonicalActions_effective runtime leaks who past view member)
-  rw [← normal]
-  exact bounds.rawMenu_closed runtime leaks who past view original allowed
-
-/-- Candidate menu: canonical actions while clear, all bounded raw actions
+/-- Candidate menu: canonical actions while clear, all bounded effective actions
 at a first unprotected binding opportunity or after persistent own risk. -/
 def riskActions (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     Finset (runtime.reactiveApplication leaks).Action :=
   if runtime.serviceRisk leaks bound who past view then
-    (bounds.rawMenu runtime leaks).actions who past view
+    (bounds.menu runtime leaks).actions who past view
   else bounds.canonicalActions runtime leaks who past view
 
 theorem riskActions_of_clear (who : Player)
@@ -683,7 +673,7 @@ theorem riskActions_of_risk (who : Player)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (risky : runtime.serviceRisk leaks bound who past view = true) :
     bounds.riskActions runtime leaks bound who past view =
-      (bounds.rawMenu runtime leaks).actions who past view := by
+      (bounds.menu runtime leaks).actions who past view := by
   simp only [riskActions, risky, ↓reduceIte]
 
 /-- Expansion precedes the first response at the unprotected opportunity. -/
@@ -692,7 +682,7 @@ theorem riskActions_of_opportunity (who : Player)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (risky : runtime.firstUnprotectedBindingOpportunity leaks bound who past view = true) :
     bounds.riskActions runtime leaks bound who past view =
-      (bounds.rawMenu runtime leaks).actions who past view :=
+      (bounds.menu runtime leaks).actions who past view :=
   bounds.riskActions_of_risk runtime leaks bound who past view
     (runtime.serviceRisk_of_opportunity leaks bound who past view risky)
 
@@ -707,7 +697,7 @@ theorem riskActions_after_opportunity
         ((execution.respond (runtime.reactiveApplication leaks) who response).recall who)
         ((execution.respond (runtime.reactiveApplication leaks) who response).observe
           (runtime.reactiveApplication leaks) who) =
-      (bounds.rawMenu runtime leaks).actions who
+      (bounds.menu runtime leaks).actions who
         ((execution.respond (runtime.reactiveApplication leaks) who response).recall who)
         ((execution.respond (runtime.reactiveApplication leaks) who response).observe
           (runtime.reactiveApplication leaks) who) := by
@@ -733,15 +723,15 @@ theorem riskActions_recorded_of_persistentClear (who : Player)
       (runtime.firstUnprotectedBindingOpportunity_recorded leaks bound who past view event
         selected recorded))
 
-theorem riskActions_raw (who : Player)
+theorem riskActions_effective (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     bounds.riskActions runtime leaks bound who past view ⊆
-      (bounds.rawMenu runtime leaks).actions who past view := by
+      (bounds.menu runtime leaks).actions who past view := by
   unfold riskActions
   split
   · exact Finset.Subset.refl _
-  · exact bounds.canonicalActions_raw runtime leaks who past view
+  · exact bounds.canonicalActions_effective runtime leaks who past view
 
 theorem canonicalActions_subset_risk (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -750,7 +740,7 @@ theorem canonicalActions_subset_risk (who : Player)
       bounds.riskActions runtime leaks bound who past view := by
   unfold riskActions
   split
-  · exact bounds.canonicalActions_raw runtime leaks who past view
+  · exact bounds.canonicalActions_effective runtime leaks who past view
   · exact Finset.Subset.refl _
 
 theorem riskActions_no_second_submission (who : Player)
@@ -770,12 +760,18 @@ def riskMenu : (runtime.reactiveApplication leaks).ResponseMenu where
   nonempty who past view := by
     unfold riskActions
     split
-    · exact (bounds.rawMenu runtime leaks).nonempty who past view
+    · exact (bounds.menu runtime leaks).nonempty who past view
     · exact bounds.canonicalActions_nonempty runtime leaks who past view
 
+theorem riskMenu_in_effective :
+    (bounds.riskMenu runtime leaks bound).IncludedIn (bounds.menu runtime leaks) :=
+  bounds.riskActions_effective runtime leaks bound
+
+/-- The actual raw-history invariants apply through effective-menu containment. -/
 theorem riskMenu_in_raw :
     (bounds.riskMenu runtime leaks bound).IncludedIn (bounds.rawMenu runtime leaks) :=
-  bounds.riskActions_raw runtime leaks bound
+  fun who past view _response member => bounds.menu_in_raw runtime leaks who past view
+    (bounds.riskMenu_in_effective runtime leaks bound who past view member)
 
 theorem canonicalMenu_in_risk :
     (bounds.canonicalMenu runtime leaks).IncludedIn (bounds.riskMenu runtime leaks bound) :=

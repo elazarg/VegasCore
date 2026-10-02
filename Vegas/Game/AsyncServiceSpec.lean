@@ -144,8 +144,9 @@ end Vegas
 -- terminal base bounds give its clean lower bound under any belief. The source
 -- equilibrium embedding remains open. Signed constructor breaches have actual
 -- terminal collection bounds from an authentic challenge-report backend. The
--- risk-menu-to-raw SE extension derives the clean comparator, collection and
--- fixed-deposit bound; other excluded-action comparisons remain hypotheses.
+-- risk-menu-to-effective SE extension derives the clean comparator, collection
+-- and fixed-deposit bound; other excluded-action comparisons remain hypotheses.
+-- Exact private-alias transport supplies the final bounded raw-runtime stage.
 -- Exact first-turn execution preserves the joint typed outcome and actual
 -- sampled payoff vector for every source profile after disclosure normalization.
 -- This physical law does not establish a behavioral equilibrium embedding.
@@ -153,4 +154,7 @@ end Vegas
 -- every public scheduler command. Decision and disclosure kernels, joint beliefs
 -- at every native information site, the auxiliary risk-menu source embedding,
 -- local incentives and general continuation repair remain to be proved.
+-- Resolution silence can hide a selected false source decision. A deferral
+-- rate faster than a vanishing false tremble can give an irrational waiting
+-- prescription; compatible rates and later closed gates need their own proof.
 -- The fixed-calendar SourceServiceSpec capstone does not discharge this edge.

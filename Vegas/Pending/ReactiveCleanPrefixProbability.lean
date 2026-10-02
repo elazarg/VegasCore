@@ -39,7 +39,9 @@ variable (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Na
   (scheduler : (runtime.reactiveApplication leaks).Scheduler)
 
 omit [Fintype Player] in
-private theorem clean_before_transition
+/-- A clear realized successor makes every predecessor persistent flag clear.
+Any actor whose response was traversed also had its full input risk clear. -/
+theorem allPersistentServiceRiskClear_before_transition
     (before after : (runtime.reactiveApplication leaks).ProtocolState)
     (joint : Player → Option (runtime.reactiveApplication leaks).Action)
     (realized : after ∈ ((runtime.reactiveApplication leaks).transition initial horizon scheduler
@@ -140,8 +142,9 @@ theorem cleanPrefix_probability_exact
   | _, .start, _ => rfl
   | _, .extend prior joint legal realized, clear => by
       intro canonical risk model
-      obtain ⟨priorClear, actingClear⟩ := runtime.clean_before_transition leaks bound initial
-        horizon scheduler _ _ joint realized clear
+      obtain ⟨priorClear, actingClear⟩ :=
+        runtime.allPersistentServiceRiskClear_before_transition leaks bound initial horizon
+          scheduler _ _ joint realized clear
       have earlier := cleanPrefix_probability_exact players prior priorClear
       have one : model.runBehavioralFrom (fun who => canonical.embedPolicy initial horizon
             scheduler who (canonical.restrictPolicy initial horizon scheduler who (players who)))

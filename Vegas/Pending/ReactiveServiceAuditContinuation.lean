@@ -47,14 +47,15 @@ theorem serviceAudit_continuation_charge_of_omission (runtime : EventGraphRuntim
     TerminalAudit.charge (runtime.serviceAuditObservation leaks)
       (runtime.serviceAudit leaks trafficAudit) final.state who = 1 := by
   obtain ⟨result, stateEq, persists⟩ :=
-    (runtime.reactiveMissedBindingInvariant leaks event who payload binding).behavioral_continuation
+    (runtime.reactiveMissedBindingInvariant leaks event who payload
+      binding).behavioral_continuation
       menu initial horizon scheduler profile fuel before trace final missed supported
   rw [stateEq]
   exact runtime.serviceAudit_charge_of_omission leaks trafficAudit result who event owned persists
 
-/-- The candidate continuation menu never restricts this owner's later
-responses after its public miss, whatever future policies or service commands
-do. The miss is read from the actual later public view. -/
+/-- The candidate continuation menu admits every effective later response after
+this owner's public miss, whatever future policies or service commands do.
+The miss is read from the actual later public view. -/
 theorem riskActions_continuation_of_omission (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (bounds : MessageBounds graph) (bound : graph.EventId → Nat)
@@ -74,10 +75,11 @@ theorem riskActions_continuation_of_omission (runtime : EventGraphRuntime graph)
     ∃ result, final.state = some result ∧
       bounds.riskActions runtime leaks bound who (result.execution.recall who)
           (result.execution.observe (runtime.reactiveApplication leaks) who) =
-        (bounds.rawMenu runtime leaks).actions who (result.execution.recall who)
+        (bounds.menu runtime leaks).actions who (result.execution.recall who)
           (result.execution.observe (runtime.reactiveApplication leaks) who) := by
   obtain ⟨result, stateEq, persists⟩ :=
-    (runtime.reactiveMissedBindingInvariant leaks event who payload binding).behavioral_continuation
+    (runtime.reactiveMissedBindingInvariant leaks event who payload
+      binding).behavioral_continuation
       menu initial horizon scheduler profile fuel before trace final missed supported
   refine ⟨result, stateEq, bounds.riskActions_of_risk runtime leaks bound who _ _ ?_⟩
   apply runtime.serviceRisk_of_public_miss leaks bound

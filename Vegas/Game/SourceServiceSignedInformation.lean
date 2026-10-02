@@ -95,7 +95,7 @@ theorem signedContentBreachAtSite_of_witness
     (site : ((service.bounds.riskMenu (runtime service.setup) service.leaks
       service.bound).information (initialLaw service.setup) service.horizon
         service.scheduler).InformationSite who)
-    (action : ((service.bounds.rawMenu (runtime service.setup) service.leaks).information
+    (action : ((service.bounds.menu (runtime service.setup) service.leaks).information
       (initialLaw service.setup) service.horizon service.scheduler).Choice who
         ((service.riskRestriction.site who site).1))
     (witness : ((service.bounds.riskMenu (runtime service.setup) service.leaks
