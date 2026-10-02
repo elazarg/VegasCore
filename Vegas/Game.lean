@@ -95,6 +95,7 @@ import Vegas.Game.AsyncServiceFirstTurnProfile
 import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceCleanPrefixLaw
 import Vegas.Game.AsyncServiceCleanCompletionLaw
+import Vegas.Game.AsyncServicePrescribedSites
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure
@@ -171,6 +172,7 @@ import Vegas.Game.SourceServicePosterior
 import Vegas.Game.SourceServiceCoverage
 import Vegas.Game.SourceServiceFactorization
 import Vegas.Game.SourceServiceAsyncFactorization
+import Vegas.Game.SourceServiceBindingDecisionFactorization
 import Vegas.Game.SourceServiceDisclosureFactorization
 import Vegas.Game.SourceServiceSampleFactorization
 import Vegas.Game.SourceServiceRosterPolicy

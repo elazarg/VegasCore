@@ -1212,6 +1212,14 @@ expire an event, or request a sample. The proof retains actual network state,
 receipts, scheduler recall and focal private recall; it needs no independent
 grant-probability assumption. Source decisions, effective disclosure and
 beliefs at all native information sites still need their corresponding laws.
+
+[SourceServiceBindingDecisionFactorization](../Vegas/Game/SourceServiceBindingDecisionFactorization.lean)
+proves the binding decision kernel for the actual canonical commitment
+response at a fresh counted slot. It retains both original and effective
+source memories, and derives a joint traffic kernel conditional only on the
+focal source successor view. No scheduler command or independent traffic
+assumption enters this response step. Acceptance, source/runtime alignment,
+completion and the full source-information belief projection remain separate.
 The auxiliary game carries actual native pending
 state and attempted-choice recall. Its no-risk source embedding, consistency
 and earlier incentive comparisons remain unproved; finite-game equilibrium
@@ -1383,6 +1391,16 @@ for final-record violations as well. Correct canonical bindings with unusable
 private opening material can pass that verdict; their capability-repair
 obligation remains distinct even with broader packet coverage.
 
+[ReactiveSettledCollection](../Vegas/Pending/ReactiveSettledCollection.lean)
+states that broader backend obligation as `FinalForbiddenEvidenceCoverage`.
+For an actual persisted signed packet forbidden by the final record, the
+expected one-time collected charge is at least observation rate times
+conditional delivery rate. The continuation lemma derives traffic persistence
+under arbitrary later policies; final forbiddenness is an explicit
+operational premise. Complete play supplies it for signed constructor
+breaches. Sampling may be partial and correlated, and no report must arrive
+with certainty.
+
 [SourceServiceRiskRawExtension](../Vegas/Game/SourceServiceRiskRawExtension.lean)
 composes that conditional effective-menu extension with private-alias
 transport. It uses the same backend and fixed deposit throughout, and
@@ -1434,6 +1452,19 @@ matches the physical prescribed law. The proof handles zero-probability
 predecessors without an agreement assumption there. Agreement is an explicit
 premise; this does not construct a rational completion or establish a valid
 prescription at resolution sites.
+
+[AsyncServicePrescribedSites](../Vegas/Game/AsyncServicePrescribedSites.lean)
+refines that structural classifier relative to a fixed source reference.
+First turns and binding deferrals keep arbitrary-source witnesses, including
+source off-path continuations. At a later unrecorded resolution, the actual
+recalled protected first silence must have positive likelihood under the
+reference. A false choice present only as a tremble at a pure-opening
+reference input therefore does not force continued silence. Exact reference
+first-turn play visits only these prescribed inputs; lawful false choices can
+still visit later turns whose inclusion gate has closed. Rationality and
+native full-support approximation remain open. Completion at the narrower
+set cannot use the broader clean-prefix equality without its original
+agreement premise.
 
 [PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 proves that simultaneous consistent rational completion at free sites retains
