@@ -53,6 +53,7 @@ import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Game.SourceServiceRetainedPolicy
 import Vegas.Game.SourceServiceRiskSlots
+import Vegas.Game.SourceServiceBindingTimingPosterior
 import Vegas.Game.SourceServiceProtectedBinding
 import Vegas.Game.SourceServiceBindingMiss
 import Vegas.Game.SourceServiceFirstTurnOpportunity
@@ -85,6 +86,7 @@ import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.AsyncServiceDeposit
 import Vegas.Game.AsyncServiceFirstTurnLaw
 import Vegas.Game.AsyncServiceFirstTurnProfile
+import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceBindingSource
 import Vegas.Game.SourceServiceForeignComparison
 import Vegas.Game.SourceServiceForeignDisclosure

@@ -1145,6 +1145,17 @@ has passed. At a protected binding site reached after an earlier silent turn,
 geometric timing can instead have a limiting decision probability of one.
 At a resolution site, silence can also be an already drawn false source
 decision, so its conditional timing posterior needs a separate comparison.
+
+[SourceServiceBindingTimingPosterior](../Vegas/Game/SourceServiceBindingTimingPosterior.lean)
+derives the actual timing posterior after one silent response at a legal,
+protected first binding turn. Silence rules out timing index zero because the
+selected binding decision always sends a commitment, including a source
+failure value. With geometric timing, the next counted turn decides with
+probability `1 - weight`, or surely at the final index. The response error is
+bounded by the actual posterior waiting probability. The lemma supplies the
+next view explicitly; it does not assume the scheduler provides or protects
+that later turn. Multiple earlier waits and source-relative beliefs remain
+separate obligations.
 The initialized first-turn execution law does not settle these off-path laws.
 
 [SourceServiceAsyncFactorization](../Vegas/Game/SourceServiceAsyncFactorization.lean)
@@ -1318,9 +1329,24 @@ audited risk-menu game. Embedding each given source SE into that game remains
 open. Local clarity alone cannot identify its source-compatible information
 sites: another owner's risky packet can reveal a certificate to a still-clear
 observer. Information absent from every protected source execution needs free
-rational completion. The finite free-agent completion theorem supplies
-existence once the protected site set, prefix closure, source-relative trembles
-and local comparisons are established; it does not establish those premises.
+rational completion.
+
+[AsyncServiceSourceSites](../Vegas/Game/AsyncServiceSourceSites.lean) defines
+an information-local candidate classifier, independent of the given source
+equilibrium. A witness is an actual initialized execution of some admitted,
+effective source profile under arbitrary turn timing, with a legal risk-menu
+prefix, every owner's persistent risk clear, and a clear current owner
+opportunity. Earlier silent turns remain in recall. Exact first-turn behavioral
+play visits only classified decision inputs. A history with hidden foreign
+risk can share such an information value; the classifier does not erase that
+history from the belief.
+
+[ReactiveCleanPrefix](../Vegas/Pending/ReactiveCleanPrefix.lean) proves that a
+risk-menu prefix with every owner's persistent flag clear has a canonical
+trace with identical state, actions and nature transitions. It may stop before
+a late opportunity's response records risk. The classifier's witness therefore
+supplies a legal canonical decision history. Stopped-prefix probability laws,
+source-relative posterior bounds and local comparisons remain open.
 
 [PrescribedCompletion](../GameTheoryExtensions/Analysis/Protocol/PrescribedCompletion.lean)
 proves that simultaneous consistent rational completion at free sites retains

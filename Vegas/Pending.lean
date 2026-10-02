@@ -31,6 +31,7 @@ import Vegas.Pending.ReactiveBindingForeignInclusion
 import Vegas.Pending.ReactiveResolutionAuditStep
 import Vegas.Pending.ReactiveBindingLikelihood
 import Vegas.Pending.ReactiveBindingAsyncLikelihood
+import Vegas.Pending.ReactiveCleanPrefix
 import Vegas.Pending.ReactiveBindingPosterior
 import Vegas.Pending.ReactiveBindingSchedule
 import Vegas.Pending.ReactiveOpeningLikelihood
