@@ -69,6 +69,9 @@ structure PublicCheckpoint (setup : Setup (Player := Player) (L := L))
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
     ((graph setup).publicObserve execution.application.config)
   clock : execution.application.clock = clockAt rank
+  missed : execution.application.missedEvents = checkpointMisses setup
+    (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
+    ((graph setup).publicObserve execution.application.config)
   activated : execution.application.activatedAt = checkpointActivations setup
     (EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs initial)).accepted
     ((graph setup).publicObserve execution.application.config) rank
@@ -123,6 +126,7 @@ theorem checkpoint_initial (setup : Setup (Player := Player) (L := L))
     receipts := rfl
     counters := rfl
     clock := rfl
+    missed := (checkpointMisses_initial setup _ _).symm
     activated := ?_ }
   · exact EventOrder.Cut.empty_isPrefix _
   · intro event first strategic
@@ -199,6 +203,7 @@ theorem PublicCheckpoint.observe_eq {setup : Setup (Player := Player) (L := L)}
     (EventGraphRuntime.State.initial (graph := graph setup)
       (setup.eventInputs leftInitial)).accepted
     leftCheckpoint.accepted rightCheckpoint.accepted leftCheckpoint.clock rightCheckpoint.clock
+    leftCheckpoint.missed rightCheckpoint.missed
     leftCheckpoint.activated rightCheckpoint.activated leftCheckpoint.ledger rightCheckpoint.ledger
     leaked
     leftCheckpoint.receipts rightCheckpoint.receipts same
@@ -477,6 +482,7 @@ theorem Checkpoint.reveal_response [Fintype Player]
     receipts := transcript.2.1
     counters := transcript.2.2
     clock := actualCalendar.1
+    missed := ?_
     activated := actualCalendar.2 }
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
@@ -485,6 +491,9 @@ theorem Checkpoint.reveal_response [Fintype Player]
     rw [applicationEq]
     exact settlement_successor_timely setup execution.application checkpoint.invariant
       event successor ready (by omega) actor action result (sourceChoice setup leaks response)
+  · rw [applicationEq]
+    exact settlement_missedEvents setup execution.application event ready action result
+      (sourceChoice setup leaks response) initialAccepted checkpoint.missed packetPresence
   · exact (runtime setup).runInteractionPlan_preserves leaks players
       ((runtime setup).idleNetwork leaks)
       _ recallInvariant suffix submitted next

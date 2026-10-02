@@ -82,10 +82,12 @@ theorem roster_menu_reveal_source_step (setup : Setup (Player := Player) (L := L
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
             (cast (congrArg EventGraph.EventField.Value outputEq.symm)
               (PublicationResult.success value)) with clock := initial.application.clock + ticks }
-        else ({ initial.application with clock := initial.application.clock + ticks } :
+        else EventGraphRuntime.State.markMissed
+          (({ initial.application with clock := initial.application.clock + ticks } :
           EventGraphRuntime.State (graph setup)).complete event ready
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
-            (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure)) ∧
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure))
+            event) ∧
       final.network.Satisfies (fun message => message.id ∈ final.network.ledger.map Message.id) ∧
       final.network.ledger = (if selected.isSome then List.append initial.network.ledger
         [(runtime setup).windowEnvelope leaks owner event candidate ⟨payload, value⟩ initial]

@@ -137,6 +137,23 @@ theorem inputs (frame : Frame runtime leaks memory owner original repaired)
   obtain ⟨observer, visible⟩ := observes
   exact seen observer visible
 
+/-- The public expiry marker is installed on both actual executions. Private
+repair memory, recalls and packet data are preserved. -/
+theorem markMissed (frame : Frame runtime leaks memory owner original repaired)
+    (event : graph.EventId) :
+    Frame runtime leaks memory owner
+      { original with application := original.application.markMissed event }
+      { repaired with application := repaired.application.markMissed event } := by
+  refine ⟨frame.past, ?_, frame.lengths, frame.network, frame.service, ?_, frame.recall,
+    frame.slots, frame.successful, frame.submissions⟩
+  · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
+      { view with application := { view.application with publicView :=
+        { view.application.publicView with
+          missedEvents := insert event view.application.publicView.missedEvents } } })
+          frame.observed
+  · intro who different
+    exact State.markMissed_playerView_congr _ _ who (frame.views who different) event
+
 theorem advanceClock (frame : Frame runtime leaks memory owner original repaired) :
     let app := runtime.reactiveApplication leaks
     Frame runtime leaks memory owner
@@ -190,6 +207,7 @@ private theorem complete_publicView (left right : State graph)
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
   have acceptedEq := congrArg PublicView.accepted publicEq
+  have missedEq := congrArg PublicView.missedEvents publicEq
   have nextActivated :
       State.refreshActivated (left.config.complete event leftReady action value)
           left.clock left.activatedAt =

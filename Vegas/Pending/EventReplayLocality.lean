@@ -221,6 +221,12 @@ theorem environmentExecuteSample_of_observation
   have clock : leftApplication.clock = rightApplication.clock := by
     rw [leftFrame.1, rightFrame.1]
     exact congrArg PublicView.clock replay.publicView
+  have missed : leftApplication.missedEvents = rightApplication.missedEvents := by
+    rw [environmentStep_executeSample_missedEvents runtime left.native.application
+      leftApplication event leftApplicationMem,
+      environmentStep_executeSample_missedEvents runtime right.native.application
+        rightApplication event rightApplicationMem]
+    exact congrArg PublicView.missedEvents replay.publicView
   have preClock : left.native.application.clock = right.native.application.clock :=
     congrArg PublicView.clock replay.publicView
   have preActivated : left.native.application.activatedAt =

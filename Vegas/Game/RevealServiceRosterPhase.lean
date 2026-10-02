@@ -56,10 +56,12 @@ private theorem PublicCheckpoint.reveal_endpoint_agrees
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (PublicationResult.success value)) with
           clock := execution.application.clock + (event.val + 1) }
-      else ({ execution.application with clock := execution.application.clock + (event.val + 1) } :
+      else EventGraphRuntime.State.markMissed
+        (({ execution.application with clock := execution.application.clock + (event.val + 1) } :
         EventGraphRuntime.State (graph setup)).complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
-          (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure)))
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure))
+          event))
     (ledger : next.network.ledger = (if disclose then List.append execution.network.ledger
       [(runtime setup).windowEnvelope leaks owner event candidate ⟨payload, value⟩ execution]
       else execution.network.ledger))

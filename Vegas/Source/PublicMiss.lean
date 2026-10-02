@@ -2,12 +2,13 @@
 
 import Vegas.Source.Semantics
 
-/-! # Source successors for silent public binding misses
+/-! # Source successors for public missed decisions
 
-A silent binding miss stores a failed binding and publishes its owner and
-source name. Ordinary source successors preserve that public record. Players
-observe it alongside their existing private source view, so a miss differs
-from an ordinary failed binding before publication.
+A missed commitment stores a failed binding; a missed disclosure stores a
+failed publication. Both publish the owner and the decision's source name.
+Ordinary source successors preserve that public record. Players observe it
+alongside their private source view, distinguishing a missed decision from
+an ordinary failed binding or deliberate false disclosure.
 
 This module supplies configuration successors. A complete execution protocol,
 sequential-equilibrium extension, private attempted-choice memory, and failed
@@ -20,16 +21,16 @@ namespace Vegas.SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
-/-- Public evidence that the named binding completed without a submission. -/
-structure PublicBindingMiss (Player : Type) where
+/-- Public evidence that the named owned decision completed without a response. -/
+structure PublicDecisionMiss (Player : Type) where
   owner : Player
   name : VarId
   deriving DecidableEq
 
-/-- The ordinary typed source state and the publicly announced binding misses. -/
+/-- The ordinary typed source state and publicly announced missed decisions. -/
 structure PublicMissConfig (Player : Type) (L : IExpr) (Γ : SourceCtx Player L) where
   source : Config Player L Γ
-  misses : List (PublicBindingMiss Player)
+  misses : List (PublicDecisionMiss Player)
 
 namespace PublicMissConfig
 
@@ -57,42 +58,86 @@ def revealSuccessor {owner : Player} (published : VarId)
 
 /-- A silent expiry fails this binding and announces the miss. It leaves every
 later source decision available; it does not change the remaining program. -/
-def silentBindingMiss {owner : Player} (name : VarId)
+def commitMiss {owner : Player} (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : PublicMissConfig Player L Γ) :
     PublicMissConfig Player L ((name, .commitment owner payload) :: Γ) :=
   ⟨SourceProgram.commitSuccessor name guard config.source .failure,
     config.misses ++ [⟨owner, name⟩]⟩
 
 /-- The typed state and retained guard obligations match a failed binding. -/
-theorem silentBindingMiss_source {owner : Player} (name : VarId)
+theorem commitMiss_source {owner : Player} (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : PublicMissConfig Player L Γ) :
-    (silentBindingMiss name guard config).source =
+    (commitMiss name guard config).source =
       SourceProgram.commitSuccessor name guard config.source .failure := rfl
 
 /-- The newly bound cell has no value to disclose. -/
-theorem silentBindingMiss_failed {owner : Player} (name : VarId)
+theorem commitMiss_failed {owner : Player} (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : PublicMissConfig Player L Γ) :
-    (silentBindingMiss name guard config).source.state.get HasVar.here =
+    (commitMiss name guard config).source.state.get HasVar.here =
       PublicationResult.failure := rfl
 
 /-- The announcement is the same for every observer and carries no private
 payload or attempted choice. -/
-theorem silentBindingMiss_public {owner : Player} (name : VarId)
+theorem commitMiss_public {owner : Player} (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : PublicMissConfig Player L Γ)
     (who : Player) :
-    (view who (silentBindingMiss name guard config)).2 =
+    (view who (commitMiss name guard config)).2 =
       config.misses ++ [⟨owner, name⟩] := rfl
 
 /-- The public announcement distinguishes silence from an ordinary private
 forfeiture, even though both store the same failed binding. -/
-theorem silentBindingMiss_view_ne_forfeiture {owner : Player} (name : VarId)
+theorem commitMiss_view_ne_forfeiture {owner : Player} (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : PublicMissConfig Player L Γ)
     (who : Player) :
-    view who (silentBindingMiss name guard config) ≠
+    view who (commitMiss name guard config) ≠
       view who (commitSuccessor name guard config .failure) := by
   intro equal
   have lengths := congrArg (fun observed => observed.2.length) equal
-  simp only [view, silentBindingMiss, commitSuccessor, List.length_append,
+  simp only [view, commitMiss, commitSuccessor, List.length_append,
+    List.length_singleton] at lengths
+  omega
+
+/-- A missed disclosure publishes failure and the public miss announcement.
+Its source name identifies the publication instruction, not the binding. -/
+def revealMiss {owner : Player} (published : VarId)
+    (binding : HasVar Γ name (.commitment owner payload))
+    (config : PublicMissConfig Player L Γ) :
+    PublicMissConfig Player L ((published, .publication payload) :: Γ) :=
+  ⟨SourceProgram.revealSuccessor published binding config.source false,
+    config.misses ++ [⟨owner, published⟩]⟩
+
+/-- The typed state and guard bookkeeping match ordinary false disclosure. -/
+theorem revealMiss_source {owner : Player} (published : VarId)
+    (binding : HasVar Γ name (.commitment owner payload))
+    (config : PublicMissConfig Player L Γ) :
+    (revealMiss published binding config).source =
+      SourceProgram.revealSuccessor published binding config.source false := rfl
+
+/-- A missed disclosure produces no publication value. -/
+theorem revealMiss_failed {owner : Player} (published : VarId)
+    (binding : HasVar Γ name (.commitment owner payload))
+    (config : PublicMissConfig Player L Γ) :
+    (revealMiss published binding config).source.state.get HasVar.here =
+      PublicationResult.failure := by
+  simp [revealMiss, SourceProgram.revealSuccessor, Env.get, Env.cons]
+
+/-- Every observer receives the same missed-disclosure announcement. -/
+theorem revealMiss_public {owner : Player} (published : VarId)
+    (binding : HasVar Γ name (.commitment owner payload))
+    (config : PublicMissConfig Player L Γ) (who : Player) :
+    (view who (revealMiss published binding config)).2 =
+      config.misses ++ [⟨owner, published⟩] := rfl
+
+/-- A miss remains observably different from a deliberate false disclosure,
+despite producing the same typed publication result. -/
+theorem revealMiss_view_ne_withholding {owner : Player} (published : VarId)
+    (binding : HasVar Γ name (.commitment owner payload))
+    (config : PublicMissConfig Player L Γ) (who : Player) :
+    view who (revealMiss published binding config) ≠
+      view who (revealSuccessor published binding config false) := by
+  intro equal
+  have lengths := congrArg (fun observed => observed.2.length) equal
+  simp only [view, revealMiss, revealSuccessor, List.length_append,
     List.length_singleton] at lengths
   omega
 

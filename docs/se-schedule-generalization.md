@@ -1041,12 +1041,26 @@ signed evidence. A binding-only public `.miss` move does not yet represent
 those latter continuations. These are part of the open extension and incentive
 obligations, not consequences of the local retained-menu proofs.
 
-[PublicMiss](../Vegas/Source/PublicMiss.lean) supplies the silent-binding
-successor component: it stores a failed typed binding, retains source guard
-obligations, and makes the appended owner/name announcement visible to every
-player. This differs from hidden forfeiture. The full execution protocol,
-no-miss embedding, SE extension, attempted-choice memory, and opening-evidence
-lotteries are not yet supplied.
+[PublicMiss](../Vegas/Source/PublicMiss.lean) supplies commitment and disclosure
+miss successors. They store a failed typed binding or publication, retain the
+ordinary source guard bookkeeping, and append an owner/decision-name
+announcement visible to every player. A commitment miss differs from hidden
+forfeiture; a disclosure miss differs from deliberate false disclosure even
+though its typed result is identical. The full execution protocol, no-miss
+embedding, SE extension, attempted-choice memory, and opening-evidence
+lotteries are not yet supplied. The runtime audit still identifies binding
+omissions only.
+
+[EventApplication](../Vegas/Pending/EventApplication.lean) records strategic
+expiry in the public `EventGraphRuntime.State.missedEvents` set. Initial play
+has no markers. Accepted
+player packets, including false disclosure, preserve the set; chance execution
+also preserves it. A ready, activated, due strategic expiry inserts exactly
+its event. Other expiry commands leave the set unchanged. This is contract
+state, independent of a watcher's partial packet sample. The calendar's silent
+false choices still reach marked expiry, and its checkpoint proofs derive the
+marker from completed publications. Generic omission sanctions and explicit
+false responses still need their coherent policy and audit changes.
 
 The candidate one-escrow menu is implemented in
 [ReactiveRiskMenu](../Vegas/Pending/ReactiveRiskMenu.lean). An owner's public
@@ -1255,15 +1269,16 @@ error. A source-relative treatment of default false, or coherent changes to
 false-response and public-miss semantics, is still needed. This is an open
 embedding argument, not a counterexample to initialized-law SE preservation.
 
-An explicit false-response design would use the existing authenticated
-`.withhold event` call without opening evidence, and mark strategic expiry
-publicly as a missed decision for either owned event kind. The public marker
-must be written by the contract: the false output alone does not distinguish
-accepted withholding from expiry, and watcher sampling cannot supply that
-distinction with certainty. Allowing canonical false packets, their final
-verdict, generic omission/risk detection and the source public-miss extension
-must be changed together. This design has not replaced the silent-false
-runtime or its proofs.
+The explicit false-response design uses the existing authenticated
+`.withhold event` call without opening evidence. The contract's
+`EventGraphRuntime.State.missedEvents`
+set distinguishes accepted withholding from strategic expiry; a false output
+alone cannot supply that distinction, and neither can partial watcher
+sampling. Canonical false responses remain silent in the current prescribed
+policy. Allowing their packets, their final verdict, generic omission/risk
+detection and the source public-miss execution protocol must be changed
+together. The public marker and source miss successors supply the foundation
+for that change; they do not prove its equilibrium embedding.
 
 [SourceServiceAsyncFactorization](../Vegas/Game/SourceServiceAsyncFactorization.lean)
 preserves source-view traffic factorization through an actual silent round
@@ -1484,6 +1499,20 @@ accepting receipt. Own input reconstructs the original private candidate and
 response; the inclusion step preserves the derived frame. Its joint full
 typed readout and actual audited payoff-vector law is exact. Arbitrary later
 raw-continuation closure and the equilibrium comparison remain open.
+
+The source embedding must retain the original payoff domain. The capstone in
+[SourceServiceCompilation](../Vegas/Game/SourceServiceCompilation.lean) reads
+a fixed initial parameter and the public outcome. Its prescribed execution
+preserves the full typed readout, but this does not make every arbitrary
+utility of hidden terminal bindings compatible with the value-only source
+game. An accepted unusable binding stores failure without a public miss;
+the source's value-only admission excludes that action. A utility rewarding
+that private failure would therefore require a different source admission or
+runtime enforcement. Replacing unusable material with no opening still
+produces failure, so the candidate-only kernel alone supplies no admitted
+value-only source replacement. The existing parameter/public repair and
+the private-capability continuation argument address separate parts of this
+obligation.
 
 [SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
 combines the three checked packet classes in an information-local predicate.

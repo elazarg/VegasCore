@@ -126,10 +126,11 @@ theorem monitored_silent_reveal (runtime : EventGraphRuntime graph)
         ([.player watcher, .wire] ++ List.replicate ticks .tick ++ [.expire event])
         execution = PMF.pure next ∧
       next.application =
-        ({ execution.application with clock := execution.application.clock + ticks } :
+        (({ execution.application with clock := execution.application.clock + ticks } :
           State graph).complete event ready
             (cast (congrArg EventField.Action outputEq.symm) false)
-            (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure) ∧
+            (cast (congrArg EventField.Value outputEq.symm)
+              PublicationResult.failure)).markMissed event ∧
       next.network = execution.network ∧ next.receipts = execution.receipts ∧
       next.recall =
         (execution.respond (runtime.reactiveApplication leaks) watcher ⟨none⟩).recall := by

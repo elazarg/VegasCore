@@ -29,6 +29,76 @@ def clockAt (rank : Nat) : Nat := (Finset.range rank).sum (fun prior => prior + 
 theorem clockAt_succ (rank : Nat) : clockAt (rank + 1) = clockAt rank + (rank + 1) := by
   simp only [clockAt, Finset.sum_range_succ]
 
+open Classical in
+/-- Expiries at a revelation-calendar boundary: completed revelations without
+a published opening. The calendar's silent false choice reaches this endpoint
+by expiry, whereas its true choice submits an accepted opening. -/
+def checkpointMisses (accepted : AcceptedHandles (graph setup))
+    (view : (graph setup).PublicObservation) : Finset (graph setup).EventId :=
+  view.completionOrder.toFinset.filter fun event =>
+    publicationPacket? accepted view.store event = none
+
+theorem checkpointMisses_initial (accepted : AcceptedHandles (graph setup))
+    (inputs : (graph setup).Inputs) :
+    checkpointMisses setup accepted
+      ((graph setup).publicObserve (EventGraph.Config.initial inputs)) = ∅ := by
+  simp only [checkpointMisses, EventGraph.publicObserve, EventGraph.Config.initial,
+    List.map_nil, List.toFinset_nil, Finset.filter_empty]
+
+/-- A new publication preserves the calendar's expiry set; a completion with
+no publication inserts its event. Earlier completed outputs are unchanged. -/
+theorem checkpointMisses_complete (accepted : AcceptedHandles (graph setup))
+    (config : (graph setup).Config) (event : (graph setup).EventId)
+    (ready : config.cut.Ready event) (action : (graph setup).Action event)
+    (value : ((graph setup).outputLayout event).Value) :
+    checkpointMisses setup accepted
+        ((graph setup).publicObserve (config.complete event ready action value)) =
+      if (publicationPacket? accepted
+          (config.complete event ready action value).store event).isSome then
+        checkpointMisses setup accepted ((graph setup).publicObserve config)
+      else insert event (checkpointMisses setup accepted ((graph setup).publicObserve config)) := by
+  classical
+  have absent : event ∉ config.history.map EventGraph.Completion.event :=
+    fun member => ready.1 ((config.history_exact event).mp member)
+  ext query
+  by_cases same : query = event
+  · subst query
+    cases packet : publicationPacket? accepted
+        (config.complete event ready action value).store event <;>
+      simp [checkpointMisses, EventGraph.publicObserve, EventGraph.Config.complete_history,
+        publicationPacket?_publicStore, packet, absent]
+  · have retained : publicationPacket? accepted
+        (config.complete event ready action value).store query =
+        publicationPacket? accepted config.store query := by
+      apply publicationPacket?_congr
+      change (config.complete event ready action value).outputs query = config.outputs query
+      exact config.complete_output_of_ne event query ready action value same
+    cases packet : publicationPacket? accepted
+        (config.complete event ready action value).store event <;>
+      simp [checkpointMisses, EventGraph.publicObserve, EventGraph.Config.complete_history,
+        publicationPacket?_publicStore, retained, same]
+
+/-- The marked actual settlement endpoints satisfy the calendar's derived
+public expiry formula. -/
+theorem settlement_missedEvents (state : EventGraphRuntime.State (graph setup))
+    (event : (graph setup).EventId) (ready : state.config.cut.Ready event)
+    (action : (graph setup).Action event) (value : ((graph setup).outputLayout event).Value)
+    (disclose : Bool) (accepted : AcceptedHandles (graph setup))
+    (missed : state.missedEvents =
+      checkpointMisses setup accepted ((graph setup).publicObserve state.config))
+    (published : (publicationPacket? accepted
+      (state.config.complete event ready action value).store event).isSome = disclose) :
+    let next := if disclose then
+      { state.complete event ready action value with clock := state.clock + (event.val + 1) }
+      else (({ state with clock := state.clock + (event.val + 1) } :
+        EventGraphRuntime.State (graph setup)).complete event ready action value).markMissed event
+    next.missedEvents =
+      checkpointMisses setup accepted ((graph setup).publicObserve next.config) := by
+  have formula := checkpointMisses_complete setup accepted state.config event ready action value
+  rw [published] at formula
+  cases disclose <;> simpa only [Bool.false_eq_true, ↓reduceIte, EventGraphRuntime.State.markMissed,
+    EventGraphRuntime.State.complete, missed] using formula.symm
+
 /-- The activation time is determined by the preceding public publication. -/
 def checkpointEntryTime (accepted : AcceptedHandles (graph setup))
     (view : (graph setup).PublicObservation) : Nat :=
@@ -136,8 +206,8 @@ theorem settlement_calendar (reveals : setup.program.RevealOnly)
       (state.config.complete event ready action value).store event).isSome = disclose) :
     let next := if disclose then
       { state.complete event ready action value with clock := state.clock + (event.val + 1) }
-      else ({ state with clock := state.clock + (event.val + 1) } :
-        EventGraphRuntime.State (graph setup)).complete event ready action value
+      else (({ state with clock := state.clock + (event.val + 1) } :
+        EventGraphRuntime.State (graph setup)).complete event ready action value).markMissed event
     next.clock = clockAt (event.val + 1) ∧
       next.activatedAt = checkpointActivations setup accepted
         ((graph setup).publicObserve next.config) (event.val + 1) := by
@@ -149,6 +219,8 @@ theorem settlement_calendar (reveals : setup.program.RevealOnly)
   | false =>
       simp only [Bool.false_eq_true, ↓reduceIte] at entry ⊢
       refine ⟨clockNext, ?_⟩
+      simp only [EventGraphRuntime.State.markMissed_activatedAt,
+        EventGraphRuntime.State.markMissed_config]
       rw [complete_activations setup reveals _ (invariant.add_clock (event.val + 1))]
       funext query
       change (if query.val = event.val + 1 then some (state.clock + (event.val + 1)) else none) =
@@ -196,6 +268,10 @@ theorem source_checkpoint_observe_eq
     (rightAccepted : nativeRight.application.accepted = accepted)
     (leftClock : nativeLeft.application.clock = clockAt rank)
     (rightClock : nativeRight.application.clock = clockAt rank)
+    (leftMissed : nativeLeft.application.missedEvents = checkpointMisses setup accepted
+      ((graph setup).publicObserve nativeLeft.application.config))
+    (rightMissed : nativeRight.application.missedEvents = checkpointMisses setup accepted
+      ((graph setup).publicObserve nativeRight.application.config))
     (leftActivated : nativeLeft.application.activatedAt = checkpointActivations setup accepted
       ((graph setup).publicObserve nativeLeft.application.config) rank)
     (rightActivated : nativeRight.application.activatedAt = checkpointActivations setup accepted
@@ -222,6 +298,7 @@ theorem source_checkpoint_observe_eq
   · exact leftAccepted.trans rightAccepted.symm
   · exact leftClock.trans rightClock.symm
   · rw [leftActivated, rightActivated, publicObservation]
+  · rw [leftMissed, rightMissed, publicObservation]
   · rw [leftLedger, rightLedger, publicObservation]
   · exact leaked
   · rw [leftReceipts, rightReceipts, publicObservation]
@@ -238,8 +315,8 @@ theorem settlement_successor_timely {inputs : (graph setup).Inputs}
     (disclose : Bool) :
     let after := if disclose then
       { state.complete event ready action value with clock := state.clock + (event.val + 1) }
-      else ({ state with clock := state.clock + (event.val + 1) } :
-        EventGraphRuntime.State (graph setup)).complete event ready action value
+      else (({ state with clock := state.clock + (event.val + 1) } :
+        EventGraphRuntime.State (graph setup)).complete event ready action value).markMissed event
     after.WithinDeadline (runtime setup) next := by
   cases disclose with
   | false =>

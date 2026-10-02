@@ -378,6 +378,7 @@ private theorem boundAfter_carol (bit : Bool) (response : app.Action) :
   have accepted := congrArg PublicView.accepted publicEq
   have clock := congrArg PublicView.clock publicEq
   have activated := congrArg PublicView.activatedAt publicEq
+  have missed := congrArg PublicView.missedEvents publicEq
   have candidates := congrArg ReactivePlayerView.candidates before
   change (offeredAfter bit response).application.accepted =
     (offered bit).application.accepted at accepted
@@ -385,6 +386,8 @@ private theorem boundAfter_carol (bit : Bool) (response : app.Action) :
     (offered bit).application.clock at clock
   change (offeredAfter bit response).application.activatedAt =
     (offered bit).application.activatedAt at activated
+  change (offeredAfter bit response).application.missedEvents =
+    (offered bit).application.missedEvents at missed
   change (fun slot => (offeredAfter bit response).application.candidates.lookup (2, slot)) =
     (fun slot => (offered bit).application.candidates.lookup (2, slot)) at candidates
   change (⟨2, (boundAfter bit response).publicView,
@@ -393,7 +396,7 @@ private theorem boundAfter_carol (bit : Bool) (response : app.Action) :
       ReactivePlayerView graph) = _
   congr 1
   · simp only [boundAfter, bound, State.complete, State.publicView]
-    simp only [config, accepted, clock, activated]
+    simp only [config, accepted, clock, activated, missed]
   · simp only [boundAfter, bound, State.complete]
     simp only [config]
   · funext slot

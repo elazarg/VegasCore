@@ -60,12 +60,12 @@ theorem expire_resolution (frame : Frame runtime leaks memory owner original rep
       (PublicationResult.failure : PublicationResult (L.Val payload))
   let left : app.Execution :=
     { original with
-      application := original.application.complete event ready action value
+      application := (original.application.complete event ready action value).markMissed event
       environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .application (.expire event)⟩] }
   let right : app.Execution :=
     { repaired with
-      application := repaired.application.complete event rightReady action value
+      application := (repaired.application.complete event rightReady action value).markMissed event
       environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .application (.expire event)⟩] }
   have first : original.environmentStep app (.application (.expire event)) = PMF.pure left := by
@@ -80,9 +80,9 @@ theorem expire_resolution (frame : Frame runtime leaks memory owner original rep
       rightActivated rightDue actor payload binding checks outputEq codeEq node,
         PMF.pure_map, PMF.pure_map]
   have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
-  have paired := frame.complete_unmodified event ready rightReady
+  have paired := (frame.complete_unmodified event ready rightReady
     (onlyBindings.public_value_none (.inr event) visible)
-    (onlyBindings.public_action_none event visible) action value
+    (onlyBindings.public_action_none event visible) action value).markMissed event
   exact ⟨left, right, first, second, { paired with
     service := by
       change original.environmentRecall ++ [_] = repaired.environmentRecall ++ [_]

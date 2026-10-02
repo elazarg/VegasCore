@@ -68,10 +68,11 @@ theorem openingWindowMixture_continuation_expiry (runtime : EventGraphRuntime gr
               (cast (congrArg EventField.Action outputEq.symm) true)
               (cast (congrArg EventField.Value outputEq.symm) (PublicationResult.success value))
               with clock := initial.application.clock + ticks }
-          else ({ initial.application with clock := initial.application.clock + ticks } :
-              State graph)
-            |>.complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
-              (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)) ∧
+          else (({ initial.application with clock := initial.application.clock + ticks } :
+              State graph).complete event ready
+                (cast (congrArg EventField.Action outputEq.symm) false)
+                (cast (congrArg EventField.Value outputEq.symm)
+                  PublicationResult.failure)).markMissed event) ∧
         pair.2.network.Satisfies (fun message =>
           message.id ∈ pair.2.network.ledger.map Message.id) ∧
         pair.2.network.ledger = (if pair.1.isSome then List.append initial.network.ledger

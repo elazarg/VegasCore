@@ -80,15 +80,17 @@ theorem openingWindow_active_expiry (runtime : EventGraphRuntime graph)
     final ∈ ((app.invoke players owner initial).bind
       (runtime.runInteractionPlan leaks players network
         (remaining.map ServiceInstruction.player ++
-          (.includeLatest event owner :: List.replicate ticks .tick ++ [.expire event])))).support →
+          (.includeLatest event owner ::
+            List.replicate ticks .tick ++ [.expire event])))).support →
     final.application = (if selected.isSome then
       { initial.application.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) true)
           (cast (congrArg EventField.Value outputEq.symm) (PublicationResult.success value)) with
         clock := initial.application.clock + ticks }
-      else ({ initial.application with clock := initial.application.clock + ticks } : State graph)
-        |>.complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
-          (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)) := by
+      else (({ initial.application with clock := initial.application.clock + ticks } :
+        State graph).complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
+          (cast (congrArg EventField.Value outputEq.symm)
+            PublicationResult.failure)).markMissed event) := by
   intro app players reached
   have start := OpeningWindowFrame.initial_at runtime leaks owner event candidate ⟨payload, value⟩
     offset selected visits initial counted unpassed serials published

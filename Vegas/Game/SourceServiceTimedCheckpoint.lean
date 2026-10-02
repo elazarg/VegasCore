@@ -110,7 +110,7 @@ theorem guardedDisclosureWindow_config
     rw [included, PMF.pure_bind, law] at continued
     cases (PMF.mem_support_pure_iff _ _).mp continued
     rw [state]
-    simp only [waited, same, disclosureResult_false, State.complete]
+    simp only [waited, same, disclosureResult_false, State.markMissed_config, State.complete]
   · obtain ⟨candidate, associated, owned, fixed, opening⟩ := guarded_rosterOpening_success
       setup leaks published binding source refs execution agree valid event outputEq codeEq node
       value success

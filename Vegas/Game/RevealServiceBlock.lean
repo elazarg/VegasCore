@@ -69,8 +69,9 @@ theorem ordinary_response_settlement (setup : Setup (Player := Player) (L := L))
           { execution.application.complete event ready action result with
             clock := execution.application.clock + ticks }
         else
-          ({ execution.application with clock := execution.application.clock + ticks } :
-            EventGraphRuntime.State (graph setup)).complete event ready action result) ∧
+          (({ execution.application with clock := execution.application.clock + ticks } :
+            EventGraphRuntime.State (graph setup)).complete event ready action result).markMissed
+              event) ∧
       next.network = (if disclose then
         (submitted.network.includePending (owner, execution.network.nextSerial owner)).2
         else submitted.network) ∧

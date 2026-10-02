@@ -5,9 +5,8 @@ import Vegas.Pending.ReactiveRevealSettlement
 /-! # Complete response blocks for source revelation choices
 
 Each law includes reserved inclusion, the watcher's actual observation and
-silent response, the idle network slot, the clock ticks, and expiry. Published
-replays are retained as distinct physical responses and network inputs. Their
-effect on the source event is withholding; no private history is erased.
+silent response, the idle network slot, the clock ticks, and expiry. Actual
+pending messages and private observations remain in the execution.
 -/
 
 noncomputable section
@@ -83,10 +82,11 @@ theorem refusing_response_settlement (runtime : EventGraphRuntime graph)
         ([.includeLatest event owner, .player watcher, .wire] ++
           List.replicate ticks .tick ++ [.expire event]) submitted = PMF.pure next ∧
       next.application =
-        ({ execution.application with clock := execution.application.clock + ticks } :
+        (({ execution.application with clock := execution.application.clock + ticks } :
           State graph).complete event ready
             (cast (congrArg EventField.Action outputEq.symm) false)
-            (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure) ∧
+            (cast (congrArg EventField.Value outputEq.symm)
+              PublicationResult.failure)).markMissed event ∧
       next.network = submitted.network ∧ next.receipts = execution.receipts ∧
       next.recall = (submitted.respond app watcher ⟨none⟩).recall := by
   let app := runtime.reactiveApplication leaks

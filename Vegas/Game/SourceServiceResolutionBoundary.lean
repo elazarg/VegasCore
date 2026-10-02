@@ -117,7 +117,8 @@ theorem ServiceBoundary.reveal_block
       subst final
       refine ⟨false, effectiveDisclosure_false _ _ _, ?_, ?_, ?_, afterNetwork, afterRecall⟩
       · rw [afterApp]
-        simp only [EventGraphRuntime.State.complete, silent, disclosureResult_false]
+        simp only [EventGraphRuntime.State.markMissed_config, EventGraphRuntime.State.complete,
+          silent, disclosureResult_false]
       · rw [afterApp]
         change included.application.candidates = execution.application.candidates
         exact congrArg EventGraphRuntime.State.candidates silent

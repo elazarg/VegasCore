@@ -98,10 +98,12 @@ theorem PublicCheckpoint.reveal_endpoint
           (cast (congrArg EventGraph.EventField.Value outputEq.symm)
             (PublicationResult.success value)) with
           clock := execution.application.clock + (event.val + 1) }
-      else ({ execution.application with clock := execution.application.clock + (event.val + 1) } :
+      else EventGraphRuntime.State.markMissed
+        (({ execution.application with clock := execution.application.clock + (event.val + 1) } :
         EventGraphRuntime.State (graph setup)).complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)
-          (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure)))
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) PublicationResult.failure))
+          event))
     (ledger : next.network.ledger = (if disclose then List.append execution.network.ledger
       [(runtime setup).windowEnvelope leaks owner event candidate ⟨payload, value⟩ execution]
       else execution.network.ledger))
@@ -212,6 +214,7 @@ theorem PublicCheckpoint.reveal_endpoint
     receipts := transcript.2.1
     counters := transcript.2.2
     clock := actualCalendar.1
+    missed := ?_
     activated := actualCalendar.2 }
   · rw [configEq]
     exact checkpoint.ordered.complete_at event ready eventRank
@@ -221,6 +224,10 @@ theorem PublicCheckpoint.reveal_endpoint
       event successor ready (by omega) actor action result disclose
     cases disclose <;> simpa only [action, result,
       Option.isSome_none, Option.isSome_some, Bool.false_eq_true, ↓reduceIte] using timelyNext
+  · have actual := settlement_missedEvents setup execution.application event ready action result
+      disclose initialAccepted checkpoint.missed packetPresence
+    rw [applicationEq]
+    cases disclose <;> simpa only [action, result, Bool.false_eq_true, ↓reduceIte] using actual
 
 
 theorem PublicCheckpoint.reveal_roster [Fintype Player]

@@ -189,7 +189,8 @@ theorem guarded_reveal_replay_service
             tailLaw, PMF.pure_map,
             state, receipts]
           simp only [waited, currentSame, same, currentReceipt, receipt, expected,
-            disclosureResult_false, EventGraphRuntime.State.complete]
+            disclosureResult_false, EventGraphRuntime.State.markMissed_config,
+            EventGraphRuntime.State.complete]
         · exact PMF.bind_const _ _
       · exact PMF.bind_const _ _
   | true =>

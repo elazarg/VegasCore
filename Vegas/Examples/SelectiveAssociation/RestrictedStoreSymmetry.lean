@@ -167,6 +167,10 @@ def state (selected : Handle nativeGraph)
     config := config before.config
     candidates := CandidateFlip.catalogue selected before.candidates }
 
+theorem state_markMissed (selected : Handle nativeGraph)
+    (before : EventGraphRuntime.State nativeGraph) (event : nativeGraph.EventId) :
+    state selected (before.markMissed event) = (state selected before).markMissed event := rfl
+
 theorem state_complete (selected : Handle nativeGraph)
     (before : EventGraphRuntime.State nativeGraph)
     (event : nativeGraph.EventId) (ready : before.config.cut.Ready event)
@@ -330,13 +334,16 @@ theorem environment_expire_binding (selected : Handle nativeGraph)
               (PublicationResult.failure : PublicationResult Bool))
             (cast (congrArg EventGraph.EventField.Value outputEq.symm)
               (PublicationResult.failure : PublicationResult Bool))
+          have marked := (state_markMissed selected _ event).trans
+            (congrArg (fun after : EventGraphRuntime.State nativeGraph =>
+              after.markMissed event) completed)
           by_cases same : event = aliceBinding
           · subst event
             have owner : who = alice := by cases outputEq; rfl
             subst who
             simpa only [cast_eq, action_alice, output_alice, CandidateFlip.result]
-              using completed.symm
-          · simpa only [action_other event same, output_other event same] using completed.symm
+              using marked.symm
+          · simpa only [action_other event same, output_other event same] using marked.symm
         · rw [environmentStep_expire_of_not_due nativeRuntime before event ready entered
             activated due,
             environmentStep_expire_of_not_due nativeRuntime (state selected before) event

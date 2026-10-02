@@ -298,10 +298,11 @@ theorem canonical_silent_expiry (runtime : EventGraphRuntime graph)
     ∃ next, runtime.runInteractionPlan leaks players network
         (List.replicate ticks .tick ++ [.expire event]) execution = PMF.pure next ∧
       next.application =
-        ({ execution.application with clock := execution.application.clock + ticks } :
+        (({ execution.application with clock := execution.application.clock + ticks } :
           State graph).complete event ready
             (cast (congrArg EventField.Action outputEq.symm) false)
-            (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure) ∧
+            (cast (congrArg EventField.Value outputEq.symm)
+              PublicationResult.failure)).markMissed event ∧
       next.network = execution.network ∧ next.receipts = execution.receipts ∧
       next.recall = execution.recall := by
   let app := runtime.reactiveApplication leaks
@@ -316,9 +317,9 @@ theorem canonical_silent_expiry (runtime : EventGraphRuntime graph)
   have tickedDue : runtime.deadline event ≤ ticked.application.clock - entered := by
     rw [application]
     exact due
-  let after := ticked.application.complete event tickedReady
+  let after := (ticked.application.complete event tickedReady
     (cast (congrArg EventField.Action outputEq.symm) false)
-    (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)
+    (cast (congrArg EventField.Value outputEq.symm) PublicationResult.failure)).markMissed event
   have expiry : app.environment ticked.application (.expire event) = PMF.pure after :=
     runtime.environmentStep_expire_resolve_eq ticked.application event tickedReady entered
       tickedActivation tickedDue owner payload binding checks outputEq codeEq node

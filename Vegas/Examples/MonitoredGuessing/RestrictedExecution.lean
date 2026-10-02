@@ -67,8 +67,8 @@ theorem silent_bob_ready (bit : Bool) :
 def silentBobExpired (bit : Bool) : nativeApp.Execution :=
   let before := silentBobTicked bit
   { before with
-    application := before.application.complete bobPublication (silent_bob_ready bit)
-      false .failure
+    application := (before.application.complete bobPublication (silent_bob_ready bit)
+      false .failure).markMissed bobPublication
     environmentRecall := before.environmentRecall ++
       [⟨before.observeEnvironment nativeApp, .application (.expire bobPublication)⟩] }
 
@@ -311,8 +311,8 @@ def silentAliceDue (bit guess : Bool) : nativeApp.Execution :=
 def silentAliceExpired (bit guess : Bool) : nativeApp.Execution :=
   let before := silentAliceDue bit guess
   { before with
-    application := before.application.complete alicePublication (after_bob_ready bit guess)
-      false .failure
+    application := (before.application.complete alicePublication (after_bob_ready bit guess)
+      false .failure).markMissed alicePublication
     environmentRecall := before.environmentRecall ++
       [⟨before.observeEnvironment nativeApp, .application (.expire alicePublication)⟩] }
 
