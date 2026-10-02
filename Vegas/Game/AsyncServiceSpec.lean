@@ -138,8 +138,11 @@ end Vegas
 -- At every legal clear active owner prefix, one immediate policy preserves actual
 -- recall through earlier deferrals and has zero owner audit charge throughout its
 -- supported raw suffix within the horizon. The prefix packet and opportunity
--- premises are derived from that legal history. Transfer to a uniform behavioral
--- continuation comparator and the source equilibrium embedding remain open.
+-- premises are derived from that legal history. Whole-policy replacement in the
+-- risk-menu game has that actual continuation law. One fixed comparator has zero
+-- owner collection across every hidden history of a clear information site;
+-- terminal base bounds give its clean lower bound under any belief. The source
+-- equilibrium embedding and excluded-action collection remain open.
 -- The source extension supplying play at first unprotected binding opportunities,
 -- after misses and after unprotected attempts,
 -- joint beliefs with traffic observations, local incentives and general

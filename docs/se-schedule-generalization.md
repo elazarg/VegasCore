@@ -497,7 +497,7 @@ is a design, not a checked result.
 | Owner-local prescribed safety | Exact first-turn play keeps the owner's full `serviceRisk` flag clear at every supported control (`Vegas/Game/SourceServiceFirstTurnSafe.lean`). For any turn timing, every authored packet is permitted by the actual settled record (`Vegas/Game/SourceServiceOwnerSettled.lean`). Combining packet soundness with first-turn absence of public misses gives zero owner charge under authentic sampling, against arbitrary foreign raw policies. If all owners follow the policy, the joint realized settlement vector is exactly the base payoff (`Vegas/Game/SourceServiceFirstTurnAudit.lean`). These results concern supported play from initialization; they do not prove incentives after this owner's own raw deviations. |
 | Canonical retained menu | `MessageBounds.canonicalMenu` retains silence and bounded first canonical decisions under `WithinDeadline`, with no roster obligation. Local source-choice coverage and no second submission are proved in `Vegas/Pending/ReactiveCanonicalMenu.lean`. Used-slot and own-submission invariants hold on every legal retained history (`retainedCanonicalSlots_history`), including after misses. The prescribed policy is admitted at every such history (`sourceServiceTurnPolicy_retained` in `Vegas/Game/SourceServiceRetainedPolicy.lean`), including arbitrary turn timing. Equilibrium after misses remains open. |
 | Continuation after risk | The candidate `MessageBounds.riskMenu` opens an owner's bounded raw menu at a ready, unrecorded binding opportunity outside protected inclusion, or after its public miss or own recalled unprotected attempt. Any own response recalls that binding opportunity, including silence; recorded packets and lawful resolution withholding do not trigger it. Slot invariants use persistent risk separately from the current opportunity. Prescribed transmissions add no submission risk for any turn timing; silently deferring into a late binding opportunity may add opportunity risk. Actual post-miss rationality equals base-payoff rationality (`serviceAudit_rationalAt_iff_of_omission`). `LocalizedEnforcement` separates charged exclusions from private continuation comparisons, including retained charges. Source embedding, general command closure, beliefs and concrete comparisons remain open. |
-| General theorem | `AsyncServiceSpec`, the scheduler-dependent deposit, geometric deferral bounds, and the local retained menu are present. The public-miss source extension, beliefs, local comparisons, and general repair remain open. |
+| General theorem | `AsyncServiceSpec`, the scheduler-dependent deposit, geometric deferral bounds, the local retained menu and a fixed clean comparator at clear information sites are present. The public-miss source extension, beliefs, excluded-action collection, other local comparisons and general repair remain open. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
 `EventPrescribed*.lean`) separately proves exact honest and deviation laws and
@@ -1194,7 +1194,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 | Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | Exact first-turn play supplies the protected call and keeps the owner's omission detector and full risk flag clear against arbitrary foreign raw policies. Its packets pass the actual final-record verdict, so authentic sampling collects zero owner charge. The strategic source embedding and local continuation comparisons remain separate. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
 | Canonical binding with unusable private opening | Replace its private meaning by source value and withholding, preserving the joint parameter/public-result law and actual settlement. | The source repair, native transmission coupling, application commands at completed repair boundaries and settlement along preserved frames are checked. Packet inclusion, pending overrides and later authentic certificate capabilities remain open. |
-| Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Final-record audit, the generic enforcement theorem, immediate policy admission and its actual zero-charge suffix from every legal clear active owner prefix are checked. Transfer to behavioral continuation comparisons and concrete generic collection remain open. |
+| Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Final-record audit, the generic enforcement theorem and a fixed legal whole-policy comparator are checked. The comparator has zero owner charge across every hidden history at a clear information site and supplies a clean lower bound from terminal base bounds under any belief. Concrete generic collection and the source equilibrium embedding remain open. |
 | Late unrecorded first binding opportunity | Admit rational native continuation before a content-dependent acceptance/miss lottery. | Probe C7 demonstrates why excluding the evidence packet can fail for every positive deposit. The auxiliary source/native embedding and its earlier incentive comparisons remain open. |
 | Public binding miss | Admit rational continuation with the deposit already certain. | Actual post-miss whole-policy rationality equals base-payoff rationality. Joint beliefs and equilibrium completion of the auxiliary game remain open. |
 | Earlier packet offense with uncertain collection | Use the change in conditional expected collection, or admit rational raw continuation. | The exact incremental-charge identity is checked. Coverage of another packet alone supplies no positive increment; no independence premise is implicit. |
@@ -1234,8 +1234,17 @@ audit are checked in
 [SourceServiceCleanContinuation](../Vegas/Game/SourceServiceCleanContinuation.lean)
 and [SourceServiceImmediateAudit](../Vegas/Game/SourceServiceImmediateAudit.lean).
 The same policy is a fixed function of the owner's actual recall and current
-view. Its transfer to behavioral continuation comparisons under local
-deviation beliefs remains a separate obligation.
+view. In [SourceServiceImmediateComparator](../Vegas/Game/SourceServiceImmediateComparator.lean),
+`sourceServiceImmediateComparator_terminal_law` identifies whole-policy
+replacement in the finite risk-menu game with that physical continuation,
+against arbitrary opponent behavioral policies. Admission is required only
+at actual legal histories. `sourceServiceImmediateComparator_clean_lower`
+uses this one fixed policy across every hidden history of a clear information
+site and every belief there: a terminal base-payoff lower bound gives that
+lower bound together with zero owner charge. This supplies the clean
+comparator branch. Concrete collection bounds for excluded actions,
+comparisons for uncharged exclusions, and the source equilibrium embedding
+remain separate obligations.
 
 The comparator must start at an actual active owner site. A clear scheduler
 boundary can follow a silent protected turn that already fulfilled the

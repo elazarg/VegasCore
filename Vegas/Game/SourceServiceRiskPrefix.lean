@@ -48,110 +48,27 @@ private theorem clearCanonicalResponse_packetFacts
       FreshCallsConform setup leaks (middle.respond (application setup leaks) who response) who ∧
       OneCallPerEvent setup leaks (middle.respond (application setup leaks) who response) who := by
   let app := application setup leaks
-  rcases response with ⟨transmission⟩
-  cases transmission with
-  | none =>
-      obtain ⟨_, recalled, _⟩ := respond_recall_self setup leaks middle who ⟨none⟩
-      refine ⟨?_, ?_, ?_⟩
-      · intro entry present material submits
-        rw [recalled] at present
-        rcases List.mem_append.mp present with old | new
-        · exact calls entry old material submits
-        · rw [List.mem_singleton] at new
-          subst new
-          cases submits
-      · intro entry present material message submits emitted
-        rw [recalled] at present
-        rcases List.mem_append.mp present with old | new
-        · exact conform entry old material message submits emitted
-        · rw [List.mem_singleton] at new
-          subst new
-          cases submits
-      · intro first firstMember second secondMember event firstMessage secondMessage
-          firstEvent secondEvent firstEmitted secondEmitted
-        rw [recalled] at firstMember secondMember
-        rcases List.mem_append.mp firstMember with firstOld | firstNew
-        · rcases List.mem_append.mp secondMember with secondOld | secondNew
-          · exact once first firstOld second secondOld event _ _ firstEvent secondEvent
-              firstEmitted secondEmitted
-          · rw [List.mem_singleton] at secondNew
-            subst secondNew
-            cases secondEvent
-        · rw [List.mem_singleton] at firstNew
-          subst firstNew
-          cases firstEvent
-  | some material =>
-      obtain ⟨event, action, turn, owned, _, timely, unrecorded, _, decided⟩ :=
-        bounds.canonicalActions_submission (runtime setup) leaks who _ _ ⟨some material⟩ member
-          material rfl
-      have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
-      have packetConform := canonicalServiceDecision_freshServiceEnvelope trace event turn timely
-        fresh action material (congrArg ReactiveApplication.Action.transmission decided.symm)
-      let message : Message Player (WitnessedPacket (graph setup)) :=
-        ⟨(who, middle.network.nextSerial who), app.packet (app.submit middle.application who
-          material) who (middle.network.known who) material⟩
-      let entry : app.PlayerEntry := ⟨middle.observe app who, ⟨some material⟩, some message⟩
-      have recalled := respond_submit_recall middle who material
-      have entryMember : entry ∈ (middle.respond app who ⟨some material⟩).recall who := by
-        rw [recalled]
-        exact List.mem_append_right _ (List.mem_singleton_self _)
-      obtain ⟨named, addressed, readyView, owner⟩ :=
-        (runtime setup).freshServiceEnvelope_owned _ message packetConform
-      have namedTurn : middle.application.publicView.ownTurn? who = some named :=
-        ownTurn?_of_ready setup middle.application
-          ((middle.application.publicView_eventReady named).mp readyView) owner
-      have equal : named = event := Option.some.inj (namedTurn.symm.trans turn)
-      subst equal
-      have entryEvent : (runtime setup).submittedEvent? leaks entry.action = some named :=
-        addressed
-      have submittedClear := ((runtime setup).persistentServiceRisk_clear_iff leaks bound who
-        _ _).mp clear |>.1.2
-      have fits := ((runtime setup).recalledSubmissionRisk_clear_iff leaks bound who _).mp
-        submittedClear entry entryMember rfl named entryEvent owned
-      have absent : ∀ old ∈ middle.recall who,
-          (runtime setup).submittedEvent? leaks old.action ≠ some named := by
-        intro old oldMember oldEvent
-        have recorded : (runtime setup).eventRecorded leaks (middle.recall who) named = true :=
-          List.any_eq_true.mpr ⟨old, oldMember, decide_eq_true oldEvent⟩
-        rw [unrecorded] at recorded
-        cases recorded
-      refine ⟨?_, ?_, ?_⟩
-      · intro current present currentMaterial submits
-        rw [recalled] at present
-        rcases List.mem_append.mp present with old | new
-        · exact calls current old currentMaterial submits
-        · rw [List.mem_singleton] at new
-          subst new
-          exact ⟨named, message, rfl, rfl, addressed, entryEvent, fits⟩
-      · intro current present currentMaterial currentMessage submits emitted
-        rw [recalled] at present
-        rcases List.mem_append.mp present with old | new
-        · exact conform current old currentMaterial currentMessage submits emitted
-        · rw [List.mem_singleton] at new
-          subst new
-          cases Option.some.inj emitted
-          exact packetConform
-      · intro first firstMember second secondMember shared firstMessage secondMessage
-          firstEvent secondEvent firstEmitted secondEmitted
-        rw [recalled] at firstMember secondMember
-        rcases List.mem_append.mp firstMember with firstOld | firstNew <;>
-          rcases List.mem_append.mp secondMember with secondOld | secondNew
-        · exact once first firstOld second secondOld shared _ _ firstEvent secondEvent
-            firstEmitted secondEmitted
-        · rw [List.mem_singleton] at secondNew
-          subst secondNew
-          rw [entryEvent] at secondEvent
-          cases Option.some.inj secondEvent
-          exact (absent first firstOld firstEvent).elim
-        · rw [List.mem_singleton] at firstNew
-          subst firstNew
-          rw [entryEvent] at firstEvent
-          cases Option.some.inj firstEvent
-          exact (absent second secondOld secondEvent).elim
-        · rw [List.mem_singleton] at firstNew secondNew
-          subst firstNew secondNew
-          rw [firstEmitted] at secondEmitted
-          rw [Option.some.inj secondEmitted]
+  apply ownerCallFacts_respond middle who response calls conform once
+  · exact bounds.canonicalActions_firstSubmission (runtime setup) leaks who _ _ response member
+  · intro material submitted
+    obtain ⟨event, action, turn, _, _, timely, unrecorded, _, decided⟩ :=
+      bounds.canonicalActions_submission (runtime setup) leaks who _ _ response member material
+        submitted
+    have fresh := canonicalSlot_fresh_of_used trace who atTurn slots event turn unrecorded
+    exact canonicalServiceDecision_freshServiceEnvelope trace event turn timely fresh action
+      material (by rw [← decided]; exact submitted)
+  · intro event submitted
+    have owned := (bounds.canonical_submitted_event (runtime setup) leaks who _ _ response member
+      event submitted).2.1
+    obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
+    let entry : app.PlayerEntry := ⟨middle.observe app who, response, emitted⟩
+    have entryMember : entry ∈ (middle.respond app who response).recall who := by
+      rw [recalled]
+      exact List.mem_append_right _ (List.mem_singleton_self _)
+    have submittedClear := ((runtime setup).persistentServiceRisk_clear_iff leaks bound who
+      _ _).mp clear |>.1.2
+    exact ((runtime setup).recalledSubmissionRisk_clear_iff leaks bound who _).mp submittedClear
+      entry entryMember rfl event submitted owned
 
 /-- Any owner policy covered by the risk menu has actual protected, conforming,
 unique calls and sound packet content whenever its persistent risk is clear.

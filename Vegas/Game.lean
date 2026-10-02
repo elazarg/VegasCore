@@ -69,6 +69,7 @@ import Vegas.Game.SourceServiceImmediateRecall
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceCleanContinuation
 import Vegas.Game.SourceServiceImmediateAudit
+import Vegas.Game.SourceServiceImmediateComparator
 import Vegas.Game.BindingSubmissionCoupling
 import Vegas.Game.BindingFrameSettlement
 import Vegas.Game.SourceServiceCanonicalConformance
