@@ -224,6 +224,7 @@ import Vegas.Pending.ReactiveCanonicalMenu
 import Vegas.Pending.ReactiveBindingContinuation
 import Vegas.Pending.ReactiveBindingOmission
 import Vegas.Pending.ReactiveBindingRecordedOmission
+import Vegas.Pending.ReactiveBindingReceipts
 import Vegas.Pending.ReactiveBindingFirstSubmission
 import Vegas.Pending.ReactiveBindingFrameAudit
 import Vegas.Pending.ReactiveBindingMemoryInvariant

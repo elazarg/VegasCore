@@ -7,6 +7,7 @@ from adaptive_schedules import HALF, Chance, End, Move, consistent_beliefs, law,
 from deferral_miss_probe import violations
 from raw_continuation_probe import (
     BITS, ONE, OwnerOpportunity, ReportBackend, assert_perfect_recall, collection_mass,
+    due_profile, due_unexpired_target,
     first_late_content_profile, first_late_content_target,
     late_canonical_target, late_profile, protected_profile, protected_retry,
     rationality, risk_seen, source, source_profile, target, target_profile, trembles,
@@ -178,6 +179,41 @@ class RawContinuationTests(unittest.TestCase):
         lawful_withholding = OwnerOpportunity(True, False, True, False, False)
         self.assertFalse(risk_seen((), lawful_withholding))
         self.assertFalse(risk_seen(((lawful_withholding, "wait"),), lawful_withholding))
+
+    def test_due_unexpired_first_binding_has_zero_incremental_fine(self) -> None:
+        for deposit in (Fraction(2), Fraction(4)):
+            root = due_unexpired_target(deposit, self.backend)
+            assert_perfect_recall(root)
+            fixed = due_profile(root, False)
+            raw = due_profile(root, True)
+            failures = rationality(root, fixed)
+            self.assertEqual(set(failures), {f"due_late:{v}" for v in BITS})
+            self.assertTrue(all(failure["gain"] == HALF for failure in failures.values()))
+            self.assertEqual(rationality(root, raw), {})
+            self.assertEqual(law(root, raw), law(source(), source_profile()))
+            for _, first in root.branches:
+                due = dict(first.children)["defer"]
+                for _, response in due.children:
+                    self.assertEqual(collection_mass(response, raw), ONE)
+
+    def test_due_raw_completion_still_needs_sufficient_initial_escrow(self) -> None:
+        root = due_unexpired_target(Fraction(1, 4), self.backend)
+        failures = rationality(root, due_profile(root, True))
+        self.assertEqual(set(failures), {f"due_first:{v}" for v in BITS})
+        self.assertTrue(all(failure["gain"] == Fraction(1, 4)
+                            for failure in failures.values()))
+
+    def test_due_risk_remembers_readiness_without_requiring_timeliness(self) -> None:
+        due = OwnerOpportunity(True, True, False, False, False)
+        protected = OwnerOpportunity(True, True, True, True, False)
+        self.assertTrue(risk_seen((), due))
+        for response in ("wait", "foreign", "rejected_certificate"):
+            self.assertTrue(risk_seen(((due, response),), protected))
+        recorded = OwnerOpportunity(True, True, False, False, True)
+        self.assertFalse(risk_seen((), recorded))
+        resolution = OwnerOpportunity(True, False, False, False, False)
+        self.assertFalse(risk_seen((), resolution))
+        self.assertFalse(risk_seen(((resolution, "wait"),), resolution))
 
 
 if __name__ == "__main__":

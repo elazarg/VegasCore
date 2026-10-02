@@ -127,7 +127,8 @@ end Vegas
 -- The candidate owner-local risk menu, actual post-miss rationality and a
 -- localized restriction-extension theorem are checked; their source embedding
 -- and runtime comparison premises remain open.
--- The source extension supplying play after misses and unprotected attempts,
+-- The source extension supplying play at first unprotected binding opportunities,
+-- after misses and after unprotected attempts,
 -- joint beliefs with traffic observations, local incentives and general
 -- continuation repair remain to be proved.
 -- The fixed-calendar SourceServiceSpec capstone does not discharge this edge.

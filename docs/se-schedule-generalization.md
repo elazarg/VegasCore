@@ -495,7 +495,7 @@ is a design, not a checked result.
 | Turn-counted policy and approximate continuation (milestone 2b) | Done for every contract scheduler. `sourceServiceTurnPolicy_boundaryContinuationWithin` bounds the distance from the source continuation by the sum of the remaining events' deferral weights, and `sourceServiceTurnPolicy_firstTurnCompletes` discharges its hypothesis from `AsyncContract` and `AsyncTimely` alone (`Vegas/Game/SourceServiceFirstTurnCompletes.lean`). The calendar keeps its timed policy. |
 | Audit serial clause | Done. The audit's per-packet rule counts distinct identifiers per author (`Interaction.Message.distinctAuthoredCount`), so repeated evidence of one envelope does not shift serials, and the contract rejects a re-inclusion (`EventGraphRuntime.handle_eq_none_after_accepted_run`). Under `AsyncContract` alone, every fresh call of a player following the turn-counted policy, trembles included and whatever others do, carries the audit's serial and passes the full rule (`Vegas.sourceServiceTurnPolicy_serial`, `Vegas.sourceServiceTurnPolicy_permittedServiceEnvelope` in `Vegas/Game/SourceServiceCanonicalSerial.lean`). |
 | Canonical retained menu | `MessageBounds.canonicalMenu` retains silence and bounded first canonical decisions under `WithinDeadline`, with no roster obligation. Local source-choice coverage and no second submission are proved in `Vegas/Pending/ReactiveCanonicalMenu.lean`. Used-slot and own-submission invariants hold on every legal retained history (`retainedCanonicalSlots_history`), including after misses. The prescribed policy is admitted at every such history (`sourceServiceTurnPolicy_retained` in `Vegas/Game/SourceServiceRetainedPolicy.lean`), including arbitrary turn timing. Equilibrium after misses remains open. |
-| Continuation after risk | The candidate `MessageBounds.riskMenu` opens an owner's bounded raw menu after its public miss or own recalled unprotected attempt. Locality, private-risk persistence and protected-response stability are proved. Clear owners retain slot freshness even with foreign raw play (`riskCanonicalSlots_history`); prescribed responses keep private recall risk clear for any turn timing. The actual audit's post-miss rationality equals base-payoff rationality (`serviceAudit_rationalAt_iff_of_omission`). `LocalizedEnforcement` separates charged exclusions from private continuation comparisons, including retained charges. Source embedding, general command closure, beliefs and the concrete comparisons remain open. |
+| Continuation after risk | The candidate `MessageBounds.riskMenu` opens an owner's bounded raw menu at a ready, unrecorded binding opportunity outside protected inclusion, or after its public miss or own recalled unprotected attempt. Any own response recalls that binding opportunity, including silence; recorded packets and lawful resolution withholding do not trigger it. Slot invariants use persistent risk separately from the current opportunity. Prescribed transmissions add no submission risk for any turn timing; silently deferring into a late binding opportunity may add opportunity risk. Actual post-miss rationality equals base-payoff rationality (`serviceAudit_rationalAt_iff_of_omission`). `LocalizedEnforcement` separates charged exclusions from private continuation comparisons, including retained charges. Source embedding, general command closure, beliefs and concrete comparisons remain open. |
 | General theorem | `AsyncServiceSpec`, the scheduler-dependent deposit, geometric deferral bounds, and the local retained menu are present. The public-miss source extension, beliefs, local comparisons, and general repair remain open. |
 
 The pending-message stack (`Vegas/Pending/EventService*.lean`,
@@ -1023,14 +1023,31 @@ lotteries are not yet supplied.
 The candidate one-escrow menu is implemented in
 [ReactiveRiskMenu](../Vegas/Pending/ReactiveRiskMenu.lean). An owner's public
 miss or its own recalled unprotected attempt opens every bounded raw response
-for that owner. The private trigger reads only the owner's identity, public
-before-view and submitted event. Another player's hidden attempt cannot change
-the local menu. Private risk persists in recall, and a protected response
-leaves the flag unchanged. [SourceServiceRiskSlots](../Vegas/Game/SourceServiceRiskSlots.lean)
-proves owner-local slot and freshness invariants whenever that owner's current
-flag is clear, allowing foreign raw actions. Prescribed responses never add
-private recall risk, for any turn timing, scheduler or chance steps. Avoiding
-the public-miss branch under first-turn play remains a separate obligation.
+for that owner. It also opens at a ready binding with no recorded own call
+once protected inclusion no longer fits, including when the deadline is due
+but expiry has not been commanded. Any own response there records the risky
+opportunity, even silence or a foreign-event packet. The scan tests each
+before-view against the preceding own recall prefix. It reads no hidden
+network state or watcher verdict. Already-recorded protected packets and
+lawful resolution withholding do not trigger it.
+
+Persistent public/recall risk is separate from the current opportunity, which
+can change under scheduler commands. [SourceServiceRiskSlots](../Vegas/Game/SourceServiceRiskSlots.lean)
+proves owner-local slot and freshness invariants for persistently clear
+owners, allowing foreign raw actions. Prescribed transmissions never add
+submission risk, for any turn timing, scheduler or chance steps. Silent
+deferral can reach a late binding and add opportunity risk; that broader
+no-risk conclusion is not claimed for approximants. Avoiding opportunity
+risk and public misses under exact first-turn play remains a separate
+embedding obligation.
+[SourceServiceProtectedBinding](../Vegas/Game/SourceServiceProtectedBinding.lean)
+isolates the event-level part: a protected fresh commitment with a sole own
+identifier cannot become a public binding miss under arbitrary foreign raw
+play. Its accepting receipt fixes the public handle throughout every legal
+continuation (`bindingReceipts_history`), even for an unusable private binding.
+This needs protected inclusion and the actual call/sole-identifier premises;
+it needs no watcher hypothesis. The whole-policy embedding must still show
+that every completed owned binding has such a call.
 The auxiliary game carries actual native pending
 state and attempted-choice recall. Its no-risk source embedding, consistency
 and earlier incentive comparisons remain unproved; finite-game equilibrium
@@ -1069,6 +1086,14 @@ the protected source law. This schedule is a contract blueprint, not a native
 Lean instance over all raw histories. A recorded protected packet and lawful
 resolution withholding must not trigger that expansion.
 
+The same boundary includes overdue but unexpired bindings. A scheduler can
+activate the owner at the deadline, include and reject a certificate-bearing
+packet, expire the binding, then activate the next player without another
+owner turn. Silence and transmission both incur the certain public-miss
+charge, but only transmission communicates before the next decision. No
+deposit increase deters that communication. The actual acceptance deadline
+therefore cannot be an additional gate on binding-opportunity risk.
+
 [LocalizedEnforcement](../GameTheoryExtensions/Analysis/Protocol/LocalizedEnforcement.lean)
 provides the depth-free restriction-extension step with retained charges in the
 source utility. Only excluded actions designated as auditable need a collection
@@ -1101,6 +1126,7 @@ their own rationality proof; an exclusion theorem cannot supply it.
 
 | Behavior | Separate proof obligation | Checked boundary and open edge |
 | --- | --- | --- |
+| Protected fresh binding call | Show that completion records its actual handle and cannot be an omission. | The event-level no-miss theorem holds against arbitrary foreign raw responses under protected inclusion and the explicit sole-own-identifier premise. Coverage of every owned binding by the prescribed policy remains an embedding obligation. |
 | Normalization-equivalent responses | Preserve the actual response transition and emitted packet. | Reactive normalization supplies the exact local equality. This does not erase a distinct fresh identifier or authentic extra evidence. |
 | Canonical binding with unusable private opening | Replace its private meaning by source value and withholding, preserving the joint parameter/public-result law and actual settlement. | The source repair, native transmission coupling and settlement along preserved frames are checked. Generic native command closure and retained admission remain open. |
 | Forbidden signed packets at a clear protected history | Bound base gain and actual collection, and exhibit one clean legal continuation under the same belief. | Final-record audit and the generic enforcement theorem are checked. Concrete generic collection and clean-comparator premises remain to be discharged. |

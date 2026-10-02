@@ -47,6 +47,13 @@ the certain public-miss charge D; an accepted certificate-bearing packet pays
 only p*q*D. Raw play must open before this late opportunity, not after its first
 attempt. The protected initial turn still accepts every source binding packet.
 
+The due-but-unexpired control activates the owner exactly at the deadline,
+before the explicit expiry command. A fresh certificate-bearing packet cannot
+be accepted, but can still tell Bob the private input. Silence and transmission
+both incur the same certain public-miss charge. Alice has no later opportunity
+before Bob chooses, so waiting to open raw play at expiry does not repair this
+decision. The binding-risk predicate therefore does not require WithinDeadline.
+
 These finite games are design evidence, not a Vegas runtime adapter or a
 general theorem. In particular, an unprotected canonical attempt need not be
 forbidden: the private-attempt branch above is explicitly RAW. The current
@@ -96,7 +103,7 @@ class OwnerOpportunity:
 
     @property
     def first_unprotected(self) -> bool:
-        return (self.owned_ready and self.binding and self.within_deadline and
+        return (self.owned_ready and self.binding and
                 not self.inclusion_fits and not self.event_recorded)
 
 
@@ -370,6 +377,44 @@ def first_late_content_profile(root: Node, anticipatory: bool) -> Profile:
     return profile
 
 
+def due_unexpired_target(deposit: Fraction, backend: ReportBackend) -> Node:
+    """The last owner opportunity is due, but the binding remains ready.
+
+    With deadline=3, delay=0 and bound=1, an initial activation at clock 0
+    supplies the protected opportunity. After deferral the builder advances
+    to clock 3 and activates Alice before issuing expire. Any due fresh packet
+    is rejected (with a receipt), then the binding expires at the same clock.
+    Bob can read its authentic certificate before his decision. No further
+    Alice turn precedes that decision. Both branches collect only the one D.
+    """
+    def due(v: int) -> Move:
+        return Move(ALICE, f"due_late:{v}", (
+            ("quiet", bob("due_miss:quiet", v, "miss", v,
+                          deposit, backend, True, True)),
+            ("rejected_certificate", bob(f"due_miss:cert{v}", v, "miss", v,
+                                         deposit, backend, True, True))))
+
+    def first(v: int) -> Move:
+        protected = tuple((f"send{bit}", bob("due_protected", v, bit, bit,
+            deposit, backend, False)) for bit in BITS)
+        return Move(ALICE, f"due_first:{v}", protected + (("defer", due(v)),))
+
+    return Chance(tuple((HALF, first(v)) for v in BITS))
+
+
+def due_profile(root: Node, anticipatory: bool) -> Profile:
+    profile = trembles(root)
+    for v in BITS:
+        name = f"due_first:{v}"
+        profile[name] = pure(f"send{v}", *profile[name])
+        name = f"due_late:{v}"
+        profile[name] = pure("rejected_certificate" if anticipatory else "quiet", *profile[name])
+    for name in profile:
+        if name.startswith("due_miss:cert"):
+            profile[name] = pure(name[-1], "0", "1")
+    return profile
+
+
 def collection_mass(root: Node, profile: Profile) -> Fraction:
     return sum(weight for outcome, weight in law(root, profile).items() if outcome[-1])
 
@@ -464,6 +509,20 @@ def report() -> dict[str, object]:
             if content_gain > ZERO:
                 assert content_fixed_failures[name]["gain"] == content_gain
 
+        due = due_unexpired_target(deposit, backend)
+        assert_perfect_recall(due)
+        due_raw = due_profile(due, True)
+        due_fixed = due_profile(due, False)
+        due_raw_failures = rationality(due, due_raw)
+        due_fixed_failures = rationality(due, due_fixed)
+        assert (not due_raw_failures) == (deposit >= HALF)
+        assert law(due, due_raw) == protected_law
+        for v in BITS:
+            assert due_fixed_failures[f"due_late:{v}"]["gain"] == HALF
+            continuation = dict(due.branches[v][1].children)["defer"]
+            for _, response in continuation.children:
+                assert collection_mass(response, due_raw) == ONE
+
         cases[f"p={observation} q={delivery} D={deposit}"] = {
             "coverage": str(backend.coverage),
             "raw_completion_is_sequentially_rational": not raw_failures,
@@ -481,6 +540,13 @@ def report() -> dict[str, object]:
                 "anticipatory_raw_completion_is_sequentially_rational":
                     not content_raw_failures,
                 "anticipatory_raw_completion_violations": content_raw_failures,
+                "protected_initial_law_is_source_law": True,
+            },
+            "due_but_unexpired_first_binding": {
+                "both_actions_collect_the_same_one_deposit": True,
+                "excluded_certificate_gain": str(HALF),
+                "anticipatory_raw_completion_is_sequentially_rational": not due_raw_failures,
+                "anticipatory_raw_completion_violations": due_raw_failures,
                 "protected_initial_law_is_source_law": True,
             },
         }
