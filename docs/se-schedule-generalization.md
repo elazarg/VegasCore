@@ -2610,8 +2610,16 @@ it produces a consistent native assessment with immediate decisions at
 source-compatible sites and rational continuation at every free site under the
 actual audited utility. Its complete initialized history law equals first-turn
 play, including the joint full typed readout and realized sampled settlement
-vector. Rationality at prescribed sites remains open. In particular, this result does
-not assume normalization is continuous at zero-probability source transcripts.
+vector. Rationality at unfinished prescribed sites remains open. This result
+does not assume normalization is continuous at zero-probability source transcripts.
+
+The same module proves that the full effective immediate profile extends the
+risk reference at every actual risk decision site. Its initialized and terminal
+history laws are the actual menu-inclusion images of first-turn play; initialized
+decisions have the existing clean source-compatible witnesses. The full effective
+pin therefore preserves the typed source readout and complete sampled settlement
+vector jointly. This transports the prescribed profile, not the returned
+assessment's rational completion to the full effective menu.
 
 [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
 bounds every complete initialized history under the actual uniformly perturbed

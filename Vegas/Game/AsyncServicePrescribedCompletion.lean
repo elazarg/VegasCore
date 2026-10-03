@@ -1,5 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
+import Vegas.Game.SourceServiceEffectiveImmediateComparator
+import Interaction.ReactiveMenuContinuation
 import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceImmediatePolicy
 import Vegas.Game.SourceServiceProtectedDecisionLaw
@@ -163,6 +165,133 @@ theorem immediateProfile_initialized_history (turns : Nat)
           (sourceServiceImmediatePolicy_firstTurn_roundSupported service turns profile control who
             actual).symm
   · exact (model).behavioral_eq_of_not_active _ _ history.trace active
+
+local notation "effectiveMenu" => service.bounds.menu (runtime service.setup) service.leaks
+local notation "effectiveModel" => ReactiveApplication.ResponseMenu.information
+  (service.bounds.menu (runtime service.setup) service.leaks)
+  (initialLaw service.setup) service.horizon service.scheduler
+
+/-- The full effective immediate pin agrees with the risk reference at every
+actual risk decision site, including sites after earlier deferrals. -/
+theorem immediateProfile_extends_effective
+    (profile : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (profile who).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program)) :
+    ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+      service.bound).actionRestriction (initialLaw service.setup) service.horizon
+        service.scheduler).ExtendsProfile (service.immediateProfile profile)
+      (fun who => service.effectiveImmediateComparator profile who) := by
+  exact (service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+    service.bound).restrictProfile_extends_of_admissible (initialLaw service.setup)
+      service.horizon service.scheduler
+      (sourceServiceImmediatePolicy service.setup service.leaks service.bound profile)
+      (fun who => sourceServiceImmediatePolicy_risk_admissible service.bounds service.values
+        service.initialValues service.capacity service.bound profile who (permitted who)
+          service.horizon service.scheduler)
+
+/-- Full effective immediate play has the embedded initialized first-turn
+history law. The embedding preserves every actual state and own input. -/
+theorem effectiveImmediateProfile_initialized_history (turns : Nat)
+    (profile : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (profile who).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program)) (fuel : Nat) :
+    (effectiveModel).runBehavioral (fun who => service.effectiveImmediateComparator profile who)
+        fuel =
+      ((model).runBehavioral (service.firstTurnProfile turns profile) fuel).map
+        ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+          service.bound).history (initialLaw service.setup) service.horizon service.scheduler) := by
+  have law := InformationModel.ActionRestriction.initialized_law
+    ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+      service.bound).actionRestriction (initialLaw service.setup) service.horizon
+        service.scheduler) (service.immediateProfile profile)
+        (fun who => service.effectiveImmediateComparator profile who)
+        (service.immediateProfile_extends_effective profile permitted) fuel
+  change ((model).runBehavioral (service.immediateProfile profile) fuel).map _ = _ at law
+  rw [service.immediateProfile_initialized_history turns profile permitted] at law
+  exact law.symm
+
+/-- Every actual decision visited by initialized full effective immediate
+play has the existing clean source-compatible witness. -/
+theorem effectiveImmediateProfile_sourceCompatibleInfo (turns : Nat)
+    (profile : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (profile who).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program))
+    (effective : ∀ who, (profile who).EffectiveDisclosures service.setup.program []
+      (Revelations.initial service.setup.context))
+    (fuel : Nat)
+    (history : ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).History)
+    (reached : history ∈ ((effectiveModel).runBehavioral
+      (fun who => service.effectiveImmediateComparator profile who) fuel).support)
+    (who : Player)
+    (active : ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).active history.state who) :
+    service.sourceCompatibleInfo who ((effectiveModel).infoOf who history.trace) := by
+  rw [service.effectiveImmediateProfile_initialized_history turns profile permitted fuel,
+    PMF.support_map] at reached
+  obtain ⟨original, supported, rfl⟩ := reached
+  have retainedActive : ((menu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).active original.state who := active
+  have compatible := service.firstTurnProfile_sourceCompatibleInfo turns profile permitted
+    effective fuel original supported who retainedActive
+  rw [(service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+    service.bound).observed]
+  exact compatible
+
+/-- The actual full effective terminal pin law is the embedded risk first-turn
+law. This preserves one terminal state before any settlement sampling. -/
+theorem effectiveImmediateProfile_terminal_history
+    (profile : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (profile who).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program)) :
+    (effectiveModel).runBehavioralTerminalFrom
+        ((effectiveMenu).bounded (initialLaw service.setup) service.horizon
+          service.scheduler).wellFoundedHistories
+        (fun who => service.effectiveImmediateComparator profile who)
+        ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
+          service.scheduler).initHistory =
+      ((model).runBehavioralTerminalFrom
+        ((menu).bounded (initialLaw service.setup) service.horizon
+          service.scheduler).wellFoundedHistories
+        (service.firstTurnProfile service.horizon profile)
+        ((menu).protocol (initialLaw service.setup) service.horizon
+          service.scheduler).initHistory).map
+        ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+          service.bound).history (initialLaw service.setup) service.horizon service.scheduler) := by
+  rw [InformationModel.runBehavioralTerminalFrom_initHistory (effectiveModel) _ _
+      ((effectiveMenu).bounded (initialLaw service.setup) service.horizon service.scheduler),
+    InformationModel.runBehavioralTerminalFrom_initHistory (model) _ _
+      ((menu).bounded (initialLaw service.setup) service.horizon service.scheduler)]
+  exact service.effectiveImmediateProfile_initialized_history service.horizon profile permitted _
+
+/-- The full effective pin preserves typed source outcomes and the complete
+actual sampled settlement vector jointly, without a new audit assumption. -/
+theorem effectiveImmediateProfile_joint_law
+    (profile : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (profile who).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program))
+    (effective : ∀ who, (profile who).EffectiveDisclosures service.setup.program []
+      (Revelations.initial service.setup.context))
+    (utility : State L service.setup.program.terminalCtx → Player → ℝ)
+    (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
+    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
+    (probability : Player → ℝ) :
+    ((effectiveModel).runBehavioralTerminalFrom
+      ((effectiveMenu).bounded (initialLaw service.setup) service.horizon
+        service.scheduler).wellFoundedHistories
+      (fun who => service.effectiveImmediateComparator profile who)
+      ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
+        service.scheduler).initHistory).bind (fun final =>
+          (TerminalAudit.settlement (baseUtility service.setup service.leaks utility)
+            ((runtime service.setup).serviceAuditObservation service.leaks)
+            (sourceServiceAudit service.setup service.leaks sample)
+            (service.auditDeposit (baseUtility service.setup service.leaks utility) probability)
+            final.state).map fun payoffs =>
+              (sourceReadout service.setup service.leaks final.state, payoffs)) =
+      (service.setup.run profile).map (fun source => (some source, utility source)) := by
+  rw [service.effectiveImmediateProfile_terminal_history profile permitted, PMF.bind_map]
+  exact service.firstTurnProfile_joint_law service.horizon profile permitted effective utility
+    sample authentic probability
 
 private def completionWeight (n : Nat) : ℝ := (1 / ((n : ℝ) + 1)) / 2
 
