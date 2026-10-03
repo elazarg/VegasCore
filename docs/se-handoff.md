@@ -64,6 +64,12 @@ future private values changed by repair are outside the claim.
 - [SourceServiceProtectedDecisionLaw](../Vegas/Game/SourceServiceProtectedDecisionLaw.lean)
   derives the geometric response marginal at any actual protected unrecorded
   turn from full own recall, including earlier benign deferrals.
+- [SourceServiceFirstActivation](../Vegas/Game/SourceServiceFirstActivation.lean)
+  reaches the first ready owner input from an untouched completion boundary
+  within the contract horizon. The configuration is unchanged and the turn
+  has protected inclusion. Actual recall recovers its before-response input;
+  integrating the response lottery preserves that same passive sample.
+  The whole waiting-to-activation traffic channel remains separate.
 - [SourceServiceBindingResponseCompletion](../Vegas/Game/SourceServiceBindingResponseCompletion.lean)
   joins the actual transmitting draw to its typed successor and full stopped
   traffic. Waiting remains separate; prescribed foreign continuations are
@@ -106,6 +112,17 @@ future private values changed by repair are outside the claim.
   source prefix. Its view law carries an effective source-view channel
   through the restoration without assuming a posterior equation. Actual
   native traffic still needs to be identified with that channel.
+- [DisclosureProfileJointChannel](../Vegas/Game/DisclosureProfileJointChannel.lean)
+  retains correlated initial parameters, the complete original source state
+  and the same source-view channel draw through the common memory lottery.
+  It does not identify the channel with native input probabilities.
+- [SourceServiceAuthorizationBreach](../Vegas/Game/SourceServiceAuthorizationBreach.lean)
+  proves final rejection of actual invalid-token and foreign-actor packets.
+  [SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
+  includes these in its information-local classifier and derives collection
+  from partial observation and conditional reporting coverage. Valid-token
+  off-turn packets, wrong-node-kind calls and private capabilities require
+  their own classifications or comparisons.
 - [SourceServiceRiskExtension](../Vegas/Game/SourceServiceRiskExtension.lean)
   extends an audited risk-menu equilibrium after classified packet coverage
   and other-exclusion comparisons are supplied. It does not embed a source

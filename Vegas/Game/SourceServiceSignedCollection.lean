@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.SourceServiceAudit
+import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ReactiveSettledCollection
 import Interaction.ReactiveLocalContinuation
 import GameTheoryExtensions.Protocol.ContinuationHorizon
@@ -56,6 +57,11 @@ theorem settledPacket_collection_committed
       ((application setup leaks).protocol (initialLaw setup) horizon scheduler).ReachesWithin fuel
         (menu.toRawHistory (initialLaw setup) horizon scheduler history) final →
       ∀ control, final.state = some control → control.execution.application.config.cut.Terminal →
+        Emitted setup leaks control.execution
+          (⟨(who, execution.network.nextSerial who), (application setup leaks).packet
+            ((application setup leaks).submit execution.application who material) who
+              (execution.network.known who) material⟩ :
+                Message Player (WitnessedPacket (graph setup))) →
         ((runtime setup).settledRecord leaks control.execution).permits
           (⟨(who, execution.network.nextSerial who), (application setup leaks).packet
             ((application setup leaks).submit execution.application who material) who
@@ -169,8 +175,21 @@ theorem settledPacket_collection_committed
       have complete := completes control terminalTrace (finalState ▸ stopped)
       have suffix := protocol.runRandomizedFor_reachesWithin (model.randomizedChooser updated)
         fuel next final finalSupported
+      have kept : record ∈ app.stateTraffic final.state := by
+        have persists := (menu.trafficAudit_reaches (initialLaw setup) horizon scheduler
+          suffix).subset
+        rw [menu.trafficAudit_eq_stateTraffic, menu.trafficAudit_eq_stateTraffic] at persists
+        exact persists present
+      have inputs := app.stateTraffic_inputs (initialLaw setup) horizon scheduler terminalTrace
+      rw [finalState] at kept
+      change (app.executionTraffic control.execution).map
+        ReactiveApplication.TrafficRecord.envelope = control.execution.network.inputs at inputs
+      have emitted : Emitted setup leaks control.execution record.envelope := by
+        unfold Emitted
+        rw [← inputs]
+        exact List.mem_map.mpr ⟨record, kept, rfl⟩
       exact forbidden (1 + fuel) (menu.toRawHistory (initialLaw setup) horizon scheduler final)
         (menu.reaches_raw (initialLaw setup) horizon scheduler (path.trans suffix)) control
-        finalState complete
+        finalState complete emitted
 
 end Vegas

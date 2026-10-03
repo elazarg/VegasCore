@@ -1432,6 +1432,22 @@ its weight read from the compressed original view. The support identity comes
 from the actual intermediate prefix laws; it is not an assumed information
 fiber equation. Identifying that channel with native traffic remains separate.
 
+[DisclosureProfileJointChannel](../Vegas/Game/DisclosureProfileJointChannel.lean)
+keeps correlated initial parameters in this same joint original-state and
+channel law. The common restoration lottery and the channel draw are retained
+together. The noise kernel reads only the focal effective source view; it
+does not supply a native-input likelihood or a source posterior.
+
+[SourceServiceFirstActivation](../Vegas/Game/SourceServiceFirstActivation.lean)
+derives the first ready owner input from an actual untouched completion
+boundary and exact owner first-turn policy. Other policies may be arbitrary.
+The stop is reached within the asynchronous contract's horizon, retains the
+boundary configuration, and has protected inclusion. The actual own recall
+recovers the passive before-response input; integrating the response lottery
+preserves that same input sample. Equal complete owner traffic gives equal
+activation-input laws. Factoring the whole preceding public-scheduler waiting
+period still needs a separate composition proof.
+
 [SourceServiceResolutionResponseCompletion](../Vegas/Game/SourceServiceResolutionResponseCompletion.lean)
 connects a supported original intention from that memory lottery to the actual
 normalized response and its initialized continuation. Protected stopping
@@ -1706,15 +1722,24 @@ the private-capability continuation argument address separate parts of this
 obligation.
 
 [SourceServiceAuditableCollection](../Vegas/Game/SourceServiceAuditableCollection.lean)
-combines the three checked packet classes in an information-local predicate.
+combines constructor breaches, authorization breaches, wrong current-event
+handles and public guard failures in an information-local predicate.
 Own recall and current view reconstruct the entire actual emitted envelope,
 including its serial, evidence and readiness token. Committing a classified
 choice derives traffic persistence and the final forbidden verdict under
 arbitrary later policies, then supplies its expected collection bound.
 `auditableBreachAtSite` uses this predicate directly in the enforcement
 extension. Wrong current-event handles and public guard failures therefore
-need no separate comparison hypothesis; private material, guard-passing
-capability and unclassified off-turn packets retain their own obligations.
+need no separate comparison hypothesis. Neither do the invalid-token and
+foreign-actor classes in
+[SourceServiceAuthorizationBreach](../Vegas/Game/SourceServiceAuthorizationBreach.lean).
+For these classes, receipt soundness uses the actual emitted envelope:
+identifier equality alone could refer to a different hypothetical packet.
+The collection continuation derives final emission from the chosen response
+and traffic persistence. A premature call without a readiness token is
+covered; valid-token off-turn calls are not automatically forbidden. Wrong
+node-kind calls, private material and guard-passing capability retain their
+own obligations.
 
 [ReactiveSettledCollection](../Vegas/Pending/ReactiveSettledCollection.lean)
 states that broader backend obligation as `FinalForbiddenEvidenceCoverage`.
@@ -1722,8 +1747,8 @@ For an actual persisted signed packet forbidden by the final record, the
 expected one-time collected charge is at least observation rate times
 conditional delivery rate. The continuation lemma derives traffic persistence
 under arbitrary later policies; final forbiddenness is an explicit
-operational premise. Complete play supplies it for signed constructor
-breaches. Sampling may be partial and correlated, and no report must arrive
+operational premise. The classified-packet proofs derive it from the actual
+complete record. Sampling may be partial and correlated, and no report must arrive
 with certainty.
 
 [SourceServiceRiskRawExtension](../Vegas/Game/SourceServiceRiskRawExtension.lean)

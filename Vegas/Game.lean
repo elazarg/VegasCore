@@ -73,6 +73,7 @@ import Vegas.Game.SourceServiceRiskPolicy
 import Vegas.Game.SourceServiceRiskPrefix
 import Vegas.Game.SourceServiceImmediatePolicy
 import Vegas.Game.SourceServiceImmediateRecall
+import Vegas.Game.SourceServiceFirstActivation
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceCleanContinuation
 import Vegas.Game.SourceServiceImmediateAudit
@@ -82,6 +83,7 @@ import Vegas.Game.SourceServiceSignedCollection
 import Vegas.Game.SourceServiceNoncanonicalBinding
 import Vegas.Game.SourceServiceGuardFailure
 import Vegas.Game.SourceServiceAuditableCollection
+import Vegas.Game.SourceServiceAuthorizationBreach
 import Vegas.Game.SourceServiceRiskExtension
 import Vegas.Game.SourceServiceAliasEquilibrium
 import Vegas.Game.SourceServiceRiskRawExtension
@@ -249,6 +251,7 @@ import Vegas.Game.ServiceRosterPosition
 import Vegas.Game.DisclosurePrefix
 import Vegas.Game.DisclosureProfilePrefix
 import Vegas.Game.DisclosureProfileRetraction
+import Vegas.Game.DisclosureProfileJointChannel
 import Vegas.Game.DisclosureRetraction
 import Vegas.Game.DisclosureBeliefs
 import Vegas.Game.DisclosureContinuation

@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceNoncanonicalBinding
 import Vegas.Game.SourceServiceGuardFailure
 import Vegas.Game.SourceServiceSignedCollection
+import Vegas.Game.SourceServiceAuthorizationBreach
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveSubmissionSerial
 import Vegas.Pending.EvidenceNormalization
@@ -11,10 +12,11 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 /-! # Information-local auditable responses and actual collection
 
 Own recall and the current view reconstruct the next signed envelope. The
-charged classes are constructor-level breaches, a commitment to the current
-owned event with a noncanonical handle, and an opening of that event whose
-public guard check fails. The guard check reads the public store and signed
-opened value, so this classification needs no private configuration oracle.
+charged classes are constructor-level breaches, invalid readiness tokens,
+packets addressed to another actor's event, a commitment to the current owned
+event with a noncanonical handle, and an opening of that event whose public
+guard check fails. The guard check reads the public store and signed opened
+value, so this classification needs no private configuration oracle.
 
 Committing a classified response produces actual traffic. That traffic
 persists, and complete play supplies its final forbidden verdict under every
@@ -35,11 +37,11 @@ variable {Player : Type} [DecidableEq Player]
   (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- Constructor breaches need no opportunity. The two additional classes
-refer to the owner's currently ready event and public application metadata. -/
+/-- Constructor and authorization breaches need no opportunity. Handle and
+guard failures refer to the owner's ready event and public metadata. -/
 def AuditableServicePacket (view : PublicView (graph setup)) (who : Player)
     (message : Message Player (WitnessedPacket (graph setup))) : Prop :=
-  SignedContentBreach message ∨
+  SignedContentBreach message ∨ ServiceAuthorizationBreach message ∨
     ∃ event, view.ownTurn? who = some event ∧
       ((∃ candidate, message.payload.call = .commitment event candidate ∧
           candidate ≠ (who, .prepared (view.bindingCount who))) ∨
@@ -120,8 +122,8 @@ def auditableServiceChoice (menu : (application setup leaks).ResponseMenu)
 
 omit [Fintype Player] in
 /-- Every classified actual packet is forbidden at every reachable complete
-record. The current-opportunity classes use the checked ordinal and public
-guard persistence results; constructor breaches need no readiness premise. -/
+record. Receipt soundness checks authorization of the actual emitted packet;
+the other classes use constructor, ordinal and public guard checks. -/
 theorem auditableServicePacket_forbidden_reaches
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {first last :
@@ -134,10 +136,12 @@ theorem auditableServicePacket_forbidden_reaches
     (who : Player) (message : Message Player (WitnessedPacket (graph setup)))
     (authored : message.sender = who)
     (classified : AuditableServicePacket setup before.execution.application.publicView who message)
+    (emitted : Emitted setup leaks after.execution message)
     (complete : after.execution.application.config.cut.Terminal) :
     ((runtime setup).settledRecord leaks after.execution).permits message = false := by
-  rcases classified with signed | ⟨event, turn, noncanonical | guarded⟩
+  rcases classified with signed | unauthorized | ⟨event, turn, noncanonical | guarded⟩
   · exact signed.forbidden (runtime setup) leaks after.execution complete
+  · exact unauthorized.forbidden_history (lastState ▸ last.trace) emitted complete
   · obtain ⟨candidate, committed, different⟩ := noncanonical
     have ready := (before.execution.application.publicView_eventReady event).mp
       ((before.execution.application.publicView.ownTurn?_spec who event turn).1)
@@ -208,8 +212,8 @@ theorem auditableServiceChoice_collection_committed
   apply settledPacket_collection_committed setup leaks menu horizon scheduler completes backend
     profile history who remaining execution current info choice observed material selected ?_
     observationRate deliveryRate delivery_nonnegative coverage
-  intro fuel final path control finalState complete
+  intro fuel final path control finalState complete emitted
   exact auditableServicePacket_forbidden_reaches setup leaks path
-    ⟨remaining, some who, execution⟩ control current finalState who _ rfl auditable complete
+    ⟨remaining, some who, execution⟩ control current finalState who _ rfl auditable emitted complete
 
 end Vegas

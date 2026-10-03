@@ -102,6 +102,13 @@ play; readiness starts the timer. The general retained menu keeps deferrals.
 Late unrecorded opportunities and persistent owner risk open the bounded raw
 continuation menu.
 
+[SourceServiceFirstActivation](../Vegas/Game/SourceServiceFirstActivation.lean)
+derives the first ready owner input from an actual untouched completion
+boundary. The contract horizon bounds its stopping time, the source
+configuration is unchanged, and the input has protected inclusion. Its recall
+readout integrates the actual response lottery after the same passive sample.
+The traffic channel through the preceding scheduler rounds remains open.
+
 The actual binding-response law now composes with protected completion,
 retaining the transmitting draw and full stopped traffic. The native Bayes
 law cancels the complete focal owner's recalled-action likelihood, including
@@ -131,6 +138,10 @@ The actual restoration also retracts to the same effective state on support,
 and its view compression transports an effective source-view channel through
 the common original-memory lottery. Waiting in the binding prefix law uses
 the real decoder's unfinished result, derived from the unwritten ready field.
+[DisclosureProfileJointChannel](../Vegas/Game/DisclosureProfileJointChannel.lean)
+retains correlated initial parameters in that same original-state and channel
+law. The channel reads the effective source view; its identification with
+actual native traffic remains a separate obligation.
 A single timely canonical transmission followed by owner silence also has an
 actual accepted-action/public-miss dichotomy outside the protected window.
 Its acceptance law can depend on the builder and the public packet content;
@@ -161,6 +172,14 @@ delivery may be correlated. Positive conditional coverage and a finite
 challenge window are backend obligations. A concrete pending-message reporting
 implementation must establish them. Public misses and packet collection are
 separate mechanisms.
+
+[SourceServiceAuthorizationBreach](../Vegas/Game/SourceServiceAuthorizationBreach.lean)
+derives rejection of actual emitted invalid-token and foreign-actor packets
+at every complete legal record. The information-local auditable classifier
+uses it with the existing partial-evidence collection bound. This supplies
+another checked deviation class without changing backend coverage; wrong
+node kinds, valid-token off-turn calls and private capabilities retain their
+own proof obligations.
 
 ## Validation
 
