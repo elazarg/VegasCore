@@ -511,12 +511,13 @@ theorem sourceServiceFirstResolution_decided_traffic
       ((PublicView.ownTurn?_spec _ owner event turn).1)
   · exact same
 
-/-- An original intention is carried unchanged with the effective decision
-through its whole actual asynchronous phase. Only the prior source-pair
-traffic factorization is an induction hypothesis. Its next traffic channel
+/-- An original intention and a parameter are carried unchanged with the
+effective decision through its whole actual asynchronous phase. Only the prior
+source-pair traffic factorization is an induction hypothesis. Its next traffic channel
 is proved from actual protected response and completion coupling. -/
 theorem sourceServiceFirstResolution_intention_factorization
-    {Seed : Type*} {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
+    {Seed Parameter : Type*} {Γ : SourceCtx Player L} {name : VarId} {owner : Player}
+    {payload : L.Ty}
     (published : VarId) (binding : HasVar Γ name (.commitment owner payload))
     (refs : ContextRefs (graph setup).layout Γ)
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
@@ -527,7 +528,7 @@ theorem sourceServiceFirstResolution_intention_factorization
     (turns : Nat) (profile : BehavioralProfile setup.program)
     (focal : Player) (event : (graph setup).EventId)
     (outputEq : (graph setup).outputLayout event = .publication payload)
-    (prior : PMF Seed) (source original : Seed → Config Player L Γ)
+    (prior : PMF Seed) (parameter : Seed → Parameter) (source original : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (agree : ∀ seed ∈ prior.support,
       refs.Agrees (source seed).state (execution seed).application.config.store)
@@ -545,9 +546,9 @@ theorem sourceServiceFirstResolution_intention_factorization
     (within : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
     (choice : Config Player L Γ → PMF Bool)
     (noise : DecisionView focal Γ → PMF _)
-    (factor : prior.map (fun seed => ((source seed, original seed),
+    (factor : prior.map (fun seed => ((source seed, original seed, parameter seed),
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
-      (prior.map (fun seed => (source seed, original seed))).bind fun pair =>
+      (prior.map (fun seed => (source seed, original seed, parameter seed))).bind fun pair =>
         (noise (pair.1.view focal)).map fun extra => (pair, extra)) :
     ∃ nextNoise : DecisionView focal ((published, .publication payload) :: Γ) → PMF _,
       (prior.bind fun seed => (choice (original seed)).bind fun intended =>
@@ -559,13 +560,13 @@ theorem sourceServiceFirstResolution_intention_factorization
           (execution seed)).map fun final =>
             ((revealSuccessor published binding (source seed)
                 (effectiveDisclosure published binding (source seed) intended),
-              revealSuccessor published binding (original seed) intended),
+              revealSuccessor published binding (original seed) intended, parameter seed),
                 (runtime setup).bindingTraffic leaks focal final)) =
-      ((prior.map (fun seed => (source seed, original seed))).bind fun pair =>
-        (choice pair.2).map fun intended =>
+      ((prior.map (fun seed => (source seed, original seed, parameter seed))).bind fun pair =>
+        (choice pair.2.1).map fun intended =>
           (revealSuccessor published binding pair.1
             (effectiveDisclosure published binding pair.1 intended),
-            revealSuccessor published binding pair.2 intended)).bind fun next =>
+            revealSuccessor published binding pair.2.1 intended, pair.2.2)).bind fun next =>
               (nextNoise (next.1.view focal)).map fun extra => (next, extra) := by
   have emittable (config : Config Player L Γ) (intended : Bool) :
       effectiveDisclosure published binding config intended = false ∨ ∃ value : L.Val payload,
@@ -579,13 +580,14 @@ theorem sourceServiceFirstResolution_intention_factorization
         | success value =>
             exact Or.inr ⟨value, by simp only [effectiveDisclosure, result], rfl⟩
   obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior
-    (fun seed => (source seed, original seed))
+    (fun seed => (source seed, original seed, parameter seed))
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
-    (fun pair => pair.1.view focal) noise factor (fun pair => choice pair.2)
+    (fun pair => pair.1.view focal) noise factor (fun pair => choice pair.2.1)
     (fun pair intended =>
       (revealSuccessor published binding pair.1
         (effectiveDisclosure published binding pair.1 intended),
-        revealSuccessor published binding pair.2 intended)) (fun pair => pair.1.view focal)
+        revealSuccessor published binding pair.2.1 intended, pair.2.2))
+      (fun pair => pair.1.view focal)
     (fun seed intended => ((application setup leaks).runUntilHorizon scheduler
       (decidedProfile (leaks := leaks) bound owner event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm)

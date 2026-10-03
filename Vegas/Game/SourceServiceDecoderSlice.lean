@@ -2,6 +2,8 @@
 
 import Vegas.Game.SourceServicePrefix
 import Vegas.Game.SourceStateKernel
+import Vegas.Compile.EventGraphPolicyLaw
+import Vegas.Source.DisclosureNormalization
 
 /-! # One source decoder slice shared by every native store
 
@@ -23,26 +25,35 @@ open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {Field : Type} [DecidableEq Field]
-  {layout : Field → EventGraph.EventField Player L}
+  {wholeΓ : SourceCtx Player L} {wholeNames : Finset VarId}
+  (whole : SourceProgram Player L wholeΓ wholeNames) (wholeProfile : BehavioralProfile whole)
 
 /-- A static source prefix has one decoder slice for all stores and histories.
 Its actual behavioral tail profile commutes with the same source-state lift.
 No source strategy admission, native support or observation law is assumed. -/
 theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
-    (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
-    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+    (refs : ContextRefs (graphLayout whole) Γ) (registry : Registry Γ)
+    (revelations : Revelations Γ)
+    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
+    (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
+    (aligned : CompiledPolicySuffix whole wholeProfile program profile refs revelations registry
+      embedding refsBefore offset)
     (rank : Nat) (within : rank ≤ eventCount program) :
     ∃ (Δ : SourceCtx Player L) (tailNames : Finset VarId)
       (tail : SourceProgram Player L Δ tailNames) (tailProfile : BehavioralProfile tail)
-      (tailRefs : ContextRefs layout Δ) (tailRegistry : Registry Δ)
+      (tailRefs : ContextRefs (graphLayout whole) Δ) (tailRegistry : Registry Δ)
       (tailRevelations : Revelations Δ)
-      (tailOutputs : ∀ event, EventGraph.FieldRef layout (outputLayout tail event))
+      (tailEmbedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) tail)
+      (tailBefore : ContextRefsBefore tailRefs tailEmbedding)
       (lift : ProtocolState tail → ProtocolState program)
       (liftView : ∀ who, ProtocolView who tail → ProtocolView who program)
       (recover : ∀ who, ProtocolView who program → Option (ProtocolView who tail)),
       rank + eventCount tail = eventCount program ∧
+      CompiledPolicySuffix whole wholeProfile tail tailProfile tailRefs tailRevelations tailRegistry
+        tailEmbedding tailBefore (offset + rank) ∧
+      ((∀ who, (profile who).EffectiveDisclosures program registry revelations) →
+        ∀ who, (tailProfile who).EffectiveDisclosures tail tailRegistry tailRevelations) ∧
       Function.Injective lift ∧
       (∀ who state, ProtocolState.observe who program (lift state) =
         liftView who (ProtocolState.observe who tail state)) ∧
@@ -51,13 +62,15 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
       (∀ [Fintype Player] state, ProtocolState.behavioralStateStep program profile (lift state) =
         (ProtocolState.behavioralStateStep tail tailProfile state).map lift) ∧
       ∀ more store history,
-        decodeSourcePrefix? program refs registry revelations outputs (rank + more) store history =
-          (decodeSourcePrefix? tail tailRefs tailRegistry tailRevelations tailOutputs
+        decodeSourcePrefix? program refs registry revelations embedding.ref (rank + more)
+            store history =
+          (decodeSourcePrefix? tail tailRefs tailRegistry tailRevelations tailEmbedding.ref
             more store history).map lift := by
-  induction rank generalizing Γ names with
+  induction rank generalizing Γ names offset with
   | zero =>
-      refine ⟨Γ, names, program, profile, refs, registry, revelations, outputs, id,
-        (fun _ => id), (fun _ => some), by omega, Function.injective_id,
+      refine ⟨Γ, names, program, profile, refs, registry, revelations, embedding, refsBefore, id,
+        (fun _ => id), (fun _ => some), by omega, by simpa only [Nat.add_zero] using aligned,
+        (fun effective => effective), Function.injective_id,
         (fun _ _ => rfl), (fun _ _ => rfl), ?_, ?_⟩
       · intro _inst state
         simp only [id_eq, PMF.map_id]
@@ -69,22 +82,43 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
           simp only [eventCount] at within
           omega
       | @sample Γ names name payload fresh distribution next =>
-          let headRef : EventGraph.FieldRef layout (.publicData payload) := by
-            simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
+          let headIndex : Fin (eventCount (.sample name fresh distribution next)) :=
+            ⟨0, by simp [eventCount]⟩
+          let headRef : EventGraph.FieldRef (graphLayout whole) (.publicData payload) :=
+            embedding.ref headIndex
+          let nextEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+          let nextRefs : ContextRefs (graphLayout whole) ((name, .publicData payload) :: Γ) :=
+            refs.cons headRef
+          have nextBefore : ContextRefsBefore nextRefs nextEmbedding := by
+            intro readName cell ref remaining
+            cases ref with
+            | here =>
+                change (embedding.event headIndex).val < (embedding.event remaining.succ).val
+                exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
+            | there ref => exact refsBefore ref remaining.succ
+          have nextAligned : CompiledPolicySuffix whole wholeProfile next (afterSample profile)
+              nextRefs revelations.weaken registry.weaken nextEmbedding nextBefore (offset + 1) :=
+            aligned.sampleTail whole wholeProfile (_openNames := names) fresh distribution next
+              profile refs revelations registry embedding refsBefore offset
           have tailBound : rank ≤ eventCount next := by
             simp only [eventCount] at within
             omega
           obtain ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, lift, liftView, recover, counted, injective, viewed, recovered,
+            tailEmbedding, tailBefore, lift, liftView, recover, counted, tailAligned, tailEffective,
+            injective,
+            viewed, recovered,
             commutes, transport⟩ :=
-            ih next (afterSample profile) (refs.cons headRef) (registry.weaken) (revelations.weaken)
-              (fun event => outputs event.succ) tailBound
+            ih next (afterSample profile) nextRefs registry.weaken revelations.weaken nextEmbedding
+              nextBefore (offset + 1) nextAligned tailBound
           refine ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
-            (fun who view => view.getRight?.bind (recover who)), ?_,
+            tailEmbedding, tailBefore, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
+            (fun who view => view.getRight?.bind (recover who)), ?_, ?_, ?_,
             Sum.inr_injective.comp injective, ?_, ?_, ?_, ?_⟩
           · simp only [eventCount]
             omega
+          · simpa only [Nat.add_assoc, Nat.add_comm 1 rank] using tailAligned
+          · intro effective
+            exact tailEffective (fun who => effective who)
           · intro who state
             exact congrArg Sum.inr (viewed who state)
           · intro who state
@@ -93,28 +127,56 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
             rw [Function.comp_apply, ProtocolState.behavioralStateStep_sample_tail,
               commutes, PMF.map_comp]
           · intro more store history
-            rw [show rank + 1 + more = (rank + more) + 1 by omega,
-              decodeSourcePrefix?_sample, transport, Option.map_map]
+            rw [show rank + 1 + more = (rank + more) + 1 by omega, decodeSourcePrefix?_sample]
+            have outputsEq : nextEmbedding.ref =
+                fun event : Fin (eventCount next) => embedding.ref event.succ := by
+              funext event
+              rfl
+            have shifted := transport more store history
+            rw [outputsEq] at shifted
+            simpa only [nextRefs, headRef, headIndex, Option.map_map] using
+              congrArg (Option.map Sum.inr) shifted
       | @commit Γ names name owner payload fresh guard next =>
-          let headRef : EventGraph.FieldRef layout (.binding owner payload) := by
-            simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
+          let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
+            ⟨0, by simp [eventCount]⟩
+          let headRef : EventGraph.FieldRef (graphLayout whole) (.binding owner payload) :=
+            embedding.ref headIndex
+          let nextEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+          let nextRefs : ContextRefs (graphLayout whole) ((name, .commitment owner payload) :: Γ) :=
+            refs.cons headRef
           let nextRegistry : Registry ((name, .commitment owner payload) :: Γ) :=
             { owner := owner, subject := name, payload := payload, source := HasVar.here,
               guard := guard.weaken } :: registry.weaken
+          have nextBefore : ContextRefsBefore nextRefs nextEmbedding := by
+            intro readName cell ref remaining
+            cases ref with
+            | here =>
+                change (embedding.event headIndex).val < (embedding.event remaining.succ).val
+                exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
+            | there ref => exact refsBefore ref remaining.succ
+          have nextAligned : CompiledPolicySuffix whole wholeProfile next (afterCommit profile)
+              nextRefs revelations.weaken nextRegistry nextEmbedding nextBefore (offset + 1) :=
+            aligned.commitTail whole wholeProfile fresh guard next profile refs revelations registry
+              embedding refsBefore offset
           have tailBound : rank ≤ eventCount next := by
             simp only [eventCount] at within
             omega
           obtain ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, lift, liftView, recover, counted, injective, viewed, recovered,
+            tailEmbedding, tailBefore, lift, liftView, recover, counted, tailAligned, tailEffective,
+            injective,
+            viewed, recovered,
             commutes, transport⟩ :=
-            ih next (afterCommit profile) (refs.cons headRef) (nextRegistry) (revelations.weaken)
-              (fun event => outputs event.succ) tailBound
+            ih next (afterCommit profile) nextRefs nextRegistry revelations.weaken nextEmbedding
+              nextBefore (offset + 1) nextAligned tailBound
           refine ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
-            (fun who view => view.getRight?.bind (recover who)), ?_,
+            tailEmbedding, tailBefore, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
+            (fun who view => view.getRight?.bind (recover who)), ?_, ?_, ?_,
             Sum.inr_injective.comp injective, ?_, ?_, ?_, ?_⟩
           · simp only [eventCount]
             omega
+          · simpa only [Nat.add_assoc, Nat.add_comm 1 rank] using tailAligned
+          · intro effective
+            exact tailEffective (fun who => effective who)
           · intro who state
             exact congrArg Sum.inr (viewed who state)
           · intro who state
@@ -123,25 +185,54 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
             rw [Function.comp_apply, ProtocolState.behavioralStateStep_commit_tail,
               commutes, PMF.map_comp]
           · intro more store history
-            rw [show rank + 1 + more = (rank + more) + 1 by omega,
-              decodeSourcePrefix?_commit, transport, Option.map_map]
+            rw [show rank + 1 + more = (rank + more) + 1 by omega, decodeSourcePrefix?_commit]
+            have outputsEq : nextEmbedding.ref =
+                fun event : Fin (eventCount next) => embedding.ref event.succ := by
+              funext event
+              rfl
+            have shifted := transport more store history
+            rw [outputsEq] at shifted
+            simpa only [nextRefs, headRef, headIndex, nextRegistry, Option.map_map] using
+              congrArg (Option.map Sum.inr) shifted
       | @reveal Γ names published owner name payload fresh selected unresolved next =>
-          let headRef : EventGraph.FieldRef layout (.publication payload) := by
-            simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
+          let headIndex : Fin (eventCount (.reveal published owner name fresh selected
+              unresolved next)) := ⟨0, by simp [eventCount]⟩
+          let headRef : EventGraph.FieldRef (graphLayout whole) (.publication payload) :=
+            embedding.ref headIndex
+          let nextEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+          let nextRefs : ContextRefs (graphLayout whole) ((published, .publication payload) :: Γ) :=
+            refs.cons headRef
+          have nextBefore : ContextRefsBefore nextRefs nextEmbedding := by
+            intro readName cell ref remaining
+            cases ref with
+            | here =>
+                change (embedding.event headIndex).val < (embedding.event remaining.succ).val
+                exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
+            | there ref => exact refsBefore ref remaining.succ
+          have nextAligned : CompiledPolicySuffix whole wholeProfile next (afterReveal profile)
+              nextRefs (revelations.reveal selected) registry.weaken nextEmbedding nextBefore
+                (offset + 1) :=
+            aligned.revealTail whole wholeProfile fresh selected unresolved next profile refs
+              revelations registry embedding refsBefore offset
           have tailBound : rank ≤ eventCount next := by
             simp only [eventCount] at within
             omega
           obtain ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, lift, liftView, recover, counted, injective, viewed, recovered,
+            tailEmbedding, tailBefore, lift, liftView, recover, counted, tailAligned, tailEffective,
+            injective,
+            viewed, recovered,
             commutes, transport⟩ :=
-            ih next (afterReveal profile) (refs.cons headRef) registry.weaken
-              (revelations.reveal selected) (fun event => outputs event.succ) tailBound
+            ih next (afterReveal profile) nextRefs registry.weaken (revelations.reveal selected)
+              nextEmbedding nextBefore (offset + 1) nextAligned tailBound
           refine ⟨Δ, tailNames, tail, tailProfile, tailRefs, tailRegistry, tailRevelations,
-            tailOutputs, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
-            (fun who view => view.getRight?.bind (recover who)), ?_,
+            tailEmbedding, tailBefore, Sum.inr ∘ lift, (fun who => Sum.inr ∘ liftView who),
+            (fun who view => view.getRight?.bind (recover who)), ?_, ?_, ?_,
             Sum.inr_injective.comp injective, ?_, ?_, ?_, ?_⟩
           · simp only [eventCount]
             omega
+          · simpa only [Nat.add_assoc, Nat.add_comm 1 rank] using tailAligned
+          · intro effective
+            exact tailEffective (fun who => (effective who).2)
           · intro who state
             exact congrArg Sum.inr (viewed who state)
           · intro who state
@@ -150,7 +241,14 @@ theorem exists_decoder_slice {Γ : SourceCtx Player L} {names : Finset VarId}
             rw [Function.comp_apply, ProtocolState.behavioralStateStep_reveal_tail,
               commutes, PMF.map_comp]
           · intro more store history
-            rw [show rank + 1 + more = (rank + more) + 1 by omega,
-              decodeSourcePrefix?_reveal, transport, Option.map_map]
+            rw [show rank + 1 + more = (rank + more) + 1 by omega, decodeSourcePrefix?_reveal]
+            have outputsEq : nextEmbedding.ref =
+                fun event : Fin (eventCount next) => embedding.ref event.succ := by
+              funext event
+              rfl
+            have shifted := transport more store history
+            rw [outputsEq] at shifted
+            simpa only [nextRefs, headRef, headIndex, Option.map_map] using
+              congrArg (Option.map Sum.inr) shifted
 
 end Vegas.SourceProgram

@@ -1377,8 +1377,11 @@ The residual also carries a partial recovery of each owner's source view,
 proved directly for its actual transport map. Recovery uses the source
 constructors rather than a default private value.
 [SourceServiceDecoderSlice](../Vegas/Game/SourceServiceDecoderSlice.lean)
-fixes one typed tail, behavioral profile, decoder lift and partial view
-recovery from the source syntax and rank. Its decoder splitting holds for
+fixes one typed tail, behavioral profile, compiler embedding, reference-order
+certificate, decoder lift and partial view recovery from the source syntax
+and rank. The actual compiled policy is aligned at that rank, and whole-profile
+effective disclosures imply tail effectiveness through the same syntax
+recursion. Its decoder splitting holds for
 every store, history and additional count, and its behavioral step commutes
 with that same lift. These witnesses are therefore shared across a prior;
 they are not selected from each hidden execution independently. An actual
@@ -1505,8 +1508,9 @@ unchanged. This retraction assumes no traffic noise or posterior equation.
 [SourceServiceFirstBindingTraffic](../Vegas/Game/SourceServiceFirstBindingTraffic.lean)
 proves the actual first-turn binding phase's whole next-prefix and full stopped
 traffic law using the same source draw. Its fixed-draw traffic coupling
-retains both original and effective typed successors from a prior
-source-view/traffic factorization, including a foreign focal player for whom
+retains both original and effective typed successors and an unchanged parameter
+from a prior source-view/traffic factorization, including a foreign focal player
+for whom
 different hidden binding draws have the same view. The actual first-owner
 input, fresh protected packet and completed checkpoint decoder are derived
 from initialized support. No separate source-draw or endpoint-agreement
@@ -1531,8 +1535,9 @@ first owner input, configuration stutter follows from actual initialized
 support and absence of that input. At activation, the protected canonical
 response, recorded call, new packet conformance and post-response trace are
 derived. Existing recorded silence then carries the same traffic to event
-completion. Its factorization retains an original intention and its effective
-decision through the same typed successor pair and stopped traffic; the
+completion. Its factorization retains an original intention, its effective
+decision and an unchanged parameter through the same typed successor pair
+and stopped traffic; the
 only probability premise is the preceding pair-view/traffic induction
 hypothesis. Actual compiler code and typed store agreement connect the pair
 to the event. This is a latent phase law: joining it to actual global source

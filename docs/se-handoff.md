@@ -113,7 +113,8 @@ future private values changed by repair are outside the claim.
 - [SourceServiceFirstBindingTraffic](../Vegas/Game/SourceServiceFirstBindingTraffic.lean)
   joins the actual first-turn source draw, whole next-prefix decoder and full
   stopped traffic. Fixed-draw traffic coupling preserves original/effective
-  successor pairs from a prior source-view/traffic factorization. The law
+  successor pairs and an unchanged parameter from a prior source-view/traffic
+  factorization. The law
   applies to initialized exact first-turn phases; whole-prefix traffic
   induction and retained-waiting incentives remain separate.
 - [SourceServiceFirstResolutionTraffic](../Vegas/Game/SourceServiceFirstResolutionTraffic.lean)
@@ -124,7 +125,8 @@ future private values changed by repair are outside the claim.
   couples the untouched wait, first protected resolution response and actual
   completion stop. It derives trace, protection, fresh-slot and conformance
   resources from initialized play. From the prior pair-view/traffic law it
-  retains original and effective successors with the same stopped traffic.
+  retains original and effective successors and an unchanged parameter with
+  the same stopped traffic.
   This latent phase factorization still needs joining to actual global source
   selection and whole-prefix induction.
 - [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
@@ -155,8 +157,10 @@ future private values changed by repair are outside the claim.
   derives source residuals with a forward view map and partial view recovery
   from their actual transport maps.
   [SourceServiceDecoderSlice](../Vegas/Game/SourceServiceDecoderSlice.lean)
-  fixes a shared tail, lift and recovery from source syntax and rank, with
-  decoder splitting for every store and history. Native Bayes transport
+  fixes a compiler-aligned tail, embedding, reference-order certificate, lift
+  and recovery from source syntax and rank. Effectiveness inherits through the
+  same recursion, with decoder splitting for every store and history. Native
+  Bayes transport
   still needs the actual source-prefix likelihood.
 - [SourceServiceInitialTraffic](../Vegas/Game/SourceServiceInitialTraffic.lean)
   derives the actual initialized parameter/source/full-traffic factor through

@@ -381,10 +381,11 @@ theorem sourceServiceFirstBinding_decided_traffic
 
 /-- A fixed binding draw and the same actual stopped traffic remain jointly
 conditioned by the effective source successor's view. The original typed
-configuration is retained in the carrier. The premise is a prior traffic
+configuration and an unchanged parameter are retained in the carrier. The premise
+is a prior traffic
 factorization, not a source marginal or posterior assumption. -/
 theorem sourceServiceFirstBinding_decided_factorization
-    {Seed : Type*} {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}
+    {Seed Parameter : Type*} {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}
     (name : VarId) (guard : SourceGuard L Γ owner name payload)
     {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
@@ -397,41 +398,42 @@ theorem sourceServiceFirstBinding_decided_factorization
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload)
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (prior : PMF Seed) (source original : Seed → Config Player L Γ)
+    (prior : PMF Seed) (parameter : Seed → Parameter) (source original : Seed → Config Player L Γ)
     (execution : Seed → (application setup leaks).Execution)
     (boundary : ∀ seed ∈ prior.support,
       CompletionBoundary setup leaks scheduler
         (sourceServiceTurnPolicy setup leaks bound turns (firstTurnTiming setup turns) profile)
         event.val (execution seed))
     (within : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
-    (choice : (Config Player L Γ × Config Player L Γ) →
+    (choice : (Config Player L Γ × Config Player L Γ × Parameter) →
       PMF (PublicationResult (L.Val payload)))
     (noise : DecisionView focal Γ → PMF _)
-    (factor : prior.map (fun seed => ((source seed, original seed),
+    (factor : prior.map (fun seed => ((source seed, original seed, parameter seed),
         (runtime setup).bindingTraffic leaks focal (execution seed))) =
-      (prior.map (fun seed => (source seed, original seed))).bind fun pair =>
+      (prior.map (fun seed => (source seed, original seed, parameter seed))).bind fun pair =>
         (noise (pair.1.view focal)).map fun extra => (pair, extra)) :
     ∃ nextNoise : DecisionView focal ((name, .commitment owner payload) :: Γ) → PMF _,
-      (prior.bind fun seed => (choice (source seed, original seed)).bind fun value =>
+      (prior.bind fun seed =>
+        (choice (source seed, original seed, parameter seed)).bind fun value =>
         ((application setup leaks).runUntilHorizon scheduler
           (decidedProfile (leaks := leaks) bound owner event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) value))
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
             ((commitSuccessor name guard (source seed) value,
-              commitSuccessor name guard (original seed) value),
+              commitSuccessor name guard (original seed) value, parameter seed),
                 (runtime setup).bindingTraffic leaks focal final)) =
-      ((prior.map (fun seed => (source seed, original seed))).bind fun pair =>
+      ((prior.map (fun seed => (source seed, original seed, parameter seed))).bind fun pair =>
         (choice pair).map fun value =>
           (commitSuccessor name guard pair.1 value,
-            commitSuccessor name guard pair.2 value)).bind fun next =>
+            commitSuccessor name guard pair.2.1 value, pair.2.2)).bind fun next =>
               (nextNoise (next.1.view focal)).map fun extra => (next, extra) := by
   obtain ⟨nextNoise, law⟩ := exists_updated_observation_kernel_of_readout prior
-    (fun seed => (source seed, original seed))
+    (fun seed => (source seed, original seed, parameter seed))
     (fun seed => (runtime setup).bindingTraffic leaks focal (execution seed))
     (fun pair => pair.1.view focal) noise factor choice
     (fun pair value => (commitSuccessor name guard pair.1 value,
-      commitSuccessor name guard pair.2 value)) (fun pair => pair.1.view focal)
+      commitSuccessor name guard pair.2.1 value, pair.2.2)) (fun pair => pair.1.view focal)
     (fun seed value => ((application setup leaks).runUntilHorizon scheduler
       (decidedProfile (leaks := leaks) bound owner event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) value))

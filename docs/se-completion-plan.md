@@ -202,7 +202,11 @@ completion and typed-state agreement, with effective history kept distinct.
 Their joint response law also composes with the actual stopping kernel,
 retaining full traffic and the current owner's restored intention. Residual
 source-view recovery is derived from the actual source constructors, and one
-static decoder slice supplies a lift and recovery shared across the prior.
+static decoder slice supplies a compiler-aligned typed tail, embedding,
+reference-order certificate, lift and recovery shared across the prior.
+The same recursion inherits effective disclosures from the whole profile.
+The binding and resolution phase factors retain an unchanged parameter beside
+both source successors and the same actual stopped traffic.
 [DisclosureProfilePrefix](../Vegas/Game/DisclosureProfilePrefix.lean) composes
 all owners' real memory kernels to recover the complete original source law
 at every normalized source prefix. The initialized native rank carrier has
