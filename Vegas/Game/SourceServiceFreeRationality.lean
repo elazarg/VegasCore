@@ -46,6 +46,55 @@ private theorem compatible_recorded_input
     pair.1 pair.2 member
 
 open Classical in
+/-- A whole alternative preserving the assessment's laws at every compatible
+own decision cannot improve from any site. Only genuine free-site comparisons
+are needed; no rationality at an unfinished prescribed decision is assumed. -/
+theorem sourceCompatibleInfo_agree_continuation_le
+    (responseMenu : (application service.setup service.leaks).ResponseMenu)
+    (assessment : (freeModel service responseMenu).BehavioralAssessment)
+    (consistent : assessment.IsSequentiallyConsistent
+      (responseMenu.decisionInformationAntichain (initialLaw service.setup) service.horizon
+        service.scheduler))
+    (certificate : (responseMenu.protocol (initialLaw service.setup) service.horizon
+      service.scheduler).WellFoundedHistories)
+    (payoff : Player → (responseMenu.protocol (initialLaw service.setup) service.horizon
+      service.scheduler).History → ℝ)
+    (freeOptimal : ∀ who (site : (freeModel service responseMenu).InformationSite who),
+      ¬ service.sourceCompatibleInfo who site.1 →
+      ∀ law : PMF ((freeModel service responseMenu).Choice who site.1),
+        (assessment.continuationContext certificate site (payoff who)).value
+          ((assessment.strategy who).withLaw site.1 law) ≤
+        (assessment.continuationContext certificate site (payoff who)).value
+          (assessment.strategy who))
+    (who : Player) (site : (freeModel service responseMenu).InformationSite who)
+    (alternative : (freeModel service responseMenu).BehavioralPolicy who)
+    (agrees : ∀ current : (freeModel service responseMenu).InformationSite who,
+      service.sourceCompatibleInfo who current.1 →
+        alternative current.1 = assessment.strategy who current.1) :
+    (assessment.continuationContext certificate site (payoff who)).value alternative ≤
+      (assessment.continuationContext certificate site (payoff who)).value
+        (assessment.strategy who) := by
+  apply consistent.continuation_value_le_of_locallyOptimal
+    (freeModel service responseMenu)
+    (responseMenu.decisionRecall (initialLaw service.setup) service.horizon service.scheduler)
+    (fun player info law => law =
+      (Profile.update (sig := (freeModel service responseMenu).behavioralSignature)
+        assessment.strategy who alternative) player info)
+    payoff certificate _ who site alternative (by
+      intro later
+      simp only [Profile.update_same])
+  intro player current law allowed
+  by_cases same : player = who
+  · subst player
+    simp only [Profile.update_same] at allowed
+    subst law
+    by_cases compatible : service.sourceCompatibleInfo who current.1
+    · rw [agrees current compatible, InformationModel.BehavioralPolicy.withLaw_eq_self]
+    · exact freeOptimal who current compatible _
+  · rw [Profile.update_of_ne _ _ same] at allowed
+    rw [allowed, InformationModel.BehavioralPolicy.withLaw_eq_self]
+
+open Classical in
 /-- The actual assessment's single-site free comparisons already imply
 whole-policy optimality at every free site. Only the owner's future free sites
 can be changed by a splice at that site; compatible sites remain unchanged. -/
@@ -79,43 +128,18 @@ theorem sourceCompatibleInfo_free_optimal
   intro alternative _
   let replacement := (assessment.strategy who).spliceAfter (freeModel service responseMenu)
     alternative site.1
-  have each (player : Player) (later : (freeModel service responseMenu).InformationSite player)
-      (law : PMF ((freeModel service responseMenu).Choice player later.1))
-      (allowed : law =
-        (Profile.update (sig := (freeModel service responseMenu).behavioralSignature)
-          assessment.strategy who replacement) player later.1) :
-      (assessment.continuationContext certificate later (payoff player)).value
-          ((assessment.strategy player).withLaw later.1 law) ≤
-        (assessment.continuationContext certificate later (payoff player)).value
-          (assessment.strategy player) := by
-    by_cases same : player = who
-    · subst player
-      simp only [Profile.update_same] at allowed
-      subst law
-      by_cases atCurrent : later.1 = site.1
-      · have laterFree : ¬ service.sourceCompatibleInfo who later.1 := atCurrent ▸ incompatible
-        exact freeOptimal who later laterFree _
-      · by_cases follows : site.1 ∈
-            ((freeModel service responseMenu).recordAt who later.1).map Prod.fst
-        · have laterFree : ¬ service.sourceCompatibleInfo who later.1 := fun compatible =>
-            incompatible (service.compatible_recorded_input responseMenu who later compatible
-              site.1 follows)
-          exact freeOptimal who later laterFree _
-        · have unchanged : replacement later.1 = assessment.strategy who later.1 := by
-            simp only [replacement, InformationModel.BehavioralPolicy.spliceAfter,
-              atCurrent, follows, false_or, ↓reduceIte]
-          rw [unchanged, InformationModel.BehavioralPolicy.withLaw_eq_self]
-    · rw [Profile.update_of_ne _ _ same] at allowed
-      rw [allowed, InformationModel.BehavioralPolicy.withLaw_eq_self]
-  have comparison := consistent.continuation_value_le_of_locallyOptimal
-    (freeModel service responseMenu)
-    (responseMenu.decisionRecall (initialLaw service.setup) service.horizon service.scheduler)
-    (fun player info law => law =
-      (Profile.update (sig := (freeModel service responseMenu).behavioralSignature)
-        assessment.strategy who replacement) player info)
-    payoff certificate each who site replacement (by
-      intro later
-      simp only [Profile.update_same])
+  have preserved (current : (freeModel service responseMenu).InformationSite who)
+      (compatible : service.sourceCompatibleInfo who current.1) :
+      replacement current.1 = assessment.strategy who current.1 := by
+    have different : current.1 ≠ site.1 := fun same => incompatible (same ▸ compatible)
+    have unremembered : site.1 ∉
+        ((freeModel service responseMenu).recordAt who current.1).map Prod.fst :=
+      fun remembered => incompatible (service.compatible_recorded_input responseMenu who current
+        compatible site.1 remembered)
+    simp only [replacement, InformationModel.BehavioralPolicy.spliceAfter,
+      different, unremembered, false_or, ↓reduceIte]
+  have comparison := service.sourceCompatibleInfo_agree_continuation_le responseMenu assessment
+    consistent certificate payoff freeOptimal who site replacement preserved
   have sameValue :
       (assessment.continuationContext certificate site (payoff who)).value replacement =
         (assessment.continuationContext certificate site (payoff who)).value alternative := by

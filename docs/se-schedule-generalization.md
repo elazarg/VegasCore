@@ -2630,8 +2630,10 @@ with nonnegative deposits.
 The same assessment preserves the complete initialized history law, including
 the joint full typed readout and realized sampled settlement vector. Uniform
 native trembles and free-site optimization use the full effective menu. Rationality
-at unfinished prescribed sites remains open. No normalization continuity at
-zero-probability source transcripts is assumed.
+at unfinished prescribed sites is established for classified forbidden packets
+and recorded repetitions when the actual report backend and configured deposit
+satisfy the collection contract. Other unfinished prescribed comparisons remain
+open. No normalization continuity at zero-probability source transcripts is assumed.
 
 The full effective immediate profile extends the risk reference at every actual
 risk decision site. Its initialized and terminal history laws are actual
@@ -2647,6 +2649,9 @@ own decision descendants remain free. One consistent-assessment one-shot argumen
 then compares every whole continuation, in any actual response menu. No extra
 audit, deposit, source-belief or equilibrium premise is required. Both actual
 completion constructors consume this result for their same returned assessments.
+The same consistent-assessment argument bounds any whole alternative agreeing
+with the assessment at every compatible own decision, from any current site.
+The fixed-profile completion has this agreement with its clean comparator.
 
 [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
 bounds every complete initialized history under the actual uniformly perturbed
@@ -2710,8 +2715,16 @@ compares a committed classified forbidden packet or replay with that same clean
 whole-policy comparator. Actual collection and the fixed effective-history
 range deposit give the audited-utility inequality under every belief at a
 compatible effective site and arbitrary future policies. No risk-profile
-extension or future risk support is assumed. Dominance by the prescribed source
-response, uncharged unusable choices and SE preservation remain open.
+extension or future risk support is assumed. The fixed-profile completion's
+actual compatible pins and free-site comparisons bound the clean comparator
+by the same returned assessment, yielding no gain from classified forbidden
+packets or recorded repetitions. The producer retains authentic partial sampling;
+its new conclusion requires alignment with the actual backend and configured
+observation/delivery product, final-evidence coverage, nonnegative delivery rates
+and a positive focal collection bound. This uses the existing one-time deposit.
+The completion built from the varying original source sequence needs a separate
+limit argument for this comparison. Uncharged unusable choices, other unfinished
+prescribed comparisons and SE preservation remain open.
 
 [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
 derives source compatibility of every earlier own recalled decision at a

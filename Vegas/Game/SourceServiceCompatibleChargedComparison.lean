@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceEffectiveImmediateComparator
 import Vegas.Game.SourceServiceCompatibleCollection
 import Vegas.Game.AsyncServiceDeposit
+import Vegas.Game.SourceServiceFreeRationality
 import GameTheoryExtensions.Analysis.Protocol.TerminalAuditContinuation
 
 /-! # Charged continuation comparisons at compatible effective information
@@ -160,5 +161,69 @@ theorem charged_expected_utility_le_immediate
   rw [audited]
   exact ((sub_le_sub upperBound (mul_le_mul_of_nonneg_right collected nonnegative)).trans
     sufficient).trans lowerBound
+
+open Classical in
+/-- Actual compatible pins and free-site comparisons turn the clean
+comparator bound into a no-gain comparison against the same assessment.
+The backend's collection coverage remains an explicit operational hypothesis. -/
+theorem charged_expected_utility_le_assessment
+    (base : (app).ProtocolState → Player → ℝ)
+    (backend : EvidenceReportService (SettledEvidence service.setup))
+    (observationRate deliveryRate : Player → ℝ)
+    (delivery_nonnegative : ∀ player, 0 ≤ deliveryRate player)
+    (coverage : FinalForbiddenEvidenceCoverage backend observationRate deliveryRate)
+    (reference : BehavioralProfile service.setup.program) (who : Player)
+    (permitted : (reference who).Admitted service.setup.program (CommitmentInterface.values _))
+    (positive : 0 < observationRate who * deliveryRate who)
+    (assessment : (model).BehavioralAssessment)
+    (consistent : assessment.IsSequentiallyConsistent
+      ((menu).decisionInformationAntichain (initialLaw service.setup) service.horizon
+        service.scheduler))
+    (prescribed : ∀ current : (model).InformationSite who,
+      service.sourceCompatibleInfo who current.1 →
+        assessment.strategy who current.1 =
+          service.effectiveImmediateComparator reference who current.1)
+    (site : (model).InformationSite who)
+    (compatible : service.sourceCompatibleInfo who site.1)
+    (choice : (model).Choice who site.1)
+    (classified : auditableServiceChoice service.setup service.leaks (menu) service.horizon
+      service.scheduler who site.1 choice ∨
+        recordedServiceChoice service.setup service.leaks (menu) service.horizon
+          service.scheduler who site.1 choice) :
+    let certificate := ((menu).bounded (initialLaw service.setup) service.horizon
+      service.scheduler).wellFoundedHistories
+    let probability := fun player => observationRate player * deliveryRate player
+    let deposit := service.auditDeposit base probability
+    let observe := (runtime).serviceAuditObservation service.leaks
+    let audit := sourceServiceAudit service.setup service.leaks backend.sample
+    let payoff := fun player (final : ((menu).protocol (initialLaw service.setup) service.horizon
+      service.scheduler).History) => TerminalAudit.utility base observe audit deposit final.state
+        player
+    (∀ player (current : (model).InformationSite player),
+      ¬ service.sourceCompatibleInfo player current.1 →
+      ∀ law : PMF ((model).Choice player current.1),
+        (assessment.continuationContext certificate current (payoff player)).value
+          ((assessment.strategy player).withLaw current.1 law) ≤
+        (assessment.continuationContext certificate current (payoff player)).value
+          (assessment.strategy player)) →
+    (assessment.continuationContext certificate site (payoff who)).value
+        ((assessment.strategy who).commit site.1 choice) ≤
+      (assessment.continuationContext certificate site (payoff who)).value
+        (assessment.strategy who) := by
+  intro certificate probability deposit observe audit payoff freeOptimal
+  have comparator := service.sourceCompatibleInfo_agree_continuation_le (menu) assessment
+    consistent certificate payoff freeOptimal who site
+      (service.effectiveImmediateComparator reference who)
+      (fun current compatible => (prescribed current compatible).symm)
+  have charged := service.charged_expected_utility_le_immediate base backend observationRate
+    deliveryRate delivery_nonnegative coverage reference who permitted positive assessment.strategy
+      site compatible choice classified (assessment.belief who site)
+  have committedTower := assessment.continuationContextWith_value_tower
+    ((model).runBehavioralTerminalFrom certificate) site (payoff who)
+    ((assessment.strategy who).commit site.1 choice) (payoffIntegrable_of_finite _ _)
+  have comparatorTower := assessment.continuationContextWith_value_tower
+    ((model).runBehavioralTerminalFrom certificate) site (payoff who)
+    (service.effectiveImmediateComparator reference who) (payoffIntegrable_of_finite _ _)
+  exact (committedTower.trans_le (charged.trans_eq comparatorTower.symm)).trans comparator
 
 end Vegas.AsyncServiceSpec

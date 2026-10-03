@@ -7,6 +7,7 @@ import Vegas.Game.SourceServiceImmediatePolicy
 import Vegas.Game.SourceServiceProtectedDecisionLaw
 import Vegas.Game.SourceServiceCompletedRationality
 import Vegas.Game.SourceServiceFreeRationality
+import Vegas.Game.SourceServiceCompatibleChargedComparison
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
@@ -26,6 +27,10 @@ is nonnegative. Comparisons at unfinished prescribed sites and compatibility
 with a varying original source assessment sequence are not asserted. In
 particular, normalization at zero-mass private transcripts is not assumed
 continuous.
+
+Actual report coverage and the matching configured deposit also rule out
+classified forbidden packets and recorded repetitions against the same
+assessment, using its prescribed agreement and rational free continuations.
 -/
 
 noncomputable section
@@ -488,6 +493,22 @@ theorem exists_consistent_source_completion
           (∀ event, event ∈ view.application.publicView.observation.completionOrder) →
           (assessment.continuationContext certificate site (payoff who)).IsLocallyOptimal
             Set.univ (assessment.strategy who)) ∧
+      (∀ (backend : EvidenceReportService (SettledEvidence service.setup))
+        (observationRate deliveryRate : Player → ℝ), sample = backend.sample →
+        probability = (fun player => observationRate player * deliveryRate player) →
+        (∀ player, 0 ≤ deliveryRate player) →
+        FinalForbiddenEvidenceCoverage backend observationRate deliveryRate →
+        ∀ who (site : (effectiveModel).InformationSite who),
+          service.sourceCompatibleInfo who site.1 → 0 < observationRate who * deliveryRate who →
+          ∀ choice : (effectiveModel).Choice who site.1,
+            (auditableServiceChoice service.setup service.leaks (effectiveMenu) service.horizon
+              service.scheduler who site.1 choice ∨
+              recordedServiceChoice service.setup service.leaks (effectiveMenu) service.horizon
+                service.scheduler who site.1 choice) →
+            (assessment.continuationContext certificate site (payoff who)).value
+                ((assessment.strategy who).commit site.1 choice) ≤
+              (assessment.continuationContext certificate site (payoff who)).value
+                (assessment.strategy who)) ∧
       (effectiveModel).runBehavioralTerminalFrom certificate assessment.strategy
           ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory =
@@ -596,7 +617,7 @@ theorem exists_consistent_source_completion
           (fun player => service.effectiveImmediateComparator profile player)
           ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory := histories
-  refine ⟨assessment, consistent, ?_, ?_, ?_, ?_, initializedHistories, ?_⟩
+  refine ⟨assessment, consistent, ?_, ?_, ?_, ?_, ?_, initializedHistories, ?_⟩
   · intro who site compatible
     apply agrees who site
     simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using compatible
@@ -630,6 +651,17 @@ theorem exists_consistent_source_completion
     · intro player current incompatible law
       exact freeOptimal player current (Finset.mem_filter.mpr
         ⟨Finset.mem_univ _, incompatible⟩) law
+  · intro backend observationRate deliveryRate sampling rates deliveryNonnegative coverage
+      who site compatible positive choice classified
+    subst sample probability
+    apply service.charged_expected_utility_le_assessment base backend observationRate deliveryRate
+      deliveryNonnegative coverage profile who (permitted who) positive assessment consistent
+      (fun current currentCompatible => agrees who current (by
+        simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using
+          currentCompatible)) site compatible choice classified
+    intro player current incompatible law
+    exact freeOptimal player current (Finset.mem_filter.mpr
+      ⟨Finset.mem_univ _, incompatible⟩) law
   · rw [initializedHistories]
     exact service.effectiveImmediateProfile_joint_law profile permitted effective utility
       sample authentic probability
