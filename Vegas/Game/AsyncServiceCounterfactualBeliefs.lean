@@ -15,8 +15,9 @@ information its positive factor cancels from Bayes normalization. Clean and
 escaped probabilities are therefore ratios of opponent-and-nature reach
 masses, without a first-turn restriction or a source posterior premise.
 
-This is an exact native belief law. Source-information transport and relative
-escape estimates are separate obligations.
+These laws use the actual response menu, including a larger menu than the
+source-compatible witness. Source-information transport and relative escape
+estimates are separate obligations.
 -/
 
 noncomputable section
@@ -30,10 +31,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (service : AsyncServiceSpec Player L)
 
 local notation "app" => application service.setup service.leaks
-local notation "menu" => service.bounds.riskMenu (runtime service.setup) service.leaks
-  service.bound
-local notation "model" => ReactiveApplication.ResponseMenu.information
-  (service.bounds.riskMenu (runtime service.setup) service.leaks service.bound)
+variable (responseMenu : (application service.setup service.leaks).ResponseMenu)
+
+local notation "menu" => responseMenu
+local notation "model" => ReactiveApplication.ResponseMenu.information responseMenu
   (initialLaw service.setup) service.horizon service.scheduler
 
 /-- Likelihood of every recorded own response at its actual preceding input.
@@ -43,13 +44,14 @@ def recalledOwnReach (profile : ∀ who, (model).BehavioralPolicy who) (who : Pl
   (model).ownPlayReachProbability (profile who)
     ((app).recallOwnPlay (site.1.elim [] Prod.fst))
 
+omit [Fintype Player] in
 /-- Actual own recall supplies the common player-reach factor throughout a
 native information fiber, including histories reached after silent deferrals. -/
 theorem playerReach_eq_recalledOwnReach
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who) (history : (model).InformationHistory who site.1) :
     (model).playerReachProbability profile who history.1.trace =
-      service.recalledOwnReach profile who site := by
+      service.recalledOwnReach responseMenu profile who site := by
   rcases site with ⟨observed, decision⟩
   cases observed with
   | none =>
@@ -67,9 +69,9 @@ theorem recalledOwnReach_pos
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who)
     (positive : 0 < (model).informationMass profile who site) :
-    0 < service.recalledOwnReach profile who site :=
+    0 < service.recalledOwnReach responseMenu profile who site :=
   (model).commonPlayerReach_pos _
-    (service.playerReach_eq_recalledOwnReach profile who site) positive
+    (service.playerReach_eq_recalledOwnReach responseMenu profile who site) positive
 
 /-- Opponent and nature reach mass of an event in the actual information
 fiber. Focal own-response likelihood is absent from this finite sum. -/
@@ -84,7 +86,7 @@ def counterfactualInformationMass
 theorem counterfactualInformationMass_nonnegative
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who) (event : Set ((model).InformationHistory who site.1)) :
-    0 ≤ service.counterfactualInformationMass profile who site event := by
+    0 ≤ service.counterfactualInformationMass responseMenu profile who site event := by
   classical
   apply Finset.sum_nonneg
   intro history _
@@ -97,8 +99,8 @@ theorem informationMass_eq_recalled_mul_counterfactual
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who) :
     ((model).informationMass profile who site).toReal =
-      service.recalledOwnReach profile who site *
-        service.counterfactualInformationMass profile who site Set.univ := by
+      service.recalledOwnReach responseMenu profile who site *
+        service.counterfactualInformationMass responseMenu profile who site Set.univ := by
   classical
   unfold InformationModel.informationMass
   rw [ENNReal.tsum_toReal_eq
@@ -110,20 +112,21 @@ theorem informationMass_eq_recalled_mul_counterfactual
   apply Finset.sum_congr rfl
   intro history _
   rw [(model).historyReachProbability_eq_player_mul_counterfactual profile who history.1.trace,
-    service.playerReach_eq_recalledOwnReach profile who site history]
+    service.playerReach_eq_recalledOwnReach responseMenu profile who site history]
 
 theorem counterfactualInformationMass_pos
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who)
     (positive : 0 < (model).informationMass profile who site) :
-    0 < service.counterfactualInformationMass profile who site Set.univ := by
+    0 < service.counterfactualInformationMass responseMenu profile who site Set.univ := by
   have massPositive := ENNReal.toReal_pos positive.ne'
     (ne_of_lt (((model).informationMass_le_one profile who site
       ((menu).decisionInformationAntichain (initialLaw service.setup) service.horizon
         service.scheduler who site)).trans_lt ENNReal.one_lt_top))
-  rw [service.informationMass_eq_recalled_mul_counterfactual profile who site] at massPositive
+  rw [service.informationMass_eq_recalled_mul_counterfactual responseMenu profile who site]
+    at massPositive
   exact pos_of_mul_pos_right massPositive
-    (service.recalledOwnReach_pos profile who site positive).le
+    (service.recalledOwnReach_pos responseMenu profile who site positive).le
 
 /-- Every native history's conditional weight is exactly its counterfactual
 reach divided by the total counterfactual mass at that information. -/
@@ -135,12 +138,13 @@ theorem bayesBelief_apply_counterfactual
       ((menu).decisionInformationAntichain (initialLaw service.setup) service.horizon
         service.scheduler who site) positive history).toReal =
       (model).counterfactualReachProbability profile who history.1.trace /
-        service.counterfactualInformationMass profile who site Set.univ := by
+        service.counterfactualInformationMass responseMenu profile who site Set.univ := by
   rw [(model).bayesBelief_apply, ENNReal.toReal_div,
     (model).historyReachProbability_eq_player_mul_counterfactual profile who history.1.trace,
-    service.playerReach_eq_recalledOwnReach profile who site history,
-    service.informationMass_eq_recalled_mul_counterfactual profile who site]
-  exact mul_div_mul_left _ _ (service.recalledOwnReach_pos profile who site positive).ne'
+    service.playerReach_eq_recalledOwnReach responseMenu profile who site history,
+    service.informationMass_eq_recalled_mul_counterfactual responseMenu profile who site]
+  exact mul_div_mul_left _ _
+    (service.recalledOwnReach_pos responseMenu profile who site positive).ne'
 
 /-- The same cancellation applies to any clean or escaped event, retaining
 the actual hidden native histories and all pending traffic uncertainty. -/
@@ -151,8 +155,8 @@ theorem bayesBelief_event_counterfactual
     (((model).bayesBelief profile who site
       ((menu).decisionInformationAntichain (initialLaw service.setup) service.horizon
         service.scheduler who site) positive).toOuterMeasure event).toReal =
-      service.counterfactualInformationMass profile who site event /
-        service.counterfactualInformationMass profile who site Set.univ := by
+      service.counterfactualInformationMass responseMenu profile who site event /
+        service.counterfactualInformationMass responseMenu profile who site Set.univ := by
   classical
   rw [PMF.toOuterMeasure_apply, ENNReal.tsum_toReal_eq (fun history => by
     by_cases member : history ∈ event
@@ -166,7 +170,7 @@ theorem bayesBelief_event_counterfactual
   intro history _
   by_cases member : history ∈ event
   · rw [Set.indicator_of_mem member, Set.indicator_of_mem member]
-    exact service.bayesBelief_apply_counterfactual profile who site positive history
+    exact service.bayesBelief_apply_counterfactual responseMenu profile who site positive history
   · simp only [Set.indicator_of_notMem member, ENNReal.toReal_zero, zero_div]
 
 /-- An actual hidden history at compatible native information cannot contain
@@ -200,7 +204,7 @@ theorem counterfactualInformationMass_public_miss_zero
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who)
     (compatible : service.sourceCompatibleInfo who site.1) (player : Player) :
-    service.counterfactualInformationMass profile who site
+    service.counterfactualInformationMass responseMenu profile who site
       {history | ∃ control, history.1.state = some control ∧
         control.execution.application.publicView.missedDecisionBy player = true} = 0 := by
   classical
@@ -209,8 +213,8 @@ theorem counterfactualInformationMass_public_miss_zero
   intro history _
   apply Set.indicator_of_notMem
   rintro ⟨control, current, missed⟩
-  have clear := service.sourceCompatibleInfo_history_no_public_miss who site compatible history
-    player control current
+  have clear := service.sourceCompatibleInfo_history_no_public_miss responseMenu who site
+    compatible history player control current
   rw [clear] at missed
   contradiction
 
@@ -227,9 +231,9 @@ theorem bayesBelief_clean_escaped_ratio
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who)
     (positive : 0 < (model).informationMass profile who site) :
-    let clean := service.cleanInformationHistories who site
-    let cleanMass := service.counterfactualInformationMass profile who site clean
-    let escapedMass := service.counterfactualInformationMass profile who site cleanᶜ
+    let clean := service.cleanInformationHistories responseMenu who site
+    let cleanMass := service.counterfactualInformationMass responseMenu profile who site clean
+    let escapedMass := service.counterfactualInformationMass responseMenu profile who site cleanᶜ
     let belief := (model).bayesBelief profile who site
       ((menu).decisionInformationAntichain (initialLaw service.setup) service.horizon
         service.scheduler who site) positive
@@ -238,7 +242,7 @@ theorem bayesBelief_clean_escaped_ratio
       (belief.toOuterMeasure cleanᶜ).toReal = escapedMass / (cleanMass + escapedMass) := by
   classical
   intro clean cleanMass escapedMass belief
-  have partition : service.counterfactualInformationMass profile who site Set.univ =
+  have partition : service.counterfactualInformationMass responseMenu profile who site Set.univ =
       cleanMass + escapedMass := by
     dsimp only [cleanMass, escapedMass]
     unfold counterfactualInformationMass
@@ -248,10 +252,13 @@ theorem bayesBelief_clean_escaped_ratio
     by_cases member : history ∈ clean <;>
       simp only [Set.indicator, member, Set.mem_compl_iff, Set.mem_univ,
         not_true_eq_false, not_false_eq_true, ↓reduceIte, add_zero, zero_add]
-  refine ⟨partition ▸ service.counterfactualInformationMass_pos profile who site positive, ?_, ?_⟩
-  · exact (service.bayesBelief_event_counterfactual profile who site positive clean).trans
+  refine ⟨partition ▸ service.counterfactualInformationMass_pos responseMenu profile who site
+    positive, ?_, ?_⟩
+  · exact (service.bayesBelief_event_counterfactual responseMenu profile who site positive
+      clean).trans
       (congrArg (fun total => cleanMass / total) partition)
-  · exact (service.bayesBelief_event_counterfactual profile who site positive cleanᶜ).trans
+  · exact (service.bayesBelief_event_counterfactual responseMenu profile who site positive
+      cleanᶜ).trans
       (congrArg (fun total => escapedMass / total) partition)
 
 end Vegas.AsyncServiceSpec

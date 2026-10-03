@@ -9,7 +9,7 @@ finite-menu resources. Their timing posterior is the retained timing tail,
 so an unrecorded current decision waits with probability exactly `weight`.
 The source profile may vary independently of the compatibility witness.
 
-Information-dependent native pins add their actual uniform WAIT atom. These
+Information-dependent full effective pins add their actual uniform WAIT atom. These
 are local response laws, not a source posterior or prescribed-site incentive
 claim. A foreign player's waiting likelihood remains in another player's
 counterfactual reach weight.
@@ -26,7 +26,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (service : AsyncServiceSpec Player L)
 
 local notation "app" => application service.setup service.leaks
-local notation "menu" => service.bounds.riskMenu (runtime service.setup) service.leaks
+local notation "menu" => service.bounds.menu (runtime service.setup) service.leaks
+local notation "riskMenu" => service.bounds.riskMenu (runtime service.setup) service.leaks
   service.bound
 
 private theorem sourceCompatibleInfo_opportunity_not_silent
@@ -86,11 +87,13 @@ theorem sourceCompatibleInfo_geometric_wait_probability
   have witnessed := compatible
   obtain ⟨_witnessProfile, _turns, _timing, _permitted, _effective, history, remaining, execution,
     current, observed, _actual, allClear, _clear⟩ := witnessed
-  have trace : ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).Trace
+  have trace : ((riskMenu).protocol (initialLaw service.setup) service.horizon
+    service.scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.trace
-  have stateInfo : ((menu).information (initialLaw service.setup) service.horizon
+  have stateInfo : ((riskMenu).information (initialLaw service.setup) service.horizon
       service.scheduler).infoOf who history.trace = (app).observe who history.state :=
-    (menu).info (initialLaw service.setup) service.horizon service.scheduler who history.trace
+    (riskMenu).info (initialLaw service.setup) service.horizon service.scheduler who
+      history.trace
   rw [stateInfo, current] at observed
   have same : (execution.recall who, execution.observe (app) who) = (past, view) := by
     apply Option.some.inj
@@ -134,11 +137,13 @@ theorem sourceCompatibleInfo_restricted_geometric_wait_probability
   have witnessed := compatible
   obtain ⟨_witnessProfile, _turns, _timing, _admitted, _effective, history, remaining, execution,
     current, observed, _actual, _allClear, clear⟩ := witnessed
-  have trace : ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).Trace
+  have trace : ((riskMenu).protocol (initialLaw service.setup) service.horizon
+    service.scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.trace
-  have stateInfo : ((menu).information (initialLaw service.setup) service.horizon
+  have stateInfo : ((riskMenu).information (initialLaw service.setup) service.horizon
       service.scheduler).infoOf who history.trace = (app).observe who history.state :=
-    (menu).info (initialLaw service.setup) service.horizon service.scheduler who history.trace
+    (riskMenu).info (initialLaw service.setup) service.horizon service.scheduler who
+      history.trace
   rw [stateInfo, current] at observed
   have same : (execution.recall who, execution.observe (app) who) = (past, view) := by
     apply Option.some.inj
@@ -150,9 +155,12 @@ theorem sourceCompatibleInfo_restricted_geometric_wait_probability
       service.horizon (geometricTiming service.setup service.horizon weight positive.le small.le)
         profile who past view).support, response ∈ (menu).actions who past view := by
     rw [← pastEq, ← viewEq]
-    exact sourceServiceTurnPolicy_risk_retained service.bounds service.values service.initialValues
-      service.capacity service.bound service.horizon _ profile who permitted
-        ⟨remaining, some who, execution⟩ trace clear
+    intro response chosen
+    exact service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+      service.bound who _ _
+        (sourceServiceTurnPolicy_risk_retained service.bounds service.values service.initialValues
+          service.capacity service.bound service.horizon _ profile who permitted
+            ⟨remaining, some who, execution⟩ trace clear response chosen)
   have atoms := pmf_map_apply_of_injective
     (sourceServiceTurnPolicy service.setup service.leaks service.bound service.horizon
       (geometricTiming service.setup service.horizon weight positive.le small.le) profile who
@@ -175,7 +183,7 @@ theorem sourceCompatibleInfo_immediate_wait_probability_zero
     (event : (graph service.setup).EventId)
     (turn : view.application.publicView.ownTurn? who = some event)
     (unrecorded : (runtime service.setup).eventRecorded service.leaks past event = false) :
-    (((service.immediateProfile profile who (some (past, view))).map Subtype.val)
+    (((service.effectiveImmediateComparator profile who (some (past, view))).map Subtype.val)
       (some ⟨none⟩)).toReal = 0 := by
   obtain ⟨remaining, execution, canonicalTrace, observed⟩ :=
     service.sourceCompatibleInfo_canonicalHistory who (some (past, view)) compatible
@@ -196,9 +204,12 @@ theorem sourceCompatibleInfo_immediate_wait_probability_zero
   have covered : ∀ response ∈ (sourceServiceImmediatePolicy service.setup service.leaks
       service.bound profile who past view).support, response ∈ (menu).actions who past view := by
     rw [← pastEq, ← viewEq]
-    exact sourceServiceImmediatePolicy_risk_retained service.bounds service.values
-      service.initialValues service.capacity service.bound profile who permitted
-        ⟨remaining, some who, execution⟩ trace
+    intro response chosen
+    exact service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+      service.bound who _ _
+        (sourceServiceImmediatePolicy_risk_retained service.bounds service.values
+          service.initialValues service.capacity service.bound profile who permitted
+            ⟨remaining, some who, execution⟩ trace response chosen)
   obtain ⟨seenPast, seenView, seen, _identity, clear⟩ :=
     service.sourceCompatibleInfo_clear who (some (past, view)) compatible
   have pairEq := Option.some.inj seen
@@ -248,8 +259,8 @@ theorem sourceCompatibleInfo_information_wait_probability
       response ∈ (menu).actions who past view := by
     intro response chosen
     cases (PMF.mem_support_pure_iff _ _).mp chosen
-    exact service.bounds.canonicalActions_subset_risk (runtime service.setup) service.leaks
-      service.bound who past view (service.bounds.silence_canonical (runtime service.setup)
+    exact service.bounds.canonicalActions_effective (runtime service.setup) service.leaks
+      who past view (service.bounds.silence_canonical (runtime service.setup)
         service.leaks who past view)
   have silent := (menu).restrictPolicy_map_val (initialLaw service.setup) service.horizon
     service.scheduler who (app).silentPolicy past view covered

@@ -23,10 +23,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (service : AsyncServiceSpec Player L)
 
 local notation "app" => application service.setup service.leaks
-local notation "menu" => service.bounds.riskMenu (runtime service.setup) service.leaks
-  service.bound
-local notation "model" => ReactiveApplication.ResponseMenu.information
-  (service.bounds.riskMenu (runtime service.setup) service.leaks service.bound)
+variable (responseMenu : (application service.setup service.leaks).ResponseMenu)
+
+local notation "menu" => responseMenu
+local notation "model" => ReactiveApplication.ResponseMenu.information responseMenu
   (initialLaw service.setup) service.horizon service.scheduler
 
 /-- The actual focal input, including earlier silent actions and their
@@ -71,8 +71,9 @@ theorem sourceCompatibleInfo_escaped_iff_foreign_private_risk (who : Player)
     (site : (model).InformationSite who)
     (compatible : service.sourceCompatibleInfo who site.1)
     (history : (model).InformationHistory who site.1) :
-    history ∈ (service.cleanInformationHistories who site)ᶜ ↔
-      ∃ player, player ≠ who ∧ history ∈ service.privateRiskInformationHistories who site player :=
+    history ∈ (service.cleanInformationHistories responseMenu who site)ᶜ ↔
+      ∃ player, player ≠ who ∧
+        history ∈ service.privateRiskInformationHistories responseMenu who site player :=
     by
   change ¬ (runtime service.setup).AllPersistentServiceRiskClear service.leaks service.bound
     history.1.state ↔ _
@@ -86,8 +87,8 @@ theorem sourceCompatibleInfo_escaped_iff_foreign_private_risk (who : Player)
         contradiction
   | some control =>
       have focal := ((runtime service.setup).serviceRisk_clear_iff service.leaks service.bound
-        who _ _).mp (service.sourceCompatibleInfo_history_focal_clear who site compatible history
-          control current) |>.1
+        who _ _).mp (service.sourceCompatibleInfo_history_focal_clear responseMenu who site
+          compatible history control current) |>.1
       constructor
       · intro escaped
         have risky : ∃ player, (runtime service.setup).persistentServiceRisk service.leaks
@@ -105,8 +106,8 @@ theorem sourceCompatibleInfo_escaped_iff_foreign_private_risk (who : Player)
           rw [focal] at risky
           contradiction
         refine ⟨player, foreign, control, current, ?_⟩
-        have publicClear := service.sourceCompatibleInfo_history_no_public_miss who site compatible
-          history player control current
+        have publicClear := service.sourceCompatibleInfo_history_no_public_miss responseMenu who
+          site compatible history player control current
         rcases ((runtime service.setup).persistentServiceRisk_iff service.leaks service.bound
           player _ _).mp risky with (missed | submitted) | opportunity
         · change control.execution.application.publicView.missedDecisionBy player = true at missed
@@ -135,27 +136,28 @@ theorem counterfactualInformationMass_escaped_le_foreign_private_risk
     (profile : ∀ who, (model).BehavioralPolicy who) (who : Player)
     (site : (model).InformationSite who)
     (compatible : service.sourceCompatibleInfo who site.1) :
-    service.counterfactualInformationMass profile who site
-        (service.cleanInformationHistories who site)ᶜ ≤
-      ∑ player ∈ Finset.univ.erase who, service.counterfactualInformationMass profile who site
-        (service.privateRiskInformationHistories who site player) := by
+    service.counterfactualInformationMass responseMenu profile who site
+        (service.cleanInformationHistories responseMenu who site)ᶜ ≤
+      ∑ player ∈ Finset.univ.erase who,
+        service.counterfactualInformationMass responseMenu profile who site
+          (service.privateRiskInformationHistories responseMenu who site player) := by
   classical
   unfold counterfactualInformationMass
   rw [Finset.sum_comm]
   apply Finset.sum_le_sum
   intro history _
-  by_cases escaped : history ∈ (service.cleanInformationHistories who site)ᶜ
+  by_cases escaped : history ∈ (service.cleanInformationHistories responseMenu who site)ᶜ
   · rw [Set.indicator_of_mem escaped]
     obtain ⟨player, foreign, risky⟩ :=
-      (service.sourceCompatibleInfo_escaped_iff_foreign_private_risk who site compatible history).mp
-        escaped
+      (service.sourceCompatibleInfo_escaped_iff_foreign_private_risk responseMenu who site
+        compatible history).mp escaped
     calc
-      _ = (service.privateRiskInformationHistories who site player).indicator
+      _ = (service.privateRiskInformationHistories responseMenu who site player).indicator
           (fun current => (model).counterfactualReachProbability profile who current.1.trace)
           history := (Set.indicator_of_mem risky _).symm
       _ ≤ _ := Finset.single_le_sum (fun other _ => Set.indicator_nonneg
-        (fun current _ => (model).counterfactualReachProbability_nonneg profile who current.1.trace)
-        history) (Finset.mem_erase.mpr ⟨foreign, Finset.mem_univ player⟩)
+        (fun current _ => (model).counterfactualReachProbability_nonneg profile who
+          current.1.trace) history) (Finset.mem_erase.mpr ⟨foreign, Finset.mem_univ player⟩)
   · rw [Set.indicator_of_notMem escaped]
     apply Finset.sum_nonneg
     intro player _
@@ -163,38 +165,45 @@ theorem counterfactualInformationMass_escaped_le_foreign_private_risk
       (fun current _ => (model).counterfactualReachProbability_nonneg profile who current.1.trace)
       history
 
-/-- The classifier supplies a genuinely legal clean witness. Full mixing
-makes that actual witness's counterfactual weight positive, hence the clean
-denominator is positive even when its limiting reach probability vanishes. -/
+/-- Menu inclusion embeds the classifier's actual legal clean witness without
+changing its state or input. Full mixing makes this witness's counterfactual
+weight positive, even when its limiting reach probability vanishes. -/
 theorem counterfactualInformationMass_clean_pos_of_fullSupport
+    (included : (service.bounds.riskMenu (runtime service.setup) service.leaks
+      service.bound).IncludedIn responseMenu)
     (profile : ∀ who, (model).BehavioralPolicy who)
     (full : ∀ player (site : (model).InformationSite player) choice,
       choice ∈ (profile player site.1).support)
     (who : Player) (site : (model).InformationSite who)
     (compatible : service.sourceCompatibleInfo who site.1) :
-    0 < service.counterfactualInformationMass profile who site
-      (service.cleanInformationHistories who site) := by
+    0 < service.counterfactualInformationMass responseMenu profile who site
+      (service.cleanInformationHistories responseMenu who site) := by
   classical
   obtain ⟨_sourceProfile, _turns, _timing, _admitted, _effective, history, remaining, execution,
     current, observed, _supported, allClear, _clear⟩ := compatible
-  let witness : (model).InformationHistory who site.1 := ⟨history, observed⟩
-  have member : witness ∈ service.cleanInformationHistories who site := by
+  let embedded := included.history (initialLaw service.setup) service.horizon service.scheduler
+    history
+  have embeddedObserved : (model).infoOf who embedded.trace = site.1 :=
+    (included.observed (initialLaw service.setup) service.horizon service.scheduler who
+      history).trans observed
+  let witness : (model).InformationHistory who site.1 := ⟨embedded, embeddedObserved⟩
+  have member : witness ∈ service.cleanInformationHistories responseMenu who site := by
     intro control same player
     have controlEq : (⟨remaining, some who, execution⟩ : (app).Control) = control :=
       Option.some.inj (current.symm.trans same)
     cases controlEq
     exact allClear player
-  have positive := (model).historyReachWeight_pos_of_fullSupport profile full history
-  have finite : (model).historyReachWeight profile history ≠ ⊤ := by
+  have positive := (model).historyReachWeight_pos_of_fullSupport profile full embedded
+  have finite : (model).historyReachWeight profile embedded ≠ ⊤ := by
     unfold InformationModel.historyReachWeight
     exact PMF.apply_ne_top _ _
   have reachPositive := ENNReal.toReal_pos positive.ne' finite
-  rw [(model).historyReachProbability_eq_player_mul_counterfactual profile who history.trace]
+  rw [(model).historyReachProbability_eq_player_mul_counterfactual profile who embedded.trace]
     at reachPositive
   have counterfactualPositive : 0 <
-      (model).counterfactualReachProbability profile who history.trace :=
+      (model).counterfactualReachProbability profile who embedded.trace :=
     pos_of_mul_pos_right reachPositive ((model).playerReachProbability_nonneg profile who
-      history.trace)
+      embedded.trace)
   unfold counterfactualInformationMass
   apply Finset.sum_pos'
   · intro hidden _
@@ -207,8 +216,11 @@ theorem counterfactualInformationMass_clean_pos_of_fullSupport
 
 /-- Conditional escaped mass is bounded by actual foreign private-risk
 counterfactual mass divided by the actual positive clean denominator. No rate
-bound is supplied: asymptotic control still requires this ratio to vanish. -/
+bound is supplied. A vanishing estimate for this event requires a separately
+proved vanishing ratio. -/
 theorem bayesBelief_escaped_le_foreign_private_risk
+    (included : (service.bounds.riskMenu (runtime service.setup) service.leaks
+      service.bound).IncludedIn responseMenu)
     (profile : ∀ who, (model).BehavioralPolicy who)
     (full : ∀ player (site : (model).InformationSite player) choice,
       choice ∈ (profile player site.1).support)
@@ -218,29 +230,31 @@ theorem bayesBelief_escaped_le_foreign_private_risk
       ((menu).decisionInformationAntichain (initialLaw service.setup) service.horizon
         service.scheduler who site)
       ((model).informationMass_pos_of_fullSupport profile full who site)
-    (belief.toOuterMeasure (service.cleanInformationHistories who site)ᶜ).toReal ≤
-      (∑ player ∈ Finset.univ.erase who, service.counterfactualInformationMass profile who site
-        (service.privateRiskInformationHistories who site player)) /
-      service.counterfactualInformationMass profile who site
-        (service.cleanInformationHistories who site) := by
+    (belief.toOuterMeasure (service.cleanInformationHistories responseMenu who site)ᶜ).toReal ≤
+      (∑ player ∈ Finset.univ.erase who,
+        service.counterfactualInformationMass responseMenu profile who site
+          (service.privateRiskInformationHistories responseMenu who site player)) /
+      service.counterfactualInformationMass responseMenu profile who site
+        (service.cleanInformationHistories responseMenu who site) := by
   classical
   intro belief
   have positive := (model).informationMass_pos_of_fullSupport profile full who site
-  have cleanPositive := service.counterfactualInformationMass_clean_pos_of_fullSupport profile
-    full who site compatible
-  have escapedNonnegative := service.counterfactualInformationMass_nonnegative profile who site
-    (service.cleanInformationHistories who site)ᶜ
+  have cleanPositive := service.counterfactualInformationMass_clean_pos_of_fullSupport responseMenu
+    included profile full who site compatible
+  have escapedNonnegative := service.counterfactualInformationMass_nonnegative responseMenu profile
+    who site (service.cleanInformationHistories responseMenu who site)ᶜ
   have numeratorNonnegative : 0 ≤ ∑ player ∈ Finset.univ.erase who,
-      service.counterfactualInformationMass profile who site
-        (service.privateRiskInformationHistories who site player) :=
-    Finset.sum_nonneg fun player _ => service.counterfactualInformationMass_nonnegative profile
-      who site (service.privateRiskInformationHistories who site player)
+      service.counterfactualInformationMass responseMenu profile who site
+        (service.privateRiskInformationHistories responseMenu who site player) :=
+    Finset.sum_nonneg fun player _ => service.counterfactualInformationMass_nonnegative
+      responseMenu profile who site
+        (service.privateRiskInformationHistories responseMenu who site player)
   obtain ⟨totalPositive, _cleanRatio, escapedRatio⟩ :=
-    service.bayesBelief_clean_escaped_ratio profile who site positive
+    service.bayesBelief_clean_escaped_ratio responseMenu profile who site positive
   rw [escapedRatio]
   exact (div_le_div_of_nonneg_right
-    (service.counterfactualInformationMass_escaped_le_foreign_private_risk profile who site
-      compatible) totalPositive.le).trans
+    (service.counterfactualInformationMass_escaped_le_foreign_private_risk responseMenu profile who
+      site compatible) totalPositive.le).trans
     (div_le_div_of_nonneg_left numeratorNonnegative cleanPositive (by linarith))
 
 end Vegas.AsyncServiceSpec

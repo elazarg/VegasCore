@@ -1,11 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AsyncServiceInformationWait
-import Vegas.Game.AsyncServiceInitializedDomination
+import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceDomination
 
 /-! # Initialized loss for information-dependent native waiting
 
-The actual supported first-turn choice law supplies the uniform lower factor.
+The actual supported full effective immediate choice law supplies the uniform lower factor.
 The existing initialized finite-step kernel then bounds the complete history
 law, independently of all free continuation behavior. This is an unconditional
 bound; conditioning on rare information requires further likelihood estimates.
@@ -23,10 +23,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => application service.setup service.leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
-  (service.bounds.riskMenu (runtime service.setup) service.leaks service.bound)
+  (service.bounds.menu (runtime service.setup) service.leaks)
   (initialLaw service.setup) service.horizon service.scheduler
 
-/-- The same initialized first-turn history law is within the finite loss
+/-- The initialized full effective immediate history law is within the finite loss
 bound for every information-dependent waiting family with this maximum rate.
 Neither source posterior transport nor conditional rationality follows. -/
 theorem completedInformationWaitProfile_initialized_close
@@ -44,11 +44,12 @@ theorem completedInformationWaitProfile_initialized_close
     (bounded : ∀ who info, service.sourceCompatibleInfo who info → weight who info ≤ bound)
     (fuel : Nat) :
     PMF.WithinTV (1 - ((1 - delta) * (1 - bound)) ^ (Fintype.card Player * fuel))
-      ((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
+      ((model).runBehavioral
+        (fun player => service.effectiveImmediateComparator profile player) fuel)
       ((model).runBehavioral (service.completedInformationWaitProfile profile weight nonnegative
         small delta deltaNonnegative deltaSmall continuation) fuel) := by
   apply (model).runBehavioral_withinTV_of_supported_choices
-    (service.firstTurnProfile service.horizon profile)
+    (fun player => service.effectiveImmediateComparator profile player)
     (service.completedInformationWaitProfile profile weight nonnegative small delta
       deltaNonnegative deltaSmall continuation) ((1 - delta) * (1 - bound))
   · exact mul_nonneg (sub_nonneg.mpr deltaSmall) (sub_nonneg.mpr boundSmall)
@@ -57,7 +58,7 @@ theorem completedInformationWaitProfile_initialized_close
         mul_le_mul_of_nonneg_right (by linarith) (sub_nonneg.mpr boundSmall)
       _ ≤ 1 := by linarith
   · intro elapsed history reached who choice
-    exact service.completedInformationWaitProfile_firstTurn_choice_lower profile permitted
+    exact service.completedInformationWaitProfile_immediate_choice_lower profile permitted
       effective weight nonnegative small delta deltaNonnegative deltaSmall continuation bound
         boundNonnegative boundSmall bounded elapsed history reached who choice
 

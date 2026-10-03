@@ -237,16 +237,18 @@ theorem sourceCompatibleInfo_ownPlay (who : Player)
 entire recorded likelihood unchanged at a compatible site. Foreign response
 likelihoods are not identified or removed by this statement. -/
 theorem sourceCompatibleInfo_recalledOwnReach_eq
+    (responseMenu : (application service.setup service.leaks).ResponseMenu)
     (first second : ∀ who,
-      ((menu).information (initialLaw service.setup) service.horizon
+      ((responseMenu).information (initialLaw service.setup) service.horizon
         service.scheduler).BehavioralPolicy who)
     (who : Player)
-    (site : ((menu).information (initialLaw service.setup) service.horizon
+    (site : ((responseMenu).information (initialLaw service.setup) service.horizon
       service.scheduler).InformationSite who)
     (compatible : service.sourceCompatibleInfo who site.1)
     (agrees : ∀ input, service.sourceCompatibleInfo who input →
       first who input = second who input) :
-    service.recalledOwnReach first who site = service.recalledOwnReach second who site := by
+    service.recalledOwnReach responseMenu first who site =
+      service.recalledOwnReach responseMenu second who site := by
   obtain ⟨past, view, seen, _identity, _clear⟩ := service.sourceCompatibleInfo_clear who site.1
     compatible
   unfold recalledOwnReach

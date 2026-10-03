@@ -6,6 +6,7 @@ import Vegas.Game.AsyncServiceSourceSites
 import Vegas.Game.SourceServiceImmediatePolicy
 import Vegas.Game.SourceServiceProtectedDecisionLaw
 import Vegas.Game.SourceServiceCompletedRationality
+import Vegas.Game.SourceServiceFreeRationality
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
@@ -18,7 +19,8 @@ immediate reference into the full effective game, where geometric timing and
 uniform trembles derive the prescribed limits. Initialized whole-history and
 sampled settlement laws agree with exact first-turn source execution.
 
-Free information sites receive a jointly rational consistent completion.
+Free information sites receive a consistent completion optimal against every
+whole owner continuation policy.
 Completed source-compatible sites are also rational when the owner's deposit
 is nonnegative. Comparisons at unfinished prescribed sites and compatibility
 with a varying original source assessment sequence are not asserted. In
@@ -440,10 +442,10 @@ private theorem compatible_geometric_effective_limit
 
 open Classical in
 /-- A fixed admitted effective source profile has a consistent full effective
-native completion. Free sites and completed compatible sites with nonnegative
-deposits are rational. Protected sites keep the actual current source
-decision, and the same initialized history and sampled settlement laws as
-exact first-turn play. -/
+native completion. Free sites are optimal against every whole continuation;
+completed compatible sites with nonnegative deposits are rational. Protected
+sites keep the source decision and the same initialized history and sampled
+settlement laws as exact first-turn play. -/
 theorem exists_consistent_source_completion
     (profile : BehavioralProfile service.setup.program)
     (permitted : ∀ who, (profile who).Admitted service.setup.program
@@ -475,6 +477,10 @@ theorem exists_consistent_source_completion
               ((assessment.strategy who).withLaw site.1 law) ≤
             (assessment.continuationContext certificate site (payoff who)).value
               (assessment.strategy who)) ∧
+      (∀ who (site : (effectiveModel).InformationSite who),
+        ¬ service.sourceCompatibleInfo who site.1 →
+          (assessment.continuationContext certificate site (payoff who)).IsLocallyOptimal
+            Set.univ (assessment.strategy who)) ∧
       (∀ who (site : (effectiveModel).InformationSite who),
         0 ≤ service.auditDeposit base probability who →
         service.sourceCompatibleInfo who site.1 →
@@ -590,13 +596,19 @@ theorem exists_consistent_source_completion
           (fun player => service.effectiveImmediateComparator profile player)
           ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory := histories
-  refine ⟨assessment, consistent, ?_, ?_, ?_, initializedHistories, ?_⟩
+  refine ⟨assessment, consistent, ?_, ?_, ?_, ?_, initializedHistories, ?_⟩
   · intro who site compatible
     apply agrees who site
     simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using compatible
   · intro who site incompatible law
     apply freeOptimal who site _ law
     exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩
+  · intro who site incompatible
+    apply service.sourceCompatibleInfo_free_optimal (effectiveMenu) assessment consistent
+      certificate payoff _ who site incompatible
+    intro player current currentFree law
+    exact freeOptimal player current (Finset.mem_filter.mpr
+      ⟨Finset.mem_univ _, currentFree⟩) law
   · intro who site nonnegative compatible past view observed completed
     have silence player earlier atView :
         (⟨none⟩ : (app).Action) ∈ (effectiveMenu).actions player earlier atView :=

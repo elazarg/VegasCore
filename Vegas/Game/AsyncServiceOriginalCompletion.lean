@@ -2,21 +2,22 @@
 
 import Vegas.Game.AsyncServiceInformationWaitDomination
 import Vegas.Game.SourceServiceCompletedRationality
+import Vegas.Game.SourceServiceFreeRationality
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 
-/-! # Native completion along actual original source assessments
+/-! # Full effective completion along actual original source assessments
 
 Normalized source policies may have different limits at transcripts of zero
 source probability. The completion retains their actual information-dependent
-WAIT and uniform pin sequence, selecting one common native assessment
-subsequence. Prescribed uniform trembles and free-agent reference trembles
+WAIT and full effective uniform pin sequence, selecting one common native
+assessment subsequence. Prescribed uniform trembles and free-agent reference trembles
 have independent rates. Uniform initialized history domination preserves the
 original source joint law in that limit without assuming global continuity of
 disclosure normalization.
 
-The result gives consistency, rational free sites, rational completed compatible
-sites with nonnegative deposits, and the actual initialized
+The result gives consistency, whole-policy rational free sites, rational
+completed compatible sites with nonnegative deposits, and the actual initialized
 typed outcome and sampled settlement law. Prescribed-site comparisons and
 conditional escape relative to rare observations remain separate obligations.
 The uniform maximum bound controls only initialized loss; it does not assert
@@ -35,11 +36,11 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => application service.setup service.leaks
 private abbrev originalCompletionMenu : (app).ResponseMenu :=
-  service.bounds.riskMenu (runtime service.setup) service.leaks service.bound
+  service.bounds.menu (runtime service.setup) service.leaks
 
 local notation "menu" => originalCompletionMenu service
 local notation "model" => ReactiveApplication.ResponseMenu.information
-  (service.bounds.riskMenu (runtime service.setup) service.leaks service.bound)
+  (service.bounds.menu (runtime service.setup) service.leaks)
   (initialLaw service.setup) service.horizon service.scheduler
 local notation "sourceModel" => service.setup.informationModel
   (CommitmentInterface.values service.setup.program)
@@ -94,7 +95,8 @@ private theorem original_run_converges [Finite Player]
 
 open Classical in
 /-- Actual original source assessments admit one consistent native completion
-with their real normalized pin limits. Free information sites and completed
+in the full effective game with their real normalized pin limits.
+Free information sites are optimal against whole-policy deviations; completed
 compatible sites under nonnegative deposits are rational; initialized typed
 outcomes and sampled payoffs agree exactly. -/
 theorem exists_consistent_original_sequence_completion
@@ -148,7 +150,8 @@ theorem exists_consistent_original_sequence_completion
               (weightSmall n who site.1)
               (((menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler
                 who (app).silentPolicy) site.1)
-              (service.immediateProfile (normalizeDisclosureProfile service.setup.program []
+              (service.effectiveImmediateComparator (normalizeDisclosureProfile
+                service.setup.program []
                 (Revelations.initial service.setup.context) (service.setup.decodeBehavioralProfile
                   (CommitmentInterface.values service.setup.program) (sourceSequence n).strategy))
                     who site.1))) ∧
@@ -158,6 +161,9 @@ theorem exists_consistent_original_sequence_completion
               ((assessment.strategy who).withLaw site.1 law) ≤
             (assessment.continuationContext certificate site (payoff who)).value
               (assessment.strategy who)) ∧
+      (∀ who (site : (model).InformationSite who), ¬ service.sourceCompatibleInfo who site.1 →
+        (assessment.continuationContext certificate site (payoff who)).IsLocallyOptimal
+          Set.univ (assessment.strategy who)) ∧
       (∀ who (site : (model).InformationSite who),
         0 ≤ service.auditDeposit base probability who →
         service.sourceCompatibleInfo who site.1 →
@@ -212,7 +218,7 @@ theorem exists_consistent_original_sequence_completion
         (weightSmall n agent.1 agent.2.1)
         (((menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler
           agent.1 (app).silentPolicy) agent.2.1)
-        (service.immediateProfile (normalized n) agent.1 agent.2.1))
+        (service.effectiveImmediateComparator (normalized n) agent.1 agent.2.1))
   have referenceFull (agent : (model).InformationAgent (model).playedInformation) :
       FullSupport (reference agent) := by
     intro choice
@@ -263,7 +269,8 @@ theorem exists_consistent_original_sequence_completion
   have lossVanishes : Tendsto loss atTop (nhds 0) :=
     completion_loss_vanishes bound delta boundVanishes deltaVanishes budget
   have close (n : Nat) : PMF.WithinTV (loss n)
-      ((model).runBehavioral (service.firstTurnProfile service.horizon (normalized n)) budget)
+      ((model).runBehavioral
+        (fun player => service.effectiveImmediateComparator (normalized n) player) budget)
       ((model).runBehavioral (nativeSequence n).strategy budget) := by
     rw [initialized]
     exact service.completedInformationWaitProfile_initialized_close (normalized n) (permitted n)
@@ -284,11 +291,13 @@ theorem exists_consistent_original_sequence_completion
       service.sourceCompatibleInfo who ((model).infoOf who history.trace) := by
     by_contra escaped
     have absent (n : Nat) :
-        (((model).runBehavioral (service.firstTurnProfile service.horizon (normalized n)) fuel)
-          history).toReal = 0 := by
+        (((model).runBehavioral
+          (fun player => service.effectiveImmediateComparator (normalized n) player) fuel)
+            history).toReal = 0 := by
       apply pmf_toReal_eq_zero_iff.mpr
       intro supported
-      exact escaped (service.firstTurnProfile_sourceCompatibleInfo service.horizon (normalized n)
+      exact escaped (service.effectiveImmediateProfile_sourceCompatibleInfo service.horizon
+        (normalized n)
         (permitted n) (effective n) fuel history supported who active)
     let prefixLoss n := 1 - ((1 - delta n) * (1 - bound n)) ^ (Fintype.card Player * fuel)
     have prefixVanishes : Tendsto prefixLoss atTop (nhds 0) :=
@@ -317,7 +326,7 @@ theorem exists_consistent_original_sequence_completion
     exact (pmf_toReal_eq_zero_iff.mp vanished) reached
   have baselineLimit : PMFConvergesPointwise (fun n =>
       (model).runBehavioralTerminalFrom certificate
-        (service.firstTurnProfile service.horizon (normalized (index n)))
+        (fun player => service.effectiveImmediateComparator (normalized (index n)) player)
           ((menu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory)
       ((model).runBehavioralTerminalFrom certificate assessment.strategy
@@ -342,14 +351,16 @@ theorem exists_consistent_original_sequence_completion
       (service.auditDeposit base probability) final.state).map fun payoffs =>
         (sourceReadout service.setup service.leaks final.state, payoffs)
   have nativeJoint := baselineLimit.bind (fun final => pmfConvergesPointwise_const (readout final))
-  have firstTurnJoint (n : Nat) :
+  have referenceJoint (n : Nat) :
       ((model).runBehavioralTerminalFrom certificate
-        (service.firstTurnProfile service.horizon (normalized n))
+        (fun player => service.effectiveImmediateComparator (normalized n) player)
           ((menu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory).bind readout =
-        (service.setup.run (original n)).map (fun state => (some state, utility state)) :=
-    service.normalizedFirstTurnProfile_joint_law service.horizon (original n) (originalAdmitted n)
-      utility sample authentic probability
+        (service.setup.run (original n)).map (fun state => (some state, utility state)) := by
+    rw [service.effectiveImmediateProfile_terminal_history (normalized n) (permitted n),
+      PMF.bind_map]
+    exact service.normalizedFirstTurnProfile_joint_law service.horizon (original n)
+      (originalAdmitted n) utility sample authentic probability
   have sourceRuns : PMFConvergesPointwise (fun n => service.setup.run (original n))
       (service.setup.run (service.setup.decodeBehavioralProfile
         (CommitmentInterface.values service.setup.program) source.strategy)) := by
@@ -359,16 +370,20 @@ theorem exists_consistent_original_sequence_completion
       (Option.some_injective (State L service.setup.program.terminalCtx))] using limit
   have sourceTarget := sourceRuns.map (fun state => (some state, utility state))
   refine ⟨nativeSequence, assessment, index, mixed, bayes, increasing, converges, consistent,
-    ?_, ?_, ?_, compatiblePlay, ?_⟩
+    ?_, ?_, ?_, ?_, compatiblePlay, ?_⟩
   · intro n who site compatible
     exact kept n who site compatible
   · intro who site incompatible law
     exact freeOptimal who site (Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩) law
+  · intro who site incompatible
+    exact service.sourceCompatibleInfo_free_optimal (menu) assessment consistent certificate payoff
+      (fun player current missed law => freeOptimal player current
+        (Finset.mem_filter.mpr ⟨Finset.mem_univ _, missed⟩) law) who site incompatible
   · intro who site nonnegative compatible past view observed completed
     have silence player earlier atView :
         (⟨none⟩ : (app).Action) ∈ (menu).actions player earlier atView :=
-      service.bounds.canonicalActions_subset_risk (runtime service.setup) service.leaks
-        service.bound player earlier atView
+      service.bounds.canonicalActions_effective (runtime service.setup) service.leaks
+        player earlier atView
         (service.bounds.silence_canonical (runtime service.setup) service.leaks player
           earlier atView)
     apply service.sourceCompatibleInfo_completed_optimal (menu) silence assessment consistent
@@ -386,7 +401,7 @@ theorem exists_consistent_original_sequence_completion
         ⟨Finset.mem_univ _, incompatible⟩) law
   · have sourceAlong := sourceTarget.subseq increasing
     have aligned := nativeJoint
-    simp only [firstTurnJoint] at aligned
+    simp only [referenceJoint] at aligned
     exact aligned.unique sourceAlong
 
 end Vegas.AsyncServiceSpec

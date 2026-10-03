@@ -2549,8 +2549,16 @@ opportunity risk. Its finite union bound and the actual clean witness yield
 
 Full mixing makes the actual clean denominator positive. It does not supply a
 rate or identify the numerical timing budgets with these counterfactual masses.
-That ratio must vanish for one consistent native family, retaining foreign
-waiting likelihoods and the same free continuation at all information sites.
+A vanishing estimate for this private-risk event would require that ratio to
+vanish along the same consistent native family. The opaque-binding fixture
+shows this need not happen, even when the projected source posterior is
+unchanged. A general source-belief proof must control source distortion and
+continuation incentives rather than infer them from private risk alone.
+The cancellation and partition kernels use an explicit actual response menu,
+including the full effective game. For positive clean mass, actual menu inclusion
+embeds the existing risk-menu witness with the same state and input. The full
+effective menu has that inclusion. A clear persistent flag in a full-menu
+history does not by itself make its arbitrary actions canonical.
 
 [ReactiveCleanPrefix](../Vegas/Pending/ReactiveCleanPrefix.lean) proves that a
 risk-menu prefix with every owner's persistent flag clear has a canonical
@@ -2616,8 +2624,9 @@ site rationality and compatibility with the given source beliefs remain open.
 [AsyncServicePrescribedCompletion](../Vegas/Game/AsyncServicePrescribedCompletion.lean)
 discharges that construction in the full effective game for each fixed admitted
 effective source profile. The returned assessment has consistent beliefs, immediate
-decisions at source-compatible sites, single-site optimality at every free site,
-and whole-policy optimality at completed compatible sites with nonnegative deposits.
+decisions at source-compatible sites, optimality against every whole continuation
+at every free site, and whole-policy optimality at completed compatible sites
+with nonnegative deposits.
 The same assessment preserves the complete initialized history law, including
 the joint full typed readout and realized sampled settlement vector. Uniform
 native trembles and free-site optimization use the full effective menu. Rationality
@@ -2630,6 +2639,14 @@ menu-inclusion images of first-turn play; initialized decisions have the existin
 clean source-compatible witnesses. Those witnesses retain their risk-menu
 definition. Inclusion transports both the geometric pin limits and the initialized
 source/settlement law before the full effective assessment is constructed.
+
+[SourceServiceFreeRationality](../Vegas/Game/SourceServiceFreeRationality.lean)
+derives whole-policy optimality from the actual returned free-site comparisons.
+A compatible own input remembers only compatible own inputs, so a free input's
+own decision descendants remain free. One consistent-assessment one-shot argument
+then compares every whole continuation, in any actual response menu. No extra
+audit, deposit, source-belief or equilibrium premise is required. Both actual
+completion constructors consume this result for their same returned assessments.
 
 [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
 bounds every complete initialized history under the actual uniformly perturbed
@@ -2704,14 +2721,16 @@ counterfactual Bayes cancellation applies even to arbitrarily rare own WAITs;
 foreign WAIT likelihoods and conditional escape remain separate obligations.
 
 [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
-constructs a fully mixed risk-menu native Bayes sequence from the actual original source
+constructs a fully mixed full effective native Bayes sequence from the actual original source
 assessment sequence, with one common strategy/belief subsequence and consistent
-limit. Free sites are rational, initialized support visits only source-compatible
-sites, and its joint full typed outcome and realized sampled settlement law equal
+limit. Free sites are optimal against every whole continuation, initialized
+support visits only source-compatible sites, and its joint full typed outcome
+and realized sampled settlement law equal
 the original source strategy's law. WAIT rates may depend on actual information
 and have a common vanishing upper bound at compatible sites. Actual normalized
 pin limits are retained at off-path inputs. Source-relative conditional beliefs,
-rationality at prescribed sites and selection of suitable waiting rates remain open.
+rationality at unfinished prescribed sites and selection of suitable waiting
+rates remain open.
 Prescribed uniform trembles and free-agent reference trembles have independent
 vanishing rates. Only the prescribed rate enters the initialized loss bound.
 
