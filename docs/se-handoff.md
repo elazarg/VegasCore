@@ -104,6 +104,12 @@ future private values changed by repair are outside the claim.
   submissions at compatible information in any response menu. The replay kernel
   needs actual raw trace and authentic own calls, derived from compatibility;
   it imposes no original risk support on the prefix or future policies.
+- [SourceServiceCompatibleChargedComparison](../Vegas/Game/SourceServiceCompatibleChargedComparison.lean)
+  proves that every classified forbidden packet or replay is bounded by the same
+  clean whole-policy comparator under any compatible-site belief and arbitrary
+  effective continuation policies. Actual collection and the fixed deposit give
+  the inequality. Prescribed-response dominance and uncharged unusable choices
+  remain open.
 - [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
   derives compatibility of every earlier own recalled decision and equality of
   the complete focal likelihood for profiles agreeing on compatible inputs.

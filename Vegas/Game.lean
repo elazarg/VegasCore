@@ -132,6 +132,7 @@ import Vegas.Game.SourceServicePublicRejection
 import Vegas.Game.SourceServiceDuplicatePackets
 import Vegas.Game.SourceServiceRecordedCollection
 import Vegas.Game.SourceServiceCompatibleCollection
+import Vegas.Game.SourceServiceCompatibleChargedComparison
 import Vegas.Game.SourceServiceResolutionComplement
 import Vegas.Game.SourceServiceUnusableBinding
 import Vegas.Game.SourceServiceUnusableProtectedCall

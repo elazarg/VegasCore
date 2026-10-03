@@ -2659,6 +2659,13 @@ recorded-response kernel uses actual raw trace and authentic own-call resources;
 compatibility supplies those resources without an original risk-menu trace.
 Later behavioral policies are arbitrary. This bounds the existing one-time
 charge, without assuming certain evidence observation or renewed punishment.
+[SourceServiceCompatibleChargedComparison](../Vegas/Game/SourceServiceCompatibleChargedComparison.lean)
+compares a committed classified forbidden packet or replay with that same clean
+whole-policy comparator. Actual collection and the fixed effective-history
+range deposit give the audited-utility inequality under every belief at a
+compatible effective site and arbitrary future policies. No risk-profile
+extension or future risk support is assumed. Dominance by the prescribed source
+response, uncharged unusable choices and SE preservation remain open.
 
 [AsyncServiceCompatibleRecall](../Vegas/Game/AsyncServiceCompatibleRecall.lean)
 derives source compatibility of every earlier own recalled decision at a
