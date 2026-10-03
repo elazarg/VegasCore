@@ -338,7 +338,13 @@ no strategic upper comparison.
 proves all three service clauses over every raw history of a concrete compiled
 resolution. Its public scheduler includes only FALSE at the second timely
 opportunity and expires the event when the late inclusion bound ends. Its
-actual audited payoff comparison and source equilibrium remain separate.
+actual audited payoff comparison is proved in
+[LateResolutionContinuation](../Vegas/Examples/LateResolutionContinuation.lean).
+At a reachable initialized late turn, TRUE and silence incur the public miss
+and payoff `−D`, while accepted FALSE yields `0` under every authentic partial
+audit. The current turn policy is silent there for every timing lottery
+because its protected gate is closed. This requires rational free completion;
+source equilibrium and a native information-site comparison remain separate.
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;

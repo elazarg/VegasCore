@@ -268,8 +268,14 @@ future private values changed by repair are outside the claim.
 - [LateResolutionService](../Vegas/Examples/LateResolutionService.lean)
   proves the asynchronous contract at every raw history of a concrete compiled
   resolution. Its public scheduler can censor late TRUE while including late
-  FALSE before expiry. The actual payoff comparison and source equilibrium
-  still need proof.
+  FALSE before expiry.
+- [LateResolutionContinuation](../Vegas/Examples/LateResolutionContinuation.lean)
+  reaches an initialized legal late turn and computes the actual terminal
+  typed payoff and collected audit. TRUE and silence yield `−D`; accepted
+  FALSE yields `0` for every authentic partial audit. Every current timing
+  policy is silent at this input because protection has ended. Source SE and
+  a native information-site comparison remain separate; preservation itself
+  is not disproved.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;

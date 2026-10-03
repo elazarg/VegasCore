@@ -1702,8 +1702,15 @@ certifies a concrete public scheduler over all raw histories. An authentic
 opening on the first opportunity is included; on a later timely opportunity,
 only FALSE withholding is included before expiry. The inclusion bound for the
 late packet ends at the deadline, so the contract permits this censorship.
-This is a checked service instance; its audited payoff comparison and source
-equilibrium are separate proof obligations.
+[LateResolutionContinuation](../Vegas/Examples/LateResolutionContinuation.lean)
+reaches an initialized legal second turn and computes its actual terminal
+typed payoff and collected audit. TRUE opening and silence both yield `−D`;
+accepted FALSE withholding yields `0`, for every authentic partial audit.
+The current policy is silent at that input for every timing lottery because
+its protected inclusion gate is closed. A proposed prescription of TRUE at
+every merely timely resolution would fail there too. Rational free completion
+is necessary; source SE and the native information-site comparison remain
+separate. This does not disprove equilibrium preservation.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
