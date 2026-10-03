@@ -230,6 +230,7 @@ import Vegas.Game.SourceServiceResolutionIntentionFactorization
 import Vegas.Game.SourceServiceBindingResponseFactorization
 import Vegas.Game.SourceServiceBindingResponseCompletion
 import Vegas.Game.SourceServiceLateDecisionCompletion
+import Vegas.Game.SourceServiceLateTurnCompletion
 import Vegas.Game.SourceServiceBindingPrefixCompletion
 import Vegas.Game.SourceServiceResolutionResponseLaw
 import Vegas.Game.SourceServiceResolutionMemoryLaw

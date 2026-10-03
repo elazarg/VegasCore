@@ -235,6 +235,11 @@ future private values changed by repair are outside the claim.
   but different sender opportunity-risk recall. Its separate finite path law
   has conditional risk one half. Initialization, an all-history contract and
   actual native likelihood identification are not supplied by this calculation.
+- [SourceServiceLateTurnCompletion](../Vegas/Game/SourceServiceLateTurnCompletion.lean)
+  transfers the timely canonical call's accepted-step/public-miss dichotomy to
+  the actual turn-counted continuation. Real recorded recall suppresses calls
+  until this event completes; future-event policy is retained. Acceptance
+  probabilities and waiting incentives remain separate.
 - [SourceServiceResolutionIntentionFactorization](../Vegas/Game/SourceServiceResolutionIntentionFactorization.lean)
   carries original and effective disclosure histories through the actual
   response traffic law. FALSE packets can represent failed TRUE intentions;

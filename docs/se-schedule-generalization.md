@@ -1659,6 +1659,11 @@ differs. A separate geometric two-branch calculation gives conditional risk
 one half at every positive waiting weight below one. This is a local runtime
 pair and a finite path law; certification as an initialized asynchronous
 service and identification with native Bayes likelihoods remain separate.
+[SourceServiceLateTurnCompletion](../Vegas/Game/SourceServiceLateTurnCompletion.lean)
+uses real recorded recall to transfer the timely call's chosen-step/public-miss
+dichotomy to the actual turn-counted continuation. Its law stops at the current
+event's completion, preserving the owner's later-event policy. It does not
+supply acceptance probabilities or a waiting comparison.
 
 [SourceServiceSampleCompletion](../Vegas/Game/SourceServiceSampleCompletion.lean)
 derives actual silence, whole stopped-run equality with silent play, and the
