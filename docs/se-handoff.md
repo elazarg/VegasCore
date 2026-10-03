@@ -384,6 +384,12 @@ future private values changed by repair are outside the claim.
   transfers repaired acceptance to the original state; repaired-only
   acceptance identifies an actual signed-content breach. Policy reconstruction
   and the stopped terminal comparison remain open.
+- [ReactiveBindingInertWindow](../Vegas/Pending/ReactiveBindingInertWindow.lean)
+  couples actual finite waiting and activation windows, retaining the full
+  frame, input recall and original opening capabilities. Owner policies use
+  normalized bounded responses without new commitments; foreign raw policies
+  and public scheduler choices retain their joint law. Inclusion, the first
+  breach stopping argument and terminal dominance remain open.
 - [SourceServiceAliasEquilibrium](../Vegas/Game/SourceServiceAliasEquilibrium.lean)
   supplies the final private raw-alias transport, retaining correlated
   collection and prior charges.

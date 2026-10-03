@@ -1912,6 +1912,15 @@ publication failure. A matching authentic certificate also transfers repaired
 acceptance back to the original state. Acceptance created only by repair
 therefore identifies a signed-content breach in the actual pending envelope.
 The stopped whole-policy comparison remains to be proved.
+[ReactiveBindingInertWindow](../Vegas/Pending/ReactiveBindingInertWindow.lean)
+supplies an actual finite coupling through waiting and activation commands.
+It preserves the full frame, both input recalls and original opening
+capabilities, using original-input normalization and the retained
+implementation's actual private memory. Owner responses emit no new
+commitment; foreign raw responses and the adaptive public scheduler keep
+their joint law. These operational restrictions define the proved window,
+not a general repair theorem. Inclusion, first-breach stopping and the
+terminal payoff comparison remain separate.
 
 ### Deviation proof boundaries
 

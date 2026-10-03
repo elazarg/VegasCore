@@ -129,7 +129,10 @@ theorem WitnessedSubmission.normalized_openable_transport
       rw [← callEq, ← evidenceEq]
     _ = submission := normal
 
-private theorem effectiveResponse_openable_transport [Fintype Player]
+/-- Actual effective response transport under added owned capabilities. The common
+network and recalled inputs determine the same resolved certificate and bounded
+normal form; no right-menu coverage premise is supplied. -/
+theorem effectiveResponse_openable_transport [Fintype Player]
     (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (bounds : MessageBounds graph) (who : Player)

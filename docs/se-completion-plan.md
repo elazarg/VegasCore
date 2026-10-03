@@ -449,6 +449,13 @@ publication failure. A matching authentic certificate transfers repaired
 acceptance back to the original state; acceptance created by repair is an
 actual signed-content breach. The continuation must still be coupled up to
 that breach and compared under the one-time settlement law.
+[ReactiveBindingInertWindow](../Vegas/Pending/ReactiveBindingInertWindow.lean)
+couples finite waiting and activation windows under the actual retained
+implementation. Original-input normalization preserves owner responses that
+emit no new commitment, while foreign raw responses and public scheduler
+choices retain their joint law. The coupling carries the full repair frame,
+input recall and old opening capabilities. Inclusion and terminal dominance
+are separate obligations; this restricted window is not a whole-policy repair.
 
 ## Validation
 
