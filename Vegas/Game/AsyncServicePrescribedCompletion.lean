@@ -13,8 +13,10 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 The fixed admitted effective source profile decides immediately at every
 source-compatible protected unrecorded input, including after earlier waits.
-Geometric timing and uniform native trembles derive its prescribed limits.
-The initialized whole history law agrees with exact first-turn execution.
+The classifier keeps its actual risk-menu witness. Menu inclusion carries the
+immediate reference into the full effective game, where geometric timing and
+uniform trembles derive the prescribed limits. Initialized whole-history and
+sampled settlement laws agree with exact first-turn source execution.
 
 Free information sites receive a jointly rational consistent completion.
 Completed source-compatible sites are also rational when the owner's deposit
@@ -390,9 +392,55 @@ private theorem compatible_geometric_immediate_limit
   have atoms := convergence.congr (fun n => (same n).symm)
   exact target.symm ▸ atoms
 
+private theorem compatible_is_risk_decision
+    (who : Player) (info : (app).Info)
+    (compatible : service.sourceCompatibleInfo who info) : (model).IsDecisionInfo who info := by
+  obtain ⟨_profile, _turns, _timing, _permitted, _effective, history, remaining, execution,
+    current, observed, _actual, _allClear, _clear⟩ := compatible
+  have input : info = some (execution.recall who, execution.observe (app) who) := by
+    have actualInfo : (model).infoOf who history.trace = (app).observe who history.state :=
+      (menu).info (initialLaw service.setup) service.horizon service.scheduler who history.trace
+    rw [actualInfo, current] at observed
+    simpa only [ReactiveApplication.observe, ↓reduceIte] using observed.symm
+  refine ⟨⟨history, observed⟩, ?_, ⟨none⟩, ?_⟩
+  · rw [current]
+    simp only [ReactiveApplication.ResponseMenu.protocol, ReactiveApplication.terminal,
+      reduceCtorEq, and_false, not_false_eq_true]
+  · rw [input]
+    exact ⟨⟨none⟩, service.bounds.canonicalActions_subset_risk (runtime service.setup)
+      service.leaks service.bound who _ _
+        (service.bounds.silence_canonical (runtime service.setup) service.leaks who _ _), rfl⟩
+
+private theorem compatible_geometric_effective_limit
+    (profile : BehavioralProfile service.setup.program)
+    (permitted : ∀ who, (profile who).Admitted service.setup.program
+      (CommitmentInterface.values service.setup.program))
+    (who : Player) (info : (app).Info) (compatible : service.sourceCompatibleInfo who info) :
+    PMFConvergesPointwise (fun n =>
+      ((menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler who
+        (sourceServiceTurnPolicy service.setup service.leaks service.bound service.horizon
+          (geometricTiming service.setup service.horizon (completionWeight n)
+            (completionWeight_positive n).le (completionWeight_small n).le) profile who) info).map
+        ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+          service.bound).choice (initialLaw service.setup) service.horizon service.scheduler who
+            info)) (service.effectiveImmediateComparator profile who info) := by
+  let retainedSite : (model).InformationSite who :=
+    ⟨info, compatible_is_risk_decision service who info compatible⟩
+  have agreement := service.immediateProfile_extends_effective profile permitted who retainedSite
+  change service.effectiveImmediateComparator profile who info =
+    (service.immediateProfile profile who info).map
+      ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+        service.bound).choice (initialLaw service.setup) service.horizon service.scheduler who
+          info) at agreement
+  have deciding := (compatible_geometric_immediate_limit service profile permitted who info
+    compatible).map ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+      service.bound).choice (initialLaw service.setup) service.horizon service.scheduler who info)
+  rw [← agreement] at deciding
+  exact deciding
+
 open Classical in
-/-- A fixed admitted effective source profile has a consistent native
-completion. Free sites and completed compatible sites with nonnegative
+/-- A fixed admitted effective source profile has a consistent full effective
+native completion. Free sites and completed compatible sites with nonnegative
 deposits are rational. Protected sites keep the actual current source
 decision, and the same initialized history and sampled settlement laws as
 exact first-turn play. -/
@@ -406,41 +454,44 @@ theorem exists_consistent_source_completion
     (sample : List (SettledEvidence service.setup) → PMF (List (SettledEvidence service.setup)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (probability : Player → ℝ) :
-    let certificate := (menu).bounded (initialLaw service.setup) service.horizon service.scheduler
-      |>.wellFoundedHistories
+    let certificate := (effectiveMenu).bounded (initialLaw service.setup) service.horizon
+      service.scheduler |>.wellFoundedHistories
     let base := baseUtility service.setup service.leaks utility
-    let payoff := fun who (final : ((menu).protocol (initialLaw service.setup) service.horizon
-      service.scheduler).History) => TerminalAudit.utility base
+    let payoff := fun who (final : ((effectiveMenu).protocol (initialLaw service.setup)
+      service.horizon service.scheduler).History) => TerminalAudit.utility base
         ((runtime service.setup).serviceAuditObservation service.leaks)
         (sourceServiceAudit service.setup service.leaks sample)
         (service.auditDeposit base probability) final.state who
-    ∃ assessment : (model).BehavioralAssessment,
-      assessment.IsSequentiallyConsistent ((menu).decisionInformationAntichain
+    ∃ assessment : (effectiveModel).BehavioralAssessment,
+      assessment.IsSequentiallyConsistent ((effectiveMenu).decisionInformationAntichain
         (initialLaw service.setup) service.horizon service.scheduler) ∧
-      (∀ who (site : (model).InformationSite who), service.sourceCompatibleInfo who site.1 →
-        assessment.strategy who site.1 = service.immediateProfile profile who site.1) ∧
-      (∀ who (site : (model).InformationSite who), ¬ service.sourceCompatibleInfo who site.1 →
-        ∀ law : PMF ((model).Choice who site.1),
+      (∀ who (site : (effectiveModel).InformationSite who),
+        service.sourceCompatibleInfo who site.1 →
+        assessment.strategy who site.1 = service.effectiveImmediateComparator profile who site.1) ∧
+      (∀ who (site : (effectiveModel).InformationSite who),
+        ¬ service.sourceCompatibleInfo who site.1 →
+        ∀ law : PMF ((effectiveModel).Choice who site.1),
           (assessment.continuationContext certificate site (payoff who)).value
               ((assessment.strategy who).withLaw site.1 law) ≤
             (assessment.continuationContext certificate site (payoff who)).value
               (assessment.strategy who)) ∧
-      (∀ who (site : (model).InformationSite who),
+      (∀ who (site : (effectiveModel).InformationSite who),
         0 ≤ service.auditDeposit base probability who →
         service.sourceCompatibleInfo who site.1 →
         ∀ past view, site.1 = some (past, view) →
           (∀ event, event ∈ view.application.publicView.observation.completionOrder) →
           (assessment.continuationContext certificate site (payoff who)).IsLocallyOptimal
             Set.univ (assessment.strategy who)) ∧
-      (model).runBehavioralTerminalFrom certificate assessment.strategy
-          ((menu).protocol (initialLaw service.setup) service.horizon
+      (effectiveModel).runBehavioralTerminalFrom certificate assessment.strategy
+          ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory =
-        (model).runBehavioralTerminalFrom certificate
-          (service.firstTurnProfile service.horizon profile)
-          ((menu).protocol (initialLaw service.setup) service.horizon
+        (effectiveModel).runBehavioralTerminalFrom certificate
+          (fun player => service.effectiveImmediateComparator profile player)
+          ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory ∧
-      (PMF.bind ((model).runBehavioralTerminalFrom certificate assessment.strategy
-        ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).initHistory)
+      (PMF.bind ((effectiveModel).runBehavioralTerminalFrom certificate assessment.strategy
+        ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
+          service.scheduler).initHistory)
           fun final =>
             (TerminalAudit.settlement base
               ((runtime service.setup).serviceAuditObservation service.leaks)
@@ -450,48 +501,56 @@ theorem exists_consistent_source_completion
         (service.setup.run profile).map (fun source => (some source, utility source)) := by
   classical
   intro certificate base payoff
-  let fallback : ∀ who, (model).Policy who := fun who info => Classical.choice inferInstance
-  let free : Finset ((model).InformationAgent (model).playedInformation) :=
+  let fallback : ∀ who, (effectiveModel).Policy who := fun who info =>
+    Classical.choice inferInstance
+  let free : Finset ((effectiveModel).InformationAgent (effectiveModel).playedInformation) :=
     Finset.univ.filter fun agent => ¬ service.sourceCompatibleInfo agent.1 agent.2.1
-  let reference : Profile ((model).agentForm fallback certificate).sig.mixed := fun agent =>
-    (menu).uniformPolicy (initialLaw service.setup) service.horizon service.scheduler agent.1
-      agent.2.1
-  let timingProfile (n : Nat) : ∀ who, (model).BehavioralPolicy who := fun who =>
-    (menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler who
+  let reference : Profile ((effectiveModel).agentForm fallback certificate).sig.mixed :=
+    fun agent =>
+      (effectiveMenu).uniformPolicy (initialLaw service.setup) service.horizon
+        service.scheduler agent.1 agent.2.1
+  let timingProfile (n : Nat) : ∀ who, (effectiveModel).BehavioralPolicy who := fun who info =>
+    ((menu).restrictPolicy (initialLaw service.setup) service.horizon service.scheduler who
       (sourceServiceTurnPolicy service.setup service.leaks service.bound service.horizon
         (geometricTiming service.setup service.horizon (completionWeight n)
-          (completionWeight_positive n).le (completionWeight_small n).le) profile who)
-  let pinned (n : Nat) : Profile ((model).agentForm fallback certificate).sig.mixed := fun agent =>
-    mix (completionWeight n) (completionWeight_positive n).le (completionWeight_small n).le
-      (reference agent) (timingProfile n agent.1 agent.2.1)
-  have referenceFull (agent : (model).InformationAgent (model).playedInformation) :
+          (completionWeight_positive n).le (completionWeight_small n).le) profile who) info).map
+        ((service.bounds.riskMenu_in_effective (runtime service.setup) service.leaks
+          service.bound).choice (initialLaw service.setup) service.horizon service.scheduler who
+            info)
+  let pinned (n : Nat) : Profile ((effectiveModel).agentForm fallback certificate).sig.mixed :=
+    fun agent =>
+      mix (completionWeight n) (completionWeight_positive n).le (completionWeight_small n).le
+        (reference agent) (timingProfile n agent.1 agent.2.1)
+  have referenceFull
+      (agent : (effectiveModel).InformationAgent (effectiveModel).playedInformation) :
       FullSupport (reference agent) := by
     intro choice
-    let := Fintype.ofFinite ((model).Choice agent.1 agent.2.1)
-    change choice ∈ (PMF.uniformOfFintype ((model).Choice agent.1 agent.2.1)).support
-    exact PMF.mem_support_uniformOfFintype (α := (model).Choice agent.1 agent.2.1) choice
-  have pinnedFull (n : Nat) (agent : (model).InformationAgent (model).playedInformation)
+    let := Fintype.ofFinite ((effectiveModel).Choice agent.1 agent.2.1)
+    change choice ∈ (PMF.uniformOfFintype ((effectiveModel).Choice agent.1 agent.2.1)).support
+    exact PMF.mem_support_uniformOfFintype (α := (effectiveModel).Choice agent.1 agent.2.1) choice
+  have pinnedFull (n : Nat)
+      (agent : (effectiveModel).InformationAgent (effectiveModel).playedInformation)
       (_kept : agent ∉ free) : FullSupport (pinned n agent) := by
     intro choice
     exact mem_support_mix_left _ _ _ (completionWeight_positive n) (referenceFull agent choice)
-  have pinnedConverges (who : Player) (site : (model).InformationSite who)
-      (kept : (model).agentAt site ∉ free) :
-      PMFConvergesPointwise (fun n => pinned n ((model).agentAt site))
-        (service.immediateProfile profile who site.1) := by
+  have pinnedConverges (who : Player) (site : (effectiveModel).InformationSite who)
+      (kept : (effectiveModel).agentAt site ∉ free) :
+      PMFConvergesPointwise (fun n => pinned n ((effectiveModel).agentAt site))
+        (service.effectiveImmediateComparator profile who site.1) := by
     have compatible : service.sourceCompatibleInfo who site.1 := by
       simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using kept
-    have deciding := compatible_geometric_immediate_limit service profile permitted who site.1
+    have deciding := compatible_geometric_effective_limit service profile permitted who site.1
       compatible
     change PMFConvergesPointwise (fun n => timingProfile n who site.1)
-      (service.immediateProfile profile who site.1) at deciding
+      (service.effectiveImmediateComparator profile who site.1) at deciding
     apply pmfConvergesPointwise_iff_toReal.mpr
     intro choice
     change Tendsto (fun n => (mix (completionWeight n) (completionWeight_positive n).le
-      (completionWeight_small n).le (reference ((model).agentAt site))
+      (completionWeight_small n).le (reference ((effectiveModel).agentAt site))
         (timingProfile n who site.1) choice).toReal) atTop _
     simp only [mix_apply_toReal]
     have first := completionWeight_vanishes.mul_const
-      ((reference ((model).agentAt site) choice).toReal)
+      ((reference ((effectiveModel).agentAt site) choice).toReal)
     have constant : Tendsto (fun _ : Nat => (1 : ℝ)) atTop (nhds 1) := tendsto_const_nhds
     have second := (constant.sub completionWeight_vanishes).mul
       (deciding.toReal choice)
@@ -499,48 +558,39 @@ theorem exists_consistent_source_completion
     all_goals simp only [zero_mul, sub_zero, one_mul, zero_add]
     rfl
   have protectedPlay (elapsed : Nat)
-      (history : ((menu).protocol (initialLaw service.setup) service.horizon
+      (history : ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
         service.scheduler).History)
-      (reached : history ∈ ((model).runBehavioralFrom (service.immediateProfile profile)
-        elapsed ((menu).protocol (initialLaw service.setup) service.horizon
-          service.scheduler).initHistory).support)
-      (_running : ¬ ((menu).protocol (initialLaw service.setup) service.horizon
+      (reached : history ∈ ((effectiveModel).runBehavioralFrom
+        (fun player => service.effectiveImmediateComparator profile player) elapsed
+          ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
+            service.scheduler).initHistory).support)
+      (_running : ¬ ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
         service.scheduler).terminal history.state)
-      (who : Player) (site : (model).InformationSite who)
-      (observed : (model).infoOf who history.trace = site.1) :
-      (model).agentAt site ∉ free := by
-    have actual : history ∈ ((model).runBehavioral
-        (service.firstTurnProfile service.horizon profile) elapsed).support := by
-      rw [← service.immediateProfile_initialized_history service.horizon profile permitted]
-      exact reached
-    have active := InformationModel.InformationSite.active (model) site ⟨history, observed⟩
-    have compatible := service.firstTurnProfile_sourceCompatibleInfo service.horizon profile
-      permitted effective elapsed history actual who active
+      (who : Player) (site : (effectiveModel).InformationSite who)
+      (observed : (effectiveModel).infoOf who history.trace = site.1) :
+      (effectiveModel).agentAt site ∉ free := by
+    have active := InformationModel.InformationSite.active (effectiveModel) site
+      ⟨history, observed⟩
+    have compatible := service.effectiveImmediateProfile_sourceCompatibleInfo service.horizon
+      profile permitted effective elapsed history reached who active
     simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not, observed] using
       compatible
   obtain ⟨assessment, consistent, agrees, freeOptimal, histories⟩ :=
-    (model).exists_consistent_prescribed_completion
-      ((menu).decisionRecall (initialLaw service.setup) service.horizon service.scheduler)
+    (effectiveModel).exists_consistent_prescribed_completion
+      ((effectiveMenu).decisionRecall (initialLaw service.setup) service.horizon service.scheduler)
       fallback certificate payoff free pinned reference pinnedFull referenceFull completionWeight
       completionWeight_positive completionWeight_small completionWeight_vanishes
-      (service.immediateProfile profile) pinnedConverges protectedPlay
-  have firstTurnHistories :
-      (model).runBehavioralTerminalFrom certificate assessment.strategy
-          ((menu).protocol (initialLaw service.setup) service.horizon
+      (fun player => service.effectiveImmediateComparator profile player) pinnedConverges
+      protectedPlay
+  have initializedHistories :
+      (effectiveModel).runBehavioralTerminalFrom certificate assessment.strategy
+          ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
             service.scheduler).initHistory =
-        (model).runBehavioralTerminalFrom certificate
-          (service.firstTurnProfile service.horizon profile)
-          ((menu).protocol (initialLaw service.setup) service.horizon
-            service.scheduler).initHistory :=
-    histories.trans (by
-      rw [InformationModel.runBehavioralTerminalFrom_initHistory (model) certificate
-        (service.immediateProfile profile)
-          ((menu).bounded (initialLaw service.setup) service.horizon service.scheduler),
-        InformationModel.runBehavioralTerminalFrom_initHistory (model) certificate
-          (service.firstTurnProfile service.horizon profile)
-          ((menu).bounded (initialLaw service.setup) service.horizon service.scheduler)]
-      exact service.immediateProfile_initialized_history service.horizon profile permitted _)
-  refine ⟨assessment, consistent, ?_, ?_, ?_, firstTurnHistories, ?_⟩
+        (effectiveModel).runBehavioralTerminalFrom certificate
+          (fun player => service.effectiveImmediateComparator profile player)
+          ((effectiveMenu).protocol (initialLaw service.setup) service.horizon
+            service.scheduler).initHistory := histories
+  refine ⟨assessment, consistent, ?_, ?_, ?_, initializedHistories, ?_⟩
   · intro who site compatible
     apply agrees who site
     simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using compatible
@@ -549,12 +599,13 @@ theorem exists_consistent_source_completion
     exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, incompatible⟩
   · intro who site nonnegative compatible past view observed completed
     have silence player earlier atView :
-        (⟨none⟩ : (app).Action) ∈ (menu).actions player earlier atView :=
-      service.bounds.canonicalActions_subset_risk (runtime service.setup) service.leaks
-        service.bound player earlier atView
+        (⟨none⟩ : (app).Action) ∈ (effectiveMenu).actions player earlier atView :=
+      service.bounds.canonicalActions_effective (runtime service.setup) service.leaks
+        player earlier atView
         (service.bounds.silence_canonical (runtime service.setup) service.leaks player
           earlier atView)
-    apply service.sourceCompatibleInfo_completed_optimal (menu) silence assessment consistent
+    apply service.sourceCompatibleInfo_completed_optimal (effectiveMenu) silence assessment
+      consistent
       utility sample authentic (service.auditDeposit base probability) _ _ who site nonnegative
         compatible past view observed completed
     · intro player current currentCompatible currentPast currentView currentObserved currentComplete
@@ -562,13 +613,13 @@ theorem exists_consistent_source_completion
         simpa only [free, Finset.mem_filter, Finset.mem_univ, true_and, not_not] using
           currentCompatible)
       rw [agreement, currentObserved]
-      exact service.sourceServiceImmediatePolicy_completed_profile (menu) silence profile player
-        currentPast currentView currentComplete
+      exact service.sourceServiceImmediatePolicy_completed_profile (effectiveMenu) silence profile
+        player currentPast currentView currentComplete
     · intro player current incompatible law
       exact freeOptimal player current (Finset.mem_filter.mpr
         ⟨Finset.mem_univ _, incompatible⟩) law
-  · rw [firstTurnHistories]
-    exact service.firstTurnProfile_joint_law service.horizon profile permitted effective utility
+  · rw [initializedHistories]
+    exact service.effectiveImmediateProfile_joint_law profile permitted effective utility
       sample authentic probability
 
 end Vegas.AsyncServiceSpec

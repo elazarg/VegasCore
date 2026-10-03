@@ -33,6 +33,7 @@ import Vegas.Examples.OpaqueBindingForkSites
 import Vegas.Examples.OpaqueBindingForkImmediate
 import Vegas.Examples.OpaqueBindingForkVanishingWait
 import Vegas.Examples.OpaqueBindingForkSourcePosterior
+import Vegas.Examples.OpaqueBindingForkPublication
 import Vegas.Examples.ParameterOutcomes
 import Vegas.Examples.PassiveDisclosureMonitoring
 import Vegas.Examples.PendingMenus

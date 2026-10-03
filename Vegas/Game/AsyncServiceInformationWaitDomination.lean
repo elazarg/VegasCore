@@ -47,7 +47,8 @@ theorem completedInformationWaitProfile_initialized_close
       ((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
       ((model).runBehavioral (service.completedInformationWaitProfile profile weight nonnegative
         small delta deltaNonnegative deltaSmall continuation) fuel) := by
-  apply service.firstTurnProfile_initialized_close_of_choice profile
+  apply (model).runBehavioral_withinTV_of_supported_choices
+    (service.firstTurnProfile service.horizon profile)
     (service.completedInformationWaitProfile profile weight nonnegative small delta
       deltaNonnegative deltaSmall continuation) ((1 - delta) * (1 - bound))
   · exact mul_nonneg (sub_nonneg.mpr deltaSmall) (sub_nonneg.mpr boundSmall)

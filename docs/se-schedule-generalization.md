@@ -1716,6 +1716,15 @@ configuration. Both physical decoders succeed, and the common original-memory
 lottery retains exactly the same initial parameter and source-prefix law.
 Surviving private risk therefore does not distort this fixture's projected
 source-prefix belief. Future free-policy choices and payoffs remain separate.
+[OpaqueBindingForkPublication](../Vegas/Examples/OpaqueBindingForkPublication.lean)
+proves the actual Bob-FALSE/Alice-TRUE suffix after the privately risky binding.
+Alice's later input retains risk and is outside the prescribed class, yet her
+certified publication is accepted and authentic partial sampling collects zero.
+The terminal public result equals the corresponding admitted source run. For
+this program's displayed success reward, Alice's actual local TRUE continuation
+attains one and every audited continuation law is bounded above by one for a
+nonnegative deposit. This does not identify the policy returned by rational
+completion or supply comparisons for arbitrary source utilities.
 
 [SourceServiceLateTurnCompletion](../Vegas/Game/SourceServiceLateTurnCompletion.lean)
 uses real recorded recall to transfer the timely call's chosen-step/public-miss
@@ -2605,21 +2614,22 @@ decisions. The site classification and convergence remain premises; prescribed
 site rationality and compatibility with the given source beliefs remain open.
 
 [AsyncServicePrescribedCompletion](../Vegas/Game/AsyncServicePrescribedCompletion.lean)
-discharges that construction for each fixed admitted effective source profile:
-it produces a consistent native assessment with immediate decisions at
-source-compatible sites and rational continuation at every free site under the
-actual audited utility. Its complete initialized history law equals first-turn
-play, including the joint full typed readout and realized sampled settlement
-vector. Rationality at unfinished prescribed sites remains open. This result
-does not assume normalization is continuous at zero-probability source transcripts.
+discharges that construction in the full effective game for each fixed admitted
+effective source profile. The returned assessment has consistent beliefs, immediate
+decisions at source-compatible sites, single-site optimality at every free site,
+and whole-policy optimality at completed compatible sites with nonnegative deposits.
+The same assessment preserves the complete initialized history law, including
+the joint full typed readout and realized sampled settlement vector. Uniform
+native trembles and free-site optimization use the full effective menu. Rationality
+at unfinished prescribed sites remains open. No normalization continuity at
+zero-probability source transcripts is assumed.
 
-The same module proves that the full effective immediate profile extends the
-risk reference at every actual risk decision site. Its initialized and terminal
-history laws are the actual menu-inclusion images of first-turn play; initialized
-decisions have the existing clean source-compatible witnesses. The full effective
-pin therefore preserves the typed source readout and complete sampled settlement
-vector jointly. This transports the prescribed profile, not the returned
-assessment's rational completion to the full effective menu.
+The full effective immediate profile extends the risk reference at every actual
+risk decision site. Its initialized and terminal history laws are actual
+menu-inclusion images of first-turn play; initialized decisions have the existing
+clean source-compatible witnesses. Those witnesses retain their risk-menu
+definition. Inclusion transports both the geometric pin limits and the initialized
+source/settlement law before the full effective assessment is constructed.
 
 [AsyncServiceInitializedDomination](../Vegas/Game/AsyncServiceInitializedDomination.lean)
 bounds every complete initialized history under the actual uniformly perturbed
@@ -2631,6 +2641,12 @@ supports varying original source approximants without assuming normalization
 continuity at unreachable source transcripts. It does not control rare-input
 posteriors. In particular, a common waiting probability can cancel from Bayes'
 rule, so its vanishing alone does not settle signaling or choose rational rates.
+
+[SupportedChoiceDomination](../GameTheoryExtensions/Analysis/Protocol/SupportedChoiceDomination.lean)
+provides one model-independent step/run induction for these initialized lower
+bounds and their total-variation consequence. Admission and choice lower bounds
+remain derived by the actual Vegas consumers; the kernel does not supply
+conditional beliefs or local incentives.
 
 [AsyncServiceCompatibleWait](../Vegas/Game/AsyncServiceCompatibleWait.lean)
 derives exact geometric WAIT likelihood and the actual information-dependent
@@ -2688,7 +2704,7 @@ counterfactual Bayes cancellation applies even to arbitrarily rare own WAITs;
 foreign WAIT likelihoods and conditional escape remain separate obligations.
 
 [AsyncServiceOriginalCompletion](../Vegas/Game/AsyncServiceOriginalCompletion.lean)
-constructs a fully mixed native Bayes sequence from the actual original source
+constructs a fully mixed risk-menu native Bayes sequence from the actual original source
 assessment sequence, with one common strategy/belief subsequence and consistent
 limit. Free sites are rational, initialized support visits only source-compatible
 sites, and its joint full typed outcome and realized sampled settlement law equal

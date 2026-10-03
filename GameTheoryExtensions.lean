@@ -61,6 +61,7 @@ import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.PrescribedCompletion
+import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceDomination
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Core.RegularChoice

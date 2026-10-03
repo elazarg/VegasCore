@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
 import Vegas.Game.AsyncServicePrescribedCompletion
-import GameTheory.Analysis.Protocol.RestrictionDomination
+import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceDomination
 import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Actual-support initialized domination and native completion loss
@@ -60,48 +60,6 @@ def completedGeometricProfile (profile : BehavioralProfile service.setup.program
       ((menu).uniformPolicy (initialLaw service.setup) service.horizon service.scheduler who info)
       (service.geometricProfile profile weight nonnegative small who info)
   else continuation who info
-
-private theorem bind_supported_domination {α : Type*}
-    (source target : PMF α) (sourceStep targetStep : α → PMF α)
-    (initialFactor stepFactor : ℝ) (initialNonnegative : 0 ≤ initialFactor)
-    (initialLower : ∀ value, initialFactor * (source value).toReal ≤ (target value).toReal)
-    (stepLower : ∀ prior ∈ source.support, ∀ value,
-      stepFactor * (sourceStep prior value).toReal ≤ (targetStep prior value).toReal)
-    (value : α) :
-    (initialFactor * stepFactor) * ((source.bind sourceStep) value).toReal ≤
-      ((target.bind targetStep) value).toReal := by
-  rw [toReal_bind_apply, toReal_bind_apply]
-  calc
-    _ = initialFactor * expect source
-        (fun prior => stepFactor * (sourceStep prior value).toReal) := by
-      rw [expect_const_mul]
-      ring
-    _ ≤ initialFactor * expect source (fun prior => (targetStep prior value).toReal) :=
-      mul_le_mul_of_nonneg_left (expect_mono
-        (fun prior supported => stepLower prior supported value)
-        (payoffIntegrable_of_bounded _ _ (C := |stepFactor|) fun prior => by
-          rw [abs_mul, abs_of_nonneg ENNReal.toReal_nonneg]
-          exact mul_le_of_le_one_right (abs_nonneg _) (pmf_toReal_apply_le_one _ _))
-        (payoffIntegrable_toReal_apply source targetStep value)) initialNonnegative
-    _ ≤ expect target (fun prior => (targetStep prior value).toReal) :=
-      mul_expect_le_of_prob_le source target initialFactor initialLower _
-        (fun _ => ENNReal.toReal_nonneg) (payoffIntegrable_toReal_apply target targetStep value)
-
-private theorem withinTV_of_domination {α : Type*} (source target : PMF α)
-    (factor : ℝ) (small : factor ≤ 1)
-    (lower : ∀ value, factor * (source value).toReal ≤ (target value).toReal) :
-    PMF.WithinTV (1 - factor) source target := by
-  intro event
-  have first := probOf_domination source target factor lower event
-  have second := probOf_domination_excess source target factor lower event
-  have atMostOne : (source.toOuterMeasure event).toReal ≤ 1 :=
-    ENNReal.toReal_le_of_le_ofReal zero_le_one (by simpa using outerMeasure_le_one source event)
-  have missing : (1 - factor) * (source.toOuterMeasure event).toReal ≤ 1 - factor :=
-    mul_le_of_le_one_right (sub_nonneg.mpr small) atMostOne
-  have scaled : factor * (source.toOuterMeasure event).toReal ≤
-      (source.toOuterMeasure event).toReal :=
-    mul_le_of_le_one_left ENNReal.toReal_nonneg small
-  exact abs_le.mpr ⟨by linarith, by linarith⟩
 
 private theorem geometric_firstTurn_physical_lower
     (profile : BehavioralProfile service.setup.program)
@@ -288,91 +246,6 @@ theorem completedGeometricProfile_firstTurn_choice_lower
     exact mul_le_of_le_one_left ENNReal.toReal_nonneg
       (completionFactor_small weight delta positive.le deltaNonnegative deltaSmall)
 
-private theorem firstTurnProfile_step_lower_of_choice
-    (profile : BehavioralProfile service.setup.program)
-    (target : ∀ who, (model).BehavioralPolicy who)
-    (factor : ℝ) (nonnegative : 0 ≤ factor)
-    (history :
-      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History)
-    (lower : ∀ who choice,
-      factor * ((service.firstTurnProfile service.horizon profile who
-        ((model).infoOf who history.trace)) choice).toReal ≤
-          ((target who ((model).infoOf who history.trace)) choice).toReal)
-    (next :
-      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :
-    factor ^ Fintype.card Player *
-        (((model).runBehavioralFrom (service.firstTurnProfile service.horizon profile) 1 history)
-          next).toReal ≤
-      (((model).runBehavioralFrom target 1 history) next).toReal := by
-  rw [(model).runBehavioralFrom_one_localStep, (model).runBehavioralFrom_one_localStep]
-  apply prob_bind_ge_mul _ _ _ _ ((model).localStep history) next
-  intro choices
-  have lower := prob_pi_ge_prod_mul
-    (fun who => service.firstTurnProfile service.horizon profile who
-      ((model).infoOf who history.trace))
-    (fun who => target who ((model).infoOf who history.trace))
-    (fun _ => factor) (fun _ => nonnegative) lower choices
-  simpa only [Finset.prod_const, Finset.card_univ] using lower
-
-/-- Choice domination is required only at actual initialized first-turn
-histories. The target may use arbitrary policies after leaving that support. -/
-theorem firstTurnProfile_initialized_domination_of_choice
-    (profile : BehavioralProfile service.setup.program)
-    (target : ∀ who, (model).BehavioralPolicy who)
-    (factor : ℝ) (nonnegative : 0 ≤ factor)
-    (lower : ∀ fuel history,
-      history ∈ ((model).runBehavioral
-        (service.firstTurnProfile service.horizon profile) fuel).support → ∀ who choice,
-      factor * ((service.firstTurnProfile service.horizon profile who
-        ((model).infoOf who history.trace)) choice).toReal ≤
-          ((target who ((model).infoOf who history.trace)) choice).toReal)
-    (fuel : Nat)
-    (next :
-      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :
-    factor ^ (Fintype.card Player * fuel) *
-        (((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
-          next).toReal ≤
-      (((model).runBehavioral target fuel) next).toReal := by
-  let baseline := service.firstTurnProfile service.horizon profile
-  let stepFactor := factor ^ Fintype.card Player
-  have stepNonnegative : 0 ≤ stepFactor := pow_nonneg nonnegative _
-  have retained (count : Nat) (last :
-      ((menu).protocol (initialLaw service.setup) service.horizon service.scheduler).History) :
-      stepFactor ^ count * (((model).runBehavioral baseline count) last).toReal ≤
-        (((model).runBehavioral target count) last).toReal := by
-    induction count generalizing last with
-    | zero => simp only [pow_zero, one_mul]; exact le_rfl
-    | succ count ih =>
-        unfold InformationModel.runBehavioral
-        rw [(model).runBehavioralFrom_add baseline count 1,
-          (model).runBehavioralFrom_add target count 1, pow_succ]
-        apply bind_supported_domination _ _ _ _ (stepFactor ^ count) stepFactor
-          (pow_nonneg stepNonnegative _) (fun last => ih last)
-        intro history reached next
-        exact firstTurnProfile_step_lower_of_choice service profile target factor nonnegative
-          history (lower count history reached) next
-  simpa only [stepFactor, ← pow_mul] using retained fuel next
-
-/-- The supported-choice bound controls every event of whole initialized
-histories, including private recall and pending-message observations. -/
-theorem firstTurnProfile_initialized_close_of_choice
-    (profile : BehavioralProfile service.setup.program)
-    (target : ∀ who, (model).BehavioralPolicy who)
-    (factor : ℝ) (nonnegative : 0 ≤ factor) (small : factor ≤ 1)
-    (lower : ∀ fuel history,
-      history ∈ ((model).runBehavioral
-        (service.firstTurnProfile service.horizon profile) fuel).support → ∀ who choice,
-      factor * ((service.firstTurnProfile service.horizon profile who
-        ((model).infoOf who history.trace)) choice).toReal ≤
-          ((target who ((model).infoOf who history.trace)) choice).toReal)
-    (fuel : Nat) :
-    PMF.WithinTV (1 - factor ^ (Fintype.card Player * fuel))
-      ((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
-      ((model).runBehavioral target fuel) := by
-  apply withinTV_of_domination _ _ _ (pow_le_one₀ nonnegative small)
-  exact service.firstTurnProfile_initialized_domination_of_choice profile target factor
-    nonnegative lower fuel
-
 /-- Geometric completion retains a uniform fraction of each exact first-turn
 history. Its supported-choice bound is derived from the actual runtime. -/
 theorem completedGeometricProfile_initialized_domination
@@ -391,7 +264,8 @@ theorem completedGeometricProfile_initialized_domination
           next).toReal ≤
       (((model).runBehavioral (service.completedGeometricProfile profile weight positive.le small.le
         delta deltaNonnegative deltaSmall continuation) fuel) next).toReal := by
-  exact service.firstTurnProfile_initialized_domination_of_choice profile _ _
+  exact (model).runBehavioral_domination_of_supported_choices
+    (service.firstTurnProfile service.horizon profile) _ _
     (completionFactor_nonnegative weight delta small.le deltaSmall)
     (service.completedGeometricProfile_firstTurn_choice_lower profile permitted effective weight
       positive small delta deltaNonnegative deltaSmall continuation) fuel next
@@ -411,7 +285,8 @@ theorem completedGeometricProfile_initialized_close
       ((model).runBehavioral (service.firstTurnProfile service.horizon profile) fuel)
       ((model).runBehavioral (service.completedGeometricProfile profile weight positive.le small.le
         delta deltaNonnegative deltaSmall continuation) fuel) := by
-  exact service.firstTurnProfile_initialized_close_of_choice profile _ _
+  exact (model).runBehavioral_withinTV_of_supported_choices
+    (service.firstTurnProfile service.horizon profile) _ _
     (completionFactor_nonnegative weight delta small.le deltaSmall)
     (completionFactor_small weight delta positive.le deltaNonnegative deltaSmall)
     (service.completedGeometricProfile_firstTurn_choice_lower profile permitted effective weight
