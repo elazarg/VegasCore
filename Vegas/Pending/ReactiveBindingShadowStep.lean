@@ -103,7 +103,35 @@ end BindingShadow
 
 variable [DecidableEq Player]
 
+/-- A noncommitment response does not register private candidate material. -/
+theorem reactiveApplication_submit_noncommitment
+    (state : State graph) (who : Player) (material : WitnessedSubmission graph)
+    (noncommitment : ∀ event candidate, material.call.packet ≠ .commitment event candidate) :
+    (runtime.reactiveApplication leaks).submit state who material = state := by
+  rcases material with ⟨⟨packet, opening⟩, request⟩
+  cases packet with
+  | commitment event candidate => exact (noncommitment event candidate rfl).elim
+  | opening | withhold | malformed => cases opening <;> rfl
+
 namespace BindingMemory
+
+/-- Noncommitment responses leave the repair shadow unchanged. Recording the
+actual response in own recall is handled separately by the implementation. -/
+theorem repairResponse_noncommitment
+    (who : Player) (memory : BindingMemory runtime leaks)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (noncommitment : ∀ material, response.transmission = some material →
+      ∀ event candidate, material.call.packet ≠ .commitment event candidate) :
+    memory.repairResponse runtime leaks who view response = (response, memory.shadow) := by
+  rcases response with ⟨transmission⟩
+  cases transmission with
+  | none => rfl
+  | some material =>
+      rcases material with ⟨⟨packet, opening⟩, request⟩
+      cases packet with
+      | commitment event candidate => exact (noncommitment _ rfl event candidate rfl).elim
+      | opening | withhold | malformed => rfl
 
 /-- The actual fresh-binding repair memory is valid at every later completed
 boundary containing the addressed event. Usable responses add no completion

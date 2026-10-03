@@ -174,7 +174,9 @@ private theorem clean_dispatch_coupling
     old _ (leftFacts.1.carried.lookup id _ found) authored event candidate rfl valid
   obtain ⟨environment, left, right, related⟩ := frame.environment_coupling_or_owner_breach
     onlyBindings past leftFacts.2.2.1 leftFacts.2.1 rightFacts.2.1 leftFacts.2.2.2.1
-      leftFacts.2.2.2.2.1 rightFacts.2.2.2.2.1 ownerCompleted command
+      leftFacts.2.2.2.2.1 rightFacts.2.2.2.2.1
+        (fun id event candidate evidence token found authored valid =>
+          Or.inl (ownerCompleted id event candidate evidence token found authored valid)) command
   have leftSupport (pair) (member : pair ∈ environment.support) :
       pair.1 ∈ (original.environmentStep app command).support := by
     rw [← left]

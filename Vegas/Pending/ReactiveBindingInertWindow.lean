@@ -26,32 +26,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {memory : BindingMemory runtime leaks} {owner : Player}
   {original repaired : (runtime.reactiveApplication leaks).Execution}
 
-omit [Fintype Player] in
-private theorem noncommitment_submit_inert
-    (state : State graph) (who : Player) (material : WitnessedSubmission graph)
-    (noncommitment : ∀ event candidate, material.call.packet ≠ .commitment event candidate) :
-    (runtime.reactiveApplication leaks).submit state who material = state := by
-  rcases material with ⟨⟨packet, opening⟩, request⟩
-  cases packet with
-  | commitment event candidate => exact (noncommitment event candidate rfl).elim
-  | opening | withhold | malformed => cases opening <;> rfl
-
-omit [Fintype Player] in
-private theorem noncommitment_repair_unchanged
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (noncommitment : ∀ material, response.transmission = some material →
-      ∀ event candidate, material.call.packet ≠ .commitment event candidate) :
-    memory.repairResponse runtime leaks owner view response = (response, memory.shadow) := by
-  rcases response with ⟨transmission⟩
-  cases transmission with
-  | none => rfl
-  | some material =>
-      rcases material with ⟨⟨packet, opening⟩, request⟩
-      cases packet with
-      | commitment event candidate => exact (noncommitment _ rfl event candidate rfl).elim
-      | opening | withhold | malformed => rfl
-
 /-- A common effective owner response law transports its certificate and
 retained-menu membership automatically. The private implementation reconstructs
 the original input and preserves the full frame for each sampled response. -/
@@ -104,8 +78,8 @@ theorem inert_effective_response_coupling
       (repaired.recall owner) (repaired.observe app owner) started, frame.past, frame.observed]
     apply map_congr_on_support _
     intro response supported
-    rw [noncommitment_repair_unchanged (repaired.observe app owner) response
-      (noncommitment response supported)]
+    rw [memory.repairResponse_noncommitment runtime leaks owner
+      (repaired.observe app owner) response (noncommitment response supported)]
     simp only [updated, record, app, frame.observed]
   have legalLaw :
       (retainedImplementation runtime leaks menu owner reference (players owner)).respond memory
@@ -136,7 +110,7 @@ theorem inert_effective_response_coupling
       cases transmission with
       | none => rfl
       | some material =>
-          exact noncommitment_submit_inert (runtime := runtime) (leaks := leaks)
+          exact reactiveApplication_submit_noncommitment runtime leaks
             execution.application owner material (noncommitment _ member material rfl)
     refine ⟨?_, ?_, app.respond_inputRecall original owner response leftRecall,
       app.respond_inputRecall repaired owner response rightRecall, ?_⟩
@@ -144,10 +118,10 @@ theorem inert_effective_response_coupling
       cases transmission with
       | none => exact frame.transport_response ⟨none⟩ (by simp)
       | some material =>
-          have leftInert := noncommitment_submit_inert (runtime := runtime) (leaks := leaks)
+          have leftInert := reactiveApplication_submit_noncommitment runtime leaks
             original.application owner material
             (noncommitment _ member material rfl)
-          have rightInert := noncommitment_submit_inert (runtime := runtime) (leaks := leaks)
+          have rightInert := reactiveApplication_submit_noncommitment runtime leaks
             repaired.application owner material
             (noncommitment _ member material rfl)
           have packet := (transported ⟨some material⟩ member).2.2 material rfl

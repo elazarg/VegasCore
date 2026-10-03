@@ -532,11 +532,13 @@ future private values changed by repair are outside the claim.
   This closes receipt origin.
 - [SourceServiceBindingAttemptCompletion](../Vegas/Game/SourceServiceBindingAttemptCompletion.lean)
   derives the exact typed dichotomy for a manual timely first binding call at
-  an actual clear prefix: this identifier accepted, unmarked and exact chosen
-  successor, or actual public miss, no accepting receipt and typed failure.
-  Initialization and complete play derive all endpoint resources. The owner
-  subsequently follows any recorded timing policy, against arbitrary foreign
-  raw policies. The current call need not be protected or policy-supported.
+  an initialized raw prefix with a fresh counted candidate: this identifier
+  accepted, unmarked and exact chosen successor, or actual public miss, no
+  accepting receipt and typed failure.
+  Initialization and complete play derive all endpoint resources. Selected-input
+  resources derive freshness from the actual trace, without global risk clarity.
+  The owner subsequently follows any recorded timing policy, against arbitrary
+  foreign raw policies. The current call need not be protected or policy-supported.
 - [SourceServiceBindingAttemptLaw](../Vegas/Game/SourceServiceBindingAttemptLaw.lean)
   joins the actual residual source commitment draw, typed output and the same
   public/foreign traffic with the prefix parameter retained. The actual
@@ -588,6 +590,36 @@ future private values changed by repair are outside the claim.
   have matching fixed candidate meanings, across foreign/noncommitment
   responses, shared fresh registration and all environment commands. Later
   usable whole-run repair remains open.
+
+- [LateResolutionPreservation](../Vegas/Examples/LateResolutionPreservation.lean)
+  preserves EVERY source SE of the concrete fixture in the native risk menu,
+  with the same full typed terminal state and realized settlement vector.
+  Actual source rationality derives its TRUE law. Full effective/raw extension
+  and arbitrary-service preservation remain open.
+- [ReactiveCompletedConfig](../Vegas/Pending/ReactiveCompletedConfig.lean)
+  proves that arbitrary raw submissions and environment commands preserve the
+  entire graph configuration once all events complete. Further traffic and
+  charges remain possible.
+- [ReactiveBindingUsableWindow](../Vegas/Pending/ReactiveBindingUsableWindow.lean)
+  couples one actual effective owner response law to the same retained private
+  implementation, permitting noncommitments and fresh typed registrations.
+  It preserves current memory, the full frame, completed-or-matching traffic
+  and original opening capabilities.
+- [ReactiveBindingUsableResume](../Vegas/Pending/ReactiveBindingUsableResume.lean)
+  extends this real one-policy response law to arbitrary foreign raw actions
+  and inactive resumptions.
+  [ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
+  also admits actual fixed matching owner candidates at inclusion. The complete
+  usable suffix, risk-menu admission and utility comparison remain open.
+- [SourceServiceBindingSelectedResources](../Vegas/Game/SourceServiceBindingSelectedResources.lean)
+  derives fresh counted candidates, actual owner turn/slot invariants and no
+  earlier owner packet at the real selected raw input. Its aligned source
+  configuration is unchanged; protection gives the actual source commitment
+  kernel, and a closed gate gives silence. Other owners may use raw actions.
+- [SourceServiceBindingSelectedContinuation](../Vegas/Game/SourceServiceBindingSelectedContinuation.lean)
+  proves the full selected-family stopped continuation equals actual owner
+  silence after its selected response, including closed-gate silence. This
+  literal timing-policy law does not supply rational free late completion.
 
 ## Proof and build discipline
 

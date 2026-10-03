@@ -407,6 +407,16 @@ realized settlement vector equal those of the source opening equilibrium,
 under any authentic partial sampler and nonnegative deposit. This proves the
 concrete risk-menu completion; full effective/raw extension and the general
 source-preservation theorem remain separate.
+[LateResolutionPreservation](../Vegas/Examples/LateResolutionPreservation.lean)
+preserves EVERY source SE of this concrete fixture in the native risk menu,
+including the same full typed terminal state and realized settlement vector.
+Actual source rationality derives its TRUE law. Full effective/raw extension
+and arbitrary-service preservation remain open.
+[ReactiveCompletedConfig](../Vegas/Pending/ReactiveCompletedConfig.lean)
+proves arbitrary raw submissions and environment commands preserve the entire
+graph configuration once all events complete. Further traffic and charges
+remain possible.
+
 The [late-decision signaling probe](../scripts/experiments/late_decision_signaling_probe.py)
 checks this distinction with exact Bayes limits and every whole-policy
 comparison. Equal waiting trembles make waiting profitable for one type;
@@ -460,12 +470,15 @@ derives the reverse receipt resource on every initialized raw history: each
 accepted event handle has an actual owner-authored ledger commitment with
 its accepting receipt.
 [SourceServiceBindingAttemptCompletion](../Vegas/Game/SourceServiceBindingAttemptCompletion.lean)
-composes these resources at an actual clear risk-menu binding prefix. Every
-endpoint of a manual timely canonical attempt completes with either this
-identifier's accepting receipt, no miss and the exact chosen typed successor,
+composes these resources at an initialized raw binding prefix with a fresh
+counted candidate. Every endpoint of a manual timely canonical attempt completes
+with either this identifier's accepting receipt, no miss and the exact chosen
+typed successor,
 or its actual public miss, no accepting receipt for this identifier and typed
-failure. Complete play, freshness and uniqueness are derived. The subsequent
-owner follows any recorded timing policy; foreign raw policies are arbitrary.
+failure. Complete play and uniqueness are derived. Selected-input resources
+derive freshness from the actual trace, without global risk clarity. The
+subsequent owner follows any recorded timing policy; foreign raw policies are
+arbitrary.
 The call need not be protected or supported by that timing policy.
 [SourceServiceBindingAttemptLaw](../Vegas/Game/SourceServiceBindingAttemptLaw.lean)
 joins the actual residual source commitment draw, typed binding output and
@@ -510,6 +523,15 @@ have matching fixed candidate meanings, across foreign/noncommitment
 responses, shared fresh registration and all environment commands. This
 supplies the traffic resource needed to allow further owner commitments in
 continuation repair. Later usable whole-run repair remains open.
+[SourceServiceBindingSelectedResources](../Vegas/Game/SourceServiceBindingSelectedResources.lean)
+derives fresh counted candidates, actual owner turn/slot invariants and no
+earlier owner packet at the real selected raw input. Its aligned source
+configuration is unchanged; protection gives the actual source commitment
+kernel, and a closed gate gives silence. Other owners may use raw actions.
+[SourceServiceBindingSelectedContinuation](../Vegas/Game/SourceServiceBindingSelectedContinuation.lean)
+proves the full selected-family stopped continuation equals actual owner
+silence after its selected response, including closed-gate silence. This
+literal timing-policy law does not supply rational free late completion.
 
 The watcher samples authentic evidence partially; observation and report
 delivery may be correlated. Positive conditional coverage and a finite
@@ -667,6 +689,16 @@ before a later owned resolution, then places its mistyped opening in the
 existing auditable public-breach class. Partial collection applies without
 treating authentic certification as a signed-content breach. Whole-policy
 repair and payoff domination remain open.
+
+[ReactiveBindingUsableWindow](../Vegas/Pending/ReactiveBindingUsableWindow.lean)
+couples one actual effective owner response law to the same retained private
+implementation. Noncommitments and fresh typed registrations preserve current
+memory, the full frame, completed-or-matching traffic and original opening
+capabilities. [ReactiveBindingUsableResume](../Vegas/Pending/ReactiveBindingUsableResume.lean)
+extends that law to arbitrary foreign raw actions and inactive resumptions.
+[ReactiveBindingPacketStep](../Vegas/Pending/ReactiveBindingPacketStep.lean)
+also admits actual fixed matching owner candidates at inclusion. The full
+usable suffix, risk-menu admission and utility comparison remain open.
 
 ## Validation
 

@@ -277,5 +277,8 @@ import Vegas.Pending.ReactiveServiceFiniteness
 import Vegas.Pending.ReactiveBindingUsableStep
 import Vegas.Pending.ReactiveUsedBindingOpening
 import Vegas.Pending.ReactiveBindingUsableProvenance
+import Vegas.Pending.ReactiveCompletedConfig
+import Vegas.Pending.ReactiveBindingUsableWindow
+import Vegas.Pending.ReactiveBindingUsableResume
 
 /-! Graph execution and strategic refinement over public pending messages. -/

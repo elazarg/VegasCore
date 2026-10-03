@@ -5,8 +5,9 @@ import Vegas.Game.SourceServiceBindingChoiceSelection
 
 /-! # Source commitment draws through actual include-or-miss selection
 
-At an admitted clear prefix, the source commitment kernel draws a private
-value and the manual timely canonical first call is submitted. Its actual
+At an initialized raw prefix with a fresh counted candidate, the source
+commitment kernel draws a value and the manual timely canonical first call
+is submitted. Its actual
 typed result and full public/foreign stopped traffic are the same joint law
 as drawing that value alongside the value-independent physical selection
 experiment. A true receipt for the original identifier selects the drawn
@@ -24,7 +25,7 @@ namespace Vegas
 
 open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -35,17 +36,16 @@ theorem BindingSource.attempt_law
     {Parameter : Type} {horizon remaining : Nat}
     {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
-    (bounds : MessageBounds (graph setup))
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
     (players : Player → (application setup leaks).Policy)
     {turns : Nat} (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
     (execution : (application setup leaks).Execution) (event : (graph setup).EventId)
     (site : BindingSource setup profile event execution.application.config)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some site.owner, execution⟩))
-    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
-      (execution.recall player) (execution.observe (application setup leaks) player) = false)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some site.owner, execution⟩))
+    (fresh : execution.application.candidates.lookup
+      (site.owner, .prepared (execution.application.publicView.bindingCount site.owner)) = .fresh)
     (turn : execution.application.publicView.ownTurn? site.owner = some event)
     (unrecorded : (runtime setup).eventRecorded leaks (execution.recall site.owner) event = false)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -93,8 +93,8 @@ theorem BindingSource.attempt_law
       output.get? final.application.config.store =
         selectedResult (traffic final).2.1 value := by
     intro value final reached
-    have outcome := sourceService_binding_attempt_completion bounds contract players timing profile
-      execution event site trace clear turn unrecorded timely follows value final reached
+    have outcome := sourceService_binding_attempt_completion contract players timing profile
+      execution event site trace fresh turn unrecorded timely follows value final reached
     rcases outcome.2 with accepted | missed
     · dsimp only [selectedResult, traffic, bindingPublicTraffic]
       rw [ite_eq_left accepted.1, accepted.2.2]

@@ -1,14 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. All rights reserved. -/
 
-import Vegas.Pending.ReactiveBindingCommitmentStep
+import Vegas.Pending.ReactiveBindingUsableStep
 import Vegas.Pending.ReactiveBindingFrameCommands
 
 /-! # Actual packet inclusion up to an owner's signed breach
 
 All wire constructors preserve the complete repair frame, except an opening
 accepted only after repair. That exception identifies the same actual owner
-envelope and proves its signed-content breach. Prior owner commitments must
-address completed events; this is derived from issued tokens at real prefixes.
+envelope and proves its signed-content breach. Owner commitments either address
+completed events or have fixed matching candidate meanings. The latter includes
+later fresh usable bindings with their actual success or expiry.
 -/
 
 noncomputable section
@@ -116,17 +117,21 @@ branches are derived from the handlers, including publication failure. -/
 theorem packet_step_or_owner_breach
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
+    (past : memory.shadow.CompletedAt original.application.config)
     (sound : (runtime.packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
     (fixed : runtime.ReactiveCommitmentsFixed leaks original)
     (leftRemembered : original.application.remembered = fun _ => none)
     (rightRemembered : repaired.application.remembered = fun _ => none)
-    (ownerCompleted : ∀ id event candidate evidence token,
+    (ownerCommitment : ∀ id event candidate evidence token,
       original.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ →
         id.1 = owner →
         (WitnessedPacket.mk (.commitment event candidate) evidence token).tokenValid = true →
-          event ∈ original.application.config.cut.completed)
+          event ∈ original.application.config.cut.completed ∨
+            (original.application.candidates.lookup candidate ≠ .fresh ∧
+              original.application.candidates.lookup candidate =
+                repaired.application.candidates.lookup candidate))
     (id : MessageId Player) (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩) :
     let app := runtime.reactiveApplication leaks
@@ -142,8 +147,21 @@ theorem packet_step_or_owner_breach
       exact Or.inl (frame.include_rejected id _ found (reactiveHandle_none rfl)
         (reactiveHandle_none rfl))
   | commitment event candidate =>
-      exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
-        evidence token found (ownerCompleted id event candidate evidence token found))
+      by_cases authored : id.1 = owner
+      swap
+      · exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
+          evidence token found (fun same _ => (authored same).elim))
+      by_cases valid :
+          (WitnessedPacket.mk (.commitment event candidate) evidence token).tokenValid = true
+      swap
+      · exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
+          evidence token found (fun _ tokened => (valid tokened).elim))
+      rcases ownerCommitment id event candidate evidence token found authored valid with
+        completed | matching
+      · exact Or.inl (frame.commitment_step_completed_owner onlyBindings fixed id event candidate
+          evidence token found (fun _ _ => completed))
+      · exact Or.inl (frame.commitment_step_matching_owner past id authored event candidate
+          evidence token found matching.1 matching.2).1
   | withhold event =>
       exact Or.inl (frame.withholding_step_unremembered onlyBindings leftRemembered rightRemembered
         id event evidence token found)
@@ -168,17 +186,21 @@ whose author and content breach are derived rather than stipulated. -/
 theorem include_coupling_or_owner_breach
     (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
+    (past : memory.shadow.CompletedAt original.application.config)
     (sound : (runtime.packetEvidence leaks).Sound original)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
     (fixed : runtime.ReactiveCommitmentsFixed leaks original)
     (leftRemembered : original.application.remembered = fun _ => none)
     (rightRemembered : repaired.application.remembered = fun _ => none)
-    (ownerCompleted : ∀ id event candidate evidence token,
+    (ownerCommitment : ∀ id event candidate evidence token,
       original.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ →
         id.1 = owner →
         (WitnessedPacket.mk (.commitment event candidate) evidence token).tokenValid = true →
-          event ∈ original.application.config.cut.completed)
+          event ∈ original.application.config.cut.completed ∨
+            (original.application.candidates.lookup candidate ≠ .fresh ∧
+              original.application.candidates.lookup candidate =
+                repaired.application.candidates.lookup candidate))
     (id : MessageId Player) :
     let app := runtime.reactiveApplication leaks
     ∃ coupling : PMF (app.Execution × app.Execution),
@@ -217,8 +239,8 @@ theorem include_coupling_or_owner_breach
         rcases message with ⟨messageId, packet⟩
         change messageId = id at identified
         subst messageId
-        rcases frame.packet_step_or_owner_breach onlyBindings sound leftBinding rightBinding
-            fixed leftRemembered rightRemembered ownerCompleted id packet found with paired | bad
+        rcases frame.packet_step_or_owner_breach onlyBindings past sound leftBinding rightBinding
+            fixed leftRemembered rightRemembered ownerCommitment id packet found with paired | bad
         · exact Or.inl paired
         · exact Or.inr ⟨packet, rfl, bad⟩
 
@@ -235,11 +257,14 @@ theorem environment_coupling_or_owner_breach
     (fixed : runtime.ReactiveCommitmentsFixed leaks original)
     (leftRemembered : original.application.remembered = fun _ => none)
     (rightRemembered : repaired.application.remembered = fun _ => none)
-    (ownerCompleted : ∀ id event candidate evidence token,
+    (ownerCommitment : ∀ id event candidate evidence token,
       original.network.lookup id = some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ →
         id.1 = owner →
         (WitnessedPacket.mk (.commitment event candidate) evidence token).tokenValid = true →
-          event ∈ original.application.config.cut.completed)
+          event ∈ original.application.config.cut.completed ∨
+            (original.application.candidates.lookup candidate ≠ .fresh ∧
+              original.application.candidates.lookup candidate =
+                repaired.application.candidates.lookup candidate))
     (command : (runtime.reactiveApplication leaks).Command) :
     let app := runtime.reactiveApplication leaks
     ∃ coupling : PMF (app.Execution × app.Execution),
@@ -290,8 +315,8 @@ theorem environment_coupling_or_owner_breach
       exact ⟨coupling, left, right, fun pair supported => Or.inl (related pair supported)⟩
   | «include» id =>
       obtain ⟨coupling, left, right, related⟩ := frame.include_coupling_or_owner_breach
-        onlyBindings sound leftBinding rightBinding fixed leftRemembered rightRemembered
-          ownerCompleted id
+        onlyBindings past sound leftBinding rightBinding fixed leftRemembered rightRemembered
+          ownerCommitment id
       refine ⟨coupling, left, right, fun pair supported => ?_⟩
       rcases related pair supported with paired | ⟨packet, found, bad⟩
       · exact Or.inl paired

@@ -2,16 +2,16 @@
 
 import Vegas.Game.SourceServiceBindingFirstPacket
 import Vegas.Game.SourceServiceLateDecisionCompletion
-import Vegas.Game.SourceServiceBindingResponseFactorization
+import Vegas.Game.SourceServiceRecordedBindingCompletion
 import Vegas.Pending.ReactiveBindingAcceptanceReceipts
 import Vegas.Pending.ReactiveBindingOmission
 
 /-! # Actual acceptance or public miss of one timely binding attempt
 
-A clear admitted prefix supplies the counted fresh candidate. A manual timely
-canonical binding call then either receives acceptance for its own actual
-identifier and completes with the selected typed value, or expires with the
-real public miss marker and typed failure. The owner subsequently follows its
+At a raw initialized prefix with a fresh counted candidate, a manual timely
+canonical binding call either receives acceptance for its own actual identifier
+and completes with the selected typed value, or expires with the real public
+miss marker and typed failure. The owner subsequently follows its
 recorded turn policy, while foreign policies remain arbitrary raw policies.
 
 The manual attempt can occur outside protected inclusion. This theorem does
@@ -26,7 +26,7 @@ namespace Vegas
 
 open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -37,17 +37,16 @@ change acceptance, and only actual expiry creates the miss branch. -/
 theorem sourceService_binding_attempt_completion
     {horizon remaining : Nat} {scheduler : (application setup leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
-    (bounds : MessageBounds (graph setup))
     (contract : AsyncContract (runtime setup) leaks (initialLaw setup) horizon scheduler
       delay bound)
     (players : Player → (application setup leaks).Policy)
     {turns : Nat} (timing : TurnTiming setup turns) (profile : BehavioralProfile setup.program)
     (execution : (application setup leaks).Execution) (event : (graph setup).EventId)
     (site : BindingSource setup profile event execution.application.config)
-    (trace : ((bounds.riskMenu (runtime setup) leaks bound).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some site.owner, execution⟩))
-    (clear : ∀ player, (runtime setup).persistentServiceRisk leaks bound player
-      (execution.recall player) (execution.observe (application setup leaks) player) = false)
+    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some site.owner, execution⟩))
+    (fresh : execution.application.candidates.lookup
+      (site.owner, .prepared (execution.application.publicView.bindingCount site.owner)) = .fresh)
     (turn : execution.application.publicView.ownTurn? site.owner = some event)
     (unrecorded : (runtime setup).eventRecorded leaks (execution.recall site.owner) event = false)
     (timely : execution.application.WithinDeadline (runtime setup) event)
@@ -86,9 +85,7 @@ theorem sourceService_binding_attempt_completion
   let action := cast (congrArg EventGraph.EventField.Action site.outputEq.symm) value
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ owner event turn).1
-  have rawTrace := (bounds.riskMenu (runtime setup) leaks bound).toRawTrace _ _ _ trace
-  have fresh := sourceService_clear_counted_candidate_fresh bounds bound owner execution trace
-    clear event unrecorded turn
+  have rawTrace := trace
   have selected : canonicalFreshSlot owner (execution.observe app owner).application =
       some serial := canonicalFreshSlot_canonical owner _ fresh
   have decided := (runtime setup).canonicalServiceDecision_binding leaks owner
@@ -119,8 +116,7 @@ theorem sourceService_binding_attempt_completion
       rw [decided]
       exact silentReached)
   have complete := dichotomy.1
-  have accounted := ((bounds.riskMenu (runtime setup) leaks bound).roundSupported_uniform
-    (initialLaw setup) horizon scheduler trace).1
+  have accounted := app.raw_trace_accounted (initialLaw setup) horizon scheduler trace
   change execution.environmentRecall.length + remaining = horizon at accounted
   obtain ⟨startTrace⟩ := app.raw_trace_respond (initialLaw setup) horizon scheduler remaining
     execution owner response rawTrace

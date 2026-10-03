@@ -100,9 +100,10 @@ theorem sourceService_binding_stopped_response
       some value
     exact congrArg some ((runtime setup).reactiveBinding_result leaks site.owner event site.payload
       value serial execution fresh)
-  have chosen := site.attempt_law bounds contract players
-    (geometricTiming setup horizon weight positive.le below.le) profile execution event trace clear
-    turn unrecorded fits.withinDeadline follows parameter
+  have chosen := site.attempt_law contract players
+    (geometricTiming setup horizon weight positive.le below.le) profile execution event
+    ((bounds.riskMenu (runtime setup) leaks bound).toRawTrace _ _ _ trace) fresh turn unrecorded
+    fits.withinDeadline follows parameter
   have tagged := congrArg (fun law => law.map (fun selected =>
     (selected.1, some selected.2.1, selected.2.2.1, selected.2.2.2))) chosen
   calc

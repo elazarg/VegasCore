@@ -63,6 +63,7 @@ import Vegas.Examples.LateResolutionNativeSites
 import Vegas.Examples.LateResolutionFirstPayoff
 import Vegas.Examples.LateResolutionFirstOptimality
 import Vegas.Examples.LateResolutionFreeEquilibrium
+import Vegas.Examples.LateResolutionPreservation
 
 /-! Checked strategic analyses of concrete source games, native runtime
 fixtures, and the counterexamples that delimit the compiler results. -/
